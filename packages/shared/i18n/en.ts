@@ -10,7 +10,7 @@ export const en: Messages = {
   "error.hostNotAllowed": "This address does not serve Zuri.",
   "error.notFound": "This doesn't exist or is already gone. Check the address.",
   "error.notConfigured": "Zuri is not fully set up yet. See the installation guide.",
-  "error.internal": "Couldn't finish this right now. Your data is safe; try again in a moment.",
+  "error.internal": "Couldn't finish this. Your data is safe; try again.",
   "error.validationFailed": "Some of the data isn't right. Check the fields and try again.",
   "format.dateTime": "{date} at {time}",
   "auth.password.tooShort": "Use at least 15 characters.",

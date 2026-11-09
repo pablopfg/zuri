@@ -31,7 +31,7 @@ import { ptBRBackup } from "./pt-BR-backup.ts";
 // pt-BR-security.ts), so the interface loads them with those screens (rule P11).
 export const ptBRCore = {
   "app.name": "Zuri",
-  "error.internal": "Não deu para concluir agora. Seus dados estão seguros; tente de novo em instantes.",
+  "error.internal": "Não deu para concluir. Seus dados estão seguros; tente de novo.",
   "format.dateTime": "{date} às {time}",
   "web.loading": "Carregando…",
   "web.retry": "Tentar de novo",

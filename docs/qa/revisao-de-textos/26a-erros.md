@@ -11,7 +11,7 @@ As mensagens sem ação na primeira passada foram lidas uma a uma: as que tinham
 
 | Chave | Texto (pt-BR) | Classe |
 | --- | --- | --- |
-| `error.internal` | Não deu para concluir agora. Seus dados estão seguros; tente de novo em instantes. | diz o que fazer |
+| `error.internal` | Não deu para concluir. Seus dados estão seguros; tente de novo. | diz o que fazer |
 | `web.accessLog.reason.failed` | verificação recusada | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
 | `error.aiLimit.requests` | Você chegou ao limite diário de pedidos à IA. Ele renova à meia-noite UTC (21h em Brasília). Tarefas, notas e memórias continuam funcionando; o limite muda em Configurações > IA. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
 | `error.aiLimit.neurons` | A IA chegou ao teto de uso do dia, que mantém a Zuri dentro da cota grátis. Ele renova à meia-noite UTC (21h em Brasília). Tarefas, notas e memórias continuam funcionando. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
