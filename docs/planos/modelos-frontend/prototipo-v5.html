@@ -575,7 +575,7 @@ h1,h2,h3{font-family:var(--f-head)}
   --shadow-md:0 1px 2px rgb(24 24 27 / .04),0 8px 24px -6px rgb(24 24 27 / .10);
   --shadow-lg:0 2px 4px rgb(24 24 27 / .04),0 16px 40px -8px rgb(24 24 27 / .18);
   --tile:#18181b;--mark:#ffffff;--signal:#22c55e;--art-bg:#18181b;--art-ink:#d4d4d8;--art-head:#fafafa;
-  --sk:#ececef;--sk-hi:#f6f6f7;
+  --sk:#e9e9ec;--sk-hi:#fafafa;
 }
 [data-theme="escuro"]{
   color-scheme:dark;
@@ -1056,42 +1056,9 @@ kbd{font:500 12px/1 var(--f-ui);padding:3px 6px;border-radius:6px;border:1px sol
 .daylist-out{display:flex;align-items:center;gap:8px;margin-top:var(--s3);font-size:var(--t-sm);color:var(--muted)}
 .daylist-out{display:none}
 
-/* contatos */
-.split-contacts{grid-template-columns:340px minmax(0,1fr)}
-.sync{display:flex;align-items:center;gap:6px;font-size:var(--t-sm);color:var(--muted);margin:-8px 0 var(--s4)}
-.split-contacts .seg{width:100%}
-.split-contacts .seg button{flex:1}
-.peoplelist{display:grid;gap:4px;margin-top:var(--s3)}
-.peoplelist a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r-md);text-decoration:none;color:var(--ink);min-height:56px}
-.peoplelist a:hover{background:var(--hover)}
-.peoplelist a[aria-current="true"]{background:var(--surface);box-shadow:var(--side-active-shadow)}
-.peoplelist .pt{display:grid;min-width:0}
-.peoplelist .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.peoplelist .d{font-size:var(--t-sm);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pav{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--sunken);color:var(--ink-2);font:600 13px/1 var(--f-ui);box-shadow:inset 0 0 0 1px var(--line)}
-.pav-lg{width:64px;height:64px;font-size:22px}
-.person{max-width:820px;margin:0 auto;padding:var(--s6) var(--s6) var(--s8)}
-.person-head{display:flex;align-items:center;gap:var(--s4)}
-.person-head h2{font-size:var(--t-2xl);letter-spacing:-.02em}
-.person-head .meta{margin-top:6px}
-.person-acts{display:flex;flex-wrap:wrap;gap:var(--s2);margin:var(--s5) 0}
-.person-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4)}
-.p-sec{padding:var(--s4) var(--s5)}
-.p-wide{grid-column:1/-1}
-.p-sec h3{font-size:var(--t-sm);font-weight:600;color:var(--muted);margin-bottom:var(--s3)}
-.p-sec .card.day{box-shadow:none;border:0;padding:0;background:transparent}
-.kv{display:grid;grid-template-columns:120px minmax(0,1fr);gap:var(--s3);padding:10px 0;border-top:1px solid var(--line-soft)}
-.kv:first-child{border-top:0;padding-top:0}
-.kv dt{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:var(--t-sm)}
-.kv dd{margin:0;color:var(--ink);overflow-wrap:anywhere}
-dl{margin:0}
-.facts{display:grid;gap:10px;margin-bottom:var(--s3)}
-.facts li{display:grid;gap:2px;padding:12px 14px;border-radius:var(--r-md);background:var(--sunken)}
 @media (max-width:820px){
   .ag-range .btn{flex-basis:100%}
   .daylist-out{display:flex}
-  .split-contacts{grid-template-columns:1fr}
-  .person-grid{grid-template-columns:1fr}
 }
 
 /* tema escuro: mais separação entre camadas e texto mais claro */
@@ -1105,7 +1072,7 @@ dl{margin:0}
   --side-bg:#08080a;--side-ink:#dcdce2;--side-muted:#b6b6bf;--side-hover:#1c1c21;--side-active-bg:#26262c;--side-line:rgb(255 255 255 / .08);
   --side-active-shadow:inset 0 0 0 1px rgb(255 255 255 / .1);
   --shadow-xs:0 0 0 1px rgb(255 255 255 / .02);
-  --tile:#2a2a30;--art-bg:#08080a;--sk:#25252b;--sk-hi:#303038;
+  --tile:#2a2a30;--art-bg:#08080a;--sk:#25252b;--sk-hi:#3a3a43;
 }
 [data-theme="escuro"] .card{background:var(--surface);border-color:var(--line)}
 [data-theme="escuro"] .ev{box-shadow:inset 0 0 0 1px rgb(74 222 128 / .32)}
@@ -1130,6 +1097,179 @@ dl{margin:0}
 .mini-ev .t{display:block;font-weight:500}
 .mini-ev .d{display:block;font-size:var(--t-sm);color:var(--muted)}
 
+/* ================= ajustes de 09/11 16:37 ================= */
+.ag-cfg{display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:var(--t-sm);color:var(--ink-2);text-underline-offset:3px;min-height:36px}
+.ag-cfg .ic{color:var(--muted)}
+
+/* configurações > agenda */
+.set-col{flex-wrap:wrap}
+.set-col>.grow{flex-basis:100%}
+.ctl-pair{display:flex;align-items:flex-end;flex-wrap:wrap;gap:var(--s3)}
+.ctl-pair label{display:grid;gap:6px;font-size:var(--t-sm);font-weight:500;color:var(--ink-2)}
+.hours-bar{position:relative;flex-basis:100%;height:36px;margin-top:var(--s2);border-radius:var(--r-sm);background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line);background-image:repeating-linear-gradient(90deg,transparent 0,transparent calc(100% / 24 - 1px),var(--line-soft) calc(100% / 24 - 1px),var(--line-soft) calc(100% / 24))}
+.hours-bar .on{position:absolute;top:4px;bottom:4px;display:grid;place-items:center;border-radius:6px;background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent-soft-ink);font-size:var(--t-xs);font-weight:600;white-space:nowrap;overflow:hidden;transition:left var(--dur-3) var(--ease-out),width var(--dur-3) var(--ease-out)}
+.hours-scale{flex-basis:100%;display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:-8px}
+.cal-list .set-row:first-child{border-top:1px solid var(--line-soft);margin-top:var(--s3)}
+.cal-dot{width:12px;height:12px;border-radius:4px;flex:none;align-self:flex-start;margin-top:6px}
+.set-sec+.set-sec{margin-top:var(--s5)}
+
+/* contatos: lista */
+.split-contacts{grid-template-columns:360px minmax(0,1fr)}
+.ct-list{display:flex;flex-direction:column}
+.ct-list>*{flex-shrink:0}
+.ct-list .pane-head{margin-bottom:var(--s2)}
+.sync{font-size:var(--t-sm);color:var(--muted);margin:0 0 var(--s4)}
+.split-contacts .seg{width:100%}
+.split-contacts .seg button{flex:1;justify-content:center}
+.ct-search{margin-top:var(--s3)}
+.plist{display:grid;gap:2px;margin-top:var(--s3)}
+.plist .grp{position:sticky;top:-24px;z-index:1;padding:12px 12px 4px;background:var(--bg);font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--muted)}
+.plist li[hidden]{display:none}
+.pitem{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:8px 12px;border:0;border-radius:var(--r-md);background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:background-color var(--dur-1) var(--ease-out)}
+.pitem:hover{background:var(--hover)}
+.pitem[aria-current="true"]{background:var(--surface);box-shadow:var(--side-active-shadow)}
+[data-theme="escuro"] .pitem[aria-current="true"]{background:var(--raised)}
+.pitem .pt{display:grid;min-width:0;flex:1}
+.pitem .t{display:flex;align-items:center;gap:6px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pitem .d{font-size:var(--t-sm);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pitem .pr{display:grid;justify-items:end;gap:4px;flex:none;font-size:12px;color:var(--muted)}
+.ic.fav{width:14px;height:14px;flex:none;color:var(--warn-ink);fill:currentColor}
+.p-empty{color:var(--muted);font-size:var(--t-sm)}
+.ct-none{padding:var(--s4) 12px}
+
+/* avatares com cor suave, sempre com as iniciais */
+.pav{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;font:600 14px/1 var(--f-ui);letter-spacing:.02em;background:var(--sunken);color:var(--ink-2)}
+.tint-1{background:#e0f2fe;color:#075985}
+.tint-2{background:#fef3c7;color:#92400e}
+.tint-3{background:#ffe4e6;color:#9f1239}
+.tint-4{background:#e7e5e4;color:#44403c}
+[data-theme="escuro"] .tint-1{background:#0f2a3a;color:#bae6fd}
+[data-theme="escuro"] .tint-2{background:#33270d;color:#fde68a}
+[data-theme="escuro"] .tint-3{background:#3a1520;color:#fecdd3}
+[data-theme="escuro"] .tint-4{background:#2a2826;color:#e7e5e4}
+.pav-xl{width:72px;height:72px;font-size:24px}
+
+/* estrelas e etapas */
+.stars{display:inline-flex;gap:1px;color:#b45309}
+[data-theme="escuro"] .stars{color:#fbbf24}
+.stars .ic{width:14px;height:14px}
+.stars .ic.on{fill:currentColor}
+.stars .ic:not(.on){color:var(--control)}
+.stage{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.stage i{width:8px;height:8px;border-radius:50%;background:var(--control)}
+.stage.s-novo i{background:#0284c7}
+.stage.s-conv i{background:#d97706}
+.stage.s-cli i{background:var(--accent)}
+.rv-st{font-weight:600;color:var(--warn-ink)}
+.rv-sum{display:flex;align-items:center;gap:var(--s4);margin-top:var(--s3);padding:var(--s3) var(--s4)}
+.rv-sum .big{font-size:var(--t-3xl);font-weight:600;letter-spacing:-.02em;line-height:1}
+.rv-sum .stars .ic{width:16px;height:16px}
+.rv-sum .d{font-size:var(--t-sm);color:var(--muted);margin-top:2px}
+
+/* contatos: ficha */
+.person{max-width:980px;margin:0 auto;padding:var(--s6) var(--s6) var(--s8)}
+.person-head{display:flex;align-items:center;gap:var(--s5)}
+.person-head h2{font-size:var(--t-2xl);letter-spacing:-.02em;line-height:1.15}
+.person-head .role{display:flex;align-items:center;gap:10px;color:var(--muted);margin-top:2px}
+.person-head .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.person-head .meta .tag{display:inline-flex;align-items:center;gap:4px}
+.back-m,.ct-h1-m{display:none}
+.qa{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2);max-width:600px;margin:var(--s6) 0}
+.qa-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;min-height:72px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);color:var(--ink);font:500 var(--t-sm)/1.2 var(--f-ui);text-align:center;text-decoration:none;cursor:pointer;transition:background-color var(--dur-1) var(--ease-out),transform var(--dur-1) var(--ease-out)}
+.qa-btn:hover{background:var(--hover)}
+.qa-btn:active{transform:translateY(1px)}
+.qa-btn .ic{width:20px;height:20px;color:var(--ink-2)}
+.qa-btn.qa-main{background:var(--accent-soft);border-color:transparent;color:var(--accent-soft-ink);font-weight:600}
+.qa-btn.qa-main .ic{color:var(--accent-soft-ink)}
+.qa-btn[disabled]{color:var(--muted);cursor:not-allowed;background:var(--bg)}
+.qa-btn[disabled] .ic{color:var(--muted)}
+.person-cols{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--s4);align-items:start}
+.pc-main{display:grid;gap:var(--s4);min-width:0}
+.p-sec{padding:var(--s4) var(--s5) var(--s5)}
+.p-sec h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:var(--s3)}
+.tl li{display:grid;grid-template-columns:32px 72px minmax(0,1fr);gap:var(--s3);align-items:start;padding:12px 0;border-top:1px solid var(--line-soft)}
+.tl li:first-child{border-top:0;padding-top:0}
+.tl-ic{width:32px;height:32px;border-radius:var(--r-sm);display:grid;place-items:center;background:var(--sunken);color:var(--ink-2)}
+.tl .when{padding-top:6px;font-size:var(--t-sm);font-weight:500;color:var(--ink-2)}
+.tl .t{display:block;font-weight:500;padding-top:5px}
+.tl .d{display:block;font-size:var(--t-sm);color:var(--muted)}
+.facts{display:grid;gap:8px;margin-bottom:var(--s3)}
+.facts li{display:grid;gap:2px;padding:12px 14px;border-radius:var(--r-md);background:var(--sunken)}
+.seen li+li a{border-top:1px solid var(--line-soft)}
+.seen a{display:flex;align-items:center;gap:12px;padding:10px 0;color:var(--ink);text-decoration:none;min-height:44px}
+.seen a>span{flex:1;display:grid}
+.seen .k{font-size:12px;color:var(--muted)}
+.seen .ic{color:var(--muted)}
+.dl-stack>div{padding:10px 0;border-top:1px solid var(--line-soft)}
+.dl-stack>div:first-child{border-top:0;padding-top:0}
+.dl-stack dt{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.dl-stack dd{margin:2px 0 0;color:var(--ink);overflow-wrap:anywhere}
+.ro{display:flex;gap:8px;align-items:flex-start;margin-top:var(--s3);padding-top:var(--s3);border-top:1px solid var(--line-soft);font-size:var(--t-sm);color:var(--muted)}
+.ro .ic{flex:none;margin-top:2px}
+.review .ro{border-top:0;max-width:62ch}
+.rv-text{margin:var(--s6) 0 var(--s4);padding:0 0 0 var(--s4);font-size:var(--t-lg);line-height:1.55;color:var(--ink);max-width:62ch;border-left:3px solid var(--line-strong)}
+.rv-reply{max-width:680px}
+.rv-draft{line-height:1.6;max-width:62ch}
+.rv-reply .row-actions{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s4)}
+.rv-low,.rv-pub{display:flex;align-items:center;gap:8px;margin-top:var(--s3);font-size:var(--t-sm);font-weight:500}
+.rv-low{color:var(--warn-ink)}
+.rv-pub{color:var(--ok-ink)}
+
+/* carregando: linha no topo, esqueleto com brilho, sinal pulsando e entrada suave */
+.st-hrow{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);margin:-6px 0 -6px}
+.ld{position:relative;overflow:hidden;min-height:226px;padding:var(--s3) var(--s4) var(--s2);border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--bg)}
+.ld-bar{position:absolute;inset:0 0 auto;height:3px;overflow:hidden}
+.ld-bar i{position:absolute;top:0;bottom:0;left:-40%;width:40%;border-radius:3px;background:var(--accent);animation:ld-bar 1.3s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes ld-bar{to{left:100%}}
+.ld-msg{display:flex;align-items:center;gap:10px;margin:6px 0 2px;font-size:var(--t-sm);color:var(--muted);animation:ld-in .3s .3s both}
+.ld-sig{position:relative;width:14px;height:14px;flex:none}
+.ld-sig i{position:absolute;inset:3px;border-radius:50%;background:var(--signal)}
+.ld-sig::before,.ld-sig::after{content:"";position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--signal);opacity:0;animation:ld-wave 1.8s ease-out infinite}
+.ld-sig::after{animation-delay:.9s}
+@keyframes ld-wave{0%{transform:scale(.45);opacity:.9}100%{transform:scale(2.1);opacity:0}}
+.ld .sk-row{animation:ld-in .35s both}
+.ld .sk-row:nth-of-type(1){animation-delay:.3s}
+.ld .sk-row:nth-of-type(2){animation-delay:.38s}
+.ld .sk-row:nth-of-type(3){animation-delay:.46s}
+.ld .sk{animation:sk 1.4s ease-in-out infinite}
+@keyframes ld-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.ld[data-ld="done"] .ld-bar,.ld[data-ld="done"] .ld-skel{display:none}
+.ld[data-ld="loading"] .ld-done{display:none}
+.ld-done li{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line-soft);animation:ld-in .35s both}
+.ld-done li:first-child{border-top:0}
+.ld-done li:nth-child(2){animation-delay:.06s}
+.ld-done li:nth-child(3){animation-delay:.12s}
+.ld-done .t{flex:1;font-weight:500}
+.ld-done .num{font-size:var(--t-sm);color:var(--muted)}
+.ld-c{width:20px;height:20px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1.5px var(--control)}
+@media (prefers-reduced-motion:reduce){
+  .ld *,.ld *::before,.ld *::after{animation:none!important}
+  .ld-bar i{left:0;width:100%;opacity:.45}
+  .ld-sig::before{opacity:.5;transform:scale(1.6)}
+  .hours-bar .on{transition:none}
+}
+
+@media (max-width:820px){
+  .ag-cfg{margin-left:0}
+  .split-contacts{grid-template-columns:1fr}
+  .split-contacts:not(.has-sel)>.pane:last-child{display:none}
+  .split-contacts.has-sel>.pane:first-child{display:none}
+  .split-contacts.has-sel>.pane:last-child{display:block}
+  .split-contacts>.pane:first-child{border-right:0}
+  .back-m{display:inline-flex;margin:0 0 var(--s3) -10px}
+  .has-sel .ct-h1-m{display:block;position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .person{padding:var(--s4) var(--s4) var(--s7)}
+  .person-head{gap:var(--s4)}
+  .person-head h2{font-size:var(--t-xl)}
+  .pav-xl{width:56px;height:56px;font-size:19px}
+  .qa{max-width:none;margin:var(--s5) 0}
+  .qa-btn{min-height:68px;font-size:13px}
+  .person-cols{grid-template-columns:1fr}
+  .rv-text{font-size:var(--t-md)}
+  .ctl-pair .btn{flex-basis:100%}
+}
+@media (pointer:coarse){.pitem{min-height:64px}}
+
 </style>
 </head>
 <body>
@@ -1150,7 +1290,7 @@ dl{margin:0}
 </fieldset></aside>
 <div id="app"></div>
 <script>
-const ICONS = {"lucide":{"house": "<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /> <path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />", "message-circle": "<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />", "list-todo": "<path d=\"M13 5h8\" /> <path d=\"M13 12h8\" /> <path d=\"M13 19h8\" /> <path d=\"m3 17 2 2 4-4\" /> <rect x=\"3\" y=\"4\" width=\"6\" height=\"6\" rx=\"1\" />", "calendar-days": "<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"M8 13h.01\" /> <path d=\"M12 13h.01\" /> <path d=\"M16 13h.01\" /> <path d=\"M8 17h.01\" /> <path d=\"M12 17h.01\" /> <path d=\"M16 17h.01\" />", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" />", "notebook-pen": "<path d=\"M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4\" /> <path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <path d=\"M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z\" />", "brain": "<path d=\"M12 18V5\" /> <path d=\"M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4\" /> <path d=\"M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294\" /> <path d=\"M17.996 5.125a4 4 0 012.526 5.77\" /> <path d=\"M18 18a4 4 0 002-7.465\" /> <path d=\"M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517\" /> <path d=\"M6 18a4 4 0 01-2-7.465\" /> <path d=\"M6.004 5.125a4 4 0 00-2.526 5.77\" />", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 6v6l4 2\" />", "arrow-up": "<path d=\"m5 12 7-7 7 7\" /> <path d=\"M12 19V5\" />", "bell": "<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /> <path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />", "calendar-plus": "<path d=\"M16 18h6\" /> <path d=\"M16 2v3\" /> <path d=\"M19 15v6\" /> <path d=\"M21 11.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h8.3\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" />", "check": "<path d=\"M20 6 9 17l-5-5\" />", "chevron-left": "<path d=\"m15 18-6-6 6-6\" />", "chevron-right": "<path d=\"m9 18 6-6-6-6\" />", "chevron-down": "<path d=\"m6 9 6 6 6-6\" />", "circle-dot": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"12\" cy=\"12\" r=\"10\" />", "circle-help": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" /> <path d=\"M12 17h.01\" />", "clipboard-list": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"M12 11h4\" /> <path d=\"M12 16h4\" /> <path d=\"M8 11h.01\" /> <path d=\"M8 16h.01\" />", "ellipsis": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"19\" cy=\"12\" r=\"1\" /> <circle cx=\"5\" cy=\"12\" r=\"1\" />", "eye": "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "flag": "<path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\" />", "folder": "<path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\" />", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" /> <path d=\"M12 7v5l4 2\" />", "lock": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", "mail": "<path d=\"m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7\" /> <rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\" />", "map-pin": "<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\" /> <circle cx=\"12\" cy=\"10\" r=\"3\" />", "menu": "<path d=\"M4 5h16\" /> <path d=\"M4 12h16\" /> <path d=\"M4 19h16\" />", "mic": "<path d=\"M12 19v3\" /> <path d=\"M19 10v2a7 7 0 0 1-14 0v-2\" /> <rect x=\"9\" y=\"2\" width=\"6\" height=\"13\" rx=\"3\" />", "monitor": "<rect width=\"20\" height=\"14\" x=\"2\" y=\"3\" rx=\"2\" /> <line x1=\"8\" x2=\"16\" y1=\"21\" y2=\"21\" /> <line x1=\"12\" x2=\"12\" y1=\"17\" y2=\"21\" />", "moon": "<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />", "panel-left": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M9 3v18\" />", "pencil": "<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />", "play": "<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\" />", "plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />", "search": "<path d=\"m21 21-4.34-4.34\" /> <circle cx=\"11\" cy=\"11\" r=\"8\" />", "send-horizontal": "<path d=\"M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z\" /> <path d=\"M6 12h16\" />", "shield-check": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"m9 12 2 2 4-4\" />", "sparkles": "<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /> <path d=\"M20 2v4\" /> <path d=\"M22 4h-4\" /> <circle cx=\"4\" cy=\"20\" r=\"2\" />", "square-pen": "<path d=\"M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\" /> <path d=\"M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z\" />", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\" /> <path d=\"M12 2v2\" /> <path d=\"M12 20v2\" /> <path d=\"m4.93 4.93 1.41 1.41\" /> <path d=\"m17.66 17.66 1.41 1.41\" /> <path d=\"M2 12h2\" /> <path d=\"M20 12h2\" /> <path d=\"m6.34 17.66-1.41 1.41\" /> <path d=\"m19.07 4.93-1.41 1.41\" />", "trash-2": "<path d=\"M10 11v6\" /> <path d=\"M14 11v6\" /> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /> <path d=\"M3 6h18\" /> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />", "triangle-alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />", "sunrise": "<path d=\"M12 2v8\" /> <path d=\"m4.93 10.93 1.41 1.41\" /> <path d=\"M2 18h2\" /> <path d=\"M20 18h2\" /> <path d=\"m19.07 10.93-1.41 1.41\" /> <path d=\"M22 22H2\" /> <path d=\"m8 6 4-4 4 4\" /> <path d=\"M16 18a4 4 0 0 0-8 0\" />", "repeat": "<path d=\"m17 2 4 4-4 4\" /> <path d=\"M3 11v-1a4 4 0 0 1 4-4h14\" /> <path d=\"m7 22-4-4 4-4\" /> <path d=\"M21 13v1a4 4 0 0 1-4 4H3\" />", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\" /> <path d=\"M3 5V19A9 3 0 0 0 21 19V5\" /> <path d=\"M3 12A9 3 0 0 0 21 12\" />", "globe": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\" /> <path d=\"M2 12h20\" />", "plug": "<path d=\"M12 22v-5\" /> <path d=\"M15 8V2\" /> <path d=\"M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z\" /> <path d=\"M9 8V2\" />", "user": "<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" /> <circle cx=\"12\" cy=\"7\" r=\"4\" />", "x": "<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />", "circle": "<circle cx=\"12\" cy=\"12\" r=\"10\" />", "log-out": "<path d=\"m16 17 5-5-5-5\" /> <path d=\"M21 12H9\" /> <path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />", "arrow-left": "<path d=\"m12 19-7-7 7-7\" /> <path d=\"M19 12H5\" />", "wifi-off": "<path d=\"M12 20h.01\" /> <path d=\"M8.5 16.429a5 5 0 0 1 7 0\" /> <path d=\"M5 12.859a10 10 0 0 1 5.17-2.69\" /> <path d=\"M19 12.859a10 10 0 0 0-2.007-1.523\" /> <path d=\"M2 8.82a15 15 0 0 1 4.177-2.643\" /> <path d=\"M22 8.82a15 15 0 0 0-11.288-3.764\" /> <path d=\"m2 2 20 20\" />", "refresh-cw": "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\" /> <path d=\"M21 3v5h-5\" /> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\" /> <path d=\"M8 16H3v5\" />", "undo-2": "<path d=\"M9 14 4 9l5-5\" /> <path d=\"M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11\" />", "inbox": "<polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\" /> <path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" />", "loader-circle": "<path d=\"M21 12a9 9 0 1 1-6.219-8.56\" />", "circle-alert": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\" /> <line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\" />", "info": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 16v-4\" /> <path d=\"M12 8h.01\" />", "paperclip": "<path d=\"m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551\" />", "settings": "<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "notebook": "<path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\" /> <path d=\"M16 2v20\" />", "circle-check": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m16 9-5.5 5.5L8 12\" />", "layout-grid": "<rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\" />", "copy": "<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /> <path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />", "eye-off": "<path d=\"M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49\" /> <path d=\"M14.084 14.158a3 3 0 0 1-4.242-4.242\" /> <path d=\"M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143\" /> <path d=\"m2 2 20 20\" />", "smartphone": "<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /> <path d=\"M12 18h.01\" />"}};
+const ICONS = {"lucide":{"house": "<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /> <path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />", "message-circle": "<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />", "list-todo": "<path d=\"M13 5h8\" /> <path d=\"M13 12h8\" /> <path d=\"M13 19h8\" /> <path d=\"m3 17 2 2 4-4\" /> <rect x=\"3\" y=\"4\" width=\"6\" height=\"6\" rx=\"1\" />", "calendar-days": "<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"M8 13h.01\" /> <path d=\"M12 13h.01\" /> <path d=\"M16 13h.01\" /> <path d=\"M8 17h.01\" /> <path d=\"M12 17h.01\" /> <path d=\"M16 17h.01\" />", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" />", "notebook-pen": "<path d=\"M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4\" /> <path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <path d=\"M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z\" />", "brain": "<path d=\"M12 18V5\" /> <path d=\"M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4\" /> <path d=\"M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294\" /> <path d=\"M17.996 5.125a4 4 0 012.526 5.77\" /> <path d=\"M18 18a4 4 0 002-7.465\" /> <path d=\"M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517\" /> <path d=\"M6 18a4 4 0 01-2-7.465\" /> <path d=\"M6.004 5.125a4 4 0 00-2.526 5.77\" />", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 6v6l4 2\" />", "arrow-up": "<path d=\"m5 12 7-7 7 7\" /> <path d=\"M12 19V5\" />", "bell": "<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /> <path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />", "calendar-plus": "<path d=\"M16 18h6\" /> <path d=\"M16 2v3\" /> <path d=\"M19 15v6\" /> <path d=\"M21 11.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h8.3\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" />", "check": "<path d=\"M20 6 9 17l-5-5\" />", "chevron-left": "<path d=\"m15 18-6-6 6-6\" />", "chevron-right": "<path d=\"m9 18 6-6-6-6\" />", "chevron-down": "<path d=\"m6 9 6 6 6-6\" />", "circle-dot": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"12\" cy=\"12\" r=\"10\" />", "circle-help": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" /> <path d=\"M12 17h.01\" />", "clipboard-list": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"M12 11h4\" /> <path d=\"M12 16h4\" /> <path d=\"M8 11h.01\" /> <path d=\"M8 16h.01\" />", "ellipsis": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"19\" cy=\"12\" r=\"1\" /> <circle cx=\"5\" cy=\"12\" r=\"1\" />", "eye": "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "flag": "<path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\" />", "folder": "<path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\" />", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" /> <path d=\"M12 7v5l4 2\" />", "lock": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", "mail": "<path d=\"m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7\" /> <rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\" />", "map-pin": "<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\" /> <circle cx=\"12\" cy=\"10\" r=\"3\" />", "menu": "<path d=\"M4 5h16\" /> <path d=\"M4 12h16\" /> <path d=\"M4 19h16\" />", "mic": "<path d=\"M12 19v3\" /> <path d=\"M19 10v2a7 7 0 0 1-14 0v-2\" /> <rect x=\"9\" y=\"2\" width=\"6\" height=\"13\" rx=\"3\" />", "monitor": "<rect width=\"20\" height=\"14\" x=\"2\" y=\"3\" rx=\"2\" /> <line x1=\"8\" x2=\"16\" y1=\"21\" y2=\"21\" /> <line x1=\"12\" x2=\"12\" y1=\"17\" y2=\"21\" />", "moon": "<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />", "panel-left": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M9 3v18\" />", "pencil": "<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />", "play": "<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\" />", "plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />", "search": "<path d=\"m21 21-4.34-4.34\" /> <circle cx=\"11\" cy=\"11\" r=\"8\" />", "send-horizontal": "<path d=\"M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z\" /> <path d=\"M6 12h16\" />", "shield-check": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"m9 12 2 2 4-4\" />", "sparkles": "<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /> <path d=\"M20 2v4\" /> <path d=\"M22 4h-4\" /> <circle cx=\"4\" cy=\"20\" r=\"2\" />", "square-pen": "<path d=\"M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\" /> <path d=\"M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z\" />", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\" /> <path d=\"M12 2v2\" /> <path d=\"M12 20v2\" /> <path d=\"m4.93 4.93 1.41 1.41\" /> <path d=\"m17.66 17.66 1.41 1.41\" /> <path d=\"M2 12h2\" /> <path d=\"M20 12h2\" /> <path d=\"m6.34 17.66-1.41 1.41\" /> <path d=\"m19.07 4.93-1.41 1.41\" />", "trash-2": "<path d=\"M10 11v6\" /> <path d=\"M14 11v6\" /> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /> <path d=\"M3 6h18\" /> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />", "triangle-alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />", "sunrise": "<path d=\"M12 2v8\" /> <path d=\"m4.93 10.93 1.41 1.41\" /> <path d=\"M2 18h2\" /> <path d=\"M20 18h2\" /> <path d=\"m19.07 10.93-1.41 1.41\" /> <path d=\"M22 22H2\" /> <path d=\"m8 6 4-4 4 4\" /> <path d=\"M16 18a4 4 0 0 0-8 0\" />", "repeat": "<path d=\"m17 2 4 4-4 4\" /> <path d=\"M3 11v-1a4 4 0 0 1 4-4h14\" /> <path d=\"m7 22-4-4 4-4\" /> <path d=\"M21 13v1a4 4 0 0 1-4 4H3\" />", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\" /> <path d=\"M3 5V19A9 3 0 0 0 21 19V5\" /> <path d=\"M3 12A9 3 0 0 0 21 12\" />", "globe": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\" /> <path d=\"M2 12h20\" />", "plug": "<path d=\"M12 22v-5\" /> <path d=\"M15 8V2\" /> <path d=\"M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z\" /> <path d=\"M9 8V2\" />", "user": "<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" /> <circle cx=\"12\" cy=\"7\" r=\"4\" />", "x": "<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />", "circle": "<circle cx=\"12\" cy=\"12\" r=\"10\" />", "log-out": "<path d=\"m16 17 5-5-5-5\" /> <path d=\"M21 12H9\" /> <path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />", "arrow-left": "<path d=\"m12 19-7-7 7-7\" /> <path d=\"M19 12H5\" />", "wifi-off": "<path d=\"M12 20h.01\" /> <path d=\"M8.5 16.429a5 5 0 0 1 7 0\" /> <path d=\"M5 12.859a10 10 0 0 1 5.17-2.69\" /> <path d=\"M19 12.859a10 10 0 0 0-2.007-1.523\" /> <path d=\"M2 8.82a15 15 0 0 1 4.177-2.643\" /> <path d=\"M22 8.82a15 15 0 0 0-11.288-3.764\" /> <path d=\"m2 2 20 20\" />", "refresh-cw": "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\" /> <path d=\"M21 3v5h-5\" /> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\" /> <path d=\"M8 16H3v5\" />", "undo-2": "<path d=\"M9 14 4 9l5-5\" /> <path d=\"M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11\" />", "inbox": "<polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\" /> <path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" />", "loader-circle": "<path d=\"M21 12a9 9 0 1 1-6.219-8.56\" />", "circle-alert": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\" /> <line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\" />", "info": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 16v-4\" /> <path d=\"M12 8h.01\" />", "paperclip": "<path d=\"m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551\" />", "settings": "<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "notebook": "<path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\" /> <path d=\"M16 2v20\" />", "circle-check": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m16 9-5.5 5.5L8 12\" />", "layout-grid": "<rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\" />", "copy": "<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /> <path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />", "eye-off": "<path d=\"M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49\" /> <path d=\"M14.084 14.158a3 3 0 0 1-4.242-4.242\" /> <path d=\"M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143\" /> <path d=\"m2 2 20 20\" />", "smartphone": "<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /> <path d=\"M12 18h.01\" />", "phone": "<path d=\"M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384\" />", "gift": "<path d=\"M12 7v14\" /> <path d=\"M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8\" /> <path d=\"M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5\" /> <rect x=\"3\" y=\"7\" width=\"18\" height=\"4\" rx=\"1\" />", "cake": "<path d=\"M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8\" /> <path d=\"M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1\" /> <path d=\"M2 21h20\" /> <path d=\"M7 8v3\" /> <path d=\"M12 8v3\" /> <path d=\"M17 8v3\" /> <path d=\"M7 4h.01\" /> <path d=\"M12 4h.01\" /> <path d=\"M17 4h.01\" />", "star": "<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\" />", "building-2": "<path d=\"M10 12h4\" /> <path d=\"M10 8h4\" /> <path d=\"M14 21v-3a2 2 0 0 0-4 0v3\" /> <path d=\"M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2\" /> <path d=\"M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16\" />", "message-square": "<path d=\"M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z\" />", "calendar-clock": "<path d=\"M16 14v2.2l1.6 1\" /> <path d=\"M16 2v3\" /> <path d=\"M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338\" /> <path d=\"M3 9h5.859\" /> <path d=\"M8 2v3\" /> <circle cx=\"16\" cy=\"16\" r=\"6\" />", "calendar-cog": "<path d=\"m15.228 16.852-.923-.383\" /> <path d=\"m15.228 19.148-.923.383\" /> <path d=\"M16 2v3\" /> <path d=\"m16.47 14.305.382.923\" /> <path d=\"m16.852 20.772-.383.924\" /> <path d=\"m19.148 15.228.383-.923\" /> <path d=\"m19.53 21.696-.382-.924\" /> <path d=\"m20.773 16.852.924-.383\" /> <path d=\"m20.773 19.148.924.383\" /> <path d=\"M21 10.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h5.5\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" /> <circle cx=\"18\" cy=\"18\" r=\"3\" />", "briefcase": "<path d=\"M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16\" /> <rect width=\"20\" height=\"14\" x=\"2\" y=\"6\" rx=\"2\" />", "reply": "<path d=\"M20 18v-2a4 4 0 0 0-4-4H4\" /> <path d=\"m9 17-5-5 5-5\" />"}};
 
 /* Sinal refinado: um modelo só, ícones Lucide, telas do sistema em claro e escuro. */
 const ic = (n, c = "") => `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${ICONS.lucide[n]}</svg>`;
@@ -1164,6 +1304,11 @@ const SCREENS = ["inicio", "entrar", "conversa", "tarefas", "notas", "agenda", "
 const THEMES = ["claro", "escuro"];
 const params = new URLSearchParams(location.search);
 const st = { s: pick(params.get("s"), SCREENS), t: pick(params.get("t"), THEMES), ag: { de: 8, ate: 18 } };
+/* partes de dentro das telas; a captura escolhe pelo endereço (&cfg=agenda, &ct=clientes, &p=bia) */
+st.agDef = { de: 8, ate: 18 };
+st.cfg = pick(params.get("cfg"), ["conta", "agenda"]);
+st.ct = pick(params.get("ct"), ["pessoas", "clientes", "avaliacoes"]);
+st.p = params.get("p") || "";
 if (params.get("captura")) document.documentElement.dataset.captura = "1";
 const href = (s) => `?s=${s}&t=${st.t}`;
 
@@ -1376,7 +1521,8 @@ function agenda() {
       <label class="sr" for="ag-de">Das</label><select id="ag-de" class="input input-sm">${opts(0, ate - 1, de)}</select>
       <span aria-hidden="true">até</span>
       <label class="sr" for="ag-ate">Até</label><select id="ag-ate" class="input input-sm">${opts(de + 1, 24, ate)}</select>
-      ${de !== 8 || ate !== 18 ? `<button class="btn btn-quiet btn-sm" type="button" data-ag-reset>Voltar para 08:00 até 18:00</button>` : ""}</div>`;
+      ${de !== st.agDef.de || ate !== st.agDef.ate ? `<button class="btn btn-quiet btn-sm" type="button" data-ag-reset>Voltar para ${hh(st.agDef.de)} até ${hh(st.agDef.ate)}</button>` : ""}
+      <a class="ag-cfg" href="${href("configuracoes")}" data-cfg-open>${ic("settings", "ic-sm")}Mudar o padrão</a></div>`;
   const head = `<header class="pagehead"><div><h1>Agenda</h1><p>Seus eventos do Google Agenda. Quando algo muda lá, muda aqui também.</p></div>
     <div class="actions"><button class="btn btn-primary btn-sm" type="button">${ic("calendar-plus", "ic-sm")}Novo evento</button></div></header>`;
   const bar = `<div class="agenda-bar"><h2>9 a 15 de novembro</h2>
@@ -1417,37 +1563,113 @@ function agenda() {
 
 /* ---------- Contatos ---------- */
 const PEOPLE = [
-  { n: "Bia Martins", i: "BM", tag: "Família", ph: "(41) 99999-0101", em: "bia@exemplo.com.br", bd: "2 de dezembro", on: true },
-  { n: "Carlos Souza", i: "CS", tag: "Mudança", ph: "(41) 99999-0102", em: "carlos@exemplo.com.br", sub: "Transportadora Rota Sul" },
-  { n: "Dra. Helena Prado", i: "HP", tag: "Saúde", ph: "(41) 99999-0103", em: "consultorio@exemplo.com.br", sub: "Dentista" },
-  { n: "Imobiliária Água Verde", i: "IA", tag: "Mudança", ph: "(41) 99999-0104", em: "contato@exemplo.com.br" },
-  { n: "Mãe", i: "M", tag: "Família", ph: "(41) 99999-0105" },
-  { n: "Rafael Lima", i: "RL", tag: "Curso", ph: "(41) 99999-0106", em: "rafael@exemplo.com.br", sub: "Professor de fotografia" }
+  { id: "bia", n: "Bia Martins", i: "BM", c: 1, sub: "Irmã", tags: ["Família"], fav: true, ph: "(41) 99999-0101", em: "bia@exemplo.com.br", bd: "2 de dezembro", city: "Curitiba, PR",
+    next: [["calendar-days", "Hoje", "Almoço com a Bia", "12:30 até 13:30"], ["list-todo", "25/11", "Comprar o presente da Bia", "Tarefa, prioridade média"], ["cake", "02/12", "Aniversário da Bia", "Faltam 23 dias. Lembrete uma semana antes"]],
+    facts: [["Faz aniversário em 2 de dezembro.", "Guardada por você, 28/10"], ["Ideias de presente: livro de receitas, aula de cerâmica, a caneca que ela viu na feira.", "Da nota “Ideias de presente para a Bia”"]],
+    seen: [["notebook", "Nota", "Ideias de presente para a Bia", "notas"], ["message-circle", "Conversa", "Presente da Bia, 08/11", "conversa"]] },
+  { id: "carlos", n: "Carlos Souza", i: "CS", c: 2, sub: "Transportadora Rota Sul", tags: ["Mudança"], ph: "(41) 99999-0102", em: "carlos@exemplo.com.br",
+    next: [["calendar-days", "Amanhã", "Reunião com a transportadora", "14:00"], ["list-todo", "13/11", "Fechar o orçamento da transportadora", "Tarefa urgente"]],
+    facts: [["Faz a mudança do dia 20, com caminhão pequeno e dois ajudantes.", "Anotada pela Zuri numa conversa, 02/11"]],
+    seen: [["message-circle", "Conversa", "Organizar a mudança, hoje", "conversa"]] },
+  { id: "helena", n: "Dra. Helena Prado", i: "HP", c: 3, sub: "Dentista", tags: ["Saúde"], ph: "(41) 99999-0103", em: "consultorio@exemplo.com.br", city: "Curitiba, PR",
+    next: [["calendar-days", "Quarta", "Dentista", "10:00"]] },
+  { id: "imob", n: "Imobiliária Água Verde", i: "IA", c: 4, sub: "Aluguel do apartamento novo", tags: ["Mudança"], ph: "(41) 99999-0104", em: "contato@exemplo.com.br",
+    next: [["list-todo", "Ontem", "Enviar documentos para a imobiliária", "Atrasada"]], seen: [["notebook", "Nota", "Vistoria", "notas"]] },
+  { id: "julia", n: "Júlia Andrade", i: "JA", c: 1, sub: "Vizinha do prédio novo", tags: ["Mudança"], ph: "(41) 99999-0105" },
+  { id: "mae", n: "Mãe", i: "M", c: 2, sub: "Família", tags: ["Família"], fav: true, ph: "(41) 99999-0106",
+    next: [["calendar-days", "Sexta", "Jantar na casa da mãe", "18:30"]] },
+  { id: "marcos", n: "Marcos Tavares", i: "MT", c: 3, sub: "Síndico do prédio novo", tags: ["Mudança"], ph: "(41) 99999-0107" },
+  { id: "rafael", n: "Rafael Lima", i: "RL", c: 4, sub: "Professor de fotografia", tags: ["Curso"], ph: "(41) 99999-0108", em: "rafael@exemplo.com.br",
+    next: [["calendar-days", "Hoje", "Aula de fotografia", "19:00, toda segunda e quinta"]], facts: [["Faz aula de fotografia com ele às segundas e quintas, às 19h.", "Guardada por você, 20/10"]] },
+  { id: "sofia", n: "Sofia Ribeiro", i: "SR", c: 1, sub: "Amiga da faculdade", tags: ["Amigos"], ph: "(41) 99999-0109", em: "sofia@exemplo.com.br", bd: "14 de novembro",
+    next: [["cake", "14/11", "Aniversário da Sofia", "Sábado. Faltam 5 dias"]] }
 ];
+const CLIENTS = [
+  { id: "graofino", n: "Padaria Grão Fino", i: "GF", c: 2, sub: "Pediu orçamento pelo site", stage: ["novo", "Novo contato"], when: "Hoje", ph: "(41) 99999-0201", em: "compras@exemplo.com.br", city: "Curitiba, PR",
+    next: [["mail", "Hoje, 07:58", "Pediu orçamento pelo site", "Formulário de contato"], ["list-todo", "Amanhã", "Responder o orçamento da Grão Fino", "Tarefa criada pela Zuri"]],
+    facts: [["Quer entregas às terças e sextas, antes das 7h.", "Do pedido de orçamento, hoje"]] },
+  { id: "bemviver", n: "Clínica Bem Viver", i: "BV", c: 3, sub: "Reunião marcada", stage: ["conv", "Em conversa"], when: "Ontem", ph: "(41) 99999-0202", em: "contato@exemplo.com.br",
+    next: [["calendar-days", "Quinta", "Reunião com a Clínica Bem Viver", "15:00"], ["mail", "Ontem", "Recebeu a proposta", "Abriu o e-mail duas vezes"]] },
+  { id: "lumen", n: "Estúdio Lumen", i: "EL", c: 4, sub: "Contrato assinado", stage: ["cli", "Cliente"], when: "03/11", ph: "(41) 99999-0203", em: "ola@exemplo.com.br",
+    next: [["circle-check", "03/11", "Contrato assinado", "Começa em 1º de dezembro"]] }
+];
+const REVIEWS = [
+  { id: "luciana", n: "Luciana Ferraz", i: "LF", c: 1, stars: 5, when: "Hoje, 08:05", st: "wait", text: "Atendimento atencioso do começo ao fim. Saí com tudo explicado e um plano fácil de seguir.", reply: "Obrigada, Luciana! Que bom que o plano ficou claro. Conte com a gente no retorno." },
+  { id: "pedro", n: "Pedro Henrique", i: "PH", c: 2, stars: 2, when: "Ontem, 17:40", st: "low", text: "Esperei 40 minutos além do horário marcado e ninguém avisou.", reply: "Pedro, você tem razão: o atraso devia ter sido avisado. Pedimos desculpas. Já combinamos de avisar por mensagem sempre que houver atraso." },
+  { id: "camila", n: "Camila Rocha", i: "CR", c: 3, stars: 5, when: "07/11", st: "done", pub: "07/11, 10:12", text: "Ótima experiência, recomendo!", reply: "Obrigada, Camila! Ficamos felizes com a recomendação." }
+];
+const stars = (n) => `<span class="stars" role="img" aria-label="${n} de 5 estrelas">${[1, 2, 3, 4, 5].map((k) => ic("star", k <= n ? "on" : "")).join("")}</span>`;
+const pav = (p, cls = "") => `<span class="pav tint-${p.c} ${cls}" aria-hidden="true">${p.i}</span>`;
+const fold = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 function contatos() {
-  const b = PEOPLE[0];
-  const tabs = `<div class="seg" role="group" aria-label="Mostrar"><button type="button" aria-pressed="true">Pessoas <span class="n">6</span></button><button type="button" aria-pressed="false">Clientes <span class="n">3</span></button><button type="button" aria-pressed="false">Avaliações</button></div>`;
-  const list = PEOPLE.map((p) => `<li><a href="${href("contatos")}"${p.on ? ' aria-current="true"' : ""}><span class="pav" aria-hidden="true">${p.i}</span><span class="pt"><span class="t">${p.n}</span><span class="d">${p.sub || p.tag}</span></span></a></li>`).join("");
-  const row = (i, k, v) => `<div class="kv"><dt>${ic(i, "ic-sm")}${k}</dt><dd>${v}</dd></div>`;
-  return `<div class="split fill split-contacts">
-    <div class="pane"><div class="pane-head"><h1>Contatos</h1></div>
-      <p class="sync">${ic("refresh-cw", "ic-sm")}Do Google Contatos, etiqueta “Zuri”. Atualizado há 12 min.</p>
-      ${tabs}
-      <form class="with-ic" style="margin-top:var(--s3)">${ic("search", "ic-sm")}<label class="sr" for="cts">Buscar contatos</label><input id="cts" class="input" placeholder="Buscar contatos"></form>
-      <nav aria-label="Seus contatos"><ul class="peoplelist">${list}</ul></nav></div>
-    <div class="pane" tabindex="0" aria-label="Contato aberto"><article class="person" aria-labelledby="h-p">
-      <header class="person-head"><span class="pav pav-lg" aria-hidden="true">${b.i}</span><div><h2 id="h-p">${b.n}</h2><p class="meta"><span class="tag">${b.tag}</span><span>Só leitura. Para mudar, edite no Google Contatos.</span></p></div></header>
-      <div class="person-acts"><a class="btn btn-primary btn-sm" href="${href("conversa")}">${ic("message-circle", "ic-sm")}Perguntar à Zuri sobre a Bia</a><button class="btn btn-secondary btn-sm" type="button">${ic("copy", "ic-sm")}Copiar telefone</button></div>
-      <div class="person-grid">
-        <section class="card p-sec" aria-labelledby="h-dados"><h3 id="h-dados">Dados</h3><dl>${row("smartphone", "Telefone", `<span class="num">${b.ph}</span>`)}${row("mail", "E-mail", b.em)}${row("calendar-days", "Aniversário", `${b.bd}, daqui a 23 dias`)}</dl></section>
-        <section class="card p-sec" aria-labelledby="h-juntos"><h3 id="h-juntos">Na agenda</h3>
-          <ul class="mini-ev"><li><span class="when num">Hoje</span><span><span class="t">Almoço com a Bia</span><span class="d num">12:30 até 13:30</span></span></li><li><span class="when num">02/12</span><span><span class="t">Aniversário da Bia</span><span class="d">Lembrete uma semana antes</span></span></li></ul></section>
-        <section class="card p-sec p-wide" aria-labelledby="h-sabe"><h3 id="h-sabe">O que a Zuri sabe sobre ela</h3>
-          <ul class="facts"><li>Faz aniversário em 2 de dezembro.<span class="meta"><span>Guardada por você, 28/10</span></span></li><li>Ideias de presente: livro de receitas, aula de cerâmica, a caneca que ela viu na feira.<span class="meta"><span>Da nota “Ideias de presente para a Bia”</span></span></li></ul>
-          <a class="more" href="${href("memoria")}">Ver na Memória${ic("chevron-right", "ic-sm")}</a></section>
-      </div>
-    </article></div>
-  </div>`;
+  const tab = st.ct;
+  const set = tab === "clientes" ? CLIENTS : tab === "avaliacoes" ? REVIEWS : PEOPLE;
+  const found = set.find((p) => p.id === st.p);
+  const cur = found || set[0];
+  const waiting = REVIEWS.filter((r) => r.st !== "done").length;
+  const tabs = `<div class="seg" role="group" aria-label="Mostrar">${[["pessoas", "Pessoas", PEOPLE.length], ["clientes", "Clientes", CLIENTS.length], ["avaliacoes", "Avaliações", waiting]].map(([k, l, n]) => `<button type="button" data-ct="${k}" aria-pressed="${k === tab}">${l} <span class="n">${n}</span></button>`).join("")}</div>`;
+  const item = (p, right = "") => `<li data-q="${fold(p.n + " " + (p.sub || ""))}"><button class="pitem" type="button" data-p="${p.id}"${p === cur ? ' aria-current="true"' : ""}>${pav(p)}<span class="pt"><span class="t">${p.n}${p.fav ? ic("star", "fav") : ""}</span><span class="d">${p.sub || ""}</span></span>${right}</button></li>`;
+  let list;
+  if (tab === "pessoas") {
+    const groups = {};
+    for (const p of PEOPLE) (groups[fold(p.n)[0].toUpperCase()] ||= []).push(p);
+    list = Object.entries(groups).map(([g, ps]) => `<li class="grp" data-g="${g}" aria-hidden="true">${g}</li>${ps.map((p) => item(p)).join("")}`).join("");
+  } else if (tab === "clientes") {
+    list = CLIENTS.map((p) => item(p, `<span class="pr"><span class="stage s-${p.stage[0]}"><i></i>${p.stage[1]}</span><span class="num">${p.when}</span></span>`)).join("");
+  } else {
+    list = REVIEWS.map((r) => item({ ...r, sub: r.text }, `<span class="pr">${stars(r.stars)}<span class="${r.st === "done" ? "num" : "rv-st"}">${r.st === "done" ? "Respondida" : r.st === "low" ? "Nota baixa" : "Para revisar"}</span></span>`)).join("");
+  }
+  const search = tab === "avaliacoes"
+    ? `<div class="rv-sum card"><p class="big num">4,8</p><div>${stars(5)}<p class="d"><span class="num">23</span> avaliações no Google</p></div></div>`
+    : `<form class="with-ic ct-search" role="search" onsubmit="return false">${ic("search", "ic-sm")}<label class="sr" for="cts">Buscar ${tab === "clientes" ? "clientes" : "contatos"}</label><input id="cts" class="input" placeholder="Buscar por nome" autocomplete="off"></form>`;
+  const left = `<div class="pane ct-list"><div class="pane-head"><h1>Contatos</h1><button class="iconbtn" type="button" aria-label="Atualizar agora">${ic("refresh-cw", "ic-sm")}</button></div>
+      <p class="sync">${tab === "clientes" ? "Chegam pelos eventos do seu site. Atualizado agora." : tab === "avaliacoes" ? "Do seu perfil de empresa no Google. Lidas a cada 15 min." : "Do Google Contatos, etiqueta “Zuri”. Atualizado há 12 min."}</p>
+      ${tabs}${search}
+      <nav aria-label="${tab === "avaliacoes" ? "Avaliações" : tab === "clientes" ? "Seus clientes" : "Seus contatos"}"><ul class="plist">${list}</ul><p class="p-empty ct-none" hidden>Ninguém com esse nome. Confira se a pessoa tem a etiqueta “Zuri” no Google Contatos.</p></nav></div>`;
+  return `<div class="split fill split-contacts${found ? " has-sel" : ""}">${left}
+    <div class="pane" tabindex="0" aria-label="${tab === "avaliacoes" ? "Avaliação aberta" : "Contato aberto"}">${tab === "avaliacoes" ? review(cur) : person(cur, tab === "clientes")}</div></div>`;
+}
+const back = () => `<h1 class="ct-h1-m">Contatos</h1><button class="btn btn-quiet btn-sm back-m" type="button" data-p="">${ic("arrow-left", "ic-sm")}Contatos</button>`;
+function person(p, client) {
+  const first = p.n.replace(/^Dra?\. /, "").split(" ")[0];
+  const tel = "+55" + p.ph.replace(/\D/g, "");
+  const qa = `<ul class="qa" aria-label="Ações rápidas">
+      <li><a class="qa-btn qa-main" href="${href("conversa")}">${ic("sparkles")}<span>Perguntar à Zuri<span class="sr"> sobre ${first}</span></span></a></li>
+      <li><a class="qa-btn" href="tel:${tel}">${ic("phone")}<span>Ligar</span></a></li>
+      <li>${p.em ? `<a class="qa-btn" href="mailto:${p.em}">${ic("mail")}<span>E-mail</span></a>` : `<button class="qa-btn" type="button" disabled>${ic("mail")}<span>Sem e-mail</span></button>`}</li>
+      <li><button class="qa-btn" type="button" data-copy="${p.ph}">${ic("copy")}<span>Copiar telefone</span></button></li></ul>`;
+  const next = p.next && p.next.length
+    ? `<ul class="tl">${p.next.map(([i, w, t, d]) => `<li><span class="tl-ic">${ic(i, "ic-sm")}</span><span class="when">${w}</span><span><span class="t">${t}</span><span class="d">${d}</span></span></li>`).join("")}</ul>`
+    : `<p class="p-empty">Nada marcado com ${client ? "este cliente" : "este contato"}. Peça à Zuri para marcar algo.</p>`;
+  const facts = p.facts && p.facts.length
+    ? `<ul class="facts">${p.facts.map(([f, m]) => `<li>${f}<span class="meta"><span>${m}</span></span></li>`).join("")}</ul><a class="more" href="${href("memoria")}">Ver na Memória${ic("chevron-right", "ic-sm")}</a>`
+    : `<p class="p-empty">A Zuri ainda não guardou nada sobre ${client ? "este cliente" : "este contato"}.</p>`;
+  const seen = p.seen ? `<section class="card p-sec" aria-labelledby="h-seen"><h3 id="h-seen">Onde aparece</h3><ul class="seen">${p.seen.map(([i, k, t, s]) => `<li><a href="${href(s)}">${ic(i, "ic-sm")}<span><span class="k">${k}</span><span class="t">${t}</span></span>${ic("chevron-right", "ic-sm")}</a></li>`).join("")}</ul></section>` : "";
+  const dd = (i, k, v) => (v ? `<div><dt>${ic(i, "ic-sm")}${k}</dt><dd>${v}</dd></div>` : "");
+  return `<article class="person" aria-labelledby="h-p">${back()}
+      <header class="person-head">${pav(p, "pav-xl")}<div><h2 id="h-p">${p.n}</h2><p class="role">${p.sub}</p>
+        <p class="meta">${client ? `<span class="stage s-${p.stage[0]}"><i></i>${p.stage[1]}</span>` : p.tags.map((t) => `<span class="tag">${t}</span>`).join("")}${p.fav ? `<span class="tag">${ic("star", "fav")}Favorito</span>` : ""}</p></div></header>
+      ${qa}
+      <div class="person-cols"><div class="pc-main">
+        <section class="card p-sec" aria-labelledby="h-next"><h3 id="h-next">${client ? "Linha do tempo" : `Próximos com ${first}`}</h3>${next}</section>
+        <section class="card p-sec" aria-labelledby="h-sabe"><h3 id="h-sabe">O que a Zuri sabe</h3>${facts}</section>
+        ${seen}</div>
+        <div class="pc-side"><section class="card p-sec" aria-labelledby="h-dados"><h3 id="h-dados">Dados</h3><dl class="dl-stack">
+          ${dd("smartphone", "Telefone", `<span class="num">${p.ph}</span>`)}${dd("mail", "E-mail", p.em)}${dd("cake", "Aniversário", p.bd)}${dd("map-pin", "Cidade", p.city)}</dl>
+          <p class="ro">${ic("lock", "ic-sm")}<span>${client ? "Só leitura. Para mudar, mude no seu site." : "Só leitura. Para mudar, edite no Google Contatos."}</span></p></section></div>
+      </div></article>`;
+}
+function review(r) {
+  const state = r.st === "done"
+    ? `<p class="rv-pub">${ic("circle-check", "ic-sm")}Publicada em <span class="num">${r.pub}</span></p>`
+    : `${r.st === "low" ? `<p class="rv-low">${ic("triangle-alert", "ic-sm")}Nota baixa: a Zuri nunca responde sozinha. Você decide.</p>` : ""}
+       <div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-rv="${r.id}">${ic("send-horizontal", "ic-sm")}Aprovar e publicar</button><button class="btn btn-secondary btn-sm" type="button">${ic("pencil", "ic-sm")}Editar</button><button class="btn btn-quiet btn-sm" type="button" data-rv-drop="${r.id}">Descartar</button></div>`;
+  return `<article class="person review" aria-labelledby="h-p">${back()}
+      <header class="person-head">${pav(r, "pav-xl")}<div><h2 id="h-p">${r.n}</h2><p class="role">${stars(r.stars)}<span class="num">${r.when}</span></p></div></header>
+      <blockquote class="rv-text">${r.text}</blockquote>
+      <section class="card p-sec rv-reply" aria-labelledby="h-rv"><h3 id="h-rv">${r.st === "done" ? "Resposta publicada" : "Resposta sugerida pela Zuri"}</h3><p class="rv-draft">${r.reply}</p>${state}</section>
+      <p class="ro">${ic("info", "ic-sm")}<span>Notas 4 e 5 passam a ser respondidas sozinhas depois de 10 aprovações suas. Notas baixas sempre esperam você.</span></p>
+    </article>`;
 }
 
 /* ---------- Automações ---------- */
@@ -1500,13 +1722,10 @@ function memoria() {
 }
 
 /* ---------- Configurações ---------- */
-function configuracoes() {
-  const T = [["user", "Conta", true], ["shield-check", "Segurança"], ["sparkles", "IA"], ["bell", "Avisos"], ["plug", "Integrações"], ["database", "Dados"], ["globe", "Diagnóstico"]];
-  return `<div class="page">
-    <header class="pagehead"><div><h1>Configurações</h1><p>Sua conta, a segurança e como a Zuri trabalha.</p></div></header>
-    <div class="settings"><nav aria-label="Seções das configurações"><ul>${T.map(([i, l, on]) => `<li><a href="${href("configuracoes")}"${on ? ' aria-current="page"' : ""}>${ic(i, "ic-sm")}${l}</a></li>`).join("")}</ul></nav>
-      <div>
-        <section class="card set-sec" aria-labelledby="h-c"><h2 id="h-c">Conta</h2><p>Como a Zuri chama você e onde você está.</p>
+const CFG = [["conta", "user", "Conta"], ["agenda", "calendar-days", "Agenda"], ["seg", "shield-check", "Segurança"], ["ia", "sparkles", "IA"], ["avisos", "bell", "Avisos"], ["integ", "plug", "Integrações"], ["dados", "database", "Dados"], ["diag", "globe", "Diagnóstico"]];
+const hh2 = (h) => `${String(h).padStart(2, "0")}:00`;
+function cfgConta() {
+  return `<section class="card set-sec" aria-labelledby="h-c"><h2 id="h-c">Conta</h2><p>Como a Zuri chama você e onde você está.</p>
           <div class="form-grid">
             <label class="field"><span>Nome</span><input class="input" value="Ana" autocomplete="name"></label>
             <label class="field"><span>E-mail</span><input class="input" value="ana@exemplo.com.br" readonly></label>
@@ -1518,8 +1737,38 @@ function configuracoes() {
           <div class="set-row"><div class="grow"><p class="t">Tema</p><p class="hint">Segue o aparelho quando está em Sistema.</p></div>
             <div class="seg" role="group" aria-label="Tema"><button type="button" aria-pressed="${st.t === "claro"}">${ic("sun", "ic-sm")}Claro</button><button type="button" aria-pressed="${st.t === "escuro"}">${ic("moon", "ic-sm")}Escuro</button><button type="button" aria-pressed="false">${ic("monitor", "ic-sm")}Sistema</button></div></div>
           <div class="set-row"><div class="grow"><p class="t" id="rm">Reduzir movimento</p><p class="hint">Desliga as animações. Também segue o aparelho.</p></div><button class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="rm"></button></div>
-        </section>
-      </div></div>
+        </section>`;
+}
+function cfgAgenda() {
+  const { de, ate } = st.agDef;
+  const opts = (from, to, sel) => Array.from({ length: to - from + 1 }, (_, k) => from + k).map((h) => `<option value="${h}"${h === sel ? " selected" : ""}>${hh2(h)}</option>`).join("");
+  const pct = (h) => `${(h / 24) * 100}%`;
+  const isDefault = de === 8 && ate === 18;
+  const cal = [["var(--cal-a)", "Pessoal", "Sua agenda principal. Dá para criar e mudar eventos.", true], ["var(--cal-b)", "Curso e esporte", "Só leitura: a Zuri mostra, mas não muda.", true], ["var(--control)", "Feriados no Brasil", "Aparecem na linha “Dia todo”.", false]];
+  return `<section class="card set-sec" aria-labelledby="h-ag"><h2 id="h-ag">Agenda</h2><p>Como a agenda aparece quando você abre.</p>
+      <div class="set-row set-col"><div class="grow"><p class="t" id="cfg-h">Horário que aparece</p><p class="hint">O que fica fora desse horário continua lá, nas linhas “Antes” e “Depois”.</p></div>
+        <div class="ctl-pair" role="group" aria-labelledby="cfg-h">
+          <label for="cfg-de">Começa às<select id="cfg-de" class="input input-sm">${opts(0, ate - 1, de)}</select></label>
+          <label for="cfg-ate">Termina às<select id="cfg-ate" class="input input-sm">${opts(de + 1, 24, ate)}</select></label>
+          ${isDefault ? "" : `<button class="btn btn-quiet btn-sm" type="button" data-ag-default>Voltar para 08:00 até 18:00</button>`}</div>
+        <div class="hours-bar" role="img" aria-label="Das ${hh2(de)} às ${hh2(ate)}, ${ate - de} horas"><span class="on" style="left:${pct(de)};width:${pct(ate - de)}"><b class="num">${hh2(de)} até ${hh2(ate)}</b></span></div>
+        <div class="hours-scale num" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
+      <div class="set-row"><div class="grow"><p class="t">Ao abrir, mostrar</p><p class="hint">No celular, a agenda abre sempre no dia.</p></div>
+        <div class="seg" role="group" aria-label="Ao abrir, mostrar"><button type="button" aria-pressed="false">Dia</button><button type="button" aria-pressed="true">Semana</button><button type="button" aria-pressed="false">Mês</button></div></div>
+      <div class="set-row"><div class="grow"><p class="t">A semana começa</p></div>
+        <div class="seg" role="group" aria-label="A semana começa"><button type="button" aria-pressed="false">Domingo</button><button type="button" aria-pressed="true">Segunda</button></div></div>
+      <div class="set-row"><div class="grow"><p class="t" id="cfg-fds">Mostrar sábado e domingo</p></div><button class="switch" type="button" role="switch" aria-checked="true" aria-labelledby="cfg-fds"></button></div>
+      <div class="set-row"><div class="grow"><p class="t">Lembrete dos eventos novos</p><p class="hint">Vale para o que você ou a Zuri criar daqui para frente.</p></div>
+        <label class="sr" for="cfg-lb">Lembrete dos eventos novos</label><select id="cfg-lb" class="input input-sm"><option>Sem lembrete</option><option>5 min antes</option><option selected>15 min antes</option><option>1 hora antes</option><option>1 dia antes</option></select></div>
+      <div class="set-foot"><button class="btn btn-primary" type="button">Salvar alterações</button></div></section>
+    <section class="card set-sec" aria-labelledby="h-cals"><h2 id="h-cals">Agendas que aparecem</h2><p>Escolha quais agendas do Google entram na tela e no resumo da manhã.</p>
+      <ul class="cal-list">${cal.map(([c, n, d, on], k) => `<li class="set-row"><span class="cal-dot" style="background:${c}" aria-hidden="true"></span><div class="grow"><p class="t" id="cal-${k}">${n}</p><p class="hint">${d}</p></div><button class="switch" type="button" role="switch" aria-checked="${on}" aria-labelledby="cal-${k}"></button></li>`).join("")}</ul></section>`;
+}
+function configuracoes() {
+  return `<div class="page">
+    <header class="pagehead"><div><h1>Configurações</h1><p>Sua conta, a agenda, a segurança e como a Zuri trabalha.</p></div></header>
+    <div class="settings"><nav aria-label="Seções das configurações"><ul>${CFG.map(([k, i, l]) => `<li><a href="${href("configuracoes")}" data-cfg="${k}"${k === st.cfg ? ' aria-current="page"' : ""}>${ic(i, "ic-sm")}${l}</a></li>`).join("")}</ul></nav>
+      <div>${st.cfg === "agenda" ? cfgAgenda() : cfgConta()}</div></div>
   </div>`;
 }
 
@@ -1529,9 +1778,16 @@ function estados() {
   return `<div class="page">
     <header class="pagehead"><div><h1>Estados das telas</h1><p>Como cada tela se comporta quando carrega, quando está vazia, quando algo falha e quando pede confirmação.</p></div></header>
     <div class="states">
-      <section class="card st-card" aria-labelledby="e1"><h2 id="e1" class="st-h">Carregando</h2>
-        <div class="st-body" role="status" aria-label="Carregando as tarefas">${[["70%", "40%"], ["55%", "30%"], ["80%", "45%"]].map(([a, b]) => `<div class="sk-row"><span class="sk sk-c"></span><span class="sk-txt">${sk(a)}${sk(b)}</span></div>`).join("")}</div>
-        <p class="st-note">Esqueleto no lugar do conteúdo, sem pular a tela. Depois de 15 segundos aparece “Está demorando mais que o normal”.</p></section>
+      <section class="card st-card" aria-labelledby="e1"><div class="st-hrow"><h2 id="e1" class="st-h">Carregando</h2><button class="btn btn-quiet btn-sm" type="button" data-replay>${ic("refresh-cw", "ic-sm")}Ver de novo</button></div>
+        <div class="st-body ld" data-ld="loading">
+          <div class="ld-bar" aria-hidden="true"><i></i></div>
+          <div class="ld-skel" role="status" aria-label="Carregando as tarefas">
+            <p class="ld-msg"><span class="ld-sig" aria-hidden="true"><i></i></span>Buscando suas tarefas</p>
+            ${[["70%", "40%"], ["55%", "30%"], ["80%", "45%"]].map(([a, b]) => `<div class="sk-row"><span class="sk sk-c"></span><span class="sk-txt">${sk(a)}${sk(b)}</span></div>`).join("")}</div>
+          <ul class="ld-done" aria-label="Tarefas de hoje">${[["Ligar para a transportadora", "15:00"], ["Pagar a conta de luz", "18:00"], ["Separar livros para doação", "Hoje"]].map(([t, w]) => `<li><span class="ld-c" aria-hidden="true"></span><span class="t">${t}</span><span class="num">${w}</span></li>`).join("")}</ul>
+          <p class="sr" aria-live="polite" data-ld-live></p>
+        </div>
+        <p class="st-note">Uma linha corre no topo na hora. Se passar de 300 ms, entra o esqueleto com um brilho que atravessa e o sinal da Zuri pulsando. Quando chega, cada linha entra no seu lugar, sem pular a tela. Com “Reduzir movimento”, nada se mexe. Depois de 15 segundos aparece “Está demorando mais que o normal”.</p></section>
       <section class="card st-card" aria-labelledby="e2"><h2 id="e2" class="st-h">Vazio</h2>
         <div class="st-body empty"><span class="empty-ic">${ic("notebook")}</span><p class="et">Nenhuma nota ainda</p><p class="ed">Anote uma ideia, uma lista ou peça para a Zuri guardar algo da conversa.</p><button class="btn btn-primary btn-sm" type="button">${ic("plus", "ic-sm")}Nova nota</button></div>
         <p class="st-note">Título, uma frase que explica e uma ação. Nunca uma área em branco.</p></section>
@@ -1611,6 +1867,9 @@ function render() {
   if (st.s === "entrar") { app.className = ""; app.innerHTML = entrar(); return; }
   app.className = "app";
   app.innerHTML = `${side()}<div class="main">${topbar()}<main id="conteudo">${SCREEN[st.s]()}</main>${st.s === "conversa" ? "" : tabbar()}</div>`;
+  if (st.s === "estados" && !params.get("captura")) runLoading();
+  const cur = app.querySelector(".settings nav [aria-current]");
+  if (cur && cur.scrollIntoView && window.innerWidth <= 820) cur.scrollIntoView({ block: "nearest", inline: "center" });
   const thread = app.querySelector(".thread");
   if (thread) thread.scrollTop = thread.scrollHeight;
 }
@@ -1621,16 +1880,69 @@ for (const [id, k] of [["ps", "s"], ["pt", "t"]]) {
     render();
   });
 }
+let ldTimer;
+function runLoading() {
+  const box = document.querySelector("[data-ld]");
+  if (!box) return;
+  box.dataset.ld = "loading";
+  box.querySelector("[data-ld-live]").textContent = "";
+  clearTimeout(ldTimer);
+  ldTimer = setTimeout(() => { box.dataset.ld = "done"; box.querySelector("[data-ld-live]").textContent = "Tarefas carregadas"; }, 2600);
+}
+const refocus = (sel) => { const f = document.querySelector(sel); if (f) f.focus(); };
+const hint = (msg) => { if (typeof toast === "function") toast(msg); };
 document.addEventListener("change", (e) => {
-  if (e.target.id === "ag-de" || e.target.id === "ag-ate") {
+  const id = e.target.id;
+  if (id === "ag-de" || id === "ag-ate") {
     st.ag = { de: Number(document.getElementById("ag-de").value), ate: Number(document.getElementById("ag-ate").value) };
     if (st.ag.ate <= st.ag.de) st.ag.ate = st.ag.de + 1;
-    render();
-    const f = document.getElementById(e.target.id); if (f) f.focus();
+    render(); refocus("#" + id);
+  }
+  if (id === "cfg-de" || id === "cfg-ate") {
+    st.agDef = { de: Number(document.getElementById("cfg-de").value), ate: Number(document.getElementById("cfg-ate").value) };
+    if (st.agDef.ate <= st.agDef.de) st.agDef.ate = st.agDef.de + 1;
+    st.ag = { ...st.agDef };
+    render(); refocus("#" + id);
+    hint(`A agenda vai abrir das ${hh2(st.agDef.de)} às ${hh2(st.agDef.ate)}`);
   }
 });
+document.addEventListener("input", (e) => {
+  if (e.target.id !== "cts") return;
+  const q = fold(e.target.value.trim());
+  const rows = [...document.querySelectorAll(".plist li[data-q]")];
+  rows.forEach((li) => { li.hidden = !!q && !li.dataset.q.includes(q); });
+  document.querySelectorAll(".plist li.grp").forEach((g) => {
+    let n = g.nextElementSibling, any = false;
+    while (n && !n.classList.contains("grp")) { if (!n.hidden) any = true; n = n.nextElementSibling; }
+    g.hidden = !any;
+  });
+  document.querySelector(".ct-none").hidden = rows.some((li) => !li.hidden);
+});
 document.addEventListener("click", (e) => {
-  if (e.target.closest("[data-ag-reset]")) { st.ag = { de: 8, ate: 18 }; render(); const f = document.getElementById("ag-de"); if (f) f.focus(); }
+  const t = e.target.closest("button, a");
+  if (!t || !t.matches("[data-ag-reset], [data-ag-default], [data-cfg-open], [data-cfg], [data-ct], [data-p], [data-replay]")) return;
+  e.stopImmediatePropagation();
+  if (t.matches("[data-ag-reset]")) { st.ag = { ...st.agDef }; render(); refocus("#ag-de"); return; }
+  if (t.matches("[data-ag-default]")) { st.agDef = { de: 8, ate: 18 }; st.ag = { ...st.agDef }; render(); refocus("#cfg-de"); hint("A agenda volta a abrir das 08:00 às 18:00"); return; }
+  if (t.matches("[data-cfg-open]")) {
+    e.preventDefault(); st.cfg = "agenda";
+    if (typeof go === "function") go("configuracoes"); else { st.s = "configuracoes"; render(); }
+    return;
+  }
+  if (t.matches("[data-cfg]")) {
+    e.preventDefault();
+    const k = t.dataset.cfg;
+    if (k === "conta" || k === "agenda") { st.cfg = k; render(); refocus(`[data-cfg="${k}"]`); } else hint("Esta seção fica fora deste protótipo.");
+    return;
+  }
+  if (t.matches("[data-ct]")) { st.ct = t.dataset.ct; st.p = ""; render(); refocus(`[data-ct="${st.ct}"]`); return; }
+  if (t.matches("[data-p]")) {
+    st.p = t.dataset.p; render();
+    if (st.p) { const pane = document.querySelector(".split-contacts>.pane:last-child"); if (pane) { pane.scrollTop = 0; if (window.innerWidth <= 820) pane.focus(); } }
+    else refocus(".pitem[aria-current]");
+    return;
+  }
+  if (t.matches("[data-replay]")) { runLoading(); return; }
 });
 render();
 </script>

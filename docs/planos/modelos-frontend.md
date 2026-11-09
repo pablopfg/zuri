@@ -27,8 +27,8 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 
 - Protótipo: `docs/planos/modelos-frontend/prototipo-v5.html` (a barra do topo troca a tela e o tema).
 - Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, **Contatos**, Automações, Memória, Configurações, **Estados das telas** e Identidade visual.
-- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (48 imagens), e a comparação com a rodada 3 em `antes-depois-*.png`.
-- Acessibilidade: axe (WCAG 2.1 e 2.2 A/AA e boas práticas) sem nenhuma violação nas 48 combinações, e nenhum erro de script.
+- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (64 imagens: as 12 telas e mais 4 vistas de dentro delas, a ficha de um contato, os clientes, as avaliações e a área Agenda das configurações), e a comparação com a rodada 3 em `antes-depois-*.png`.
+- Acessibilidade: axe (WCAG 2.1 e 2.2 A/AA e boas práticas) sem nenhuma violação nas 64 combinações, e nenhum erro de script.
 
 O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a fonte Figtree, os neutros em zinco e o verde como cor de ação. O que mudou foi o acabamento, regra por regra.
 
@@ -54,6 +54,12 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 - **Tela de Contatos:** lista com busca e as abas Pessoas, Clientes e Avaliações; ao lado, a pessoa escolhida com telefone, e-mail, aniversário, o que está na agenda com ela e o que a Zuri sabe sobre ela. Só leitura, como no app (vem do Google Contatos), com "Perguntar à Zuri sobre a Bia" e "Copiar telefone".
 - **Lateral sem "Recentes".** A conta ficou só com o nome, sem "Configurações e tema".
 - **Busca sem o atalho Ctrl + K** na caixa. A paleta de comandos continua no atalho, só não aparece escrita.
+
+### Ajustes pedidos pelo Pablo (09/11, 16:37)
+
+- **Agenda nas configurações:** área nova "Agenda" em Configurações. O horário que aparece (começa às, termina às) vira o padrão de quando a agenda abre, com uma barra de 24 horas que mostra o intervalo. Também ficam ali a visualização ao abrir, o primeiro dia da semana, mostrar ou não o fim de semana, o lembrete dos eventos novos e quais agendas do Google aparecem. Na tela Agenda, "Mudar o padrão" leva direto para essa área, e o botão de voltar desfaz só o que você mudou na hora.
+- **Contatos melhor:** as três abas funcionam. Em Pessoas, a lista vem agrupada por letra, com busca, cor suave por pessoa e estrela nos favoritos. A ficha tem quatro atalhos (Perguntar à Zuri, Ligar, E-mail e Copiar telefone), o que vem pela frente com a pessoa (agenda, tarefas e aniversário), o que a Zuri sabe, onde a pessoa aparece (notas e conversas) e os dados, só leitura. Em Clientes, cada um mostra a etapa (novo contato, em conversa, cliente) e a linha do tempo. Em Avaliações, a nota média e cada avaliação com a resposta sugerida pela Zuri, para aprovar, editar ou descartar; nota baixa sempre espera você. No celular, a lista e a ficha são telas separadas, com voltar.
+- **Carregando com animação:** uma linha verde corre no topo na hora; se passar de 300 ms, o esqueleto entra com um brilho que atravessa e o sinal da Zuri pulsa ao lado de "Buscando suas tarefas"; quando chega, cada linha entra no seu lugar, sem pular a tela. "Ver de novo" repete a animação. Com "Reduzir movimento", nada se mexe.
 
 ### Recomendação
 
