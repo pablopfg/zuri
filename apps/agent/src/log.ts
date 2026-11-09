@@ -121,6 +121,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "calendars", "clients", "connections", "contacts", "crm", "drafts", "empty", "events-key", "stages", "flows", "enable", "events", "exit", "google", "group", "labels", "mcp", "health", "heartbeat", "history", "learning", "live", "lockdown", "login", "login-options", "logout", "memories", "mfa", "mute",
   "notes", "notices", "oauth", "read", "resolve", "options", "owner", "passkey", "passkeys", "password", "plans", "projects", "push", "recover", "recovery-codes", "refresh", "reindex", "request", "restore", "reviews", "run", "runs", "discard", "draft", "reply", "pause", "resume", "locations",
   "remote", "search", "semantic", "servers", "session", "settings", "setup", "status", "sync", "tasks", "telegram", "test", "tokens", "tools", "transcribe", "trash", "usage", "verify", "webhook",
+  // The AI screen's agents (guardrails, PR 2).
+  "agents", "versions",
 ]);
 const MAX_SEGMENTS = 8;
 

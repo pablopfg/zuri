@@ -143,7 +143,7 @@ PR 1: nenhuma rota nova. PR 2: `GET /api/ai/agents` (perfis, padrão, versão em
 
 ### Banco
 
-PR 1: nenhum. PR 2: migration 30, `zur_agent_configs (agent TEXT, version INTEGER, temperature REAL, top_p REAL, max_tokens INTEGER, prompt TEXT, created_at INTEGER, PRIMARY KEY (agent, version))` e colunas `prompt_version TEXT` em `zur_messages`, na tabela de execuções das rotinas e em `zur_reviews` (acréscimo). Volume: ≤20 versões × 6 agentes.
+PR 1: nenhum. PR 2: migration 30, `zur_agent_configs (agent TEXT, version INTEGER, temperature REAL, top_p REAL, max_tokens INTEGER, prompt TEXT, is_default INTEGER, created_at INTEGER, PRIMARY KEY (agent, version))` (`is_default`: "Voltar ao padrão", com os valores nulos para seguir o código) e colunas `prompt_version TEXT` em `zur_messages`, na tabela de execuções das rotinas e em `zur_reviews` (acréscimo). Volume: ≤20 versões × 6 agentes.
 
 ### Ferramentas do agente
 
@@ -191,7 +191,10 @@ Nível da auditoria: orientação (não toca autenticação nem segredos na PR 1
 | CA8 | versão muda quando o texto muda | unitário | `apps/agent/test/guardrails.test.ts` |
 | CA9 | corpus contra cada defesa; instantâneo | segurança | `apps/agent/test/guardrails.test.ts`, `prompt-snapshot.test.ts` |
 | CA10 | casos do `avaliar-prompts` distinguem certo de errado; teto; `--seco` rodado à mão | unitário | `apps/agent/test/guardrails.test.ts` |
-| CA11–14 | rotas, faixas n−1/n/n+1, senha, bloqueio, versões; e2e + axe da tela | contrato/e2e/a11y | PR 2 |
+| CA11 | lista dos agentes com padrão, regras fixas e versão; cartão com estados, teclado e axe | contrato/e2e/a11y | `apps/agent/test/agents-routes.test.ts`, `tests/e2e/agentes.spec.ts` |
+| CA12 | senha recente, bloqueio (423), fora dos tokens remotos | contrato/segurança | `agents-routes.test.ts`, `remote-routes.test.ts` |
+| CA13 | versões (20), voltar para esta, voltar ao padrão; `prompt_version` em resposta, rotina e rascunho | contrato/integração/e2e | `agents-routes.test.ts`, `chat-runner.test.ts`, `automations.test.ts`, `reviews-autonomy.test.ts`, `agentes.spec.ts` |
+| CA14 | faixas n−1/n/n+1, 2.000 caracteres, `<>`/invisíveis; corpus plantado como camada do dono | unitário/segurança | `packages/shared/test/agents.test.ts`, `agents-routes.test.ts`, `guardrails.test.ts` |
 
 ## 11. Entrega
 

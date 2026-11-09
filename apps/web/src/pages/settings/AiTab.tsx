@@ -23,6 +23,7 @@ import {
 import { Bot, ExternalLink, FlaskConical, RotateCw } from "lucide-react";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { Switch } from "../../components/Switch.tsx";
+import { AgentsCard } from "./AgentsCard.tsx";
 import { Button, Card, cn, ErrorNotice, Notice, SelectField, Loading, TextField } from "../../components/ui.tsx";
 import { useSettings, useSettingsMutation } from "../../hooks/settings.ts";
 import { USAGE_KEY, useUsage } from "../../hooks/usage.ts";
@@ -58,6 +59,7 @@ export function AiTab() {
     <>
       <UsageCard />
       <LimitsCard />
+      <AgentsCard />
       <SemanticCard />
     </>
   );

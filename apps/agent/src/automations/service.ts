@@ -633,8 +633,9 @@ export class AutomationService {
   }
 
   /** Marks a run as counting toward the daily AI cap before the model is called, so two runs can't both take the last place. */
-  markAi(runId: string): void {
-    this.db.run(`UPDATE zur_automation_runs SET ai = 1 WHERE id = ?`, runId);
+  /** The run used the AI, with the prompt of `promptVersion` (PROMPT_VERSION). */
+  markAi(runId: string, promptVersion: string | null = null): void {
+    this.db.run(`UPDATE zur_automation_runs SET ai = 1, prompt_version = ? WHERE id = ?`, promptVersion, runId);
   }
 
   /**

@@ -1466,6 +1466,30 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS zur_remote_failures_network ON zur_remote_failures (network, at)`,
     ],
   },
+  {
+    version: 30,
+    name: "agent_configs",
+    statements: [
+      // Each agent's settings as the owner saved them, one row per version (at most 20 per agent; the
+      // oldest goes). The latest row is the one in use. is_default: "Voltar ao padrão", whose values are
+      // the code's (null here), so they follow the code when it changes.
+      `CREATE TABLE IF NOT EXISTS zur_agent_configs (
+        agent TEXT NOT NULL,
+        version INTEGER NOT NULL CHECK (version >= 1),
+        temperature REAL,
+        top_p REAL,
+        max_tokens INTEGER,
+        prompt TEXT,
+        is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (agent, version)
+      )`,
+      // The prompt each answer, routine run and review draft was made with (PROMPT_VERSION).
+      `ALTER TABLE zur_messages ADD COLUMN prompt_version TEXT`,
+      `ALTER TABLE zur_automation_runs ADD COLUMN prompt_version TEXT`,
+      `ALTER TABLE zur_reviews ADD COLUMN prompt_version TEXT`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

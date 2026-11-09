@@ -52,7 +52,7 @@ async function routine(automation: Automation, runId: string, deps: ExecutorDeps
   if (deps.lockdown?.()) return { status: "skipped", result: null, problem: "lockdown" };
   const cap = deps.settings().aiScheduledRunsPerDay;
   if (deps.automations.aiRunsToday() >= cap) return { status: "skipped", result: null, problem: "ai_budget" };
-  deps.automations.markAi(runId);
+  deps.automations.markAi(runId, deps.runner().promptVersion());
   const left: Notice[] = [];
   // A run that failed after a call became a proposal still tells the owner where it waits.
   const leftOver = () => (left.length ? left.map((notice) => `${notice.title}\n${notice.body}`).join("\n\n") : null);

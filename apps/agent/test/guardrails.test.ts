@@ -1,4 +1,4 @@
-import { AGENT_PROFILES, AGENT_IDS, AGENT_TEMPERATURE, AGENT_TOP_P, defaultAgentSettings, reviewSecondReadSchema } from "@zuri/shared";
+import { AGENT_PROFILES, AGENT_IDS, AGENT_TEMPERATURE, AGENT_TOP_P, agentConfigProblems, defaultAgentSettings, reviewSecondReadSchema } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
 import { dataLine } from "../src/agent/data.ts";
 import { CHAT_PERSONA, buildSystemPrompt, chatPromptVersion, FIXED_INSTRUCTIONS } from "../src/agent/prompt.ts";
@@ -339,5 +339,43 @@ describe("the prompt evaluation's cases (CA10)", () => {
     const price = { input: 1_000_000, output: 2_000_000 };
     expect(usedNeurons({ prompt_tokens: 10, completion_tokens: 5 }, request, price)).toBe(20);
     expect(usedNeurons(undefined, request, price)).toBe(worstNeurons(request, price));
+  });
+});
+
+describe("the owner's layer planted with the corpus (CA14)", () => {
+  it("is refused by the screen's check, or reaches the prompt after the rules with no tag of its own", () => {
+    for (const item of INJECTION_CORPUS) {
+      const refused = agentConfigProblems("summary", { temperature: 0.2, topP: null, maxOutputTokens: 300, prompt: item.text }).includes("prompt");
+      const planted = { ...defaultAgentSettings("summary"), prompt: item.text, version: 1 };
+      const system = specialistSystem(SUMMARY_SPECIALIST, planted);
+      // Saved or not, the fixed rules open the prompt and the owner's layer follows its lead.
+      expect(system.startsWith(SUMMARY_SPECIALIST.rules), item.id).toBe(true);
+      expect(system.indexOf(OWNER_LAYER_LEAD), item.id).toBeGreaterThan(SUMMARY_SPECIALIST.rules.length);
+      // No bracket of the layer survives as a tag, and nothing hidden is left.
+      const layer = system.slice(system.indexOf(OWNER_LAYER_LEAD));
+      expect(/[<>＜＞]/.test(layer), item.id).toBe(false);
+      expect(hasHidden(layer), item.id).toBe(false);
+      // Text with brackets or hidden characters never gets saved in the first place.
+      if (/[<>＜＞]/.test(item.text) || hasHidden(item.text.replace(/\n/g, " "))) expect(refused, item.id).toBe(true);
+    }
+  });
+
+  it("in the chat, comes after the fixed rules whatever it says", () => {
+    for (const item of INJECTION_CORPUS) {
+      const system = buildSystemPrompt({
+        agent: { ...defaultAgentSettings("chat"), prompt: item.text, version: 1 },
+        agentName: "Zuri",
+        language: "Brazilian Portuguese (pt-BR)",
+        timeZone: "America/Sao_Paulo",
+        now: new Date("2026-11-09T12:00:00Z"),
+        ownerName: "",
+        message: "Oi",
+        locale: "pt-BR",
+        memories: "",
+        summary: null,
+      });
+      expect(system.indexOf(OWNER_LAYER_LEAD), item.id).toBeGreaterThan(system.indexOf("Rules:"));
+      expect(system).not.toContain("</data><system>");
+    }
   });
 });

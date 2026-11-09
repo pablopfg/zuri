@@ -13,7 +13,7 @@ import { MAX_RELEVANT_MEMORIES, memoryPromptSection, memoryTokenBudget, selectRe
 import { ALL_TOOLS } from "../tools/index.ts";
 import { type Notice, type ToolContext, type ToolDefinition, ToolExecutor } from "../tools/registry.ts";
 import { contextBudget, contextWindow, SUMMARIZE_THRESHOLD, summaryRequest } from "./context.ts";
-import { buildSystemPrompt, scheduledInstructions } from "./prompt.ts";
+import { buildSystemPrompt, chatPromptVersion, scheduledInstructions } from "./prompt.ts";
 import { dataLine } from "./data.ts";
 import { log } from "../log.ts";
 import { stableStringify } from "../tools/stable.ts";
@@ -117,6 +117,11 @@ export class AgentRunner {
     return this.deps.agentSettings?.(id) ?? defaultAgentSettings(id);
   }
 
+  /** The PROMPT_VERSION of the chat's next answer or routine run. */
+  promptVersion(): string {
+    return chatPromptVersion(this.agent("chat"));
+  }
+
   async *chat(input: TurnInput): AsyncGenerator<ChatEvent> {
     const { conversations } = this.deps;
     const settings = this.deps.settings();
@@ -135,6 +140,7 @@ export class AgentRunner {
       ...(input.quoted?.length ? { quoted: input.quoted } : {}),
     });
     const assistantMessageId = crypto.randomUUID();
+    const promptVersion = this.promptVersion();
     yield { type: "start", conversation: conversations.get(conversation.id), userMessage, assistantMessageId };
 
     let text = "";
@@ -149,7 +155,7 @@ export class AgentRunner {
       if (status === "cancelled" && executor) this.deps.tools.plans.discard(executor.proposedPlans());
       for (const tool of tools) if (tool.status === "running") tool.status = "error";
       try {
-        return conversations.addMessage({ id: assistantMessageId, conversationId: conversation.id, role: "assistant", content: text, tools, status, error, fallback, source });
+        return conversations.addMessage({ id: assistantMessageId, conversationId: conversation.id, role: "assistant", content: text, tools, status, error, fallback, source, promptVersion });
       } catch (failure) {
         if (!(failure instanceof AppError && failure.code === "NOT_FOUND")) throw failure;
         // The owner deleted the conversation meanwhile: nothing is stored, the tab only learns how it ended.
