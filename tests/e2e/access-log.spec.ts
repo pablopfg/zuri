@@ -43,7 +43,7 @@ test("the access log lists each try with its IP and filters by type and IP @mobi
   }
   await expect(page).toHaveURL(/\/acessos$/);
   await expect(page.getByRole("heading", { level: 1, name: "Acessos" })).toBeVisible();
-  const list = isMobile ? page.locator("ul li").filter({ hasText: "Login" }) : page.getByRole("table").getByRole("row").filter({ hasText: "Login" });
+  const list = isMobile ? page.locator("ul li").filter({ hasText: "Entrada" }) : page.getByRole("table").getByRole("row").filter({ hasText: "Entrada" });
   await expect(list.first()).toBeVisible();
   await expect(list.first()).toContainText("127.0.0.1");
 

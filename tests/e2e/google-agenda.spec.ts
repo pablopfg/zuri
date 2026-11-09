@@ -34,7 +34,7 @@ async function routeConsent(page: Page, answer: "allow" | "deny" = "allow") {
 
 /** The view switch, clicked the way the owner does: on its visible name. */
 async function chooseView(page: Page, name: "Dia" | "Semana" | "Mês") {
-  await page.getByRole("group", { name: "Visualização" }).getByText(name, { exact: true }).click();
+  await page.getByRole("group", { name: "Ver por" }).getByText(name, { exact: true }).click();
   await expect(page.getByRole("radio", { name })).toBeChecked();
 }
 
@@ -102,7 +102,7 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   await form.getByLabel("Hora de fim").fill("21:00");
   await form.getByRole("textbox", { name: "Local (opcional)" }).fill("Rua das Flores, 10");
   await form.getByRole("button", { name: "Criar evento" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Evento criado." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Evento criado" })).toBeVisible();
   const created = page.getByRole("button", { name: /^Consulta de teste/ });
   await expect(created).toContainText("20:00 – 21:00 · Rua das Flores, 10");
 
@@ -133,7 +133,7 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   await expect(edit.getByRole("textbox", { name: "Título" })).toHaveValue("Consulta de teste");
   await edit.getByRole("textbox", { name: "Título" }).fill("Consulta remarcada");
   await edit.getByRole("button", { name: "Salvar" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Evento salvo." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Evento salvo" })).toBeVisible();
   const renamed = page.getByRole("button", { name: /^Consulta remarcada/ });
   await expect(renamed).toBeVisible();
 
@@ -143,7 +143,7 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   await toDelete.getByRole("button", { name: "Apagar" }).click();
   await expect(toDelete.getByText("Apagar “Consulta remarcada” do Google Agenda?")).toBeVisible();
   await toDelete.getByRole("button", { name: "Apagar" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Evento apagado." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Evento apagado" })).toBeVisible();
   await expect(renamed).toHaveCount(0);
 
   // The week and the month show the same events.
@@ -178,6 +178,6 @@ test("the Agenda before Google is connected, a refused consent, and disconnectin
   await page.getByRole("region", { name: "Google Agenda" }).getByRole("button", { name: "Desconectar" }).click();
   const dialog = page.getByRole("dialog", { name: "Desconectar o Google?" });
   await dialog.getByRole("button", { name: "Desconectar" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Google desconectado." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Google desconectado" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Google Agenda" }).getByRole("button", { name: "Conectar com o Google" })).toBeVisible();
 });

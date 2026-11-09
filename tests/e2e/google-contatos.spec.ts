@@ -40,7 +40,7 @@ async function turnOn(page: Page) {
   // The code never stays in the address or the history.
   await expect(page).toHaveURL(/\/configuracoes\/integracoes$/);
   await contacts.getByRole("button", { name: "Sincronizar agora" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Contatos sincronizados." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Contatos sincronizados" })).toBeVisible();
   return contacts;
 }
 
@@ -52,7 +52,7 @@ test("turns the contacts on, copies one label and searches the copy on the Conta
   await expect(contacts.getByText(/· nenhum contato copiado ainda$/)).toBeVisible();
   await contacts.getByRole("checkbox", { name: /^Clientes/ }).check();
   await contacts.getByRole("button", { name: "Salvar etiquetas" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Etiquetas salvas." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Etiquetas salvas" })).toBeVisible();
   await contacts.getByRole("button", { name: "Sincronizar agora" }).click();
   await expect(contacts.getByText(/· 4 contatos$/)).toBeVisible();
   await expectAccessible(page, "integracoes-contatos");
@@ -92,7 +92,7 @@ test("turning the contacts off forgets the copy and keeps the calendar", async (
   await contacts.getByRole("button", { name: "Desligar contatos" }).click();
   const confirm = page.getByRole("dialog", { name: "Desligar os contatos?" });
   await confirm.getByRole("button", { name: "Desligar contatos" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Contatos desligados e cópia apagada." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Contatos desligados e cópia apagada" })).toBeVisible();
   await expect(contacts.getByRole("button", { name: "Ligar contatos" })).toBeVisible();
   await expect(page.getByText("Conectado como dono@exemplo.com.br")).toBeVisible();
   await page.goto("/contatos");

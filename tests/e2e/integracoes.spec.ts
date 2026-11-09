@@ -59,7 +59,7 @@ test("adds a server, turns a tool on, approves its call in the chat and removes 
   await refused.getByRole("button", { name: "Cancelar" }).click();
 
   await addServer(page, name, "https://docs.exemplo.com.br/mcp");
-  await expect(page.getByRole("status").filter({ hasText: "Servidor adicionado e conectado." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Servidor adicionado e conectado" })).toBeVisible();
   const card = page.getByRole("article").filter({ has: page.getByRole("heading", { name }) });
   await expect(card.getByText("Conectado")).toBeVisible();
   await expect(card.getByText("0 de 2 ferramentas ligadas")).toBeVisible();
@@ -98,7 +98,7 @@ test("adds a server, turns a tool on, approves its call in the chat and removes 
   const confirm = page.getByRole("dialog", { name: "Remover servidor?" });
   await expect(confirm).toContainText(name);
   await confirm.getByRole("button", { name: "Remover" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Servidor removido." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Servidor removido" })).toBeVisible();
   await expect(page.getByRole("heading", { name })).toHaveCount(0);
 });
 
@@ -204,7 +204,7 @@ test("raises a tool that writes up to routines, with the warning, and sets the o
     await free.check();
     await expectAccessible(page, "automacoes-ferramentas");
     await edit.getByRole("button", { name: "Salvar" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Alterações salvas." }).first()).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Alterações salvas" }).first()).toBeVisible();
     const saved = (await (await page.request.get(`/api/mcp/routines/${routineId}/tools`, { headers: CSRF })).json()) as { tools: { label: string; allowed: boolean }[] };
     expect(saved.tools.find((t) => t.label === `Buscar documentos · ${name}`)?.allowed).toBe(true);
   } finally {

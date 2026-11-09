@@ -119,7 +119,7 @@ describe("tasks", () => {
   it("refuses impossible dates, explicit zones included, in the owner's language", async () => {
     for (const dueAt of ["2026-02-29T10:00:00-03:00", "2026-04-31T10:00:00+09:00", "2026-11-05T25:00:00Z", "2026-11-05T10:00:00+15:00"]) {
       const error = await refusal(await api("POST", "/tasks", { title: "x", dueAt }), 400);
-      expect(error).toMatchObject({ code: "VALIDATION_FAILED", message: "Confira os dados enviados.", details: { fields: ["dueAt"] } });
+      expect(error).toMatchObject({ code: "VALIDATION_FAILED", message: "Alguns dados não estão certos. Confira os campos e tente de novo.", details: { fields: ["dueAt"] } });
     }
     await json(await api("POST", "/tasks", { title: "bissexto", dueAt: "2028-02-29T10:00:00-03:00" }), 201);
   });

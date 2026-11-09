@@ -86,7 +86,7 @@ test("memories: save, duplicate, review a conflict, history, restore, update and
   const confirm = page.getByRole("dialog", { name: "Apagar esta memória?" });
   await expect(confirm.getByText("Não vai para a lixeira")).toBeVisible();
   await confirm.getByRole("button", { name: "Apagar de vez" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Memória apagada." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Memória apagada" })).toBeVisible();
   await expect(list.getByText(`Eu dirijo uma bicicleta ${tag}`)).toHaveCount(0);
 });
 

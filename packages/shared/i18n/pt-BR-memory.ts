@@ -68,7 +68,7 @@ export const ptBRMemory = {
   "web.memory.deleteTitle": "Apagar esta memória?",
   "web.memory.deleteForever": "Ela some de vez, com o histórico de revisões. Não vai para a lixeira e não dá para desfazer.",
   "web.memory.deleteConfirm": "Apagar de vez",
-  "web.memory.deleted": "Memória apagada.",
+  "web.memory.deleted": "Memória apagada",
   "web.memory.reviews.title": "Para revisar",
   "web.memory.reviews.count.one": "{count} memória nova pode mudar uma antiga. Nada foi alterado: você decide.",
   "web.memory.reviews.count.other": "{count} memórias novas podem mudar antigas. Nada foi alterado: você decide.",

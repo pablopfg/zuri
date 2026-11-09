@@ -91,7 +91,7 @@ test("the model and the limits: out-of-range values are refused on the spot, the
   await form.getByRole("button", { name: "Salvar limites" }).click();
   expect((await saved).status()).toBe(200);
   // The confirmation is a toast, at the foot of the screen.
-  await expect(page.getByRole("status").filter({ hasText: "Limites salvos." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Limites salvos" })).toBeVisible();
   const usage = page.getByRole("region", { name: "Uso de hoje" });
   await expect(usage.getByText("0 de 1.000", { exact: true })).toBeVisible();
   await expect(usage.getByText("0 de 2.000", { exact: true })).toBeVisible();
@@ -215,7 +215,7 @@ test("a paid model: the warning on what leaves comes before the save, and the sp
   const saved = page.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PATCH");
   await page.getByRole("dialog", { name: "Usar um modelo pago?" }).getByRole("button", { name: "Usar o modelo pago" }).click();
   expect((await saved).status()).toBe(200);
-  await expect(page.getByRole("status").filter({ hasText: "Limites salvos." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Limites salvos" })).toBeVisible();
 
   // The ceiling: off by default, a value of the owner's, refused past the top.
   const cap = form.getByLabel("Teto de gastos por dia (US$)");

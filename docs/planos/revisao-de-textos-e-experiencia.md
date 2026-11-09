@@ -109,7 +109,8 @@ etapa 26 (a lista de hoje está no inventário).
 | --- | --- | --- |
 | Apagar | tirar um item do dono (vai para a lixeira quando ela existe) | Excluir, Deletar, Remover |
 | Apagar de vez | tirar da lixeira | Excluir permanentemente |
-| Remover | desligar uma ligação, sem perder dado do dono (passkey, aparelho, servidor MCP) | Apagar, Desvincular |
+| Remover | desligar uma ligação, sem perder dado do dono (passkey, aparelho, servidor MCP) | Apagar |
+| Conectar / Desconectar | contas de fora (Telegram, Google) | Vincular, Desvincular |
 | Salvar | gravar uma edição | Gravar, Aplicar, Confirmar |
 | Adicionar | item novo numa lista (tarefa, nota, passkey) | Incluir, Inserir, "Novo" sozinho no botão |
 | Criar | algo que se configura (automação, projeto, token) | Gerar, Cadastrar |
@@ -125,7 +126,7 @@ etapa 26 (a lista de hoje está no inventário).
 | Automação | nome geral de tudo o que roda sozinho | Tarefa agendada, Job, Agendamento |
 | Rotina da Zuri | automação com IA (`agent_prompt`), como em `.claude/memoria/glossario.md` | Rotina com IA, Prompt agendado |
 | Conversa | chat com a Zuri | Chat, Sessão |
-| Entrar / Sair | login e logout | Logar, Login, Deslogar |
+| Entrar / Sair (e "a entrada") | login e logout | Logar, Login, Deslogar |
 | Verificação em duas etapas | 2FA | 2FA, autenticação de dois fatores |
 | Configurações | a página | Ajustes, Preferências |
 
@@ -191,8 +192,14 @@ lendo todos os catálogos e percorrendo todas as telas.
 6. **Revisão.** `revisao-qa`, `auditoria-seguranca` (texto não pode vazar dado
    nem citar infraestrutura) e Lighthouse ≥ 95.
 
-Pode ser dividida em 26a (catálogo e lint), 26b (componentes) e 26c
-(reorganização), uma PR cada, se o diff passar de um tamanho revisável.
+Dividida em três PRs (09/11/2026), cada uma com a sua linha no mapa do
+README:
+
+| Parte | O que entra | Estado |
+| --- | --- | --- |
+| 26a | Lint de microcopy na CI, inventário (`scripts/inventario-de-textos.ts`), reescrita do catálogo pelo glossário, erros com o que fazer, toasts sem ponto | PR desta parte; mudanças em `docs/qa/revisao-de-textos/26a-catalogo.md` e `26a-erros.md` |
+| 26b | `Dialog` com X padrão, confirmação padrão, menu ⋯, faixa dispensável; tirar os "Fechar" em texto | a seguir |
+| 26c | Reorganização de UI/UX que o inventário e as capturas apontarem; mudança grande de navegação vira pergunta ao Pablo | depois da 26b |
 
 ## Critérios de aceite
 

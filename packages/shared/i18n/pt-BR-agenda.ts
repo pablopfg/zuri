@@ -3,7 +3,7 @@
 export const ptBRAgenda = {
   "web.agenda.title": "Agenda",
   "web.agenda.description": "Seus eventos do Google Agenda. Quando algo muda lá, muda aqui também.",
-  "web.agenda.view.label": "Visualização",
+  "web.agenda.view.label": "Ver por",
   "web.agenda.view.day": "Dia",
   "web.agenda.view.week": "Semana",
   "web.agenda.view.month": "Mês",
@@ -41,7 +41,7 @@ export const ptBRAgenda = {
   "web.agenda.edit": "Editar",
   "web.agenda.delete": "Apagar",
   "web.agenda.deleteConfirm": "Apagar “{title}” do Google Agenda? Não dá para desfazer pela Zuri.",
-  "web.agenda.deleted": "Evento apagado.",
+  "web.agenda.deleted": "Evento apagado",
   "web.agenda.form.newTitle": "Novo evento",
   "web.agenda.form.editTitle": "Editar evento",
   "web.agenda.form.title": "Título",
@@ -58,7 +58,7 @@ export const ptBRAgenda = {
   "web.agenda.form.error.title": "Dê um título ao evento.",
   "web.agenda.form.error.date": "Confira as datas e horas.",
   "web.agenda.form.error.end": "O fim precisa ser depois do começo.",
-  "web.agenda.created": "Evento criado.",
-  "web.agenda.saved": "Evento salvo.",
+  "web.agenda.created": "Evento criado",
+  "web.agenda.saved": "Evento salvo",
   "web.agenda.noWritable": "Para criar eventos, deixe uma agenda como “Ler e editar” em Integrações.",
 } as const;

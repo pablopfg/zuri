@@ -85,7 +85,7 @@ export const ptBRFlows = {
   "web.flows.problem.http_error": "o serviço respondeu com erro",
   "web.flows.problem.not_json": "a resposta não veio em JSON",
   "web.flows.problem.interrupted": "a execução foi interrompida",
-  "web.flows.problem.failed": "algo deu errado nesse passo",
+  "web.flows.problem.failed": "o passo parou num erro",
   "web.flows.node.request": "Chamar um serviço",
   "web.flows.node.filter": "Filtrar itens",
   "web.flows.node.set": "Montar campos",

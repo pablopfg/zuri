@@ -10,7 +10,7 @@ export const ptBRApprove = {
   "web.approve.working": "Esperando a passkey…",
   "web.approve.hint": "Se a digital não aparecer, abra este link no navegador do celular.",
   "web.approve.cancelled": "A confirmação foi cancelada. Toque no botão para tentar de novo.",
-  "web.approve.doneTitle": "Pronto! Pode voltar ao Telegram.",
+  "web.approve.doneTitle": "Pronto. Pode voltar ao Telegram.",
   "web.approve.doneBody": "A leitura pelo bot está liberada até {hora}.",
   "web.approve.badTitle": "Este link não serve mais",
   "web.approve.invalid": "Não reconheci este link.",

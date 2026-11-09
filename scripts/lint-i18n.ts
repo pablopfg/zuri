@@ -5,6 +5,7 @@
  *  - visible text is written as a literal instead of coming from the catalog:
  *    JSX text, the title / aria-label / placeholder / alt attributes, and the
  *    arguments of `new AppError(...)` (which take a code and a catalog key).
+ *  - a catalog text breaks the writing rules (scripts/lint-microcopy.ts).
  * Exceptions live in i18n-ignore.json, each one with its reason; an exception
  * that no longer matches anything also fails, so the list never goes stale.
  *
@@ -15,6 +16,7 @@ import { join, relative, sep } from "node:path";
 import { parseAst } from "rolldown/parseAst";
 import { catalogs, DEFAULT_LOCALE, LOCALES } from "../packages/shared/i18n/index.ts";
 import { API_ERROR_STATUS } from "../packages/shared/src/errors.ts";
+import { applyMicrocopyExceptions, type MicrocopyFinding, microcopyFindings, reportMicrocopy } from "./lint-microcopy.ts";
 
 /** Where visible text can come from: the interface, the API and the bot, plus the shared code. */
 export const SOURCE_DIRS = ["apps/web/src", "apps/agent/src", "packages/shared/src"];
@@ -188,6 +190,7 @@ export interface LintResult {
   findings: Finding[];
   catalog: string[];
   unusedKeys: string[];
+  microcopy: MicrocopyFinding[];
   ignoreProblems: string[];
 }
 
@@ -202,7 +205,7 @@ export function lint(root: string): LintResult {
 
   const ignoreProblems: string[] = [];
   const ignorePath = join(root, IGNORE_FILE);
-  const parsed = existsSync(ignorePath) ? (JSON.parse(readFileSync(ignorePath, "utf8")) as { ignore?: unknown }) : { ignore: [] };
+  const parsed = existsSync(ignorePath) ? (JSON.parse(readFileSync(ignorePath, "utf8")) as { ignore?: unknown; microcopy?: unknown }) : { ignore: [] };
   const entries = Array.isArray(parsed.ignore) ? (parsed.ignore as IgnoreEntry[]) : [];
   if (!Array.isArray(parsed.ignore)) ignoreProblems.push(`${IGNORE_FILE}: "ignore" precisa ser uma lista`);
   const used = new Set<IgnoreEntry>();
@@ -221,8 +224,10 @@ export function lint(root: string): LintResult {
   }
 
   const unusedKeys = unusedCatalogKeys(keys, strings);
+  const microcopy = applyMicrocopyExceptions(microcopyFindings(catalogs), parsed.microcopy, IGNORE_FILE);
+  ignoreProblems.push(...microcopy.problems);
 
-  return { findings, catalog: catalogProblems(), unusedKeys, ignoreProblems };
+  return { findings, catalog: catalogProblems(), unusedKeys, microcopy: microcopy.findings, ignoreProblems };
 }
 
 /** The report a person reads in the CI log, in pt-BR like the rest of the tooling output. */
@@ -231,6 +236,7 @@ export function report(result: LintResult): string[] {
     ...result.findings.map((f) => `${f.file}:${f.line} texto visível fora do catálogo (${f.rule}): ${JSON.stringify(f.text)}`),
     ...result.catalog,
     ...result.unusedKeys.map((key) => `chave do catálogo sem uso no código: "${key}"`),
+    ...reportMicrocopy(result.microcopy),
     ...result.ignoreProblems,
   ];
 }

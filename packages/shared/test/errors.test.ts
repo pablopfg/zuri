@@ -32,7 +32,7 @@ describe("API error contract", () => {
   });
 
   it("accepts { code, message, details? } and nothing else", () => {
-    expect(apiErrorSchema.safeParse({ code: "NOT_FOUND", message: "Não encontrado." }).success).toBe(true);
+    expect(apiErrorSchema.safeParse({ code: "NOT_FOUND", message: "Isso não existe ou já saiu daqui. Confira o endereço." }).success).toBe(true);
     expect(apiErrorSchema.safeParse({ code: "CONFLICT", message: "x", details: { field: "a" } }).success).toBe(true);
     for (const bad of [
       { code: "NOPE", message: "x" },

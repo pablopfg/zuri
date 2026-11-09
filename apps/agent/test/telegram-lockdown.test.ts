@@ -366,7 +366,7 @@ describe("/sessoes and /encerrar_sessoes", () => {
 describe("empty states and stale buttons", () => {
   it("say so instead of acting: nothing open, nothing to pause, a session already gone, a button past its 10 minutes", async () => {
     await linkOwner();
-    expect(await command("/pausar_rotinas")).toBe("Nenhuma rotina com IA ativa.");
+    expect(await command("/pausar_rotinas")).toBe("Nenhuma rotina da Zuri ativa.");
     const routine = await inOwner((agent) =>
       agent.store.automations.create({ name: "Notícias", kind: "agent_prompt", message: "Resuma", schedule: { type: "daily", time: "07:00" } }, "app"),
     );
@@ -398,7 +398,7 @@ describe("empty states and stale buttons", () => {
     await inOwner((agent) => agent.store.automations.delete(routine.id));
     botCalls.length = 0;
     await tap(pause[0]?.[0]?.callback_data ?? "", pause);
-    expect(texts()).toContain("Nenhuma rotina com IA ativa.");
+    expect(texts()).toContain("Nenhuma rotina da Zuri ativa.");
     expect(await events("telegram_routines_paused")).toEqual([]);
 
     // A Bloquear agora past its 10 minutes does nothing.
@@ -421,15 +421,15 @@ describe("/pausar_rotinas", () => {
       await agent.store.automations.create({ name: "Remédio", kind: "reminder", message: "Tomar", schedule: { type: "daily", time: "09:00" } }, "app"),
     ]);
     await idle(13 * HOUR);
-    expect(await command("/pausar_rotinas")).toBe("Pausar as 2 rotinas com IA? Lembretes e o resumo das tarefas continuam. Para retomar, só pelo app.");
+    expect(await command("/pausar_rotinas")).toBe("Pausar as 2 rotinas da Zuri? Lembretes e o resumo das tarefas continuam. Para retomar, só pelo app.");
     await press("Pausar todas");
-    expect(texts()).toContain("Pausei 2 rotinas com IA. Para retomar, abra Rotinas no app.");
+    expect(texts()).toContain("Pausei 2 rotinas da Zuri. Para retomar, abra Automações › Rotinas no app.");
     const status = (id: string) => inOwner((agent) => agent.store.automations.get(id).status);
     expect(await status(ai?.id ?? "")).toBe("paused");
     expect(await status(sentinel?.id ?? "")).toBe("paused");
     expect(await status(reminder?.id ?? "")).toBe("active");
     expect((await securityNotices()).map((n) => [JSON.parse(n.params).event, n.origin])).toEqual([["telegram_routines_paused", "bot"]]);
-    expect(await command("/pausar_rotinas")).toBe("Nenhuma rotina com IA ativa.");
+    expect(await command("/pausar_rotinas")).toBe("Nenhuma rotina da Zuri ativa.");
   });
 });
 
@@ -449,7 +449,7 @@ describe("/pausar_rotinas and the Google reviews (step 19c)", () => {
       expect(texts()).toContain("Pausei as respostas às avaliações do Google. A leitura e os avisos continuam.");
       expect(await inOwner((agent) => agent.store.db.one(`SELECT paused FROM zur_review_settings`))).toEqual({ paused: 1 });
       expect(await command("/status")).toContain("Avaliações do Google esperando você: 1 (respostas pausadas).");
-      expect(await command("/pausar_rotinas")).toBe("Nenhuma rotina com IA ativa.");
+      expect(await command("/pausar_rotinas")).toBe("Nenhuma rotina da Zuri ativa.");
     } finally {
       await inOwner((agent) => {
         agent.store.reviews.disable();

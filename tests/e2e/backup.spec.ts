@@ -30,7 +30,7 @@ test("shows the storage use, downloads a backup and imports one with a confirmat
   expect(file.suggestedFilename()).toMatch(/^zuri-backup-\d{4}-\d{2}-\d{2}\.json$/);
   const exported = JSON.parse(await readFile((await file.path()) ?? "", "utf8"));
   expect(exported).toMatchObject({ format: "zuri-backup", version: 1 });
-  await expect(page.getByRole("status").filter({ hasText: "Backup baixado." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Backup baixado" })).toBeVisible();
 
   // A small file of its own, so the shared database gains one task, removed at the end.
   const title = `Tarefa do backup ${crypto.randomUUID().slice(0, 8)}`;
@@ -49,7 +49,7 @@ test("shows the storage use, downloads a backup and imports one with a confirmat
   await expect(dialog.getByRole("button", { name: "Cancelar" })).toBeFocused();
   await expectAccessible(page, "importar");
   await dialog.getByRole("button", { name: "Importar" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Backup importado: 1 tarefa." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Backup importado: 1 tarefa" })).toBeVisible();
 
   const tasks = await (await page.request.get(`/api/tasks?q=${encodeURIComponent(title)}`, { headers: CSRF })).json();
   expect(tasks.tasks).toHaveLength(1);
@@ -66,7 +66,7 @@ test("refuses a bad file without saving anything, and one over 10 MB in the brow
   const forged = { format: "zuri-backup", version: 1, schema: 1, exportedAt: LATEST, data: { mcp: [{ url: "https://exemplo.com.br" }] } };
   await input.setInputFiles({ name: "forjado.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(forged)) });
   await page.getByRole("dialog", { name: "Importar este backup?" }).getByRole("button", { name: "Importar" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "Este arquivo não é um backup válido da Zuri. Nada foi gravado." })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Este arquivo não é um backup válido da Zuri. Nada foi importado; escolha um arquivo baixado na tela Dados." })).toBeVisible();
 
   await input.setInputFiles({ name: "grande.json", mimeType: "application/json", buffer: Buffer.alloc(10 * 1024 * 1024 + 1, 32) });
   await expect(page.getByRole("alert").filter({ hasText: "O arquivo passa de 10 MB e não pode ser importado." })).toBeVisible();
@@ -123,7 +123,7 @@ test("creates the backup key once and restores a sealed copy in the browser; acc
   await expect(restore.getByText("1 nota", { exact: true })).toBeVisible();
   await expectAccessible(page, "restaurar");
   await restore.getByRole("button", { name: "Importar" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Cópia restaurada." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Cópia restaurada" })).toBeVisible();
 
   const notes = await (await page.request.get(`/api/notes?q=${encodeURIComponent(title)}`, { headers: CSRF })).json();
   expect(notes.notes).toHaveLength(1);

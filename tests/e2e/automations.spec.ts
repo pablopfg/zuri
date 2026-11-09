@@ -47,7 +47,7 @@ test("a reminder: create with the preview, run now, pause, edit and delete @mobi
   await form.getByRole("button", { name: "Seg", exact: true }).click();
   await expect(form.getByRole("button", { name: "Seg", exact: true })).toHaveAttribute("aria-pressed", "true");
   await create.click();
-  await expect(toast(page, "Automação criada.")).toBeVisible();
+  await expect(toast(page, "Automação criada")).toBeVisible();
 
   const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
   await expect(row.getByText("Lembrete · Segunda, às 08:15")).toBeVisible();
@@ -82,7 +82,7 @@ test("a reminder: create with the preview, run now, pause, edit and delete @mobi
   await edit.getByLabel("Dia do mês").fill("31");
   await expect(edit.getByText("Nos meses mais curtos, roda no último dia.")).toBeVisible();
   await edit.getByRole("button", { name: "Salvar" }).click();
-  await expect(toast(page, "Alterações salvas.")).toBeVisible();
+  await expect(toast(page, "Alterações salvas")).toBeVisible();
   await expect(row.getByText("Lembrete · Todo dia 31 às 08:15 (ou no último dia do mês)")).toBeVisible();
 
   // Delete, after a confirmation; the history stays.

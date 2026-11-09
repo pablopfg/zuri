@@ -82,7 +82,7 @@ export const ptBRProductivity = {
   "web.notes.field.content": "Texto da nota",
   "web.notes.modeLabel": "Modo do editor",
   "web.notes.write": "Escrever",
-  "web.notes.preview": "Visualizar",
+  "web.notes.preview": "Prévia",
   "web.notes.previewEmpty": "Nada para mostrar ainda.",
   "web.notes.markdownHint": "Aceita Markdown: # título, **negrito**, - lista, - [ ] tarefa. Ctrl+S salva.",
   "web.notes.unsaved": "Alterações não salvas",

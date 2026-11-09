@@ -279,7 +279,7 @@ describe("what each scope reaches", () => {
     expect((await bearer(write, "PATCH", `/api/automations/${automation.id}`, { priority: "low" })).status).toBe(200);
     const routine = await bearer(write, "POST", "/api/automations", { name: "Notícias", kind: "agent_prompt", message: "Resuma", schedule: { type: "daily", time: "07:00" } });
     expect(routine.status).toBe(403);
-    expect((await errorBody(routine)).message).toBe("Tokens de acesso não criam nem mudam rotinas com IA.");
+    expect((await errorBody(routine)).message).toBe("Tokens de acesso não criam nem mudam rotinas da Zuri.");
     const existing = await inOwner((agent) => agent.store.automations.create({ name: "Notícias", kind: "agent_prompt", message: "Resuma", schedule: { type: "daily", time: "07:00" } }, "app"));
     expect((await bearer(write, "PATCH", `/api/automations/${existing.id}`, { paused: true })).status).toBe(403);
     expect((await bearer(write, "DELETE", `/api/automations/${existing.id}`)).status).toBe(403);

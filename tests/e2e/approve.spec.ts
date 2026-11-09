@@ -87,7 +87,7 @@ test("confirms with the passkey and sends the owner back to Telegram @mobile", a
   expect(new URL(page.url()).hash).toBe("");
   await expectAccessible(page, "aprovar pronto para confirmar");
   await confirm.click();
-  await expect(page.getByRole("heading", { name: "Pronto! Pode voltar ao Telegram." })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Pronto. Pode voltar ao Telegram." })).toBeFocused();
   // 23:40 UTC is 20:40 in São Paulo.
   await expect(page.getByText("A leitura pelo bot está liberada até 20:40.")).toBeVisible();
   expect(bodies[0]).toEqual({ token: TOKEN });
@@ -110,7 +110,7 @@ test("closing the passkey prompt keeps the same request, and the next tap goes t
     (window as unknown as { __passkey: string }).__passkey = "ok";
   });
   await page.getByRole("button", { name: "Confirmar com passkey" }).click();
-  await expect(page.getByRole("heading", { name: "Pronto! Pode voltar ao Telegram." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pronto. Pode voltar ao Telegram." })).toBeVisible();
   expect(options).toBe(1);
 });
 
@@ -201,7 +201,7 @@ test("shows the proposal from the server and approves it with the passkey @mobil
   await expect(page.getByRole("button", { name: "Confirmar com passkey" })).toBeFocused();
   await expectAccessible(page, "aprovar proposta");
   await page.getByRole("button", { name: "Confirmar com passkey" }).click();
-  await expect(page.getByRole("heading", { name: "Pronto! Pode voltar ao Telegram." })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Pronto. Pode voltar ao Telegram." })).toBeFocused();
   await expect(page.getByText("A proposta foi aprovada e já está feita.")).toBeVisible();
   await expectAccessible(page, "aprovar proposta pronta");
 });

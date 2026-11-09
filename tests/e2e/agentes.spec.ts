@@ -89,7 +89,7 @@ test("adjusts an agent: refuses what can't be saved on the spot, saves a version
   const saved = page.waitForResponse((r) => r.url().endsWith("/api/ai/agents/summary") && r.request().method() === "PUT");
   await summary.getByRole("button", { name: "Salvar" }).click();
   expect((await saved).status()).toBe(200);
-  await expect(page.getByRole("status").filter({ hasText: "Ajustes salvos. Valem a partir da próxima resposta." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Configurações salvas. Valem a partir da próxima resposta." })).toBeVisible();
   await expect(summary.getByRole("heading")).toContainText(`Ajustado, versão ${before + 1}`);
   await expect(summary).toContainText("Temperatura 0,35");
   await expect(summary.getByText(new RegExp(`Marca do prompt em uso: summary\\.[0-9a-z]+\\+${before + 1}`))).toBeVisible();
@@ -139,7 +139,7 @@ test("asks for the password again when it was typed too long ago, then saves", a
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await dialog.getByRole("button", { name: "Confirmar" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Ajustes salvos. Valem a partir da próxima resposta." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Configurações salvas. Valem a partir da próxima resposta." })).toBeVisible();
   expect(puts).toBe(2);
 });
 
