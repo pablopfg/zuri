@@ -14,10 +14,12 @@ import { gzipSync } from "node:zlib";
 // 139.4 kB, with the owner's OK on 03/11/2026, for the Agenda item in the side menu;
 // 139.6 kB, with the owner's OK on 03/11/2026, for the Contatos item and route, step 19b;
 // 139.7 kB, with the owner's OK on 09/11/2026, for the dependency updates of
-// Dependabot PRs #208 and #209: vite 8.3.6 and @tanstack/react-query 5.105.3).
+// Dependabot PRs #208 and #209: vite 8.3.6 and @tanstack/react-query 5.105.3);
+// 139.9 kB, with the owner's OK on 09/11/2026 (PR #227, step 26b), for the close
+// button every dialog now carries and the session warning that can be put away.
 // Never raise it without the owner's OK; the ceiling of P11 is 160 kB and its
 // goal 150 kB.
-const BUDGET_KB = 139.7;
+const BUDGET_KB = 139.9;
 
 const dist = join(import.meta.dirname, "..", "apps", "web", "dist");
 const html = readFileSync(join(dist, "index.html"), "utf8");

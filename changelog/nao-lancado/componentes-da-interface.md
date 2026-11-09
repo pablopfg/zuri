@@ -4,3 +4,7 @@
 - As confirmações seguem um padrão: "Cancelar" vem antes do botão que repete o verbo e já começa com o foco, também nas que abrem no lugar, como revogar um token, remover uma passkey ou apagar um cliente.
 - No tempo máximo da sessão, o X do aviso só esconde o aviso; a sessão termina na hora marcada.
 - A faixa que lembra de ligar as duas etapas agora se dispensa pelo X, que diz por quanto tempo: "Dispensar por 3 dias".
+
+### Atualização
+
+- O teto do primeiro carregamento sobe de 139,7 kB para 139,9 kB, com o OK do Pablo, para caber o X padrão dos diálogos.
