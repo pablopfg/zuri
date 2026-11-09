@@ -19,6 +19,16 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.37.1] - 2026-11-09
+
+Mesclada às 10:59 (UTC-3) · commit [`af527b4`](https://github.com/pablopfg/Zuri/commit/af527b40e93d5d55deaf401e4b03cef3be634bab) · PR [#225](https://github.com/pablopfg/Zuri/pull/225) · Folga no JS inicial para a troca de versão caber no teto
+
+### Alterado
+
+- A tela de erro ficou mais curta: o texto não repete mais o título e vai direto ao que fazer.
+- A apresentação da tela de entrada fala de "uma assistente", no feminino, como no resto do app.
+- O primeiro carregamento ficou alguns bytes menor, para que a troca de número de versão não passe do teto de tamanho.
+
 ## [0.37.0] - 2026-11-09
 
 Mesclada às 10:01 (UTC-3) · commit [`d980790`](https://github.com/pablopfg/Zuri/commit/d9807903ff5f5303854a7d64ddd4b189bd3473c0) · PR [#221](https://github.com/pablopfg/Zuri/pull/221) · Textos revistos pelo glossário e lint de microcopy na CI (etapa 26a)
@@ -2806,7 +2816,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.37.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.37.1...develop
+[0.37.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.1
 [0.37.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.0
 [0.36.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.36.1
 [0.36.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.36.0
