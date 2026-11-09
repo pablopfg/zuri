@@ -1066,7 +1066,8 @@ custa quase nada:
 Recomendado na instalação, sem custo: uma regra de rate limiting do WAF da
 Cloudflare (o plano Free inclui uma) para `/api/auth/*`, que barra a enxurrada
 na borda, antes de contar como requisição do Worker. O guia de instalação
-(`docs/instalacao-cloudflare.md`, etapa 24) traz o passo a passo.
+([instalacao-cloudflare.md](instalacao-cloudflare.md#proteção-extra-contra-enxurrada))
+traz o passo a passo.
 
 ## Avisos e Diagnóstico
 
@@ -1340,3 +1341,19 @@ roda só na `develop`, com o `GITHUB_TOKEN` e sem instalar dependências.
   o repositório inteiro. A regra da `develop` pede 0 aprovações e o merge
   depende só dos checks, então a aprovação do bot não abre nenhum atalho; os
   workflows com `pull-requests: write` são só o `Update PRs` e o `Versão`.
+
+## Deploy pelo GitHub Actions
+
+O repositório é público, então o caminho até a produção é tratado como
+superfície de ataque (`.github/workflows/deploy.yml`, etapa 24):
+
+| Risco | Proteção |
+| --- | --- |
+| O token da Cloudflare vazar por um PR, inclusive de fork | O token e o id da conta são segredos só do ambiente `production`, que aceita só a `main` e espera a aprovação do dono. O deploy não roda em `pull_request` (um teste do repositório confere que nenhum workflow de PR cita `secrets.`) e nenhum workflow usa `pull_request_target` ou `workflow_run` |
+| Dependência maliciosa roubar o token | Os jobs que instalam e rodam o código do projeto (a CI inteira e o build da interface) não têm segredo. O job do deploy instala com `npm ci --ignore-scripts`, sem cache do npm, e recebe a interface pronta como artefato |
+| Token com poder demais | Token da conta, só Workers Scripts (editar), Account Settings (ler), Workers Routes (editar) na zona do domínio, com data de fim; DNS e Email Routing Addresses (ler) só se o primeiro deploy pedir. Sem R2: o deploy não cria bucket por engano |
+| Endereço exposto além do domínio próprio | A config do deploy sai de `scripts/deploy/gerar-config.ts`, que fixa `workers_dev: false`, `preview_urls: false`, `run_worker_first: true` e o Custom Domain, e recusa host `workers.dev`/`pages.dev`. Depois do deploy, `scripts/deploy/conferir-producao.ts` pergunta à API da Cloudflare se o `workers.dev` e as prévias estão desligados, falha se a resposta não vier clara, e confere de fora que o `workers.dev` não responde |
+| Domínio, e-mail ou bucket no log público | Os três são segredos do ambiente, não *variables*: o runner imprime o `env` de cada passo no cabeçalho antes de rodá-lo, e só segredos saem mascarados ali (um teste recusa `vars.` no deploy). A config recusa valor com espaço ou maiúscula, que sairia numa forma que a máscara não pega. As mensagens de erro citam só o nome, e as conferências imprimem só códigos HTTP |
+| Nome da conta (que nasce com o e-mail do dono) no log | Numa falha de autenticação o wrangler lista as contas do token: antes dele, `conferir-producao.ts mascarar` lê o nome pela API e o mascara; o guia manda renomear a conta |
+| Ação de terceiro trocada | Toda ação fixada por SHA de 40 caracteres, `permissions: contents: read` no workflow e `persist-credentials: false`; só o job da release escreve, e só em `contents` |
+| Segredo do app no GitHub | Os segredos do Worker nunca passam pelo GitHub: o dono grava no painel e o deploy os mantém |

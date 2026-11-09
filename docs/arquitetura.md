@@ -64,7 +64,8 @@ stack trace na resposta, e o log registra só o nome do erro.
 ## Configuração
 
 Nada pessoal fica no repositório. Os valores abaixo são definidos no painel da
-Cloudflare (ou pelo deploy, na etapa 24). Grave `PUBLIC_URL`, os dois do Access
+Cloudflare; o deploy pelo GitHub Actions (`docs/instalacao-cloudflare.md`) só
+acrescenta o domínio e os bindings opcionais. Grave `PUBLIC_URL`, os dois do Access
 e a chave pública do Turnstile como **segredo** (texto cifrado), mesmo sem
 serem secretos: o `wrangler deploy` apaga as variáveis comuns do painel que não
 estão no `wrangler.jsonc`, e o Worker ficaria fora do ar com `NOT_CONFIGURED`.

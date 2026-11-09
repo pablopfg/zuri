@@ -257,6 +257,13 @@ describe("release notes", () => {
     expect(notes).toContain("não é deploy");
   });
 
+  it("says a release published by the deploy of main is no development pre-release", () => {
+    const notes = releaseNotes(version(), null, true);
+    expect(notes).toContain("Versão publicada pela `main`.");
+    expect(notes).not.toContain("não é deploy");
+    expect(notes.replace(/\n[^\n]*\n$/, "")).toBe(releaseNotes(version(), null).replace(/\n[^\n]*\n$/, ""));
+  });
+
   it("links the full history to the comparison with the previous version", () => {
     const previous = version({ version: "0.19.0", commit: sha("c") });
     const notes = releaseNotes(version({ version: "0.20.0" }), previous);
@@ -320,8 +327,8 @@ describe("releaseWork", () => {
   const b = version({ version: "0.1.1", commit: sha("b") });
 
   const previous = previousVersions([a, b]);
-  const notesOf = (v: Version) => releaseNotes(v, previous.get(v.version) ?? null);
-  const current = (v: Version, name = `v${v.version}`) => ({ name, body: notesOf(v) });
+  const notesOf = (v: Version, published = false) => releaseNotes(v, previous.get(v.version) ?? null, published);
+  const current = (v: Version, name = `v${v.version}`) => ({ name, body: notesOf(v), prerelease: true });
 
   it("creates what is missing, oldest first, and leaves releases in the current layout alone", () => {
     const work = releaseWork([a, b], new Map([["v0.1.0", sha("a")]]), new Map([["v0.1.0", current(a)]]), notesOf);
@@ -330,13 +337,20 @@ describe("releaseWork", () => {
 
   it("does not count CRLF or a missing last newline from GitHub as a change", () => {
     const body = notesOf(a).replace(/\n/g, "\r\n").trimEnd();
-    expect(releaseWork([a], new Map([["v0.1.0", sha("a")]]), new Map([["v0.1.0", { name: "v0.1.0", body }]]), notesOf).update).toEqual([]);
+    expect(releaseWork([a], new Map([["v0.1.0", sha("a")]]), new Map([["v0.1.0", { name: "v0.1.0", body, prerelease: true }]]), notesOf).update).toEqual([]);
+  });
+
+  it("keeps the notes of a release the deploy of main published, and puts them back if they drift", () => {
+    const published = { name: "v0.1.0", body: notesOf(a, true), prerelease: false };
+    expect(releaseWork([a], new Map([["v0.1.0", sha("a")]]), new Map([["v0.1.0", published]]), notesOf).update).toEqual([]);
+    const reverted = { ...published, body: notesOf(a) };
+    expect(releaseWork([a], new Map([["v0.1.0", sha("a")]]), new Map([["v0.1.0", reverted]]), notesOf).update).toEqual([a]);
   });
 
   it("rewrites releases whose title is more than the version or whose notes are in an old layout", () => {
     const releases = new Map([
       ["v0.1.0", current(a, "v0.1.0 · Envia avisos (etapa 13)")],
-      ["v0.1.1", { name: "v0.1.1", body: "Mesclada às 09:20 (UTC-3)\n\nHistórico completo: [CHANGELOG.md](https://github.com/pablopfg/Zuri/blob/develop/CHANGELOG.md)\n" }],
+      ["v0.1.1", { name: "v0.1.1", body: "Mesclada às 09:20 (UTC-3)\n\nHistórico completo: [CHANGELOG.md](https://github.com/pablopfg/Zuri/blob/develop/CHANGELOG.md)\n", prerelease: true }],
     ]);
     const work = releaseWork([a, b], new Map([["v0.1.0", sha("a")], ["v0.1.1", sha("b")]]), releases, notesOf);
     expect(work).toEqual({ create: [], update: [a, b], conflicts: [] });

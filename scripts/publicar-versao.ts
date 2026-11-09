@@ -48,6 +48,8 @@ export interface ReleaseWork {
 export interface Release {
   name: string;
   body: string;
+  /** False once the deploy of main published it (scripts/deploy/publicar-release.ts); its notes say so. */
+  prerelease: boolean;
 }
 
 /** The version before each one, from every version oldest first (null for the first). */
@@ -66,7 +68,7 @@ export function releaseWork(
   versions: Version[],
   tags: Map<string, string>,
   releases: ReadonlyMap<string, Release>,
-  notesOf: (v: Version) => string,
+  notesOf: (v: Version, published: boolean) => string,
 ): ReleaseWork {
   const work: ReleaseWork = { create: [], update: [], conflicts: [] };
   for (const v of versions) {
@@ -78,7 +80,7 @@ export function releaseWork(
     }
     const release = releases.get(tag);
     if (release === undefined) work.create.push(v);
-    else if (release.name !== releaseName(v) || !sameNotes(release.body, notesOf(v))) work.update.push(v);
+    else if (release.name !== releaseName(v) || !sameNotes(release.body, notesOf(v, !release.prerelease))) work.update.push(v);
   }
   return work;
 }
@@ -170,14 +172,15 @@ function main(root: string): number {
         tag_name: string;
         name: string | null;
         body: string | null;
+        prerelease: boolean;
       }[][]
     )
       .flat()
-      .map((r) => [r.tag_name, { name: r.name ?? "", body: r.body ?? "" }] as const),
+      .map((r) => [r.tag_name, { name: r.name ?? "", body: r.body ?? "", prerelease: r.prerelease !== false }] as const),
   );
   // The notes compare each version with the one before it, tagged or not (0.15.4 has only its commit).
   const previous = previousVersions(versions);
-  const notesOf = (v: Version) => releaseNotes(v, previous.get(v.version) ?? null);
+  const notesOf = (v: Version, published = false) => releaseNotes(v, previous.get(v.version) ?? null, published);
   const work = releaseWork(taggable(versions), tags, releases, notesOf);
   if (work.conflicts.length === 0) {
     // Tags go by git push, never by the releases API: the API refuses GITHUB_TOKEN a tag on a commit whose
@@ -221,7 +224,7 @@ function main(root: string): number {
       if (i > 0 || work.create.length > 0) sleepMs(RELEASE_PAUSE_MS);
       const tag = `v${v.version}`;
       const notes = join(dir, `${v.version}.md`);
-      writeFileSync(notes, notesOf(v));
+      writeFileSync(notes, notesOf(v, releases.get(tag)?.prerelease === false));
       const updated = tryRun(() => gh(["release", "edit", tag, "--repo", repository, "--title", releaseName(v), "--notes-file", notes]));
       if (updated.ok) {
         console.log(`release ${tag}: title and notes updated`);
