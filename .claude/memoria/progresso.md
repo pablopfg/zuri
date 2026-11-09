@@ -48,7 +48,7 @@ etapas ficam detalhadas; as mais antigas viram uma linha na tabela.
 | 21 | mesclada (09/11/2026) | #194 | ⚠️ Modelos pagos opcionais (Claude e GPT), tudo desligado, teto em US$ opcional e desligado, perfil externo D3–D7 ("Nunca enviar para fora", histórico curto, marcadores), estado das empresas, consumo por período ao vivo |
 | 23 | mesclada (09/11/2026) | #200, #211 | Backup manual (**Baixar backup**, **Importar backup**, uso do armazenamento) e ⚠️ backup automático no R2 opcional: cópia diária cifrada com a chave do dono (só a pública no servidor), 7 cópias, restauração no navegador, cópia mensal no Telegram, aviso de 30 dias, `/backup` com a idade |
 | 24 | mesclada (09/11/2026) | #215 | Deploy pelo GitHub Actions na `main` (CI inteira de novo, aprovação no ambiente `production`, só o Custom Domain, conferência do `workers.dev` e das prévias pela API, saúde e HTTPS, release da versão) e guia de instalação só pelo navegador |
-| 26a | em revisão (09/11/2026) | — | Textos revistos pelo glossário (Apagar, Desconectar, Ligar/Desligar, Entrar, Rotina da Zuri), erros com o que fazer, toasts sem ponto, lint de microcopy na CI, inventário `scripts/inventario-de-textos.ts` |
+| 26a | mesclada (09/11/2026) | #221 | Textos revistos pelo glossário (Apagar, Desconectar, Ligar/Desligar, Entrar, Rotina da Zuri), erros com o que fazer, toasts sem ponto, lint de microcopy na CI, inventário `scripts/inventario-de-textos.ts` |
 
 ## Últimas etapas (detalhe)
 
