@@ -1,5 +1,5 @@
 import { ptBRMenu } from "@zuri/shared";
-import { MoreHorizontal } from "lucide-react";
+import { Check, MoreHorizontal } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { addMessages, useI18n } from "../lib/i18n.tsx";
 import { cn } from "./ui.tsx";
@@ -13,6 +13,8 @@ export interface MenuAction {
   /** Apagar, Remover: listed last, apart and in red (stage 26). */
   danger?: boolean;
   disabled?: boolean;
+  /** An on/off mark (menuitemcheckbox): its state is read out and shown with a tick. */
+  checked?: boolean;
 }
 
 /**
@@ -31,7 +33,7 @@ export function ActionsMenu({ actions, name }: { actions: MenuAction[]; name?: s
   const ordered = [...actions.filter((action) => !action.danger), ...actions.filter((action) => action.danger)];
   const firstDanger = ordered.findIndex((action) => action.danger);
 
-  const items = () => [...(list.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [])];
+  const items = () => [...(list.current?.querySelectorAll<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)') ?? [])];
   const close = (focus = true) => {
     setOpen(false);
     if (focus) button.current?.focus();
@@ -39,7 +41,7 @@ export function ActionsMenu({ actions, name }: { actions: MenuAction[]; name?: s
 
   useEffect(() => {
     if (!open) return;
-    list.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
+    list.current?.querySelector<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)')?.focus();
     const outside = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
@@ -93,7 +95,7 @@ export function ActionsMenu({ actions, name }: { actions: MenuAction[]; name?: s
               {index === firstDanger && index > 0 && <hr className="my-1 border-border" />}
               <button
                 type="button"
-                role="menuitem"
+                {...(action.checked === undefined ? { role: "menuitem" } : { role: "menuitemcheckbox", "aria-checked": action.checked })}
                 tabIndex={-1}
                 disabled={action.disabled}
                 onClick={() => {
@@ -108,7 +110,8 @@ export function ActionsMenu({ actions, name }: { actions: MenuAction[]; name?: s
                 <span className="shrink-0" aria-hidden>
                   {action.icon}
                 </span>
-                {action.label}
+                <span className="flex-1">{action.label}</span>
+                {action.checked && <Check className="h-4 w-4 shrink-0 text-accent-text" aria-hidden />}
               </button>
             </div>
           ))}

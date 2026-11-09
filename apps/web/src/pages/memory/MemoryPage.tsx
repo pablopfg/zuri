@@ -14,6 +14,7 @@ import {
 } from "@zuri/shared";
 import { Archive, ArchiveRestore, BadgeCheck, Brain, CircleHelp, GitCompareArrows, History, Pencil, RefreshCw, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useId, useState } from "react";
+import { ActionsMenu } from "../../components/ActionsMenu.tsx";
 import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, fieldClass, PageHeader, SelectField, Loading, TextAreaField } from "../../components/ui.tsx";
 import { MEMORIES_KEY, useMemories, useMemoryHistory, useMemoryReviews } from "../../hooks/memory.ts";
 import { SETTINGS_KEY } from "../../hooks/session.tsx";
@@ -316,58 +317,32 @@ function MemoryRow({
           <span className="text-fg-muted">{t("web.memory.savedAt", { time: dateTime(memory.updatedAt) })}</span>
         </div>
         <div className="flex flex-wrap items-center">
-          {!past && (
-            <button type="button" className={action} onClick={onCorrect} disabled={pending} aria-label={t("web.memory.correct")} title={t("web.memory.correct")}>
-              <RefreshCw className="h-4 w-4" aria-hidden />
-            </button>
-          )}
           <button type="button" className={action} onClick={onEdit} disabled={pending} aria-label={t("web.memory.edit")} title={t("web.memory.edit")}>
             <Pencil className="h-4 w-4" aria-hidden />
           </button>
-          <button
-            type="button"
-            className={cn(action, memory.localOnly && "text-accent-text")}
-            onClick={() => void setLocalOnly(!memory.localOnly)}
-            disabled={pending}
-            aria-pressed={memory.localOnly}
-            aria-label={t("web.memory.localOnly")}
-            title={t("web.memory.localOnlyHint")}
-          >
-            <ShieldCheck className="h-4 w-4" aria-hidden />
-          </button>
-          <button type="button" className={action} onClick={onHistory} disabled={pending} aria-label={t("web.memory.history")} title={t("web.memory.history")}>
-            <History className="h-4 w-4" aria-hidden />
-          </button>
-          {past ? (
-            <button type="button" className={action} onClick={() => void setStatus("active")} disabled={pending} aria-label={t("web.memory.restore")} title={t("web.memory.restore")}>
-              <ArchiveRestore className="h-4 w-4" aria-hidden />
-            </button>
-          ) : (
-            <>
-              {memory.status === "active" ? (
-                <button type="button" className={action} onClick={() => void setStatus("uncertain")} disabled={pending} aria-label={t("web.memory.markUncertain")} title={t("web.memory.markUncertain")}>
-                  <CircleHelp className="h-4 w-4" aria-hidden />
-                </button>
-              ) : (
-                <button type="button" className={action} onClick={() => void setStatus("active")} disabled={pending} aria-label={t("web.memory.confirmCurrent")} title={t("web.memory.confirmCurrent")}>
-                  <BadgeCheck className="h-4 w-4" aria-hidden />
-                </button>
-              )}
-              <button type="button" className={action} onClick={() => void setStatus("historical")} disabled={pending} aria-label={t("web.memory.markPast")} title={t("web.memory.markPast")}>
-                <Archive className="h-4 w-4" aria-hidden />
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            className={cn(action, "hover:bg-danger-soft hover:text-danger")}
-            onClick={onDelete}
-            disabled={pending}
-            aria-label={t("web.memory.delete")}
-            title={t("web.memory.delete")}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden />
-          </button>
+          <ActionsMenu
+            name={memory.content}
+            actions={[
+              ...(past ? [] : [{ label: t("web.memory.correct"), icon: <RefreshCw className="h-4 w-4" />, onSelect: onCorrect, disabled: pending }]),
+              {
+                label: t("web.memory.localOnly"),
+                icon: <ShieldCheck className="h-4 w-4" />,
+                onSelect: () => void setLocalOnly(!memory.localOnly),
+                checked: memory.localOnly,
+                disabled: pending,
+              },
+              { label: t("web.memory.history"), icon: <History className="h-4 w-4" />, onSelect: onHistory, disabled: pending },
+              ...(past
+                ? [{ label: t("web.memory.restore"), icon: <ArchiveRestore className="h-4 w-4" />, onSelect: () => void setStatus("active"), disabled: pending }]
+                : [
+                    memory.status === "active"
+                      ? { label: t("web.memory.markUncertain"), icon: <CircleHelp className="h-4 w-4" />, onSelect: () => void setStatus("uncertain"), disabled: pending }
+                      : { label: t("web.memory.confirmCurrent"), icon: <BadgeCheck className="h-4 w-4" />, onSelect: () => void setStatus("active"), disabled: pending },
+                    { label: t("web.memory.markPast"), icon: <Archive className="h-4 w-4" />, onSelect: () => void setStatus("historical"), disabled: pending },
+                  ]),
+              { label: t("web.memory.delete"), icon: <Trash2 className="h-4 w-4" />, onSelect: onDelete, danger: true, disabled: pending },
+            ]}
+          />
         </div>
       </div>
       {error && (
