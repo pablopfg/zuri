@@ -50,6 +50,8 @@ export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   signal?: AbortSignal;
+  /** The response itself, for a file to save (a backup export), after the same refusals and password check. */
+  raw?: boolean;
 }
 
 /**
@@ -75,7 +77,7 @@ export function setFallbackMessages(fn: (kind: "network" | "server") => string):
   fallbackMessage = fn;
 }
 
-async function request<T>(path: string, { method = "GET", body, signal }: RequestOptions): Promise<T> {
+async function request<T>(path: string, { method = "GET", body, signal, raw }: RequestOptions): Promise<T> {
   const headers: Record<string, string> = { [CSRF_HEADER]: "1" };
   if (method !== "GET" && recentlyUsed()) {
     headers[ACTIVITY_HEADER] = "1";
@@ -103,6 +105,7 @@ async function request<T>(path: string, { method = "GET", body, signal }: Reques
     if (error.code === "PASSWORD_CHANGE_REQUIRED") for (const fn of passwordChange) fn(error);
     throw error;
   }
+  if (raw) return res as T;
   // 202: the server took the request and says nothing more (the recovery link, step 11c).
   if (res.status === 204 || res.status === 202) return undefined as T;
   return (await res.json()) as T;

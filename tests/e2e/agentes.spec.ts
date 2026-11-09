@@ -114,7 +114,7 @@ test("adjusts an agent: refuses what can't be saved on the spot, saves a version
   await expect(card.getByText("Nada mudou.")).toBeVisible();
   await expect(card.getByLabel("Estilo e tarefa")).toHaveValue(/^Keep facts, decisions/);
   await card.getByRole("button", { name: "Versões" }).click();
-  await expect(card.getByText("Em uso")).toBeVisible();
+  await expect(card.getByText("Em uso", { exact: true })).toBeVisible();
   await card.getByRole("button", { name: `Voltar para esta, a versão ${before + 1}` }).click();
   await expect(page.getByRole("status").filter({ hasText: `Voltou para a versão ${before + 1}.` })).toBeVisible();
   await expect(card.getByRole("heading")).toContainText(`Ajustado, versão ${before + 3}`);

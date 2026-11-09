@@ -300,6 +300,88 @@ export class CrmService {
     return this.get(id) as CrmClientDetail;
   }
 
+  /**
+   * The CRM part of a backup (step 23), inside the import's transaction (the
+   * caller holds it, so nothing here opens one). Stages match the current
+   * ones by name; a new name becomes a stage while there is room (12), and a
+   * client of a stage with no room goes to the first stage. A client whose n8n
+   * `ref` is already here is that client: it is skipped, never duplicated.
+   * Throws STORAGE_LIMIT_REACHED past 5,000 clients or 200 distinct tags.
+   */
+  restore(data: {
+    stages: { id: string; name: string }[];
+    clients: (Omit<ClientInput, "followUp" | "stageId" | "tags"> & {
+      ref: string | null;
+      stageId: string;
+      tags: string[];
+      followUpAt: string | null;
+      followUpNote: string;
+      source: "app" | "n8n";
+      lastActivityAt: string | null;
+      createdAt: string;
+      updatedAt: string;
+      history: { kind: CrmHistoryKind; text: string; at: string }[];
+    })[];
+  }): { clients: number; skipped: number } {
+    const current = this.db.all<{ id: string; name: string }>(`SELECT id, name FROM zur_crm_stages ORDER BY position, id`);
+    if (current.length === 0) throw new AppError("INTERNAL_ERROR");
+    const byName = new Map(current.map((stage) => [searchText(stage.name), stage.id]));
+    let position = current.length;
+    const stageOf = new Map<string, string>();
+    for (const stage of data.stages) {
+      const key = searchText(stage.name);
+      let local = byName.get(key);
+      if (!local && position < CRM_LIMITS.stagesMax) {
+        local = crypto.randomUUID();
+        this.db.run(`INSERT INTO zur_crm_stages (id, name, position) VALUES (?, ?, ?)`, local, stage.name, position++);
+        byName.set(key, local);
+      }
+      stageOf.set(stage.id, local ?? (current[0] as { id: string }).id);
+    }
+    let added = 0;
+    let skipped = 0;
+    for (const client of data.clients) {
+      if (client.ref !== null && this.byRef(client.ref)) {
+        skipped++;
+        continue;
+      }
+      const id = crypto.randomUUID();
+      this.db.run(
+        `INSERT INTO zur_crm_clients (id, ref, name, search_name, phone, phone_digits, email, birthday, birthday_md, stage_id, notes, follow_up_at, follow_up_note, follow_up_noticed, source, last_activity_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id,
+        client.ref,
+        client.name,
+        searchText(client.name),
+        client.phone ?? null,
+        phoneDigits(client.phone),
+        client.email ?? null,
+        client.birthday ?? null,
+        birthdayMonthDay(client.birthday),
+        stageOf.get(client.stageId) ?? (current[0] as { id: string }).id,
+        client.notes ?? "",
+        client.followUpAt,
+        client.followUpNote,
+        // A follow-up already past when the backup was made isn't told again as new.
+        client.followUpAt !== null && client.followUpAt <= this.nowIso() ? 1 : 0,
+        client.source,
+        client.lastActivityAt,
+        client.createdAt,
+        client.updatedAt,
+      );
+      for (const tag of new Set(client.tags)) this.db.run(`INSERT INTO zur_crm_tags (client_id, tag) VALUES (?, ?)`, id, tag);
+      for (const entry of client.history.slice(-CRM_LIMITS.historyPerClient)) {
+        this.db.run(`INSERT INTO zur_crm_history (id, client_id, kind, text, at) VALUES (?, ?, ?, ?, ?)`, crypto.randomUUID(), id, entry.kind, entry.text, entry.at);
+      }
+      added++;
+    }
+    if (this.count() > CRM_LIMITS.clients) throw new AppError("STORAGE_LIMIT_REACHED", "error.crmClientLimit");
+    this.db.run(`DELETE FROM zur_crm_tag_counts WHERE n <= 0`);
+    const distinct = this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_crm_tag_counts`)?.n ?? 0;
+    if (distinct > CRM_LIMITS.distinctTags) throw new AppError("STORAGE_LIMIT_REACHED", "error.crmTagLimit");
+    return { clients: added, skipped };
+  }
+
   /** Changes a client; each change of stage, tags and follow-up goes to the history. */
   update(id: string, patch: ClientPatch): CrmClientDetail {
     const row = this.row(id);

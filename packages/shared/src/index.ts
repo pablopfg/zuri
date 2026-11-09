@@ -40,6 +40,7 @@ export {
   ptBRReviews,
   ptBRAgents,
   ptBRUsage,
+  ptBRBackup,
   t,
 } from "../i18n/index.ts";
 export { AGENT_INSTANCE_NAME } from "./constants.ts";
@@ -152,4 +153,5 @@ export * from "./crm.ts";
 export * from "./crm-schemas.ts";
 export * from "./reviews.ts";
 export * from "./reviews-schemas.ts";
+export * from "./backup.ts";
 export * from "./agents-schemas.ts";
