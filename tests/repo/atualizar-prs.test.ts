@@ -11,6 +11,10 @@ import {
   mergeBase,
   APPROVE_ATTEMPTS,
   approveHeldRuns,
+  approveLateRuns,
+  LATE_APPROVE_RETRY_MS,
+  LATE_RUNS_MS,
+  RUN_BUDGET_MS,
   PR_WORKFLOWS,
   type WorkflowRun,
   notify,
@@ -332,6 +336,167 @@ describe("approveHeldRuns (fake gh)", () => {
     });
     // The run moved on, so it is never approved a second time.
     expect(calls).toEqual([1, 2, 3]);
+  });
+});
+
+describe("approveLateRuns (fake gh)", () => {
+  const SHA_A = "a".repeat(40);
+  const SHA_B = "b".repeat(40);
+  const run = (id: number, name: string, sha: string, extra: Partial<WorkflowRun> = {}): WorkflowRun => ({
+    id,
+    name,
+    event: "pull_request",
+    status: "completed",
+    conclusion: "action_required",
+    head_sha: sha,
+    created_at: "2026-11-09T09:53:07Z",
+    actor: { login: "github-actions[bot]" },
+    head_repository: { full_name: "dono/zuri" },
+    ...extra,
+  });
+  const all = (sha: string, base: number) => Object.values(PR_WORKFLOWS).map((name, i) => run(base + i, name, sha));
+  /** A clock the fake sleep moves forward; `reads[sha]` gives the list of each read of that commit. */
+  const fake = (reads: Record<string, WorkflowRun[][]>, failReads: Record<string, number> = {}) => {
+    let clock = 0;
+    const approved: number[] = [];
+    const count: Record<string, number> = {};
+    const exec = (_cmd: string, args: string[]) => {
+      const path = args.at(-1) ?? "";
+      const approve = path.match(/actions\/runs\/(\d+)\/approve$/);
+      if (approve) {
+        approved.push(Number(approve[1]));
+        return "";
+      }
+      const sha = path.match(/head_sha=([0-9a-f]{40})/)?.[1] ?? "";
+      const n = count[sha] ?? 0;
+      count[sha] = n + 1;
+      if (n < (failReads[sha] ?? 0)) throw Object.assign(new Error("gh failed"), { stderr: "gh: Bad Gateway (HTTP 502)\n" });
+      const list = reads[sha] ?? [[]];
+      return JSON.stringify({ workflow_runs: list[Math.min(n, list.length - 1)] });
+    };
+    return {
+      ctx: { repository: "dono/zuri", exec },
+      approved,
+      count,
+      opts: { now: () => clock, sleep: (ms: number) => (clock += ms) },
+    };
+  };
+
+  it("approves runs GitHub creates 9 minutes after the push (issue #210)", () => {
+    // One read every 20 s: the runs show up on the 28th read, 9 minutes in.
+    const reads = [...Array.from({ length: 27 }, () => [] as WorkflowRun[]), all(SHA_A, 1)];
+    const { ctx, approved, opts } = fake({ [SHA_A]: reads });
+    const [result] = approveLateRuns(ctx, [{ sha: SHA_A, pushedAt: 0, approved: [] }], { deadline: RUN_BUDGET_MS, ...opts });
+    expect(result).toEqual({ approved: ["CI", "CodeQL", "Merge order"], failed: [], errors: [], missing: [] });
+    expect(approved).toEqual([1, 2, 3]);
+    expect(opts.now()).toBe(9 * 60_000);
+  });
+
+  it("waits for several commits in the same loop and keeps what the first round approved", () => {
+    const { ctx, approved, count, opts } = fake({
+      [SHA_A]: [[run(1, "CI", SHA_A, { conclusion: null, status: "queued" })], all(SHA_A, 1).map((r) => (r.name === "CI" ? { ...r, conclusion: null, status: "queued" } : r))],
+      [SHA_B]: [[], [], all(SHA_B, 11)],
+    });
+    const results = approveLateRuns(
+      ctx,
+      [
+        { sha: SHA_A, pushedAt: 0, approved: ["CI"] },
+        { sha: SHA_B, pushedAt: 0, approved: [] },
+      ],
+      { deadline: RUN_BUDGET_MS, ...opts },
+    );
+    expect(results.map((r) => r.approved)).toEqual([["CI", "CodeQL", "Merge order"], ["CI", "CodeQL", "Merge order"]]);
+    expect(results.every((r) => r.missing.length === 0 && r.failed.length === 0)).toBe(true);
+    expect(approved).toEqual([2, 3, 11, 12, 13]);
+    // A done commit is not read again, and both waited together: 40 s, not 60 s.
+    expect(count[SHA_A]).toBe(2);
+    expect(opts.now()).toBe(40_000);
+  });
+
+  it("gives up LATE_RUNS_MS after the push, approving what showed up and naming the rest", () => {
+    const { ctx, approved, opts } = fake({ [SHA_A]: [[run(1, "CI", SHA_A)]] });
+    const [result] = approveLateRuns(ctx, [{ sha: SHA_A, pushedAt: 0, approved: [] }], { deadline: 60 * 60_000, ...opts });
+    expect(result).toEqual({ approved: ["CI"], failed: [], errors: [], missing: ["CodeQL", "Merge order"] });
+    expect(approved).toEqual([1]);
+    expect(opts.now()).toBe(LATE_RUNS_MS);
+  });
+
+  it("never waits past the deadline that keeps the job inside its timeout", () => {
+    const { ctx, opts } = fake({});
+    const [result] = approveLateRuns(ctx, [{ sha: SHA_A, pushedAt: 0, approved: [] }], { deadline: 60_000, ...opts });
+    expect(result?.missing).toEqual(["CI", "CodeQL", "Merge order"]);
+    expect(opts.now()).toBe(60_000);
+  });
+
+  it("gives up on each commit LATE_RUNS_MS after its own push", () => {
+    const { ctx, count, opts } = fake({});
+    const results = approveLateRuns(
+      ctx,
+      [
+        { sha: SHA_A, pushedAt: 0, approved: [] },
+        { sha: SHA_B, pushedAt: 60_000, approved: [] },
+      ],
+      { deadline: 60 * 60_000, ...opts },
+    );
+    expect(results.map((r) => r.missing.length)).toEqual([3, 3]);
+    expect(opts.now()).toBe(LATE_RUNS_MS + 60_000);
+    // One more read for B: it was still waiting while A had given up.
+    expect((count[SHA_B] ?? 0) - (count[SHA_A] ?? 0)).toBe(3);
+  });
+
+  it("reads once and stops when the deadline already passed", () => {
+    const { ctx, count, opts } = fake({ [SHA_A]: [[run(1, "CI", SHA_A)]] });
+    opts.sleep(5 * 60_000);
+    const [result] = approveLateRuns(ctx, [{ sha: SHA_A, pushedAt: 0, approved: [] }], { deadline: 60_000, ...opts });
+    expect(result?.approved).toEqual(["CI"]);
+    expect(count[SHA_A]).toBe(1);
+    expect(opts.now()).toBe(5 * 60_000);
+  });
+
+  it("names a run approved in the first round once, even if it still reads as held", () => {
+    const { ctx, opts } = fake({ [SHA_A]: [all(SHA_A, 1)] });
+    const [result] = approveLateRuns(ctx, [{ sha: SHA_A, pushedAt: 0, approved: ["CI"] }], { deadline: RUN_BUDGET_MS, ...opts });
+    expect(result?.approved).toEqual(["CI", "CodeQL", "Merge order"]);
+  });
+
+  it("retries a refused approval with short waits once the wait is over", () => {
+    const { ctx, opts } = fake({ [SHA_A]: [all(SHA_A, 1)] });
+    const exec = ctx.exec;
+    let refused = 0;
+    const flaky = {
+      ...ctx,
+      exec: (cmd: string, args: string[]) => {
+        if (/runs\/3\/approve$/.test(args.at(-1) ?? "") && refused++ === 0) throw Object.assign(new Error("gh failed"), { stderr: "HTTP 500\n" });
+        return exec(cmd, args);
+      },
+    };
+    const [result] = approveLateRuns(flaky, [{ sha: SHA_A, pushedAt: 0, approved: [] }], { deadline: RUN_BUDGET_MS, ...opts });
+    expect(result?.approved).toEqual(["CI", "CodeQL", "Merge order"]);
+    expect(opts.now()).toBe(LATE_APPROVE_RETRY_MS);
+  });
+
+  it("keeps waiting through a failed read", () => {
+    const { ctx, approved, opts } = fake({ [SHA_A]: [all(SHA_A, 1)] }, { [SHA_A]: 2 });
+    const [result] = approveLateRuns(ctx, [{ sha: SHA_A, pushedAt: 0, approved: [] }], { deadline: RUN_BUDGET_MS, ...opts });
+    expect(result?.missing).toEqual([]);
+    expect(approved).toEqual([1, 2, 3]);
+  });
+
+  it("never approves a run someone else started or a fork's while waiting", () => {
+    const { ctx, approved, opts } = fake({
+      [SHA_A]: [[run(1, "CI", SHA_A, { actor: { login: "outra-pessoa" } }), run(2, "CodeQL", SHA_A, { head_repository: { full_name: "outra/zuri" } }), run(3, "Merge order", SHA_A)]],
+    });
+    const [result] = approveLateRuns(ctx, [{ sha: SHA_A, pushedAt: 0, approved: [] }], { deadline: RUN_BUDGET_MS, ...opts });
+    expect(approved).toEqual([3]);
+    expect(result?.missing).toEqual(["CodeQL"]);
+  });
+
+  it("fits the wait inside the update job's timeout", () => {
+    const workflow = readFileSync(join(import.meta.dirname, "../../.github/workflows/update-prs.yml"), "utf8");
+    const minutes = Number(workflow.match(/^ {4}timeout-minutes: (\d+)$/m)?.[1]);
+    // Worst case: the budget, then 3 refused approvals (3 calls, 4 waits) for 3 runs of each of 5 late pull requests.
+    expect(RUN_BUDGET_MS + 5 * 3 * 4 * LATE_APPROVE_RETRY_MS).toBeLessThan((minutes - 2) * 60_000);
+    expect(LATE_RUNS_MS).toBeGreaterThan(9 * 60_000);
   });
 });
 
