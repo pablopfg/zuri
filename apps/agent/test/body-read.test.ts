@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHAT_BODY_MAX_BYTES, MEMORY_BODY_MAX_BYTES, NOTE_BODY_MAX_BYTES, TASK_BODY_MAX_BYTES, VOICE_BASE64_MAX } from "@zuri/shared";
+import { BACKUP_IMPORT_MAX_BYTES, BACKUP_IMPORT_PATH, CHAT_BODY_MAX_BYTES, MEMORY_BODY_MAX_BYTES, NOTE_BODY_MAX_BYTES, TASK_BODY_MAX_BYTES, VOICE_BASE64_MAX } from "@zuri/shared";
 import { API_BODY_MAX_BYTES, bodyLimitFor, VOICE_BODY_MAX_BYTES, VOICE_PATH, withBodyRead } from "../src/gates/body.ts";
 import { CSRF, call, errorBody, ORIGIN } from "./helpers.ts";
 
@@ -90,6 +90,16 @@ describe("withBodyRead", () => {
       },
     });
     expect(await refusal(withBodyRead(post(broken)))).toMatchObject({ code: "VALIDATION_FAILED" });
+  });
+
+  it("SEC-A1-01: reads a backup's 10 MB only for a request that could be the owner's", () => {
+    const owner = new Headers({ ...CSRF, cookie: "__Host-zuri_device=d; __Host-zuri_session=s" });
+    expect(bodyLimitFor(BACKUP_IMPORT_PATH, owner)).toBe(BACKUP_IMPORT_MAX_BYTES);
+    expect(bodyLimitFor(BACKUP_IMPORT_PATH)).toBe(API_BODY_MAX_BYTES);
+    expect(bodyLimitFor(BACKUP_IMPORT_PATH, new Headers(CSRF))).toBe(API_BODY_MAX_BYTES);
+    expect(bodyLimitFor(BACKUP_IMPORT_PATH, new Headers({ cookie: "__Host-zuri_session=s" }))).toBe(API_BODY_MAX_BYTES);
+    expect(bodyLimitFor(BACKUP_IMPORT_PATH, new Headers({ ...CSRF, cookie: "__Host-zuri_session_x=s" }))).toBe(API_BODY_MAX_BYTES);
+    expect(bodyLimitFor("/api/notes", owner)).toBe(API_BODY_MAX_BYTES);
   });
 
   it("reads a voice clip's size only on the voice route", async () => {

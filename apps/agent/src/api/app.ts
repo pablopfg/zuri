@@ -68,6 +68,7 @@ import { type FlowRouteDeps, registerFlowRoutes } from "./flows.ts";
 import { type CrmRouteDeps, registerCrmEvents, registerCrmRoutes } from "./crm.ts";
 import { registerTelegramRoutes, registerTelegramWebhook, type TelegramDeps } from "./telegram.ts";
 import { type RemoteRouteDeps, registerRemoteGate, registerRemoteRoutes } from "./remote.ts";
+import { type BackupRouteDeps, registerBackupRoutes } from "./backup.ts";
 import type { RemoteCaller } from "../remote/tokens.ts";
 import { log, rayOf, routeLabel } from "../log.ts";
 import type { AgentConfigs } from "../specialists/configs.ts";
@@ -117,6 +118,8 @@ export interface ApiDeps {
   flows?(): FlowRouteDeps;
   /** The internal CRM and n8n's events (step 22b). Absent only in tests of other routes. */
   crm?(): CrmRouteDeps;
+  /** Storage use, the export and the import (step 23). Absent only in tests of other routes. */
+  backup?(): BackupRouteDeps;
   /** Remote access tokens and the events they send (step 20). Absent: every Bearer token is refused. */
   remote?(): RemoteRouteDeps;
   /** Each agent's settings on the AI screen (guardrails, PR 2). Absent only in tests of other routes. */
@@ -538,6 +541,8 @@ export function createApi(deps: ApiDeps) {
   const flows = deps.flows;
   if (flows) registerFlowRoutes(app, () => flows(), client);
   if (crm) registerCrmRoutes(app, () => crm(), client);
+  const backup = deps.backup;
+  if (backup) registerBackupRoutes(app, () => backup(), client);
   const remote = deps.remote;
   if (remote) registerRemoteRoutes(app, () => remote(), () => deps.auth(), client);
 

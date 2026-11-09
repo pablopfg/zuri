@@ -339,6 +339,7 @@ function registeredRoutes(): string[] {
     flows: unused,
     crm: unused,
     remote: unused,
+    backup: unused,
     agents: unused,
     versions: unused,
     passwordSecretSet: () => true,
@@ -349,7 +350,7 @@ function registeredRoutes(): string[] {
 }
 
 /** Areas no token ever reaches, whatever its scope (spec, "Contrato da API", and decisions of steps 16, 22a and 22b). */
-const NEVER = ["/api/auth", "/api/setup", "/api/telegram", "/api/approvals", "/api/lockdown", "/api/actions", "/api/plans", "/api/chat", "/api/flows", "/api/crm", "/api/remote/tokens", "/api/mcp", "/api/google", "/api/reviews", "/api/settings", "/api/trash", "/api/alerts", "/api/semantic", "/api/search", "/api/ai"];
+const NEVER = ["/api/auth", "/api/setup", "/api/telegram", "/api/approvals", "/api/lockdown", "/api/actions", "/api/plans", "/api/chat", "/api/flows", "/api/crm", "/api/remote/tokens", "/api/backup", "/api/mcp", "/api/google", "/api/reviews", "/api/settings", "/api/trash", "/api/alerts", "/api/semantic", "/api/search", "/api/ai"];
 
 /** Paths the Worker answers before the object (src/index.ts): a token there never reaches the API. */
 const WORKER_ANSWERS = ["/api/google/push", "/api/crm/events/"];

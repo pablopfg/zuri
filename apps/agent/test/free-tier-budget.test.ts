@@ -611,6 +611,13 @@ describe("the Free plan budget of each route", () => {
       agent.store.db.run(`DELETE FROM zur_settings WHERE key LIKE 'lockdown_%'`);
     });
   });
+  it("storage use (step 23): the Data tab's card reads one counter row per kind and writes nothing, whatever the backlog", async () => {
+    const use = await cost("GET", "/storage");
+    expect(use.status).toBe(200);
+    // The session check, then one row of zur_counts per kind (8), never a table scan of the 1,000s of rows above.
+    expect(use.read).toBeLessThanOrEqual(15);
+    expect(use.written).toBe(0);
+  });
   it("remote access (step 20): the screen, a new token, a token's read and write, a refused try and an event read and write a handful of rows", async () => {
     const bearerCost = async (token: string, method: string, path: string, ip: string, body?: unknown) => {
       const usage = () => runInDurableObject(owner(), (agent: ZuriAgent) => ({ ...agent.store.db.usage }));
