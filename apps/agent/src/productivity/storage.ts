@@ -24,7 +24,8 @@ export type CountKind =
   | "notices"
   | "security_notices"
   | "notices_unread"
-  | "alert_deliveries";
+  | "alert_deliveries"
+  | "crm_clients";
 
 /**
  * The limits per kind and the database ceiling (rule 9). They only ever refuse
@@ -60,6 +61,11 @@ export class StorageGuard {
    */
   assertEditFits(before: readonly (string | null)[], after: readonly (string | null)[]): void {
     if (utf8Bytes(after) > utf8Bytes(before)) this.assertBytes();
+  }
+
+  /** The database file's size in bytes (Settings › Data). */
+  bytes(): number {
+    return this.db.size();
   }
 
   /** Throws STORAGE_LIMIT_REACHED when the database reached its ceiling; deleting (and emptying the trash) lifts it. */

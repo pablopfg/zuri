@@ -69,6 +69,8 @@ export const AUTH_EVENT_KINDS = [
   "remote_token_rejected",
   "remote_write",
   "telegram_token_revoked",
+  "backup_exported",
+  "backup_imported",
 ] as const;
 export type AuthEventKind = (typeof AUTH_EVENT_KINDS)[number];
 

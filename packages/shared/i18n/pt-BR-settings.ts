@@ -74,7 +74,6 @@ export const ptBRSettings = {
   "web.security.laterTitle": "Em breve nesta aba",
   "web.security.laterBody": "Lista de sessões abertas e modo de bloqueio.",
   "web.settings.description": "Sua conta, a segurança e o que a Zuri pode usar.",
-  "web.settings.later.data": "Backup e uso do armazenamento chegam numa próxima versão.",
   "web.passwordNow.mfaTitle": "Antes de ligar, confirme que é você",
   "web.passwordNow.mfaBody": "Digite a sua senha para continuar. Mesmo que você tenha entrado agora há pouco, ela é pedida de novo, para que só você consiga ligar a verificação.",
   "web.passwordNow.passkeyTitle": "Antes de criar a passkey, confirme que é você",

@@ -44,6 +44,7 @@ export const LOG_EVENTS = [
   "automation_interrupted",
   "flow_failed",
   "crm_alarm_failed",
+  "backup_export_skipped",
   "flow_interrupted",
   "automation_reconcile_failed",
   "ai_fallback",

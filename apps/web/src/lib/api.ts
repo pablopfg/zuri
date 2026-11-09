@@ -49,6 +49,8 @@ const SIGN_IN_PATHS = new Set(["/auth/login", "/auth/mfa", "/auth/mfa/passkey/op
 export interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
+  /** A JSON body already in text (a backup file): sent as it is, without parsing it here. */
+  json?: string;
   signal?: AbortSignal;
 }
 
@@ -60,12 +62,21 @@ export interface RequestOptions {
  * sensitive action that needs the password again asks once, then repeats.
  */
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return withRecentAuth(() => request<T>(path, options));
+}
+
+/** A file from /api (a backup export): the body as a Blob, with the same refusals and password check as api(). */
+export async function download(path: string): Promise<Blob> {
+  return withRecentAuth(() => request<Blob>(path, { blob: true }));
+}
+
+async function withRecentAuth<T>(send: () => Promise<T>): Promise<T> {
   try {
-    return await request<T>(path, options);
+    return await send();
   } catch (error) {
     if (!(error instanceof ApiError) || error.code !== "RECENT_AUTH_REQUIRED" || !confirmHandler) throw error;
     if (!(await confirmHandler())) throw error;
-    return request<T>(path, options);
+    return send();
   }
 }
 
@@ -75,13 +86,13 @@ export function setFallbackMessages(fn: (kind: "network" | "server") => string):
   fallbackMessage = fn;
 }
 
-async function request<T>(path: string, { method = "GET", body, signal }: RequestOptions): Promise<T> {
+async function request<T>(path: string, { method = "GET", body, json, signal, blob }: RequestOptions & { blob?: boolean }): Promise<T> {
   const headers: Record<string, string> = { [CSRF_HEADER]: "1" };
   if (method !== "GET" && recentlyUsed()) {
     headers[ACTIVITY_HEADER] = "1";
     noteReported();
   }
-  if (body !== undefined) headers["content-type"] = "application/json";
+  if (body !== undefined || json !== undefined) headers["content-type"] = "application/json";
   let res: Response;
   try {
     res = await fetch(`/api${path}`, {
@@ -89,7 +100,7 @@ async function request<T>(path: string, { method = "GET", body, signal }: Reques
       credentials: "same-origin",
       cache: "no-store",
       headers,
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      ...(json !== undefined ? { body: json } : body !== undefined ? { body: JSON.stringify(body) } : {}),
       ...(signal ? { signal } : {}),
     });
   } catch (error) {
@@ -105,6 +116,7 @@ async function request<T>(path: string, { method = "GET", body, signal }: Reques
   }
   // 202: the server took the request and says nothing more (the recovery link, step 11c).
   if (res.status === 204 || res.status === 202) return undefined as T;
+  if (blob) return (await res.blob()) as T;
   return (await res.json()) as T;
 }
 

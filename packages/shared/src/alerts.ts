@@ -116,6 +116,8 @@ export const SECURITY_ALERT_EVENTS = [
   "remote_enabled",
   "remote_token_created",
   "telegram_token_revoked",
+  "backup_exported",
+  "backup_imported",
 ] as const satisfies readonly AuthEventKind[];
 export type SecurityAlertEvent = (typeof SECURITY_ALERT_EVENTS)[number];
 

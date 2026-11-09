@@ -1,7 +1,7 @@
-import { NOTE_BODY_MAX_BYTES, VOICE_BASE64_MAX } from "@zuri/shared";
+import { BACKUP_IMPORT_MAX_BYTES, BACKUP_IMPORT_PATH, NOTE_BODY_MAX_BYTES, VOICE_BASE64_MAX } from "@zuri/shared";
 import { readBodyLimited } from "../api/http.ts";
 
-/** The voice clip route (api/chat.ts), the only one that reads more than a note. */
+/** The voice clip route (api/chat.ts); with the backup import, the only ones that read more than a note. */
 export const VOICE_PATH = "/api/transcribe";
 
 /** A voice clip, base64 in JSON: the most the Worker reads, and only on VOICE_PATH. */
@@ -12,7 +12,11 @@ export const API_BODY_MAX_BYTES = NOTE_BODY_MAX_BYTES;
 
 /** How much the Worker reads for a path, before anyone knows who is asking. */
 export function bodyLimitFor(pathname: string): number {
-  return pathname.replace(/\/+$/, "") === VOICE_PATH ? VOICE_BODY_MAX_BYTES : API_BODY_MAX_BYTES;
+  const path = pathname.replace(/\/+$/, "");
+  if (path === VOICE_PATH) return VOICE_BODY_MAX_BYTES;
+  // A backup file to import (step 23): 10 MB, the spec's ceiling, read only on this path.
+  if (path === BACKUP_IMPORT_PATH) return BACKUP_IMPORT_MAX_BYTES;
+  return API_BODY_MAX_BYTES;
 }
 
 /**

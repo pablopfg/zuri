@@ -223,6 +223,31 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     flows: () => ({ flows: this.store.flows, connections: this.store.flows.connections, auth: this.store.auth, development: () => this.development() }),
     crm: () => ({ crm: this.store.crm, events: this.store.crmEvents, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
     remote: () => ({ tokens: this.store.remoteTokens, events: this.store.remoteEvents }),
+    backup: () => {
+      const { db, settings, productivity, crm, auth, automations } = this.store;
+      let zoneBefore: string | null = null;
+      return {
+        auth,
+        storage: productivity.storage,
+        exporter: { db, settings: () => settings.get() },
+        importer: {
+          db,
+          storage: productivity.storage,
+          crm,
+          applySettings: (patch) => {
+            zoneBefore = settings.field("timeZone");
+            settings.update(patch);
+            return Object.keys(patch).length;
+          },
+        },
+        afterImport: async () => {
+          crm.planReminder();
+          // A new zone moves every wall-clock time, as in PATCH /settings.
+          if (zoneBefore !== null && settings.field("timeZone") !== zoneBefore) await automations.rescheduleAll();
+          else await automations.rearm();
+        },
+      };
+    },
     google: () => ({
       google: this.store.google,
       contacts: this.store.contacts,
