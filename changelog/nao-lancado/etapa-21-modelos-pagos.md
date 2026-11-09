@@ -33,6 +33,10 @@
   OpenAI recebe `store: false`. O AI Gateway não é usado.
 - Sem crédito ou com a chave recusada, a empresa fica de lado até você tocar no
   botão, e a reserva grátis responde no lugar.
+- Fluxos e respostas a avaliações nunca usam modelo pago: eles têm teto próprio
+  em Neurons e ficam no modelo grátis.
+- A marca "Nunca enviar para fora" acompanha a memória corrigida, a nota que
+  volta da lixeira e o título da nota.
 
 ### Atualização
 
