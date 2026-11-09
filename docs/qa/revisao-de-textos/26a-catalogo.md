@@ -1,6 +1,6 @@
 # Textos revistos desde `origin/develop`
 
-190 chaves mudaram (erro: 59 · texto curto: 48 · toast: 34 · aviso: 15 · bot: 11 · texto: 11 · aviso (título): 5 · vazio: 3 · título: 3 · rótulo: 1).
+192 chaves mudaram (erro: 59 · texto curto: 48 · toast: 34 · aviso: 15 · texto: 13 · bot: 11 · aviso (título): 5 · vazio: 3 · título: 3 · rótulo: 1).
 
 | Chave | Tipo | pt-BR (antes → depois) | en (antes → depois) |
 | --- | --- | --- | --- |
@@ -147,6 +147,7 @@
 | `web.contacts.card.labelsSaved` | texto curto | Etiquetas salvas. → **Etiquetas salvas** | Labels saved. → **Labels saved** |
 | `web.contacts.card.noticesSaved` | texto curto | Avisos salvos. → **Avisos salvos** | Notices saved. → **Notices saved** |
 | `web.contacts.card.synced.toast` | toast | Contatos sincronizados. → **Contatos sincronizados** | Contacts synced. → **Contacts synced** |
+| `web.crash.body` | texto | Esta tela parou por causa de um erro. Recarregue para tentar de novo; o que já estava salvo continua na Zuri. → **Recarregue para tentar de novo. O que já estava salvo continua na Zuri.** | This screen stopped because of an error. Reload to try again; what was already saved is still in Zuri. → **Reload to try again. What was already saved is still in Zuri.** |
 | `web.crash.title` | título | Algo deu errado → **Esta tela parou** | Something went wrong → **This screen stopped** |
 | `web.crm.create` | texto curto | Cadastrar → **Adicionar** | (igual) |
 | `web.crm.created` | toast | Cliente cadastrado → **Cliente adicionado** | (igual) |
@@ -179,6 +180,7 @@
 | `web.lockdown.notMe` | texto curto | Não fui eu: desvincular o Telegram → **Não fui eu: desconectar o Telegram** | It wasn't me: unlink Telegram → **It wasn't me: disconnect Telegram** |
 | `web.lockdown.notMeBody` | texto | Então alguém está com o seu Telegram. Desvincule agora: o bot para de ouvir aquela conta na hora. Depois, troque a senha. → **Então alguém está com o seu Telegram. Desconecte agora: o bot para de ouvir aquela conta na hora. Depois, troque a senha.** | Then someone has your Telegram. Unlink it now: the bot stops listening to that account at once. Then change your password. → **Then someone has your Telegram. Disconnect it now: the bot stops listening to that account at once. Then change your password.** |
 | `web.lockdown.unlinked` | toast | Telegram desvinculado. O bloqueio continua até você sair dele. → **Telegram desconectado. O bloqueio continua até você sair dele.** | Telegram unlinked. Lockdown stays on until you leave it. → **Telegram disconnected. Lockdown stays on until you leave it.** |
+| `web.login.lead` | texto | Tarefas, notas e lembranças organizadas por um assistente que aprende com você. → **Tarefas, notas e lembranças organizadas por uma assistente que aprende com você.** | (igual) |
 | `web.memory.deleted` | toast | Memória apagada. → **Memória apagada** | Memory deleted. → **Memory deleted** |
 | `web.memory.saved` | toast | Memória guardada. → **Memória guardada** | Memory saved. → **Memory saved** |
 | `web.memory.updated` | toast | Memória corrigida. → **Memória corrigida** | Memory fixed. → **Memory fixed** |
