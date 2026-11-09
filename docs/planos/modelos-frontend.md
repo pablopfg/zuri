@@ -27,7 +27,7 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 
 - Protótipo: `docs/planos/modelos-frontend/prototipo-v5.html` (a barra do topo troca a tela e o tema).
 - Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, **Contatos**, Automações, Memória, Configurações, **Estados das telas** e Identidade visual.
-- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (148 imagens: as 12 telas e mais 25 vistas de dentro delas, entre elas o carregando, os painéis de perfil e de avisos, a nota nova, a memória e a conversa por voz, o assistente de automação, os fluxos, a ficha de contato com WhatsApp, a avaliação com homônimos, os pedidos de avaliação, as oito seções das configurações e o ajuste de um agente), e a comparação com a rodada 3 em `antes-depois-*.png`.
+- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (160 imagens: as 12 telas e mais 28 vistas de dentro delas, entre elas o carregando, os painéis de perfil e de avisos, a nota nova, a memória e a conversa por voz, o assistente de automação, os fluxos, a ficha de contato com WhatsApp, a avaliação com homônimos, os pedidos de avaliação, as nove seções das configurações, o ajuste de um agente, o mês da agenda e a aba Prontos), e a comparação com a rodada 3 em `antes-depois-*.png`.
 - Acessibilidade: axe (WCAG 2.1 e 2.2 A/AA e boas práticas) sem nenhuma violação nas 136 combinações, e nenhum erro de script.
 
 O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a fonte Figtree, os neutros em zinco e o verde como cor de ação. O que mudou foi o acabamento, regra por regra.

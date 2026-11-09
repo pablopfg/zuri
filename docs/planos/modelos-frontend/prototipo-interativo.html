@@ -1647,7 +1647,7 @@ body>#app{flex:1 1 auto;min-height:0;overflow:auto}
 .card.day>ul{list-style:none;margin:0;padding:0}
 .card.day>ul+ul>li:first-child,.day-past+ul>li:first-child,.day-bar+ul>li:first-child{border-top:1px solid var(--line-soft)}
 .day-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:48px;padding:6px 0}
-.day-fold{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 10px 0 6px;margin-left:-6px;border-radius:var(--r-sm);font-size:var(--t-sm);font-weight:500;color:var(--ink-2)}
+.day-fold{font:inherit;border:0;background:transparent;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 10px 0 6px;margin-left:-6px;border-radius:var(--r-sm);font-size:var(--t-sm);font-weight:500;color:var(--ink-2)}
 .day-fold:hover{background:var(--sunken)}
 .day-fold .ic{transition:transform .25s ease;transform:rotate(-90deg)}
 .day-fold[aria-expanded="true"] .ic{transform:none}
@@ -1719,13 +1719,13 @@ body>#app{flex:1 1 auto;min-height:0;overflow:auto}
 .month{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);box-shadow:var(--shadow-xs)}
 .m-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
 .m-head span{padding:10px 8px;font-size:var(--t-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:center;border-bottom:1px solid var(--line)}
-.m-day{display:flex;flex-direction:column;align-items:stretch;gap:3px;min-height:96px;padding:6px;border:0;border-top:1px solid var(--line-soft);border-left:1px solid var(--line-soft);background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer;min-width:0}
-.m-row .m-day:first-child{border-left:0}
+.m-cell{display:flex;min-width:0;border-top:1px solid var(--line-soft);border-left:1px solid var(--line-soft)}
+.m-row .m-cell:first-child{border-left:0}
+.m-day{flex:1;display:flex;flex-direction:column;align-items:stretch;gap:3px;min-height:96px;padding:6px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer;min-width:0}
 .m-day:hover{background:var(--hover)}
 .m-day b{font-size:var(--t-sm);font-weight:600;width:28px;height:28px;display:inline-grid;place-items:center;border-radius:50%}
 .m-day.today b{background:var(--accent);color:var(--on-accent)}
-.m-out{background:var(--sunken);cursor:default}
-.m-out:hover{background:var(--sunken)}
+.m-out{background:var(--sunken)}
 .m-ev{display:block;padding:2px 6px;border-radius:6px;background:var(--accent-soft);color:var(--accent-soft-ink);font-size:var(--t-xs);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .m-more{font-size:var(--t-xs);color:var(--muted);padding-left:6px}
 @media (max-width:820px){
@@ -2327,7 +2327,7 @@ function agenda() {
   while (cells.length % 7) cells.push(0);
   const evOf = (d) => (d >= 9 && d <= 15 ? E[d - 9].map((e) => e[3]) : AGM[d] || []);
   const month = `<div class="month" role="table" aria-label="Novembro de 2026"><div role="row" class="m-row m-head">${["seg", "ter", "qua", "qui", "sex", "sáb", "dom"].map((d) => `<span role="columnheader">${d}</span>`).join("")}</div>
-    ${Array.from({ length: cells.length / 7 }, (_, w) => `<div role="row" class="m-row">${cells.slice(w * 7, w * 7 + 7).map((d) => (d ? `<button type="button" role="cell" class="m-day${d === 9 ? " today" : ""}${evOf(d).length ? " has" : ""}" data-md="${d}" aria-label="${d} de novembro${evOf(d).length ? `, ${evOf(d).length === 1 ? "1 evento" : `${evOf(d).length} eventos`}` : ", sem eventos"}"><b class="num">${d}</b>${evOf(d).slice(0, 2).map((t) => `<span class="m-ev">${t}</span>`).join("")}${evOf(d).length > 2 ? `<span class="m-more">+${evOf(d).length - 2}</span>` : ""}</button>` : `<span role="cell" class="m-day m-out"></span>`)).join("")}</div>`).join("")}</div>`;
+    ${Array.from({ length: cells.length / 7 }, (_, w) => `<div role="row" class="m-row">${cells.slice(w * 7, w * 7 + 7).map((d) => (d ? `<div role="cell" class="m-cell"><button type="button" class="m-day${d === 9 ? " today" : ""}${evOf(d).length ? " has" : ""}" data-md="${d}" aria-label="${d} de novembro${evOf(d).length ? `, ${evOf(d).length === 1 ? "1 evento" : `${evOf(d).length} eventos`}` : ", sem eventos"}"><b class="num">${d}</b>${evOf(d).slice(0, 2).map((t) => `<span class="m-ev">${t}</span>`).join("")}${evOf(d).length > 2 ? `<span class="m-more">+${evOf(d).length - 2}</span>` : ""}</button></div>` : `<div role="cell" class="m-cell m-out"></div>`)).join("")}</div>`).join("")}</div>`;
   const body = av === "mes" ? month : av === "dia" ? strip : `${week}${strip}`;
   return `<div class="page page-wide ag-${av}">${head}${bar}${body}</div>`;
 }
@@ -3169,12 +3169,18 @@ function busy(btn, ms, done) {
   setTimeout(() => { btn.disabled = false; btn.innerHTML = html; done(); btn.focus(); }, ms);
 }
 /* Arquivo de verdade para baixar. */
-function baixar(nome, tipo, texto) {
+/* No link publicado, o arquivo sai pela confirmação de download do visualizador; no arquivo local, por um link comum. */
+let DL = null;
+if (window.claude && typeof window.claude.use === "function") window.claude.use("downloads").then((d) => { DL = d; }, () => {});
+function baixar(nome, tipo, texto, msg) {
+  const blob = new Blob([texto], { type: tipo });
+  if (DL) { DL.save({ filename: nome, data: blob }).then(() => say(msg), (err) => { if (!err || err.code !== "declined") say("Não deu para baixar o arquivo aqui."); }); return; }
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([texto], { type: tipo }));
+  a.href = URL.createObjectURL(blob);
   a.download = nome;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  say(msg);
 }
 const say = (m) => { if (typeof toast === "function") toast(m); else { let s = document.getElementById("say"); if (!s) { s = document.createElement("p"); s.id = "say"; s.className = "say-box"; s.setAttribute("role", "status"); document.body.appendChild(s); } s.textContent = m; clearTimeout(s._t); s._t = setTimeout(() => { s.textContent = ""; }, 5000); } };
 const rowOf = (t) => t.closest("li, .ctl-row, .sw-row, tr") || t.parentElement;
@@ -3256,7 +3262,7 @@ const ACT = [
   [(t) => t.matches("[data-ac-f]"), (t) => acessosDlg(DLG.opener, t.dataset.acF)],
 
   /* conversa */
-  [(t) => t.matches("[data-x=chat-menu]"), (t) => menuDlg("Opções da conversa", [["pencil", "Renomear", () => dlgShow({ t: "Renomear a conversa", body: `<label class="field"><span class="label">Nome</span><input class="input" data-rn value="${esc(document.querySelector(".chat-head h1").textContent)}"></label>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar</button>`, ok: () => { const v = dlgVal("[data-rn]"); if (v) document.querySelector(".chat-head h1").textContent = v; say("Conversa renomeada."); } })], ["download", "Exportar em texto", () => { baixar("conversa.txt", "text/plain", [...document.querySelectorAll(".thread .say, .thread .bubble")].map((e) => e.textContent.trim()).join("\n\n")); say("Conversa baixada."); }], ["trash-2", "Apagar a conversa", () => confirmDlg("Apagar esta conversa?", "Ela some da lista. As tarefas criadas por ela continuam.", "Apagar", () => { say("Conversa apagada."); if (typeof go === "function") go("inicio"); else { st.s = "inicio"; render(); } }), true]], t)],
+  [(t) => t.matches("[data-x=chat-menu]"), (t) => menuDlg("Opções da conversa", [["pencil", "Renomear", () => dlgShow({ t: "Renomear a conversa", body: `<label class="field"><span class="label">Nome</span><input class="input" data-rn value="${esc(document.querySelector(".chat-head h1").textContent)}"></label>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar</button>`, ok: () => { const v = dlgVal("[data-rn]"); if (v) document.querySelector(".chat-head h1").textContent = v; say("Conversa renomeada."); } })], ["download", "Exportar em texto", () => { baixar("conversa.txt", "text/plain", [...document.querySelectorAll(".thread .say, .thread .bubble")].map((e) => e.textContent.trim()).join("\n\n"), "Conversa baixada."); }], ["trash-2", "Apagar a conversa", () => confirmDlg("Apagar esta conversa?", "Ela some da lista. As tarefas criadas por ela continuam.", "Apagar", () => { say("Conversa apagada."); if (typeof go === "function") go("inicio"); else { st.s = "inicio"; render(); } }), true]], t)],
   [(t) => t.matches("[data-x=plan-edit]"), (t) => { const items = [...document.querySelectorAll(".plan li .t")]; dlgShow({ t: "Editar o plano", sub: "Nada é criado antes de você confirmar.", body: items.map((e, k) => `<label class="field"><span class="label">Tarefa ${k + 1}</span><input class="input" data-pl="${k}" value="${esc(e.textContent)}"></label>`).join(""), foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar plano</button>`, ok: () => { items.forEach((e, k) => { const v = dlgVal(`[data-pl="${k}"]`); if (v) e.textContent = v; }); say("Plano atualizado. Revise e confirme."); } }, t); }],
 
   /* tarefas e notas */
@@ -3265,7 +3271,7 @@ const ACT = [
   [(t) => t.matches("[data-tp-clear]"), () => { st.tp = ""; render(); refocus("#tp"); }],
   [(t) => t.matches("[data-tt]"), (t) => { st.tt = t.dataset.tt; render(); refocus(`[data-tt="${st.tt}"]`); }],
   [(t) => t.matches("[data-x=nota-pasta]"), (t) => menuDlg("Pôr numa pasta", PASTAS.map((p) => ["folder", esc(p.n), () => { const n = NOTES.find((x) => x.id === (st.n || NOTES[0].id)) || NOTES[0]; n.proj = p.n; render(); say(`Nota na pasta “${p.n}”.`); }]), t)],
-  [(t) => t.matches("[data-x=nota-menu]"), (t) => { const n = NOTES.find((x) => x.id === st.n) || NOTES[0]; menuDlg("Mais ações da nota", [["copy", "Duplicar", () => { NOTES.unshift({ ...n, id: `${n.id}-copia`, t: `${n.t} (cópia)`, d: "Agora", saved: "agora" }); st.n = `${n.id}-copia`; render(); say("Nota duplicada."); }], ["download", "Baixar em Markdown", () => { baixar(`${(n.t || "nota").toLowerCase().replace(/\s+/g, "-")}.md`, "text/markdown", `# ${n.t}\n\n${(document.getElementById("n-body") || {}).innerText || ""}`); say("Nota baixada."); }], ["trash-2", "Apagar", () => confirmDlg(`Apagar a nota “${esc(n.t || "sem título")}”?`, "Ela fica 30 dias na lixeira.", "Apagar", () => { NOTES.splice(NOTES.indexOf(n), 1); st.n = ""; render(); say("Nota na lixeira."); }), true]], t); }],
+  [(t) => t.matches("[data-x=nota-menu]"), (t) => { const n = NOTES.find((x) => x.id === st.n) || NOTES[0]; menuDlg("Mais ações da nota", [["copy", "Duplicar", () => { NOTES.unshift({ ...n, id: `${n.id}-copia`, t: `${n.t} (cópia)`, d: "Agora", saved: "agora" }); st.n = `${n.id}-copia`; render(); say("Nota duplicada."); }], ["download", "Baixar em Markdown", () => { baixar(`${(n.t || "nota").toLowerCase().replace(/\s+/g, "-")}.md`, "text/markdown", `# ${n.t}\n\n${(document.getElementById("n-body") || {}).innerText || ""}`, "Nota baixada."); }], ["trash-2", "Apagar", () => confirmDlg(`Apagar a nota “${esc(n.t || "sem título")}”?`, "Ela fica 30 dias na lixeira.", "Apagar", () => { NOTES.splice(NOTES.indexOf(n), 1); st.n = ""; render(); say("Nota na lixeira."); }), true]], t); }],
 
   /* agenda */
   [(t) => t.matches("[data-x=evento]"), (t) => eventoDlg(t.closest("#dlg-host") ? DLG.opener : t)],
@@ -3288,7 +3294,7 @@ const ACT = [
 
   /* segurança */
   [(t) => t.matches("[data-x=codes]"), (t) => senhaDlg("Os códigos antigos param de valer.", () => { const c = Array.from({ length: 10 }, (_, k) => `${(4821 + k * 733) % 9000 + 1000}-${(1297 + k * 571) % 9000 + 1000}`); setTimeout(() => dlgShow({ t: "Códigos de recuperação", sub: "Guarde num lugar seguro. Cada um vale uma vez.", body: `<ol class="codes num">${c.map((x) => `<li>${x}</li>`).join("")}</ol>`, foot: `<span class="grow"></span><button class="btn btn-secondary" type="button" data-x="codes-dl">${ic("download", "ic-sm")}Baixar</button><button class="btn btn-primary" type="button" data-dlg-x>Guardei</button>`, codes: c })); }, t)],
-  [(t) => t.matches("[data-x=codes-dl]"), () => { baixar("codigos-de-recuperacao.txt", "text/plain", DLG.def.codes.join("\n")); say("Códigos baixados."); }],
+  [(t) => t.matches("[data-x=codes-dl]"), () => { baixar("codigos-de-recuperacao.txt", "text/plain", DLG.def.codes.join("\n"), "Códigos baixados."); }],
   [(t) => t.matches("[data-x=mfa-off]"), (t) => senhaDlg("Sem duas etapas, só a senha protege a conta.", () => setTimeout(() => confirmDlg("Desligar a verificação em duas etapas?", "A Zuri vai lembrar você de ligar de novo.", "Desligar", () => { const p = t.closest(".set-row").querySelector(".t"); if (p) p.innerHTML = `${ic("shield-off", "ic-sm")} Desligada agora`; t.disabled = true; say("Duas etapas desligadas."); })), t)],
   [(t) => t.matches("[data-x=pk-ren]"), (t) => { const r = rowOf(t); const b = r.querySelector(".t"); dlgShow({ t: "Renomear a passkey", body: `<label class="field"><span class="label">Nome</span><input class="input" data-pk-n value="${esc(b ? b.textContent : "")}"></label>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar</button>`, ok: () => { if (b && dlgVal("[data-pk-n]")) b.textContent = dlgVal("[data-pk-n]"); say("Passkey renomeada."); } }, t); }],
   [(t) => t.matches("[data-x=pk-del]"), (t) => { const r = rowOf(t); confirmDlg("Remover esta passkey?", "Este aparelho deixa de entrar sem senha.", "Remover", () => { r.remove(); say("Passkey removida."); }, t); }],
@@ -3310,10 +3316,10 @@ const ACT = [
   [(t) => t.matches("[data-x=mcp-add]"), (t) => dlgShow({ t: "Adicionar servidor MCP", sub: "Só https. A chave fica cifrada.", body: `<label class="field"><span class="label">Nome</span><input class="input" data-mc-n value="Prontuário"></label><label class="field"><span class="label">Endereço</span><input class="input" data-mc-u value="https://mcp.exemplo.com.br" inputmode="url"></label><label class="field"><span class="label">Chave (opcional)</span><input class="input" type="password" autocomplete="off"></label><p class="hint" data-mc-e role="status"></p>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Adicionar</button>`, ok: () => { if (!/^https:\/\//.test(dlgVal("[data-mc-u]"))) { const e = document.querySelector("[data-mc-e]"); e.textContent = "Use um endereço https."; e.classList.add("err"); return false; } say(`Servidor “${dlgVal("[data-mc-n]")}” adicionado. Todas as ferramentas começam em “Perguntar sempre”.`); } }, t)],
 
   /* dados */
-  [(t) => t.matches("[data-x=backup-dl]"), () => { baixar("zuri-backup-2026-11-09.json", "application/json", JSON.stringify({ versao: 1, criado: "2026-11-09T09:00:00-03:00", tarefas: 12, notas: 7, pastas: PASTAS.length, memorias: 7, aviso: "Exemplo do protótipo, sem dados reais." }, null, 2)); say("Backup baixado."); }],
+  [(t) => t.matches("[data-x=backup-dl]"), () => { baixar("zuri-backup-2026-11-09.json", "application/json", JSON.stringify({ versao: 1, criado: "2026-11-09T09:00:00-03:00", tarefas: 12, notas: 7, pastas: PASTAS.length, memorias: 7, aviso: "Exemplo do protótipo, sem dados reais." }, null, 2), "Backup baixado."); }],
   [(t) => t.matches("[data-x=backup-in]"), (t) => dlgShow({ t: "Importar backup", sub: "A Zuri mostra o que vai entrar antes de mudar qualquer coisa.", body: `<label class="field"><span class="label">Arquivo do backup (.json)</span><input class="input" type="file" accept="application/json,.json" data-bk-f></label><p class="hint" data-bk-s role="status"></p>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Conferir arquivo</button>`, ok: () => { const f = document.querySelector("[data-bk-f]").files[0]; const s = document.querySelector("[data-bk-s]"); if (!f) { s.textContent = "Escolha um arquivo."; s.classList.add("err"); return false; } s.classList.remove("err"); s.textContent = `${f.name}: pronto para importar. Nada foi mudado ainda.`; return false; } }, t)],
   [(t) => t.matches("[data-x=key-swap]"), (t) => senhaDlg("A chave nova vale para as próximas cópias. As antigas continuam com a chave delas.", () => say("Chave do backup trocada."), t)],
-  [(t) => t.matches("[data-x=copy-dl]"), () => { baixar("zuri-copia-cifrada.bin", "application/octet-stream", "cópia cifrada de exemplo"); say("Cópia baixada. Ela só abre com a sua chave."); }],
+  [(t) => t.matches("[data-x=copy-dl]"), () => { baixar("zuri-copia-cifrada.txt", "text/plain", "cópia cifrada de exemplo", "Cópia baixada. Ela só abre com a sua chave."); }],
   [(t) => t.matches("[data-x=restore]"), (t) => menuDlg("Restaurar uma cópia", ["Hoje, 03:00", "Ontem, 03:00", "07/11, 03:00"].map((d) => ["archive-restore", `Cópia de ${d}`, () => confirmDlg(`Restaurar a cópia de ${d}?`, "O que mudou depois dela some. A Zuri guarda uma cópia de agora antes.", "Restaurar", () => say(`Cópia de ${d} restaurada.`))]), t)],
   [(t) => t.matches("[data-x=trash-restore]"), (t) => { const n = t.dataset.name; const k = LIXO.findIndex((x) => x[1] === n); if (k >= 0) LIXO.splice(k, 1); render(); refocus("#h-lix"); say(`“${n}” restaurado. Voltou para o lugar de antes.`); }],
   [(t) => t.matches("[data-lix]"), (t) => { st.lix = t.dataset.lix; render(); refocus("#h-lix"); }],
@@ -3326,7 +3332,7 @@ const ACT = [
   /* contatos, estados e identidade */
   [(t) => t.matches("[data-x=client-edit]"), (t) => dlgShow({ t: "Editar cliente", body: `<label class="field"><span class="label">Etapa</span><select class="input"><option>Novo contato</option><option selected>Em conversa</option><option>Cliente</option></select></label><label class="field"><span class="label">Retorno</span><input class="input" type="datetime-local" value="2026-11-10T10:00"></label><label class="field"><span class="label">Etiquetas</span><input class="input" value="nutrição, retorno"></label>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar</button>`, ok: () => say("Cliente salvo.") }, t)],
   [(t) => t.matches("[data-x=funil]"), (t) => dlgShow({ t: "Editar funil", sub: "As etapas por onde o cliente passa. Mudar o nome não mexe em quem já está nelas.", body: `<ol class="dlg-steps">${["Novo contato", "Em conversa", "Cliente"].map((s, k) => `<li><span class="num">${k + 1}</span><label class="sr" for="fn-${k}">Etapa ${k + 1}</label><input id="fn-${k}" class="input grow" value="${s}"></li>`).join("")}</ol><p class="hint">Até 8 etapas. Apagar uma etapa pede para escolher para onde vão os clientes dela.</p>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar funil</button>`, ok: () => say("Funil salvo.") }, t)],
-  [(t) => t.matches("[data-x=logo-svg]"), () => { baixar("zuri-marca.svg", "image/svg+xml", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><style>.t{fill:#18181b}.s{fill:#22c55e}.ss{fill:none;stroke:#22c55e}.m{fill:#fff}</style>${LOGO()}</svg>`); say("Marca baixada em SVG."); }],
+  [(t) => t.matches("[data-x=logo-svg]"), () => { baixar("zuri-marca.svg", "image/svg+xml", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><style>.t{fill:#18181b}.s{fill:#22c55e}.ss{fill:none;stroke:#22c55e}.m{fill:#fff}</style>${LOGO()}</svg>`, "Marca baixada em SVG."); }],
   [(t) => t.matches("[data-x=new-note]"), () => { if (typeof go === "function") go("notas"); else { st.s = "notas"; render(); } setTimeout(() => { const b = document.querySelector("[data-new-note]"); if (b) b.click(); }, 60); }],
   /* grupos de escolha: um só (rádio e modelo) ou vários (dias, etiquetas) */
   [(t) => t.getAttribute("role") === "radio", (t) => { t.parentElement.querySelectorAll('[role="radio"]').forEach((b) => { b.setAttribute("aria-checked", String(b === t)); }); }],
