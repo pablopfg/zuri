@@ -118,7 +118,7 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "acknowledge", "api", "activity", "actions", "ai", "alerts", "approvals", "approve", "auth", "automations", "callback",
   "routines", "cancel", "chat", "check", "client", "code", "confirm", "connect", "conversations", "correct", "counts", "devices", "diagnostics", "disable",
   "calendars", "clients", "connections", "contacts", "crm", "drafts", "empty", "events-key", "stages", "flows", "enable", "events", "exit", "google", "group", "labels", "mcp", "health", "heartbeat", "history", "learning", "live", "lockdown", "login", "login-options", "logout", "memories", "mfa", "mute",
-  "notes", "notices", "oauth", "read", "resolve", "options", "owner", "passkey", "passkeys", "password", "plans", "projects", "push", "recover", "recovery-codes", "refresh", "reindex", "request", "restore", "reviews", "run", "runs", "discard", "draft", "reply", "pause", "resume", "locations",
+  "notes", "notices", "oauth", "read", "resolve", "options", "owner", "passkey", "passkeys", "password", "plans", "projects", "push", "recover", "recovery-codes", "refresh", "reindex", "request", "restore", "reviews", "run", "runs", "discard", "draft", "reply", "pause", "resume", "locations", "local-only", "providers", "retry",
   "remote", "search", "semantic", "servers", "session", "settings", "setup", "status", "sync", "tasks", "telegram", "test", "tokens", "tools", "transcribe", "trash", "usage", "verify", "webhook",
 ]);
 const MAX_SEGMENTS = 8;
