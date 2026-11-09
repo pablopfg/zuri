@@ -19,6 +19,20 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.35.1] - 2026-11-09
+
+Mesclada às 07:54 (UTC-3) · commit [`7fa6260`](https://github.com/pablopfg/Zuri/commit/7fa6260013c2caf9665328f4a75dffe44368993d) · PR [#213](https://github.com/pablopfg/Zuri/pull/213) · Update PRs espera a CI que o GitHub cria minutos depois do push
+
+### Corrigido
+
+- **Update PRs vermelho quando o GitHub demora a criar a CI.** Depois de
+  trazer a `develop` para uma PR, a automação aprova as execuções da CI que o
+  próprio push cria. Na #210 o GitHub levou 9 minutos para criá-las, bem mais
+  que os 2 minutos de espera: a rodada terminava vermelha, abria issue de falha
+  e a PR ficava com a CI parada esperando aprovação. Agora a PR cuja CI ainda
+  não apareceu fica para o fim da rodada, e a automação espera por todas juntas
+  até 15 minutos depois de cada push, dentro do tempo do job.
+
 ## [0.35.0] - 2026-11-09
 
 Mesclada às 07:14 (UTC-3) · commit [`72c71fb`](https://github.com/pablopfg/Zuri/commit/72c71fbe790edc68bdc82c871d63ba070cc65932) · PR [#211](https://github.com/pablopfg/Zuri/pull/211) · Backup automático cifrado no R2 com restauração no navegador (etapa 23b)
@@ -2695,7 +2709,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.35.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.35.1...develop
+[0.35.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.35.1
 [0.35.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.35.0
 [0.34.4]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.4
 [0.34.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.3
