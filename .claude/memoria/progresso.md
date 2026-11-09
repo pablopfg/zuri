@@ -45,7 +45,7 @@ etapas ficam detalhadas; as mais antigas viram uma linha na tabela.
 | 22b | mesclada (03/11/2026) | #161 | CRM interno na aba **Clientes** de Contatos (funil editável, etiquetas, retorno, aniversário, histórico), avisos do CRM, eventos do n8n assinados com HMAC, 5 ferramentas do CRM, sugestões de fluxo da conversa na aba Fluxos |
 | 22c | mesclada (04/11/2026) | #180 | Passos **Ler a agenda**, **Criar evento** (sem convidados, até 10 por execução, chave contra repetição) e **Buscar contatos** (cópia local) nos fluxos; Google simulado segue o dia de São Paulo (#178) |
 | 20 | em revisão (04/11/2026) | — | Acesso remoto: tokens `zur_pat_` com escopo (só ler, ler e escrever, só eventos), 90 dias, só HMAC no banco, lista fechada de rotas com teste que percorre todas, `POST /api/remote/events` para a central (60/h, 100/dia, metade do canal), cartão em Configurações › Segurança, **Revogar** em `/tokens` |
-| 23a | em revisão (09/11/2026) | — | Backup manual: **Baixar backup** (JSON aberto, senha recente, alerta), **Importar backup** (até 10 MB, esquema estrito, ids novos, automações pausadas, tudo ou nada), uso do armazenamento por tipo em Configurações › Dados |
+| 23 | em revisão (09/11/2026, parte 23a de 2) | — | Backup manual: **Baixar backup** (JSON aberto, senha recente, alerta), **Importar backup** (até 10 MB, esquema estrito, ids novos, automações pausadas, tudo ou nada), uso do armazenamento por tipo em Configurações › Dados |
 
 ## Últimas etapas (detalhe)
 
