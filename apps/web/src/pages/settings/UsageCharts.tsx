@@ -114,7 +114,7 @@ function Panel({ history, days }: { history: UsageHistory; days: UsageHistoryDay
         <Tile label={t("web.usage.paid")} value={usd(total.paid)} detail={`${t("web.usage.paidAverage", { usd: usd(average) })} · ${t("web.usage.projection", { usd: usd(average * 30) })}`} />
         <Tile label={t("web.usage.neurons")} value={number(total.neurons)} detail={t("web.usage.neuronsAverage", { neurons: number(total.neurons / days) })} />
         <Tile label={t("web.usage.requests")} value={number(total.requests)} detail={t("web.usage.failures", { errors: number(total.errors), aborted: number(total.aborted) })} />
-        <Tile label={t("web.usage.fallbacks")} value={number(total.fallbacks)} detail={plural("web.usage.fallbacksValue", total.fallbacks)} />
+        <Tile label={t("web.usage.fallbacks")} value={number(total.fallbacks)} detail={total.fallbacks === 0 ? t("web.usage.fallbacksNone") : plural("web.usage.fallbacksValue", total.fallbacks)} />
       </dl>
       <PaidChart list={list} />
       <NeuronChart list={list} />

@@ -119,7 +119,7 @@ export const ptBRAi = {
   "web.ai.paidDialog.kept": "Fica na sua conta: o que estiver marcado como “Nunca enviar para fora”, a conversa mais antiga e os convidados da agenda. E-mails, telefones, CPFs, cartões e chaves vão trocados por marcadores como [EMAIL_1].",
   "web.ai.paidDialog.retention": "A {company} não treina modelos com o que recebe pela API e guarda os dados por até {days} dias (conferido em {date}).",
   "web.ai.paidDialog.terms": "Ler as regras da {company}",
-  "web.ai.paidDialog.password": "Para salvar, a Zuri pede a sua senha de novo.",
+  "web.ai.paidDialog.password": "Para salvar, a Zuri pode pedir a sua senha de novo.",
   "web.ai.paidDialog.confirm": "Usar o modelo pago",
   "web.ai.paidDialog.cancel": "Voltar",
   "web.ai.providers.title": "Modelos pagos",

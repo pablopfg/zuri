@@ -10,6 +10,7 @@ mesmo medidor.
 | --- | --- | --- |
 | Workers AI (`apps/agent/src/ai/workers-ai.ts`) | Produção: qualquer `PUBLIC_URL` que não seja loopback | Sim |
 | IA simulada (`apps/agent/src/ai/mock.ts`) | Desenvolvimento local (`npm run dev`) e e2e, com `PUBLIC_URL` em `http://127.0.0.1` ou `localhost` | Não |
+| Anthropic e OpenAI (`apps/agent/src/ai/paid.ts`) ⚠️ | Só quando o dono escolhe um modelo pago e a chave da empresa está cadastrada (etapa 21) | Não: cobram em US$ na conta do dono na empresa |
 
 - Os dois seguem a mesma interface `AIProvider`: `generate`, `stream` e
   `generateWithTools`.
@@ -25,12 +26,64 @@ mesmo medidor.
 - A IA simulada repete a mensagem e, com `call <ferramenta> {json}`, chama uma
   ferramenta pelo caminho real (limites, validação, aprovações). Os textos
   dela vêm do catálogo de i18n.
-- Modelos pagos (Anthropic, OpenAI) não existem aqui (decisão N7).
+- Modelos pagos: veja [Modelos pagos](#modelos-pagos-etapa-21) abaixo. Em
+  desenvolvimento local eles são simulados (a IA simulada com o nome do modelo
+  pago), sem chave e sem rede.
 - A IA simulada também finge um modelo ocupado: uma mensagem que começa com
   `fail ` falha no modelo escolhido antes de responder, e o reserva simulado
   (`mock-fallback`) responde no lugar. Assim a troca aparece em `npm run dev`
   e nos e2e. Nesse modo o disjuntor recomeça a cada vez, para o `fail ` dos
   testes nunca deixar o modelo simulado de lado.
+
+## Modelos pagos (etapa 21)
+
+| Modelo | Empresa | US$ por milhão de tokens (entrada / saída) |
+| --- | --- | --- |
+| Claude Haiku 5.5 | Anthropic | 0,10 / 0,50 |
+| Claude Sonnet 5.5 | Anthropic | 2 / 10 |
+| GPT-6 Luna | OpenAI | 0,10 / 0,50 |
+| GPT-6.1 Terra | OpenAI | 1 / 5 |
+
+Preços conferidos em 04/11/2026 (`PAID_MODELS` e `PAID_PRICING` em
+`packages/shared/src/ai.ts`). O custo é gravado na hora da chamada, então uma
+mudança de preço não reescreve o passado.
+
+- Tudo nasce desligado. Um modelo pago só aparece para escolha quando a chave
+  da empresa está cadastrada como segredo do Worker (`ANTHROPIC_API_KEY` ou
+  `OPENAI_API_KEY`). Sem a chave, `PATCH /api/settings` responde
+  `NOT_CONFIGURED`. A chave nunca chega ao navegador nem aos logs, e entra na
+  lista de segredos que o prompt nunca carrega.
+- Escolher um modelo pago (conversa ou reserva) e mudar o teto em US$ pedem a
+  senha recente. A tela mostra antes o aviso do que sai da conta (D7).
+- Chamadas pelo AI SDK (`@ai-sdk/anthropic` e `@ai-sdk/openai`, API Responses
+  com `store: false`), direto na API de cada empresa, sem AI Gateway. Sem
+  `temperature` nem `top_p` (os modelos recentes não aceitam ou ignoram).
+  Haiku sem raciocínio; Sonnet com raciocínio só entre ferramentas; OpenAI com
+  `reasoningEffort: "none"`.
+- O uso vem da própria resposta (tokens de entrada, de saída e de cache) por um
+  `fetch` medido, e cada passo é acertado no medidor como os do Workers AI.
+- **Teto em US$** (`aiUsdCentsPerDay`, em centavos): 0 é sem teto, o padrão.
+  Com valor, a chamada que passaria do teto é recusada antes de sair
+  (`AI_LIMIT_REACHED`, `error.aiLimit.usd`); a conta é feita em centavos, sem
+  erro de arredondamento. Os modelos grátis não contam nesse teto.
+- **Sem crédito** (HTTP 402 ou a mensagem da empresa) e **chave recusada**
+  (401/403) tiram a empresa da cadeia até o dono tocar em "Já recarreguei" ou
+  "Tentar de novo" (`POST /api/usage/providers/:provider/retry`). O estado fica
+  gravado, e a reserva responde enquanto isso.
+- **O que vai para fora** (D3 a D5, `apps/agent/src/ai/external.ts`), aplicado
+  a cada tentativa que vai para uma empresa de fora, dentro do `MeteredAI`:
+  - memória ou nota marcada como "Nunca enviar para fora" (`local_only`) entra
+    só como a linha `<data … local="1">`, com o texto trocado; as ferramentas
+    também escondem o texto;
+  - o histórico vai só com as últimas 8 mensagens, começando por uma do dono;
+    `read_note` entrega até 600 caracteres;
+  - e-mails, telefones, CPFs, cartões (Luhn), IBANs (mod 97) e chaves de API
+    viram marcadores (`[EMAIL_1]`). A tabela vive só na tentativa: a resposta
+    mostrada ao dono e os argumentos das ferramentas recebem os valores de
+    volta, e o resultado das ferramentas é mascarado de novo antes de voltar ao
+    modelo. Um marcador que a tentativa não entregou fica como está.
+  - Uma troca para o Workers AI no meio do caminho manda o contexto inteiro, e
+    o inverso manda o perfil de fora.
 
 ## Modelo reserva e disjuntor
 
@@ -192,6 +245,10 @@ transcrição devolve um texto fixo do catálogo.
 - Guardam só contadores: nenhum texto do dono, prompt ou resposta.
 - O histórico guarda 90 dias. A primeira chamada de um dia novo apaga o resto.
 - Não entram no backup (são medidas, não dados do dono).
+- A migration 29 acrescenta `paid_usd` (gasto dos modelos pagos no dia) e
+  `ai_fallbacks` (vezes que a reserva assumiu) em `zur_usage_daily`, e
+  `local_only` em `zur_memories` e `zur_notes`. A contagem da reserva entra na
+  mesma escrita da chamada.
 - A migration 10 acrescenta `fallback` (0 ou 1) em `zur_messages`: a resposta
   veio do modelo reserva. Só a marca, sem o nome do modelo; segue a mensagem
   no backup.
@@ -201,7 +258,19 @@ transcrição devolve um texto fixo do catálogo.
 `GET /api/usage` (sessão + CSRF): o uso de hoje contra os limites, uma linha
 por modelo e os últimos 7 dias. Formato em `usageReportSchema`
 (`packages/shared/src/ai.ts`). Os limites mudam por `PATCH /api/settings`
-(`aiModel`, `aiRequestsPerDay`, `aiNeuronsPerDay`, `aiMaxOutputTokens`).
+(`aiModel`, `aiRequestsPerDay`, `aiNeuronsPerDay`, `aiMaxOutputTokens`,
+`aiUsdCentsPerDay`).
+
+`GET /api/usage/history?days=7|30|90` (sessão + CSRF): o painel de consumo por
+período. Uma linha por dia com uso, os modelos do período agrupados no SQL e o
+gasto pago por dia e modelo (`usageHistorySchema`). Só números, nunca o que foi
+dito. O painel é recarregado pela área `usage` do canal em tempo real; o número
+dessa área fica na memória do medidor (sobe a cada escrita dos contadores), sem
+linha lida nem escrita a mais.
+
+`POST /memories/:id/local-only` e `POST /notes/:id/local-only`
+(`{ "localOnly": true | false }`): liga ou desliga "Nunca enviar para fora", sem
+mudar a data da última edição. Ficam fora dos tokens de acesso remoto.
 
 ## Custo no plano Free
 

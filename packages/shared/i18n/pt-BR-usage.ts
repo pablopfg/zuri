@@ -13,6 +13,7 @@ export const ptBRUsage = {
   "web.usage.requests": "Pedidos à IA",
   "web.usage.failures": "{errors} com erro · {aborted} interrompidos",
   "web.usage.fallbacks": "Reserva",
+  "web.usage.fallbacksNone": "Não precisou responder",
   "web.usage.fallbacksValue.one": "Respondeu {count} vez",
   "web.usage.fallbacksValue.other": "Respondeu {count} vezes",
   "web.usage.chart.paid": "Gasto por dia com modelos pagos",
