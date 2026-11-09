@@ -1270,6 +1270,299 @@ kbd{font:500 12px/1 var(--f-ui);padding:3px 6px;border-radius:6px;border:1px sol
 }
 @media (pointer:coarse){.pitem{min-height:64px}}
 
+/* ================= ajustes de 09/11 18:03 ================= */
+/* leiaute preso à tela: só o conteúdo rola; menu, conta e barra de baixo ficam parados */
+html,body{height:100%}
+html{overflow:hidden;overscroll-behavior:none}
+/* textos só para leitor de tela são absolutos: sem um pai posicionado eles escapam do corte e deixam a página rolar */
+body,#conteudo{position:relative}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden;overscroll-behavior:none}
+body>#app{flex:1 1 auto;min-height:0;overflow:auto}
+#app>.app{height:100%;min-height:0}
+.app>.side{min-height:0;overflow:hidden}
+.side nav{overscroll-behavior:contain}
+.app>.main{height:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.main>#conteudo{flex:1 1 0;min-height:0;overflow:auto;overscroll-behavior:contain}
+#app>#conteudo.login{min-height:100%}
+@media (max-width:820px){.app>.main{height:auto}}
+
+/* carregando nas telas e no login */
+.page-ld{position:relative}
+.ld-top{position:sticky;top:0;margin:calc(var(--s6) * -1) calc(var(--s6) * -1) var(--s6);height:3px}
+.pl-head{display:grid;gap:12px;margin-bottom:var(--s5)}
+.page-ld .ld-msg{margin-bottom:var(--s3)}
+.pl-card{padding:var(--s2) var(--s4)}
+.page-ld .sk-row{animation:ld-in .35s both}
+.page-ld .sk-row:nth-child(2){animation-delay:.06s}
+.page-ld .sk-row:nth-child(3){animation-delay:.12s}
+.page-ld .sk-row:nth-child(4){animation-delay:.18s}
+.page-ld .sk-row:nth-child(5){animation-delay:.24s}
+.login-card{position:relative;overflow:hidden}
+.ld-card{position:absolute;inset:0 0 auto}
+.btn[aria-busy="true"]{cursor:progress}
+.btn-primary[aria-busy="true"]{background:var(--accent);color:var(--on-accent);opacity:.9}
+.wk-ld{position:relative;height:3px;margin-bottom:-3px;z-index:2;visibility:hidden}
+.agenda-bar~.wk-ld{border-radius:3px}
+.week{transition:opacity var(--dur-2) var(--ease-out)}
+.week[data-loading]{opacity:.55}
+.wk-ld:has(+.week[data-loading]){visibility:visible}
+.ld-where{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3) var(--s5)}
+.ld-where li{display:flex;gap:12px;align-items:flex-start}
+.ld-where li>span:last-child{display:grid;gap:2px;font-size:var(--t-sm);color:var(--muted)}
+.ld-where b{color:var(--ink);font-weight:600;font-size:var(--t-md)}
+.ld-where .tile{width:32px;height:32px}
+@media (prefers-reduced-motion:reduce){.page-ld .sk-row,.page-ld .sk,.ld-top i,.ld-card i,.wk-ld i,.page-ld .ld-sig::before,.page-ld .ld-sig::after{animation:none}.ld-top i,.ld-card i,.wk-ld i{left:0;width:100%;opacity:.45}}
+
+/* contatos: dados completos, telefone, WhatsApp e avaliação */
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:8px;box-shadow:0 0 0 3px var(--accent-soft);vertical-align:1px}
+.only-m{display:none}
+@media (max-width:820px),(pointer:coarse){.only-d{display:none}.only-m{display:inline}}
+.qa-telw{position:relative}
+.qa-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:5;min-width:240px;padding:6px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--raised);box-shadow:var(--shadow-lg);display:grid}
+.qa-menu[hidden]{display:none}
+.qa-menu button,.qa-menu a{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 10px;border:0;border-radius:var(--r-sm);background:none;color:var(--ink);font:500 var(--t-sm)/1 var(--f-ui);text-decoration:none;cursor:pointer;text-align:left}
+.qa-menu button:hover,.qa-menu a:hover{background:var(--hover)}
+.ic.wa{fill:none;stroke:currentColor;stroke-width:1.75;stroke-linejoin:round}
+.ic.wa path+path{fill:currentColor;stroke:none}
+.qa-btn .ic.wa{color:#128c4a;width:20px;height:20px}
+[data-theme="escuro"] .qa-btn .ic.wa{color:#4ade80}
+.btn .ic.wa{width:16px;height:16px}
+.wa-btn{color:#128c4a}
+[data-theme="escuro"] .wa-btn{color:#4ade80}
+.person-cols{grid-template-columns:minmax(0,1fr) 340px}
+.dl-groups{display:grid}
+.dg{padding:12px 0;border-top:1px solid var(--line-soft)}
+.dg:first-child{border-top:0;padding-top:0}
+.dg dt{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.dg dd{margin:0;color:var(--ink);overflow-wrap:anywhere;display:flex;flex-wrap:wrap;gap:6px 10px}
+.chs{display:grid;gap:4px;width:100%}
+.ch{display:flex;align-items:center;gap:8px;min-height:36px}
+.ch .v{font-weight:500;min-width:0;overflow-wrap:anywhere}
+.ch .ty{font-size:12px;color:var(--muted)}
+.ch-acts{margin-left:auto;display:flex;gap:2px}
+.ch-acts .iconbtn{width:36px;height:36px}
+.pair{display:inline-flex;gap:6px;align-items:baseline}
+.pk{font-size:var(--t-sm);color:var(--muted)}
+.pk::after{content:":"}
+.p-sec-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:var(--s3)}
+.p-sec-h h3{margin:0}
+.nps-stars{display:flex;align-items:center;gap:8px;font-size:var(--t-sm);color:var(--muted);margin-bottom:var(--s3)}
+.tl-sm li{grid-template-columns:28px 56px minmax(0,1fr);padding:8px 0}
+.tl-sm .tl-ic{width:28px;height:28px}
+.tl-sm .t{padding-top:4px;font-weight:400}
+.tl-sm .when{padding-top:5px}
+.nps-act{margin-top:var(--s3);display:grid;gap:6px;justify-items:start}
+.nps-act .hint{font-size:var(--t-sm);color:var(--muted)}
+.nps-act .ro{margin-top:0;border-top:0;padding-top:0}
+.rv-sum{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+.rv-n{display:grid;gap:2px;align-content:start}
+.rv-n+.rv-n{border-left:1px solid var(--line-soft);padding-left:var(--s3)}
+.rv-n .big{font-size:var(--t-2xl)}
+.rv-n .xs{font-size:12px}
+.seg-sub{margin-top:var(--s3)}
+.ped-sum{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:var(--s3);font-size:var(--t-sm);color:var(--muted)}
+.ped-sum b{color:var(--ink)}
+.rv-edit{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:var(--t-sm);color:var(--muted)}
+.rv-who{display:flex;align-items:center;gap:8px;margin-top:var(--s4);font-size:var(--t-sm);color:var(--ink-2)}
+.linkbtn{border:0;background:none;padding:0;font:inherit;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:24px}
+.rv-guess{margin-top:var(--s4);padding:var(--s3) var(--s4);border-radius:var(--r-md);background:var(--sunken);max-width:680px}
+.rv-guess p{display:flex;gap:8px;align-items:flex-start;font-size:var(--t-sm)}
+.rv-guess .row-actions{display:flex;gap:var(--s2);margin-top:var(--s2)}
+
+/* notas: editor sempre editável */
+.nitem{display:block;width:100%;text-align:left;border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:10px 12px;border-radius:var(--r-md)}
+.nitem:hover{background:var(--hover)}
+.nitem[aria-current="true"]{background:var(--surface);box-shadow:var(--side-active-shadow)}
+[data-theme="escuro"] .nitem[aria-current="true"]{background:var(--raised)}
+.nitem .t{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.nitem .t time{font-weight:400;font-size:12px;color:var(--muted)}
+.nitem p{font-size:var(--t-sm);color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.editor .saved{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-sm);color:var(--muted)}
+.title-in{display:block;width:100%;border:0;background:none;padding:0;margin:var(--s4) 0 var(--s3);font:600 var(--t-3xl)/1.15 var(--f-head);letter-spacing:-.02em;color:var(--ink)}
+.title-in::placeholder{color:var(--control)}
+.title-in:focus-visible{outline:0}
+#n-body{min-height:240px;outline:0}
+#n-body:empty::before{content:attr(data-ph);color:var(--muted)}
+.editor:focus-within .title-in:focus{box-shadow:inset 0 -2px 0 var(--focus)}
+@media (max-width:820px){
+  .split-notes.has-sel>.pane:first-child{display:none}
+  .split-notes.has-sel>.pane:last-child{display:block}
+  .title-in{font-size:var(--t-2xl)}
+}
+
+/* memória: microfone */
+.mem-add{align-items:start}
+.mem-in{position:relative;display:flex;align-items:center}
+.mem-in .input{padding-right:52px}
+.mem-in .mic{position:absolute;right:4px;width:40px;height:40px}
+.mem-add .hint{font-size:var(--t-sm);color:var(--muted);margin-top:6px}
+.rec{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:4px 4px 4px 14px;border:1px solid var(--focus);border-radius:var(--r-md);background:var(--surface);box-shadow:0 0 0 3px var(--ring)}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--now);animation:rec 1s ease-in-out infinite}
+@keyframes rec{50%{opacity:.35}}
+.rec-t{font-size:var(--t-sm);color:var(--ink-2);white-space:nowrap}
+.wave{flex:1;display:flex;align-items:center;gap:3px;height:24px;min-width:0;overflow:hidden}
+.wave i{flex:none;width:3px;height:30%;border-radius:2px;background:var(--control);animation:wave 1s ease-in-out infinite}
+.wave i:nth-child(3n){animation-delay:.15s}.wave i:nth-child(3n+1){animation-delay:.3s}.wave i:nth-child(4n){animation-delay:.45s}
+@keyframes wave{50%{height:90%}}
+.rec .btn{margin-left:auto}
+@media (prefers-reduced-motion:reduce){.rec-dot,.wave i{animation:none}.wave i{height:50%}}
+
+/* automações: criar passo a passo */
+.wiz-wrap,.pop-wrap{position:fixed;inset:0;z-index:40;display:grid;background:rgb(9 9 11 / .45)}
+.wiz-wrap{place-items:center;padding:var(--s4)}
+.wiz{width:min(640px,100%);max-height:min(760px,100%);display:flex;flex-direction:column;border-radius:var(--r-xl);background:var(--surface);box-shadow:var(--shadow-lg);overflow:hidden}
+[data-theme="escuro"] .wiz{background:var(--raised)}
+.wz-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s3);padding:var(--s5) var(--s5) var(--s3)}
+.wz-head h2{font-size:var(--t-xl)}
+.wz-step{font-size:var(--t-sm);color:var(--muted);margin-bottom:2px}
+.wz-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:0 var(--s5)}
+.wz-bar li{height:4px;border-radius:2px;background:var(--sunken)}
+.wz-bar li.done{background:var(--ink-2)}
+.wz-bar li.on{background:var(--accent)}
+.wz-body{flex:1;overflow:auto;padding:var(--s5);display:grid;gap:var(--s4);align-content:start}
+.wz-q{font-size:var(--t-lg);font-weight:600}
+.wz-foot{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s5);border-top:1px solid var(--line-soft);background:var(--bg)}
+.wz-foot .grow{flex:1}
+.au-types{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+.au-type{display:flex;gap:12px;align-items:flex-start;padding:var(--s3) var(--s4);border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);color:var(--ink);font:inherit;text-align:left;cursor:pointer;min-height:96px}
+.au-type:hover{background:var(--hover)}
+.au-type[aria-checked="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);background:var(--accent-soft)}
+.au-type .t{display:block;font-weight:600}
+.au-type .d{display:block;font-size:var(--t-sm);color:var(--muted);margin-top:2px}
+.au-type[aria-checked="true"] .d{color:var(--accent-soft-ink)}
+.days{display:flex;flex-wrap:wrap;gap:6px}
+.days button{min-width:48px;height:40px;border-radius:var(--r-pill);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);font:500 var(--t-sm)/1 var(--f-ui);cursor:pointer}
+.days button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.au-prev,.au-cost{display:flex;gap:8px;align-items:flex-start;font-size:var(--t-sm);color:var(--ink-2);padding:var(--s3);border-radius:var(--r-md);background:var(--sunken)}
+.au-perm .set-row:first-child{border-top:0}
+.au-sum{display:grid;border:1px solid var(--line-soft);border-radius:var(--r-md)}
+.au-sum div{display:grid;grid-template-columns:110px minmax(0,1fr);gap:var(--s3);padding:10px var(--s3);border-top:1px solid var(--line-soft)}
+.au-sum div:first-child{border-top:0}
+.au-sum dt{color:var(--muted);font-size:var(--t-sm)}
+.au-sum dd{margin:0}
+.wz-body .hint{font-size:var(--t-sm);color:var(--muted)}
+
+/* conta e avisos */
+.pop-wrap{background:transparent}
+.pop{position:absolute;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--raised);box-shadow:var(--shadow-lg);overflow:hidden}
+.pop-conta{left:12px;bottom:60px;width:300px}
+.pop-avisos{left:12px;top:56px;width:400px;max-height:calc(100% - 72px)}
+.pop-head{display:flex;align-items:center;gap:12px;padding:var(--s4)}
+.pop-head .t{font-weight:600}
+.pop-head .d{font-size:var(--t-sm);color:var(--muted)}
+.pop-x{margin-left:auto}
+.avatar-lg{width:40px;height:40px;font-size:16px}
+.pop-list{display:grid;padding:4px 6px;border-top:1px solid var(--line-soft)}
+.pop-list a{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 10px;border-radius:var(--r-sm);color:var(--ink);text-decoration:none;font-size:var(--t-sm);font-weight:500}
+.pop-list a:hover{background:var(--hover)}
+.pop-list .ic{color:var(--muted)}
+.pop-sec{padding:var(--s3) var(--s4);border-top:1px solid var(--line-soft)}
+.pop-sec .label{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.pop-sec .seg{width:100%}
+.pop-sec .seg button{flex:1;justify-content:center}
+.pop-top{display:flex;align-items:center;gap:8px;padding:var(--s3) var(--s3) var(--s3) var(--s4);border-bottom:1px solid var(--line-soft)}
+.pop-top h2{font-size:var(--t-lg)}
+.pop-top .grow{flex:1}
+.notif{overflow:auto;flex:1}
+.notif li{display:flex;gap:12px;align-items:flex-start;padding:var(--s3) var(--s4);border-top:1px solid var(--line-soft);position:relative}
+.notif li:first-child{border-top:0}
+.notif li.unread{background:var(--sunken)}
+.notif li.unread::before{content:"";position:absolute;left:6px;top:22px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.notif .tile{width:32px;height:32px;flex:none}
+.notif .nt{flex:1;min-width:0}
+.notif .t{font-weight:500;font-size:var(--t-sm)}
+.notif li.unread .t{font-weight:600}
+.notif .d{font-size:var(--t-sm);color:var(--muted)}
+.notif .w{font-size:12px;color:var(--muted);margin-top:2px}
+.pop-more{display:flex;align-items:center;gap:4px;padding:var(--s3) var(--s4);border-top:1px solid var(--line-soft);font-size:var(--t-sm)}
+@media (max-width:820px){
+  .pop-wrap{background:rgb(9 9 11 / .45)}
+  .pop{left:0;right:0;bottom:0;top:auto;width:auto;max-height:88%;border-radius:var(--r-xl) var(--r-xl) 0 0;padding-bottom:env(safe-area-inset-bottom)}
+  .pop-avisos{top:auto}
+  .pop-list a{min-height:48px}
+  .wiz-wrap{padding:0;place-items:end stretch}
+  .wiz{width:100%;max-height:100%;height:100%;border-radius:0}
+  .wz-foot .btn-quiet{display:none}
+  .au-types{grid-template-columns:1fr}
+  .ld-where{grid-template-columns:1fr}
+  .person-cols{grid-template-columns:1fr}
+  .ld-top{margin:calc(var(--s4) * -1) calc(var(--s4) * -1) var(--s4)}
+}
+
+/* ================= ajustes de 09/11 18:23: o protótipo segue a develop ================= */
+.settings{grid-template-columns:236px minmax(0,1fr)}
+.settings nav a{align-items:flex-start;padding:8px 12px}
+.settings nav a .ic{margin-top:3px}
+.cfg-l{display:flex;flex-direction:column;min-width:0}
+.cfg-h{font-size:var(--t-xs);font-weight:400;color:var(--muted);line-height:1.35;margin-top:1px}
+.cfg-body{min-width:0}
+.set-row .t .ic,.set-row .hint .ic,.set-sec>.hint .ic{vertical-align:-3px}
+.set-sec .hint{font-size:var(--t-sm);color:var(--muted)}
+.set-sec>.hint,.set-sec>.meters+.hint{margin-top:var(--s3)}
+.set-foot{display:flex;flex-wrap:wrap;gap:var(--s3);align-items:center}
+.form-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tile-sm{width:32px;height:32px;border-radius:var(--r-md);display:grid;place-items:center;background:var(--sunken);color:var(--ink-2);flex:none}
+.seg-xs button{min-height:30px;padding:0 10px;font-size:13px}
+.seg-wrap{flex-wrap:wrap}
+.meters{display:grid;gap:var(--s4);margin-top:var(--s4)}
+.meter-top{display:flex;justify-content:space-between;gap:var(--s3);font-size:var(--t-sm);color:var(--ink-2);margin-bottom:6px}
+.meter{height:8px;border-radius:999px;background:var(--sunken);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:inherit;background:var(--accent)}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:120px;margin-top:var(--s4);padding:0 4px;border-bottom:1px solid var(--line)}
+.bars span{display:block;border-radius:6px 6px 0 0;background:var(--accent);opacity:.85}
+.bars-x{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;text-align:center;font-size:var(--t-xs);color:var(--muted);margin-top:6px}
+.tbl-wrap{overflow-x:auto;margin-top:var(--s3)}
+.tbl{width:100%;border-collapse:collapse;font-size:var(--t-sm)}
+.tbl th,.tbl td{padding:10px 8px;border-top:1px solid var(--line-soft);text-align:center}
+.tbl thead th{border-top:0;color:var(--muted);font-weight:600;font-size:var(--t-xs)}
+.tbl th[scope="row"],.tbl thead th:first-child{text-align:left;font-weight:500;color:var(--ink)}
+.chk{width:20px;height:20px;accent-color:var(--accent);cursor:pointer}
+.chips .chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-soft-ink);border-color:transparent}
+.sugg-card,.rev-card{padding:var(--s4) var(--s5);margin-bottom:var(--s5);border-left:3px solid var(--warn-line)}
+.sugg-card h2,.rev-card h2{display:flex;gap:8px;align-items:center;font-size:var(--t-md)}
+.sugg-card .t{font-weight:600;margin-top:var(--s2)}
+.sugg-card .row-actions,.rev-card .row-actions{margin-top:var(--s3)}
+.rev-card{margin:var(--s5) 0 0}
+.rev-pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);margin-top:var(--s3)}
+.rev-pair>div{padding:var(--s3);border-radius:var(--r-md);background:var(--sunken)}
+.rev-pair .k{font-size:var(--t-xs);font-weight:600;color:var(--muted);margin-bottom:4px}
+.mem-local{grid-column:1/-1;display:flex;gap:var(--s3);align-items:flex-start}
+.mem-local .t{display:block;font-weight:500}
+.mem-local .hint{display:block;font-size:var(--t-sm);color:var(--muted)}
+.switch-sm{width:36px;height:22px}
+.switch-sm::after{width:16px;height:16px}
+.switch-sm[aria-checked="true"]::after{transform:translateX(14px)}
+.nlocal{display:inline-flex;gap:6px;align-items:center;font-size:var(--t-sm);color:var(--ink-2)}
+.prose.is-prev{background:var(--sunken);border-radius:var(--r-md);padding:var(--s3)}
+.match{padding:var(--s3) var(--s4);margin-top:var(--s3)}
+.match .t{display:flex;gap:6px;align-items:center;font-weight:600;font-size:var(--t-sm)}
+.match .ped-sum{margin-top:6px}
+.match .hint{font-size:var(--t-xs);color:var(--muted);margin-top:4px}
+.rv-bar{display:flex;gap:var(--s2);margin-top:var(--s3)}
+.rv-bar select{flex:1;min-width:0}
+.rv-bar select:first-of-type{flex:1.5}
+.rv-read{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;margin-top:var(--s2);font-size:var(--t-sm);color:var(--muted)}
+.funnel{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:var(--s2);font-size:var(--t-sm)}
+.cl-sum .late{color:var(--danger-ink)}
+.cl-note{display:flex;gap:var(--s2);margin:var(--s3) 0}
+.cl-note .input{flex:1;min-width:0}
+.nps-when{display:flex;gap:8px;align-items:flex-start;margin:var(--s2) 0 var(--s3);font-size:var(--t-sm);color:var(--ink-2)}
+.nps-when .ic{flex:none;margin-top:2px}
+.nps-when .hint{display:block;color:var(--muted);font-size:var(--t-xs);margin-top:2px}
+.rv-src{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);margin-bottom:var(--s2);font-size:var(--t-xs);color:var(--muted)}
+.plist .grp-w{letter-spacing:0;text-transform:none}
+.person .meta .tag+.tag{margin-left:6px}
+@media (max-width: 820px){
+  .settings{grid-template-columns:1fr}
+  .cfg-h{display:none}
+  .settings nav a{align-items:center;padding:0 12px}
+  .settings nav a .ic{margin-top:0}
+  .form-3{grid-template-columns:1fr}
+  .rev-pair{grid-template-columns:1fr}
+  .sugg-card,.rev-card{padding:var(--s4)}
+  .tbl th,.tbl td{padding:10px 4px}
+}
+
 </style>
 </head>
 <body>
@@ -1290,7 +1583,7 @@ kbd{font:500 12px/1 var(--f-ui);padding:3px 6px;border-radius:6px;border:1px sol
 </fieldset></aside>
 <div id="app"></div>
 <script>
-const ICONS = {"lucide":{"house": "<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /> <path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />", "message-circle": "<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />", "list-todo": "<path d=\"M13 5h8\" /> <path d=\"M13 12h8\" /> <path d=\"M13 19h8\" /> <path d=\"m3 17 2 2 4-4\" /> <rect x=\"3\" y=\"4\" width=\"6\" height=\"6\" rx=\"1\" />", "calendar-days": "<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"M8 13h.01\" /> <path d=\"M12 13h.01\" /> <path d=\"M16 13h.01\" /> <path d=\"M8 17h.01\" /> <path d=\"M12 17h.01\" /> <path d=\"M16 17h.01\" />", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" />", "notebook-pen": "<path d=\"M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4\" /> <path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <path d=\"M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z\" />", "brain": "<path d=\"M12 18V5\" /> <path d=\"M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4\" /> <path d=\"M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294\" /> <path d=\"M17.996 5.125a4 4 0 012.526 5.77\" /> <path d=\"M18 18a4 4 0 002-7.465\" /> <path d=\"M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517\" /> <path d=\"M6 18a4 4 0 01-2-7.465\" /> <path d=\"M6.004 5.125a4 4 0 00-2.526 5.77\" />", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 6v6l4 2\" />", "arrow-up": "<path d=\"m5 12 7-7 7 7\" /> <path d=\"M12 19V5\" />", "bell": "<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /> <path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />", "calendar-plus": "<path d=\"M16 18h6\" /> <path d=\"M16 2v3\" /> <path d=\"M19 15v6\" /> <path d=\"M21 11.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h8.3\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" />", "check": "<path d=\"M20 6 9 17l-5-5\" />", "chevron-left": "<path d=\"m15 18-6-6 6-6\" />", "chevron-right": "<path d=\"m9 18 6-6-6-6\" />", "chevron-down": "<path d=\"m6 9 6 6 6-6\" />", "circle-dot": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"12\" cy=\"12\" r=\"10\" />", "circle-help": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" /> <path d=\"M12 17h.01\" />", "clipboard-list": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"M12 11h4\" /> <path d=\"M12 16h4\" /> <path d=\"M8 11h.01\" /> <path d=\"M8 16h.01\" />", "ellipsis": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"19\" cy=\"12\" r=\"1\" /> <circle cx=\"5\" cy=\"12\" r=\"1\" />", "eye": "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "flag": "<path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\" />", "folder": "<path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\" />", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" /> <path d=\"M12 7v5l4 2\" />", "lock": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", "mail": "<path d=\"m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7\" /> <rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\" />", "map-pin": "<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\" /> <circle cx=\"12\" cy=\"10\" r=\"3\" />", "menu": "<path d=\"M4 5h16\" /> <path d=\"M4 12h16\" /> <path d=\"M4 19h16\" />", "mic": "<path d=\"M12 19v3\" /> <path d=\"M19 10v2a7 7 0 0 1-14 0v-2\" /> <rect x=\"9\" y=\"2\" width=\"6\" height=\"13\" rx=\"3\" />", "monitor": "<rect width=\"20\" height=\"14\" x=\"2\" y=\"3\" rx=\"2\" /> <line x1=\"8\" x2=\"16\" y1=\"21\" y2=\"21\" /> <line x1=\"12\" x2=\"12\" y1=\"17\" y2=\"21\" />", "moon": "<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />", "panel-left": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M9 3v18\" />", "pencil": "<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />", "play": "<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\" />", "plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />", "search": "<path d=\"m21 21-4.34-4.34\" /> <circle cx=\"11\" cy=\"11\" r=\"8\" />", "send-horizontal": "<path d=\"M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z\" /> <path d=\"M6 12h16\" />", "shield-check": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"m9 12 2 2 4-4\" />", "sparkles": "<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /> <path d=\"M20 2v4\" /> <path d=\"M22 4h-4\" /> <circle cx=\"4\" cy=\"20\" r=\"2\" />", "square-pen": "<path d=\"M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\" /> <path d=\"M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z\" />", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\" /> <path d=\"M12 2v2\" /> <path d=\"M12 20v2\" /> <path d=\"m4.93 4.93 1.41 1.41\" /> <path d=\"m17.66 17.66 1.41 1.41\" /> <path d=\"M2 12h2\" /> <path d=\"M20 12h2\" /> <path d=\"m6.34 17.66-1.41 1.41\" /> <path d=\"m19.07 4.93-1.41 1.41\" />", "trash-2": "<path d=\"M10 11v6\" /> <path d=\"M14 11v6\" /> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /> <path d=\"M3 6h18\" /> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />", "triangle-alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />", "sunrise": "<path d=\"M12 2v8\" /> <path d=\"m4.93 10.93 1.41 1.41\" /> <path d=\"M2 18h2\" /> <path d=\"M20 18h2\" /> <path d=\"m19.07 10.93-1.41 1.41\" /> <path d=\"M22 22H2\" /> <path d=\"m8 6 4-4 4 4\" /> <path d=\"M16 18a4 4 0 0 0-8 0\" />", "repeat": "<path d=\"m17 2 4 4-4 4\" /> <path d=\"M3 11v-1a4 4 0 0 1 4-4h14\" /> <path d=\"m7 22-4-4 4-4\" /> <path d=\"M21 13v1a4 4 0 0 1-4 4H3\" />", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\" /> <path d=\"M3 5V19A9 3 0 0 0 21 19V5\" /> <path d=\"M3 12A9 3 0 0 0 21 12\" />", "globe": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\" /> <path d=\"M2 12h20\" />", "plug": "<path d=\"M12 22v-5\" /> <path d=\"M15 8V2\" /> <path d=\"M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z\" /> <path d=\"M9 8V2\" />", "user": "<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" /> <circle cx=\"12\" cy=\"7\" r=\"4\" />", "x": "<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />", "circle": "<circle cx=\"12\" cy=\"12\" r=\"10\" />", "log-out": "<path d=\"m16 17 5-5-5-5\" /> <path d=\"M21 12H9\" /> <path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />", "arrow-left": "<path d=\"m12 19-7-7 7-7\" /> <path d=\"M19 12H5\" />", "wifi-off": "<path d=\"M12 20h.01\" /> <path d=\"M8.5 16.429a5 5 0 0 1 7 0\" /> <path d=\"M5 12.859a10 10 0 0 1 5.17-2.69\" /> <path d=\"M19 12.859a10 10 0 0 0-2.007-1.523\" /> <path d=\"M2 8.82a15 15 0 0 1 4.177-2.643\" /> <path d=\"M22 8.82a15 15 0 0 0-11.288-3.764\" /> <path d=\"m2 2 20 20\" />", "refresh-cw": "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\" /> <path d=\"M21 3v5h-5\" /> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\" /> <path d=\"M8 16H3v5\" />", "undo-2": "<path d=\"M9 14 4 9l5-5\" /> <path d=\"M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11\" />", "inbox": "<polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\" /> <path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" />", "loader-circle": "<path d=\"M21 12a9 9 0 1 1-6.219-8.56\" />", "circle-alert": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\" /> <line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\" />", "info": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 16v-4\" /> <path d=\"M12 8h.01\" />", "paperclip": "<path d=\"m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551\" />", "settings": "<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "notebook": "<path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\" /> <path d=\"M16 2v20\" />", "circle-check": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m16 9-5.5 5.5L8 12\" />", "layout-grid": "<rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\" />", "copy": "<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /> <path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />", "eye-off": "<path d=\"M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49\" /> <path d=\"M14.084 14.158a3 3 0 0 1-4.242-4.242\" /> <path d=\"M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143\" /> <path d=\"m2 2 20 20\" />", "smartphone": "<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /> <path d=\"M12 18h.01\" />", "phone": "<path d=\"M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384\" />", "gift": "<path d=\"M12 7v14\" /> <path d=\"M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8\" /> <path d=\"M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5\" /> <rect x=\"3\" y=\"7\" width=\"18\" height=\"4\" rx=\"1\" />", "cake": "<path d=\"M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8\" /> <path d=\"M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1\" /> <path d=\"M2 21h20\" /> <path d=\"M7 8v3\" /> <path d=\"M12 8v3\" /> <path d=\"M17 8v3\" /> <path d=\"M7 4h.01\" /> <path d=\"M12 4h.01\" /> <path d=\"M17 4h.01\" />", "star": "<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\" />", "building-2": "<path d=\"M10 12h4\" /> <path d=\"M10 8h4\" /> <path d=\"M14 21v-3a2 2 0 0 0-4 0v3\" /> <path d=\"M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2\" /> <path d=\"M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16\" />", "message-square": "<path d=\"M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z\" />", "calendar-clock": "<path d=\"M16 14v2.2l1.6 1\" /> <path d=\"M16 2v3\" /> <path d=\"M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338\" /> <path d=\"M3 9h5.859\" /> <path d=\"M8 2v3\" /> <circle cx=\"16\" cy=\"16\" r=\"6\" />", "calendar-cog": "<path d=\"m15.228 16.852-.923-.383\" /> <path d=\"m15.228 19.148-.923.383\" /> <path d=\"M16 2v3\" /> <path d=\"m16.47 14.305.382.923\" /> <path d=\"m16.852 20.772-.383.924\" /> <path d=\"m19.148 15.228.383-.923\" /> <path d=\"m19.53 21.696-.382-.924\" /> <path d=\"m20.773 16.852.924-.383\" /> <path d=\"m20.773 19.148.924.383\" /> <path d=\"M21 10.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h5.5\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" /> <circle cx=\"18\" cy=\"18\" r=\"3\" />", "briefcase": "<path d=\"M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16\" /> <rect width=\"20\" height=\"14\" x=\"2\" y=\"6\" rx=\"2\" />", "reply": "<path d=\"M20 18v-2a4 4 0 0 0-4-4H4\" /> <path d=\"m9 17-5-5 5-5\" />"}};
+const ICONS = {"lucide":{"house": "<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /> <path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />", "message-circle": "<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />", "list-todo": "<path d=\"M13 5h8\" /> <path d=\"M13 12h8\" /> <path d=\"M13 19h8\" /> <path d=\"m3 17 2 2 4-4\" /> <rect x=\"3\" y=\"4\" width=\"6\" height=\"6\" rx=\"1\" />", "calendar-days": "<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"M8 13h.01\" /> <path d=\"M12 13h.01\" /> <path d=\"M16 13h.01\" /> <path d=\"M8 17h.01\" /> <path d=\"M12 17h.01\" /> <path d=\"M16 17h.01\" />", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" />", "notebook-pen": "<path d=\"M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4\" /> <path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <path d=\"M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z\" />", "brain": "<path d=\"M12 18V5\" /> <path d=\"M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4\" /> <path d=\"M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294\" /> <path d=\"M17.996 5.125a4 4 0 012.526 5.77\" /> <path d=\"M18 18a4 4 0 002-7.465\" /> <path d=\"M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517\" /> <path d=\"M6 18a4 4 0 01-2-7.465\" /> <path d=\"M6.004 5.125a4 4 0 00-2.526 5.77\" />", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 6v6l4 2\" />", "arrow-up": "<path d=\"m5 12 7-7 7 7\" /> <path d=\"M12 19V5\" />", "bell": "<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /> <path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />", "calendar-plus": "<path d=\"M16 18h6\" /> <path d=\"M16 2v3\" /> <path d=\"M19 15v6\" /> <path d=\"M21 11.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h8.3\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" />", "check": "<path d=\"M20 6 9 17l-5-5\" />", "chevron-left": "<path d=\"m15 18-6-6 6-6\" />", "chevron-right": "<path d=\"m9 18 6-6-6-6\" />", "chevron-down": "<path d=\"m6 9 6 6 6-6\" />", "circle-dot": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"12\" cy=\"12\" r=\"10\" />", "circle-help": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" /> <path d=\"M12 17h.01\" />", "clipboard-list": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"M12 11h4\" /> <path d=\"M12 16h4\" /> <path d=\"M8 11h.01\" /> <path d=\"M8 16h.01\" />", "ellipsis": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"19\" cy=\"12\" r=\"1\" /> <circle cx=\"5\" cy=\"12\" r=\"1\" />", "eye": "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "flag": "<path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\" />", "folder": "<path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\" />", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" /> <path d=\"M12 7v5l4 2\" />", "lock": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", "mail": "<path d=\"m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7\" /> <rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\" />", "map-pin": "<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\" /> <circle cx=\"12\" cy=\"10\" r=\"3\" />", "menu": "<path d=\"M4 5h16\" /> <path d=\"M4 12h16\" /> <path d=\"M4 19h16\" />", "mic": "<path d=\"M12 19v3\" /> <path d=\"M19 10v2a7 7 0 0 1-14 0v-2\" /> <rect x=\"9\" y=\"2\" width=\"6\" height=\"13\" rx=\"3\" />", "monitor": "<rect width=\"20\" height=\"14\" x=\"2\" y=\"3\" rx=\"2\" /> <line x1=\"8\" x2=\"16\" y1=\"21\" y2=\"21\" /> <line x1=\"12\" x2=\"12\" y1=\"17\" y2=\"21\" />", "moon": "<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />", "panel-left": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M9 3v18\" />", "pencil": "<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />", "play": "<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\" />", "plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />", "search": "<path d=\"m21 21-4.34-4.34\" /> <circle cx=\"11\" cy=\"11\" r=\"8\" />", "send-horizontal": "<path d=\"M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z\" /> <path d=\"M6 12h16\" />", "shield-check": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"m9 12 2 2 4-4\" />", "sparkles": "<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /> <path d=\"M20 2v4\" /> <path d=\"M22 4h-4\" /> <circle cx=\"4\" cy=\"20\" r=\"2\" />", "square-pen": "<path d=\"M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\" /> <path d=\"M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z\" />", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\" /> <path d=\"M12 2v2\" /> <path d=\"M12 20v2\" /> <path d=\"m4.93 4.93 1.41 1.41\" /> <path d=\"m17.66 17.66 1.41 1.41\" /> <path d=\"M2 12h2\" /> <path d=\"M20 12h2\" /> <path d=\"m6.34 17.66-1.41 1.41\" /> <path d=\"m19.07 4.93-1.41 1.41\" />", "trash-2": "<path d=\"M10 11v6\" /> <path d=\"M14 11v6\" /> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /> <path d=\"M3 6h18\" /> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />", "triangle-alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />", "sunrise": "<path d=\"M12 2v8\" /> <path d=\"m4.93 10.93 1.41 1.41\" /> <path d=\"M2 18h2\" /> <path d=\"M20 18h2\" /> <path d=\"m19.07 10.93-1.41 1.41\" /> <path d=\"M22 22H2\" /> <path d=\"m8 6 4-4 4 4\" /> <path d=\"M16 18a4 4 0 0 0-8 0\" />", "repeat": "<path d=\"m17 2 4 4-4 4\" /> <path d=\"M3 11v-1a4 4 0 0 1 4-4h14\" /> <path d=\"m7 22-4-4 4-4\" /> <path d=\"M21 13v1a4 4 0 0 1-4 4H3\" />", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\" /> <path d=\"M3 5V19A9 3 0 0 0 21 19V5\" /> <path d=\"M3 12A9 3 0 0 0 21 12\" />", "globe": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\" /> <path d=\"M2 12h20\" />", "plug": "<path d=\"M12 22v-5\" /> <path d=\"M15 8V2\" /> <path d=\"M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z\" /> <path d=\"M9 8V2\" />", "user": "<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" /> <circle cx=\"12\" cy=\"7\" r=\"4\" />", "x": "<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />", "circle": "<circle cx=\"12\" cy=\"12\" r=\"10\" />", "log-out": "<path d=\"m16 17 5-5-5-5\" /> <path d=\"M21 12H9\" /> <path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />", "arrow-left": "<path d=\"m12 19-7-7 7-7\" /> <path d=\"M19 12H5\" />", "wifi-off": "<path d=\"M12 20h.01\" /> <path d=\"M8.5 16.429a5 5 0 0 1 7 0\" /> <path d=\"M5 12.859a10 10 0 0 1 5.17-2.69\" /> <path d=\"M19 12.859a10 10 0 0 0-2.007-1.523\" /> <path d=\"M2 8.82a15 15 0 0 1 4.177-2.643\" /> <path d=\"M22 8.82a15 15 0 0 0-11.288-3.764\" /> <path d=\"m2 2 20 20\" />", "refresh-cw": "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\" /> <path d=\"M21 3v5h-5\" /> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\" /> <path d=\"M8 16H3v5\" />", "undo-2": "<path d=\"M9 14 4 9l5-5\" /> <path d=\"M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11\" />", "inbox": "<polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\" /> <path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" />", "loader-circle": "<path d=\"M21 12a9 9 0 1 1-6.219-8.56\" />", "circle-alert": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\" /> <line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\" />", "info": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 16v-4\" /> <path d=\"M12 8h.01\" />", "paperclip": "<path d=\"m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551\" />", "settings": "<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "notebook": "<path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\" /> <path d=\"M16 2v20\" />", "circle-check": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m16 9-5.5 5.5L8 12\" />", "layout-grid": "<rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\" />", "copy": "<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /> <path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />", "eye-off": "<path d=\"M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49\" /> <path d=\"M14.084 14.158a3 3 0 0 1-4.242-4.242\" /> <path d=\"M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143\" /> <path d=\"m2 2 20 20\" />", "smartphone": "<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /> <path d=\"M12 18h.01\" />", "phone": "<path d=\"M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384\" />", "gift": "<path d=\"M12 7v14\" /> <path d=\"M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8\" /> <path d=\"M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5\" /> <rect x=\"3\" y=\"7\" width=\"18\" height=\"4\" rx=\"1\" />", "cake": "<path d=\"M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8\" /> <path d=\"M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1\" /> <path d=\"M2 21h20\" /> <path d=\"M7 8v3\" /> <path d=\"M12 8v3\" /> <path d=\"M17 8v3\" /> <path d=\"M7 4h.01\" /> <path d=\"M12 4h.01\" /> <path d=\"M17 4h.01\" />", "star": "<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\" />", "building-2": "<path d=\"M10 12h4\" /> <path d=\"M10 8h4\" /> <path d=\"M14 21v-3a2 2 0 0 0-4 0v3\" /> <path d=\"M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2\" /> <path d=\"M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16\" />", "message-square": "<path d=\"M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z\" />", "calendar-clock": "<path d=\"M16 14v2.2l1.6 1\" /> <path d=\"M16 2v3\" /> <path d=\"M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338\" /> <path d=\"M3 9h5.859\" /> <path d=\"M8 2v3\" /> <circle cx=\"16\" cy=\"16\" r=\"6\" />", "calendar-cog": "<path d=\"m15.228 16.852-.923-.383\" /> <path d=\"m15.228 19.148-.923.383\" /> <path d=\"M16 2v3\" /> <path d=\"m16.47 14.305.382.923\" /> <path d=\"m16.852 20.772-.383.924\" /> <path d=\"m19.148 15.228.383-.923\" /> <path d=\"m19.53 21.696-.382-.924\" /> <path d=\"m20.773 16.852.924-.383\" /> <path d=\"m20.773 19.148.924.383\" /> <path d=\"M21 10.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h5.5\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" /> <circle cx=\"18\" cy=\"18\" r=\"3\" />", "briefcase": "<path d=\"M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16\" /> <rect width=\"20\" height=\"14\" x=\"2\" y=\"6\" rx=\"2\" />", "reply": "<path d=\"M20 18v-2a4 4 0 0 0-4-4H4\" /> <path d=\"m9 17-5-5 5-5\" />", "key-round": "<path d=\"M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z\" /> <circle cx=\"16.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\" />", "fingerprint": "<path d=\"M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4\" /> <path d=\"M14 13.12c0 2.38 0 6.38-1 8.88\" /> <path d=\"M17.29 21.02c.12-.6.43-2.3.5-3.02\" /> <path d=\"M2 12a10 10 0 0 1 18-6\" /> <path d=\"M2 16h.01\" /> <path d=\"M21.8 16c.2-2 .131-5.354 0-6\" /> <path d=\"M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2\" /> <path d=\"M8.65 22c.21-.66.45-1.32.57-2\" /> <path d=\"M9 6.8a6 6 0 0 1 9 5.2v2\" />", "download": "<path d=\"M12 15V3\" /> <path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /> <path d=\"m7 10 5 5 5-5\" />", "upload": "<path d=\"M12 3v12\" /> <path d=\"m17 8-5-5-5 5\" /> <path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />", "activity": "<path d=\"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2\" />", "gauge": "<path d=\"m12 14 4-4\" /> <path d=\"M3.34 19a10 10 0 1 1 17.32 0\" />", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\" /> <path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\" />", "hard-drive": "<path d=\"M10 16h.01\" /> <path d=\"M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" /> <path d=\"M21.946 12.013H2.054\" /> <path d=\"M6 16h.01\" />", "bug": "<path d=\"M12 20v-9\" /> <path d=\"M14 7a4 4 0 0 1 4 4v3a6 6 0 0 1-12 0v-3a4 4 0 0 1 4-4z\" /> <path d=\"M14.12 3.88 16 2\" /> <path d=\"M21 21a4 4 0 0 0-3.81-4\" /> <path d=\"M21 5a4 4 0 0 1-3.55 3.97\" /> <path d=\"M22 13h-4\" /> <path d=\"M3 21a4 4 0 0 1 3.81-4\" /> <path d=\"M3 5a4 4 0 0 0 3.55 3.97\" /> <path d=\"M6 13H2\" /> <path d=\"m8 2 1.88 1.88\" /> <path d=\"M9 7.13V6a3 3 0 1 1 6 0v1.13\" />", "timer": "<line x1=\"10\" x2=\"14\" y1=\"2\" y2=\"2\" /> <line x1=\"12\" x2=\"15\" y1=\"14\" y2=\"11\" /> <circle cx=\"12\" cy=\"14\" r=\"8\" />", "shield-alert": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"M12 8v4\" /> <path d=\"M12 16h.01\" />", "archive-restore": "<rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\" /> <path d=\"M4 8v11a2 2 0 0 0 2 2h2\" /> <path d=\"M20 8v11a2 2 0 0 1-2 2h-2\" /> <path d=\"m9 15 3-3 3 3\" /> <path d=\"M12 12v9\" />", "workflow": "<rect width=\"8\" height=\"8\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M7 11v4a2 2 0 0 0 2 2h4\" /> <rect width=\"8\" height=\"8\" x=\"13\" y=\"13\" rx=\"2\" />"}};
 
 /* Sinal refinado: um modelo só, ícones Lucide, telas do sistema em claro e escuro. */
 const ic = (n, c = "") => `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${ICONS.lucide[n]}</svg>`;
@@ -1306,9 +1599,17 @@ const params = new URLSearchParams(location.search);
 const st = { s: pick(params.get("s"), SCREENS), t: pick(params.get("t"), THEMES), ag: { de: 8, ate: 18 } };
 /* partes de dentro das telas; a captura escolhe pelo endereço (&cfg=agenda, &ct=clientes, &p=bia) */
 st.agDef = { de: 8, ate: 18 };
-st.cfg = pick(params.get("cfg"), ["conta", "agenda"]);
+st.cfg = pick(params.get("cfg"), ["conta", "agenda", "seg", "ia", "avisos", "integ", "dados", "diag"]); st.af = pick(params.get("af"), ["rotinas", "fluxos"]);
 st.ct = pick(params.get("ct"), ["pessoas", "clientes", "avaliacoes"]);
 st.p = params.get("p") || "";
+st.rvv = pick(params.get("rvv"), ["avaliacoes", "pedidos"]);
+st.n = params.get("n") || "";
+st.mv = params.get("mv") === "1";
+st.au = Math.min(Math.max(Number(params.get("au")) || 0, 0), 5);
+st.auType = pick(params.get("aut"), ["resumo", "lembrete", "rotina", "fluxo"]);
+st.menu = pick(params.get("menu"), ["", "conta", "avisos"]);
+st.ld = params.get("ld") === "1";
+st.lg = params.get("lg") === "1";
 if (params.get("captura")) document.documentElement.dataset.captura = "1";
 const href = (s) => `?s=${s}&t=${st.t}`;
 
@@ -1348,21 +1649,21 @@ function side() {
   return `<aside class="side" aria-label="Menu da Zuri">
     <div class="side-head">
       <a class="brand" href="${href("inicio")}">${logo()}<span class="wm">Zuri</span></a>
-      <button class="iconbtn side-bell" type="button" aria-label="Avisos: 2 novos">${ic("bell")}<span class="badge" aria-hidden="true"></span></button>
+      <button class="iconbtn side-bell" type="button" aria-label="Avisos: 2 novos" aria-haspopup="dialog" data-menu="avisos">${ic("bell")}<span class="badge" aria-hidden="true"></span></button>
       <button class="iconbtn side-collapse" type="button" aria-label="Recolher o menu">${ic("panel-left")}</button>
     </div>
     <a class="btn btn-secondary btn-block side-new" href="${href("conversa")}">${ic("square-pen")}<span class="lbl">Nova conversa</span></a>
     <button class="searchbtn" type="button">${ic("search", "ic-sm")}<span>Buscar</span></button>
     <nav aria-label="Seções"><ul class="nav">${nav}</ul></nav>
-    <button class="account" type="button" aria-label="Conta de Ana"><span class="avatar" aria-hidden="true">A</span><span class="acct-txt"><b>Ana</b></span>${ic("chevron-down", "ic-sm")}</button>
+    <button class="account" type="button" aria-label="Conta de Ana" aria-haspopup="dialog" data-menu="conta"><span class="avatar" aria-hidden="true">A</span><span class="acct-txt"><b>Ana</b></span>${ic("chevron-down", "ic-sm")}</button>
   </aside>`;
 }
 function topbar() {
   return `<header class="topbar">
     <a class="brand" href="${href("inicio")}">${logo()}<span class="wm">Zuri</span></a>
     <button class="iconbtn" type="button" aria-label="Buscar">${ic("search")}</button>
-    <button class="iconbtn" type="button" aria-label="Avisos: 2 novos">${ic("bell")}<span class="badge" aria-hidden="true"></span></button>
-    <button class="iconbtn" type="button" aria-label="Conta de Ana"><span class="avatar" aria-hidden="true">A</span></button>
+    <button class="iconbtn" type="button" aria-label="Avisos: 2 novos" aria-haspopup="dialog" data-menu="avisos">${ic("bell")}<span class="badge" aria-hidden="true"></span></button>
+    <button class="iconbtn" type="button" aria-label="Conta de Ana" aria-haspopup="dialog" data-menu="conta"><span class="avatar" aria-hidden="true">A</span></button>
   </header>`;
 }
 function tabbar() {
@@ -1457,7 +1758,7 @@ const TASKS = {
   ]
 };
 function tarefas() {
-  const tabs = [["Hoje", "4", true], ["Próximas", "6"], ["Atrasadas", "1"], ["Concluídas", ""], ["Todas", ""]];
+  const tabs = [["Hoje", "4", true], ["Próximas", "6"], ["Atrasadas", "1"], ["Todas", ""]];
   const head = `<header class="pagehead"><div><h1>Tarefas</h1><p>O que vence hoje, o que vem depois e o que já foi feito.</p></div>
     <div class="actions"><button class="btn btn-secondary btn-sm" type="button">${ic("folder", "ic-sm")}Projetos</button><button class="btn btn-quiet btn-sm" type="button">${ic("trash-2", "ic-sm")}Lixeira</button></div></header>`;
   const add = `<form class="addrow" onsubmit="return false"><div class="with-ic">${ic("plus", "ic-sm")}<label class="sr" for="nt">Adicionar tarefa para hoje</label><input id="nt" class="input" placeholder="Adicionar tarefa para hoje"></div><button class="btn btn-primary" type="submit" aria-label="Adicionar tarefa">${ic("plus", "ic-sm")}<span>Adicionar</span></button></form>`;
@@ -1474,30 +1775,176 @@ function tarefas() {
 }
 
 /* ---------- Notas ---------- */
+/* ---------- Notas: nova nota e salvamento automático ---------- */
+const NOTES = [
+  { id: "vistoria", t: "Vistoria", d: "08:02", p: "Levar documentos, trena e o celular carregado. Chegar 10 minutos antes.", rich: true, saved: "08:02", proj: "Mudança de apartamento" },
+  { id: "lista", t: "Lista da mudança", d: "ontem", p: "Caixas, fita, plástico bolha. Pedir orçamento a três transportadoras.", saved: "ontem, 21:10", proj: "Mudança de apartamento" },
+  { id: "presente", t: "Ideias de presente para a Bia", d: "sex", p: "Livro de receitas, aula de cerâmica, a caneca que ela viu na feira.", saved: "sexta, 19:02" },
+  { id: "foto", t: "Curso de fotografia", d: "03/11", p: "Regra dos terços, abertura e profundidade de campo. Treinar no parque.", saved: "03/11, 20:40" },
+  { id: "contas", t: "Contas fixas", d: "01/11", p: "Luz vence dia 9, condomínio dia 10, internet dia 15.", saved: "01/11, 09:15", proj: "Casa" }
+];
+let newNotes = 0;
+function newNote() {
+  const old = NOTES.find((n) => n.fresh && !n.t && !n.p);
+  if (old) return old.id;
+  const n = { id: `nova${++newNotes}`, t: "", d: "agora", p: "", fresh: true, saved: "" };
+  NOTES.unshift(n);
+  return n.id;
+}
 function notas() {
-  const N = [
-    ["Vistoria", "08:02", "Levar documentos, trena e o celular carregado. Chegar 10 minutos antes.", true],
-    ["Lista da mudança", "ontem", "Caixas, fita, plástico bolha. Pedir orçamento a três transportadoras."],
-    ["Ideias de presente para a Bia", "sex", "Livro de receitas, aula de cerâmica, a caneca que ela viu na feira."],
-    ["Curso de fotografia", "03/11", "Regra dos terços, abertura e profundidade de campo. Treinar no parque."],
-    ["Contas fixas", "01/11", "Luz vence dia 9, condomínio dia 10, internet dia 15."]
-  ];
-  return `<div class="split fill">
-    <div class="pane"><div class="pane-head"><h1>Notas</h1><button class="btn btn-primary btn-sm" type="button">${ic("plus", "ic-sm")}Nova nota</button></div>
-      <form onsubmit="return false" class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ns">Buscar notas</label><input id="ns" class="input" placeholder="Buscar notas"></form>
-      <nav aria-label="Suas notas"><ul class="notelist">${N.map(([t, d, p, on]) => `<li><a href="${href("notas")}"${on ? ' aria-current="true"' : ""}><span class="t"><span>${t}</span><time class="num">${d}</time></span><p>${p}</p></a></li>`).join("")}</ul></nav></div>
-    <div class="pane" tabindex="0" aria-label="Nota aberta"><article class="editor" aria-labelledby="h-n">
-      <div class="editor-bar"><span class="saved">${ic("check", "ic-sm")}Salva às 08:02</span><span class="tag">${ic("folder", "ic-sm")}Mudança de apartamento</span>
-        <button class="btn btn-secondary btn-sm" type="button">${ic("pencil", "ic-sm")}Editar</button><button class="iconbtn" type="button" aria-label="Mais ações da nota">${ic("ellipsis")}</button></div>
-      <h2 class="title" id="h-n">Vistoria</h2>
-      <div class="prose">
-        <p>Vistoria do apartamento novo, segunda às 9h. A imobiliária manda a pessoa responsável e o laudo sai em até três dias.</p>
+  if (st.n === "nova") st.n = newNote();
+  const found = NOTES.find((n) => n.id === st.n);
+  const cur = found || NOTES[0];
+  const body = cur.rich
+    ? `<p>Vistoria do apartamento novo, segunda às 9h. A imobiliária manda a pessoa responsável e o laudo sai em até três dias.</p>
         <h3>O que levar</h3>
         <ul><li class="on"><span class="box on">${ic("check", "ic-sm")}</span><span>RG e comprovante de renda</span></li><li><span class="box"></span><span>Trena e caneta</span></li><li><span class="box"></span><span>Celular carregado para as fotos</span></li></ul>
         <h3>Conferir</h3>
-        <p>Tomadas, registro do gás, pressão do chuveiro e as janelas da sala. Fotografar tudo o que tiver marca ou risco antes de assinar.</p>
-      </div></article></div>
+        <p>Tomadas, registro do gás, pressão do chuveiro e as janelas da sala. Fotografar tudo o que tiver marca ou risco antes de assinar.</p>`
+    : cur.p ? `<p>${cur.p}</p>` : "";
+  const status = cur.fresh && !cur.saved ? `${ic("pencil", "ic-sm")}Rascunho: salva sozinha enquanto você escreve` : `${ic("check", "ic-sm")}Salva ${/:/.test(cur.saved) && !/,/.test(cur.saved) ? "às " : ""}${cur.saved}`;
+  return `<div class="split fill split-notes${found ? " has-sel" : ""}">
+    <div class="pane"><div class="pane-head"><h1>Notas</h1><button class="btn btn-primary btn-sm" type="button" data-new-note>${ic("plus", "ic-sm")}Nova nota</button></div>
+      <form onsubmit="return false" class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ns">Buscar notas</label><input id="ns" class="input" placeholder="Buscar notas"></form>
+      <nav aria-label="Suas notas"><ul class="notelist">${NOTES.map((n) => `<li><button class="nitem" type="button" data-n="${n.id}"${n === cur ? ' aria-current="true"' : ""}><span class="t"><span data-nt="${n.id}">${n.t || "Nota sem título"}</span><time class="num">${n.d}</time></span><p>${n.p || "Ainda vazia"}</p></button></li>`).join("")}</ul></nav></div>
+    <div class="pane" tabindex="-1" aria-label="Nota aberta"><article class="editor" aria-label="Editar a nota">
+      <h1 class="ct-h1-m">Notas</h1><button class="btn btn-quiet btn-sm back-m" type="button" data-n="">${ic("arrow-left", "ic-sm")}Notas</button>
+      <div class="editor-bar"><span class="saved" data-save="${cur.id}" role="status" aria-live="polite">${status}</span>${cur.proj ? `<span class="tag">${ic("folder", "ic-sm")}${cur.proj}</span>` : `<button class="btn btn-quiet btn-sm" type="button">${ic("folder", "ic-sm")}Pôr num projeto</button>`}
+        <div class="seg seg-xs" role="group" aria-label="Modo do editor"><button type="button" data-nmode="write" aria-pressed="true">Escrever</button><button type="button" data-nmode="prev" aria-pressed="false">Prévia</button></div>
+        <span class="nlocal"><button class="switch switch-sm" type="button" role="switch" aria-checked="${cur.id === "contas"}" aria-labelledby="n-lo"></button><span id="n-lo">Nunca enviar para fora</span></span>
+        <button class="iconbtn" type="button" aria-label="Mais ações da nota">${ic("ellipsis")}</button></div>
+      <h2 class="sr">${cur.t || "Nota sem título"}</h2><label class="sr" for="n-title">Título da nota</label><input id="n-title" class="title-in" value="${cur.t}" placeholder="Título" autocomplete="off" data-autosave="${cur.id}">
+      <div class="prose" id="n-body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto da nota" data-ph="Escreva ou cole aqui. Tudo é salvo sozinho." data-autosave="${cur.id}">${body}</div>
+    </article></div>
   </div>`;
+}
+let saveTimer;
+const hhmm = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+function autosave(id, el) {
+  const n = NOTES.find((x) => x.id === id);
+  if (!n) return;
+  if (el.id === "n-title") { n.t = el.value; const s = document.querySelector(`[data-nt="${id}"]`); if (s) s.textContent = n.t || "Nota sem título"; }
+  else { n.p = el.textContent.trim().slice(0, 120); n.rich = false; n.html = el.innerHTML; }
+  const box = document.querySelector(`[data-save="${id}"]`);
+  if (box) box.innerHTML = `${ic("loader-circle", "ic-sm spin")}Salvando…`;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { n.saved = hhmm(); n.d = "agora"; const b = document.querySelector(`[data-save="${id}"]`); if (b) b.innerHTML = `${ic("check", "ic-sm")}Salva às ${n.saved}`; }, 900);
+}
+
+/* ---------- Agenda: carregar outra semana ---------- */
+function weekLoading() {
+  const w = document.querySelector(".week");
+  if (!w) return;
+  w.dataset.loading = "1";
+  setTimeout(() => { delete w.dataset.loading; }, 700);
+}
+
+/* ---------- Memória: falar em vez de digitar ---------- */
+const recUI = () => `<div class="rec" role="status" aria-label="Gravando"><span class="rec-dot" aria-hidden="true"></span><span class="rec-t">Ouvindo… <span class="num" data-rec-t>0:03</span></span><span class="wave" aria-hidden="true">${"<i></i>".repeat(14)}</span><button class="btn btn-secondary btn-sm" type="button" data-mic-stop>${ic("check", "ic-sm")}Pronto</button></div>`;
+let recTimer;
+function micStart() {
+  const box = document.querySelector(".mem-in");
+  if (!box) return;
+  box.dataset.prev = box.innerHTML;
+  box.innerHTML = recUI();
+  let s = 0;
+  clearInterval(recTimer);
+  recTimer = setInterval(() => { s++; const t = document.querySelector("[data-rec-t]"); if (t) t.textContent = `0:${String(s).padStart(2, "0")}`; if (s >= 4) micStop(); }, 1000);
+  const b = box.querySelector("[data-mic-stop]"); if (b) b.focus();
+}
+function micStop() {
+  clearInterval(recTimer);
+  const box = document.querySelector(".mem-in");
+  if (!box || !box.dataset.prev) return;
+  box.innerHTML = `<div class="rec" role="status">${ic("loader-circle", "ic-sm spin")}<span class="rec-t">Transcrevendo…</span></div>`;
+  setTimeout(() => {
+    box.innerHTML = box.dataset.prev;
+    const inp = box.querySelector("input");
+    if (inp) { inp.value = "Prefiro marcar reuniões de manhã, antes das 11h."; inp.focus(); }
+    const h = document.getElementById("mem-hint"); if (h) h.textContent = "Confira o texto antes de guardar. O áudio não fica guardado.";
+  }, 900);
+}
+
+/* ---------- Automações: criar passo a passo ---------- */
+const AU_STEPS = ["Tipo", "Quando", "O que", "Avisos", "Revisar"];
+const AU_TYPES = [["lembrete", "bell", "Lembrete", "Avisa você com o texto que escrever, no horário. Sem IA."], ["resumo", "sunrise", "Resumo das tarefas", "Lista as tarefas atrasadas e as de hoje. Sem IA."], ["rotina", "sparkles", "Rotina da Zuri", "A Zuri lê suas tarefas, notas e memórias e faz o que você pedir. Usa IA."], ["fluxo", "workflow", "Fluxo", "Vários passos, como olhar um site e avisar você. Abre o editor de fluxos."]];
+function auBody() {
+  const t = st.auType;
+  const tname = AU_TYPES.find((x) => x[0] === t)[2];
+  const quiet = (id) => `<div class="set-row"><div class="grow"><p class="t" id="${id}">Só me avise quando houver algo</p><p class="hint">Se não tiver nada para mostrar, a execução fica no histórico e você não recebe aviso.</p></div><button class="switch" type="button" role="switch" aria-checked="true" aria-labelledby="${id}"></button></div>`;
+  if (st.au === 1) return `<p class="wz-q" id="wz-q">O que você quer criar?</p><div class="au-types" role="radiogroup" aria-labelledby="wz-q">${AU_TYPES.map(([k, i, l, d]) => `<button type="button" role="radio" class="au-type" data-au-type="${k}" aria-checked="${k === t}"><span class="tile">${ic(i)}</span><span><span class="t">${l}</span><span class="d">${d}</span></span></button>`).join("")}</div>`;
+  if (st.au === 2) return `<p class="wz-q">Quando?</p>
+    <div class="field"><span class="label" id="au-fq">Repetir</span><div class="seg seg-wrap" role="group" aria-labelledby="au-fq">${["Uma vez", "Todo dia", "Toda semana", "Todo mês", "A cada algumas horas"].map((l, k) => `<button type="button" aria-pressed="${k === 2}">${l}</button>`).join("")}</div></div>
+    <div class="field"><span class="label" id="au-dw">Dias da semana</span><div class="days" role="group" aria-labelledby="au-dw">${["seg", "ter", "qua", "qui", "sex", "sáb", "dom"].map((d, k) => `<button type="button" aria-pressed="${k < 5}">${d}</button>`).join("")}</div></div>
+    <div class="form-grid"><label class="field"><span>Horário</span><input class="input num" inputmode="numeric" value="07:30" autocomplete="off"></label><label class="field"><span>Fuso</span><select class="input" disabled><option>São Paulo (UTC−3), o da sua conta</option></select></label></div>
+    <p class="au-prev">${ic("calendar-clock", "ic-sm")}<span>Próximas execuções: <b>amanhã, 07:30</b> · quarta, 07:30 · quinta, 07:30</span></p>`;
+  if (st.au === 3) {
+    if (t === "lembrete") return `<p class="wz-q">Do que lembrar?</p><label class="field"><span>Texto do lembrete</span><input class="input" value="Tomar o remédio"></label><p class="hint">Chega do jeito que você escrever.</p>`;
+    if (t === "rotina") return `<p class="wz-q">O que a Zuri deve fazer?</p>
+      <div class="field"><span class="label" id="au-tpl">Começar de um modelo</span><div class="chips" role="group" aria-labelledby="au-tpl">${["Briefing da manhã", "Fechamento do dia", "Resumo do funil"].map((m, k) => `<button class="chip" type="button" aria-pressed="${k === 1}">${m}</button>`).join("")}</div></div>
+      <label class="field"><span>O que a Zuri deve fazer</span><textarea class="input" rows="3">Faça o fechamento do meu dia: as tarefas que concluí, o que ficou para amanhã e o primeiro compromisso de amanhã.</textarea></label>
+      <p class="label">Ferramentas externas</p><ul class="au-perm"><li class="set-row"><div class="grow"><p class="t" id="au-x0">Casa · ler sensores</p><p class="hint">Só consulta.</p></div><button class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="au-x0"></button></li>
+        <li class="set-row"><div class="grow"><p class="t" id="au-x1">Casa · desligar tudo</p><p class="hint">Sempre pergunta: apaga ou sobrescreve. Nunca roda sozinha.</p></div><button class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="au-x1" disabled></button></li></ul>
+      <p class="au-cost">${ic("sparkles", "ic-sm")}Cada execução gasta IA e conta no limite do dia: cerca de 40 Neurons por vez, de 9.000.</p>
+      ${quiet("au-q3")}`;
+    if (t === "fluxo") return `<p class="wz-q">Fluxos têm vários passos</p><p class="hint">Eles abrem no editor de fluxos, com quando roda, os passos e as conexões. Quer começar por uma sugestão?</p><ul class="au-perm">${["Olhar o preço de um site e avisar quando baixar", "Aniversariantes do dia no grupo de avisos"].map((m) => `<li><button class="pitem" type="button">${ic("workflow", "ic-sm")}<span class="pt"><span class="t">${m}</span></span></button></li>`).join("")}</ul>`;
+    return `<p class="wz-q">O que entra no resumo?</p><p class="hint">As tarefas atrasadas e as de hoje, em ordem de prazo.</p>
+      <label class="field"><span>Recado no começo (opcional)</span><input class="input" placeholder="Ex.: Bom dia! Foco na mudança."></label>${quiet("au-q3")}`;
+  }
+  if (st.au === 4) return `<p class="wz-q">Prioridade dos avisos</p><div class="au-types" role="radiogroup" aria-label="Prioridade dos avisos">${[["Baixa", "Fica só no sino do app, sem chamar no aparelho nem no Telegram."], ["Normal", "Chega pelos canais que você escolheu em Configurações › Avisos."], ["Alta", "Chega pelos canais escolhidos, e a Zuri insiste até você ver."]].map(([l, d], k) => `<button type="button" role="radio" class="au-type" aria-checked="${k === 1}"><span><span class="t">${l}</span><span class="d">${d}</span></span></button>`).join("")}</div>
+    <a class="more" href="${href("configuracoes")}" data-cfg-go="avisos">Escolher os canais${ic("chevron-right", "ic-sm")}</a>`;
+  return `<p class="wz-q">Tudo certo?</p>
+    <label class="field"><span>Nome</span><input class="input" value="${t === "lembrete" ? "Tomar o remédio" : t === "rotina" ? "Fechamento do dia" : "Resumo da manhã"}"></label>
+    <dl class="au-sum"><div><dt>Tipo</dt><dd>${tname}</dd></div><div><dt>Quando</dt><dd>De segunda a sexta às 07:30. Próxima: amanhã.</dd></div><div><dt>O que</dt><dd>${t === "lembrete" ? "Tomar o remédio" : t === "rotina" ? "Fecha o dia e mostra o primeiro compromisso de amanhã" : "Tarefas atrasadas e de hoje; só avisa quando houver algo"}</dd></div><div><dt>Prioridade</dt><dd>Normal</dd></div><div><dt>Custo</dt><dd>${t === "rotina" ? "Cerca de 40 Neurons por vez" : "Nenhum: não usa IA"}</dd></div></dl>
+    <p class="hint">Começa ativa. Você pode pausar, rodar agora ou apagar quando quiser. Ativas agora: <span class="num">3 de 20</span>.</p>`;
+}
+function wizard() {
+  const s = st.au;
+  return `<div class="wiz-wrap" data-scrim="au"><div class="wiz" role="dialog" aria-modal="true" aria-labelledby="wz-h">
+    <div class="wz-head"><div><p class="wz-step">Passo <span class="num">${s} de 5</span> · ${AU_STEPS[s - 1]}</p><h2 id="wz-h">Criar automação</h2></div><button class="iconbtn" type="button" data-au-close aria-label="Fechar sem criar">${ic("x")}</button></div>
+    <ol class="wz-bar" aria-hidden="true">${AU_STEPS.map((l, k) => `<li class="${k + 1 < s ? "done" : k + 1 === s ? "on" : ""}"></li>`).join("")}</ol>
+    <div class="wz-body">${auBody()}</div>
+    <div class="wz-foot"><button class="btn btn-quiet" type="button" data-au-close>Cancelar</button><span class="grow"></span>${s > 1 ? `<button class="btn btn-secondary" type="button" data-au-back>${ic("chevron-left", "ic-sm")}Voltar</button>` : ""}${s < 5 ? `<button class="btn btn-primary" type="button" data-au-next>Continuar${ic("chevron-right", "ic-sm")}</button>` : `<button class="btn btn-primary" type="button" data-au-done>${ic("check", "ic-sm")}Criar automação</button>`}</div>
+  </div></div>`;
+}
+
+/* ---------- Conta e avisos ---------- */
+const AVISOS = [
+  { id: "a1", ic: "clipboard-list", t: "Plano “Organizar a mudança” espera você", d: "4 tarefas para revisar. Nada foi criado ainda.", w: "Hoje, 08:14", s: "conversa", b: "Revisar", unread: true },
+  { id: "a2", ic: "repeat", t: "Rotina “Revisão da semana” espera aprovação", d: "Usa IA todo domingo às 18:00.", w: "Ontem, 18:02", s: "automacoes", b: "Revisar", unread: true },
+  { id: "a3", ic: "star", t: "Avaliação nova com nota 2", d: "De Pedro Henrique. A resposta espera você.", w: "Ontem, 17:41", s: "contatos", b: "Ver" },
+  { id: "a4", ic: "database", t: "Cópia de segurança feita", d: "Tudo guardado. A próxima é amanhã às 03:00.", w: "Hoje, 03:00" }
+];
+function pops() {
+  if (st.menu === "conta") return `<div class="pop-wrap" data-scrim="menu"><div class="pop pop-conta" role="dialog" aria-modal="true" aria-label="Sua conta">
+      <div class="pop-head"><span class="avatar avatar-lg" aria-hidden="true">A</span><div><p class="t">Ana</p><p class="d">ana@exemplo.com.br</p></div><button class="iconbtn pop-x" type="button" data-close-pop aria-label="Fechar">${ic("x", "ic-sm")}</button></div>
+      <ul class="pop-list">
+        <li><a href="${href("configuracoes")}" data-cfg-go="conta">${ic("user", "ic-sm")}Conta e perfil</a></li>
+        <li><a href="${href("configuracoes")}" data-cfg-go="agenda">${ic("calendar-days", "ic-sm")}Agenda</a></li>
+        <li><a href="${href("configuracoes")}" data-cfg-go="seg">${ic("shield-check", "ic-sm")}Segurança</a></li>
+        <li><a href="${href("configuracoes")}" data-cfg-go="avisos">${ic("bell", "ic-sm")}Avisos</a></li></ul>
+      <div class="pop-sec"><p class="label" id="pop-tema">Tema</p><div class="seg" role="group" aria-label="Tema"><button type="button" aria-pressed="${st.t === "claro"}">${ic("sun", "ic-sm")}Claro</button><button type="button" aria-pressed="${st.t === "escuro"}">${ic("moon", "ic-sm")}Escuro</button><button type="button" aria-pressed="false">${ic("monitor", "ic-sm")}Sistema</button></div></div>
+      <ul class="pop-list"><li><a href="${href("entrar")}" data-logout>${ic("log-out", "ic-sm")}Sair</a></li></ul></div></div>`;
+  if (st.menu === "avisos") {
+    const n = AVISOS.filter((a) => a.unread).length;
+    return `<div class="pop-wrap" data-scrim="menu"><div class="pop pop-avisos" role="dialog" aria-modal="true" aria-labelledby="h-av">
+      <div class="pop-top"><h2 id="h-av">Avisos</h2>${n ? `<span class="pill on"><i></i>${n} novos</span>` : ""}<span class="grow"></span>${n ? `<button class="btn btn-quiet btn-sm" type="button" data-read-all>Marcar como lidos</button>` : ""}<button class="iconbtn" type="button" data-close-pop aria-label="Fechar os avisos">${ic("x", "ic-sm")}</button></div>
+      <ul class="notif">${AVISOS.map((a) => `<li class="${a.unread ? "unread" : ""}"><span class="tile">${ic(a.ic, "ic-sm")}</span><div class="nt"><p class="t">${a.unread ? '<span class="sr">Novo: </span>' : ""}${a.t}</p><p class="d">${a.d}</p><p class="w num">${a.w}</p></div>${a.s ? `<a class="btn btn-secondary btn-sm" href="${href(a.s)}" data-aviso="${a.id}">${a.b}</a>` : ""}</li>`).join("")}</ul>
+      <a class="more pop-more" href="${href("configuracoes")}" data-cfg-go="avisos">Escolher o que avisar${ic("chevron-right", "ic-sm")}</a></div></div>`;
+  }
+  return "";
+}
+
+/* ---------- Carregando: a tela antes dos dados ---------- */
+function pageLoading(s) {
+  const sk = (w, h = 12) => `<span class="sk" style="width:${w};height:${h}px"></span>`;
+  const rows = (n) => Array.from({ length: n }, (_, k) => `<div class="sk-row"><span class="sk sk-c"></span><span class="sk-txt">${sk(["72%", "58%", "80%", "64%", "50%"][k % 5])}${sk(["40%", "30%", "46%", "36%", "28%"][k % 5])}</span></div>`).join("");
+  return `<div class="page page-ld" role="status" aria-label="Carregando">
+    <div class="ld-bar ld-top" aria-hidden="true"><i></i></div>
+    <h1 class="sr">Carregando</h1>
+    <div class="pl-head">${sk("38%", 28)}${sk("62%", 14)}</div>
+    <p class="ld-msg"><span class="ld-sig" aria-hidden="true"><i></i></span>${{ inicio: "Preparando o seu dia", tarefas: "Buscando suas tarefas", agenda: "Lendo a sua agenda", contatos: "Buscando seus contatos", notas: "Abrindo suas notas", memoria: "Lendo o que a Zuri sabe", automacoes: "Buscando suas automações" }[s] || "Carregando"}</p>
+    <div class="card pl-card">${rows(s === "inicio" ? 3 : 5)}</div></div>`;
 }
 
 /* ---------- Agenda ---------- */
@@ -1526,9 +1973,8 @@ function agenda() {
   const head = `<header class="pagehead"><div><h1>Agenda</h1><p>Seus eventos do Google Agenda. Quando algo muda lá, muda aqui também.</p></div>
     <div class="actions"><button class="btn btn-primary btn-sm" type="button">${ic("calendar-plus", "ic-sm")}Novo evento</button></div></header>`;
   const bar = `<div class="agenda-bar"><h2>9 a 15 de novembro</h2>
-    <div class="navgrp"><button class="iconbtn" type="button" aria-label="Semana anterior">${ic("chevron-left")}</button><button class="btn btn-secondary btn-sm" type="button">Hoje</button><button class="iconbtn" type="button" aria-label="Próxima semana">${ic("chevron-right")}</button></div>
-    <div class="seg" role="group" aria-label="Visualização"><button type="button" aria-pressed="false">Dia</button><button type="button" aria-pressed="true">Semana</button><button type="button" aria-pressed="false">Mês</button></div></div>
-    ${range}`;
+    <div class="navgrp"><button class="iconbtn" type="button" aria-label="Semana anterior" data-wk>${ic("chevron-left")}</button><button class="btn btn-secondary btn-sm" type="button" data-wk>Hoje</button><button class="iconbtn" type="button" aria-label="Próxima semana" data-wk>${ic("chevron-right")}</button></div>
+    <div class="seg" role="group" aria-label="Visualização"><button type="button" aria-pressed="false">Dia</button><button type="button" aria-pressed="true">Semana</button><button type="button" aria-pressed="false">Mês</button></div></div>`;
   const n = ate - de;
   const hours = Array.from({ length: n }, (_, k) => `<span>${hh(de + k)}</span>`).join("");
   const col = (i) => {
@@ -1545,14 +1991,14 @@ function agenda() {
     if (!lists.some((l) => l.length)) return "";
     return `<div class="outrow" role="row"><span class="lbl" role="rowheader">${which === "antes" ? `Antes<span class="sr"> das ${hh(de)}</span>` : `Depois<span class="sr"> das ${hh(ate)}</span>`}</span>${lists.map((l) => `<div role="cell">${l.map((e) => `<span class="ev-out ${e[5] === "b" ? "b" : ""}" title="${e[3]}, ${e[4]}"><b>${e[3]}</b><span class="num">${e[4].slice(0, 5)}</span></span>`).join("")}</div>`).join("")}</div>`;
   };
-  const week = `<div class="week" role="table" aria-label="Semana de 9 a 15 de novembro, das ${hh(de)} até ${hh(ate)}">
+  const week = `<div class="ld-bar wk-ld" aria-hidden="true"><i></i></div><div class="week" role="table" aria-label="Semana de 9 a 15 de novembro, das ${hh(de)} até ${hh(ate)}">
     <div role="row" style="display:contents"><div class="corner" role="columnheader"><span class="sr">Hora</span></div>${days.map(([d, nn], i) => `<div class="dh${i === 0 ? " today" : ""}" role="columnheader">${d}<b>${i === 0 ? `<span>${nn}</span>` : nn}</b></div>`).join("")}</div>
     <div class="allday" role="row"><span class="lbl" role="rowheader">Dia todo</span>${days.map((_, i) => `<div role="cell">${i === 5 ? '<div class="ev ad"><b>Mudança</b></div>' : ""}</div>`).join("")}</div>
     ${outRow("antes")}
     <div role="row" style="display:contents"><div class="hours" role="rowheader" aria-hidden="true" style="grid-template-rows:repeat(${n},${HR}px)">${hours}</div>${days.map((_, i) => col(i)).join("")}</div>
     ${outRow("depois")}
   </div>
-  <p class="legend"><span><i></i>Pessoal</span><span><i class="b"></i>Curso e esporte, só leitura</span><span class="legend-r">O que fica fora do horário escolhido aparece nas linhas “Antes” e “Depois”.</span></p>`;
+  <p class="legend"><span><i></i>Pessoal</span><span><i class="b"></i>Curso e esporte, só leitura</span><span class="legend-r">Das ${hh(de)} às ${hh(ate)}, como está em <a href="${href("configuracoes")}" data-cfg-open>Configurações › Agenda</a>. O resto fica em “Antes” e “Depois”.</span></p>`;
   const dayVis = E[0].filter(inside);
   const dayOut = E[0].filter((e) => !inside(e));
   const strip = `<div class="daystrip" role="group" aria-label="Dia">${days.map(([d, nn], i) => `<button type="button" aria-pressed="${i === 0}"><span>${d}</span><b>${nn}</b></button>`).join("")}</div>
@@ -1562,51 +2008,71 @@ function agenda() {
 }
 
 /* ---------- Contatos ---------- */
+const ph = (n, type = "Celular") => ({ n, type });
 const PEOPLE = [
-  { id: "bia", n: "Bia Martins", i: "BM", c: 1, sub: "Irmã", tags: ["Família"], fav: true, ph: "(41) 99999-0101", em: "bia@exemplo.com.br", bd: "2 de dezembro", city: "Curitiba, PR",
+  { id: "bia", n: "Bia Martins", i: "BM", c: 1, sub: "Irmã", tags: ["Família"], fav: true, phones: [ph("(41) 99999-0101")], emails: [["bia@exemplo.com.br", "Pessoal"]],
+    bd: "2 de dezembro · daqui a 23 dias", dates: [["Casamento", "14 de março"]], rel: [["Marido", "João Martins"]], org: "Arquiteta no Estúdio Lumen", addr: "Rua Exemplo, 123, ap. 42 · Água Verde, Curitiba, PR", notes: "Prefere mensagem a ligação.", custom: [["Tamanho de roupa", "M"]], updated: "08/11, 14:20",
     next: [["calendar-days", "Hoje", "Almoço com a Bia", "12:30 até 13:30"], ["list-todo", "25/11", "Comprar o presente da Bia", "Tarefa, prioridade média"], ["cake", "02/12", "Aniversário da Bia", "Faltam 23 dias. Lembrete uma semana antes"]],
     facts: [["Faz aniversário em 2 de dezembro.", "Guardada por você, 28/10"], ["Ideias de presente: livro de receitas, aula de cerâmica, a caneca que ela viu na feira.", "Da nota “Ideias de presente para a Bia”"]],
     seen: [["notebook", "Nota", "Ideias de presente para a Bia", "notas"], ["message-circle", "Conversa", "Presente da Bia, 08/11", "conversa"]] },
-  { id: "carlos", n: "Carlos Souza", i: "CS", c: 2, sub: "Transportadora Rota Sul", tags: ["Mudança"], ph: "(41) 99999-0102", em: "carlos@exemplo.com.br",
+  { id: "carla", n: "Carla Mendes", i: "CM", c: 3, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0110")], updated: "20/10, 09:12",
+    nps: { st: "apagou", cons: "13/10", log: [["20/10", "Avaliou com 3 estrelas"], ["25/10", "Apagou a avaliação"]] } },
+  { id: "carlos", n: "Carlos Souza", i: "CS", c: 2, sub: "Transportadora Rota Sul", tags: ["Mudança"], phones: [ph("(41) 99999-0102"), ph("(41) 3333-0102", "Trabalho")], emails: [["carlos@exemplo.com.br", "Trabalho"]], org: "Comercial na Transportadora Rota Sul", updated: "02/11, 10:05",
     next: [["calendar-days", "Amanhã", "Reunião com a transportadora", "14:00"], ["list-todo", "13/11", "Fechar o orçamento da transportadora", "Tarefa urgente"]],
     facts: [["Faz a mudança do dia 20, com caminhão pequeno e dois ajudantes.", "Anotada pela Zuri numa conversa, 02/11"]],
     seen: [["message-circle", "Conversa", "Organizar a mudança, hoje", "conversa"]] },
-  { id: "helena", n: "Dra. Helena Prado", i: "HP", c: 3, sub: "Dentista", tags: ["Saúde"], ph: "(41) 99999-0103", em: "consultorio@exemplo.com.br", city: "Curitiba, PR",
+  { id: "helena", n: "Dra. Helena Prado", i: "HP", c: 3, sub: "Dentista", tags: ["Saúde"], phones: [ph("(41) 3333-0103", "Consultório"), ph("(41) 99999-0103")], emails: [["consultorio@exemplo.com.br", "Trabalho"]], addr: "Av. Exemplo, 900, sala 3 · Batel, Curitiba, PR", updated: "15/10, 16:40",
     next: [["calendar-days", "Quarta", "Dentista", "10:00"]] },
-  { id: "imob", n: "Imobiliária Água Verde", i: "IA", c: 4, sub: "Aluguel do apartamento novo", tags: ["Mudança"], ph: "(41) 99999-0104", em: "contato@exemplo.com.br",
+  { id: "imob", n: "Imobiliária Água Verde", i: "IA", c: 4, sub: "Aluguel do apartamento novo", tags: ["Mudança"], phones: [ph("(41) 3333-0104", "Trabalho")], emails: [["contato@exemplo.com.br", "Trabalho"]], updated: "30/10, 11:00",
     next: [["list-todo", "Ontem", "Enviar documentos para a imobiliária", "Atrasada"]], seen: [["notebook", "Nota", "Vistoria", "notas"]] },
-  { id: "julia", n: "Júlia Andrade", i: "JA", c: 1, sub: "Vizinha do prédio novo", tags: ["Mudança"], ph: "(41) 99999-0105" },
-  { id: "mae", n: "Mãe", i: "M", c: 2, sub: "Família", tags: ["Família"], fav: true, ph: "(41) 99999-0106",
+  { id: "julia", n: "Júlia Andrade", i: "JA", c: 1, sub: "Vizinha do prédio novo", tags: ["Mudança"], phones: [ph("(41) 99999-0105")], updated: "05/11, 19:30" },
+  { id: "luciana", n: "Luciana Ferraz", i: "LF", c: 1, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0111")], emails: [["luciana@exemplo.com.br", "Pessoal"]], updated: "01/11, 08:00",
+    nps: { st: "avaliou", stars: 5, cons: "26/10", log: [["03/11", "Você enviou o link pelo WhatsApp"], ["04/11", "Abriu o link"], ["08/11", "Avaliou com 4 estrelas"], ["09/11", "Editou para 5 estrelas"]] } },
+  { id: "mae", n: "Mãe", i: "M", c: 2, sub: "Família", tags: ["Família"], fav: true, phones: [ph("(41) 99999-0106"), ph("(41) 3333-0106", "Casa")], updated: "12/09, 20:00",
     next: [["calendar-days", "Sexta", "Jantar na casa da mãe", "18:30"]] },
-  { id: "marcos", n: "Marcos Tavares", i: "MT", c: 3, sub: "Síndico do prédio novo", tags: ["Mudança"], ph: "(41) 99999-0107" },
-  { id: "rafael", n: "Rafael Lima", i: "RL", c: 4, sub: "Professor de fotografia", tags: ["Curso"], ph: "(41) 99999-0108", em: "rafael@exemplo.com.br",
+  { id: "marcos", n: "Marcos Tavares", i: "MT", c: 3, sub: "Síndico do prédio novo", tags: ["Mudança"], phones: [ph("(41) 99999-0107")], updated: "06/11, 09:10" },
+  { id: "marina", n: "Marina Costa", i: "MC", c: 4, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0112")], emails: [["marina@exemplo.com.br", "Pessoal"]], updated: "28/10, 17:00",
+    nps: { st: "sem-resposta", cons: "22/10", remind: true, log: [["30/10", "Você enviou o link pelo WhatsApp"]] } },
+  { id: "pedro", n: "Pedro Henrique", i: "PH", c: 2, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0113")], updated: "30/10, 15:20",
+    nps: { st: "avaliou", stars: 2, cons: "22/10", log: [["30/10", "Você enviou o link pelo WhatsApp"], ["07/11", "Abriu o link"], ["08/11", "Avaliou com 2 estrelas"]] } },
+  { id: "rafael", n: "Rafael Lima", i: "RL", c: 4, sub: "Professor de fotografia", tags: ["Curso"], phones: [ph("(41) 99999-0108")], emails: [["rafael@exemplo.com.br", "Trabalho"]], updated: "20/10, 18:00",
     next: [["calendar-days", "Hoje", "Aula de fotografia", "19:00, toda segunda e quinta"]], facts: [["Faz aula de fotografia com ele às segundas e quintas, às 19h.", "Guardada por você, 20/10"]] },
-  { id: "sofia", n: "Sofia Ribeiro", i: "SR", c: 1, sub: "Amiga da faculdade", tags: ["Amigos"], ph: "(41) 99999-0109", em: "sofia@exemplo.com.br", bd: "14 de novembro",
-    next: [["cake", "14/11", "Aniversário da Sofia", "Sábado. Faltam 5 dias"]] }
+  { id: "sofia", n: "Sofia Ribeiro", i: "SR", c: 1, sub: "Amiga da faculdade", tags: ["Amigos"], phones: [ph("(41) 99999-0109")], emails: [["sofia@exemplo.com.br", "Pessoal"]], bd: "14 de novembro · sábado", updated: "01/10, 12:00",
+    next: [["cake", "14/11", "Aniversário da Sofia", "Sábado. Faltam 5 dias"]] },
+  { id: "thiago", n: "Thiago Nunes", i: "TN", c: 2, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0114")], updated: "07/11, 10:30", nps: { st: "hoje", cons: "30/10", env: "09/11", why: "O 8º dia caiu no sábado, 07/11, e passou para o próximo dia útil.", log: [] } },
+  { id: "renata", n: "Renata Alves", i: "RA", c: 3, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0115")], updated: "06/11, 16:00", nps: { st: "agendado", cons: "06/11", env: "16/11", why: "O 8º dia cai no sábado, 14/11, e domingo é feriado. Passa para segunda.", log: [] } },
+  { id: "bruno", n: "Bruno Teixeira", i: "BT", c: 4, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0116")], updated: "05/11, 11:20", next: [["calendar-days", "Quinta", "Consulta do Bruno", "10:00, agenda Pessoal"]], nps: { st: "agendado", cons: "12/11", env: "23/11", why: "Consulta marcada para quinta. O 8º dia, 20/11, é feriado (Consciência Negra) e cai antes do fim de semana: passa para segunda, 23/11.", log: [] } }
 ];
 const CLIENTS = [
-  { id: "graofino", n: "Padaria Grão Fino", i: "GF", c: 2, sub: "Pediu orçamento pelo site", stage: ["novo", "Novo contato"], when: "Hoje", ph: "(41) 99999-0201", em: "compras@exemplo.com.br", city: "Curitiba, PR",
+  { id: "graofino", n: "Padaria Grão Fino", i: "GF", c: 2, sub: "Pediu orçamento pelo site", stage: ["novo", "Novo contato"], when: "Hoje", phones: [ph("(41) 99999-0201")], emails: [["compras@exemplo.com.br", "Trabalho"]], addr: "Curitiba, PR", updated: "hoje, 07:58",
     next: [["mail", "Hoje, 07:58", "Pediu orçamento pelo site", "Formulário de contato"], ["list-todo", "Amanhã", "Responder o orçamento da Grão Fino", "Tarefa criada pela Zuri"]],
     facts: [["Quer entregas às terças e sextas, antes das 7h.", "Do pedido de orçamento, hoje"]] },
-  { id: "bemviver", n: "Clínica Bem Viver", i: "BV", c: 3, sub: "Reunião marcada", stage: ["conv", "Em conversa"], when: "Ontem", ph: "(41) 99999-0202", em: "contato@exemplo.com.br",
+  { id: "bemviver", n: "Clínica Bem Viver", i: "BV", c: 3, sub: "Reunião marcada", stage: ["conv", "Em conversa"], when: "Ontem", phones: [ph("(41) 3333-0202", "Trabalho")], emails: [["contato@exemplo.com.br", "Trabalho"]], updated: "ontem, 16:10",
     next: [["calendar-days", "Quinta", "Reunião com a Clínica Bem Viver", "15:00"], ["mail", "Ontem", "Recebeu a proposta", "Abriu o e-mail duas vezes"]] },
-  { id: "lumen", n: "Estúdio Lumen", i: "EL", c: 4, sub: "Contrato assinado", stage: ["cli", "Cliente"], when: "03/11", ph: "(41) 99999-0203", em: "ola@exemplo.com.br",
+  { id: "lumen", n: "Estúdio Lumen", i: "EL", c: 4, sub: "Contrato assinado", stage: ["cli", "Cliente"], when: "03/11", phones: [ph("(41) 99999-0203")], emails: [["ola@exemplo.com.br", "Trabalho"]], updated: "03/11, 11:00",
     next: [["circle-check", "03/11", "Contrato assinado", "Começa em 1º de dezembro"]] }
 ];
 const REVIEWS = [
-  { id: "luciana", n: "Luciana Ferraz", i: "LF", c: 1, stars: 5, when: "Hoje, 08:05", st: "wait", text: "Atendimento atencioso do começo ao fim. Saí com tudo explicado e um plano fácil de seguir.", reply: "Obrigada, Luciana! Que bom que o plano ficou claro. Conte com a gente no retorno." },
-  { id: "pedro", n: "Pedro Henrique", i: "PH", c: 2, stars: 2, when: "Ontem, 17:40", st: "low", text: "Esperei 40 minutos além do horário marcado e ninguém avisou.", reply: "Pedro, você tem razão: o atraso devia ter sido avisado. Pedimos desculpas. Já combinamos de avisar por mensagem sempre que houver atraso." },
-  { id: "camila", n: "Camila Rocha", i: "CR", c: 3, stars: 5, when: "07/11", st: "done", pub: "07/11, 10:12", text: "Ótima experiência, recomendo!", reply: "Obrigada, Camila! Ficamos felizes com a recomendação." }
+  { id: "luciana", n: "Luciana Ferraz", i: "LF", c: 1, stars: 5, when: "Hoje, 08:05", st: "wait", contact: "luciana", until: "amanhã, 08:05", edit: "Editou hoje: antes eram 4 estrelas.", text: "Atendimento atencioso do começo ao fim. Saí com tudo explicado e um plano fácil de seguir.", reply: "Obrigada, Luciana! Que bom que o plano ficou claro. Conte com a gente no retorno." },
+  { id: "pedro", n: "Pedro Henrique", i: "PH", c: 2, stars: 2, when: "Ontem, 17:40", st: "low", guess: "pedro", why: ["Nota baixa", "Tem reclamação"], until: "amanhã, 17:40", text: "Esperei 40 minutos além do horário marcado e ninguém avisou.", reply: "Pedro, você tem razão: o atraso devia ter sido avisado. Pedimos desculpas. Já combinamos de avisar por mensagem sempre que houver atraso." },
+  { id: "camila", n: "Camila Rocha", i: "CR", c: 3, stars: 5, when: "07/11", st: "done", pub: "07/11, 10:12", text: "Ótima experiência, recomendo!", reply: "Obrigada, Camila! Ficamos felizes com a recomendação." },
+  { id: "carla", n: "Carla Mendes", i: "CM", c: 3, stars: 3, when: "20/10", st: "gone", contact: "carla", text: "Bom atendimento, mas a sala de espera estava cheia.", reply: "" }
 ];
+const NPS = { hoje: ["wait", "Enviar hoje", "Hoje"], agendado: ["off", "Agendado", "Agendado"], avaliou: ["on", "Já avaliou", "Avaliou"], apagou: ["off", "Avaliou e apagou", "Apagou"], "sem-resposta": ["wait", "Enviado, sem resposta", "Sem resposta"], lembrado: ["wait", "Lembrado, sem resposta", "Lembrado"], nunca: ["off", "Nunca recebeu", "Nunca recebeu"], nao: ["off", "Não quer receber", "Não quer"] };
+const isCell = (n) => /^(55)?\d{2}9\d{8}$/.test(n.replace(/\D/g, ""));
+const waLink = (n) => `https://wa.me/55${n.replace(/\D/g, "")}`;
+const WA = `<svg class="ic wa" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5l1.3-4.2A8.5 8.5 0 1 1 8 19.4z"/><path d="M9 8.6c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .5.4l.7 1.6c.1.2 0 .4-.1.6l-.5.6c-.1.1-.1.3 0 .5.6 1 1.5 1.9 2.6 2.5.2.1.4.1.5 0l.6-.7c.2-.2.4-.2.6-.1l1.6.8c.3.1.3.3.3.5 0 .6-.4 1.3-1 1.6-.6.3-1.6.4-3.3-.4a9 9 0 0 1-3.7-3.6c-.8-1.4-.6-2.5-.1-3.3z"/></svg>`;
 const stars = (n) => `<span class="stars" role="img" aria-label="${n} de 5 estrelas">${[1, 2, 3, 4, 5].map((k) => ic("star", k <= n ? "on" : "")).join("")}</span>`;
 const pav = (p, cls = "") => `<span class="pav tint-${p.c} ${cls}" aria-hidden="true">${p.i}</span>`;
 const fold = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const npsCount = () => { const c = { hoje: 0, agendado: 0, avaliou: 0, "sem-resposta": 0, nunca: 0 }; for (const p of PEOPLE) if (p.nps) { const k = p.nps.st === "apagou" ? "avaliou" : p.nps.st === "lembrado" ? "sem-resposta" : p.nps.st; if (k in c) c[k]++; if (p.nps.st === "sem-resposta" && p.nps.remind) c.hoje++; } return c; };
 function contatos() {
   const tab = st.ct;
-  const set = tab === "clientes" ? CLIENTS : tab === "avaliacoes" ? REVIEWS : PEOPLE;
+  const pedidos = tab === "avaliacoes" && st.rvv === "pedidos";
+  const set = tab === "clientes" ? CLIENTS : pedidos ? PEOPLE.filter((p) => p.nps) : tab === "avaliacoes" ? REVIEWS : PEOPLE;
   const found = set.find((p) => p.id === st.p);
   const cur = found || set[0];
-  const waiting = REVIEWS.filter((r) => r.st !== "done").length;
+  const waiting = REVIEWS.filter((r) => r.st === "wait" || r.st === "low").length;
   const tabs = `<div class="seg" role="group" aria-label="Mostrar">${[["pessoas", "Pessoas", PEOPLE.length], ["clientes", "Clientes", CLIENTS.length], ["avaliacoes", "Avaliações", waiting]].map(([k, l, n]) => `<button type="button" data-ct="${k}" aria-pressed="${k === tab}">${l} <span class="n">${n}</span></button>`).join("")}</div>`;
   const item = (p, right = "") => `<li data-q="${fold(p.n + " " + (p.sub || ""))}"><button class="pitem" type="button" data-p="${p.id}"${p === cur ? ' aria-current="true"' : ""}>${pav(p)}<span class="pt"><span class="t">${p.n}${p.fav ? ic("star", "fav") : ""}</span><span class="d">${p.sub || ""}</span></span>${right}</button></li>`;
   let list;
@@ -1620,28 +2086,59 @@ function contatos() {
     list = Object.entries(groups).map(([g, ps]) => `<li class="grp" data-g="${g}" aria-hidden="true">${g}</li>${ps.map((p) => item(p)).join("")}`).join("");
   } else if (tab === "clientes") {
     list = CLIENTS.map((p) => item(p, `<span class="pr"><span class="stage s-${p.stage[0]}"><i></i>${p.stage[1]}</span><span class="num">${p.when}</span></span>`)).join("");
+  } else if (pedidos) {
+    const G = [["Para enviar hoje", (p) => p.nps.st === "hoje" || (p.nps.st === "sem-resposta" && p.nps.remind)], ["Agendados", (p) => p.nps.st === "agendado"], ["Sem resposta", (p) => (p.nps.st === "sem-resposta" && !p.nps.remind) || p.nps.st === "lembrado"], ["Já avaliaram", (p) => p.nps.st === "avaliou" || p.nps.st === "apagou"], ["Não recebem", (p) => p.nps.st === "nao" || p.nps.st === "nunca"]];
+    const lab = (p) => p.nps.st === "sem-resposta" && p.nps.remind ? ["wait", "Lembrete"] : p.nps.st === "agendado" ? ["off", p.nps.env] : p.nps.st === "hoje" ? ["wait", "Hoje"] : [NPS[p.nps.st][0], NPS[p.nps.st][2]];
+    list = G.map(([g, f]) => { const ps = set.filter(f); return ps.length ? `<li class="grp grp-w" aria-hidden="true">${g}</li>${ps.map((p) => { const [k, l] = lab(p); return item({ ...p, sub: p.nps.cons ? `Consulta ${p.nps.cons}` : p.sub }, `<span class="pr"><span class="pill ${k}"><i></i><span class="num">${l}</span></span></span>`); }).join("")}` : ""; }).join("");
   } else {
-    list = REVIEWS.map((r) => item({ ...r, sub: r.text }, `<span class="pr">${stars(r.stars)}<span class="${r.st === "done" ? "num" : "rv-st"}">${r.st === "done" ? "Respondida" : r.st === "low" ? "Nota baixa" : "Para revisar"}</span></span>`)).join("");
+    const lbl = { done: "Respondida", low: "Nota baixa", wait: "Para revisar", gone: "Apagada" };
+    list = REVIEWS.map((r) => item({ ...r, sub: r.text }, `<span class="pr">${stars(r.stars)}<span class="${r.st === "wait" || r.st === "low" ? "rv-st" : "num"}">${lbl[r.st]}</span></span>`)).join("");
   }
-  const search = tab === "avaliacoes"
-    ? `<div class="rv-sum card"><p class="big num">4,8</p><div>${stars(5)}<p class="d"><span class="num">23</span> avaliações no Google</p></div></div>`
-    : `<form class="with-ic ct-search" role="search" onsubmit="return false">${ic("search", "ic-sm")}<label class="sr" for="cts">Buscar ${tab === "clientes" ? "clientes" : "contatos"}</label><input id="cts" class="input" placeholder="Buscar por nome" autocomplete="off"></form>`;
+  const c = npsCount();
+  const top = tab === "avaliacoes"
+    ? `<div class="rv-sum card"><div class="rv-n"><p class="big num">4,8</p>${stars(5)}<p class="d"><span class="num">23</span> avaliações</p></div>
+        <div class="rv-n"><p class="big num">72</p><p class="d">Índice de recomendação</p><p class="d xs">5 estrelas recomenda; 1 a 3, não</p></div></div>
+       <div class="seg seg-sub" role="group" aria-label="Ver"><button type="button" data-rvv="avaliacoes" aria-pressed="${!pedidos}">Avaliações</button><button type="button" data-rvv="pedidos" aria-pressed="${pedidos}">Pedidos de avaliação</button></div>
+       ${pedidos ? `<div class="match card"><p class="t">${ic("link", "ic-sm")}Avaliações ligadas aos contatos</p><p class="ped-sum"><span><b class="num">23</b> lidas</span><span><b class="num">19</b> ligadas</span><span><b class="num">3</b> para confirmar</span><span><b class="num">1</b> sem contato</span></p><p class="hint">Quem tem avaliação para confirmar fica fora da fila até você decidir.</p></div>
+         <p class="ped-sum"><span><b class="num">${c.hoje}</b> para hoje</span><span><b class="num">${c.agendado}</b> agendados</span><span><b class="num">${c["sem-resposta"]}</b> sem resposta</span><span><b class="num">${c.avaliou}</b> avaliaram</span></p>` : `<div class="rv-bar"><label class="sr" for="rv-f">Filtrar avaliações</label><select id="rv-f" class="input input-sm"><option>Precisa de você (2)</option><option>Publicadas sozinha (0)</option><option>Todas (4)</option></select><label class="sr" for="rv-n">Nota</label><select id="rv-n" class="input input-sm"><option>Todas as notas</option><option>5 estrelas</option><option>4 estrelas</option><option>3 estrelas</option><option>2 estrelas</option><option>1 estrela</option></select></div>
+         <p class="rv-read"><span>Última leitura: há 6 min</span><button class="linkbtn" type="button" data-rv-check>Conferir agora</button><button class="linkbtn" type="button" data-rv-pause>Pausar respostas</button></p>`}`
+    : `${tab === "clientes" ? `<p class="ped-sum cl-sum"><span class="late"><b class="num">1</b> retorno atrasado</span><span><b class="num">1</b> hoje</span><span><b class="num">2</b> nos próximos 7 dias</span><span><b class="num">1</b> novo na semana</span></p>
+        <div class="funnel" role="group" aria-label="Funil">${[["novo", "Novo contato", 1], ["conv", "Em conversa", 1], ["cli", "Cliente", 1]].map(([k, l, n]) => `<span class="stage s-${k}"><i></i>${l} <b class="num">${n}</b></span>`).join("")}<button class="linkbtn" type="button" data-soon>Editar funil</button></div>` : ""}<form class="with-ic ct-search" role="search" onsubmit="return false">${ic("search", "ic-sm")}<label class="sr" for="cts">Buscar ${tab === "clientes" ? "clientes" : "contatos"}</label><input id="cts" class="input" placeholder="Buscar por nome" autocomplete="off"></form>`;
   const left = `<div class="pane ct-list"><div class="pane-head"><h1>Contatos</h1><button class="iconbtn" type="button" aria-label="Atualizar agora">${ic("refresh-cw", "ic-sm")}</button></div>
-      <p class="sync">${tab === "clientes" ? "Chegam pelos eventos do seu site. Atualizado agora." : tab === "avaliacoes" ? "Do seu perfil de empresa no Google. Lidas a cada 15 min." : "Do Google Contatos, etiqueta “Zuri”. Atualizado há 12 min."}</p>
-      ${tabs}${search}
-      <nav aria-label="${tab === "avaliacoes" ? "Avaliações" : tab === "clientes" ? "Seus clientes" : "Seus contatos"}"><ul class="plist">${list}</ul><p class="p-empty ct-none" hidden>Ninguém com esse nome. Confira se a pessoa tem a etiqueta “Zuri” no Google Contatos.</p></nav></div>`;
+      <p class="sync"><span class="live-dot" aria-hidden="true"></span>${tab === "clientes" ? "Do CRM da Zuri. Os eventos do n8n entram na hora." : tab === "avaliacoes" ? "Do seu perfil de empresa no Google. Lidas a cada 15 min." : "Google Contatos, etiqueta “Zuri”. Em dia: conferido há 2 min."}</p>
+      ${tabs}${top}
+      <nav aria-label="${pedidos ? "Pedidos de avaliação" : tab === "avaliacoes" ? "Avaliações" : tab === "clientes" ? "Seus clientes" : "Seus contatos"}"><ul class="plist">${list}</ul><p class="p-empty ct-none" hidden>Ninguém com esse nome. Confira se a pessoa tem a etiqueta “Zuri” no Google Contatos.</p></nav></div>`;
   return `<div class="split fill split-contacts${found ? " has-sel" : ""}">${left}
-    <div class="pane" tabindex="0" aria-label="${tab === "avaliacoes" ? "Avaliação aberta" : "Contato aberto"}">${tab === "avaliacoes" ? review(cur) : person(cur, tab === "clientes")}</div></div>`;
+    <div class="pane" tabindex="0" aria-label="${tab === "avaliacoes" && !pedidos ? "Avaliação aberta" : "Contato aberto"}">${tab === "avaliacoes" && !pedidos ? review(cur) : person(cur, tab === "clientes")}</div></div>`;
 }
 const back = () => `<h1 class="ct-h1-m">Contatos</h1><button class="btn btn-quiet btn-sm back-m" type="button" data-p="">${ic("arrow-left", "ic-sm")}Contatos</button>`;
+function npsBlock(p) {
+  const n = p.nps;
+  const [k, l] = NPS[n.st];
+  const log = n.log.length ? `<ul class="tl tl-sm">${n.log.map(([w, t]) => `<li><span class="tl-ic">${ic(/Avaliou|Editou/.test(t) ? "star" : /Apagou/.test(t) ? "trash-2" : /Abriu/.test(t) ? "eye" : "send-horizontal", "ic-sm")}</span><span class="when num">${w}</span><span><span class="t">${t}</span></span></li>`).join("")}</ul>` : `<p class="p-empty">Nenhum pedido de avaliação enviado.</p>`;
+  const first = p.n.split(" ")[0];
+  let act = "";
+  const when = n.cons ? `<p class="nps-when">${ic("calendar-clock", "ic-sm")}<span>Consulta em <b class="num">${n.cons}</b>${n.env ? ` · envio ${n.st === "hoje" ? "<b>hoje</b>" : `em <b class="num">${n.env}</b>`}` : ""}${n.why ? `<span class="hint">${n.why}</span>` : ""}</span></p>` : "";
+  if (n.st === "hoje" || n.st === "nunca") act = `<button class="btn btn-primary btn-sm" type="button" data-nps-send="${p.id}">${WA}Enviar link de avaliação</button><p class="hint">Abre o WhatsApp com a mensagem e um link só de ${first}. Você confere e envia. Antes de abrir, a Zuri confere de novo se ${first} já avaliou.</p>`;
+  else if (n.st === "agendado") act = `<p class="ro">${ic("clock", "ic-sm")}<span>Entra na lista de “Para enviar hoje” no dia ${n.env}. Se ${first} avaliar antes, sai da fila sozinho.</span></p>`;
+  else if (n.st === "sem-resposta" && n.remind) act = `<button class="btn btn-secondary btn-sm" type="button" data-nps-send="${p.id}">${WA}Lembrar pelo WhatsApp</button><p class="hint">Último lembrete: depois deste, a Zuri não sugere de novo.</p>`;
+  else if (n.st === "sem-resposta") act = `<p class="ro">${ic("clock", "ic-sm")}<span>Lembrete liberado 7 dias depois do envio, num dia útil, se ${first} ainda não tiver avaliado.</span></p>`;
+  else act = `<p class="ro">${ic("lock", "ic-sm")}<span>${n.st === "nao" ? `${first} pediu para não receber.` : n.st === "lembrado" ? "Já recebeu o link e um lembrete. A Zuri não sugere de novo." : "Não recebe o link de novo: só recebe quem nunca avaliou."}</span></p>`;
+  return `<section class="card p-sec" aria-labelledby="h-nps"><div class="p-sec-h"><h3 id="h-nps">Avaliação no Google</h3><span class="pill ${k}"><i></i>${l}</span></div>
+      ${when}${n.stars ? `<p class="nps-stars">${stars(n.stars)}<span>Nota atual</span></p>` : ""}${log}<div class="nps-act">${act}</div></section>`;
+}
 function person(p, client) {
   const first = p.n.replace(/^Dra?\. /, "").split(" ")[0];
-  const tel = "+55" + p.ph.replace(/\D/g, "");
+  const cell = p.phones.find((x) => isCell(x.n));
+  const main = cell || p.phones[0];
+  const tel = "+55" + main.n.replace(/\D/g, "");
+  const em = p.emails && p.emails[0];
   const qa = `<ul class="qa" aria-label="Ações rápidas">
       <li><a class="qa-btn qa-main" href="${href("conversa")}">${ic("sparkles")}<span>Perguntar à Zuri<span class="sr"> sobre ${first}</span></span></a></li>
-      <li><a class="qa-btn" href="tel:${tel}">${ic("phone")}<span>Ligar</span></a></li>
-      <li>${p.em ? `<a class="qa-btn" href="mailto:${p.em}">${ic("mail")}<span>E-mail</span></a>` : `<button class="qa-btn" type="button" disabled>${ic("mail")}<span>Sem e-mail</span></button>`}</li>
-      <li><button class="qa-btn" type="button" data-copy="${p.ph}">${ic("copy")}<span>Copiar telefone</span></button></li></ul>`;
+      <li class="qa-telw"><a class="qa-btn qa-tel" href="tel:${tel}" data-num="${main.n}">${ic("phone")}<span><span class="only-d">Telefone</span><span class="only-m">Ligar</span></span></a>
+        <div class="qa-menu" hidden><button type="button" data-copy="${main.n}">${ic("copy", "ic-sm")}Copiar ${main.n}</button><a href="tel:${tel}">${ic("phone", "ic-sm")}Ligar pelo computador</a></div></li>
+      <li>${cell ? `<a class="qa-btn" href="${waLink(cell.n)}" target="_blank" rel="noopener" data-wa>${WA}<span>WhatsApp</span></a>` : `<button class="qa-btn" type="button" disabled>${WA}<span>Sem WhatsApp</span></button>`}</li>
+      <li>${em ? `<a class="qa-btn" href="mailto:${em[0]}">${ic("mail")}<span>E-mail</span></a>` : `<button class="qa-btn" type="button" disabled>${ic("mail")}<span>Sem e-mail</span></button>`}</li></ul>`;
   const next = p.next && p.next.length
     ? `<ul class="tl">${p.next.map(([i, w, t, d]) => `<li><span class="tl-ic">${ic(i, "ic-sm")}</span><span class="when">${w}</span><span><span class="t">${t}</span><span class="d">${d}</span></span></li>`).join("")}</ul>`
     : `<p class="p-empty">Nada marcado com ${client ? "este cliente" : "este contato"}. Peça à Zuri para marcar algo.</p>`;
@@ -1649,130 +2146,293 @@ function person(p, client) {
     ? `<ul class="facts">${p.facts.map(([f, m]) => `<li>${f}<span class="meta"><span>${m}</span></span></li>`).join("")}</ul><a class="more" href="${href("memoria")}">Ver na Memória${ic("chevron-right", "ic-sm")}</a>`
     : `<p class="p-empty">A Zuri ainda não guardou nada sobre ${client ? "este cliente" : "este contato"}.</p>`;
   const seen = p.seen ? `<section class="card p-sec" aria-labelledby="h-seen"><h3 id="h-seen">Onde aparece</h3><ul class="seen">${p.seen.map(([i, k, t, s]) => `<li><a href="${href(s)}">${ic(i, "ic-sm")}<span><span class="k">${k}</span><span class="t">${t}</span></span>${ic("chevron-right", "ic-sm")}</a></li>`).join("")}</ul></section>` : "";
-  const dd = (i, k, v) => (v ? `<div><dt>${ic(i, "ic-sm")}${k}</dt><dd>${v}</dd></div>` : "");
+  const phoneRow = (x) => `<li class="ch"><span class="num v">${x.n}</span><span class="ty">${x.type}</span><span class="ch-acts">${isCell(x.n) ? `<a class="iconbtn wa-btn" href="${waLink(x.n)}" target="_blank" rel="noopener" data-wa aria-label="Abrir conversa no WhatsApp com ${x.n}">${WA}</a>` : ""}<button class="iconbtn" type="button" data-copy="${x.n}" aria-label="Copiar ${x.n}">${ic("copy", "ic-sm")}</button></span></li>`;
+  const grp = (i, k, body) => (body ? `<div class="dg"><dt>${ic(i, "ic-sm")}${k}</dt><dd>${body}</dd></div>` : "");
+  const pairs = (arr) => (arr && arr.length ? arr.map(([a, b]) => `<span class="pair"><span class="pk">${a}</span>${b}</span>`).join("") : "");
+  const dados = `<dl class="dl-groups">
+      ${grp("smartphone", p.phones.length > 1 ? "Telefones" : "Telefone", `<ul class="chs">${p.phones.map(phoneRow).join("")}</ul>`)}
+      ${grp("mail", "E-mail", p.emails ? `<ul class="chs">${p.emails.map(([v, t]) => `<li class="ch"><span class="v">${v}</span><span class="ty">${t}</span><span class="ch-acts"><button class="iconbtn" type="button" data-copy="${v}" aria-label="Copiar ${v}">${ic("copy", "ic-sm")}</button></span></li>`).join("")}</ul>` : "")}
+      ${grp("cake", "Aniversário", p.bd)}
+      ${grp("calendar-days", "Datas especiais", pairs(p.dates))}
+      ${grp("users", "Relações", pairs(p.rel))}
+      ${grp("briefcase", "Trabalho", p.org)}
+      ${grp("map-pin", "Endereço", p.addr)}
+      ${grp("folder", "Etiquetas", (p.tags || []).map((t) => `<span class="tag">${t}</span>`).join(" "))}
+      ${grp("list-todo", "Campos personalizados", pairs(p.custom))}
+      ${grp("notebook", "Observações", p.notes)}</dl>
+      ${client ? `<div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-soon>${ic("pencil", "ic-sm")}Editar cliente</button></div>` : `<p class="ro">${ic("lock", "ic-sm")}<span>Só leitura, do Google Contatos. Mudou lá em ${p.updated}.</span></p>`}`;
   return `<article class="person" aria-labelledby="h-p">${back()}
       <header class="person-head">${pav(p, "pav-xl")}<div><h2 id="h-p">${p.n}</h2><p class="role">${p.sub}</p>
         <p class="meta">${client ? `<span class="stage s-${p.stage[0]}"><i></i>${p.stage[1]}</span>` : p.tags.map((t) => `<span class="tag">${t}</span>`).join("")}${p.fav ? `<span class="tag">${ic("star", "fav")}Favorito</span>` : ""}</p></div></header>
       ${qa}
       <div class="person-cols"><div class="pc-main">
-        <section class="card p-sec" aria-labelledby="h-next"><h3 id="h-next">${client ? "Linha do tempo" : `Próximos com ${first}`}</h3>${next}</section>
+        ${p.nps ? npsBlock(p) : ""}
+        <section class="card p-sec" aria-labelledby="h-next"><h3 id="h-next">${client ? "Histórico" : `Próximos com ${first}`}</h3>${client ? `<p class="nps-when">${ic("calendar-clock", "ic-sm")}<span>Retorno <b>amanhã, 10:00</b><span class="hint">Lembrete: mandar o orçamento revisado.</span></span></p><form class="cl-note" onsubmit="return false"><label class="sr" for="cl-n">Nova anotação</label><input id="cl-n" class="input" placeholder="Anotar no histórico…"><button class="btn btn-secondary btn-sm" type="submit">Anotar</button></form>` : ""}${next}</section>
         <section class="card p-sec" aria-labelledby="h-sabe"><h3 id="h-sabe">O que a Zuri sabe</h3>${facts}</section>
         ${seen}</div>
-        <div class="pc-side"><section class="card p-sec" aria-labelledby="h-dados"><h3 id="h-dados">Dados</h3><dl class="dl-stack">
-          ${dd("smartphone", "Telefone", `<span class="num">${p.ph}</span>`)}${dd("mail", "E-mail", p.em)}${dd("cake", "Aniversário", p.bd)}${dd("map-pin", "Cidade", p.city)}</dl>
-          <p class="ro">${ic("lock", "ic-sm")}<span>${client ? "Só leitura. Para mudar, mude no seu site." : "Só leitura. Para mudar, edite no Google Contatos."}</span></p></section></div>
+        <div class="pc-side"><section class="card p-sec" aria-labelledby="h-dados"><h3 id="h-dados">Dados</h3>${dados}</section></div>
       </div></article>`;
 }
 function review(r) {
-  const state = r.st === "done"
-    ? `<p class="rv-pub">${ic("circle-check", "ic-sm")}Publicada em <span class="num">${r.pub}</span></p>`
-    : `${r.st === "low" ? `<p class="rv-low">${ic("triangle-alert", "ic-sm")}Nota baixa: a Zuri nunca responde sozinha. Você decide.</p>` : ""}
-       <div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-rv="${r.id}">${ic("send-horizontal", "ic-sm")}Aprovar e publicar</button><button class="btn btn-secondary btn-sm" type="button">${ic("pencil", "ic-sm")}Editar</button><button class="btn btn-quiet btn-sm" type="button" data-rv-drop="${r.id}">Descartar</button></div>`;
+  const who = r.contact
+    ? `<p class="rv-who">${ic("user", "ic-sm")}<span>Ligada ao contato <button class="linkbtn" type="button" data-goto-p="${r.contact}">${r.n}</button></span></p>`
+    : r.guess ? `<div class="rv-guess"><p>${ic("circle-help", "ic-sm")}<span>Parece ser <b>${r.n}</b>, dos seus contatos: mesmo nome, e ele abriu o seu link ontem.</span></p><div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-rv-link="${r.id}">É ele</button><button class="btn btn-quiet btn-sm" type="button" data-rv-nolink>Não é</button></div></div>` : "";
+  const state = r.st === "gone"
+    ? `<p class="rv-low">${ic("trash-2", "ic-sm")}A pessoa apagou esta avaliação em 25/10. Fica aqui só no histórico.</p>`
+    : r.st === "done"
+      ? `<p class="rv-pub">${ic("circle-check", "ic-sm")}Publicada em <span class="num">${r.pub}</span></p>`
+      : `${r.st === "low" ? `<p class="rv-low">${ic("triangle-alert", "ic-sm")}Nota baixa: a Zuri nunca responde sozinha. Você decide.</p>` : ""}
+       <p class="hint">A aprovação vale até ${r.until}.</p>
+       <div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-rv="${r.id}">${ic("send-horizontal", "ic-sm")}Aprovar e publicar</button><button class="btn btn-secondary btn-sm" type="button" data-rv-redo>${ic("refresh-cw", "ic-sm")}Escrever de novo</button><button class="btn btn-quiet btn-sm" type="button" data-rv-drop="${r.id}">Descartar rascunho</button><button class="btn btn-quiet btn-sm" type="button" data-rv-done>Já resolvi fora da Zuri</button></div>`;
   return `<article class="person review" aria-labelledby="h-p">${back()}
-      <header class="person-head">${pav(r, "pav-xl")}<div><h2 id="h-p">${r.n}</h2><p class="role">${stars(r.stars)}<span class="num">${r.when}</span></p></div></header>
+      <header class="person-head">${pav(r, "pav-xl")}<div><h2 id="h-p">${r.n}</h2><p class="role">${stars(r.stars)}<span class="num">${r.when}</span></p>${r.why ? `<p class="meta">${r.why.map((w) => `<span class="tag">${w}</span>`).join("")}</p>` : ""}${r.edit ? `<p class="rv-edit">${ic("history", "ic-sm")}${r.edit}</p>` : ""}</div></header>
+      ${who}
       <blockquote class="rv-text">${r.text}</blockquote>
-      <section class="card p-sec rv-reply" aria-labelledby="h-rv"><h3 id="h-rv">${r.st === "done" ? "Resposta publicada" : "Resposta sugerida pela Zuri"}</h3><p class="rv-draft">${r.reply}</p>${state}</section>
+      ${r.st === "gone" ? `<section class="card p-sec rv-reply">${state}</section>` : `<section class="card p-sec rv-reply" aria-labelledby="h-rv"><h3 id="h-rv">${r.st === "done" ? "Resposta publicada pela Zuri" : "Resposta"}</h3>${r.st === "done" ? "" : `<p class="rv-src"><span class="tag">${ic("sparkles", "ic-sm")}Rascunho da Zuri</span><span class="num">${r.reply.length} de 600</span></p>`}<p class="rv-draft">${r.reply}</p>${state}</section>`}
       <p class="ro">${ic("info", "ic-sm")}<span>Notas 4 e 5 passam a ser respondidas sozinhas depois de 10 aprovações suas. Notas baixas sempre esperam você.</span></p>
     </article>`;
 }
 
-/* ---------- Automações ---------- */
+/* ---------- Automações: Rotinas e Fluxos, como na develop ---------- */
 function automacoes() {
   const A = [
-    ["sunrise", "Resumo da manhã", "Resumo das tarefas, todo dia às 07:30", "Próxima: amanhã, 07:30", "on", "Ativa"],
-    ["bell", "Lembrete do remédio", "Lembrete, todo dia às 21:00", "Próxima: hoje, 21:00", "on", "Ativa"],
-    ["repeat", "Revisão da semana", "Rotina da Zuri, todo domingo às 18:00. Usa IA a cada vez.", "Criada na conversa", "wait", "Esperando aprovação"],
-    ["bell", "Pagar o aluguel", "Lembrete, todo dia 5 às 09:00", "Pausada desde 01/11", "off", "Pausada"]
+    ["sunrise", "Resumo da manhã", "Resumo das tarefas · De segunda a sexta às 07:30", "Próxima: amanhã, 07:30", "on", "Ativa", "Só avisa quando houver algo"],
+    ["bell", "Tomar o remédio", "Lembrete · Todo dia às 21:00", "Próxima: hoje, 21:00", "on", "Ativa", ""],
+    ["sparkles", "Fechamento do dia", "Rotina da Zuri · De segunda a sexta às 18:30", "Última: sexta, 18:30", "on", "Ativa", "Usa IA"],
+    ["bell", "Pagar o aluguel", "Lembrete · Todo dia 5 às 09:00", "Pausada desde 01/11", "off", "Pausada", ""]
   ];
-  const ctl = (s, n) => s === "wait"
-    ? `<a class="btn btn-primary btn-sm" href="${href("conversa")}">Revisar e aprovar</a>`
-    : `<button class="btn btn-secondary btn-sm" type="button"${s === "off" ? " disabled" : ""}>${ic("play", "ic-sm")}Rodar agora</button><button class="switch" type="button" role="switch" aria-checked="${s === "on"}" aria-label="${s === "on" ? "Pausar" : "Retomar"} “${n}”"></button><button class="iconbtn" type="button" aria-label="Ações de “${n}”">${ic("ellipsis")}</button>`;
-  return `<div class="page">
-    <header class="pagehead"><div><h1>Automações</h1><p>Lembretes, resumos e rotinas que rodam sozinhos, sempre no seu fuso. <span class="num">2 de 20</span> ativas.</p></div>
-      <div class="actions"><button class="btn btn-secondary btn-sm" type="button">${ic("plus", "ic-sm")}Criar automação</button></div></header>
-    <ul class="card" aria-label="Suas automações">${A.map(([i, n, d, nx, s, sl]) => `<li class="auto"><span class="tile">${ic(i)}</span>
-      <div><p class="t">${n}</p><p class="meta"><span>${d}</span></p><p class="meta"><span class="pill ${s}"><i></i>${sl}</span><span class="num">${nx}</span></p></div>
+  const ctl = (s, n) => `<button class="btn btn-secondary btn-sm" type="button"${s === "off" ? " disabled" : ""}>${ic("play", "ic-sm")}Rodar agora</button><button class="switch" type="button" role="switch" aria-checked="${s === "on"}" aria-label="${s === "on" ? "Pausar" : "Retomar"} “${n}”"></button><button class="iconbtn" type="button" aria-label="Ações de “${n}”">${ic("ellipsis")}</button>`;
+  const tabs = `<div class="seg" role="group" aria-label="Tipos de automação"><button type="button" data-af="rotinas" aria-pressed="${st.af === "rotinas"}">Rotinas <span class="n">4</span></button><button type="button" data-af="fluxos" aria-pressed="${st.af === "fluxos"}">Fluxos <span class="n">2</span></button></div>`;
+  const rotinas = `<section class="card sugg-card" aria-labelledby="h-sug"><div class="p-sec-h"><h2 id="h-sug">${ic("sparkles", "ic-sm")}A Zuri sugeriu 1 rotina</h2><span class="pill wait"><i></i>Esperando aprovação</span></div>
+      <p class="t">Revisão de sexta · Toda sexta às 17:00</p><p class="hint">O que a Zuri vai fazer a cada vez: “Veja o que ficou atrasado na semana e me sugira um plano para a próxima.” Usa IA a cada vez.</p>
+      <div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-sug="ok">${ic("check", "ic-sm")}Aprovar</button><button class="btn btn-quiet btn-sm" type="button" data-sug="no">Recusar</button></div></section>
+    <ul class="card" aria-label="Suas automações">${A.map(([i, n, d, nx, s, sl, q]) => `<li class="auto"><span class="tile">${ic(i)}</span>
+      <div><p class="t">${n}</p><p class="meta"><span>${d}</span></p><p class="meta"><span class="pill ${s}"><i></i>${sl}</span><span class="num">${nx}</span>${q ? `<span class="tag">${q}</span>` : ""}</p></div>
       <div class="ctl">${ctl(s, n)}</div></li>`).join("")}</ul>
     <section class="block" aria-labelledby="h-runs"><div class="block-head"><h2 id="h-runs">Últimas execuções</h2></div>
       <ul class="card runs">
-        <li><time class="num">Hoje, 07:30</time><span>Resumo da manhã: 4 tarefas, 1 atrasada</span><span class="state on">${ic("send-horizontal", "ic-sm")}Enviado</span></li>
-        <li><time class="num">Ontem, 21:00</time><span>Lembrete do remédio</span><span class="state on">${ic("check", "ic-sm")}Enviado</span></li>
-        <li><time class="num">Ontem, 07:30</time><span>Resumo da manhã: nada atrasado</span><span class="state off">Sem aviso, nada novo</span></li>
-      </ul></section>
+        <li><time class="num">Hoje, 07:30</time><span>Resumo da manhã · No horário</span><span class="state on">${ic("send-horizontal", "ic-sm")}Entregue</span></li>
+        <li><time class="num">Sexta, 18:30</time><span>Fechamento do dia · No horário</span><span class="state on">${ic("check", "ic-sm")}Entregue</span></li>
+        <li><time class="num">Sexta, 07:30</time><span>Resumo da manhã · Recuperada</span><span class="state off">Nada a avisar</span></li>
+      </ul></section>`;
+  const F = [["Preço da passagem", "A cada 360 minutos · Olhar sites → Filtrar itens → Avisar você", "3 passos", "Última: hoje, 06:00 · deu certo", "on", "Ativo"], ["Aniversariantes no grupo", "Todo dia · Buscar contatos → Avisar você", "2 passos", "Última: hoje, 08:00 · deu certo", "on", "Ativo"]];
+  const fluxos = `<ul class="card" aria-label="Seus fluxos">${F.map(([n, d, p, l, s, sl]) => `<li class="auto"><span class="tile">${ic("workflow")}</span><div><p class="t">${n}</p><p class="meta"><span>${d}</span></p><p class="meta"><span class="pill ${s}"><i></i>${sl}</span><span class="num">${l}</span><span class="tag">${p}</span></p></div>
+      <div class="ctl"><button class="btn btn-secondary btn-sm" type="button">${ic("play", "ic-sm")}Executar</button><button class="btn btn-quiet btn-sm" type="button">${ic("pencil", "ic-sm")}Editar</button></div></li>`).join("")}</ul>
+    <section class="block" aria-labelledby="h-fsug"><div class="block-head"><h2 id="h-fsug">Sugestões da Zuri</h2></div>
+      <ul class="card"><li class="auto"><span class="tile">${ic("sparkles")}</span><div><p class="t">Avisar do pedido de avaliação</p><p class="meta"><span>Todo dia útil às 09:00 · Buscar contatos → Avisar você</span></p></div><div class="ctl"><button class="btn btn-secondary btn-sm" type="button">Revisar</button></div></li></ul></section>
+    <section class="block" aria-labelledby="h-conn"><div class="block-head"><h2 id="h-conn">Conexões</h2><button class="btn btn-quiet btn-sm" type="button">${ic("plus", "ic-sm")}Nova conexão</button></div>
+      <ul class="card runs"><li><span class="tag">Token</span><span>n8n do consultório · só POST, PUT e PATCH</span><span class="state on">${ic("check", "ic-sm")}Pronta</span></li></ul></section>
+    <p class="ro">${ic("info", "ic-sm")}<span>Os passos que existem hoje: chamar um serviço, filtrar itens, montar campos, esperar, avisar você, pedir à IA, olhar sites, ler a agenda, criar evento e buscar contatos.</span></p>`;
+  return `<div class="page">
+    <header class="pagehead"><div><h1>Automações</h1><p>Lembretes, resumos e rotinas que rodam sozinhos, sempre no seu fuso. <span class="num">3 de 20</span> ativas.</p></div>
+      <div class="actions"><button class="btn btn-primary btn-sm" type="button" data-au-open aria-haspopup="dialog">${ic("plus", "ic-sm")}${st.af === "fluxos" ? "Novo fluxo" : "Criar automação"}</button></div></header>
+    <div class="tabs-row">${tabs}</div>
+    ${st.af === "fluxos" ? fluxos : rotinas}
   </div>`;
 }
 
-/* ---------- Memória ---------- */
+/* ---------- Memória, como na develop: tipos, filtros, revisão de conflitos e "nunca enviar para fora" ---------- */
 function memoria() {
   const M = [
-    ["Prefere café sem açúcar.", "Preferência", "Atual", "Anotada pela Zuri numa conversa", "03/11"],
-    ["Está organizando a mudança para um apartamento novo no Água Verde.", "Projeto", "Atual", "Anotada pela Zuri numa conversa", "02/11"],
-    ["A Bia faz aniversário em 2 de dezembro.", "Pessoa", "Atual", "Guardada por você", "28/10"],
-    ["Faz aula de fotografia às segundas e quintas, às 19h.", "Hábito", "Atual", "Guardada por você", "20/10"],
-    ["Talvez troque de plano de internet em dezembro.", "Objetivo", "Incerta", "Anotada pela Zuri numa conversa", "15/10"]
+    ["Prefere café sem açúcar.", "Preferência", "Atual", "Anotada pela Zuri numa conversa", "03/11", ""],
+    ["Está se mudando para um apartamento no Água Verde.", "Projeto", "Atual", "Anotada pela Zuri numa conversa", "09/11", ""],
+    ["A Bia faz aniversário em 2 de dezembro.", "Pessoa", "Atual", "Guardada por você", "28/10", ""],
+    ["Faz aula de fotografia às segundas e quintas, às 19h.", "Hábito", "Atual", "Pelo Telegram", "20/10", ""],
+    ["Toma remédio para pressão todo dia às 21h.", "Hábito", "Atual", "Guardada por você", "12/10", "local"],
+    ["Talvez troque de plano de internet em dezembro.", "Objetivo", "Incerta", "Anotada pela Zuri numa conversa", "15/10", ""],
+    ["Mora no Batel.", "Fato", "Passado", "Guardada por você", "desde 2022", ""]
   ];
+  const cats = ["Fato", "Preferência", "Objetivo", "Projeto", "Hábito", "Pessoa", "Outro"];
   return `<div class="page">
     <header class="pagehead"><div><h1>Memória</h1><p>O que a Zuri sabe sobre você. Corrija ou apague o que quiser; nada muda sem você saber.</p></div></header>
     <form class="card mem-add" onsubmit="return false" aria-label="Guardar uma memória">
-      <label class="field"><span>Guardar uma memória</span><input class="input" placeholder="Um fato por vez, com as suas palavras"></label>
-      <label class="field"><span>Tipo</span><select class="input"><option>Fato</option><option>Preferência</option><option>Pessoa</option><option>Projeto</option></select></label>
+      <div class="field"><label class="label" for="mem-q">Guardar uma memória</label><span class="mem-in">${st.mv ? recUI() : `<input id="mem-q" class="input" placeholder="Ex.: Moro em Curitiba desde 2024" maxlength="500" aria-describedby="mem-hint"><button class="iconbtn mic" type="button" data-mic aria-label="Falar a memória">${ic("mic")}</button>`}</span><p class="hint" id="mem-hint">Escreva, ou toque no microfone e fale. Até 500 caracteres.</p></div>
+      <label class="field"><span>Tipo</span><select class="input">${cats.map((c) => `<option>${c}</option>`).join("")}</select></label>
       <button class="btn btn-primary" type="submit">Guardar</button>
+      <div class="mem-local"><button class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="mem-lo"></button><span><span class="t" id="mem-lo">Nunca enviar para fora</span><span class="hint">Fica só na sua conta: não vai para modelos pagos.</span></span></div>
     </form>
-    <div class="filters" style="margin-top:var(--s6)"><div class="seg" role="group" aria-label="Mostrar"><button type="button" aria-pressed="true">Todas <span class="n">7</span></button><button type="button" aria-pressed="false">Atuais <span class="n">6</span></button><button type="button" aria-pressed="false">Incertas <span class="n">1</span></button><button type="button" aria-pressed="false">Passadas <span class="n">0</span></button></div>
-      <div class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ms">Buscar nas memórias</label><input id="ms" class="input" placeholder="Buscar nas memórias"></div></div>
-    <ul class="card mem" style="margin-top:var(--s4)" aria-label="Memórias">${M.map(([f, k, s, o, d]) => `<li><div><p class="fact">${f}</p><p class="meta"><span class="tag">${k}</span>${s === "Incerta" ? `<span class="prio hot">${ic("circle-help", "ic-sm")}Incerta</span>` : ""}<span>${o}</span><span class="num">${d}</span></p></div>
-      <div class="acts"><button class="iconbtn" type="button" aria-label="Corrigir “${f}”">${ic("pencil", "ic-sm")}</button><button class="iconbtn" type="button" aria-label="Histórico de “${f}”">${ic("history", "ic-sm")}</button><button class="iconbtn" type="button" aria-label="Mais ações">${ic("ellipsis", "ic-sm")}</button></div></li>`).join("")}</ul>
+    <section class="card rev-card" aria-labelledby="h-rev"><div class="p-sec-h"><h2 id="h-rev">Para revisar</h2><span class="pill wait"><i></i>Possível atualização</span></div>
+      <p class="hint">A mais recente diz que mudou onde você mora.</p>
+      <div class="rev-pair"><div><p class="k">Mais antiga</p><p>Mora no Batel.</p></div><div><p class="k">Mais recente</p><p>Está se mudando para um apartamento no Água Verde.</p></div></div>
+      <div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-rev>Marcar a antiga como passado</button><button class="btn btn-secondary btn-sm" type="button" data-rev>Manter as duas</button><button class="btn btn-quiet btn-sm" type="button" data-rev>Substituir a antiga</button><button class="btn btn-quiet btn-sm" type="button" data-rev>Descartar a recente</button></div></section>
+    <div class="filters" style="margin-top:var(--s6)"><div class="seg" role="group" aria-label="Mostrar"><button type="button" aria-pressed="true">Todas <span class="n">7</span></button><button type="button" aria-pressed="false">Atuais <span class="n">5</span></button><button type="button" aria-pressed="false">Incertas <span class="n">1</span></button><button type="button" aria-pressed="false">Passadas <span class="n">1</span></button></div>
+      <div class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ms">Buscar nas memórias</label><input id="ms" class="input" placeholder="Buscar nas memórias"></div>
+      <label class="sr" for="mt">Filtrar por tipo</label><select id="mt" class="input"><option>Todos os tipos</option>${cats.map((c) => `<option>${c}</option>`).join("")}</select></div>
+    <ul class="card mem" style="margin-top:var(--s4)" aria-label="Memórias">${M.map(([f, k, s, o, d, lo]) => `<li><div><p class="fact">${f}</p><p class="meta"><span class="tag">${k}</span>${s === "Incerta" ? `<span class="prio hot">${ic("circle-help", "ic-sm")}Incerta</span>` : s === "Passado" ? `<span class="tag">${ic("history", "ic-sm")}Passado</span>` : ""}${lo ? `<span class="tag">${ic("lock", "ic-sm")}Só na sua conta</span>` : ""}<span>${o}</span><span class="num">${d}</span></p></div>
+      <div class="acts"><button class="iconbtn" type="button" aria-label="Atualizar “${f}”">${ic("pencil", "ic-sm")}</button><button class="iconbtn" type="button" aria-label="Histórico de “${f}”">${ic("history", "ic-sm")}</button><button class="iconbtn" type="button" aria-label="Mais ações de “${f}”">${ic("ellipsis", "ic-sm")}</button></div></li>`).join("")}</ul>
   </div>`;
 }
 
-/* ---------- Configurações ---------- */
-const CFG = [["conta", "user", "Conta"], ["agenda", "calendar-days", "Agenda"], ["seg", "shield-check", "Segurança"], ["ia", "sparkles", "IA"], ["avisos", "bell", "Avisos"], ["integ", "plug", "Integrações"], ["dados", "database", "Dados"], ["diag", "globe", "Diagnóstico"]];
+/* ---------- Configurações: todas as seções que já existem na develop (09/11 18:23) ---------- */
+const CFG = [["conta", "user", "Conta"], ["agenda", "calendar-days", "Agenda"], ["seg", "shield-check", "Segurança"], ["ia", "sparkles", "IA"], ["avisos", "bell", "Avisos"], ["integ", "plug", "Integrações"], ["dados", "database", "Dados"], ["diag", "activity", "Diagnóstico"]];
+const CFG_HINT = { conta: "Nome, idioma, fuso, tema e senha", agenda: "Horário, visualização e lembretes", seg: "Duas etapas, passkeys, saída automática e acesso remoto", ia: "Uso do dia, limites, agentes e busca por significado", avisos: "Resumo do dia, canais e o que chega em cada um", integ: "Google, avaliações e serviços externos", dados: "Backup, armazenamento e lixeira", diag: "Falhas recentes e versão" };
 const hh2 = (h) => `${String(h).padStart(2, "0")}:00`;
+const swRow = (id, t, h, on, dis) => `<div class="set-row"><div class="grow"><p class="t" id="${id}">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div><button class="switch" type="button" role="switch" aria-checked="${on}" aria-labelledby="${id}"${dis ? " disabled" : ""}></button></div>`;
+const ctlRow = (t, h, ctl) => `<div class="set-row"><div class="grow"><p class="t">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div>${ctl}</div>`;
+const sec = (id, title, lead, body, foot) => `<section class="card set-sec" aria-labelledby="${id}"><h2 id="${id}">${title}</h2>${lead ? `<p>${lead}</p>` : ""}${body}${foot ? `<div class="set-foot">${foot}</div>` : ""}</section>`;
+const segc = (label, opts, on) => `<div class="seg" role="group" aria-label="${label}">${opts.map((o, k) => `<button type="button" aria-pressed="${k === on}">${o}</button>`).join("")}</div>`;
+const meter = (label, used, max, txt) => `<div class="meter-row"><div class="meter-top"><span>${label}</span><span class="num">${txt}</span></div><div class="meter" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${used}"><i style="width:${Math.min(100, (used / max) * 100)}%"></i></div></div>`;
+const save = (l = "Salvar alterações") => `<button class="btn btn-primary" type="button" data-cfg-save>${l}</button>`;
+
 function cfgConta() {
-  return `<section class="card set-sec" aria-labelledby="h-c"><h2 id="h-c">Conta</h2><p>Como a Zuri chama você e onde você está.</p>
-          <div class="form-grid">
-            <label class="field"><span>Nome</span><input class="input" value="Ana" autocomplete="name"></label>
-            <label class="field"><span>E-mail</span><input class="input" value="ana@exemplo.com.br" readonly></label>
-            <label class="field"><span>Fuso horário</span><select class="input"><option>São Paulo (UTC−3)</option></select></label>
-            <label class="field"><span>Idioma</span><select class="input"><option>Português (Brasil)</option><option>English</option></select></label>
-          </div>
-          <div class="set-foot"><button class="btn btn-primary" type="button">Salvar alterações</button></div></section>
-        <section class="card set-sec" aria-labelledby="h-ap"><h2 id="h-ap">Aparência</h2><p>Tema e movimento da interface.</p>
-          <div class="set-row"><div class="grow"><p class="t">Tema</p><p class="hint">Segue o aparelho quando está em Sistema.</p></div>
-            <div class="seg" role="group" aria-label="Tema"><button type="button" aria-pressed="${st.t === "claro"}">${ic("sun", "ic-sm")}Claro</button><button type="button" aria-pressed="${st.t === "escuro"}">${ic("moon", "ic-sm")}Escuro</button><button type="button" aria-pressed="false">${ic("monitor", "ic-sm")}Sistema</button></div></div>
-          <div class="set-row"><div class="grow"><p class="t" id="rm">Reduzir movimento</p><p class="hint">Desliga as animações. Também segue o aparelho.</p></div><button class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="rm"></button></div>
-        </section>`;
+  return sec("h-c", "Nome, idioma e fuso horário", "Valem para as telas, os avisos e o bot do Telegram.",
+    `<div class="form-grid">
+      <label class="field"><span>Seu nome</span><input class="input" value="Ana" autocomplete="name" maxlength="40"></label>
+      <label class="field"><span>Idioma</span><select class="input"><option>Português (Brasil)</option><option>English</option></select></label>
+      <label class="field"><span>Fuso horário</span><select class="input"><option>São Paulo (UTC−3)</option></select></label>
+    </div><p class="hint">O nome aparece nos cumprimentos da tela inicial. Datas, lembretes e rotinas seguem o fuso.</p>`, save())
+  + sec("h-ap", "Aparência", "Tema e movimento da interface.",
+    ctlRow("Tema", "Segue o aparelho quando está em “Como o sistema”.", `<div class="seg" role="group" aria-label="Tema"><button type="button" aria-pressed="${st.t === "claro"}">${ic("sun", "ic-sm")}Claro</button><button type="button" aria-pressed="${st.t === "escuro"}">${ic("moon", "ic-sm")}Escuro</button><button type="button" aria-pressed="false">${ic("monitor", "ic-sm")}Como o sistema</button></div>`)
+    + swRow("rm", "Reduzir movimento", "Desliga as animações. Também segue o aparelho.", false))
+  + sec("h-pw", "Senha", "Trocar a senha encerra as outras sessões abertas.",
+    `<div class="form-grid"><label class="field"><span>Senha atual</span><input class="input" type="password" autocomplete="current-password"></label><label class="field"><span>Senha nova</span><input class="input" type="password" autocomplete="new-password"></label></div>`, save("Trocar a senha"))
+  + sec("h-out", "Sair deste aparelho", "Encerra esta sessão. As outras abas deste navegador saem junto.", `<div class="row-actions"><button class="btn btn-secondary" type="button" data-logout>${ic("log-out", "ic-sm")}Sair</button></div>`);
 }
+
 function cfgAgenda() {
   const { de, ate } = st.agDef;
   const opts = (from, to, sel) => Array.from({ length: to - from + 1 }, (_, k) => from + k).map((h) => `<option value="${h}"${h === sel ? " selected" : ""}>${hh2(h)}</option>`).join("");
   const pct = (h) => `${(h / 24) * 100}%`;
   const isDefault = de === 8 && ate === 18;
-  const cal = [["var(--cal-a)", "Pessoal", "Sua agenda principal. Dá para criar e mudar eventos.", true], ["var(--cal-b)", "Curso e esporte", "Só leitura: a Zuri mostra, mas não muda.", true], ["var(--control)", "Feriados no Brasil", "Aparecem na linha “Dia todo”.", false]];
-  return `<section class="card set-sec" aria-labelledby="h-ag"><h2 id="h-ag">Agenda</h2><p>Como a agenda aparece quando você abre.</p>
-      <div class="set-row set-col"><div class="grow"><p class="t" id="cfg-h">Horário que aparece</p><p class="hint">O que fica fora desse horário continua lá, nas linhas “Antes” e “Depois”.</p></div>
+  const cal = [["var(--cal-a)", "Pessoal", "principal", 2], ["var(--cal-b)", "Curso e esporte", "O Google só deixa ler esta agenda.", 1], ["var(--control)", "Feriados no Brasil", "Também usada para pular feriados nos pedidos de avaliação.", 1], ["var(--line-strong)", "Trabalho antigo", "", 0]];
+  return sec("h-ag", "Agenda", "Como a agenda aparece quando você abre.",
+    `<div class="set-row set-col"><div class="grow"><p class="t" id="cfg-h">Horário que aparece</p><p class="hint">O que fica fora desse horário continua lá, nas linhas “Antes” e “Depois”.</p></div>
         <div class="ctl-pair" role="group" aria-labelledby="cfg-h">
           <label for="cfg-de">Começa às<select id="cfg-de" class="input input-sm">${opts(0, ate - 1, de)}</select></label>
           <label for="cfg-ate">Termina às<select id="cfg-ate" class="input input-sm">${opts(de + 1, 24, ate)}</select></label>
           ${isDefault ? "" : `<button class="btn btn-quiet btn-sm" type="button" data-ag-default>Voltar para 08:00 até 18:00</button>`}</div>
         <div class="hours-bar" role="img" aria-label="Das ${hh2(de)} às ${hh2(ate)}, ${ate - de} horas"><span class="on" style="left:${pct(de)};width:${pct(ate - de)}"><b class="num">${hh2(de)} até ${hh2(ate)}</b></span></div>
         <div class="hours-scale num" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
-      <div class="set-row"><div class="grow"><p class="t">Ao abrir, mostrar</p><p class="hint">No celular, a agenda abre sempre no dia.</p></div>
-        <div class="seg" role="group" aria-label="Ao abrir, mostrar"><button type="button" aria-pressed="false">Dia</button><button type="button" aria-pressed="true">Semana</button><button type="button" aria-pressed="false">Mês</button></div></div>
-      <div class="set-row"><div class="grow"><p class="t">A semana começa</p></div>
-        <div class="seg" role="group" aria-label="A semana começa"><button type="button" aria-pressed="false">Domingo</button><button type="button" aria-pressed="true">Segunda</button></div></div>
-      <div class="set-row"><div class="grow"><p class="t" id="cfg-fds">Mostrar sábado e domingo</p></div><button class="switch" type="button" role="switch" aria-checked="true" aria-labelledby="cfg-fds"></button></div>
-      <div class="set-row"><div class="grow"><p class="t">Lembrete dos eventos novos</p><p class="hint">Vale para o que você ou a Zuri criar daqui para frente.</p></div>
-        <label class="sr" for="cfg-lb">Lembrete dos eventos novos</label><select id="cfg-lb" class="input input-sm"><option>Sem lembrete</option><option>5 min antes</option><option selected>15 min antes</option><option>1 hora antes</option><option>1 dia antes</option></select></div>
-      <div class="set-foot"><button class="btn btn-primary" type="button">Salvar alterações</button></div></section>
-    <section class="card set-sec" aria-labelledby="h-cals"><h2 id="h-cals">Agendas que aparecem</h2><p>Escolha quais agendas do Google entram na tela e no resumo da manhã.</p>
-      <ul class="cal-list">${cal.map(([c, n, d, on], k) => `<li class="set-row"><span class="cal-dot" style="background:${c}" aria-hidden="true"></span><div class="grow"><p class="t" id="cal-${k}">${n}</p><p class="hint">${d}</p></div><button class="switch" type="button" role="switch" aria-checked="${on}" aria-labelledby="cal-${k}"></button></li>`).join("")}</ul></section>`;
+      ${ctlRow("Ao abrir, mostrar", "No celular, a agenda abre sempre no dia.", segc("Ao abrir, mostrar", ["Dia", "Semana", "Mês"], 1))}
+      ${ctlRow("A semana começa", "", segc("A semana começa", ["Domingo", "Segunda"], 1))}
+      ${swRow("cfg-fds", "Mostrar sábado e domingo", "", true)}
+      ${ctlRow("Lembrete dos eventos novos", "Vale para o que você ou a Zuri criar daqui para frente.", `<label class="sr" for="cfg-lb">Lembrete dos eventos novos</label><select id="cfg-lb" class="input input-sm"><option>Sem lembrete</option><option>5 min antes</option><option selected>15 min antes</option><option>1 hora antes</option><option>1 dia antes</option></select>`)}`, save())
+  + sec("h-cals", "Agendas da conta", "O que a Zuri pode fazer em cada agenda do Google. É a mesma escolha de Integrações › Google.",
+    `<ul class="cal-list">${cal.map(([c, n, d, mode], k) => `<li class="set-row"><span class="cal-dot" style="background:${c}" aria-hidden="true"></span><div class="grow"><p class="t" id="cal-${k}">${n}${d === "principal" ? ' <span class="tag">principal</span>' : ""}</p>${d && d !== "principal" ? `<p class="hint">${d}</p>` : ""}</div>
+        <div class="seg seg-xs" role="group" aria-labelledby="cal-${k}">${["Fechada", "Só ler", "Ler e editar"].map((o, j) => `<button type="button" aria-pressed="${j === mode}"${k === 1 && j === 2 ? " disabled" : ""}>${o}</button>`).join("")}</div></li>`).join("")}</ul>
+      <p class="hint">Fechada: a Zuri não vê. Só ler: aparece na Agenda e a Zuri consulta. Ler e editar: a Zuri também cria e muda eventos, sem convidar ninguém.</p>`);
 }
+
+function cfgSeg() {
+  const acts = [["Entrada", "Chrome no Windows", "Curitiba, PR", "hoje, 08:01", "on"], ["Senha errada", "Safari no iPhone", "Curitiba, PR", "ontem, 22:14", "wait"], ["Passkey adicionada", "Chrome no Windows", "Curitiba, PR", "03/11, 10:20", "on"]];
+  return sec("h-2fa", "Verificação em duas etapas", "Depois da senha, a Zuri pede um código do aplicativo autenticador ou uma passkey.",
+    `<div class="set-row"><div class="grow"><p class="t">${ic("shield-check", "ic-sm")} Ligada desde 28/10</p><p class="hint">Restam <span class="num">8</span> códigos de recuperação.</p></div><div class="row-actions"><button class="btn btn-secondary btn-sm" type="button">Criar códigos novos</button><button class="btn btn-quiet btn-sm" type="button">Desligar</button></div></div>`)
+  + sec("h-pk", "Passkeys", "Entre com a digital, o rosto ou a chave de segurança no lugar do código.",
+    `<ul class="cal-list">${[["Notebook", "criada em 03/11 · usada hoje"], ["iPhone", "criada em 28/10 · nunca usada"]].map(([n, d]) => `<li class="set-row"><span class="tile tile-sm">${ic("fingerprint", "ic-sm")}</span><div class="grow"><p class="t">${n}</p><p class="hint">${d}</p></div><button class="btn btn-quiet btn-sm" type="button">Renomear</button><button class="btn btn-quiet btn-sm" type="button">Remover</button></li>`).join("")}</ul>`,
+    `<button class="btn btn-secondary" type="button">${ic("plus", "ic-sm")}Adicionar passkey</button>`)
+  + sec("h-sai", "Saída automática", "Quando a Zuri encerra a sessão sozinha. Mudar pede a senha de novo.",
+    `<div class="form-grid form-3"><label class="field"><span>Sem uso</span><select class="input"><option>30 minutos</option><option selected>2 horas</option><option>8 horas</option></select></label><label class="field"><span>Sem aba aberta</span><select class="input"><option selected>15 minutos</option><option>1 hora</option></select></label><label class="field"><span>Duração máxima</span><select class="input"><option>1 dia</option><option selected>7 dias</option><option>30 dias</option></select></label></div>`, save())
+  + sec("h-act", "Atividade de acesso", "Os acessos mais recentes: quem entrou, de onde e o que aconteceu.",
+    `<ul class="runs">${acts.map(([k, d, l, w, s]) => `<li><time class="num">${w}</time><span><b>${k}</b> · ${d} · ${l}</span><span class="pill ${s}"><i></i>${s === "on" ? "Certo" : "Atenção"}</span></li>`).join("")}</ul>`,
+    `<a class="btn btn-quiet" href="#" data-soon>Ver todos os acessos${ic("chevron-right", "ic-sm")}</a>`)
+  + sec("h-rem", "Acesso remoto", "Tokens para o n8n, o Home Assistant ou um script falarem com a Zuri.",
+    swRow("rem-on", "Permitir acesso por token", "Desligado, nenhum token funciona.", true)
+    + `<ul class="cal-list">${[["n8n", "Só eventos", "vence em 08/02 · último uso hoje, 07:58"], ["Home Assistant", "Só ler", "vence em 01/01 · nunca usado"]].map(([n, s, d]) => `<li class="set-row"><span class="tile tile-sm">${ic("key-round", "ic-sm")}</span><div class="grow"><p class="t">${n} <span class="tag">${s}</span></p><p class="hint">${d}</p></div><button class="btn btn-quiet btn-sm" type="button">Revogar</button></li>`).join("")}</ul>`,
+    `<button class="btn btn-secondary" type="button">${ic("plus", "ic-sm")}Novo token</button><span class="hint">Até 10 tokens. Criar pede a sua senha.</span>`);
+}
+
+function cfgIa() {
+  const ag = [["Conversa", "Responde você no app e no Telegram.", "Padrão"], ["Resumo da conversa", "Resume as mensagens antigas.", "Padrão"], ["Passo de IA dos fluxos", "Faz o que você pede num passo de fluxo.", "Padrão"], ["Rascunho das avaliações", "Escreve a resposta às avaliações do Google.", "Ajustado, versão 3"], ["Segunda leitura das avaliações", "Relê a resposta antes de publicar.", "Padrão"], ["Conferência das rotinas", "Confere a chamada a um serviço de fora.", "Padrão"]];
+  return sec("h-uso", "Uso de hoje", "Cada pedido é contado antes de chamar a IA. Os contadores voltam a zero à meia-noite.",
+    `<div class="meters">${meter("Neurons", 3120, 9000, "3.120 de 9.000")}${meter("Pedidos à IA", 46, 300, "46 de 300")}${meter("Áudio transcrito", 4, 30, "4 de 30 min")}</div>
+     <p class="hint">${ic("gauge", "ic-sm")} Custo estimado: nada no plano grátis. Modelos pagos hoje: desligados.</p>`)
+  + sec("h-lim", "Modelo e limites", "Quando um limite chega, a Zuri avisa e não chama a IA.",
+    `<div class="form-grid">
+      <label class="field"><span>Modelo de conversa</span><select class="input"><optgroup label="Grátis (Workers AI)"><option selected>Llama 3.3 70B (padrão)</option><option>Qwen 3 30B</option></optgroup><optgroup label="Pagos (cobrados pela empresa)"><option disabled>Claude (precisa da chave)</option></optgroup></select></label>
+      <label class="field"><span>Modelo reserva</span><select class="input"><option>Nenhum (só o modelo de conversa)</option><option selected>Llama 3.1 8B</option></select></label>
+      <label class="field"><span>Teto de Neurons por dia</span><input class="input num" value="9000" inputmode="numeric"></label>
+      <label class="field"><span>Pedidos por dia</span><input class="input num" value="300" inputmode="numeric"></label>
+      <label class="field"><span>Ações por resposta</span><input class="input num" value="5" inputmode="numeric"></label>
+      <label class="field"><span>Rotinas da Zuri por dia</span><input class="input num" value="12" inputmode="numeric"></label></div>`, save("Salvar limites"))
+  + sec("h-ags", "Agentes", "Cada parte da Zuri que usa IA tem os próprios ajustes. As regras de segurança ficam fixas.",
+    `<ul class="cal-list">${ag.map(([n, d, s]) => `<li class="set-row"><div class="grow"><p class="t">${n}</p><p class="hint">${d} ${s === "Padrão" ? "" : `<span class="tag">${s}</span>`}</p></div><button class="btn btn-quiet btn-sm" type="button">Ajustar</button></li>`).join("")}</ul>`)
+  + sec("h-paid", "Modelos pagos", "Opcionais e desligados. Para usar um, guarde a chave da empresa como segredo e ligue aqui com a senha.",
+    `<ul class="cal-list">${["Anthropic", "OpenAI"].map((n) => `<li class="set-row"><div class="grow"><p class="t">${n}</p><p class="hint">Sem chave</p></div><span class="pill off"><i></i>Desligado</span></li>`).join("")}</ul>`)
+  + sec("h-sem", "Busca por significado", "A Zuri passa a achar o que você guardou pelo sentido, não só pelas palavras.",
+    swRow("sem-on", "Buscar também pelo significado", "Desligada, tudo funciona só pelas palavras.", false))
+  + sec("h-cons", "Consumo por período", "Gastos e uso da IA dia a dia.",
+    `<div class="bars" role="img" aria-label="Neurons por dia nos últimos 7 dias: o maior foi 4.800 na quinta">${[38, 52, 31, 64, 47, 22, 35].map((v, k) => `<span style="height:${v}%"><b class="sr">${["seg", "ter", "qua", "qui", "sex", "sáb", "dom"][k]}</b></span>`).join("")}</div><div class="bars-x num" aria-hidden="true"><span>seg</span><span>ter</span><span>qua</span><span>qui</span><span>sex</span><span>sáb</span><span>dom</span></div>`);
+}
+
+function cfgAvisos() {
+  const cats = [["Lembretes", [1, 1, 0]], ["Resumos", [0, 1, 0]], ["Rotinas", [1, 1, 0]], ["Tarefas", [1, 0, 0]], ["Eventos da agenda", [1, 0, 0]], ["Sistema", [0, 1, 1]], ["Segurança", [1, 1, 1]]];
+  return sec("h-dig", "Resumo do dia", "Uma vez por dia a Zuri junta o que está atrasado, o que vence hoje e o que chegou.",
+    swRow("dig-on", "Receber o resumo do dia", "", true) + ctlRow("Horário do resumo", "", `<label class="sr" for="dig-h">Horário do resumo</label><input id="dig-h" class="input input-sm num" value="07:30" inputmode="numeric">`))
+  + sec("h-olho", "A Zuri de olho", "Prazo chegando, tarefa parada há uma semana, conflito na agenda.",
+    swRow("olho-on", "Deixar a Zuri avisar por conta própria", "Alertas de segurança e falhas do sistema continuam sempre ligados.", true))
+  + sec("h-can", "Onde os avisos chegam", "O sino do app sempre recebe tudo. Cada canal tem o seu limite por hora e por dia.",
+    `<ul class="cal-list">${[["smartphone", "Notificação no aparelho", "2 aparelhos", "on", "Ligado"], ["message-square", "Telegram", "Bot @exemplo_zuri_bot · grupo “Avisos” com tópicos", "on", "Ligado"], ["mail", "E-mail", "Falta configurar o destino", "wait", "Falta configurar"]].map(([i, n, d, s, l]) => `<li class="set-row"><span class="tile tile-sm">${ic(i, "ic-sm")}</span><div class="grow"><p class="t">${n}</p><p class="hint">${d}</p></div><span class="pill ${s}"><i></i>${l}</span></li>`).join("")}</ul>`)
+  + sec("h-rot", "O que vai para cada canal", "Escolha por onde cada tipo de aviso sai do app.",
+    `<div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Tipo de aviso</th><th scope="col">Aparelho</th><th scope="col">Telegram</th><th scope="col">E-mail</th></tr></thead><tbody>${cats.map(([n, v]) => `<tr><th scope="row">${n}</th>${v.map((on, k) => `<td><input type="checkbox" class="chk" aria-label="${n} por ${["Aparelho", "Telegram", "E-mail"][k]}"${on ? " checked" : ""}${n === "Segurança" ? " disabled" : ""}></td>`).join("")}</tr>`).join("")}</tbody></table></div>
+     <p class="hint">Segurança sai sempre por todos os canais.</p>`, save())
+  + sec("h-tg", "Telegram", "Fale com a Zuri e receba avisos pelo Telegram.",
+    swRow("tg-conv", "Conversar com a Zuri por aqui", "Escreva ou mande um áudio para o bot.", true)
+    + ctlRow("Conta conectada desde 28/10", "", `<div class="row-actions"><button class="btn btn-secondary btn-sm" type="button">Enviar teste</button><button class="btn btn-quiet btn-sm" type="button">Desconectar</button></div>`)
+    + ctlRow("Grupo de avisos", "Os avisos vão para o grupo “Avisos”. Cada tipo de aviso tem o seu tópico, inclusive “Avaliações”.", `<button class="btn btn-quiet btn-sm" type="button">Remover grupo</button>`))
+  + sec("h-apr", "Prioridades que a Zuri aprendeu", "A Zuri repara no que você abre logo e no que deixa para depois.",
+    swRow("apr-on", "Deixar a Zuri ajustar as prioridades", "Lembretes, alertas de segurança e críticos não mudam.", true));
+}
+
+function cfgInteg() {
+  return sec("h-g", "Google Agenda e Contatos", "Veja e edite seus eventos na Zuri. Você escolhe o que cada agenda permite.",
+    `<div class="set-row"><div class="grow"><p class="t">${ic("circle-check", "ic-sm")} Conectado como ana@exemplo.com.br</p><p class="hint">Agenda, contatos e avaliações usam a mesma conexão.</p></div><div class="row-actions"><button class="btn btn-quiet btn-sm" type="button">Atualizar lista</button><button class="btn btn-quiet btn-sm" type="button">Desconectar</button></div></div>
+     <div class="set-row"><div class="grow"><p class="t">Agendas da conta</p><p class="hint">Pessoal: ler e editar · Curso e esporte: só ler · Feriados no Brasil: só ler</p></div><button class="btn btn-quiet btn-sm" type="button" data-cfg="agenda">Mudar${ic("chevron-right", "ic-sm")}</button></div>`)
+  + sec("h-gc", "Contatos", "A Zuri copia, só para ler, os contatos das etiquetas que você escolher.",
+    `<p class="sync"><span class="live-dot" aria-hidden="true"></span>Sincronizado há 2 min · <span class="num">214</span> contatos</p>
+     <div class="field"><span class="label" id="gc-lbl">Etiquetas copiadas</span><div class="chips" role="group" aria-labelledby="gc-lbl">${[["Zuri", true], ["Consultório", true], ["Família", true], ["Fornecedores", false]].map(([n, on]) => `<button class="chip" type="button" aria-pressed="${on}">${n}</button>`).join("")}</div></div>
+     ${swRow("gc-bd", "Aniversários do dia", "Avisa às 08:00.", true)}
+     ${ctlRow("Quando alguém entrar numa etiqueta", "", `<label class="sr" for="gc-add">Quando alguém entrar numa etiqueta</label><select id="gc-add" class="input input-sm"><option>Não fazer nada</option><option selected>Me avisar</option><option>Me avisar e criar uma tarefa</option></select>`)}`,
+    `<button class="btn btn-primary" type="button">Salvar</button><button class="btn btn-secondary" type="button">${ic("refresh-cw", "ic-sm")}Sincronizar agora</button>`)
+  + sec("h-gr", "Avaliações do Google", "A Zuri lê as avaliações do seu Perfil da Empresa, escreve rascunhos e avisa das negativas.",
+    `<div class="form-grid"><label class="field"><span>Perfil lido</span><select class="input"><option>Consultório · Curitiba</option></select></label><label class="field"><span>Assinatura</span><input class="input" value="Equipe do Consultório"></label>
+      <label class="field"><span>Tom</span><select class="input"><option selected>Próximo e caloroso</option><option>Educado e formal</option></select></label>
+      <label class="field"><span>O que a Zuri faz</span><select class="input"><option>Só lê e avisa</option><option selected>Escreve rascunhos para eu aprovar</option><option>Publica sozinha as positivas</option></select></label></div>
+     <p class="hint">Você aprovou <span class="num">7 de 10</span> rascunhos sem mudar nada. Depois de 10, dá para deixar a Zuri publicar sozinha as de 4 e 5 estrelas.</p>`, save("Salvar avaliações"))
+  + sec("h-ped", "Pedidos de avaliação", "Quem recebe o link e quando. Só recebe quem nunca avaliou.",
+    `<div class="form-grid"><label class="field"><span>Dias depois da consulta</span><input class="input num" value="8" inputmode="numeric"></label>
+      <label class="field"><span>Horário do lembrete para você</span><input class="input num" value="09:00" inputmode="numeric"></label>
+      <label class="field"><span>De onde vem a consulta</span><select class="input"><option selected>Agenda Pessoal, eventos com o nome do contato</option><option>Agendamentos do CRM (n8n)</option><option>Os dois</option></select></label>
+      <label class="field"><span>Quem envia</span><select class="input"><option selected>Eu, com um toque no WhatsApp</option><option disabled>Chatwoot, sozinho (em estudo)</option></select></label></div>
+     ${swRow("ped-du", "Só em dia útil", "Sábado, domingo e feriado passam para o próximo dia útil. Os feriados nacionais já vêm marcados.", true, true)}
+     ${swRow("ped-lb", "Um lembrete, 7 dias depois", "Só se a pessoa não avaliou. Depois disso, a Zuri não sugere de novo.", true)}
+     ${ctlRow("Dias sem expediente", "Recesso, feriado da cidade ou férias. Entram na conta como feriado.", `<button class="btn btn-quiet btn-sm" type="button">${ic("calendar-plus", "ic-sm")}Adicionar dia</button>`)}`, save())
+  + sec("h-mcp", "Serviços externos (MCP)", "Conecte servidores MCP para a Zuri consultar outros serviços quando você pedir.",
+    `<ul class="cal-list"><li class="set-row"><span class="tile tile-sm">${ic("plug", "ic-sm")}</span><div class="grow"><p class="t">Casa <span class="pill on"><i></i>Conectado</span></p><p class="hint"><span class="num">4 de 9</span> ferramentas ligadas · todas “Perguntar sempre”</p></div><button class="btn btn-quiet btn-sm" type="button">Ver ferramentas</button></li></ul>`,
+    `<button class="btn btn-secondary" type="button">${ic("plus", "ic-sm")}Adicionar servidor</button>`);
+}
+
+function cfgDados() {
+  const st2 = [["Tarefas", 128, 5000], ["Notas", 42, 2000], ["Memórias", 87, 1000], ["Conversas", 31, 500], ["Clientes", 3, 5000]];
+  return sec("h-arm", "Uso do armazenamento", "Quanto de cada coisa você já guardou, perto dos limites.",
+    `<div class="meters">${st2.map(([n, u, m]) => meter(n, u, m, `${u.toLocaleString("pt-BR")} de ${m.toLocaleString("pt-BR")}`)).join("")}</div>`)
+  + sec("h-exp", "Exportar e importar", "O arquivo leva tarefas, notas, projetos, memórias, conversas, automações e clientes.",
+    `<p class="hint">${ic("triangle-alert", "ic-sm")} O arquivo não é cifrado. Guarde num lugar seguro.</p>`,
+    `<button class="btn btn-secondary" type="button">${ic("download", "ic-sm")}Baixar backup</button><button class="btn btn-quiet" type="button">${ic("upload", "ic-sm")}Importar backup</button>`)
+  + sec("h-auto", "Backup automático", "Uma cópia por dia, depois das 3 h, cifrada com a sua chave. A Zuri guarda as 7 mais recentes.",
+    `<div class="set-row"><div class="grow"><p class="t">Chave</p><p class="hint num">a1b2c3…, criada em 03/11</p></div><button class="btn btn-quiet btn-sm" type="button">Trocar a chave</button></div>
+     <ul class="runs">${["hoje, 03:12", "ontem, 03:10", "07/11, 03:11"].map((d) => `<li><time class="num">${d}</time><span>Cópia cifrada</span><button class="btn btn-quiet btn-sm" type="button">${ic("download", "ic-sm")}Baixar</button></li>`).join("")}</ul>`,
+    `<button class="btn btn-secondary" type="button">${ic("archive-restore", "ic-sm")}Restaurar uma cópia</button>`)
+  + sec("h-lix", "Lixeira", "Tarefas, notas e projetos apagados ficam 30 dias aqui.",
+    `<ul class="runs">${[["Nota", "Rascunho da mudança", "some em 09/12"], ["Tarefa", "Ligar para o banco", "some em 05/12"]].map(([k, n, w]) => `<li><span class="tag">${k}</span><span>${n} <span class="hint">· ${w}</span></span><button class="btn btn-quiet btn-sm" type="button">Restaurar</button></li>`).join("")}</ul>`,
+    `<button class="btn btn-quiet" type="button">Esvaziar a lixeira</button>`);
+}
+
+function cfgDiag() {
+  return sec("h-diag", "Situação", "Aqui ficam só o tipo da falha, onde ela aconteceu e quando. Nunca o conteúdo.",
+    `<div class="set-row"><span class="tile tile-sm">${ic("circle-check", "ic-sm")}</span><div class="grow"><p class="t">Tudo funcionando</p><p class="hint">Nenhuma falha nas últimas 24 horas.</p></div></div>
+     <p class="hint num">Versão da Zuri: 0.37.1 · Código da publicação: 4f2a9c1</p>`)
+  + sec("h-fal", "Falhas registradas", "Dos últimos 30 dias.",
+    `<ul class="runs"><li><time class="num">07/11, 14:02</time><span><b>Automações</b> · Tempo esgotado ao chamar um serviço · <span class="num">1 hoje · 3 no total</span></span><span class="pill off"><i></i>Resolvida</span></li></ul>`,
+    `<button class="btn btn-quiet" type="button">${ic("bug", "ic-sm")}Relatar no GitHub</button>`);
+}
+
+const CFG_VIEW = { conta: cfgConta, agenda: cfgAgenda, seg: cfgSeg, ia: cfgIa, avisos: cfgAvisos, integ: cfgInteg, dados: cfgDados, diag: cfgDiag };
 function configuracoes() {
+  const cur = CFG.find((x) => x[0] === st.cfg);
   return `<div class="page">
-    <header class="pagehead"><div><h1>Configurações</h1><p>Sua conta, a agenda, a segurança e como a Zuri trabalha.</p></div></header>
-    <div class="settings"><nav aria-label="Seções das configurações"><ul>${CFG.map(([k, i, l]) => `<li><a href="${href("configuracoes")}" data-cfg="${k}"${k === st.cfg ? ' aria-current="page"' : ""}>${ic(i, "ic-sm")}${l}</a></li>`).join("")}</ul></nav>
-      <div>${st.cfg === "agenda" ? cfgAgenda() : cfgConta()}</div></div>
+    <header class="pagehead"><div><h1>Configurações</h1><p>Sua conta, a segurança e o que a Zuri pode usar.</p></div></header>
+    <div class="settings"><nav aria-label="Seções das configurações"><ul>${CFG.map(([k, i, l]) => `<li><a href="${href("configuracoes")}" data-cfg="${k}"${k === st.cfg ? ' aria-current="page"' : ""}>${ic(i, "ic-sm")}<span class="cfg-l"><span>${l}</span><span class="cfg-h">${CFG_HINT[k]}</span></span></a></li>`).join("")}</ul></nav>
+      <div class="cfg-body"><h2 class="sr">${cur[2]}</h2>${CFG_VIEW[st.cfg]()}</div></div>
   </div>`;
 }
 
@@ -1810,6 +2470,9 @@ function estados() {
           <div class="toast" role="status">${ic("circle-check", "ic-sm")}<span>Tarefa concluída</span><button class="btn btn-quiet btn-sm" type="button">${ic("undo-2", "ic-sm")}Desfazer</button><button class="iconbtn" type="button" aria-label="Fechar o aviso">${ic("x", "ic-sm")}</button></div>
         </div>
         <p class="st-note">Ação destrutiva sempre pergunta, com o botão dizendo o que faz. Ação simples avisa e deixa desfazer por 8 segundos.</p></section>
+      <section class="card st-card st-wide" aria-labelledby="e6"><h2 id="e6" class="st-h">Onde o carregando aparece</h2>
+        <ul class="ld-where">${[["log-out", "Entrar", "O botão vira “Entrando…” e a linha corre no topo do cartão."], ["layout-grid", "Ao abrir uma tela", "Esqueleto com o desenho da tela e o sinal dizendo o que busca, como “Lendo a sua agenda”."], ["calendar-days", "Agenda", "Ao trocar de semana, a grade fica no lugar e a linha corre em cima."], ["users", "Contatos", "Em “Atualizar agora”, o ícone gira e a lista não some."], ["notebook", "Notas", "“Salvando…” enquanto você escreve, depois “Salva às 10:42”."], ["mic", "Memória", "“Transcrevendo…” depois que você fala."], ["message-circle", "Conversa", "Três pontos enquanto a Zuri escreve."], ["play", "Botões que demoram", "O ícone vira um que gira e o botão espera terminar."]].map(([i, t, d]) => `<li><span class="tile">${ic(i, "ic-sm")}</span><span><b>${t}</b><span>${d}</span></span></li>`).join("")}</ul>
+        <p class="st-note">Até 300 ms aparece só a linha do topo. Nunca uma tela branca nem uma roda girando no meio da página.</p></section>
     </div>
   </div>`;
 }
@@ -1849,13 +2512,13 @@ function entrar() {
   return `<main id="conteudo" class="login">
     <div class="login-art"><span class="brand">${logo()}<span class="wm">Zuri</span></span>
       <p class="art-head">Tudo o que importa, num só lugar.</p><svg class="art-waves" viewBox="0 0 400 400" aria-hidden="true"><circle cx="200" cy="200" r="20"/><circle cx="200" cy="200" r="78"/><circle cx="200" cy="200" r="128"/><circle cx="200" cy="200" r="184"/></svg></div>
-    <div class="login-form"><form class="login-card" onsubmit="return false" aria-labelledby="h-in">
+    <div class="login-form"><form class="login-card${st.lg ? " is-busy" : ""}" onsubmit="return false" aria-labelledby="h-in">${st.lg ? '<div class="ld-bar ld-card" aria-hidden="true"><i></i></div>' : ""}
       <span class="brand login-mob">${logo()}<span class="wm">Zuri</span></span>
       <div><h1 id="h-in">Entrar</h1><p class="sub">Que bom te ver de novo.</p></div>
-      <div class="field"><label class="label" for="li-e">E-mail</label><span class="with-ic">${ic("mail", "ic-sm")}<input id="li-e" class="input" type="email" autocomplete="username" inputmode="email" placeholder="ana@exemplo.com.br"></span></div>
-      <div class="field"><label for="pw" class="label">Senha</label><span class="pw with-ic">${ic("lock", "ic-sm")}<input id="pw" class="input" type="password" autocomplete="current-password"><button class="iconbtn" type="button" aria-label="Mostrar a senha" aria-pressed="false">${ic("eye", "ic-sm")}</button></span></div>
+      <div class="field"><label class="label" for="li-e">E-mail</label><span class="with-ic">${ic("mail", "ic-sm")}<input id="li-e" class="input" type="email" autocomplete="username" inputmode="email" placeholder="ana@exemplo.com.br"${st.lg ? ' value="ana@exemplo.com.br" readonly' : ""}></span></div>
+      <div class="field"><label for="pw" class="label">Senha</label><span class="pw with-ic">${ic("lock", "ic-sm")}<input id="pw" class="input" type="password" autocomplete="current-password"${st.lg ? ' value="senhaexemplo" readonly' : ""}><button class="iconbtn" type="button" aria-label="Mostrar a senha" aria-pressed="false">${ic("eye", "ic-sm")}</button></span></div>
       <div class="turnstile" role="status">${ic("circle-check")}Verificação concluída</div>
-      <button class="btn btn-primary btn-block btn-lg" type="submit">Entrar</button>
+      ${st.lg ? `<button class="btn btn-primary btn-block btn-lg" type="submit" disabled aria-busy="true">${ic("loader-circle", "ic-sm spin")}Entrando…</button>` : `<button class="btn btn-primary btn-block btn-lg" type="submit">Entrar</button>`}
       <p class="login-foot"><a href="${href("entrar")}">Esqueci minha senha</a></p>
     </form></div></main>`;
 }
@@ -1870,7 +2533,7 @@ function render() {
   const app = document.getElementById("app");
   if (st.s === "entrar") { app.className = ""; app.innerHTML = entrar(); return; }
   app.className = "app";
-  app.innerHTML = `${side()}<div class="main">${topbar()}<main id="conteudo">${SCREEN[st.s]()}</main>${st.s === "conversa" ? "" : tabbar()}</div>`;
+  app.innerHTML = `${side()}<div class="main">${topbar()}<main id="conteudo">${st.ld ? pageLoading(st.s) : SCREEN[st.s]()}</main>${st.s === "conversa" ? "" : tabbar()}</div>${pops()}${st.s === "automacoes" && st.au ? wizard() : ""}`;
   if (st.s === "estados" && !params.get("captura")) runLoading();
   const cur = app.querySelector(".settings nav [aria-current]");
   if (cur && cur.scrollIntoView && window.innerWidth <= 820) cur.scrollIntoView({ block: "nearest", inline: "center" });
@@ -1884,6 +2547,13 @@ for (const [id, k] of [["ps", "s"], ["pt", "t"]]) {
     render();
   });
 }
+let lastOpener = "";
+function closeLayer() {
+  const was = st.au ? "[data-au-open]" : lastOpener;
+  st.menu = ""; st.au = 0; render(); if (was) refocus(was);
+}
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && (st.menu || st.au)) { e.preventDefault(); closeLayer(); } });
+document.addEventListener("input", (e) => { const id = e.target.dataset && e.target.dataset.autosave; if (id) autosave(id, e.target); });
 let ldTimer;
 function runLoading() {
   const box = document.querySelector("[data-ld]");
@@ -1924,7 +2594,8 @@ document.addEventListener("input", (e) => {
 });
 document.addEventListener("click", (e) => {
   const t = e.target.closest("button, a");
-  if (!t || !t.matches("[data-ag-reset], [data-ag-default], [data-cfg-open], [data-cfg], [data-ct], [data-p], [data-replay]")) return;
+  if (!t && e.target.matches && e.target.matches("[data-scrim]")) { closeLayer(); return; }
+  if (!t || !t.matches("[data-ag-reset], [data-ag-default], [data-cfg-open], [data-cfg], [data-ct], [data-p], [data-replay], [data-rvv], [data-goto-p], [data-rv-link], [data-rv-nolink], [data-nps-send], [data-new-note], [data-n], [data-wk], [data-mic], [data-mic-stop], [data-au-open], [data-au-close], [data-au-next], [data-au-back], [data-au-done], [data-au-type], [data-menu], [data-close-pop], [data-read-all], [data-cfg-go], [data-aviso], [data-logout], .qa-tel, [data-wa], [data-af], [data-sug], [data-rev], [data-cfg-save], [data-soon], [data-nmode], [data-rv-check], [data-rv-pause], [data-rv-redo], [data-rv-done]")) return;
   e.stopImmediatePropagation();
   if (t.matches("[data-ag-reset]")) { st.ag = { ...st.agDef }; render(); refocus("#ag-de"); return; }
   if (t.matches("[data-ag-default]")) { st.agDef = { de: 8, ate: 18 }; st.ag = { ...st.agDef }; render(); refocus("#cfg-de"); hint("A agenda volta a abrir das 08:00 às 18:00"); return; }
@@ -1936,7 +2607,7 @@ document.addEventListener("click", (e) => {
   if (t.matches("[data-cfg]")) {
     e.preventDefault();
     const k = t.dataset.cfg;
-    if (k === "conta" || k === "agenda") { st.cfg = k; render(); refocus(`[data-cfg="${k}"]`); } else hint("Esta seção fica fora deste protótipo.");
+    st.cfg = k; render(); refocus(`[data-cfg="${k}"]`);
     return;
   }
   if (t.matches("[data-ct]")) { st.ct = t.dataset.ct; st.p = ""; render(); refocus(`[data-ct="${st.ct}"]`); return; }
@@ -1947,6 +2618,58 @@ document.addEventListener("click", (e) => {
     return;
   }
   if (t.matches("[data-replay]")) { runLoading(); return; }
+  if (t.matches("[data-rvv]")) { st.rvv = t.dataset.rvv; st.p = ""; render(); refocus(`[data-rvv="${st.rvv}"]`); return; }
+  if (t.matches("[data-goto-p]")) { st.ct = "pessoas"; st.p = t.dataset.gotoP; render(); refocus("#h-p"); return; }
+  if (t.matches("[data-rv-link]")) { const r = REVIEWS.find((x) => x.id === t.dataset.rvLink); r.contact = r.guess; delete r.guess; render(); hint("Avaliação ligada ao contato. Ele não recebe mais o link."); return; }
+  if (t.matches("[data-rv-nolink]")) { const r = REVIEWS.find((x) => x.id === st.p) || REVIEWS[1]; delete r.guess; render(); hint("Certo. A Zuri não liga esta avaliação a ninguém."); return; }
+  if (t.matches("[data-nps-send]")) {
+    e.preventDefault();
+    const p = PEOPLE.find((x) => x.id === t.dataset.npsSend);
+    const prev = { st: p.nps.st, log: [...p.nps.log] };
+    const first = p.nps.st === "nunca" || p.nps.st === "hoje";
+    p.nps.st = "sem-resposta"; p.nps.remind = false; delete p.nps.env; delete p.nps.why;
+    p.nps.log.push(["Hoje", first ? "Você enviou o link pelo WhatsApp" : "Você mandou o lembrete pelo WhatsApp"]);
+    if (!first) p.nps.st = "lembrado";
+    render();
+    hint(first ? "O WhatsApp abriu com a mensagem pronta. Marcado como enviado hoje." : "Lembrete marcado. A Zuri não sugere outro.");
+    return;
+  }
+  if (t.matches("[data-rv-check]")) { hint("Conferido agora. Nada novo desde a última leitura."); return; }
+  if (t.matches("[data-rv-pause]")) { const on = t.textContent.startsWith("Pausar"); t.textContent = on ? "Retomar respostas" : "Pausar respostas"; hint(on ? "Respostas pausadas. A Zuri só lê e avisa." : "Respostas retomadas."); return; }
+  if (t.matches("[data-rv-redo]")) { hint("A Zuri escreve outro rascunho. Ele passa de novo pela conferência."); return; }
+  if (t.matches("[data-rv-done]")) { hint("Certo. A avaliação sai de “Precisa de você”."); return; }
+  if (t.matches("[data-af]")) { st.af = t.dataset.af; render(); refocus(`[data-af="${st.af}"]`); return; }
+  if (t.matches("[data-sug]")) { const ok = t.dataset.sug === "ok"; t.closest(".sugg-card").remove(); hint(ok ? "Rotina aprovada. A primeira vez é sexta, às 17:00." : "Sugestão recusada. Nada foi agendado."); return; }
+  if (t.matches("[data-rev]")) { t.closest(".rev-card").remove(); hint(`Feito: ${t.textContent.trim().toLowerCase()}.`); return; }
+  if (t.matches("[data-cfg-save]")) { hint("Salvo."); return; }
+  if (t.matches("[data-soon]")) { e.preventDefault(); hint("No app, abre a lista completa de acessos, com filtros."); return; }
+  if (t.matches("[data-nmode]")) { const pv = t.dataset.nmode === "prev"; for (const b of document.querySelectorAll("[data-nmode]")) b.setAttribute("aria-pressed", String(b === t)); const body = document.getElementById("n-body"); body.contentEditable = String(!pv); body.classList.toggle("is-prev", pv); return; }
+  if (t.matches("[data-new-note]")) { st.n = newNote(); render(); refocus("#n-title"); hint("Nota nova. Ela se salva sozinha enquanto você escreve."); return; }
+  if (t.matches("[data-n]")) { st.n = t.dataset.n || ""; render(); refocus(st.n ? "#n-title" : ".nitem[aria-current]"); return; }
+  if (t.matches("[data-wk]")) { weekLoading(); return; }
+  if (t.matches("[data-mic]")) { micStart(); return; }
+  if (t.matches("[data-mic-stop]")) { micStop(); return; }
+  if (t.matches("[data-au-open]")) { st.au = 1; render(); refocus(".au-type[aria-checked=true]"); return; }
+  if (t.matches("[data-au-type]")) { st.auType = t.dataset.auType; render(); refocus(`[data-au-type="${st.auType}"]`); return; }
+  if (t.matches("[data-au-next]")) { if (st.auType === "fluxo" && st.au === 3) { closeLayer(); hint("No app, isto abre o editor de fluxos."); return; } st.au = Math.min(st.au + 1, 5); render(); refocus(".wz-body input, .wz-body button, .wz-body textarea"); return; }
+  if (t.matches("[data-au-back]")) { st.au = Math.max(st.au - 1, 1); render(); refocus(".wz-body button, .wz-body input"); return; }
+  if (t.matches("[data-au-close]")) { closeLayer(); return; }
+  if (t.matches("[data-au-done]")) { st.au = 0; render(); refocus("[data-au-open]"); hint("Automação criada. A primeira vez é amanhã, às 07:30."); return; }
+  if (t.matches("[data-menu]")) { st.menu = st.menu === t.dataset.menu ? "" : t.dataset.menu; lastOpener = `[data-menu="${t.dataset.menu}"]`; render(); refocus(".pop a, .pop button"); return; }
+  if (t.matches("[data-close-pop]")) { closeLayer(); return; }
+  if (t.matches("[data-read-all]")) { AVISOS.forEach((a) => { a.unread = false; }); render(); refocus(".pop-avisos [data-close-pop]"); hint("Avisos marcados como lidos."); return; }
+  if (t.matches("[data-cfg-go]")) { e.preventDefault(); st.menu = ""; const k = t.dataset.cfgGo; st.au = 0; st.cfg = k in CFG_VIEW ? k : "conta"; if (typeof go === "function") go("configuracoes"); else { st.s = "configuracoes"; render(); } return; }
+  if (t.matches("[data-aviso]")) { const a = AVISOS.find((x) => x.id === t.dataset.aviso); a.unread = false; st.menu = ""; if (a.id === "a3") { st.ct = "avaliacoes"; st.rvv = "avaliacoes"; st.p = "pedro"; } e.preventDefault(); if (typeof go === "function") go(a.s); else { st.s = a.s; render(); } return; }
+  if (t.matches("[data-logout]")) { e.preventDefault(); st.menu = ""; if (typeof go === "function") go("entrar"); else { st.s = "entrar"; render(); } return; }
+  if (t.matches("[data-wa]")) { e.preventDefault(); hint(window.matchMedia("(max-width: 820px), (pointer: coarse)").matches ? "No celular, isto abre a conversa no WhatsApp." : "No computador, isto abre o WhatsApp Web ou o app do WhatsApp."); return; }
+  if (t.matches(".qa-tel")) {
+    if (window.matchMedia("(max-width: 820px), (pointer: coarse)").matches) { e.preventDefault(); hint("No celular, isto liga para a pessoa."); return; }
+    e.preventDefault();
+    const m = t.parentElement.querySelector(".qa-menu");
+    m.hidden = !m.hidden; t.setAttribute("aria-expanded", String(!m.hidden));
+    if (!m.hidden) m.querySelector("button").focus();
+    return;
+  }
 });
 render();
 </script>
