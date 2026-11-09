@@ -172,6 +172,51 @@ menor janela dos dois: o reserva recebe o mesmo prompt. O Llama 3.3 70B, com
 24.000 tokens, é o mais apertado. Cada resultado de ferramenta é cortado em
 8.000 caracteres antes de voltar ao modelo.
 
+## Agentes e especialistas
+
+Plano: `docs/planos/guardrails-especialistas-ia.md` (decisões de 04/11/2026).
+A conversa é o único agente com ferramentas. Os outros são especialistas que o
+código chama para um trabalho só, pelo contrato de
+`apps/agent/src/specialists/contract.ts`: regras fixas primeiro, depois a
+camada de estilo e tarefa, entrada só em blocos `<data>`, resposta JSON
+conferida por Zod (ou texto com teto) e, fora do formato, falha.
+
+| Agente | Onde | Temperatura | Tokens | Camada do dono |
+| --- | --- | ---: | ---: | --- |
+| `chat` | conversa e rotinas | 0,4 | `aiMaxOutputTokens` | persona (`CHAT_PERSONA`) |
+| `summary` | resumo da conversa | 0,2 | 300 | foco e tamanho |
+| `flow_ai` | passo de IA dos fluxos | 0,2 | 512 | estilo; a instrução do passo vem depois |
+| `review_draft` | rascunho das avaliações | 0,2 | 320 | estilo |
+| `review_check` | segunda leitura das avaliações | 0 | 120 | não tem (só segurança) |
+| `routine_check` | conferência das rotinas | 0 | 120 | não tem (só segurança) |
+
+Os valores ficam em `AGENT_PROFILES` (`packages/shared/src/agents.ts`). Só
+`temperature`, `top_p` e o teto de tokens chegam ao Workers AI pelo SDK;
+`seed`, `top_k` e penalidades não. Cada prompt tem uma versão
+(`promptVersion`: o id do agente e uma marca do texto fixo).
+
+Conferências sem IA:
+
+- **Afirmações da conversa** (`specialists/claims.ts`): pedido de ação na
+  mensagem, resposta dizendo que fez e nenhuma ferramenta de escrita com
+  sucesso no turno: a resposta ganha "Não consegui confirmar que isso foi
+  feito" (`chat.claimUnverified`).
+- **Verificador fixo** (`specialists/checker.ts`): caracteres escondidos,
+  contatos (links, domínios, e-mails, @, números de 8 dígitos ou mais, também
+  com letras parecidas), cópia de trecho e marcação. As avaliações usam tudo;
+  o passo de IA dos fluxos e as rotinas usam contatos e escondidos.
+
+Chamada externa que uma rotina faria sozinha: primeiro a conferência fixa (todo
+contato dos argumentos tem de estar na instrução ou no que a rotina leu),
+depois a segunda leitura (`routine_check`, até 60 Neurons). Reprovou, veio fora
+do formato, faltou Neuron ou falhou: vira proposta, com o aviso de sempre.
+
+`node scripts/avaliar-prompts.ts` roda os casos de
+`specialists/evaluation.ts` na IA da conta do dono (variáveis
+`CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN`, permissão Workers AI), com
+teto de 300 Neurons por rodada; `--seco` só lista. Regra da área:
+`.claude/rules/prompts.md`.
+
 ## Voz
 
 `POST /api/transcribe` manda o áudio ao Whisper (`whisper-large-v3-turbo`)

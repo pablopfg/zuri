@@ -249,6 +249,32 @@ describe("engine edges", () => {
     });
   });
 
+  it("stops an AI step whose answer brings a link the data didn't have, and drops hidden characters (CA6)", async () => {
+    await withFlowWorld(async (world) => {
+      world.model.provider = new FlowModel(false, "Veja https://exemplo.com.br/premio");
+      const flow = await world.flows.create({ name: "IA link", definition: manual([{ type: "ai", instruction: "Resuma.", output: "resumo" }, notifyFirst("Resumo", "{{resumo}}")]) });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "error", problem: "ai_check" });
+      expect(JSON.stringify(world.notices)).not.toContain("premio");
+      // A link the owner's instruction names is theirs to use.
+      world.model.provider = new FlowModel(false, "Veja https://exemplo.com.br/premio\u200b");
+      const named = await world.flows.create({ name: "IA link dono", definition: manual([{ type: "ai", instruction: "Resuma e cite exemplo.com.br.", output: "resumo" }, notifyFirst("Resumo", "{{resumo}}")]) });
+      expect((await world.flows.runNow(named.id)).status).toBe("success");
+      expect(world.notices.at(-1)).toMatchObject({ kind: "step", body: "Veja https://exemplo.com.br/premio" });
+    });
+  });
+
+  it("builds the AI step's prompt through the contract: fixed rules, then the owner's instruction", async () => {
+    await withFlowWorld(async (world) => {
+      const flow = await world.flows.create({ name: "IA contrato", definition: manual([{ type: "ai", instruction: "Resuma <rápido>.", output: "resumo" }]) });
+      await world.flows.runNow(flow.id);
+      const model = world.model.provider as unknown as { generated: GenerateRequest[] };
+      const system = model.generated[0]?.system ?? "";
+      expect(system.startsWith("You transform data for one of the owner's automated flows.")).toBe(true);
+      expect(system.endsWith("The owner's instruction for this step:\nResuma ‹rápido›.")).toBe(true);
+      expect(model.generated[0]).toMatchObject({ temperature: 0.2, maxOutputTokens: 512 });
+    });
+  });
+
   it("closes a run whose step failed in an unexpected way", async () => {
     await withFlowWorld(async (world) => {
       world.model.provider = new FailingModel(() => new AppError("INTERNAL_ERROR"));

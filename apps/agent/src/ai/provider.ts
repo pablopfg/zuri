@@ -26,6 +26,14 @@ export interface GenerateRequest {
   messages: ModelMessage[];
   maxOutputTokens: number;
   temperature?: number;
+  /** Nucleus sampling; left out for the model's own default. */
+  topP?: number;
+  /**
+   * The caller reads the answer as one JSON object (a specialist). Workers AI
+   * gets no extra field for it (JSON mode is listed for few models and not
+   * with streaming); the stand-in model answers such a call with JSON.
+   */
+  json?: boolean;
   signal?: AbortSignal;
   /**
    * Called once for every model call that reached the provider, in order, also

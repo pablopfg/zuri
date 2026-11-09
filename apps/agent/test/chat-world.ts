@@ -211,19 +211,22 @@ export class ScriptedProvider implements AIProvider {
 
   constructor(
     private readonly steps: Step[],
-    options: { model?: string; summary?: string } = {},
+    options: { model?: string; summary?: string; check?: string } = {},
   ) {
     this.model = options.model ?? "mock";
     this.summary = options.summary ?? "Resumo da conversa.";
+    this.check = options.check ?? '{"ok":true,"issues":[]}';
   }
 
   private readonly summary: string;
+  /** What a checker (a request that reads JSON) gets back: an approval unless the test says otherwise. */
+  private readonly check: string;
 
   async generate(req: GenerateRequest): Promise<{ text: string }> {
     req.signal?.throwIfAborted();
     this.transcript.generated.push(req);
     req.onStepUsage?.({ model: this.model, billable: false, input: { reported: 10, estimated: 10 }, output: { reported: 5, estimated: 5 } });
-    return { text: this.summary };
+    return { text: req.json ? this.check : this.summary };
   }
 
   async *stream(req: GenerateRequest): AsyncIterable<AgentEvent> {
