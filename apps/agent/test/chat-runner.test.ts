@@ -637,3 +637,31 @@ describe("how a turn ends", () => {
     });
   });
 });
+
+describe("guardrails in the chat (docs/planos/guardrails-especialistas-ia.md)", () => {
+  it("sends the chat agent's temperature, never the model's own default (CA1)", async () => {
+    await withChatWorld(async (world) => {
+      const provider = new ScriptedProvider([say("Oi.")]);
+      await turn(world, provider, "Oi");
+      expect(provider.transcript.requests[0]).toMatchObject({ temperature: 0.4 });
+      expect(provider.transcript.requests[0]).not.toHaveProperty("topP");
+    });
+  });
+
+  it("adds a notice, kept with the answer, when it claims an action no tool did (CA4)", async () => {
+    await withChatWorld(async (world) => {
+      const { events, done } = await turn(world, new ScriptedProvider([say("Anotei!")]), "Anota que a reunião é sexta");
+      expect(done.message.content).toBe("Anotei!\n\n_Não consegui confirmar que isso foi feito. Confira antes de contar com isso._");
+      expect(events.filter((event) => event.type === "text").map((event) => (event as { delta: string }).delta).join("")).toBe(done.message.content);
+      expect(world.conversations.get(done.message.conversationId)).toBeTruthy();
+    });
+  });
+
+  it("adds nothing when the tool did it", async () => {
+    await withChatWorld(async (world) => {
+      const provider = new ScriptedProvider([callTools({ name: "create_task", input: { title: "Pagar a luz", due: "2026-11-05" } }), say("Criei a tarefa.")]);
+      const { done } = await turn(world, provider, "Crie a tarefa pagar a luz para amanhã");
+      expect(done.message.content).toBe("Criei a tarefa.");
+    });
+  });
+});

@@ -44,7 +44,7 @@ const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}/giu;
 const DOMAIN = /\b[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:com|br|net|org|io|me|app|link|ly|info|biz|xyz|site|online|store|shop|dev|co)\b/giu;
 const HANDLE = /(?<![\p{L}\p{N}._%+-])@[\p{L}\p{N}_.]{2,}/gu;
 /** Eight or more digits, with the usual separators between them: a phone, an account, a document. */
-const LONG_NUMBER = /\+?\d(?:[\s().-]?\d){7,}/gu;
+const LONG_NUMBER = /\+?\d(?:[\s().-]{0,2}\d){7,}/gu;
 
 /**
  * The contacts in a text, as plain keys: links and domains (lower case,

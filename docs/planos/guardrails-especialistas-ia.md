@@ -1,6 +1,6 @@
 # Plano · Guardrails, especialistas e parâmetros da IA
 
-Situação: aprovado em 04/11/2026 (respostas do Pablo ao estudo)
+Situação: aprovado em 04/11/2026 (respostas do Pablo ao estudo); PR 1 implementada
 Origem: pedido do Pablo em 04/11/2026; estudo `docs/planos/guardrails-multiagentes-ia.md` (PR #170), seções 4 a 9 e 8.1
 Dependências: etapa 20 mesclada (#184, migration 28). Nenhuma outra.
 
@@ -53,7 +53,7 @@ prompt de cada agente, com senha, versões e "voltar". São duas PRs.
 
 **Entra (PR 1, servidor):** CA1 a CA10.
 
-**Entra (PR 2, tela e banco):** CA11 a CA14, migration 29, rotas `/api/ai/agents`.
+**Entra (PR 2, tela e banco):** CA11 a CA14, migration 30 (a 29 fica com a etapa 21), rotas `/api/ai/agents`.
 
 **Fica fora (e onde vai parar):**
 
@@ -143,7 +143,7 @@ PR 1: nenhuma rota nova. PR 2: `GET /api/ai/agents` (perfis, padrão, versão em
 
 ### Banco
 
-PR 1: nenhum. PR 2: migration 29, `zur_agent_configs (agent TEXT, version INTEGER, temperature REAL, top_p REAL, max_tokens INTEGER, prompt TEXT, created_at INTEGER, PRIMARY KEY (agent, version))` e colunas `prompt_version TEXT` em `zur_messages`, na tabela de execuções das rotinas e em `zur_reviews` (acréscimo). Volume: ≤20 versões × 6 agentes.
+PR 1: nenhum. PR 2: migration 30, `zur_agent_configs (agent TEXT, version INTEGER, temperature REAL, top_p REAL, max_tokens INTEGER, prompt TEXT, created_at INTEGER, PRIMARY KEY (agent, version))` e colunas `prompt_version TEXT` em `zur_messages`, na tabela de execuções das rotinas e em `zur_reviews` (acréscimo). Volume: ≤20 versões × 6 agentes.
 
 ### Ferramentas do agente
 

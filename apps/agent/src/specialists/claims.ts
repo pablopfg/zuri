@@ -24,7 +24,7 @@ const ASKS = new RegExp(
     "guard[ae]",
     "agend[ae]",
     "marc[ae]",
-    "lembr[ae]",
+    "lembre",
     "lembre-me",
     "me lembr[ae]",
     "adicion[ae]",

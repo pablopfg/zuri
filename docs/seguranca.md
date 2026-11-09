@@ -578,6 +578,24 @@ tarefa ou resultado de ferramenta é dado e não muda o idioma da resposta; o
 lembrete do idioma fecha o prompt depois de todo conteúdo guardado
 (`docs/arquitetura/orientacao-temporal-e-idioma.md`).
 
+### Especialistas, conferências e corpus de injeção
+
+Desde 04/11/2026 (`docs/planos/guardrails-especialistas-ia.md`):
+
+- Todo especialista (resumo, passo de IA, avaliações, conferência das rotinas)
+  monta o prompt pelo contrato: regras fixas antes da camada do dono, que entra
+  com classe `owner` (obedecida, mas com `<`/`>` trocados por sinais parecidos
+  e caracteres invisíveis removidos, sem poder forjar um bloco `<data>`). A
+  entrada com marcação fora de `<data>` falha antes de chegar ao modelo.
+- Os verificadores não têm camada do dono: nada salvo na tela muda o que eles
+  aprovam.
+- Chamada externa automática de rotina: conferência fixa dos contatos e
+  segunda leitura; na dúvida, proposta.
+- Afirmação "fiz" sem ferramenta de escrita ganha aviso na resposta.
+- `apps/agent/test/injection-corpus.ts` roda contra `dataLine`, o verificador
+  fixo e a conferência dos contatos; `prompt-snapshot.test.ts` deixa toda
+  mudança de prompt visível no diff.
+
 ## Ferramentas do agente e injeção de prompt
 
 A partir da etapa 9 o agente usa ferramentas na conversa
