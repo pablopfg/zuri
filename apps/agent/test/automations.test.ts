@@ -602,7 +602,7 @@ describe("running each kind", () => {
       expect(run.result).toBe("Bom dia!\n\nAtrasadas\n• Pagar a luz (12:00)\n\nPara hoje\n• Ligar para a escola (17:00)");
       expect(provider.transcript.requests).toHaveLength(0);
       world.db.run(`DELETE FROM zur_tasks`);
-      expect((await world.automations.runNow(a.id, execute)).result).toBe("Bom dia!\n\nNada atrasado e nada para hoje. Dia livre!");
+      expect((await world.automations.runNow(a.id, execute)).result).toBe("Bom dia!\n\nNada atrasado e nada para hoje. Dia livre.");
     });
   });
 

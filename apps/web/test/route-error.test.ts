@@ -14,7 +14,7 @@ describe("RouteErrorPage", () => {
     });
     const html = renderToStaticMarkup(createElement(I18nProvider, null, createElement(RouterProvider, { router })));
     vi.unstubAllGlobals();
-    expect(html).toContain("Algo deu errado");
+    expect(html).toContain("Esta tela parou");
     expect(html).toContain("Recarregar");
     expect(html).toContain('href="/"');
     expect(html).not.toMatch(/Unexpected Application Error|stack|Error:|exemplo/);

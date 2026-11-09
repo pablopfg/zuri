@@ -52,7 +52,7 @@ test("a reminder's run reaches the bell: open, read, delete and read all @mobile
   await item.getByRole("button", { name: "Marcar como lido" }).click();
   await expect(item.getByText("Novo")).toHaveCount(0);
   await item.getByRole("button", { name: `Apagar aviso: ${name}` }).click();
-  await expect(toast(page, "Aviso apagado.")).toBeVisible();
+  await expect(toast(page, "Aviso apagado")).toBeVisible();
   await expect(panel.getByRole("listitem").filter({ hasText: name })).toHaveCount(0);
 
   // Read all clears the bell's count.
@@ -90,7 +90,7 @@ test("Settings > Avisos: the daily summary and the watchers are saved; the chann
   await expect(digest).toBeChecked();
   await page.getByLabel("Horário do resumo").fill("06:45");
   await page.getByRole("region", { name: "Resumo do dia" }).getByRole("button", { name: "Salvar" }).click();
-  await expect(toast(page, "Avisos salvos.")).toBeVisible();
+  await expect(toast(page, "Avisos salvos")).toBeVisible();
   // Push and the Telegram bot are set up in the e2e Worker (step 13 made Telegram a channel); e-mail is not.
   await expect(page.getByText("Ainda não disponível")).toHaveCount(1);
   // Earlier runs may have left sends (a security alert tries push even without a device), so only the card is checked.
@@ -142,7 +142,7 @@ test("Settings > Avisos: the priorities Zuri learned are listed with a way back,
   const learning = card.getByRole("switch", { name: "Deixar a Zuri ajustar as prioridades" });
   await expect(learning).toBeChecked();
   await learning.click();
-  await expect(toast(page, "Avisos salvos.")).toBeVisible();
+  await expect(toast(page, "Avisos salvos")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("switch", { name: "Deixar a Zuri ajustar as prioridades" })).not.toBeChecked();
   const reset = await page.request.patch("/api/settings", { headers: CSRF, data: { alertLearning: true } });
@@ -179,7 +179,7 @@ test("Settings > Diagnóstico shows a screen's failure by name only, and marks i
   await expectAccessible(page, "diagnóstico");
   expect(await tooSmallControls(page), "every control of Settings > Diagnóstico is a 44 px target").toEqual([]);
   await entry.getByRole("button", { name: "Marcar como resolvida" }).click();
-  await expect(toast(page, "Falha marcada como resolvida.")).toBeVisible();
+  await expect(toast(page, "Falha marcada como resolvida")).toBeVisible();
   await expect(entry.getByText(/^Resolvida em /)).toBeVisible();
   await expect(entry.getByRole("link", { name: /Relatar no GitHub/ })).toHaveCount(0);
 });
@@ -232,7 +232,7 @@ test("Settings > Avisos: this device gets notifications, a test goes out, and th
   await expect(toast(page, "Teste enviado. Deve aparecer em instantes.")).toBeVisible();
 
   await mine.getByRole("button", { name: /^Remover aparelho: / }).click();
-  await expect(toast(page, "Aparelho removido.")).toBeVisible();
+  await expect(toast(page, "Aparelho removido")).toBeVisible();
   await expect(card.getByRole("listitem").filter({ hasText: "Este aparelho" })).toHaveCount(0);
   await expect(card.getByRole("button", { name: "Receber avisos neste aparelho" })).toBeVisible();
 });
@@ -252,7 +252,7 @@ test("Settings > Avisos: the channels of each kind of notice are saved; security
   await expect(fullText).not.toBeChecked();
   await fullText.check();
   await card.getByRole("button", { name: "Salvar" }).click();
-  await expect(toast(page, "Avisos salvos.")).toBeVisible();
+  await expect(toast(page, "Avisos salvos")).toBeVisible();
   await page.reload();
   const saved = page.getByRole("region", { name: "O que vai para cada canal" });
   await expect(saved.getByRole("checkbox", { name: "Lembretes por Notificação no aparelho" })).not.toBeChecked();

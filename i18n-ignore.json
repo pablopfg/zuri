@@ -1,4 +1,71 @@
 {
-  "$comment": "Exceções do lint de i18n (scripts/lint-i18n.ts): texto visível escrito fora do catálogo de propósito. Cada uma diz o arquivo, o texto exato e o motivo. Uma exceção que não corresponde a nada faz o lint falhar.",
-  "ignore": []
+  "$comment": "Exceções do lint de i18n (scripts/lint-i18n.ts): texto visível escrito fora do catálogo de propósito. Cada uma diz o arquivo, o texto exato e o motivo. Uma exceção que não corresponde a nada faz o lint falhar. Em \"microcopy\" ficam as exceções das regras de texto (scripts/lint-microcopy.ts): uma por chave e regra, valem para os dois idiomas, cada uma com o motivo.",
+  "ignore": [],
+  "microcopy": [
+    {
+      "key": "web.ai.usage.description",
+      "rule": "infraestrutura",
+      "reason": "Aba IA: o nome do provedor e a cota grátis são o que o dono confere no painel e na conta da Cloudflare (regra 9 do plano da etapa 26)."
+    },
+    {
+      "key": "web.ai.provider.workers-ai",
+      "rule": "infraestrutura",
+      "reason": "Aba IA: o nome do provedor e a cota grátis são o que o dono confere no painel e na conta da Cloudflare (regra 9 do plano da etapa 26)."
+    },
+    {
+      "key": "web.ai.pricing",
+      "rule": "infraestrutura",
+      "reason": "Aba IA: o nome do provedor e a cota grátis são o que o dono confere no painel e na conta da Cloudflare (regra 9 do plano da etapa 26)."
+    },
+    {
+      "key": "web.ai.pricingLink",
+      "rule": "infraestrutura",
+      "reason": "Aba IA: o nome do provedor e a cota grátis são o que o dono confere no painel e na conta da Cloudflare (regra 9 do plano da etapa 26)."
+    },
+    {
+      "key": "web.ai.neuronsPerDayHint",
+      "rule": "infraestrutura",
+      "reason": "Aba IA: o nome do provedor e a cota grátis são o que o dono confere no painel e na conta da Cloudflare (regra 9 do plano da etapa 26)."
+    },
+    {
+      "key": "web.ai.modelsFree",
+      "rule": "infraestrutura",
+      "reason": "Aba IA: o nome do provedor e a cota grátis são o que o dono confere no painel e na conta da Cloudflare (regra 9 do plano da etapa 26)."
+    },
+    {
+      "key": "web.ai.providers.description",
+      "rule": "infraestrutura",
+      "reason": "Instrução de configuração: o dono precisa agir no painel da Cloudflare, no caminho exato que aparece lá (regra 9 do plano da etapa 26)."
+    },
+    {
+      "key": "web.shell.removePlainSecret",
+      "rule": "infraestrutura",
+      "reason": "Instrução de configuração: o dono precisa agir no painel da Cloudflare, no caminho exato que aparece lá (regra 9 do plano da etapa 26)."
+    },
+    {
+      "key": "web.shell.removeSetupCode",
+      "rule": "infraestrutura",
+      "reason": "Instrução de configuração: o dono precisa agir no painel da Cloudflare, no caminho exato que aparece lá (regra 9 do plano da etapa 26)."
+    },
+    {
+      "key": "web.flows.connection.methodsHint",
+      "rule": "glossario",
+      "reason": "DELETE é o nome do método HTTP que a conexão recusa, não o verbo do botão; o texto já diz Apagar ao lado."
+    },
+    {
+      "key": "web.reviews.card.template.default1",
+      "rule": "exclamacao",
+      "reason": "Modelo de resposta que o dono manda ao cliente no Google, na voz do negócio dele, não texto do sistema."
+    },
+    {
+      "key": "web.reviews.card.template.default2",
+      "rule": "exclamacao",
+      "reason": "Modelo de resposta que o dono manda ao cliente no Google, na voz do negócio dele, não texto do sistema."
+    },
+    {
+      "key": "web.reviews.card.template.default3",
+      "rule": "exclamacao",
+      "reason": "Modelo de resposta que o dono manda ao cliente no Google, na voz do negócio dele, não texto do sistema."
+    }
+  ]
 }

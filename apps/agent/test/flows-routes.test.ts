@@ -114,7 +114,7 @@ describe("/api/flows", () => {
     const huge = await api("POST", "/flows", { name: "X", definition: monitor, extra: "x".repeat(70 * 1024) });
     expect(huge.status).toBe(400);
     // Refused for its size, before the schema looks at it.
-    expect(await errorBody(huge)).toMatchObject({ code: "VALIDATION_FAILED", message: "O pedido é grande demais." });
+    expect(await errorBody(huge)).toMatchObject({ code: "VALIDATION_FAILED", message: "O envio é grande demais. Mande menos coisa de uma vez." });
   });
 
   it("runs now and pages the history", async () => {

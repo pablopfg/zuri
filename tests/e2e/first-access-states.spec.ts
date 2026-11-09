@@ -87,7 +87,7 @@ test("the details: a refused password shows on its field, other refusals keep it
   await setupStatus(page, () => !owner);
   await page.route("**/api/setup/code", (route) => route.fulfill({ json: ticket(owner ? "recovery" : "setup") }));
   const answers = [
-    (route: Route) => refusal(route, 400, "VALIDATION_FAILED", "Confira os dados enviados.", { fields: ["ownerName"] }),
+    (route: Route) => refusal(route, 400, "VALIDATION_FAILED", "Alguns dados não estão certos. Confira os campos e tente de novo.", { fields: ["ownerName"] }),
     (route: Route) => refusal(route, 400, "VALIDATION_FAILED", "Use pelo menos 15 caracteres.", { fields: ["password"], problem: "tooShort" }),
     (route: Route) => refusal(route, 503, "SERVICE_UNAVAILABLE", "O serviço está fora do ar. Tente de novo em instantes."),
     (route: Route) => refusal(route, 400, "VALIDATION_FAILED", "Este formulário venceu. Digite o código de novo.", { setup: "expired" }),

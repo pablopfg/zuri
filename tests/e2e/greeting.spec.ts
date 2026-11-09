@@ -56,7 +56,7 @@ test("uses the name saved in Account, refuses one with a tag, and greets without
   await name.fill("<b>Ana</b>");
   await save.click();
   await expect(name).toHaveAttribute("aria-invalid", "true");
-  await expect(page.getByText("Confira os dados enviados.")).toBeVisible();
+  await expect(page.getByText("Alguns dados não estão certos. Confira os campos e tente de novo.")).toBeVisible();
 
   await name.fill("  Ana   Clara ");
   await save.click();

@@ -196,6 +196,12 @@ visível escrito fora do catálogo: texto JSX, os atributos `title`,
 Exceções ficam em `i18n-ignore.json`, cada uma com arquivo, texto e motivo; uma
 exceção que não corresponde a mais nada também faz o lint falhar.
 
+O mesmo lint lê cada texto do catálogo pelas regras de escrita da etapa 26
+(`scripts/lint-microcopy.ts`): os termos que o glossário evita, "com sucesso",
+"Ops", "Por favor", travessão, três pontos, "!" fora do cumprimento e nomes de
+infraestrutura. As exceções ficam em `i18n-ignore.json` › `microcopy`, uma por
+chave e regra, com motivo, e valem para os dois idiomas.
+
 ## Orçamento de duração do Durable Object
 
 O plano Free dá 13.000 GB-s de duração de Durable Object por dia, a 128 MB por

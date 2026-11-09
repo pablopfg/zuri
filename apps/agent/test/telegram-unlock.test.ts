@@ -329,7 +329,7 @@ describe("/destravar", () => {
     await idle(13 * HOUR);
     await inOwner((agent) => email(agent, false));
     await deliver(text("/destravar"));
-    expect(texts()).toEqual(["Para destravar, cadastre uma passkey ou configure o e-mail no app."]);
+    expect(texts()).toEqual(["Para destravar, adicione uma passkey ou configure o e-mail no app."]);
   });
 
   it("offers only the ways that work here: e-mail alone, then passkey and e-mail", async () => {
@@ -687,7 +687,7 @@ describe("the /aprovar page", () => {
       await page("verify", { token: "A".repeat(43), credential: { pad: "x".repeat(32 * 1024) } }),
     ]) {
       expect(res.status).toBe(400);
-      expect(apiErrorSchema.parse(await res.json()).message).toBe("O pedido é grande demais.");
+      expect(apiErrorSchema.parse(await res.json()).message).toBe("O envio é grande demais. Mande menos coisa de uma vez.");
     }
     const noCsrf = await call(`${ORIGIN}/api/approvals/telegram/options`, { method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": IP }, body: JSON.stringify({ token: "A".repeat(43) }) });
     expect(noCsrf.status).toBe(403);

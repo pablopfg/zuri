@@ -56,15 +56,15 @@ test("Settings > Avisos: the owner connects Telegram with a code, confirms the a
   await expect(card.getByText("Id terminado em 4242")).toBeVisible();
   await expectAccessible(page, "telegram esperando confirmação");
   await card.getByRole("button", { name: "Confirmar esta conta" }).click();
-  await expect(toast(page, "Conta do Telegram conectada.")).toBeVisible();
+  await expect(toast(page, "Conta do Telegram conectada")).toBeVisible();
   await expect(card.getByText(/^Conectada desde /)).toBeVisible();
 
   await card.getByRole("button", { name: "Enviar teste" }).click();
-  await expect(toast(page, "Mensagem de teste enviada.")).toBeVisible();
+  await expect(toast(page, "Mensagem de teste enviada")).toBeVisible();
   await expectAccessible(page, "telegram conectado");
 
   // The notices' group (step 13): a one-time link, the owner's account adds the bot, then Remover grupo.
-  await expect(card.getByText("Opcional. Sem grupo, os avisos chegam no chat com o bot.", { exact: false })).toBeVisible();
+  await expect(card.getByText("Opcional. Sem grupo, os avisos chegam na conversa com o bot.", { exact: false })).toBeVisible();
   await card.getByRole("button", { name: "Adicionar grupo" }).click();
   const groupLink = card.getByRole("link", { name: "Escolher o grupo" });
   await expect(groupLink).toBeVisible();
@@ -89,14 +89,14 @@ test("Settings > Avisos: the owner connects Telegram with a code, confirms the a
   await card.getByRole("button", { name: "Remover grupo" }).click();
   const removeDialog = page.getByRole("dialog", { name: "Remover o grupo?" });
   await removeDialog.getByRole("button", { name: "Remover grupo" }).click();
-  await expect(toast(page, "Grupo removido.")).toBeVisible();
+  await expect(toast(page, "Grupo removido")).toBeVisible();
   await expect(card.getByRole("button", { name: "Adicionar grupo" })).toBeVisible();
 
   // The conversation (step 14): off by default; on, a message to the bot becomes an app conversation.
   const chatSwitch = card.getByRole("switch", { name: "Conversar com a Zuri por aqui" });
   await expect(chatSwitch).not.toBeChecked();
   await chatSwitch.click();
-  await expect(toast(page, "Conversa pelo Telegram ligada.")).toBeVisible();
+  await expect(toast(page, "Conversa pelo Telegram ligada")).toBeVisible();
   await expect(chatSwitch).toBeChecked();
   await expectAccessible(page, "telegram com conversa ligada");
   let sentCount = 0;
@@ -131,10 +131,10 @@ test("Settings > Avisos: the owner connects Telegram with a code, confirms the a
   await page.goto("/configuracoes");
   card = await openCard(page);
 
-  await card.getByRole("button", { name: "Desvincular" }).click();
-  const dialog = page.getByRole("dialog", { name: "Desvincular o Telegram?" });
+  await card.getByRole("button", { name: "Desconectar" }).click();
+  const dialog = page.getByRole("dialog", { name: "Desconectar o Telegram?" });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "Desvincular" }).click();
-  await expect(toast(page, "Telegram desvinculado.")).toBeVisible();
+  await dialog.getByRole("button", { name: "Desconectar" }).click();
+  await expect(toast(page, "Telegram desconectado")).toBeVisible();
   await expect(card.getByText("Nenhuma conta conectada.")).toBeVisible();
 });

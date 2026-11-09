@@ -102,9 +102,9 @@ describe("catalog checks", () => {
 });
 
 describe("the repository", () => {
-  it("has no visible literal, unused key, missing translation or stale exception", () => {
+  it("has no visible literal, unused key, missing translation, microcopy slip or stale exception", () => {
     const result = lint(ROOT);
-    expect(result).toEqual({ findings: [], catalog: [], unusedKeys: [], ignoreProblems: [] });
+    expect(result).toEqual({ findings: [], catalog: [], unusedKeys: [], microcopy: [], ignoreProblems: [] });
   });
 
   it("runs as part of npm run lint and of the i18n job", () => {
@@ -153,13 +153,15 @@ describe("the command line, against a copy of the repository with a planted lite
     const root = copyOfRepository();
     writeFileSync(join(root, "apps/web/src/Brand.tsx"), `export const Brand = () => <span>Cloudflare Workers</span>;\n`);
     const entry = { file: "apps/web/src/Brand.tsx", text: "Cloudflare Workers", reason: "Nome de produto, igual em todo idioma." };
-    writeFileSync(join(root, IGNORE_FILE), JSON.stringify({ ignore: [entry] }));
+    // The catalog's own microcopy exceptions stay; only the literal ones change here.
+    const { microcopy } = readJson(IGNORE_FILE);
+    writeFileSync(join(root, IGNORE_FILE), JSON.stringify({ ignore: [entry], microcopy }));
     expect(run(root).status).toBe(0);
 
-    writeFileSync(join(root, IGNORE_FILE), JSON.stringify({ ignore: [{ ...entry, reason: "" }] }));
+    writeFileSync(join(root, IGNORE_FILE), JSON.stringify({ ignore: [{ ...entry, reason: "" }], microcopy }));
     expect(run(root).stderr).toContain("precisa de");
 
-    writeFileSync(join(root, IGNORE_FILE), JSON.stringify({ ignore: [entry, { ...entry, text: "Outro" }] }));
+    writeFileSync(join(root, IGNORE_FILE), JSON.stringify({ ignore: [entry, { ...entry, text: "Outro" }], microcopy }));
     const stale = run(root);
     expect(stale.status).toBe(1);
     expect(stale.stderr).toContain("não corresponde a nada");

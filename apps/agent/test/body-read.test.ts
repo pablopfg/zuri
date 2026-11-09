@@ -140,7 +140,7 @@ describe("through the Worker and the object", () => {
         body: new Uint8Array(API_BODY_MAX_BYTES + 1),
       });
       expect(res.status).toBe(400);
-      expect(await errorBody(res)).toMatchObject({ code: "VALIDATION_FAILED", message: "O pedido é grande demais." });
+      expect(await errorBody(res)).toMatchObject({ code: "VALIDATION_FAILED", message: "O envio é grande demais. Mande menos coisa de uma vez." });
       expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     }
   });

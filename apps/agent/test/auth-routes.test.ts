@@ -62,7 +62,7 @@ describe("POST /api/auth/login", () => {
       expect(res.status).toBe(401);
       expect(await res.json()).toEqual({
         code: "INVALID_CREDENTIALS",
-        message: "E-mail ou senha incorretos.",
+        message: "E-mail ou senha incorretos. Confira e tente de novo.",
         details: { turnstileSiteKey: testEnv.TURNSTILE_SITE_KEY },
       });
       expect(res.headers.getSetCookie()).toEqual([]);

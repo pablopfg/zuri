@@ -28,8 +28,8 @@ test("adds a client, notes, moves and deletes it on the Clients tab; accessible 
   await form.getByLabel("Telefone").fill("+55 11 98888-7777");
   await form.getByLabel("Etiquetas").fill("VIP, retorno");
   await expectAccessible(page, "clientes-novo");
-  await form.getByRole("button", { name: "Cadastrar" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Cliente cadastrado" })).toBeVisible();
+  await form.getByRole("button", { name: "Adicionar" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Cliente adicionado" })).toBeVisible();
 
   const list = page.getByRole("list").filter({ hasText: "Ana Souza" });
   await expect(list.getByRole("button")).toHaveCount(1);
