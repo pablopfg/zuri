@@ -1,16 +1,18 @@
 # Revisão das mensagens de erro (etapa 26a)
 
-Critério do plano: toda mensagem de erro do catálogo diz o que houve e o que fazer. Cada chave `error.*` foi lida no pt-BR (o inglês acompanha o sentido) e caiu numa destas classes:
+Critério do plano: toda mensagem de erro do catálogo diz o que houve e o que fazer. Cada chave de erro do catálogo (as `error.*` e as que o inventário classifica como erro: motivos de falha em `web.*.problem.*`, títulos de aviso de falha) foi lida no pt-BR (o inglês acompanha o sentido) e caiu numa destas classes:
 
-- diz o que fazer: 118
-- explica a regra ou o limite, e o que continua funcionando; não há ação do dono: 27
+- diz o que fazer: 146
+- motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela: 58
+- explica a regra ou o limite, e o que continua funcionando; não há ação do dono: 31
 - o item mudou ou saiu; não há o que fazer: 28
 
-As 35 mensagens sem ação na revisão inicial foram lidas uma a uma: 5 ganharam o que fazer nesta PR (memória repetida, item que não volta da lixeira, rotina pendente, backup inválido, Telegram sem código) e as que sobraram descrevem uma regra fixa (por exemplo, "Só as rotinas da Zuri usam ferramentas externas") ou um limite com a hora em que ele volta.
+As mensagens sem ação na primeira passada foram lidas uma a uma: as que tinham uma ação possível ganharam o que fazer nesta PR (memória repetida, item que não volta da lixeira, rotina pendente, backup inválido, Telegram sem código, gravação de áudio, servidor MCP fora do ar ou com endereço errado) e as que sobraram descrevem uma regra fixa (por exemplo, "Só as rotinas da Zuri usam ferramentas externas") ou um limite com a hora em que ele volta.
 
 | Chave | Texto (pt-BR) | Classe |
 | --- | --- | --- |
 | `error.internal` | Não deu para concluir agora. Seus dados estão seguros; tente de novo em instantes. | diz o que fazer |
+| `web.accessLog.reason.failed` | verificação recusada | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
 | `error.aiLimit.requests` | Você chegou ao limite diário de pedidos à IA. Ele renova à meia-noite UTC (21h em Brasília). Tarefas, notas e memórias continuam funcionando; o limite muda em Configurações > IA. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
 | `error.aiLimit.neurons` | A IA chegou ao teto de uso do dia, que mantém a Zuri dentro da cota grátis. Ele renova à meia-noite UTC (21h em Brasília). Tarefas, notas e memórias continuam funcionando. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
 | `error.aiLimit.audio` | Você chegou a 1 hora de áudio transcrito hoje. O limite renova à meia-noite UTC (21h em Brasília); até lá, escreva a mensagem. | diz o que fazer |
@@ -25,6 +27,7 @@ As 35 mensagens sem ação na revisão inicial foram lidas uma a uma: 5 ganharam
 | `error.aiPaidBackground` | Fluxos e respostas automáticas usam só os modelos grátis. Escolha um modelo grátis como principal ou como reserva em Configurações > IA. | diz o que fazer |
 | `error.aiNoCredit` | A empresa do modelo pago recusou por falta de crédito. Recarregue na conta dela e toque em “Já recarreguei” em Configurações > IA. | diz o que fazer |
 | `error.aiKeyRefused` | A empresa do modelo pago recusou a chave cadastrada. Confira a chave e toque em “Tentar de novo” em Configurações > IA. | diz o que fazer |
+| `web.ai.invalid` | Use um número inteiro de {min} a {max}. | diz o que fazer |
 | `error.conversationNotFound` | Esta conversa não existe mais. | o item mudou ou saiu; não há o que fazer |
 | `error.chatBusy` | Já há uma resposta sendo escrita. Espere ela terminar ou toque em Parar. | diz o que fazer |
 | `error.voiceBusy` | Já há um áudio sendo transcrito. Espere ele terminar. | diz o que fazer |
@@ -41,6 +44,36 @@ As 35 mensagens sem ação na revisão inicial foram lidas uma a uma: 5 ganharam
 | `error.planTaskAdded` | Dá para mudar ou tirar tarefas do plano, mas não acrescentar. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
 | `error.storageLimit.conversations` | Você chegou ao limite de conversas. Apague as que não precisa mais para começar novas. | diz o que fazer |
 | `error.storageLimit.messages` | Você chegou ao limite de mensagens. Apague conversas antigas para continuar. | diz o que fazer |
+| `web.chat.voice.failed` | Não deu para gravar o áudio. Confira se o navegador pode usar o microfone e tente de novo. | diz o que fazer |
+| `web.chat.approval.status.failed` | Não foi feito | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.chat.approval.problem.changed` | O item mudou depois da proposta. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.chat.approval.problem.gone` | O item não existe mais. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.chat.approval.problem.failed` | Não deu para aplicar a mudança. Tente de novo. | diz o que fazer |
+| `web.integrations.problem.auth` | O servidor recusou o acesso. Confira o token. | diz o que fazer |
+| `web.integrations.problem.timeout` | O servidor demorou demais para responder. Tente reconectar daqui a pouco. | diz o que fazer |
+| `web.integrations.problem.unavailable` | Não deu para falar com o servidor. Confira o endereço ou tente mais tarde. | diz o que fazer |
+| `web.integrations.problem.blocked` | O servidor tentou levar a Zuri para outro endereço, e ela recusou. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.integrations.problem.redirect` | O servidor respondeu com um redirecionamento. Use o endereço final dele. | diz o que fazer |
+| `web.integrations.problem.too_large` | A resposta do servidor passou do tamanho permitido. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.integrations.problem.protocol` | Este endereço não parece um servidor MCP compatível. Confira o endereço na documentação do serviço. | diz o que fazer |
+| `web.integrations.problem.dns` | Não deu para achar este endereço na internet. Confira se ele está certo. | diz o que fazer |
+| `web.integrations.problem.private_address` | Este endereço aponta para uma rede particular. A Zuri só conecta a serviços públicos. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.integrations.problem.credential_unreadable` | O token guardado não pode mais ser lido. Edite o servidor e informe o token de novo. | diz o que fazer |
+| `web.integrations.problem.no_tools` | O servidor não ofereceu nenhuma ferramenta compatível. Não há o que ligar por enquanto. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.integrations.problem.truncated` | O servidor tem muitas ferramentas; só as primeiras 100 aparecem. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.integrations.problem.signin` | Falta entrar na conta do serviço para a Zuri usar este servidor. Se o botão Entrar no serviço não aparecer, toque em Reconectar. | diz o que fazer |
+| `web.integrations.problem.oauth` | A entrada no serviço não deu certo. Tente de novo; se repetir, o serviço pode não aceitar apps novos. | diz o que fazer |
+| `web.integrations.tool.problem.schema_too_large` | Incompatível: entrada grande demais | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.integrations.tool.problem.schema_too_deep` | Incompatível: entrada complexa demais | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.integrations.tool.problem.schema_not_object` | Incompatível: formato de entrada | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.integrations.tool.problem.schema_unsupported` | Incompatível: formato de entrada | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.google.problem.revoked` | O Google recusou o acesso da Zuri. Conecte de novo para voltar a ver a agenda. | diz o que fazer |
+| `web.google.problem.credential_unreadable` | A Zuri não conseguiu ler o acesso guardado. Conecte de novo. | diz o que fazer |
+| `web.contacts.problem.reconnect` | A Zuri perdeu o acesso aos contatos. Ligue os contatos de novo e permita na página do Google. | diz o que fazer |
+| `web.contacts.problem.api_disabled` | A People API está desligada no projeto do Google Cloud. Ligue-a em APIs e serviços › Biblioteca e toque em "Sincronizar agora". | diz o que fazer |
+| `web.contacts.problem.scope` | O Google não deixa a Zuri ler os contatos. Ligue os contatos de novo e marque a permissão na página do Google. | diz o que fazer |
+| `web.contacts.problem.too_many` | As etiquetas escolhidas passam de 5.000 contatos. Escolha menos etiquetas para a Zuri continuar. | diz o que fazer |
+| `web.contacts.problem.unavailable` | O Google não respondeu nas últimas tentativas. A Zuri tenta de novo sozinha. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
 | `error.unauthorized` | Entre para continuar. | diz o que fazer |
 | `error.forbidden` | Você não tem permissão para fazer isso. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
 | `error.httpsRequired` | Use uma conexão segura (HTTPS). | diz o que fazer |
@@ -86,7 +119,7 @@ As 35 mensagens sem ação na revisão inicial foram lidas uma a uma: 5 ganharam
 | `error.flowDraftNotFound` | Esta sugestão de fluxo não existe mais. | o item mudou ou saiu; não há o que fazer |
 | `error.crmClientNotFound` | Este cliente não existe mais. | o item mudou ou saiu; não há o que fazer |
 | `error.crmStageNotFound` | Esta etapa do funil não existe mais. | o item mudou ou saiu; não há o que fazer |
-| `error.crmClientLimit` | Você chegou ao limite de 5.000 clientes. Apague alguns para cadastrar outros. | diz o que fazer |
+| `error.crmClientLimit` | Você chegou ao limite de 5.000 clientes. Apague alguns para adicionar outros. | diz o que fazer |
 | `error.crmTagLimit` | Você chegou ao limite de 200 etiquetas diferentes. Reaproveite uma que já existe. | diz o que fazer |
 | `error.crmUnknownClient` | Esse cliente ainda não está no CRM. Mande primeiro um evento com o nome dele. | diz o que fazer |
 | `error.flowLimit` | Você chegou ao limite de {limit} fluxos. Apague um para criar outro. | diz o que fazer |
@@ -164,6 +197,9 @@ As 35 mensagens sem ação na revisão inicial foram lidas uma a uma: 5 ganharam
 | `error.googleContactsOff` | Os contatos do Google estão desligados. Ligue-os em Configurações › Integrações. | diz o que fazer |
 | `error.googleContactsBusy` | A Zuri já está sincronizando os contatos. Espere um pouco e veja de novo. | diz o que fazer |
 | `error.contactNotFound` | Este contato não está mais na Zuri. Ele pode ter saído das etiquetas escolhidas. | o item mudou ou saiu; não há o que fazer |
+| `notice.flow.failed.title` | O fluxo {name} falhou | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `notice.flow.failed.body` | Ele parou num passo. O motivo está no histórico, em Automações › Fluxos. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
+| `notice.contacts.problem.title` | Os contatos do Google pararam de sincronizar | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
 | `error.googleBusinessScope` | Marque a permissão de gerenciar o perfil da empresa na página do Google e tente de novo. | diz o que fazer |
 | `error.reviewsNotGranted` | Ligue as avaliações pela página do Google antes de escolher o perfil. | diz o que fazer |
 | `error.reviewsLocation` | Escolha de 1 a 3 perfis da lista. | diz o que fazer |
@@ -183,3 +219,58 @@ As 35 mensagens sem ação na revisão inicial foram lidas uma a uma: 5 ganharam
 | `error.reviewAnswered` | Alguém já respondeu essa avaliação no Google, então nada foi publicado. | o item mudou ou saiu; não há o que fazer |
 | `error.reviewUncertain` | O Google não confirmou a publicação. A Zuri confere na próxima leitura e avisa. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
 | `error.reviewNotMine` | Essa resposta não foi publicada pela Zuri, então ela não apaga. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
+| `notice.reviews.problem.title` | As avaliações do Google precisam de você | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `notice.reviews.problem.body` | Não consegui ler as avaliações do perfil. Veja o motivo em Configurações › Integrações. | diz o que fazer |
+| `web.palette.failed` | A busca não respondeu. Os atalhos continuam aqui. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
+| `web.automations.problem.missed` | o horário passou há mais de um dia, enquanto o sistema estava parado. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.automations.problem.busy` | uma execução manual ainda estava rodando. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.automations.problem.ai_budget` | o limite diário de rotinas da Zuri chegou. Mude em Configurações › IA. | diz o que fazer |
+| `web.automations.problem.ai_limit` | o limite diário de IA chegou. Volta a rodar depois da meia-noite (UTC). | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.automations.problem.ai_unavailable` | a IA não respondeu a tempo. A próxima execução tenta de novo. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.automations.problem.interrupted` | o sistema reiniciou no meio da execução. Ela não é repetida para não avisar duas vezes. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.automations.problem.failed` | parou num erro. A próxima execução tenta de novo. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.automations.problem.lockdown` | o modo de bloqueio estava ligado. A rotina volta quando você sair dele. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.alerts.status.failed` | Falhou | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.alerts.push.failed` | Não deu para ligar as notificações neste navegador. Tente de novo daqui a pouco. | diz o que fazer |
+| `web.approve.invalid` | Este link não foi reconhecido. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |
+| `web.agenda.problem` | A Zuri perdeu o acesso ao Google. Conecte de novo em Integrações para ver a agenda. | diz o que fazer |
+| `web.flows.problem.missed` | o horário passou há mais de um dia | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.busy` | a execução anterior ainda estava rodando | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.lockdown` | o bloqueio estava ligado | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.runs_limit` | acabaram as 500 execuções do dia | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.calls_limit` | passou de 40 chamadas numa execução | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.items_limit` | passou de 200 itens | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.too_large` | a resposta passou de 256 KB | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.ai_limit` | acabou o limite de IA dos fluxos hoje | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.ai_unavailable` | a IA não respondeu | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.connection_missing` | a conexão foi apagada | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.method_not_allowed` | a conexão não permite esse método | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.path_not_allowed` | o caminho está fora dos que a conexão permite | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.credential` | a credencial da conexão não abriu; digite de novo | diz o que fazer |
+| `web.flows.problem.blocked` | esse endereço não pode ser chamado | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.private_address` | o endereço aponta para uma rede interna | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.dns` | o nome do endereço não foi encontrado | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.redirect` | o serviço mandou para outro endereço, e a Zuri não segue | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.timeout` | o serviço demorou mais de 10 segundos | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.unavailable` | o serviço não respondeu | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.http_error` | o serviço respondeu com erro | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.not_json` | a resposta não veio em JSON | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.interrupted` | a execução foi interrompida | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.failed` | o passo parou num erro | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.google_access` | o Google não está conectado ou não deu permissão | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.calendar_missing` | a agenda está fechada para a Zuri ou só para leitura | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.contacts_off` | os contatos do Google estão desligados | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.invalid_date` | um item não tinha data válida, e nenhum evento foi criado | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.events_limit` | passou de 10 eventos numa execução, e nenhum foi criado | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.flows.problem.ai_check` | a resposta da IA trouxe um link ou contato que não estava nos dados, e nada foi enviado | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.reviews.breaker.refused` | A Zuri voltou a pedir sua aprovação em {when}: o Google recusou uma resposta. Para publicar sozinha de novo, ligue em Configurações › Integrações. | diz o que fazer |
+| `web.reviews.guard.invalid` | o rascunho veio fora do formato | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.reviews.problem.reconnect` | O Google pediu para conectar de novo. Abra Configurações › Integrações › Google. | diz o que fazer |
+| `web.reviews.problem.no_access` | O Google ainda não liberou o acesso à API do Perfil da Empresa para o seu projeto, ou a conta conectada não gerencia este perfil. A Zuri tenta de novo a cada 6 horas. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.reviews.problem.api_disabled` | As APIs do Perfil da Empresa estão desligadas no seu projeto do Google Cloud. Ligue a My Business Account Management, a My Business Business Information e a Google My Business. | diz o que fazer |
+| `web.reviews.problem.unavailable` | O Google não respondeu nas últimas leituras. A Zuri tenta de novo sozinha, com intervalos maiores. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.reviews.card.template.failed` | Modelo {n}: {reasons} | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.agents.invalid.step` | Use um valor de {min} a {max}, em passos de {step}. | diz o que fazer |
+| `web.agents.invalid.tokens` | Use um número inteiro de {min} a {max}. | diz o que fazer |
+| `web.agents.invalid.prompt` | Até {max} caracteres, sem < nem > e sem caracteres invisíveis. | motivo ou título dentro de uma frase maior; a ação fica no texto em volta ou na tela |
+| `web.backup.auto.failed` | A cópia de {date} falhou. A Zuri tenta de novo sozinha. | explica a regra ou o limite, e o que continua funcionando; não há ação do dono |

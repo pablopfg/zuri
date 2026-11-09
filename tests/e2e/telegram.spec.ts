@@ -64,7 +64,7 @@ test("Settings > Avisos: the owner connects Telegram with a code, confirms the a
   await expectAccessible(page, "telegram conectado");
 
   // The notices' group (step 13): a one-time link, the owner's account adds the bot, then Remover grupo.
-  await expect(card.getByText("Opcional. Sem grupo, os avisos chegam no chat com o bot.", { exact: false })).toBeVisible();
+  await expect(card.getByText("Opcional. Sem grupo, os avisos chegam na conversa com o bot.", { exact: false })).toBeVisible();
   await card.getByRole("button", { name: "Adicionar grupo" }).click();
   const groupLink = card.getByRole("link", { name: "Escolher o grupo" });
   await expect(groupLink).toBeVisible();

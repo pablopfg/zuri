@@ -142,7 +142,7 @@ test("signs in to a service with OAuth: the service's page, back to the app, con
   await dialog.getByRole("textbox", { name: "Nome" }).fill(name);
   await dialog.getByRole("textbox", { name: "Endereço" }).fill("https://conta.exemplo.com.br/mcp");
   await dialog.getByRole("combobox", { name: "Acesso" }).selectOption("oauth");
-  await expect(dialog.getByText("Ao salvar, a Zuri prepara o login")).toBeVisible();
+  await expect(dialog.getByText("Ao salvar, a Zuri prepara a entrada")).toBeVisible();
   await dialog.getByRole("button", { name: "Adicionar e conectar" }).click();
   const card = page.getByRole("article").filter({ has: page.getByRole("heading", { name }) });
   // Waiting for the first sign-in is a step to take, not a fault.

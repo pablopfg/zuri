@@ -58,7 +58,7 @@ test("turns the reviews on, tells the team of a negative one and publishes an ap
   // Saving made the first read, which keeps what exists as history; this one brings the three new reviews.
   await expect(page.getByText(/^Última leitura:/)).toBeVisible();
   await page.getByRole("button", { name: "Conferir agora" }).click();
-  await expect(page.getByRole("status").filter({ hasText: /Avaliações conferidas\.|Conferi uma parte/ })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: /Avaliações conferidas|Uma parte foi conferida/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Precisa de você (3)" })).toHaveAttribute("aria-pressed", "true");
 
   const diego = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Diego" }) });

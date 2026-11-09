@@ -127,7 +127,7 @@ export const ptBRAi = {
   "web.ai.paidDialog.confirm": "Usar o modelo pago",
   "web.ai.paidDialog.cancel": "Voltar",
   "web.ai.providers.title": "Modelos pagos",
-  "web.ai.providers.description": "Para usar um deles, cadastre a chave da empresa como segredo do Worker. Uma das duas já basta. Tudo começa desligado.",
+  "web.ai.providers.description": "Para usar um deles, guarde a chave da empresa como segredo do Worker. Uma das duas já basta. Tudo começa desligado.",
   "web.ai.providers.secret": "Segredo: {secret}",
   "web.ai.providers.notConfigured": "Sem chave",
   "web.ai.providers.ok": "Pronta",

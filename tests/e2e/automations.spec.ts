@@ -90,7 +90,7 @@ test("a reminder: create with the preview, run now, pause, edit and delete @mobi
   const confirm = page.getByRole("dialog", { name: `Apagar “${name}”?` });
   await expectAccessible(page, "excluir automação");
   await confirm.getByRole("button", { name: "Apagar" }).click();
-  await expect(toast(page, "Automação apagada.")).toBeVisible();
+  await expect(toast(page, "Automação apagada")).toBeVisible();
   await expect(row).toHaveCount(0);
   await expect(run).toBeVisible();
 });

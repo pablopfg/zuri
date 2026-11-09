@@ -42,6 +42,15 @@ describe("microcopyFindings", () => {
       "Rotinas com IA",
       "Algo deu errado",
       "Erro!",
+      "Tentando novamente",
+      "Gerar token",
+      "Cadastrar",
+      "Alterar evento",
+      "Modificar",
+      "Incluir",
+      "Inserir",
+      "Rejeitar",
+      "Grupo vinculado",
     ];
     const found = pt(Object.fromEntries(avoid.map((text, i) => [`k${i}`, text])));
     expect(found.filter((f) => f.endsWith("glossario")).map((f) => f.split(" ")[0])).toEqual(avoid.map((_, i) => `k${i}`));
@@ -60,6 +69,17 @@ describe("microcopyFindings", () => {
         h: "Entrar",
       }),
     ).toEqual([]);
+  });
+
+  it("wants a one-sentence toast without a full stop, and lets two sentences keep theirs", () => {
+    expect(
+      pt({
+        "web.chat.deleted": "Conversa apagada.",
+        "web.memory.saved": "Memória guardada",
+        "web.password.changed.toast": "Senha trocada. As outras sessões saíram.",
+        "web.notes.hint": "Uma dica comum.",
+      }),
+    ).toEqual(["web.chat.deleted ponto-final"]);
   });
 
   it("allows one '!' in the greeting only", () => {

@@ -89,8 +89,8 @@ test("a task: create with a deadline and a project, edit, complete, delete and r
   await expect(page).toHaveURL(/\/configuracoes\/dados$/);
   await page.getByRole("button", { name: `Restaurar ${title} de dezembro` }).click();
   // The confirmation is a toast: spoken once by the status region, shown at the foot of the screen.
-  await expect(page.getByRole("status").filter({ hasText: `"${title} de dezembro" voltou para o lugar.` })).toHaveCount(1);
-  await expect(page.getByText(`"${title} de dezembro" voltou para o lugar.`).last()).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: `"${title} de dezembro" voltou para o lugar` })).toHaveCount(1);
+  await expect(page.getByText(`"${title} de dezembro" voltou para o lugar`).last()).toBeVisible();
 
   await page.goto("/tarefas");
   await page.getByRole("button", { name: "Concluídas" }).click();

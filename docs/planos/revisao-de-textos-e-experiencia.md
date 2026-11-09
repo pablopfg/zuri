@@ -130,6 +130,11 @@ etapa 26 (a lista de hoje está no inventário).
 | Verificação em duas etapas | 2FA | 2FA, autenticação de dois fatores |
 | Configurações | a página | Ajustes, Preferências |
 
+Notas da 26a (09/11/2026): em inglês, a central e a aba de avisos se chamam
+"Notifications" (é o nome da tela em `en`, não o termo do glossário para o
+envio); "Recarregue a página" continua onde a instrução é recarregar o
+navegador, porque "Recarregar" só sai dos botões depois de um erro.
+
 ## Padrões de componente
 
 | Componente | Padrão |

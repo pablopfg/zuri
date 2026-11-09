@@ -84,7 +84,7 @@ export const ptBRReviews = {
   "web.reviews.deleteReply.title": "Apagar a resposta no Google?",
   "web.reviews.deleteReply.body": "A resposta some do seu perfil e a avaliação volta a esperar você.",
   "web.reviews.deleteReply.confirm": "Apagar",
-  "web.reviews.deleted": "Resposta apagada.",
+  "web.reviews.deleted": "Resposta apagada",
   "web.reviews.guard.title": "A resposta não passou na conferência:",
   "web.reviews.guard.size": "precisa ter de 40 a 600 caracteres",
   "web.reviews.guard.language": "precisa estar no idioma da avaliação",

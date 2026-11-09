@@ -329,7 +329,7 @@ describe("/destravar", () => {
     await idle(13 * HOUR);
     await inOwner((agent) => email(agent, false));
     await deliver(text("/destravar"));
-    expect(texts()).toEqual(["Para destravar, cadastre uma passkey ou configure o e-mail no app."]);
+    expect(texts()).toEqual(["Para destravar, adicione uma passkey ou configure o e-mail no app."]);
   });
 
   it("offers only the ways that work here: e-mail alone, then passkey and e-mail", async () => {

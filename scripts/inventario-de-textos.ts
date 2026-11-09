@@ -84,6 +84,9 @@ export function changesReport(list: Change[], ref: string): string {
 
 /** The catalogs as they were at a git ref, read from a throwaway copy of packages/shared/i18n. */
 async function catalogsAt(ref: string): Promise<Catalogs> {
+  // A ref that starts with "-" would reach git as an option (git archive --output=… writes a file).
+  if (ref.startsWith("-")) throw new Error(`not a git ref: ${ref}`);
+  execFileSync("git", ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`], { cwd: join(import.meta.dirname, ".."), stdio: "ignore" });
   const dir = mkdtempSync(join(tmpdir(), "zuri-inventario-"));
   try {
     const archive = execFileSync("git", ["archive", ref, "packages/shared/i18n"], { cwd: join(import.meta.dirname, ".."), maxBuffer: 64 * 1024 * 1024 });

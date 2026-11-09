@@ -57,7 +57,7 @@ export const ptBRAgents = {
   "web.agents.versionCurrent": "Em uso",
   "web.agents.restore": "Voltar para esta",
   "web.agents.restoreLabel": "Voltar para esta, a versão {version}",
-  "web.agents.restored": "Voltou para a versão {version}.",
+  "web.agents.restored": "Voltou para a versão {version}",
   "web.agents.versionKept": "A Zuri guarda as {count} versões mais recentes.",
   "web.agents.promptVersion": "Marca do prompt em uso: {value}",
 } as const;

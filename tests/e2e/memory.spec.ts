@@ -28,7 +28,7 @@ test("memories: save, duplicate, review a conflict, history, restore, update and
   const list = page.getByRole("region", { name: "Suas memórias" });
 
   await save(page, `Eu dirijo um Volkswagen ${tag}`);
-  await expect(page.getByRole("status").filter({ hasText: "Memória guardada." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Memória guardada" })).toBeVisible();
   await expect(list.getByText(`Eu dirijo um Volkswagen ${tag}`)).toBeVisible();
 
   // The same fact again: nothing new.

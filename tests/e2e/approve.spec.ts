@@ -52,7 +52,7 @@ test("a link the server doesn't know says so, with how to ask again @mobile", as
   // The server never said what the link was for: the page speaks of both.
   await expect(page.getByRole("heading", { level: 1, name: "Confirmar pelo Telegram" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Este link não serve mais" })).toBeFocused();
-  await expect(page.getByText("Não reconheci este link.")).toBeVisible();
+  await expect(page.getByText("Este link não foi reconhecido.")).toBeVisible();
   await expect(page.getByText("Para tentar de novo, peça outro link no bot: /destravar ou o botão Aprovar.")).toBeVisible();
   // The token left the address bar before anything else.
   expect(new URL(page.url()).hash).toBe("");
@@ -65,7 +65,7 @@ test("without a token in the address, nothing is asked", async ({ page }) => {
     if (request.url().includes("/api/approvals/")) asked.push(request.url());
   });
   await page.goto("/aprovar");
-  await expect(page.getByText("Não reconheci este link.")).toBeVisible();
+  await expect(page.getByText("Este link não foi reconhecido.")).toBeVisible();
   expect(asked).toEqual([]);
 });
 

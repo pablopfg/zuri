@@ -104,7 +104,7 @@ export const ptBRProductivity = {
   "web.trash.expiresAt": "some em {time}",
   "web.trash.restore": "Restaurar",
   "web.trash.restoreNamed": "Restaurar {title}",
-  "web.trash.restored": "\"{title}\" voltou para o lugar.",
+  "web.trash.restored": "\"{title}\" voltou para o lugar",
   "web.trash.purge": "Apagar de vez",
   "web.trash.purgeNamed": "Apagar de vez: {title}",
   "web.trash.purgeConfirmTitle": "Apagar de vez?",

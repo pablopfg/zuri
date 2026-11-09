@@ -31,7 +31,7 @@ export const ptBRAutomations = {
   "web.automations.actionsFor": "Ações de “{name}”",
   "web.automations.deleteTitle": "Apagar “{name}”?",
   "web.automations.deleteBody": "Ela para de rodar na hora. O histórico das execuções continua aqui.",
-  "web.automations.deleted": "Automação apagada.",
+  "web.automations.deleted": "Automação apagada",
   "web.automations.paused": "Automação pausada.",
   "web.automations.resumed": "Automação retomada.",
   "web.automations.created": "Automação criada",

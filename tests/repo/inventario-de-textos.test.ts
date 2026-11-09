@@ -1,3 +1,7 @@
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { changes, changesReport, inventory, kindOf } from "../../scripts/inventario-de-textos.ts";
 
@@ -36,5 +40,20 @@ describe("inventory", () => {
     const md = inventory({ "pt-BR": { x: "a | b\nc" }, en: { x: "d" } });
     expect(md).toContain("1 chaves.");
     expect(md).toContain("| `x` | texto curto | a \\| b<br>c | d |");
+  });
+});
+
+describe("the command line", () => {
+  it("refuses a ref that git would read as an option, and writes nothing (SEC-A13-01)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "zuri-inventario-ref-"));
+    const target = join(dir, "x.tar");
+    try {
+      const run = spawnSync(process.execPath, [join(import.meta.dirname, "../../scripts/inventario-de-textos.ts"), "--mudancas", `--output=${target}`], { encoding: "utf8" });
+      expect(run.status).not.toBe(0);
+      expect(run.stderr).toContain("not a git ref");
+      expect(existsSync(target)).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
