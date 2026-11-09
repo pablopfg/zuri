@@ -91,9 +91,19 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 
 - **Nomes iguais:** o Google não entrega e-mail nem telefone de quem avalia, então a Zuri usa o telefone e o e-mail dos contatos para separar homônimos e para saber quem recebeu e abriu o link. Com homônimos, nunca liga sozinha e ninguém recebe pedido até a escolha do Pablo. Regra completa em [sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md), seção 8.1b; no protótipo, a avaliação da "Ana Souza".
 
+### Ajustes pedidos pelo Pablo (09/11, 20:19)
+
+- **Seu dia:** o que já passou e não pede nada vai para uma cortina recolhida ("4 já passaram"), que abre e fecha com animação curta (parada com "reduzir movimento"). Tarefa ou confirmação que passou da hora sem ser feita sobe para o topo, marcada como pendente, e o contador "N pendentes" fica ao lado da cortina. A lista se refaz a cada 30 segundos, junto com a linha vermelha, sem tirar o foco de quem está usando o teclado.
+- **Fluxos prontos:** Automações ganhou a aba "Prontos" (e não "Workflows", que confundiria com a aba "Fluxos", onde ficam os fluxos que o Pablo monta). Ali entram os fluxos do n8n reescritos no código da Zuri: vêm desligados, pedem só as chaves, testam a conexão e começam sempre em ensaio, que roda junto com o n8n sem enviar nada. Plano completo em [fluxos-prontos.md](fluxos-prontos.md).
+- **Clipe:** o botão de anexar saiu de todas as conversas, porque a develop não trata arquivo enviado pelo chat.
+- **Todos os botões funcionam:** cada botão abre o diálogo, a lista ou o arquivo que promete (pastas, editor de fluxo, nova conexão, novo evento, visão de dia e de mês, códigos de recuperação, passkeys, chaves de API, todos os acessos, servidor MCP, backup, lixeira por tipo, funil, cliente, marca em SVG), com foco preso no diálogo, Esc e volta do foco a quem abriu. Ações que mexem em segurança pedem a senha, como no app.
+- **Conferência com a develop e plano de incorporação:** a lista do que existe na develop e onde fica no protótipo, mais as 9 PRs de interface, estão em [novo-frontend-sinal.md](novo-frontend-sinal.md). Faltavam "Últimos envios" nos avisos (entrou) e as páginas de primeira configuração, bloqueio, aprovação pelo Telegram e 404, que entram na PR I do plano.
+- **Etapa 26c (0.38.0):** a reorganização que entrou na develop hoje passou para o protótipo: Configurações com "Uso da IA" e "Modelos e limites" separados e os limites recolhidos, "Nova memória" num diálogo (com o microfone), menu "Mais opções" (⋯) em rotinas, fluxos e memórias com Apagar por último, lixeira aberta só com as tarefas ou só com as notas, Avisos na ordem nova e Conta sem o cartão "Sair deste aparelho".
+- **Protótipo interativo no repositório:** `docs/planos/modelos-frontend/prototipo-interativo.html` é a mesma versão do link publicado, com navegação pelo endereço e tema do aparelho. O `prototipo-v5.html` continua sendo o das capturas.
+
 ### Recomendação
 
-Se o Pablo aprovar, o Sinal refinado vira o plano da próxima PR de interface: os tokens deste protótipo passam para o Tailwind do app, a Figtree entra como arquivo servido pelo Worker e a tela "Estados das telas" vira o padrão de carregando, vazio e erro de todas as telas.
+Se o Pablo aprovar, o Sinal refinado vira o plano de [novo-frontend-sinal.md](novo-frontend-sinal.md): os tokens deste protótipo passam para o Tailwind do app, a Figtree entra como arquivo servido pelo Worker e a tela "Estados das telas" vira o padrão de carregando, vazio e erro de todas as telas.
 
 ## 3. Rodada 4 · Rebranding e seis modelos das skills
 
