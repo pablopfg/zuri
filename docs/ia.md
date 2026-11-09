@@ -111,7 +111,7 @@ Decisão de 02/11/2026; plano em
 [troca de provedores e proteção de dados](planos/troca-de-provedores-e-protecao-de-dados.md),
 parte 2. Código em `apps/agent/src/ai/chain.ts` e `apps/agent/src/ai/metered.ts`.
 
-- **O quê.** Configurações > IA tem o campo "Modelo reserva"
+- **O quê.** Configurações > Modelos e limites tem o campo "Modelo reserva"
   (`aiFallbackModel`): nenhum ou outro modelo da mesma lista grátis. Padrão:
   Qwen3 30B A3B, o mais barato. O reserva igual ao modelo de conversa conta
   como nenhum.
@@ -180,13 +180,13 @@ não muda.
 
 | Limite | Padrão | Faixa | Onde muda |
 | --- | --- | --- | --- |
-| Teto de Neurons (conversa, voz e busca juntas) | 9.000 | 1.000 a 9.000 | Configurações > IA |
-| Pedidos à IA (cada chamada ao modelo conta um) | 200 | 1 a 2.000 | Configurações > IA |
-| Tamanho máximo da resposta | 1.024 tokens | 256 a 4.096 | Configurações > IA |
+| Teto de Neurons (conversa, voz e busca juntas) | 9.000 | 1.000 a 9.000 | Configurações > Modelos e limites |
+| Pedidos à IA (cada chamada ao modelo conta um) | 200 | 1 a 2.000 | Configurações > Modelos e limites |
+| Tamanho máximo da resposta | 1.024 tokens | 256 a 4.096 | Configurações > Modelos e limites |
 | Áudio transcrito | 3.600 s | fixo | — |
-| Ações por resposta | 6 | 1 a 20 | Configurações > IA |
-| Passos por resposta | 4 | 1 a 10 | Configurações > IA |
-| Memória da conversa | 6.000 tokens | 2.000 a 32.000 | Configurações > IA |
+| Ações por resposta | 6 | 1 a 20 | Configurações > Modelos e limites |
+| Passos por resposta | 4 | 1 a 10 | Configurações > Modelos e limites |
+| Memória da conversa | 6.000 tokens | 2.000 a 32.000 | Configurações > Modelos e limites |
 
 - O teto de 9.000 é decisão do Pablo (31/10/2026): fica 1.000 abaixo da cota
   grátis, para sobrar folga a outro uso da conta.
@@ -290,7 +290,7 @@ do formato, faltou Neuron ou falhou: vira proposta, com o aviso de sempre.
 teto de 300 Neurons por rodada; `--seco` só lista. Regra da área:
 `.claude/rules/prompts.md`.
 
-### Ajustes de cada agente na tela (Configurações › IA › Agentes)
+### Ajustes de cada agente na tela (Configurações › Modelos e limites › Agentes)
 
 O cartão **Agentes** lista os seis agentes, com os parâmetros em uso e "Padrão"
 ou "Ajustado, versão N". **Ajustar** abre o painel do agente:

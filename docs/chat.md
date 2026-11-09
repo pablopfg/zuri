@@ -34,7 +34,7 @@ a aba fechou, a escrita falha e o modelo para, mesmo num passo sem texto. Um err
 como `error`. Uma recusa antes do stream (409 ocupado, 400, 401) vem como
 resposta JSON comum.
 
-Os limites do turno ficam em **Configurações > IA**:
+Os limites do turno ficam em **Configurações > Modelos e limites**:
 
 | Limite | Padrão | Faixa |
 | --- | --- | --- |

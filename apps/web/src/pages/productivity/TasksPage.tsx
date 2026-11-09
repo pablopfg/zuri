@@ -70,7 +70,7 @@ export function TasksPage() {
               <FolderKanban className="h-4 w-4" aria-hidden />
               <span className="sr-only sm:not-sr-only">{t("web.projects.manage")}</span>
             </Button>
-            <Link to="/configuracoes/dados" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium hover:bg-raised">
+            <Link to="/configuracoes/dados?tipo=tarefas" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium hover:bg-raised">
               <Trash2 className="h-4 w-4" aria-hidden />
               <span className="sr-only sm:not-sr-only">{t("web.trash.open")}</span>
             </Link>

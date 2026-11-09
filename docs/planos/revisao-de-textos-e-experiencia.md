@@ -273,3 +273,9 @@ README:
   "Sair", em toda tela.
 - Na lixeira vazia, o texto do cartão já diz o que vai para lá e por quanto
   tempo; o estado vazio fica só com o título.
+- As três perguntas tiveram resposta do Pablo em 09/11, todas na
+  recomendação: a aba IA virou "Uso da IA" (`/configuracoes/ia`, onde os avisos
+  de limite já apontam) e "Modelos e limites" (`/configuracoes/modelos`); a
+  Memória abre "Nova memória" num diálogo; a lixeira vinda de Tarefas ou Notas
+  abre filtrada (`?tipo=`), sem "Esvaziar a lixeira" enquanto filtrada, porque
+  ele apaga todos os tipos.

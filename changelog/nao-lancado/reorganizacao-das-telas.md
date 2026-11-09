@@ -1,6 +1,9 @@
 <!-- versao: minor -->
 ### Alterado
 
+- A aba IA das Configurações virou duas seções: "Uso da IA", com o uso de hoje e o consumo por período, e "Modelos e limites", com o modelo no topo, os modelos pagos, os agentes e a busca por significado. Os nove limites e o teto em US$ ficam recolhidos em "Limites avançados" e abrem sozinhos se algum valor estiver errado.
+- Memória: o campo fixo no topo virou o botão "Nova memória" no cabeçalho, que abre um diálogo. A lista fica no topo da página.
+- A lixeira aberta de Tarefas ou de Notas mostra só as tarefas ou só as notas, com "Voltar para Tarefas" (ou Notas) e "Ver tudo". "Esvaziar a lixeira" só aparece com tudo à vista.
 - Linhas com muitas ações ficaram mais limpas: em Automações, Fluxos, Memória e Integrações, a ação principal continua à vista e o resto foi para o menu "Mais opções" (⋯). O menu funciona com as setas e com Esc, Apagar ou Remover aparece por último, separado e em vermelho, e o botão gira enquanto a ação da linha roda.
 - Em Memória, "Nunca enviar para fora" virou um item marcável do menu, e o leitor de tela diz se está ligado.
 - Configurações no celular: dentro de uma seção, o título é o da seção, com "Todas as configurações" logo acima.

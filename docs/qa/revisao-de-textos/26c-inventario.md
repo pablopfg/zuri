@@ -43,12 +43,12 @@ ganha `role="group"` com `aria-labelledby` na pergunta:
 | 2 | Feito. |
 | 3 | Feito. |
 | 4 | Feito em Tarefas, Notas e Diagnóstico (um cartão só quando não há falha). Lixeira: o texto do cartão já diz o que vai para lá, então o vazio fica só com o título. Conversas, Automações e IA já tinham título e frase; não mudaram. |
-| 5 | Pergunta ao Pablo (recomendação: dividir). |
+| 5 | Feito, com o OK do Pablo (09/11): "Uso da IA" e "Modelos e limites" (`/configuracoes/modelos`), limites em "Limites avançados", recolhido. |
 | 6 | Feito: canais, push, Telegram, o que vai para cada canal, resumo, Zuri de olho, prioridades e, no fim, os últimos envios. |
 | 7 | Feito. |
 | 8 | Feito: no computador, só o da lista ao lado. O histórico já estava nas ações do cabeçalho; com o `PageHeader` novo ele fica ao lado do título no celular. |
-| 9 | Pergunta ao Pablo (recomendação: botão com diálogo). |
-| 10 | Pergunta ao Pablo (recomendação: abrir filtrada). Tarefas e Notas já usam o mesmo botão. |
+| 9 | Feito, com o OK do Pablo (09/11): "Nova memória" no cabeçalho abre um diálogo. |
+| 10 | Feito, com o OK do Pablo (09/11): `?tipo=tarefas` ou `?tipo=notas`, com o caminho de volta e "Ver tudo". |
 | 11 | Feito. |
 | 12 | Feito. |
 | 13 | Feito. |

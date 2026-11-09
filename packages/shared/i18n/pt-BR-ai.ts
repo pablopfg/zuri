@@ -3,7 +3,7 @@
 // not in its first bundle (rule P11).
 export const ptBRAi = {
   "error.aiLimit.requests":
-    "Você chegou ao limite diário de pedidos à IA. Ele renova à meia-noite UTC (21h em Brasília). Tarefas, notas e memórias continuam funcionando; o limite muda em Configurações > IA.",
+    "Você chegou ao limite diário de pedidos à IA. Ele renova à meia-noite UTC (21h em Brasília). Tarefas, notas e memórias continuam funcionando; o limite muda em Configurações > Modelos e limites.",
   "error.aiLimit.neurons":
     "A IA chegou ao teto de uso do dia, que mantém a Zuri dentro da cota grátis. Ele renova à meia-noite UTC (21h em Brasília). Tarefas, notas e memórias continuam funcionando.",
   "error.aiLimit.audio": "Você chegou a 1 hora de áudio transcrito hoje. O limite renova à meia-noite UTC (21h em Brasília); até lá, escreva a mensagem.",
@@ -12,15 +12,15 @@ export const ptBRAi = {
   "error.aiAborted": "A resposta foi interrompida. Mande a mensagem de novo para continuar.",
   "error.aiTimeout": "A IA demorou demais para responder. Tente de novo.",
   "error.aiBusy": "A IA está ocupada agora. Tente de novo em instantes.",
-  "error.aiModelUnavailable": "O modelo de IA escolhido não está disponível. Escolha outro em Configurações > IA.",
+  "error.aiModelUnavailable": "O modelo de IA escolhido não está disponível. Escolha outro em Configurações > Modelos e limites.",
   "error.aiUnavailable": "A IA não conseguiu responder. Tente de novo.",
   "error.aiRequestRejected": "A IA não aceitou este pedido. Tente uma mensagem mais curta ou com outras palavras.",
   "error.aiLimit.usd":
-    "Os modelos pagos chegaram ao teto de gasto que você escolheu para hoje (US$ {max}). Ele renova à meia-noite UTC (21h em Brasília); o valor muda em Configurações > IA.",
+    "Os modelos pagos chegaram ao teto de gasto que você escolheu para hoje (US$ {max}). Ele renova à meia-noite UTC (21h em Brasília); o valor muda em Configurações > Modelos e limites.",
   "error.aiPaidBackground":
-    "Fluxos e respostas automáticas usam só os modelos grátis. Escolha um modelo grátis como principal ou como reserva em Configurações > IA.",
-  "error.aiNoCredit": "A empresa do modelo pago recusou por falta de crédito. Recarregue na conta dela e toque em “Já recarreguei” em Configurações > IA.",
-  "error.aiKeyRefused": "A empresa do modelo pago recusou a chave cadastrada. Confira a chave e toque em “Tentar de novo” em Configurações > IA.",
+    "Fluxos e respostas automáticas usam só os modelos grátis. Escolha um modelo grátis como principal ou como reserva em Configurações > Modelos e limites.",
+  "error.aiNoCredit": "A empresa do modelo pago recusou por falta de crédito. Recarregue na conta dela e toque em “Já recarreguei” em Configurações > Modelos e limites.",
+  "error.aiKeyRefused": "A empresa do modelo pago recusou a chave cadastrada. Confira a chave e toque em “Tentar de novo” em Configurações > Modelos e limites.",
   "ai.mock.reply":
     "(IA simulada) Você disse: “{message}”. Neste ambiente as respostas são de teste; tarefas, notas e memórias funcionam do mesmo jeito.",
   "ai.mock.toolDone": "(IA simulada) Usei a ferramenta {tool}.",
@@ -114,6 +114,7 @@ export const ptBRAi = {
   "web.ai.paidOption": "{label} · {input} / {output} por milhão de tokens",
   "web.ai.paidOptionNoKey": "{label} (precisa da chave)",
   "web.ai.modelHintPaid": "Cerca de {usd} por resposta comum, cobrados pela {company} na sua conta de lá.",
+  "web.ai.advanced": "Limites avançados",
   "web.ai.usdCap": "Teto de gastos por dia (US$)",
   "web.ai.usdCapHint": "0 deixa sem teto. Com um valor, a Zuri para de chamar os modelos pagos quando o gasto do dia passaria dele, até a meia-noite UTC (21h em Brasília).",
   "web.ai.usdCapInvalid": "Use um valor de 0 a {max}, com até 2 casas depois da vírgula.",

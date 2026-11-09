@@ -41,7 +41,8 @@ for (const scheme of ["light", "dark"] as const) {
       for (const [tab, title] of [
         ["conta", "Conta"],
         ["seguranca", "Segurança"],
-        ["ia", "IA"],
+        ["ia", "Uso da IA"],
+        ["modelos", "Modelos e limites"],
         ["avisos", "Avisos"],
         ["integracoes", "Integrações"],
         ["dados", "Dados"],

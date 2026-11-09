@@ -147,7 +147,7 @@ endereço ou outro tipo de acesso sim.
 ## Como funciona
 
 - **Triagem pelo significado** (`meaning.ts`, etapa 18b): com a busca por
-  significado ligada (Configurações › IA), cada ferramenta ligada ganha um
+  significado ligada (Configurações › Modelos e limites), cada ferramenta ligada ganha um
   vetor feito do título, da dica e da descrição, uma vez por texto e modelo, no
   alarme compartilhado (nunca num turno), com o mesmo teto de Neurons da
   indexação e espera de 15 minutos depois de uma falha. No turno, a triagem

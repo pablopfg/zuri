@@ -12,7 +12,7 @@ import {
   ptBRMemory,
   type Settings,
 } from "@zuri/shared";
-import { Archive, ArchiveRestore, BadgeCheck, Brain, CircleHelp, GitCompareArrows, History, Pencil, RefreshCw, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, BadgeCheck, Brain, CircleHelp, GitCompareArrows, History, Pencil, Plus, RefreshCw, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { ActionsMenu } from "../../components/ActionsMenu.tsx";
 import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, fieldClass, PageHeader, SelectField, Loading, TextAreaField } from "../../components/ui.tsx";
@@ -64,13 +64,31 @@ export function MemoryPage() {
   const toast = useToast();
   // A write that raised conflicts leaves something to do: that toast stays until closed.
   const notify = (message: string, pending: boolean) => toast(message, { persistent: pending });
+  // Saving by hand is the rarer visit (the Zuri saves most memories herself): a button and a dialog, so the list gets the top (stage 26c).
+  const [creating, setCreating] = useState(false);
 
   return (
     <>
-      <PageHeader title={t("web.memory.title")} description={t("web.memory.description")} />
+      <PageHeader
+        title={t("web.memory.title")}
+        description={t("web.memory.description")}
+        actions={
+          <Button onClick={() => setCreating(true)} aria-haspopup="dialog">
+            <Plus className="h-4 w-4" aria-hidden />
+            {t("web.memory.new")}
+          </Button>
+        }
+      />
 
-
-      <NewMemory onSaved={notify} />
+      <Dialog open={creating} onClose={() => setCreating(false)} title={t("web.memory.new")}>
+        <NewMemory
+          onCancel={() => setCreating(false)}
+          onSaved={(message, pending) => {
+            setCreating(false);
+            notify(message, pending);
+          }}
+        />
+      </Dialog>
 
       {(counts?.reviews ?? 0) > 0 && <ReviewQueue total={counts?.reviews ?? 0} onDone={toast} />}
 
@@ -178,7 +196,7 @@ function useWriteMessage() {
   };
 }
 
-function NewMemory({ onSaved }: { onSaved: (message: string, pending: boolean) => void }) {
+function NewMemory({ onSaved, onCancel }: { onSaved: (message: string, pending: boolean) => void; onCancel: () => void }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const message = useWriteMessage();
@@ -205,37 +223,39 @@ function NewMemory({ onSaved }: { onSaved: (message: string, pending: boolean) =
   }
 
   return (
-    <Card title={t("web.memory.new")} description={t("web.memory.newHint")}>
-      <form onSubmit={(e) => void submit(e)} className="space-y-3">
-        <TextAreaField
-          label={t("web.memory.content")}
-          value={content}
-          maxLength={MEMORY_CONTENT_MAX}
-          required
-          onChange={(e) => setContent(e.target.value)}
-          placeholder={t("web.memory.placeholder")}
-          hint={t("web.memory.counter", { used: content.length, max: MEMORY_CONTENT_MAX })}
-          className="[&_textarea]:min-h-20"
-        />
-        <div className="flex flex-wrap items-end gap-3">
-          <SelectField label={t("web.memory.category")} value={category} onChange={(e) => setCategory(e.target.value as MemoryCategory)} className="min-w-48 flex-1 sm:flex-none">
-            {MEMORY_CATEGORIES.map((item) => (
-              <option key={item} value={item}>
-                {t(CATEGORY_LABEL[item])}
-              </option>
-            ))}
-          </SelectField>
-          <Button type="submit" loading={pending} disabled={!content.trim()}>
-            {t("web.memory.save")}
-          </Button>
-        </div>
-        {error && (
-          <p role="alert" className="text-sm text-danger">
-            {error}
-          </p>
-        )}
-      </form>
-    </Card>
+    <form onSubmit={(e) => void submit(e)} className="space-y-3">
+      <p className="text-sm leading-6 text-fg-muted">{t("web.memory.newHint")}</p>
+      <TextAreaField
+        label={t("web.memory.content")}
+        value={content}
+        maxLength={MEMORY_CONTENT_MAX}
+        required
+        onChange={(e) => setContent(e.target.value)}
+        placeholder={t("web.memory.placeholder")}
+        hint={t("web.memory.counter", { used: content.length, max: MEMORY_CONTENT_MAX })}
+        className="[&_textarea]:min-h-20"
+      />
+      <SelectField label={t("web.memory.category")} value={category} onChange={(e) => setCategory(e.target.value as MemoryCategory)}>
+        {MEMORY_CATEGORIES.map((item) => (
+          <option key={item} value={item}>
+            {t(CATEGORY_LABEL[item])}
+          </option>
+        ))}
+      </SelectField>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="secondary" onClick={onCancel}>
+          {t("web.cancel")}
+        </Button>
+        <Button type="submit" loading={pending} disabled={!content.trim()}>
+          {t("web.memory.save")}
+        </Button>
+      </div>
+    </form>
   );
 }
 

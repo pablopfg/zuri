@@ -113,7 +113,7 @@ test("the notification center opens from the bell and closes with Escape", async
   await expect(bell).toBeFocused();
 });
 
-test("settings has the seven sections, each with its address and content: tabs on a computer, a list on a phone @mobile", async ({ page }) => {
+test("settings has the eight sections, each with its address and content: tabs on a computer, a list on a phone @mobile", async ({ page }) => {
   await page.goto("/configuracoes");
   await signIn(page);
   const sections = page.getByRole("navigation", { name: "Seções das configurações" });
@@ -127,14 +127,15 @@ test("settings has the seven sections, each with its address and content: tabs o
     await expect(page.getByRole("main").getByText(version, { exact: true })).toBeVisible();
     // The list is the page: each section with what it holds, no section open yet.
     await expect(page).toHaveURL(/\/configuracoes$/);
-    await expect(sections.getByRole("link")).toHaveCount(7);
+    await expect(sections.getByRole("link")).toHaveCount(8);
         await expect(page.getByRole("link", { name: "Todas as configurações" })).toHaveCount(0);
     await expect(sections.getByRole("link", { name: "Segurança", exact: true })).toHaveAccessibleDescription("Verificação em duas etapas, passkeys e saída automática");
     await expectAccessible(page, "configuracoes (lista)");
   }
   for (const [name, path, text] of [
     ["Segurança", "seguranca", "Atividade de acesso"],
-    ["IA", "ia", "Uso de hoje"],
+    ["Uso da IA", "ia", "Uso de hoje"],
+    ["Modelos e limites", "modelos", "Modelo de conversa"],
     ["Avisos", "avisos", "Resumo do dia"],
     ["Integrações", "integracoes", "Serviços externos (MCP)"],
     ["Dados", "dados", "Exportar e importar"],

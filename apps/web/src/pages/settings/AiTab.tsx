@@ -70,13 +70,22 @@ function useNumber() {
   return (value: number, digits = 0) => new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(value);
 }
 
-export function AiTab() {
+/** Settings › Uso da IA: what the day used and the spending by period (stage 26c split the old AI tab in two). */
+export function AiUsageTab() {
   return (
     <>
       <UsageCard />
       <Suspense fallback={<Card><Loading /></Card>}>
         <UsageCharts />
       </Suspense>
+    </>
+  );
+}
+
+/** Settings › Modelos e limites: the model first, then the paid providers, the agents and the search by meaning. */
+export function AiModelsTab() {
+  return (
+    <>
       <LimitsCard />
       <ProvidersCard />
       <AgentsCard />
@@ -355,6 +364,8 @@ function LimitsForm({ settings }: { settings: Settings }) {
   const [values, setValues] = useState<Record<LimitField, string>>(() => texts(settings));
   const [cap, setCap] = useState(() => dollars(settings.aiUsdCentsPerDay));
   const [status, setStatus] = useState<"unchanged" | null>(null);
+  // The nine limits and the dollar cap stay folded under the model (stage 26c); a wrong one unfolds them.
+  const [advanced, setAdvanced] = useState(false);
   // A paid model newly chosen waits for the owner to read what leaves the account (plan D7).
   const [warning, setWarning] = useState<{ patch: SettingsUpdate; companies: PaidProviderId[] } | null>(null);
 
@@ -390,7 +401,10 @@ function LimitsForm({ settings }: { settings: Settings }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setStatus(null);
-    if (LIMIT_FIELDS.some((field) => problems[field]) || capCents === null) return;
+    if (LIMIT_FIELDS.some((field) => problems[field]) || capCents === null) {
+      setAdvanced(true);
+      return;
+    }
     const patch: SettingsUpdate = {};
     if (model !== settings.aiModel) patch.aiModel = model;
     if (fallback !== usableFallback(settings.aiFallbackModel, settings.aiModel)) patch.aiFallbackModel = fallback;
@@ -459,46 +473,49 @@ function LimitsForm({ settings }: { settings: Settings }) {
         <optgroup label={t("web.ai.modelsFree")}>{CHAT_MODEL_IDS.filter((id) => id !== model).map((id) => option(id, false))}</optgroup>
         <optgroup label={t("web.ai.modelsPaid")}>{PAID_MODEL_IDS.filter((id) => id !== model).map((id) => option(id, false))}</optgroup>
       </SelectField>
-      <div className="grid gap-4 sm:grid-cols-3">
-        {LIMIT_FIELDS.map((field) => {
-          const range = AI_LIMIT_RANGES[field];
-          const bounds = { min: number(range.min), max: number(range.max) };
-          return (
-            <TextField
-              key={field}
-              label={t(LABELS[field].label)}
-              hint={t(LABELS[field].hint, bounds)}
-              error={problems[field] ? t("web.ai.invalid", bounds) : null}
-              type="number"
-              inputMode="numeric"
-              min={range.min}
-              max={range.max}
-              step={1}
-              required
-              value={values[field]}
-              disabled={save.isPending}
-              onChange={(e) => {
-                const next = e.target.value;
-                setValues((current) => ({ ...current, [field]: next }));
-                setStatus(null);
-              }}
-            />
-          );
-        })}
-        <TextField
-          label={t("web.ai.usdCap")}
-          hint={t("web.ai.usdCapHint")}
-          error={capCents === null ? t("web.ai.usdCapInvalid", { max: number(AI_LIMIT_RANGES.aiUsdCentsPerDay.max / 100) }) : null}
-          inputMode="decimal"
-          autoComplete="off"
-          value={cap}
-          disabled={save.isPending}
-          onChange={(e) => {
-            setCap(e.target.value);
-            setStatus(null);
-          }}
-        />
-      </div>
+      <details open={advanced} onToggle={(event) => setAdvanced(event.currentTarget.open)} className="rounded-xl border border-border">
+        <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-medium">{t("web.ai.advanced")}</summary>
+        <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-3">
+          {LIMIT_FIELDS.map((field) => {
+            const range = AI_LIMIT_RANGES[field];
+            const bounds = { min: number(range.min), max: number(range.max) };
+            return (
+              <TextField
+                key={field}
+                label={t(LABELS[field].label)}
+                hint={t(LABELS[field].hint, bounds)}
+                error={problems[field] ? t("web.ai.invalid", bounds) : null}
+                type="number"
+                inputMode="numeric"
+                min={range.min}
+                max={range.max}
+                step={1}
+                required
+                value={values[field]}
+                disabled={save.isPending}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setValues((current) => ({ ...current, [field]: next }));
+                  setStatus(null);
+                }}
+              />
+            );
+          })}
+          <TextField
+            label={t("web.ai.usdCap")}
+            hint={t("web.ai.usdCapHint")}
+            error={capCents === null ? t("web.ai.usdCapInvalid", { max: number(AI_LIMIT_RANGES.aiUsdCentsPerDay.max / 100) }) : null}
+            inputMode="decimal"
+            autoComplete="off"
+            value={cap}
+            disabled={save.isPending}
+            onChange={(e) => {
+              setCap(e.target.value);
+              setStatus(null);
+            }}
+          />
+        </div>
+      </details>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" loading={save.isPending}>
           {t("web.ai.save")}

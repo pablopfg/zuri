@@ -104,7 +104,7 @@ function NotesList({ activeId }: { activeId: string | undefined }) {
         actions={
           <>
             {/* The same way to the trash as on Tasks. */}
-            <Link to="/configuracoes/dados" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium hover:bg-raised">
+            <Link to="/configuracoes/dados?tipo=notas" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium hover:bg-raised">
               <Trash2 className="h-4 w-4" aria-hidden />
               <span className="sr-only sm:not-sr-only">{t("web.trash.open")}</span>
             </Link>

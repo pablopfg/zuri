@@ -22,6 +22,7 @@ import {
   Search,
   Shield,
   ShieldCheck,
+  SlidersHorizontal,
   User,
   Users,
 } from "lucide-react";
@@ -113,6 +114,7 @@ export function CommandPalette({ onClose, navigate }: { onClose: () => void; nav
       section("conta", "web.settings.tab.account", User),
       section("seguranca", "web.settings.tab.security", Shield),
       section("ia", "web.settings.tab.ai", Bot),
+      section("modelos", "web.settings.tab.models", SlidersHorizontal),
       section("avisos", "web.settings.tab.notifications", Bell),
       section("integracoes", "web.settings.tab.integrations", Plug),
       section("dados", "web.settings.tab.data", Database),
