@@ -1,6 +1,6 @@
 import type { Note } from "@zuri/shared";
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, signIn, uniqueTag } from "./ui-helpers.ts";
 
 // The new interface, part 2 (docs/planos/nova-ui.md): only what changed is
 // fetched again, without reloading. A change made elsewhere (here, straight
@@ -14,7 +14,7 @@ test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 // every try here, and the heartbeat alone still brings what changed elsewhere.
 test.beforeEach(({ page }) => page.routeWebSocket(/\/api\/live$/, (ws) => ws.close()));
 
-const tag = () => `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+const tag = () => uniqueTag(test.info().project.name);
 
 /** Today's date in São Paulo (the owner's zone), as YYYY-MM-DD. */
 const localToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
@@ -68,7 +68,7 @@ test("a task made elsewhere shows up on the open list without a reload, glowing,
   const listFetched = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/tasks");
   await nextHeartbeat(page);
   await listFetched;
-  const row = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: title }) });
+  const row = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: title, exact: true }) });
   await expect(row).toBeVisible();
   await expect(row).toHaveClass(/zuri-flash/);
   await expect(page.getByRole("button", { name: `Hoje ${before + 1}` })).toBeVisible();

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, openSettingsSection, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { expectAccessible, openSettingsSection, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // The notice center, Settings > Avisos and Settings > Diagnóstico against the
 // real Worker (step 11): a reminder run lands under the bell, which counts it,
@@ -8,7 +8,7 @@ import { expectAccessible, openSettingsSection, signIn, tooSmallControls } from 
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
 const CSRF = { "x-zuri-request": "1" };
-const tag = () => `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+const tag = () => uniqueTag(test.info().project.name);
 const toast = (page: Page, text: string | RegExp) => page.getByRole("status").filter({ hasText: text });
 
 async function signedIn(page: Page, path = "/") {

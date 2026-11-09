@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // The chat against the real Worker (step 9), with the simulated model of local
 // development: it echoes the message, and `call <tool> {json}` runs a real tool
@@ -8,7 +8,7 @@ import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.t
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
 /** A word of its own per run: the database keeps what earlier runs and the other project saved. */
-const tag = () => `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+const tag = () => uniqueTag(test.info().project.name);
 
 async function openChat(page: Page) {
   await page.goto("/conversa");
