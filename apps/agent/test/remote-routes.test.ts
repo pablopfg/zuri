@@ -457,6 +457,15 @@ describe("the day's budgets and the creation's last check", () => {
     });
   });
 
+  it("lists tokens made in the same millisecond in the order they were made, never by their random id (#187)", async () => {
+    await inOwner(async (agent) => {
+      const tokens = fresh(agent, { now: Date.parse("2026-11-04T10:00:00.000Z") });
+      const names = ["um", "dois", "tres", "quatro", "cinco", "seis"];
+      for (const name of names) await tokens.create({ name, scope: "read" });
+      expect(tokens.list().map((t) => t.name)).toEqual(names);
+    });
+  });
+
   // Keep it the last test of the file: it spends the object's writes for the day.
   it("takes 1,000 writes of every token a UTC day (n-1, n, n+1); then a write token gets 429 while reads go on (SEC-A13-01)", async () => {
     const write = await mint("write");
