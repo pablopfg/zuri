@@ -160,6 +160,9 @@ base `develop` (menos rascunho, branch de fork e PR com o rótulo
    comentário "A CI deste commit está parada esperando aprovação" avisa, e a
    rodada seguinte (no máximo 15 minutos depois) tenta aprovar de novo. Se
    continuar parado, aprove na mão: Actions, a execução, "Approve and run".
+   Antes, confira que a execução é de uma branch deste repositório e de um
+   commit do bot ou de uma thread; execução de PR de fork nunca é aprovada
+   na mão, porque roda o código de quem abriu a PR (SEC-A11-01).
    Quem não pode aprovar (uma thread, por exemplo) tem outra saída: pôr o
    rótulo `sem-atualizacao-automatica` na PR para o bot parar de enviar
    commits nela e trazer a `develop` com o próprio push (`git merge

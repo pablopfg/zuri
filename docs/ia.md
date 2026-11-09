@@ -102,6 +102,12 @@ mudança de preço não reescreve o passado.
     título da nota; a linha de um fato antigo não cita a substituta marcada, e
     uma proposta sobre item marcado (apagar, reescrever) entra no histórico com
     o rótulo trocado.
+  - uma resposta escrita com um item marcado à vista (no prompt ou no
+    resultado de uma ferramenta) fica marcada em `zur_messages.local_only`
+    (migration 31). No histórico de fora, o texto dela vira o aviso de item
+    local e só as notas do que ela propôs ou rodou continuam; o resumo da
+    conversa que cobre uma mensagem marcada entra como `<data … local="1">`
+    (SEC-A6-06, etapa 25).
   - Uma troca para o Workers AI no meio do caminho manda o contexto inteiro, e
     o inverso manda o perfil de fora.
 

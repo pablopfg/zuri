@@ -439,7 +439,7 @@ describe("publishing", () => {
       ]);
       expect(both.filter((r) => r.status === "fulfilled")).toHaveLength(1);
       const failed = both.find((r): r is PromiseRejectedResult => r.status === "rejected");
-      expect((failed?.reason as AppError).code).toBe("CONFLICT");
+      expect((failed?.reason as AppError | undefined)?.code).toBe("CONFLICT");
       expect(world.sim.seen.filter((s) => s.url.includes("/reviews/p1") && s.method === "PUT")).toHaveLength(1);
     }));
 

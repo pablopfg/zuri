@@ -98,6 +98,15 @@ describe("clients", () => {
       expect(crm.list({ q: "_" }).clients).toEqual([]);
     }));
 
+  it("searches with a long query instead of failing (SEC-A2-06: SQLite refuses a LIKE pattern over 50 bytes)", () =>
+    withCrm(({ crm }) => {
+      const name = "Maria Aparecida da Conceição Souza de Oliveira Albuquerque";
+      crm.create({ name, email: "maria.aparecida.conceicao.oliveira@exemplo.com.br" }, "app");
+      expect(crm.list({ q: name }).clients.map((c) => c.name)).toEqual([name]);
+      expect(crm.list({ q: "maria.aparecida.conceicao.oliveira@exemplo.com.br" }).clients.map((c) => c.name)).toEqual([name]);
+      expect(crm.list({ q: "x".repeat(200) }).clients).toEqual([]);
+    }));
+
   it("pages by name, the next page after the cursor", () =>
     withCrm(({ crm }) => {
       for (const name of ["Ana", "Bia", "Caio", "Davi", "Eva"]) crm.create({ name }, "app");
