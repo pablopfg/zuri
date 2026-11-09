@@ -19,6 +19,59 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.37.0] - 2026-11-09
+
+Mesclada às 10:01 (UTC-3) · commit [`d980790`](https://github.com/pablopfg/Zuri/commit/d9807903ff5f5303854a7d64ddd4b189bd3473c0) · PR [#221](https://github.com/pablopfg/Zuri/pull/221) · Textos revistos pelo glossário e lint de microcopy na CI (etapa 26a)
+
+### Adicionado
+
+- Lint de textos na CI: barra os termos que o glossário evita, "com sucesso",
+  "Ops", "Por favor", travessão, três pontos no lugar de reticências, "!" fora
+  do cumprimento e nomes de infraestrutura nas telas, com exceções comentadas.
+- `node scripts/inventario-de-textos.ts` lista todas as chaves do catálogo com
+  o tipo de cada uma, ou só as que mudaram desde um commit.
+
+### Alterado
+
+- Textos revistos em todo o app, no bot e nos avisos, em português e em
+  inglês, com as mesmas palavras para a mesma ação: **Apagar** (não mais
+  Excluir), **Desconectar** o Telegram (não mais Desvincular), **Ligar** e
+  **Desligar** (não mais Ativar), **Entrar** e "a entrada" (não mais login),
+  **Rotina da Zuri** para as rotinas com IA, "conversa" em vez de "chat".
+- Mensagens de erro dizem o que fazer: a falha genérica deixou de ser "Algo
+  deu errado", os limites dizem quando voltam e o que continua funcionando, e
+  as instalações sem um recurso configurado apontam para o guia.
+- Confirmações rápidas ("Tarefa criada", "Conversa apagada") sem ponto final,
+  e nenhum ponto de exclamação fora do cumprimento da Zuri.
+- No bot, `/pausar_rotinas` passa a se chamar "Pausar as rotinas da Zuri" no
+  menu, que é enviado de novo ao Telegram.
+- A descrição do app instalado no celular deixou de citar a Cloudflare.
+
+## [0.36.1] - 2026-11-09
+
+Mesclada às 09:36 (UTC-3) · commit [`081749c`](https://github.com/pablopfg/Zuri/commit/081749c04d44202dd5037689859dbb75638a12c4) · PR [#220](https://github.com/pablopfg/Zuri/pull/220) · Atualiza as dependências das PRs #208 e #209 e corrige a CI
+
+### Segurança
+
+- O hono sobe para a 4.13.16, que corrige cinco falhas publicadas (avisos
+  GHSA-4m76-xfj5-7975, GHSA-h7mg-cq63-vhpq, GHSA-4h7h-rv7c-7m2v,
+  GHSA-3gg2-335m-rxc6 e GHSA-46wx-v44x-9hh2). Nos testes, nenhuma delas
+  deixava pular a autenticação nas rotas da Zuri, mas a correção entra mesmo
+  assim.
+
+### Atualização
+
+- Dependências do app: agents 0.32.0, ai 7.0.163, @ai-sdk/anthropic 4.0.97,
+  @ai-sdk/openai 4.0.109, @modelcontextprotocol/client 2.4.0,
+  eventsource-parser 4.1.3, @tanstack/react-query 5.105.3 e lucide-react
+  1.66.0.
+- Ferramentas de desenvolvimento: wrangler 4.156.1, @cloudflare/vitest-plugin
+  1.4.12, vite 8.3.6, @vitejs/plugin-react 6.2.1, tailwindcss e
+  @tailwindcss/vite 4.3.4, Biome 2.6.5 e Lighthouse 13.6.0.
+- O teto do JavaScript inicial sobe de 139,6 kB para 139,7 kB (com o OK do
+  dono), porque o vite e o react-query novos somam 95 B ao primeiro
+  carregamento.
+
 ## [0.36.0] - 2026-11-09
 
 Mesclada às 08:35 (UTC-3) · commit [`ffe16cf`](https://github.com/pablopfg/Zuri/commit/ffe16cffbea48cbfadeda617049b8269533e0d95) · PR [#215](https://github.com/pablopfg/Zuri/pull/215) · Adiciona o deploy pelo GitHub Actions (etapa 24)
@@ -2753,7 +2806,9 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.36.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.37.0...develop
+[0.37.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.0
+[0.36.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.36.1
 [0.36.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.36.0
 [0.35.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.35.1
 [0.35.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.35.0
