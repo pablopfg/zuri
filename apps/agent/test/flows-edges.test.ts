@@ -272,6 +272,12 @@ describe("engine edges", () => {
       expect(system.startsWith("You transform data for one of the owner's automated flows.")).toBe(true);
       expect(system.endsWith("The owner's instruction for this step:\nResuma ‹rápido›.")).toBe(true);
       expect(model.generated[0]).toMatchObject({ temperature: 0.2, maxOutputTokens: 512 });
+      // The owner's saved settings (AI screen) reach the next run: parameters and the style layer before the step's instruction.
+      world.agents.save("flow_ai", { temperature: 0.5, topP: 0.8, maxOutputTokens: 256, prompt: "Responda em português, em tópicos." });
+      await world.flows.runNow(flow.id);
+      const next = model.generated[1];
+      expect(next).toMatchObject({ temperature: 0.5, topP: 0.8, maxOutputTokens: 256 });
+      expect(next?.system).toContain("Responda em português, em tópicos.\n\nThe owner's instruction for this step:");
     });
   });
 

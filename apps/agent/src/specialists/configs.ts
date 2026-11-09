@@ -109,8 +109,8 @@ export class AgentConfigs {
       });
   }
 
-  /** A new version with the owner's values. The same values as the one in use add nothing. */
-  save(id: AgentId, input: AgentConfigInput): AgentView {
+  /** A new version with the owner's values. The same values as the one in use add nothing (`changed` false). */
+  save(id: AgentId, input: AgentConfigInput): { view: AgentView; changed: boolean } {
     const problems = agentConfigProblems(id, input);
     if (problems.length) throw new AppError("VALIDATION_FAILED", undefined, { fields: problems });
     const prompt = input.prompt === null || !AGENT_PROFILES[id].ownerPrompt ? null : agentPromptText(input.prompt);
@@ -118,21 +118,29 @@ export class AgentConfigs {
     const kept = prompt === TEXTS[id].ownerDefault.trim() ? null : prompt;
     const current = this.current(id).settings;
     const same = current.temperature === input.temperature && current.topP === input.topP && current.maxOutputTokens === input.maxOutputTokens && current.prompt === kept;
-    if (same) return this.view(id);
+    if (same) return { view: this.view(id), changed: false };
     this.insert(id, { temperature: input.temperature, top_p: input.topP, max_tokens: input.maxOutputTokens, prompt: kept, is_default: 0 });
-    return this.view(id);
+    return { view: this.view(id), changed: true };
   }
 
-  /** "Voltar para esta versão" (a copy of it becomes the newest) or "Voltar ao padrão". */
-  restore(id: AgentId, target: { version: number } | { default: true }): AgentView {
-    if ("default" in target) {
-      this.insert(id, { temperature: null, top_p: null, max_tokens: null, prompt: null, is_default: 1 });
-      return this.view(id);
+  /**
+   * "Voltar para esta versão" (a copy of it becomes the newest) or "Voltar ao padrão". Going back
+   * to what is already in use adds nothing, so repeated clicks never push real versions out of the 20.
+   */
+  restore(id: AgentId, target: { version: number } | { default: true }): { view: AgentView; changed: boolean } {
+    let values: Pick<ConfigRow, "temperature" | "top_p" | "max_tokens" | "prompt" | "is_default">;
+    if ("default" in target) values = { temperature: null, top_p: null, max_tokens: null, prompt: null, is_default: 1 };
+    else {
+      const row = this.db.one<ConfigRow>(`SELECT ${COLUMNS} FROM zur_agent_configs WHERE agent = ? AND version = ?`, id, target.version);
+      if (!row) throw new AppError("NOT_FOUND");
+      values = row;
     }
-    const row = this.db.one<ConfigRow>(`SELECT ${COLUMNS} FROM zur_agent_configs WHERE agent = ? AND version = ?`, id, target.version);
-    if (!row) throw new AppError("NOT_FOUND");
-    this.insert(id, { temperature: row.temperature, top_p: row.top_p, max_tokens: row.max_tokens, prompt: row.prompt, is_default: row.is_default });
-    return this.view(id);
+    const current = this.current(id);
+    const next = toSettings(id, { agent: id, version: current.settings.version, created_at: 0, ...values });
+    const same = values.is_default === 1 ? current.settings.version === 0 : sameValues(next, current.settings);
+    if (same) return { view: this.view(id), changed: false };
+    this.insert(id, { temperature: values.temperature, top_p: values.top_p, max_tokens: values.max_tokens, prompt: values.prompt, is_default: values.is_default });
+    return { view: this.view(id), changed: true };
   }
 
   private insert(id: AgentId, values: Pick<ConfigRow, "temperature" | "top_p" | "max_tokens" | "prompt" | "is_default">): void {
@@ -169,6 +177,11 @@ export class AgentConfigs {
     }
     return this.#current.get(id) ?? { settings: defaultAgentSettings(id), savedAt: null };
   }
+}
+
+/** The same values, whatever the version number. */
+function sameValues(a: AgentCallSettings, b: AgentCallSettings): boolean {
+  return a.temperature === b.temperature && a.topP === b.topP && a.maxOutputTokens === b.maxOutputTokens && a.prompt === b.prompt;
 }
 
 /**

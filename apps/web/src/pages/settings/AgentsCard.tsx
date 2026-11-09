@@ -187,6 +187,7 @@ function AgentEditor({ agent }: { agent: AgentView }) {
   const promptId = useId();
   const temperatureId = useId();
   const rangeHintId = `${temperatureId}-hint`;
+  const temperatureErrorId = `${temperatureId}-error`;
 
   // The version in use changed (saved here, gone back, or in another tab): the form follows it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new version replaces what is typed
@@ -204,6 +205,8 @@ function AgentEditor({ agent }: { agent: AgentView }) {
   };
 
   async function send(path: string, body: unknown, method: "PUT" | "POST", message: string) {
+    // The going-back buttons stay focusable while a call is out (a disabled button drops the focus), so a second tap waits here.
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -230,12 +233,23 @@ function AgentEditor({ agent }: { agent: AgentView }) {
     await send(`/ai/agents/${agent.id}`, input, "PUT", t("web.agents.saved"));
   }
 
+  function reset() {
+    // Already the code's defaults: nothing to send, the same answer as an unchanged save.
+    if (agent.settings.version === 0) {
+      setStatus("unchanged");
+      return;
+    }
+    void send(`/ai/agents/${agent.id}/restore`, { default: true }, "POST", t("web.agents.resetDone"));
+  }
+
   const temperatureBounds = { min: decimal(AGENT_TEMPERATURE.min), max: decimal(AGENT_TEMPERATURE.max), step: decimal(AGENT_TEMPERATURE.step) };
   const topPBounds = { min: decimal(AGENT_TOP_P.min), max: decimal(AGENT_TOP_P.max), step: decimal(AGENT_TOP_P.step) };
   const range = profile.maxOutputRange;
 
   return (
     <form noValidate onSubmit={(e) => void submit(e)} className="mt-4 space-y-5 rounded-xl bg-raised p-4">
+      {profile.sampling ? (
+      <>
       <div className="space-y-1.5">
         <label htmlFor={temperatureId} className="block text-sm font-medium">
           {t("web.agents.temperature")}
@@ -263,7 +277,7 @@ function AgentEditor({ agent }: { agent: AgentView }) {
             value={draft.temperature}
             disabled={busy}
             aria-invalid={show("temperature") ? true : undefined}
-            aria-describedby={rangeHintId}
+            aria-describedby={show("temperature") ? `${rangeHintId} ${temperatureErrorId}` : rangeHintId}
             className="min-h-11 w-24 rounded-xl border border-border-strong bg-surface px-3 text-[15px] tabular-nums focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 aria-[invalid=true]:border-danger"
             onChange={(e) => change({ temperature: e.target.value })}
           />
@@ -271,7 +285,11 @@ function AgentEditor({ agent }: { agent: AgentView }) {
         <p id={rangeHintId} className="text-xs leading-5 text-fg-muted">
           {t("web.agents.temperatureHint", temperatureBounds)}
         </p>
-        {show("temperature") && <p className="text-sm text-danger">{t("web.agents.invalid.step", temperatureBounds)}</p>}
+        {show("temperature") && (
+          <p id={temperatureErrorId} className="text-sm text-danger">
+            {t("web.agents.invalid.step", temperatureBounds)}
+          </p>
+        )}
       </div>
 
       <fieldset className="space-y-2">
@@ -293,6 +311,10 @@ function AgentEditor({ agent }: { agent: AgentView }) {
           />
         )}
       </fieldset>
+      </>
+      ) : (
+        <p className="text-sm leading-6 text-fg-muted">{t("web.agents.samplingLocked")}</p>
+      )}
 
       {range ? (
         <TextField
@@ -364,12 +386,11 @@ function AgentEditor({ agent }: { agent: AgentView }) {
         <Button type="submit" loading={busy}>
           {t("web.agents.save")}
         </Button>
-        {agent.settings.version > 0 && (
-          <Button variant="secondary" disabled={busy} onClick={() => void send(`/ai/agents/${agent.id}/restore`, { default: true }, "POST", t("web.agents.resetDone"))}>
-            <RotateCcw className="h-4 w-4" aria-hidden />
-            {t("web.agents.reset")}
-          </Button>
-        )}
+        {/* Always there, even at the default: a button that vanished after its own click would drop the keyboard's focus. */}
+        <Button variant="secondary" aria-disabled={busy || undefined} onClick={reset}>
+          <RotateCcw className="h-4 w-4" aria-hidden />
+          {t("web.agents.reset")}
+        </Button>
         <Button variant="secondary" aria-expanded={showVersions} onClick={() => setShowVersions((value) => !value)}>
           <History className="h-4 w-4" aria-hidden />
           {showVersions ? t("web.agents.versionsHide") : t("web.agents.versions")}
@@ -419,12 +440,16 @@ function Versions({ agent, busy, onRestore }: { agent: AgentView; busy: boolean;
                   </span>
                 </p>
                 <p className="text-xs text-fg-muted tabular-nums">{parts.join(" · ")}</p>
-                {version.prompt && <p className="line-clamp-2 text-xs text-fg-muted [overflow-wrap:anywhere]">{version.prompt}</p>}
+                {version.prompt === "" ? (
+                  <p className="text-xs text-fg-muted">{t("web.agents.versionNoStyle")}</p>
+                ) : (
+                  version.prompt && <p className="line-clamp-2 text-xs text-fg-muted [overflow-wrap:anywhere]">{version.prompt}</p>
+                )}
               </div>
               {version.version === newest ? (
                 <span className="text-xs font-medium text-fg-muted">{t("web.agents.versionCurrent")}</span>
               ) : (
-                <Button variant="secondary" className="self-start sm:self-auto" disabled={busy} aria-label={t("web.agents.restoreLabel", { version: version.version })} onClick={() => onRestore(version.version)}>
+                <Button variant="secondary" className="self-start sm:self-auto" aria-disabled={busy || undefined} aria-label={t("web.agents.restoreLabel", { version: version.version })} onClick={() => onRestore(version.version)}>
                   {t("web.agents.restore")}
                 </Button>
               )}

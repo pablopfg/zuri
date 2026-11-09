@@ -117,9 +117,9 @@ export class AgentRunner {
     return this.deps.agentSettings?.(id) ?? defaultAgentSettings(id);
   }
 
-  /** The PROMPT_VERSION of the chat's next answer or routine run. */
-  promptVersion(): string {
-    return chatPromptVersion(this.agent("chat"));
+  /** The chat agent's settings now: a routine reads them once, for its prompt and its PROMPT_VERSION. */
+  chatSettings(): AgentCallSettings {
+    return this.agent("chat");
   }
 
   async *chat(input: TurnInput): AsyncGenerator<ChatEvent> {
@@ -140,7 +140,9 @@ export class AgentRunner {
       ...(input.quoted?.length ? { quoted: input.quoted } : {}),
     });
     const assistantMessageId = crypto.randomUUID();
-    const promptVersion = this.promptVersion();
+    // Read once: the prompt and the PROMPT_VERSION kept with the answer come from the same settings.
+    const chatAgent = this.agent("chat");
+    const promptVersion = chatPromptVersion(chatAgent);
     yield { type: "start", conversation: conversations.get(conversation.id), userMessage, assistantMessageId };
 
     let text = "";
@@ -195,7 +197,6 @@ export class AgentRunner {
       const row = conversations.row(conversation.id);
       let summary = row.summary;
       let summaryUpto = row.summary_upto;
-      const chatAgent = this.agent("chat");
       const system = () =>
         buildSystemPrompt({
           agent: chatAgent,
@@ -403,6 +404,8 @@ export class AgentRunner {
     meter?: SubrequestMeter;
     /** Filled as the run goes, so a run that fails still hands over what it left for the owner. */
     notices?: Notice[];
+    /** The chat agent's settings the run recorded (chatSettings); read now when absent. */
+    chat?: AgentCallSettings;
   }): Promise<{ text: string; notices: Notice[] }> {
     const settings = this.deps.settings();
     const locale = this.deps.locale();
@@ -431,7 +434,7 @@ export class AgentRunner {
     }
   }
 
-  private async runScheduled(input: { name: string; prompt: string; quiet: boolean; signal: AbortSignal }, ctx: ToolContext, mcp: McpTurnTools | null, locale: Locale, seen: string[]): Promise<string> {
+  private async runScheduled(input: { name: string; prompt: string; quiet: boolean; signal: AbortSignal; chat?: AgentCallSettings }, ctx: ToolContext, mcp: McpTurnTools | null, locale: Locale, seen: string[]): Promise<string> {
     const settings = this.deps.settings();
     const ai = this.deps.ai();
     const registry = this.deps.registry ?? ALL_TOOLS;
@@ -443,7 +446,7 @@ export class AgentRunner {
     const repo = this.deps.tools.memories.repo;
     const meaning = await this.meaning(input.prompt, input.signal);
     const memories = memoryPromptSection(selectRelevantMemories(repo, input.prompt, meaning), memoryTokenBudget(budget), (id) => repo.get(id));
-    const chatAgent = this.agent("chat");
+    const chatAgent = input.chat ?? this.agent("chat");
     const system = buildSystemPrompt({
       agent: chatAgent,
       agentName: this.deps.agentName,

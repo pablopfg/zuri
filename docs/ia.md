@@ -230,7 +230,8 @@ ou "Ajustado, versão N". **Ajustar** abre o painel do agente:
 - **Estilo e tarefa**: a camada do dono do prompt (persona, tom, prioridade),
   até 2.000 caracteres, sem `<`, `>` nem caracteres invisíveis. Vazia, o agente
   fica sem camada. Os verificadores (`review_check`, `routine_check`) não têm
-  essa camada: o texto deles é todo de segurança;
+  essa camada (o texto deles é todo de segurança) e respondem sempre com
+  temperatura 0 e o top_p do modelo: neles só o tamanho da resposta muda;
 - **Regras fixas (só leitura)**: o texto do código, que vale acima da camada do
   dono.
 
@@ -240,7 +241,9 @@ comando do bot, MCP, fluxo ou token remoto chega a essas rotas. Cada mudança
 vira uma versão (as 20 mais recentes ficam); **Versões** lista com data e
 "Voltar para esta", e **Voltar ao padrão** cria uma versão com os valores do
 código, que acompanham o código quando ele muda. A versão nova vale na próxima
-chamada.
+chamada. Toda mudança que vale (salvar ou voltar) entra na atividade de acesso
+como "Ajustes de um agente de IA mudados" e manda um alerta de segurança, como
+uma troca de senha.
 
 Cada resposta da conversa, rodada de rotina e rascunho de avaliação feito pela
 IA grava o `prompt_version` com que foi feito (`chat.1x2y3z+4`: agente, marca

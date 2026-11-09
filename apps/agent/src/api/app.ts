@@ -527,7 +527,7 @@ export function createApi(deps: ApiDeps) {
   // Step 8: what the AI used today and the last 7 days. Read only: the limits change through /settings.
   app.get("/usage", () => Response.json(deps.aiUsage()));
   const agents = deps.agents;
-  if (agents) registerAgentRoutes(app, () => agents(), () => deps.auth());
+  if (agents) registerAgentRoutes(app, () => agents(), () => deps.auth(), client);
 
   return app;
 }

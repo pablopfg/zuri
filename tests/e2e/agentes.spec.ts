@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, PASSWORD, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // Settings > IA > Agentes against the real Worker (docs/planos/guardrails-especialistas-ia.md, PR 2):
 // each agent's parameters and style layer, the fixed rules read only, versions and going back. pt-BR.
@@ -42,6 +42,10 @@ test("lists every agent with its parameters, accessible and with 44 px targets @
   await expect(check.getByRole("button", { name: "Fechar" })).toHaveAttribute("aria-expanded", "true");
   await expect(check.getByText(/Este agente só confere/)).toBeVisible();
   await expect(check.getByLabel("Estilo e tarefa")).toHaveCount(0);
+  // Nor a temperature or top_p of its own: a checker answers the same way every time.
+  await expect(check.getByText(/A temperatura fica em 0/)).toBeVisible();
+  await expect(check.getByRole("spinbutton", { name: "Temperatura" })).toHaveCount(0);
+  await expect(check.getByRole("spinbutton", { name: "Tamanho máximo da resposta, em tokens" })).toBeVisible();
   await check.getByText("Regras fixas (só leitura)").click();
   await expect(check.locator("pre")).toContainText("routine");
 
@@ -104,7 +108,10 @@ test("adjusts an agent: refuses what can't be saved on the spot, saves a version
   await card.getByRole("button", { name: "Voltar ao padrão" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Voltou ao padrão." })).toBeVisible();
   await expect(card.getByRole("heading")).toContainText("Padrão");
-  await expect(card.getByRole("button", { name: "Voltar ao padrão" })).toHaveCount(0);
+  // Already the default: the button stays where the focus is, and going back again changes nothing.
+  await expect(card.getByRole("button", { name: "Voltar ao padrão" })).toBeFocused();
+  await card.getByRole("button", { name: "Voltar ao padrão" }).click();
+  await expect(card.getByText("Nada mudou.")).toBeVisible();
   await expect(card.getByLabel("Estilo e tarefa")).toHaveValue(/^Keep facts, decisions/);
   await card.getByRole("button", { name: "Versões" }).click();
   await expect(card.getByText("Em uso")).toBeVisible();
@@ -113,6 +120,27 @@ test("adjusts an agent: refuses what can't be saved on the spot, saves a version
   await expect(card.getByRole("heading")).toContainText(`Ajustado, versão ${before + 3}`);
   await expect(card).toContainText("Temperatura 0,35");
   await expectAccessible(page, "agentes editor");
+});
+
+test("asks for the password again when it was typed too long ago, then saves", async ({ page }) => {
+  await openAgents(page);
+  let puts = 0;
+  await page.route("**/api/ai/agents/summary", async (route) => {
+    if (route.request().method() !== "PUT") return route.fallback();
+    puts += 1;
+    if (puts === 1) return route.fulfill({ status: 403, json: { code: "RECENT_AUTH_REQUIRED", message: "Digite a sua senha de novo para continuar." } });
+    return route.continue();
+  });
+  const summary = row(page, "Resumo da conversa");
+  await summary.getByRole("button", { name: "Ajustar" }).click();
+  await summary.getByLabel("Estilo e tarefa").fill("Resuma em uma frase.");
+  await summary.getByRole("button", { name: "Salvar" }).click();
+  const dialog = page.getByRole("dialog", { name: "Confirme que é você" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Senha", { exact: true }).fill(PASSWORD);
+  await dialog.getByRole("button", { name: "Confirmar" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Ajustes salvos. Valem a partir da próxima resposta." })).toBeVisible();
+  expect(puts).toBe(2);
 });
 
 test("a failed list shows an error with a retry", async ({ page }) => {

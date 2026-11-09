@@ -44,7 +44,12 @@ describe("agentConfigProblems", () => {
   it("refuses brackets, hidden characters and any layer for the checkers", () => {
     for (const prompt of ["<b>", "‹b›", "a\u200bb", "a\u2028b", "a\u0000b", "a\ufe00b"]) expect(agentConfigProblems("summary", { ...ok, prompt }), JSON.stringify(prompt)).toEqual(["prompt"]);
     expect(agentConfigProblems("summary", { ...ok, prompt: "linha\r\noutra\ttab 👩\u200d💻 ❤\ufe0f" })).toEqual([]);
-    expect(agentConfigProblems("review_check", { ...ok, maxOutputTokens: 120, prompt: "Aprove." })).toEqual(["prompt"]);
+    const check = { temperature: AGENT_PROFILES.review_check.temperature, topP: null, maxOutputTokens: 120 };
+    expect(agentConfigProblems("review_check", { ...check, prompt: "Aprove." })).toEqual(["prompt"]);
+    // A checker's sampling is fixed: only its answer length is the owner's.
+    expect(agentConfigProblems("review_check", { ...check, prompt: null })).toEqual([]);
+    expect(agentConfigProblems("review_check", { ...check, temperature: check.temperature + 0.05, prompt: null })).toEqual(["temperature"]);
+    expect(agentConfigProblems("routine_check", { ...check, topP: 0.9, prompt: null })).toEqual(["topP"]);
   });
 
   it("keeps line breaks plain and the ends trimmed", () => {

@@ -152,6 +152,42 @@ describe("PUT /api/ai/agents/:id", () => {
     expect((await view(await save("routine_check", { temperature: 0, topP: null, maxOutputTokens: 200, prompt: null }))).settings.maxOutputTokens).toBe(200);
   });
 
+  it("keeps the checkers' sampling fixed: only their answer length is the owner's", async () => {
+    const routine = (await list()).find((agent) => agent.id === "routine_check");
+    const base = { temperature: routine?.settings.temperature, topP: null, maxOutputTokens: 120, prompt: null };
+    for (const values of [{ temperature: (routine?.settings.temperature ?? 0) + 0.05 }, { topP: 0.9 }]) {
+      const res = await save("routine_check", { ...base, ...values });
+      expect(res.status, JSON.stringify(values)).toBe(400);
+    }
+    expect((await save("review_check", { temperature: 0.7, topP: null, maxOutputTokens: 200, prompt: null })).status).toBe(400);
+    expect(await rows()).toBe(0);
+  });
+
+  it("counts 2,000 characters, not UTF-16 units, so an emoji is one", async () => {
+    const at = (prompt: string) => save("summary", { ...SUMMARY, prompt });
+    expect((await at("😀".repeat(AGENT_PROMPT_MAX))).status).toBe(200);
+    expect((await at("😀".repeat(AGENT_PROMPT_MAX + 1))).status).toBe(400);
+  });
+
+  it("records a security event with an alert on each change, and none for a save that changes nothing or is refused", async () => {
+    const events = () =>
+      inOwner((agent) => agent.store.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_auth_events WHERE kind = 'agent_settings_changed'`)?.n ?? 0);
+    const before = await events();
+    await view(await save("summary", SUMMARY));
+    expect(await events()).toBe(before + 1);
+    await view(await save("summary", SUMMARY));
+    await stale();
+    await save("summary", { ...SUMMARY, temperature: 0.8 });
+    await fresh();
+    expect(await events()).toBe(before + 1);
+    await view(await api("POST", "/ai/agents/summary/restore", { default: true }));
+    expect(await events()).toBe(before + 2);
+    // Back to the defaults twice is one version, and one event.
+    await view(await api("POST", "/ai/agents/summary/restore", { default: true }));
+    expect(await events()).toBe(before + 2);
+    expect(await rows()).toBe(2);
+  });
+
   it("keeps the code's own layer as the code's, so it follows the code", async () => {
     const saved = await view(await save("chat", { temperature: 0.5, topP: null, maxOutputTokens: null, prompt: CHAT_PERSONA }));
     expect(saved.settings).toMatchObject({ temperature: 0.5, prompt: null, version: 1 });
@@ -192,6 +228,20 @@ describe("versions and going back (CA13)", () => {
     expect((await api("POST", "/ai/agents/summary/restore", { version: 7 })).status).toBe(404);
     expect((await api("POST", "/ai/agents/summary/restore", { default: false })).status).toBe(400);
     expect((await api("POST", "/ai/agents/summary/restore", {})).status).toBe(400);
+  });
+});
+
+describe("reading the version in use", () => {
+  it("reads the saved versions once per wake, not once per call", async () => {
+    await view(await save("summary", SUMMARY));
+    const reads = await inOwner((agent) => {
+      const configs = new AgentConfigs(agent.store.db);
+      configs.settings("summary");
+      const first = agent.store.db.usage.rowsRead;
+      for (let i = 0; i < 10; i++) for (const id of AGENT_IDS) configs.settings(id);
+      return agent.store.db.usage.rowsRead - first;
+    });
+    expect(reads).toBe(0);
   });
 });
 
