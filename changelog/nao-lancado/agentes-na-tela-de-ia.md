@@ -15,5 +15,14 @@
 - Salvar pede a senha digitada nos últimos 15 minutos e não funciona no modo de
   bloqueio. Só a tela muda esses ajustes: nenhuma ferramenta, comando do bot,
   MCP, fluxo ou token de acesso remoto chega a eles. O estilo aceita até 2.000
-  caracteres, sem `<`, `>` nem caracteres invisíveis, e os dois agentes que só
-  conferem não aceitam estilo nenhum.
+  caracteres, sem `<`, `>` nem caracteres invisíveis. Os dois agentes que só
+  conferem não aceitam estilo nenhum e ficam com temperatura e `top_p` fixos.
+- Toda mudança nos agentes aparece na atividade de acesso e manda um alerta de
+  segurança.
+
+### Atualização
+
+- Migration 30 (`agent_configs`): tabela das versões dos agentes e a coluna
+  `prompt_version` nas mensagens, nas rodadas das rotinas e nas avaliações. Roda
+  sozinha no primeiro acesso depois da atualização. Precisa da migration 29 da
+  etapa 21 antes.
