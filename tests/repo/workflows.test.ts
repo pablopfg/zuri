@@ -92,11 +92,12 @@ describe("GitHub Actions workflows", () => {
     }
   });
 
-  it("runs CI on pull requests and on pushes to develop only, with read-only contents", () => {
+  it("runs CI on pull requests, on pushes to develop and when the deploy calls it, with read-only contents", () => {
     const ci = loadWorkflow(".github/workflows/ci.yml");
     // No workflow_dispatch: the rulesets count only pull_request runs (#60 waited on "expected" checks).
     // The push run on develop is what the README badge (?branch=develop) reads.
-    expect(ci.on).toEqual({ pull_request: null, push: { branches: ["develop"] } });
+    // workflow_call: deploy.yml runs the same jobs on main before it deploys (step 24).
+    expect(ci.on).toEqual({ pull_request: null, push: { branches: ["develop"] }, workflow_call: null });
     expect(ci.permissions).toEqual({ contents: "read" });
     const text = readText(".github/workflows/ci.yml");
     // Each pull request gets its own group; develop gets one group too.
