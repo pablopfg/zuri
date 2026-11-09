@@ -100,7 +100,17 @@ Pablo, 03/11/2026; plano em `docs/planos/nova-ui.md`):
   "Carregando…" uma vez. Na conversa, o balão "A Zuri está pensando" leva a
   marca com a luz pulsando.
 - **Páginas:** começam com `PageHeader` (título, uma linha de contexto e ações
-  à direita), numa coluna de até 5xl.
+  à direita), numa coluna de até 5xl. No celular, ações só de ícone ficam ao
+  lado do título; as largas descem para a linha de baixo. Dentro de uma seção
+  das Configurações, no celular, o título é o da seção, com "Todas as
+  configurações" acima.
+- **Menu "Mais opções" (⋯):** numa linha com ações demais, só a principal fica
+  à vista (pausar, editar, ver ferramentas); o resto vai para o
+  `ActionsMenu` (`components/ActionsMenu.tsx`). O botão se chama "Mais opções
+  para “nome”"; abrir foca o primeiro item, as setas, Home e End andam, Esc e
+  um toque fora fecham e devolvem o foco ao botão. Apagar e Remover vêm por
+  último, depois de uma linha, em vermelho. Uma marca liga/desliga (como
+  "Nunca enviar para fora") é um item marcável, com o estado lido em voz alta.
 - **Lembrete de 2FA:** enquanto a verificação em duas etapas estiver
   desligada, uma faixa acima do conteúdo chama para ligar. O X ("Dispensar
   por 3 dias") esconde por 3 dias, só neste navegador; nas Configurações ela
@@ -111,7 +121,9 @@ Pablo, 03/11/2026; plano em `docs/planos/nova-ui.md`):
   foca o primeiro campo ou o "Cancelar". Esc fecha.
 - **Confirmações:** título em pergunta, a frase do efeito, "Cancelar" antes do
   botão que repete o verbo (perigoso em vermelho), e o foco começa no
-  "Cancelar", também nas confirmações que abrem no lugar, sem diálogo.
+  "Cancelar", também nas confirmações que abrem no lugar, sem diálogo. Essas
+  ficam num `fieldset` ligado à pergunta, para o leitor de tela dizer a
+  pergunta junto com os botões.
 - **Início:** abaixo do cumprimento, um campo "Escreva para a Zuri" (abre
   uma conversa nova com o texto, que vai uma vez só pelo `state` da
   navegação), três ideias para começar e dois cartões: Hoje (com as

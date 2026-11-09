@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { signIn } from "./ui-helpers.ts";
+import { settingsHasTabs, signIn } from "./ui-helpers.ts";
 
 // The CSP is strict (no inline script, no eval). A violation means code that
 // tries something the policy forbids: it either breaks a feature or, at best,
@@ -36,15 +36,15 @@ test("no page breaks the Content Security Policy @mobile", async ({ page }) => {
     ["/automacoes", "Automações"],
     ["/automacoes/fluxos", "Automações"],
     ["/contatos/avaliacoes", "Contatos"],
-    ["/configuracoes/integracoes", "Configurações"],
-    ["/configuracoes/seguranca", "Configurações"],
-    ["/configuracoes/ia", "Configurações"],
-    ["/configuracoes/dados", "Configurações"],
-    ["/configuracoes/avisos", "Configurações"],
-    ["/configuracoes/diagnostico", "Configurações"],
+    ["/configuracoes/integracoes", settingsHasTabs(page) ? "Configurações" : "Integrações"],
+    ["/configuracoes/seguranca", settingsHasTabs(page) ? "Configurações" : "Segurança"],
+    ["/configuracoes/ia", settingsHasTabs(page) ? "Configurações" : "IA"],
+    ["/configuracoes/dados", settingsHasTabs(page) ? "Configurações" : "Dados"],
+    ["/configuracoes/avisos", settingsHasTabs(page) ? "Configurações" : "Avisos"],
+    ["/configuracoes/diagnostico", settingsHasTabs(page) ? "Configurações" : "Diagnóstico"],
   ] as const) {
     await page.goto(path);
-    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: heading, exact: true })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
   }
   expect(violations).toEqual([]);

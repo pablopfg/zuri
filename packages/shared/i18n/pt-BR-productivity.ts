@@ -99,7 +99,6 @@ export const ptBRProductivity = {
   "web.trash.moveTo": "Mover para a lixeira",
   "web.trash.undo": "Desfazer",
   "web.trash.emptyTitle": "A lixeira está vazia",
-  "web.trash.emptyBody": "Tarefas, notas e projetos apagados ficam aqui por 30 dias.",
   "web.trash.showing": "Mostrando os {shown} mais recentes de {total}. Restaure ou apague estes para ver os outros.",
   "web.trash.kind.task": "Tarefa",
   "web.trash.kind.note": "Nota",

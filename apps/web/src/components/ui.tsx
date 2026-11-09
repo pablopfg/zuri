@@ -85,7 +85,8 @@ export function PageHeader({
   useDocumentTitle(documentTitle ?? title);
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
-      <div className="min-w-0 space-y-1">
+      {/* Grows from 12rem: icon-only actions stay beside the title on a phone; wide ones go below. */}
+      <div className="min-w-48 flex-1 basis-0 space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {description && <p className="text-sm text-fg-muted">{description}</p>}
       </div>

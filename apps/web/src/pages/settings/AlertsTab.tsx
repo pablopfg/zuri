@@ -15,20 +15,26 @@ import { Switch } from "../../components/Switch.tsx";
 // This tab's pt-BR texts arrive with it (rule P11).
 addMessages(ptBRAlerts);
 
-/** Settings > Avisos: the daily summary, what the Zuri watches on her own, push on this device, the Telegram bot, the channels per kind of notice and the recent sends. */
+/**
+ * Settings > Avisos, in the order the owner sets them up (stage 26c): where notices
+ * can go and how each channel is, push on this device, the Telegram bot, which kind
+ * goes to which channel, then the daily summary, what the Zuri watches on her own
+ * and the priorities she learned; the recent sends last.
+ */
 export function AlertsTab() {
   const settings = useSettings();
   if (settings.isPending) return <Loading />;
   if (settings.isError) return <ErrorNotice error={settings.error} onRetry={() => void settings.refetch()} />;
   return (
     <>
-      <DigestCard settings={settings.data} />
-      <WatchersCard settings={settings.data} />
+      <ChannelsCard />
       <PushCard />
       <TelegramCard />
       <RoutesCard settings={settings.data} />
+      <DigestCard settings={settings.data} />
+      <WatchersCard settings={settings.data} />
       <LearningCard settings={settings.data} />
-      <ChannelsCard />
+      <HistoryCard />
     </>
   );
 }
@@ -180,27 +186,32 @@ function ChannelsCard() {
   const { t } = useI18n();
   const overview = useAlertOverview();
   return (
-    <>
-      <Card title={t("web.alerts.channels.title")} description={t("web.alerts.channels.description")}>
-        {overview.isPending && <Loading />}
-        {overview.isError && <ErrorNotice error={overview.error} onRetry={() => void overview.refetch()} />}
-        {overview.data && (
-          <ul className="divide-y divide-border">
-            {ALERT_CHANNELS.map((channel) => (
-              <li key={channel} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
-                <span className="font-medium">{t(CHANNEL[channel])}</span>
-                <span className={cn("rounded-md px-2 py-0.5 text-xs font-semibold", overview.data.channels[channel] === "ready" ? "bg-success-soft text-fg" : "bg-raised text-fg-muted")}>
-                  {t(CHANNEL_STATE[overview.data.channels[channel]])}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-      <Card title={t("web.alerts.history.title")} description={t("web.alerts.history.description")}>
-        {overview.data && <History deliveries={overview.data.deliveries} />}
-      </Card>
-    </>
+    <Card title={t("web.alerts.channels.title")} description={t("web.alerts.channels.description")}>
+      {overview.isPending && <Loading />}
+      {overview.isError && <ErrorNotice error={overview.error} onRetry={() => void overview.refetch()} />}
+      {overview.data && (
+        <ul className="divide-y divide-border">
+          {ALERT_CHANNELS.map((channel) => (
+            <li key={channel} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
+              <span className="font-medium">{t(CHANNEL[channel])}</span>
+              <span className={cn("rounded-md px-2 py-0.5 text-xs font-semibold", overview.data.channels[channel] === "ready" ? "bg-success-soft text-fg" : "bg-raised text-fg-muted")}>
+                {t(CHANNEL_STATE[overview.data.channels[channel]])}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+function HistoryCard() {
+  const { t } = useI18n();
+  const overview = useAlertOverview();
+  return (
+    <Card title={t("web.alerts.history.title")} description={t("web.alerts.history.description")}>
+      {overview.data && <History deliveries={overview.data.deliveries} />}
+    </Card>
   );
 }
 

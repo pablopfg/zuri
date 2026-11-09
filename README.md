@@ -195,12 +195,12 @@ O que está na `develop` hoje, etapa por etapa. "extra" marca melhorias feitas f
 | 🔐 | **Backup automático cifrado** | Com o espaço de backups ligado (R2, opcional), sai uma cópia por dia, depois das 3 h, cifrada com uma chave que o seu navegador cria: a Zuri guarda só a metade que fecha, e o arquivo que abre fica com você. Ficam as 7 cópias mais novas; as antigas só saem depois que a nova chegou inteira. **Restaurar uma cópia** abre o arquivo no navegador e importa em partes quando passa de 10 MB. A primeira cópia de cada mês vai para o seu Telegram, o bot avisa quando o último backup baixado passa de 30 dias e `/backup` diz a idade dele. | 23 |
 | 🚀 | **Deploy pelo GitHub Actions** | Cada merge na `main` roda a CI inteira de novo, espera a sua aprovação e publica o Worker só no seu domínio. O deploy falha se o `workers.dev` ou as URLs de prévia estiverem ligados, se `http://` não levar a `https://` ou se a Zuri não responder; depois, a versão vira release com o changelog em pt-BR. O token da Cloudflare fica só no ambiente `production` e os segredos da Zuri nunca passam pelo GitHub. Guia de instalação só pelo navegador, do domínio ao primeiro login. | 24 |
 | 🎯 | **Prioridade que aprende** | O tipo de aviso que você quase sempre deixa de lado desce um nível, e o que você abre logo sobe, no máximo um nível por semana e sempre com "Desfazer". Lembretes e segurança nunca mudam, e cada automação tem a sua prioridade. | 11 |
+| ✍️ | **Revisão de textos e experiência** | Botões, avisos e erros com as mesmas palavras em todas as telas, e erros que dizem o que fazer. Todo diálogo fecha pelo X no canto, e toda confirmação põe "Cancelar" antes do verbo, já com o foco. Linhas cheias guardam as ações extras no menu "Mais opções" (⋯), e as telas do celular ficaram mais curtas. | 26 |
 
 ## 🔭 O que vem a seguir
 
 | | Funcionalidade | O que faz | Etapa |
 | :---: | --- | --- | :---: |
-| ✍️ | **Revisão de textos e experiência** | Textos de botões, avisos e erros padronizados e mais humanos, e os ajustes de interface que o inventário apontar. | 26 |
 | 🧭 | **Auditoria final** | Auditoria completa do repositório e testes de ponta a ponta de todas as telas. | 25 |
 
 ## 🧭 Como funciona

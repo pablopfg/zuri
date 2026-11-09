@@ -53,7 +53,7 @@ function StorageCard() {
       ) : use.isError ? (
         <ErrorNotice error={use.error} onRetry={() => void use.refetch()} />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid grid-cols-2 gap-3">
           <Bar label={t("web.backup.storage.database")} used={use.data.bytes} max={use.data.maxBytes} value={t("web.backup.storage.of", { count: bytes(use.data.bytes), limit: bytes(use.data.maxBytes) })} />
           {use.data.kinds.map((kind) => (
             <Bar key={kind.kind} label={t(KIND_LABEL[kind.kind])} used={kind.count} max={kind.limit} value={t("web.backup.storage.of", { count: number(kind.count), limit: number(kind.limit) })} />
@@ -70,7 +70,8 @@ function Bar({ label, used, max, value }: { label: string; used: number; max: nu
   const near = share >= NEAR;
   return (
     <li className="rounded-xl border border-border p-3">
-      <div className="flex items-baseline justify-between gap-2">
+      {/* Two to a row also on a phone, so the number goes under the name. */}
+      <div className="flex flex-col">
         <span className="text-sm text-fg-muted">{label}</span>
         <span className="text-sm font-semibold tabular-nums">{value}</span>
       </div>

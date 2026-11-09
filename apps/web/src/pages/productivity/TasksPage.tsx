@@ -68,11 +68,11 @@ export function TasksPage() {
           <>
             <Button variant="ghost" onClick={() => setProjectsOpen(true)}>
               <FolderKanban className="h-4 w-4" aria-hidden />
-              {t("web.projects.manage")}
+              <span className="sr-only sm:not-sr-only">{t("web.projects.manage")}</span>
             </Button>
-            <Link to="/configuracoes/dados" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium hover:bg-raised">
+            <Link to="/configuracoes/dados" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium hover:bg-raised">
               <Trash2 className="h-4 w-4" aria-hidden />
-              {t("web.trash.open")}
+              <span className="sr-only sm:not-sr-only">{t("web.trash.open")}</span>
             </Link>
           </>
         }
@@ -80,8 +80,8 @@ export function TasksPage() {
 
       {trashed && <TrashedNotice item={trashed} message={t("web.tasks.trashed")} onDone={() => setTrashed(null)} />}
 
-      {/* Sized by their labels, so all five fit a phone without hiding past the edge. */}
-      <fieldset className="flex gap-1 rounded-xl bg-raised p-1">
+      {/* Sized by their labels; on a narrow phone the row scrolls sideways instead of squeezing them (stage 26c). */}
+      <fieldset className="flex min-w-0 gap-1 overflow-x-auto rounded-xl bg-raised p-1">
         <legend className="sr-only">{t("web.tasks.viewLabel")}</legend>
         {TASK_VIEWS.map((item) => (
           <button
@@ -90,7 +90,7 @@ export function TasksPage() {
             aria-pressed={view === item}
             onClick={() => setView(item)}
             className={cn(
-              "min-h-11 flex-auto whitespace-nowrap rounded-lg px-1.5 text-xs font-medium transition-colors sm:px-3 sm:text-sm",
+              "min-h-11 flex-auto shrink-0 whitespace-nowrap rounded-lg px-3 text-sm font-medium transition-colors",
               view === item ? "bg-surface text-fg shadow-sm ring-1 ring-border-strong" : "text-fg-muted hover:text-fg",
             )}
           >
@@ -104,7 +104,7 @@ export function TasksPage() {
         {view !== "completed" && view !== "overdue" && <NewTask projects={projectList} forToday={view === "today"} focusSignal={focusNew} />}
 
         <section aria-label={t("web.tasks.listLabel")} className="space-y-3">
-          <div className="grid gap-2 sm:grid-cols-[1fr_14rem]">
+          <div className="grid grid-cols-[minmax(0,1fr)_9rem] gap-2 sm:grid-cols-[1fr_14rem]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" aria-hidden />
               <input

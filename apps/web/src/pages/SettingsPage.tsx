@@ -88,20 +88,19 @@ export function SettingsPage() {
   const current = tab as Tab;
   const active = tabs.find((item) => item.id === current);
 
+  const documentTitle = active ? `${active.label} · ${t("web.settings.title")}` : undefined;
   return (
     <>
-      <PageHeader
-        title={t("web.settings.title")}
-        description={t("web.settings.description")}
-        documentTitle={active ? `${active.label} · ${t("web.settings.title")}` : undefined}
-      />
-      {wide ? null : (
+      {wide ? (
+        <PageHeader title={t("web.settings.title")} description={t("web.settings.description")} documentTitle={documentTitle} />
+      ) : (
+        // On a phone the tab is the page: one title, its own, under the way back (stage 26c).
         <div className="space-y-1">
           <Link to="/configuracoes" className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-medium text-accent-text hover:bg-raised">
             <ChevronLeft className="h-4 w-4" aria-hidden />
             {t("web.settings.back")}
           </Link>
-          <h2 className="text-lg font-semibold">{active?.label}</h2>
+          <PageHeader title={active?.label ?? t("web.settings.title")} description={active?.hint} documentTitle={documentTitle} />
         </div>
       )}
       {/* On a computer the seven sections are a submenu beside the page, each with its line of what it holds. */}

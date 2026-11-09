@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, settingsTitle, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // Settings > IA against the real Worker (step 8): today's usage with the
 // simulated AI of local development, and the model and limits form. pt-BR.
@@ -10,7 +10,7 @@ async function openAiTab(page: Page) {
   await page.goto("/configuracoes/ia");
   await signIn(page);
   await expect(page).toHaveURL(/\/configuracoes\/ia$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
+  await expect(settingsTitle(page, "IA")).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
 }
 

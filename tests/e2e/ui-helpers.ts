@@ -55,6 +55,11 @@ export function settingsHasTabs(page: Page) {
   return (page.viewportSize()?.width ?? 0) >= 1024;
 }
 
+/** The page title inside a settings section: "Configurações" beside the tabs on a computer, the section's own name on a phone (stage 26c). */
+export function settingsTitle(page: Page, section: string) {
+  return page.getByRole("heading", { level: 1, name: settingsHasTabs(page) ? "Configurações" : section, exact: true });
+}
+
 /** Opens a settings section the way the owner does: the tab on a computer, the list on a phone. */
 export async function openSettingsSection(page: Page, name: string) {
   const sections = page.getByRole("navigation", { name: "Seções das configurações" });
