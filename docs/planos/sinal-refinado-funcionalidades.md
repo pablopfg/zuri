@@ -1,6 +1,6 @@
 # Sinal refinado: desenho das funcionalidades pedidas em 09/11
 
-Respostas e desenho para os pedidos do Pablo de 09/11 às 18:03 e às 18:23, feitos sobre o protótipo [`prototipo-v5.html`](modelos-frontend/prototipo-v5.html). É um plano: nada aqui está no código da `develop` ainda. Quando o modelo for aprovado, cada bloco vira uma PR própria, com plano no modelo de `modelo-de-plano.md`.
+Respostas e desenho para os pedidos do Pablo de 09/11 às 18:03, 18:23, 19:11 e 19:15, feitos sobre o protótipo [`prototipo-v5.html`](modelos-frontend/prototipo-v5.html). É um plano: nada aqui está no código da `develop` ainda. Quando o modelo for aprovado, cada bloco vira uma PR própria, com plano no modelo de `modelo-de-plano.md`.
 
 ## 1. O protótipo segue a develop
 
@@ -49,6 +49,12 @@ Conta: no pior caso, 12 perguntas por hora com o app aberto, quase todas vazias.
 
 Passam a vir também endereço e foto, além do que já vem (nomes, apelidos, telefones, e-mails, aniversário, datas, empresa, etiquetas, relações, campos personalizados e observações). Isso muda uma decisão anterior, que deixava endereço e foto de fora: precisa do seu OK. A ficha organiza tudo em grupos com ícone e mostra só o que existe.
 
+De onde vêm e como se mantêm em dia: do mesmo Google Contatos, na mesma leitura incremental que já existe e com a mesma permissão (`contacts.readonly`). Basta pedir dois campos a mais (`addresses` e `photos`). Não precisa de permissão nova nem de outra conta.
+
+- **Endereço:** chega como texto (rua, número, bairro, cidade, CEP e tipo, como Casa ou Trabalho) e fica guardado como os outros campos. Quando muda no Google, muda na próxima leitura.
+- **Foto:** o Google manda só o endereço da imagem, não a imagem. Se o navegador abrisse esse endereço direto, o Google saberia quando você olha cada contato. Por isso, a Zuri baixa uma miniatura pequena (96 px, uns 5 KB) e guarda com o contato. Para 5.000 contatos, são uns 25 MB, dentro do limite gratuito do Durable Object. A miniatura só é baixada de novo quando o endereço da foto muda. A foto padrão do Google (só a inicial) não é baixada: a ficha mostra as iniciais. São no máximo 20 fotos por despertar, para não passar do teto de chamadas.
+- **Backup:** o endereço vai junto com os contatos; as fotos ficam fora, porque voltam sozinhas na próxima leitura.
+
 Telefone: no computador, o botão "Telefone" abre um menu com "Copiar" e "Ligar pelo computador" (`tel:`, que abre o app de chamadas que você tiver). No celular, o botão vira "Ligar" e liga direto.
 
 WhatsApp: o ícone aparece em todo celular brasileiro (DDD e 9 dígitos começando com 9), com um link `wa.me`. Não existe jeito gratuito e oficial de saber se um número tem WhatsApp antes de abrir a conversa. Se o número não tiver, o próprio WhatsApp avisa.
@@ -73,7 +79,17 @@ Antes de qualquer pedido sair, a Zuri lê todas as avaliações do perfil (a pri
 
 A regra de segurança é assimétrica: qualquer sugestão, forte ou fraca, tira a pessoa da fila até você decidir. Errar para menos (deixar alguém sem pedido) é aceitável; errar para mais (pedir de novo a quem já avaliou) não é. "É ele" confirma; "Não é" devolve a pessoa à fila.
 
-Um cuidado: hoje a Zuri guarda só o primeiro nome de quem avaliou (minimização de dados da etapa 19c). Para ligar avaliação a contato, ela precisa comparar o nome inteiro. Proposta: guardar apenas uma impressão digital do nome inteiro (HMAC do nome normalizado, sem acento e em minúsculas) e calcular a mesma impressão para cada contato. O nome inteiro de quem avaliou não fica guardado.
+Um cuidado: hoje a Zuri guarda só o primeiro nome de quem avaliou (minimização de dados da etapa 19c). Para ligar avaliação a contato, ela precisa comparar o nome inteiro. Proposta: guardar só uma impressão digital do nome inteiro.
+
+Como funciona:
+
+1. O nome é normalizado: minúsculas, sem acento, sem "Dr." ou "Dra.", espaços únicos. "Dra. Lúcia  Ferraz" vira "lucia ferraz".
+2. A Zuri calcula um HMAC-SHA256 desse texto com uma chave secreta própria, derivada dos segredos do Worker. Sai uma sequência de 64 caracteres, como `9f2c…e41a`, sempre a mesma para o mesmo nome.
+3. Para cada avaliação, guarda duas impressões: a do nome inteiro e a do primeiro com o último nome. O nome inteiro em si não fica guardado.
+4. Para cada contato do Google, calcula as mesmas duas impressões com a mesma chave.
+5. Impressões iguais formam uma sugestão: nome inteiro igual é sugestão forte; só primeiro e último, fraca.
+
+O que isso protege: se alguém copiar o banco ou um backup, não lê o nome de quem avaliou. O que não protege: nomes são poucos e previsíveis, e quem tivesse a chave e uma lista de nomes conseguiria testar um por um. Por isso a chave fica só nos segredos do Worker, nunca no banco nem no backup. É pseudonimização, não anonimato. O nome já é público no Google, e a impressão serve para a Zuri não guardar uma cópia dele.
 
 ### 8.2 Quem entra na fila e quando
 
@@ -105,7 +121,9 @@ Estados de cada pessoa: Agendado, Para enviar hoje, Enviado sem resposta, Lembra
 
 ## 9. Envio automático pelo Chatwoot (futuro): viabilidade
 
-É viável, e o caminho mais seguro passa pelo n8n que você já usa, sem a Zuri falar direto com o Chatwoot.
+> Atualização de 09/11, 19:15: o Pablo prefere que a própria Zuri envie, numa automação, sem o n8n. O plano completo está em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md). O caminho pelo n8n abaixo fica só como alternativa.
+
+O primeiro desenho passava pelo n8n que você já usa, sem a Zuri falar direto com o Chatwoot.
 
 ```
 Zuri (decide quem e quando) ──POST──▶ n8n ──API──▶ Chatwoot ──▶ WhatsApp do contato
@@ -134,6 +152,15 @@ Pontos de atenção:
 
 Etapas: (1) o envio com um toque deste plano; (2) o fluxo do n8n em teste, mandando só para você; (3) o modelo de mensagem aprovado; (4) um contato real por dia, com você olhando; (5) automático com teto. A integração direta Zuri → Chatwoot (token na Zuri) não é recomendada: põe uma credencial de envio no Worker e abre uma saída nova para a internet.
 
+## 9b. Ajustes de 09/11, 19:11
+
+- **Legenda da agenda:** ficou só o link "Configurações › Agenda."
+- **Linha de agora:** no "Seu dia" e na agenda, a linha vermelha usa a hora do aparelho e anda sozinha a cada 30 segundos, como no Google Agenda. O que já passou fica apagado, e o compromisso em andamento ganha "Agora". Na agenda, a linha mostra a hora e some fora do horário visível. Não chama a API: é só o relógio do navegador. Se você estiver com o foco numa linha da lista, ela espera para não tirar o foco do lugar.
+- **Tema:** só os ícones (sol, lua e tela), no painel do perfil e em Configurações. O nome de cada um continua para o leitor de tela e aparece ao passar o mouse.
+- **Acesso pela API:** "Acesso remoto" e "token" eram nomes técnicos e vagos. Agora a seção se chama "Acesso pela API", e cada credencial é uma "chave de API", com os acessos "Só ler", "Ler e escrever" e "Só enviar eventos". Na develop os textos ainda dizem "Acesso remoto" e "token" (`pt-BR-security.ts`, chaves `remote.*`). A troca é uma PR pequena de textos, sem mudar rota nem permissão.
+- **Lista de modelos da Cloudflare:** dá para manter sozinha. O binding de IA que a Zuri já usa tem `env.AI.models()`, que devolve o catálogo do Workers AI sem chave nova e sem gastar Neurons. Uma vez por dia, no alarme, a Zuri confere o catálogo de geração de texto e compara com a lista dela. Modelo novo aparece como "Novo" e só entra na lista quando você toca em "Pôr na lista", depois que a Zuri confere se ele aceita ferramentas e tem contexto suficiente. Modelo que vai sair aparece com a data; se estiver em uso, a Zuri troca para o padrão no dia e avisa. Mudança de preço atualiza a estimativa de Neurons. A Zuri nunca troca sozinha para um modelo pago, nem para um modelo que você não escolheu. O que vem do catálogo é validado com Zod, como qualquer dado de fora.
+- **Agentes › Ajustar:** abre um painel com temperatura (0 a 1,5), top_p (ou "padrão do modelo"), tamanho máximo da resposta (com a faixa de cada agente), "Estilo e tarefa" (até 2.000 caracteres), as regras fixas só para ler, as versões (com "Em uso", "Voltar para esta" e "Voltar ao padrão") e "Salvar", que pede a senha se passou de 15 minutos. Os dois conferentes só deixam mudar o tamanho da resposta. É o que a develop já permite.
+
 ## 10. Notas: Nova nota e salvamento automático
 
 É possível. "Nova nota" cria a nota e põe o cursor no título. O texto se salva sozinho cerca de 1 segundo depois que você para de digitar. Ao trocar de nota ou fechar a aba, salva na hora. O status mostra "Salvando…" e depois "Salva às HH:MM". Se a mesma nota mudou em outro aparelho, aparece "Esta nota mudou em outro aparelho", com "Ver a versão nova" e "Manter a minha". Essa conferência de versão já existe no código. Uma nota nova vazia não é guardada.
@@ -154,4 +181,4 @@ O nome no rodapé da lateral (no celular, a letra no topo) abre um painel com Co
 
 1. Endereço e foto no contato (muda a decisão anterior).
 2. Guardar a impressão digital do nome inteiro de quem avaliou, para ligar avaliação a contato.
-3. Quando for a hora do Chatwoot: rever a regra de 02/11 e o custo da Meta (⚠️).
+3. Para o envio pelo Chatwoot: rever a regra de 02/11, informar o tipo da caixa do WhatsApp e aceitar o custo da Meta (⚠️). Detalhes em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md).

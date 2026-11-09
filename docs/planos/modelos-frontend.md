@@ -27,7 +27,7 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 
 - Protótipo: `docs/planos/modelos-frontend/prototipo-v5.html` (a barra do topo troca a tela e o tema).
 - Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, **Contatos**, Automações, Memória, Configurações, **Estados das telas** e Identidade visual.
-- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (136 imagens: as 12 telas e mais 22 vistas de dentro delas, entre elas o carregando, os painéis de perfil e de avisos, a nota nova, a memória por voz, o assistente de automação, os fluxos, a ficha de contato com WhatsApp, os pedidos de avaliação e as oito seções das configurações), e a comparação com a rodada 3 em `antes-depois-*.png`.
+- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (140 imagens: as 12 telas e mais 23 vistas de dentro delas, entre elas o carregando, os painéis de perfil e de avisos, a nota nova, a memória por voz, o assistente de automação, os fluxos, a ficha de contato com WhatsApp, os pedidos de avaliação, as oito seções das configurações e o ajuste de um agente), e a comparação com a rodada 3 em `antes-depois-*.png`.
 - Acessibilidade: axe (WCAG 2.1 e 2.2 A/AA e boas práticas) sem nenhuma violação nas 136 combinações, e nenhum erro de script.
 
 O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a fonte Figtree, os neutros em zinco e o verde como cor de ação. O que mudou foi o acabamento, regra por regra.
@@ -71,6 +71,15 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 - **Notas:** "Nova nota" e salvamento automático. **Memória:** microfone em "Guardar uma memória". **Automações:** assistente "Criar automação" em 5 passos. **Perfil e avisos:** painéis no computador e folhas no celular.
 - **Igual à develop:** as oito seções de Configurações, as abas de Tarefas, Escrever e Prévia nas notas, revisão de conflitos na memória, Rotinas e Fluxos, funil e retornos dos clientes, e os filtros e ações das avaliações.
 - Desenho de cada item, a viabilidade do envio pelo Chatwoot e as decisões pendentes: [sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md).
+
+### Ajustes pedidos pelo Pablo (09/11, 19:11 e 19:15)
+
+- **Agenda:** a legenda diz só "Configurações › Agenda.", com link. A linha vermelha anda com o relógio, no Início e na Agenda, como no Google Agenda; a hora atual aparece na ponta e o compromisso em andamento ganha "Agora".
+- **Tema:** no perfil e em Configurações › Conta, só os três ícones (claro, escuro e como o sistema), com o nome para leitor de tela.
+- **Acesso pela API:** "Acesso remoto" virou "Acesso pela API", com "Nova chave de API" e os escopos "Só ler", "Ler e escrever" e "Só enviar eventos".
+- **Modelos:** a lista de modelos da Cloudflare é conferida sozinha uma vez por dia (e em "Conferir agora"), avisando de modelo novo, modelo que vai sair e mudança de preço. Modelo novo só entra com um toque seu; se um modelo em uso sair, a Zuri volta ao padrão no dia e avisa.
+- **Agentes:** "Ajustar" abre o painel de cada agente: temperatura, top_p, tamanho da resposta, "Estilo e tarefa", as regras fixas para ler e as versões salvas.
+- **Perguntas de 19:15:** impressão digital do nome, origem do endereço e da foto (Google Contatos) em [sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md); envio pelo Chatwoot direto das automações da Zuri, sem n8n, em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md).
 
 ### Recomendação
 
