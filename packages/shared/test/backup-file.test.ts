@@ -4,6 +4,7 @@ import {
   BACKUP_FILE_MAGIC,
   BackupFileError,
   backupFileKey,
+  backupImportParts,
   backupKeyId,
   createBackupKey,
   importBackupPublicKey,
@@ -107,5 +108,30 @@ describe("the automatic backup's file (step 23b)", () => {
     expect(await importBackupPublicKey("not base64url!")).toBeNull();
     expect(await importBackupPublicKey("A".repeat(87))).toBeNull();
     await expect(reason(seal("nope"))).resolves.toBe("key");
+  });
+});
+
+describe("restoring a big backup in parts", () => {
+  const head = { format: "zuri-backup", version: 1, schema: 31, exportedAt: "2026-11-09T00:00:00.000Z" };
+  const conversation = (i: number) => ({ id: `c${i}`, title: `Conversa ${i}`, messages: [{ role: "user", content: "x".repeat(300) }] });
+
+  it("sends a backup under the limit whole", () => {
+    const backup = { ...head, data: { notes: [{ id: "n1" }], conversations: [conversation(1)] } };
+    expect(backupImportParts(backup, 10_000)).toEqual([backup]);
+  });
+
+  it("sends the rest first, then the conversations in batches that each fit, losing none", () => {
+    const conversations = Array.from({ length: 40 }, (_, i) => conversation(i));
+    const backup = { ...head, data: { settings: { timeZone: "America/Sao_Paulo" }, notes: [{ id: "n1" }], conversations } };
+    const max = 2_000;
+    const parts = backupImportParts(backup, max);
+    expect(parts[0]?.data).toEqual({ settings: { timeZone: "America/Sao_Paulo" }, notes: [{ id: "n1" }], conversations: [] });
+    expect(parts.length).toBeGreaterThan(2);
+    for (const part of parts.slice(1)) {
+      expect(new TextEncoder().encode(JSON.stringify(part)).length).toBeLessThanOrEqual(max);
+      expect(Object.keys(part.data)).toEqual(["conversations"]);
+      expect(part).toMatchObject(head);
+    }
+    expect(parts.slice(1).flatMap((part) => part.data.conversations)).toEqual(conversations);
   });
 });

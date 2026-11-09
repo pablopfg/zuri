@@ -595,7 +595,6 @@ export const ptBRServer = {
   "error.backup.newer": "Este backup veio de uma versão mais nova da Zuri. Atualize antes de importar.",
   "error.backup.key": "A chave do backup não é válida. Crie outra na tela Dados.",
   "error.backup.noBucket": "O backup automático não foi configurado nesta instalação.",
-  "error.backup.noKey": "Crie a chave do backup antes.",
   "notice.security.crm_events_key.title": "Segredo dos eventos do n8n gerado",
   "notice.security.crm_events_key.body": "Os eventos do n8n para o CRM foram ligados com um segredo novo, e o anterior parou de valer. Se não foi você, desligue os eventos em Contatos › Clientes e troque a senha.",
   "notice.security.mcp_tool_autonomy.body": "Uma ferramenta externa passou a rodar sem perguntar, na conversa ou em rotinas. Se não foi você, volte para \"Perguntar sempre\" e troque a senha.",

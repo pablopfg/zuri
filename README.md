@@ -192,13 +192,14 @@ O que está na `develop` hoje, etapa por etapa. "extra" marca melhorias feitas f
 | 📅 | **Agenda e contatos nos fluxos** | Os fluxos ganham três passos: **Ler a agenda** (os eventos de uma agenda aberta à Zuri, de tantos dias a partir de hoje), **Criar evento** (um por item, até 10 por execução, sem convidados e sem e-mail a ninguém, com uma chave que impede repetir o mesmo evento) e **Buscar contatos** (na cópia dos seus contatos do Google, por nome, telefone, etiqueta ou aniversário, sem chamar o Google). Nenhum passo muda ou apaga evento. | 22c |
 | 🔑 | **Acesso remoto e eventos** | Em Configurações › Segurança, **Acesso remoto** cria tokens para o n8n, o Home Assistant ou um script falarem com a Zuri de outro servidor: **Só ler**, **Ler e escrever** (tarefas, notas, memórias e lembretes) ou **Só eventos**, que manda avisos como "n8n: Backup falhou" para a central. O token aparece uma vez, vale 90 dias e só alcança uma lista fechada de rotas; nunca chega a login, Telegram, aprovações, fluxos, CRM nem a rotinas com IA. Ligar e criar pedem a senha e geram alerta de segurança; `/tokens` no bot revoga com um toque, e o modo de bloqueio suspende todos. Eventos: até 60 por hora e 100 por dia, usando no máximo metade do limite de cada canal. | 20 |
 | 💾 | **Exportar, importar e uso do armazenamento** | Em Configurações › Dados, **Baixar backup** gera um arquivo JSON com tarefas, notas, projetos, memórias, conversas, automações, clientes e configurações, legível fora da Cloudflare, sem senhas, chaves, sessões nem conexões. **Importar backup** aceita arquivos de até 10 MB: tudo entra como novo, automações chegam pausadas e rotinas com IA esperam a sua aprovação; um arquivo com algo estranho é recusado inteiro, sem gravar nada. Os dois pedem a senha e geram alerta de segurança. O cartão **Uso do armazenamento** mostra quanto de cada tipo você guardou contra o limite. | 23 |
+| 🔐 | **Backup automático cifrado** | Com o espaço de backups ligado (R2, opcional), sai uma cópia por dia, depois das 3 h, cifrada com uma chave que o seu navegador cria: a Zuri guarda só a metade que fecha, e o arquivo que abre fica com você. Ficam as 7 cópias mais novas; as antigas só saem depois que a nova chegou inteira. **Restaurar uma cópia** abre o arquivo no navegador e importa em partes quando passa de 10 MB. No dia 1 de cada mês a cópia vai para o seu Telegram, o bot avisa quando o último backup baixado passa de 30 dias e `/backup` diz a idade dele. | 23 |
 | 🎯 | **Prioridade que aprende** | O tipo de aviso que você quase sempre deixa de lado desce um nível, e o que você abre logo sobe, no máximo um nível por semana e sempre com "Desfazer". Lembretes e segurança nunca mudam, e cada automação tem a sua prioridade. | 11 |
 
 ## 🔭 O que vem a seguir
 
 | | Funcionalidade | O que faz | Etapa |
 | :---: | --- | --- | :---: |
-| 💾 | **Backup automático e instalação** | Backup diário cifrado com a sua chave (7 cópias), cópia mensal pelo Telegram, guia de instalação só pelo navegador e auditoria final. | 23–25 |
+| 🧭 | **Instalação e auditoria final** | Guia de instalação só pelo navegador e auditoria final. | 24–25 |
 
 ## 🧭 Como funciona
 
@@ -217,12 +218,14 @@ flowchart LR
         S[("SQLite + FTS5")]
     end
     AI["Workers AI"]
+    R2[("R2 · backup cifrado<br/><i>opcional ⚠️</i>")]
     W --> G
     T --> G
     G --- TS
     G --> A
     A <--> S
     A --> AI
+    A -.-> R2
 ```
 
 O bot não terá caminho próprio: ele vai passar pelos mesmos portões da interface e chegar ao mesmo agente, aos mesmos dados e aos mesmos limites.
@@ -258,7 +261,8 @@ Detalhes em [docs/seguranca.md](docs/seguranca.md). Para relatar uma vulnerabili
 | Workers AI | ✅ | Teto único de 9.000 Neurons por dia (a cota é 10.000), zerado às 00:00 UTC |
 | Turnstile, Email Routing, Cloudflare Access | ✅ | Turnstile no login; os outros são opcionais |
 | Modelos pagos (Anthropic, OpenAI) | ⚠️ | Desligados. Só com a sua aprovação e um teto diário em US$ |
-| KV, D1, R2, Vectorize, Queues, Workers Paid | ⚠️ | Não usados. Qualquer recurso que gere cobrança exige aprovação explícita |
+| R2 | ⚠️ | Opcional, só para o backup automático (aprovado pelo dono): umas 60 operações por mês e 7 cópias, dentro da faixa grátis. Sem ele, o backup automático fica desligado |
+| KV, D1, Vectorize, Queues, Workers Paid | ⚠️ | Não usados. Qualquer recurso que gere cobrança exige aprovação explícita |
 
 O orçamento de cada cota está em [docs/arquitetura/orcamento-free-tier.md](docs/arquitetura/orcamento-free-tier.md). AI Gateway, Hyperdrive e Vectorize foram avaliados e ficaram de fora; os motivos estão em [docs/planos/ai-gateway-hyperdrive-vectorize.md](docs/planos/ai-gateway-hyperdrive-vectorize.md). A troca automática de provedor de IA e a proteção do que vai para os modelos estão planejadas em [docs/planos/troca-de-provedores-e-protecao-de-dados.md](docs/planos/troca-de-provedores-e-protecao-de-dados.md). O caminho para rodar o Zuri numa VPS, caso a Cloudflare deixe de servir, está em [docs/planos/portabilidade-vps.md](docs/planos/portabilidade-vps.md). A viabilidade de trazer os fluxos de CRM do n8n para a etapa 22 está em [docs/planos/workflows-n8n.md](docs/planos/workflows-n8n.md).
 
@@ -373,7 +377,7 @@ scripts/        Lint de i18n, ícones, tamanho do pacote e capturas do README
 | [Fluxos e monitor de sites](docs/fluxos.md) | A aba Fluxos, os passos (inclusive agenda e contatos), as conexões e suas travas, o monitor de sites, limites e custo |
 | [CRM interno e eventos do n8n](docs/crm.md) | A aba Clientes, o funil, os avisos, o que a conversa pode fazer, como o n8n assina e manda eventos, respostas e limites |
 | [Acesso remoto e eventos](docs/acesso-remoto.md) | Tokens por escopo, o que cada um alcança, eventos para a central, exemplos com `curl` e o n8n, limites e o Cloudflare Access |
-| [Backup](docs/backup.md) | O que o arquivo leva e o que fica de fora, como exportar e importar, as travas da importação e como ler o arquivo fora da Cloudflare |
+| [Backup](docs/backup.md) | O que o arquivo leva e o que fica de fora, como exportar e importar, as travas da importação, o backup automático cifrado e como abrir uma cópia fora da Cloudflare |
 | [Avisos e Diagnóstico](docs/avisos.md) | Central de avisos, insistência, resumo do dia, vigias e registro de falhas |
 | [Configurar a Cloudflare](docs/configuracao-cloudflare.md) | Segredos, Turnstile, primeiro acesso e recuperação |
 | [Configurar o GitHub](docs/configuracao-github.md) | Rulesets e proteção das branches |

@@ -1,3 +1,4 @@
+import { BACKUP_IMPORT_MAX_BYTES } from "./backup.ts";
 import { fromBase64Url, toBase64Url } from "./crypto.ts";
 
 /**
@@ -297,4 +298,37 @@ export async function openBackup(file: Uint8Array, keyFile: BackupKeyFile): Prom
   }
   if (counter === 0) throw new BackupFileError("damaged");
   return concat(out);
+}
+
+type Opened = { format: string; version: number; schema: number; exportedAt: string; data: Record<string, unknown> & { conversations?: unknown[] } };
+export type BackupParts = Opened[];
+
+/**
+ * An opened backup as imports of at most `max` bytes each (the import's 10
+ * MB): everything but the conversations first, then the conversations in
+ * batches. Each part is all or nothing on the server; one that alone passes
+ * the limit is left as it is, and the server refuses it.
+ */
+export function backupImportParts(backup: Opened, max: number = BACKUP_IMPORT_MAX_BYTES): BackupParts {
+  const size = (value: unknown) => encoder.encode(JSON.stringify(value)).length;
+  if (size(backup) <= max) return [backup];
+  const head = { format: backup.format, version: backup.version, schema: backup.schema, exportedAt: backup.exportedAt };
+  const conversations = backup.data.conversations ?? [];
+  const out: BackupParts = [{ ...head, data: { ...backup.data, conversations: [] } }];
+  // Room for the envelope around each batch.
+  const room = max - size({ ...head, data: { conversations: [] } }) - 16;
+  let batch: unknown[] = [];
+  let used = 0;
+  for (const conversation of conversations) {
+    const bytes = size(conversation) + 1;
+    if (batch.length > 0 && used + bytes > room) {
+      out.push({ ...head, data: { conversations: batch } });
+      batch = [];
+      used = 0;
+    }
+    batch.push(conversation);
+    used += bytes;
+  }
+  if (batch.length > 0) out.push({ ...head, data: { conversations: batch } });
+  return out;
 }

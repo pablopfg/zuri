@@ -1,4 +1,6 @@
 import { readFile } from "node:fs/promises";
+import { gzipSync } from "node:zlib";
+import { fromBase64Url, parseBackupKeyFile, sealBackup, toBase64Url } from "@zuri/shared";
 import { expect, test } from "./fixtures.ts";
 import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
 
@@ -69,6 +71,58 @@ test("refuses a bad file without saving anything, and one over 10 MB in the brow
   await input.setInputFiles({ name: "grande.json", mimeType: "application/json", buffer: Buffer.alloc(10 * 1024 * 1024 + 1, 32) });
   await expect(page.getByRole("alert").filter({ hasText: "O arquivo passa de 10 MB e não pode ser importado." })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Importar este backup?" })).toHaveCount(0);
+});
+
+test("creates the backup key once and restores a sealed copy in the browser; accessible @mobile", async ({ page }) => {
+  await page.goto("/entrar");
+  await signIn(page);
+  await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
+  await page.goto("/configuracoes/dados");
+  const card = page.getByRole("region", { name: "Backup automático" });
+  await expect(card).toBeVisible();
+
+  // Local development keeps the copies in memory: the card is on, waiting for the key (or with one from an earlier run).
+  const create = card.getByRole("button", { name: /^(Criar chave do backup|Trocar a chave)$/ });
+  await create.click();
+  const dialog = page.getByRole("dialog", { name: /chave do backup\?$/ });
+  await expect(dialog.getByRole("button", { name: "Cancelar" })).toBeFocused();
+  await expectAccessible(page, "chave do backup");
+  const downloading = page.waitForEvent("download");
+  await dialog.getByRole("button", { name: "Criar e baixar a chave" }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe("zuri-chave-do-backup.json");
+  const key = parseBackupKeyFile(await readFile((await download.path()) ?? "", "utf8"));
+  await expect(page.getByRole("status").filter({ hasText: "Chave criada. Guarde o arquivo baixado num lugar seguro." })).toBeVisible();
+  await expect(card.getByText(`${key.key.slice(0, 8)}…`, { exact: false })).toBeVisible();
+  await expect(card.getByRole("button", { name: "Restaurar uma cópia" })).toBeVisible();
+
+  // A copy sealed for that key, as the server makes them: gzip of a backup with one note.
+  const title = `Nota restaurada ${crypto.randomUUID().slice(0, 8)}`;
+  const at = "2026-11-09T00:00:00.000Z";
+  const backup = { format: "zuri-backup", version: 1, schema: 1, exportedAt: at, data: { notes: [{ id: crypto.randomUUID(), title, content: "do backup", projectId: null, localOnly: false, createdAt: at, updatedAt: at }] } };
+  const publicKey = toBase64Url(new Uint8Array([4, ...fromBase64Url(key.privateKey.x), ...fromBase64Url(key.privateKey.y)]));
+  const pieces: Uint8Array[] = [];
+  for await (const piece of sealBackup((async function* () { yield new Uint8Array(gzipSync(JSON.stringify(backup))); })(), publicKey)) pieces.push(piece);
+  const sealed = Buffer.concat(pieces);
+
+  await card.getByRole("button", { name: "Restaurar uma cópia" }).click();
+  const restore = page.getByRole("dialog", { name: "Restaurar uma cópia" });
+  await expect(restore.getByRole("button", { name: "Abrir" })).toBeDisabled();
+  await restore.getByLabel("Cópia do backup").setInputFiles({ name: "copia.zuri", mimeType: "application/octet-stream", buffer: sealed });
+  // The wrong file in the key's place says so, and nothing leaves the browser.
+  await restore.getByLabel("Arquivo da chave").setInputFiles({ name: "outra.json", mimeType: "application/json", buffer: Buffer.from("{}") });
+  await restore.getByRole("button", { name: "Abrir" }).click();
+  await expect(restore.getByRole("alert")).toHaveText("Esta chave não abre esta cópia. Use o arquivo da chave que valia no dia da cópia.");
+  await restore.getByLabel("Arquivo da chave").setInputFiles({ name: "zuri-chave-do-backup.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(key)) });
+  await restore.getByRole("button", { name: "Abrir" }).click();
+  await expect(restore.getByText("1 nota", { exact: true })).toBeVisible();
+  await expectAccessible(page, "restaurar");
+  await restore.getByRole("button", { name: "Importar" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Cópia restaurada." })).toBeVisible();
+
+  const notes = await (await page.request.get(`/api/notes?q=${encodeURIComponent(title)}`, { headers: CSRF })).json();
+  expect(notes.notes).toHaveLength(1);
+  expect((await page.request.delete(`/api/notes/${notes.notes[0].id}`, { headers: CSRF })).ok()).toBe(true);
 });
 
 test.describe("dark", () => {
