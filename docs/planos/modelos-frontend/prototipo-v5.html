@@ -1594,6 +1594,15 @@ body>#app{flex:1 1 auto;min-height:0;overflow:auto}
 /* ajustes de 09/11 19:34: gravação igual em todos os microfones */
 .composer .rec{border:0;box-shadow:none;background:transparent;padding-left:0;min-height:44px}
 .composer-lg .rec{flex-basis:100%}
+/* ajustes de 09/11 20:02: avaliação com homônimos */
+.rv-twins h3{display:flex;gap:8px;align-items:center;font-size:var(--t-sm);font-weight:600}
+.rv-twins .hint{margin-top:4px}
+.tw-list{display:grid;gap:var(--s2);margin-top:var(--s3)}
+.tw-list li{display:flex;gap:var(--s3);align-items:center;justify-content:space-between;padding:var(--s3);border-radius:var(--r-md);background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.tw-list li.best{box-shadow:inset 0 0 0 1px var(--line-strong)}
+.tw-list .t{font-weight:600;font-size:var(--t-sm)}
+.tw-list .meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:var(--t-xs);color:var(--muted)}
+.tw-list .btn{flex:none}
 
 </style>
 </head>
@@ -2112,6 +2121,8 @@ const CLIENTS = [
 const REVIEWS = [
   { id: "luciana", n: "Luciana Ferraz", i: "LF", c: 1, stars: 5, when: "Hoje, 08:05", st: "wait", contact: "luciana", until: "amanhã, 08:05", edit: "Editou hoje: antes eram 4 estrelas.", text: "Atendimento atencioso do começo ao fim. Saí com tudo explicado e um plano fácil de seguir.", reply: "Obrigada, Luciana! Que bom que o plano ficou claro. Conte com a gente no retorno." },
   { id: "pedro", n: "Pedro Henrique", i: "PH", c: 2, stars: 2, when: "Ontem, 17:40", st: "low", guess: "pedro", why: ["Nota baixa", "Tem reclamação"], until: "amanhã, 17:40", text: "Esperei 40 minutos além do horário marcado e ninguém avisou.", reply: "Pedro, você tem razão: o atraso devia ter sido avisado. Pedimos desculpas. Já combinamos de avisar por mensagem sempre que houver atraso." },
+  { id: "anasouza", n: "Ana Souza", i: "AS", c: 4, stars: 5, when: "Hoje, 07:50", st: "wait", until: "amanhã, 07:50", text: "Gostei muito da consulta e das dicas para a rotina.", reply: "Obrigada, Ana! Que bom que as dicas ajudaram na rotina.",
+    twins: [{ id: "ana1", sub: "Celular final 4521 · an•••@exemplo.com.br", why: ["Consulta em 30/10", "Recebeu o pedido em 09/11"], best: true }, { id: "ana2", sub: "Celular final 0388 · sem e-mail", why: ["Consulta em 12/08", "Não recebeu pedido"] }] },
   { id: "camila", n: "Camila Rocha", i: "CR", c: 3, stars: 5, when: "07/11", st: "done", pub: "07/11, 10:12", text: "Ótima experiência, recomendo!", reply: "Obrigada, Camila! Ficamos felizes com a recomendação." },
   { id: "carla", n: "Carla Mendes", i: "CM", c: 3, stars: 3, when: "20/10", st: "gone", contact: "carla", text: "Bom atendimento, mas a sala de espera estava cheia.", reply: "" }
 ];
@@ -2157,7 +2168,7 @@ function contatos() {
         <div class="rv-n"><p class="big num">72</p><p class="d">Índice de recomendação</p><p class="d xs">5 estrelas recomenda; 1 a 3, não</p></div></div>
        <div class="seg seg-sub" role="group" aria-label="Ver"><button type="button" data-rvv="avaliacoes" aria-pressed="${!pedidos}">Avaliações</button><button type="button" data-rvv="pedidos" aria-pressed="${pedidos}">Pedidos de avaliação</button></div>
        ${pedidos ? `<div class="match card"><p class="t">${ic("link", "ic-sm")}Avaliações ligadas aos contatos</p><p class="ped-sum"><span><b class="num">23</b> lidas</span><span><b class="num">19</b> ligadas</span><span><b class="num">3</b> para confirmar</span><span><b class="num">1</b> sem contato</span></p><p class="hint">Quem tem avaliação para confirmar fica fora da fila até você decidir.</p></div>
-         <p class="ped-sum"><span><b class="num">${c.hoje}</b> para hoje</span><span><b class="num">${c.agendado}</b> agendados</span><span><b class="num">${c["sem-resposta"]}</b> sem resposta</span><span><b class="num">${c.avaliou}</b> avaliaram</span></p>` : `<div class="rv-bar"><label class="sr" for="rv-f">Filtrar avaliações</label><select id="rv-f" class="input input-sm"><option>Precisa de você (2)</option><option>Publicadas sozinha (0)</option><option>Todas (4)</option></select><label class="sr" for="rv-n">Nota</label><select id="rv-n" class="input input-sm"><option>Todas as notas</option><option>5 estrelas</option><option>4 estrelas</option><option>3 estrelas</option><option>2 estrelas</option><option>1 estrela</option></select></div>
+         <p class="ped-sum"><span><b class="num">${c.hoje}</b> para hoje</span><span><b class="num">${c.agendado}</b> agendados</span><span><b class="num">${c["sem-resposta"]}</b> sem resposta</span><span><b class="num">${c.avaliou}</b> avaliaram</span></p>` : `<div class="rv-bar"><label class="sr" for="rv-f">Filtrar avaliações</label><select id="rv-f" class="input input-sm"><option>Precisa de você (${waiting})</option><option>Publicadas sozinha (0)</option><option>Todas (4)</option></select><label class="sr" for="rv-n">Nota</label><select id="rv-n" class="input input-sm"><option>Todas as notas</option><option>5 estrelas</option><option>4 estrelas</option><option>3 estrelas</option><option>2 estrelas</option><option>1 estrela</option></select></div>
          <p class="rv-read"><span>Última leitura: há 6 min</span><button class="linkbtn" type="button" data-rv-check>Conferir agora</button><button class="linkbtn" type="button" data-rv-pause>Pausar respostas</button></p>`}`
     : `${tab === "clientes" ? `<p class="ped-sum cl-sum"><span class="late"><b class="num">1</b> retorno atrasado</span><span><b class="num">1</b> hoje</span><span><b class="num">2</b> nos próximos 7 dias</span><span><b class="num">1</b> novo na semana</span></p>
         <div class="funnel" role="group" aria-label="Funil">${[["novo", "Novo contato", 1], ["conv", "Em conversa", 1], ["cli", "Cliente", 1]].map(([k, l, n]) => `<span class="stage s-${k}"><i></i>${l} <b class="num">${n}</b></span>`).join("")}<button class="linkbtn" type="button" data-soon>Editar funil</button></div>` : ""}<form class="with-ic ct-search" role="search" onsubmit="return false">${ic("search", "ic-sm")}<label class="sr" for="cts">Buscar ${tab === "clientes" ? "clientes" : "contatos"}</label><input id="cts" class="input" placeholder="Buscar por nome" autocomplete="off"></form>`;
@@ -2232,7 +2243,11 @@ function person(p, client) {
 }
 function review(r) {
   const who = r.contact
-    ? `<p class="rv-who">${ic("user", "ic-sm")}<span>Ligada ao contato <button class="linkbtn" type="button" data-goto-p="${r.contact}">${r.n}</button></span></p>`
+    ? `<p class="rv-who">${ic("user", "ic-sm")}<span>Ligada ao contato ${PEOPLE.some((x) => x.id === r.contact) ? `<button class="linkbtn" type="button" data-goto-p="${r.contact}">${r.n}</button>` : `<b>${r.n}</b>`}</span></p>`
+    : r.twins ? `<section class="rv-guess rv-twins" aria-labelledby="h-tw"><h3 id="h-tw">${ic("users", "ic-sm")}Duas pessoas nos seus contatos se chamam ${r.n}</h3>
+        <p class="hint">O Google não mostra o telefone nem o e-mail de quem avalia. A Zuri separa as duas pelo telefone e pelo e-mail de cada contato e compara a consulta e o pedido de avaliação. Até você escolher, nenhuma das duas recebe pedido.</p>
+        <ul class="tw-list">${r.twins.map((x, k) => `<li${x.best ? ' class="best"' : ""}><div><p class="t">${r.n} ${k + 1}${x.best ? ' <span class="tag">Mais provável</span>' : ""}</p><p class="meta">${x.sub}</p><p class="meta">${x.why.map((w) => `<span>${w}</span>`).join("")}</p></div><button class="btn ${x.best ? "btn-primary" : "btn-secondary"} btn-sm" type="button" data-rv-twin="${r.id}" aria-label="É a ${r.n} ${k + 1}">É esta</button></li>`).join("")}</ul>
+        <div class="row-actions"><button class="btn btn-quiet btn-sm" type="button" data-rv-nolink>Nenhuma das duas</button></div></section>`
     : r.guess ? `<div class="rv-guess"><p>${ic("circle-help", "ic-sm")}<span>Parece ser <b>${r.n}</b>, dos seus contatos: mesmo nome, e ele abriu o seu link ontem.</span></p><div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-rv-link="${r.id}">É ele</button><button class="btn btn-quiet btn-sm" type="button" data-rv-nolink>Não é</button></div></div>` : "";
   const state = r.st === "gone"
     ? `<p class="rv-low">${ic("trash-2", "ic-sm")}A pessoa apagou esta avaliação em 25/10. Fica aqui só no histórico.</p>`
@@ -2690,7 +2705,7 @@ document.addEventListener("input", (e) => {
 document.addEventListener("click", (e) => {
   const t = e.target.closest("button, a");
   if (!t && e.target.matches && e.target.matches("[data-scrim]")) { closeLayer(); return; }
-  if (!t || !t.matches("[data-ag-reset], [data-ag-default], [data-cfg-open], [data-cfg], [data-ct], [data-p], [data-replay], [data-rvv], [data-goto-p], [data-rv-link], [data-rv-nolink], [data-nps-send], [data-new-note], [data-n], [data-wk], [data-mic], [data-mic-stop], [data-au-open], [data-au-close], [data-au-next], [data-au-back], [data-au-done], [data-au-type], [data-menu], [data-close-pop], [data-read-all], [data-cfg-go], [data-aviso], [data-logout], .qa-tel, [data-wa], [data-af], [data-sug], [data-rev], [data-cfg-save], [data-soon], [data-nmode], [data-rv-check], [data-rv-pause], [data-rv-redo], [data-rv-done], [data-agx], [data-ag-save], [data-ag-restore], [data-cat-sync], [data-cat-add]")) return;
+  if (!t || !t.matches("[data-ag-reset], [data-ag-default], [data-cfg-open], [data-cfg], [data-ct], [data-p], [data-replay], [data-rvv], [data-goto-p], [data-rv-link], [data-rv-twin], [data-rv-nolink], [data-nps-send], [data-new-note], [data-n], [data-wk], [data-mic], [data-mic-stop], [data-au-open], [data-au-close], [data-au-next], [data-au-back], [data-au-done], [data-au-type], [data-menu], [data-close-pop], [data-read-all], [data-cfg-go], [data-aviso], [data-logout], .qa-tel, [data-wa], [data-af], [data-sug], [data-rev], [data-cfg-save], [data-soon], [data-nmode], [data-rv-check], [data-rv-pause], [data-rv-redo], [data-rv-done], [data-agx], [data-ag-save], [data-ag-restore], [data-cat-sync], [data-cat-add]")) return;
   e.stopImmediatePropagation();
   if (t.matches("[data-ag-reset]")) { st.ag = { ...st.agDef }; render(); refocus("#ag-de"); return; }
   if (t.matches("[data-ag-default]")) { st.agDef = { de: 8, ate: 18 }; st.ag = { ...st.agDef }; render(); refocus("#cfg-de"); hint("A agenda volta a abrir das 08:00 às 18:00"); return; }
@@ -2716,7 +2731,8 @@ document.addEventListener("click", (e) => {
   if (t.matches("[data-rvv]")) { st.rvv = t.dataset.rvv; st.p = ""; render(); refocus(`[data-rvv="${st.rvv}"]`); return; }
   if (t.matches("[data-goto-p]")) { st.ct = "pessoas"; st.p = t.dataset.gotoP; render(); refocus("#h-p"); return; }
   if (t.matches("[data-rv-link]")) { const r = REVIEWS.find((x) => x.id === t.dataset.rvLink); r.contact = r.guess; delete r.guess; render(); hint("Avaliação ligada ao contato. Ele não recebe mais o link."); return; }
-  if (t.matches("[data-rv-nolink]")) { const r = REVIEWS.find((x) => x.id === st.p) || REVIEWS[1]; delete r.guess; render(); hint("Certo. A Zuri não liga esta avaliação a ninguém."); return; }
+  if (t.matches("[data-rv-twin]")) { const r = REVIEWS.find((x) => x.id === t.dataset.rvTwin); delete r.twins; r.contact = "anasouza"; render(); hint("Avaliação ligada a este contato. A outra Ana Souza volta para a fila."); return; }
+  if (t.matches("[data-rv-nolink]")) { const r = REVIEWS.find((x) => x.id === st.p) || REVIEWS[1]; delete r.guess; delete r.twins; render(); hint("Certo. A Zuri não liga esta avaliação a ninguém."); return; }
   if (t.matches("[data-nps-send]")) {
     e.preventDefault();
     const p = PEOPLE.find((x) => x.id === t.dataset.npsSend);

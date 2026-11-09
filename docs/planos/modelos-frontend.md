@@ -27,7 +27,7 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 
 - Protótipo: `docs/planos/modelos-frontend/prototipo-v5.html` (a barra do topo troca a tela e o tema).
 - Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, **Contatos**, Automações, Memória, Configurações, **Estados das telas** e Identidade visual.
-- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (144 imagens: as 12 telas e mais 24 vistas de dentro delas, entre elas o carregando, os painéis de perfil e de avisos, a nota nova, a memória e a conversa por voz, o assistente de automação, os fluxos, a ficha de contato com WhatsApp, os pedidos de avaliação, as oito seções das configurações e o ajuste de um agente), e a comparação com a rodada 3 em `antes-depois-*.png`.
+- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (148 imagens: as 12 telas e mais 25 vistas de dentro delas, entre elas o carregando, os painéis de perfil e de avisos, a nota nova, a memória e a conversa por voz, o assistente de automação, os fluxos, a ficha de contato com WhatsApp, a avaliação com homônimos, os pedidos de avaliação, as oito seções das configurações e o ajuste de um agente), e a comparação com a rodada 3 em `antes-depois-*.png`.
 - Acessibilidade: axe (WCAG 2.1 e 2.2 A/AA e boas práticas) sem nenhuma violação nas 136 combinações, e nenhum erro de script.
 
 O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a fonte Figtree, os neutros em zinco e o verde como cor de ação. O que mudou foi o acabamento, regra por regra.
@@ -86,6 +86,10 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 - **Pastas:** "Projetos" de tarefas e notas viraram "Pastas" no protótipo; a memória mantém a categoria "Projeto".
 - **Microfones:** a animação de gravação da memória vale para todos os microfones, inclusive o campo da conversa no Início e na Conversa.
 - **Chatwoot:** as três respostas do Pablo entraram em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md), que fica sem perguntas abertas.
+
+### Ajuste pedido pelo Pablo (09/11, 20:02)
+
+- **Nomes iguais:** o Google não entrega e-mail nem telefone de quem avalia, então a Zuri usa o telefone e o e-mail dos contatos para separar homônimos e para saber quem recebeu e abriu o link. Com homônimos, nunca liga sozinha e ninguém recebe pedido até a escolha do Pablo. Regra completa em [sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md), seção 8.1b; no protótipo, a avaliação da "Ana Souza".
 
 ### Recomendação
 

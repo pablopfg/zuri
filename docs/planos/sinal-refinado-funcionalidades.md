@@ -73,8 +73,8 @@ Você envia com um toque. A Zuri monta a fila, abre o WhatsApp com a mensagem e 
 
 Antes de qualquer pedido sair, a Zuri lê todas as avaliações do perfil (a primeira leitura da etapa 19c já guarda o histórico) e tenta ligar cada uma a um contato:
 
-1. Nome completo igual a um único contato: sugestão forte.
-2. Primeiro e último nome iguais, ou o contato abriu o link pessoal pouco antes: sugestão fraca.
+1. Nome completo igual a um único contato, sem homônimos: liga sozinha, e você pode desfazer.
+2. Homônimos, só primeiro e último nome iguais, ou o contato abriu o link pessoal pouco antes: sugestão, com a sua confirmação. Detalhes na seção 8.1b.
 3. Nada parecido: avaliação sem contato.
 
 A regra de segurança é assimétrica: qualquer sugestão, forte ou fraca, tira a pessoa da fila até você decidir. Errar para menos (deixar alguém sem pedido) é aceitável; errar para mais (pedir de novo a quem já avaliou) não é. "É ele" confirma; "Não é" devolve a pessoa à fila.
@@ -90,6 +90,41 @@ Como funciona:
 5. Impressões iguais formam uma sugestão: nome inteiro igual é sugestão forte; só primeiro e último, fraca.
 
 O que isso protege: se alguém copiar o banco ou um backup, não lê o nome de quem avaliou. O que não protege: nomes são poucos e previsíveis, e quem tivesse a chave e uma lista de nomes conseguiria testar um por um. Por isso a chave fica só nos segredos do Worker, nunca no banco nem no backup. É pseudonimização, não anonimato. O nome já é público no Google, e a impressão serve para a Zuri não guardar uma cópia dele.
+
+### 8.1b Nomes iguais: como a Zuri diferencia (ajuste de 09/11, 20:02)
+
+O Pablo lembrou que duas ou mais pessoas podem ter o mesmo nome e sugeriu usar o e-mail e o telefone. O limite que manda em tudo: **o Google não entrega o e-mail nem o telefone de quem avalia.** A API do Perfil da Empresa traz de quem avaliou só o nome que aparece, a foto do perfil e se a avaliação é anônima ([referência da API](https://developers.google.com/my-business/reference/rest/v4/accounts.locations.reviews)). O código da develop lê só o nome e o "anônimo" (`packages/shared/src/reviews-schemas.ts`). Por isso o e-mail e o telefone entram do nosso lado, em dois papéis:
+
+1. **Separar as pessoas.** Cada contato é uma pessoa pelo telefone (em formato +55…) e pelo e-mail. Dois contatos com o mesmo telefone ou o mesmo e-mail são a mesma pessoa. Mesmo nome com telefone e e-mail diferentes são duas pessoas: homônimos. Mesmo nome e um deles sem telefone nem e-mail: a Zuri não sabe se é a mesma pessoa e trata como homônimos.
+2. **Saber quem recebeu o link.** O pedido sai para um telefone, então a Zuri sabe para quem mandou, quando, e se aquele link pessoal foi aberto. É a ponte entre a avaliação, que só tem nome e hora, e o contato, que tem telefone e e-mail.
+
+A ordem de decisão, para cada avaliação nova:
+
+| Situação | O que a Zuri faz |
+| --- | --- |
+| Avaliação já ligada antes | Nada. A ligação fica guardada pelo número da avaliação e pelo número do contato, não pelo nome. |
+| Nome inteiro bate com um contato só, e nenhum outro contato tem nome parecido | Liga sozinha. Você pode desfazer na ficha. |
+| Nome inteiro bate com dois ou mais contatos (homônimos) | **Nunca liga sozinha.** Mostra os candidatos com o final do celular, o e-mail mascarado, a última consulta e o pedido de avaliação, marca o mais provável e espera o seu "É esta" ou "Nenhuma". |
+| Só primeiro e último nome batem, ou o nome está abreviado ("Ana S.") | Sugestão, sempre com a sua confirmação. |
+| Avaliação anônima ou nome que não bate com ninguém | Só vira sugestão se exatamente um link pessoal foi aberto nas 48 horas antes da avaliação. Senão, fica sem contato. |
+
+Como a Zuri escolhe o "mais provável" entre homônimos, da pista mais forte para a mais fraca:
+
+1. Abriu o link pessoal nos 7 dias antes da avaliação.
+2. Recebeu o pedido de avaliação nos 30 dias antes.
+3. Teve consulta nos 60 dias antes.
+4. Se a pista não separa (as duas abriram o link, por exemplo), nenhuma é marcada e a escolha é toda sua.
+
+Travas para não errar:
+
+- **Na dúvida, ninguém recebe.** Enquanto houver homônimos esperando a sua escolha, nenhum deles entra na fila do pedido. O pior caso vira "alguém ficou sem pedido", nunca "pediu de novo a quem já avaliou".
+- **Escolha guardada para sempre.** "É esta" grava a ligação avaliação → contato. A Zuri não pergunta de novo, nem se o nome do contato mudar no Google.
+- **Uma avaliação, um contato; um contato, uma avaliação.** O Google aceita uma avaliação por conta em cada perfil. Se aparecer uma segunda avaliação com o nome de um contato que já tem a dele, ela é tratada como outra pessoa e vai para você.
+- **"Nenhuma das duas"** grava que aquela avaliação não é de nenhum contato, e os homônimos voltam para a fila normal.
+- **Contato novo com o mesmo nome** de quem já está ligado não herda nada: a ligação é pelo número do contato, não pelo nome.
+- **Foto do perfil fora.** A foto do Google de quem avalia não é a mesma que você guardou no contato, e comparar rostos pediria IA e guardar biometria. Não vale o risco.
+
+No protótipo: Contatos › Avaliações › "Ana Souza" mostra o cartão dos homônimos.
 
 ### 8.2 Quem entra na fila e quando
 
@@ -185,5 +220,5 @@ O nome no rodapé da lateral (no celular, a letra no topo) abre um painel com Co
 ## Decisões que ficam com o Pablo
 
 1. Endereço e foto no contato (muda a decisão anterior).
-2. Guardar a impressão digital do nome inteiro de quem avaliou, para ligar avaliação a contato.
+2. Guardar a impressão digital do nome inteiro de quem avaliou, para ligar avaliação a contato. Em 20:02 o Pablo pediu cuidado com nomes iguais: regra na seção 8.1b.
 3. ~~Envio pelo Chatwoot~~: respondido em 09/11, 19:34 (exceção liberada, caixa de API sem custo da Meta, Chatwoot self-hosted). Detalhes em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md).
