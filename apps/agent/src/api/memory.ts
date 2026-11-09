@@ -61,7 +61,7 @@ export function registerMemoryRoutes(app: Hono<ApiEnv>, memories: () => MemorySe
   });
 
   // Step 21 (plan D3): "never send out" on or off.
-  app.put("/memories/:id/local-only", async (c) => {
+  app.post("/memories/:id/local-only", async (c) => {
     const id = recordId(c.req.param("id"));
     const input = await readJson(c.req.raw, anyObject, SMALL_BODY_BYTES);
     return Response.json({ memory: memories().setLocalOnly(id, input) });

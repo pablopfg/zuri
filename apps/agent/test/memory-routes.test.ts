@@ -56,7 +56,7 @@ describe("the memory routes", () => {
     ["GET", `/memories/${MISSING}/history`],
     ["POST", `/memories/${MISSING}/status`],
     ["POST", `/memories/${MISSING}/correct`],
-    ["PUT", `/memories/${MISSING}/local-only`],
+    ["POST", `/memories/${MISSING}/local-only`],
   ] as const;
 
   it.each(routes)("%s %s needs a session (401) and the CSRF header (403), and is never cached", async (method, path) => {
@@ -171,14 +171,14 @@ describe("never send out (step 21, D3)", () => {
   it("marks a memory and takes the mark off, and refuses anything but a boolean", async () => {
     const { memory } = await create("Senha do cofre fica com a Ana");
     expect(memory.localOnly).toBe(false);
-    const on = await json<{ memory: Memory }>(await api("PUT", `/memories/${memory.id}/local-only`, { localOnly: true }), 200);
+    const on = await json<{ memory: Memory }>(await api("POST", `/memories/${memory.id}/local-only`, { localOnly: true }), 200);
     expect(on.memory).toMatchObject({ id: memory.id, localOnly: true, updatedAt: memory.updatedAt });
     expect((await list()).memories.find((m) => m.id === memory.id)?.localOnly).toBe(true);
     for (const body of [{ localOnly: "yes" }, {}, { localOnly: true, extra: 1 }]) {
-      expect((await refusal(await api("PUT", `/memories/${memory.id}/local-only`, body), 400)).code).toBe("VALIDATION_FAILED");
+      expect((await refusal(await api("POST", `/memories/${memory.id}/local-only`, body), 400)).code).toBe("VALIDATION_FAILED");
     }
-    expect((await refusal(await api("PUT", `/memories/${MISSING}/local-only`, { localOnly: true }), 404)).code).toBe("NOT_FOUND");
-    const off = await json<{ memory: Memory }>(await api("PUT", `/memories/${memory.id}/local-only`, { localOnly: false }), 200);
+    expect((await refusal(await api("POST", `/memories/${MISSING}/local-only`, { localOnly: true }), 404)).code).toBe("NOT_FOUND");
+    const off = await json<{ memory: Memory }>(await api("POST", `/memories/${memory.id}/local-only`, { localOnly: false }), 200);
     expect(off.memory.localOnly).toBe(false);
   });
 });

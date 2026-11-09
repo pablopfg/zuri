@@ -64,7 +64,7 @@ describe("the productivity routes", () => {
     ["GET", `/notes/${MISSING}`],
     ["PATCH", `/notes/${MISSING}`],
     ["DELETE", `/notes/${MISSING}`],
-    ["PUT", `/notes/${MISSING}/local-only`],
+    ["POST", `/notes/${MISSING}/local-only`],
     ["GET", "/projects"],
     ["POST", "/projects"],
     ["PATCH", `/projects/${MISSING}`],
@@ -303,11 +303,11 @@ describe("never send out (step 21, D3)", () => {
   it("marks a note without changing its date, shows the mark in the list, and refuses anything but a boolean", async () => {
     const { note } = await json<{ note: Note }>(await api("POST", "/notes", { title: "Cofre", content: "A senha fica com a Ana" }), 201);
     expect(note.localOnly).toBe(false);
-    const on = await json<{ note: Note }>(await api("PUT", `/notes/${note.id}/local-only`, { localOnly: true }), 200);
+    const on = await json<{ note: Note }>(await api("POST", `/notes/${note.id}/local-only`, { localOnly: true }), 200);
     expect(on.note).toMatchObject({ id: note.id, localOnly: true, updatedAt: note.updatedAt });
     const { notes } = await json<{ notes: NoteSummary[] }>(await api("GET", "/notes"), 200);
     expect(notes.find((n) => n.id === note.id)?.localOnly).toBe(true);
-    expect((await refusal(await api("PUT", `/notes/${note.id}/local-only`, { localOnly: 1 }), 400)).code).toBe("VALIDATION_FAILED");
-    expect((await refusal(await api("PUT", `/notes/${MISSING}/local-only`, { localOnly: true }), 404)).code).toBe("NOT_FOUND");
+    expect((await refusal(await api("POST", `/notes/${note.id}/local-only`, { localOnly: 1 }), 400)).code).toBe("VALIDATION_FAILED");
+    expect((await refusal(await api("POST", `/notes/${MISSING}/local-only`, { localOnly: true }), 404)).code).toBe("NOT_FOUND");
   });
 });

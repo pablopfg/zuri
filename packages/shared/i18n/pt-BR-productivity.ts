@@ -115,4 +115,8 @@ export const ptBRProductivity = {
   "web.trash.emptyConfirm": "Tudo o que está na lixeira vai sumir e não dá para desfazer.",
   "web.trash.emptied.one": "{count} item apagado de vez.",
   "web.trash.emptied.other": "{count} itens apagados de vez.",
+  "web.notes.localOnly": "Nunca enviar para fora",
+  "web.notes.localOnlyHint": "Ligado, esta nota nunca vai para um modelo pago. Só o modelo grátis da sua conta lê o texto.",
+  "web.notes.localOnlyOn": "A nota agora fica só na sua conta.",
+  "web.notes.localOnlyOff": "A nota pode ir para um modelo pago, se você usar um.",
 } as const;

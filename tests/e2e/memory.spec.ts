@@ -191,3 +191,35 @@ test("memory in English: a conflict, replacing the older and discarding the newe
     expect(back.status()).toBe(200);
   }
 });
+
+test("never send out: a memory and a note marked stay on the account, and the mark is kept @mobile", async ({ page }) => {
+  const tag = `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+  await openMemory(page);
+  await save(page, `O código do portão é ${tag}`);
+  const row = page.getByRole("listitem").filter({ hasText: `O código do portão é ${tag}` });
+  const mark = row.getByRole("button", { name: "Nunca enviar para fora" });
+  await expect(mark).toHaveAttribute("aria-pressed", "false");
+  const marked = page.waitForResponse((r) => r.url().endsWith("/local-only") && r.request().method() === "POST");
+  await mark.click();
+  expect((await marked).status()).toBe(200);
+  await expect(mark).toHaveAttribute("aria-pressed", "true");
+  await expect(row.getByText("Só na sua conta")).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("listitem").filter({ hasText: `O código do portão é ${tag}` }).getByText("Só na sua conta")).toBeVisible();
+  await expectAccessible(page, "memoria-nunca-enviar");
+  expect(await tooSmallControls(page)).toEqual([]);
+
+  // A note: the switch saves at once and leaves the text being edited alone.
+  const created = await page.request.post("/api/notes", { headers: CSRF, data: { title: `Cofre ${tag}`, content: "Combinação guardada" } });
+  expect(created.status()).toBe(201);
+  const { note } = (await created.json()) as { note: { id: string } };
+  await page.goto(`/notas/${note.id}`);
+  const toggle = page.getByRole("switch", { name: "Nunca enviar para fora" });
+  await expect(toggle).not.toBeChecked();
+  await toggle.click();
+  await expect(toggle).toBeChecked();
+  await expect(page.getByRole("status").filter({ hasText: "A nota agora fica só na sua conta." })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("switch", { name: "Nunca enviar para fora" })).toBeChecked();
+  await expectAccessible(page, "nota-nunca-enviar");
+});

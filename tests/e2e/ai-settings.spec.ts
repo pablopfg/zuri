@@ -56,7 +56,7 @@ test("the model and the limits: out-of-range values are refused on the spot, the
   // The fallback: on by default, a different model, never the chosen one again.
   const fallback = form.getByLabel("Modelo reserva");
   await expect(fallback).toHaveValue("@cf/qwen/qwen3-30b-a3b-fp8");
-  await expect(fallback.locator("option")).toHaveText(["Nenhum (só o modelo de conversa)", "Qwen3 30B A3B", "Llama 4 Scout 17B", "Llama 3.3 70B"]);
+  await expect(fallback.locator("option")).toHaveText(["Nenhum (só o modelo de conversa)", "Qwen3 30B A3B", "Llama 4 Scout 17B", "Llama 3.3 70B", "Claude Haiku 5.5 · US$\u00a00,10 / US$\u00a00,50 por milhão de tokens", "Claude Sonnet 5.5 · US$\u00a02,00 / US$\u00a010,00 por milhão de tokens", "GPT-6 Luna · US$\u00a00,10 / US$\u00a00,50 por milhão de tokens", "GPT-6.1 Terra · US$\u00a01,00 / US$\u00a05,00 por milhão de tokens"]);
   await expect(form.getByText(/Responde no lugar do modelo de conversa quando ele está ocupado/)).toBeVisible();
   await expect(form.getByText(/Cerca de 48 Neurons por resposta típica; 189 respostas/)).toBeVisible();
 
@@ -85,7 +85,7 @@ test("the model and the limits: out-of-range values are refused on the spot, the
   await expect(form.getByText(/Cerca de 40 Neurons por resposta típica; 25 respostas/)).toBeVisible();
   // The fallback was the newly chosen model: it falls back to none, and that model leaves its list.
   await expect(fallback).toHaveValue("none");
-  await expect(fallback.locator("option")).toHaveText(["Nenhum (só o modelo de conversa)", "GLM 4.7 Flash", "Llama 4 Scout 17B", "Llama 3.3 70B"]);
+  await expect(fallback.locator("option")).toHaveText(["Nenhum (só o modelo de conversa)", "GLM 4.7 Flash", "Llama 4 Scout 17B", "Llama 3.3 70B", "Claude Haiku 5.5 · US$\u00a00,10 / US$\u00a00,50 por milhão de tokens", "Claude Sonnet 5.5 · US$\u00a02,00 / US$\u00a010,00 por milhão de tokens", "GPT-6 Luna · US$\u00a00,10 / US$\u00a00,50 por milhão de tokens", "GPT-6.1 Terra · US$\u00a01,00 / US$\u00a05,00 por milhão de tokens"]);
   await fallback.selectOption({ label: "Llama 4 Scout 17B" });
   const saved = page.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PATCH");
   await form.getByRole("button", { name: "Salvar limites" }).click();
@@ -137,13 +137,19 @@ test("the usage card warns near and at the limit, and a failed report shows an e
       aborted: 1,
       neurons,
       costUsd: (neurons * 0.011) / 1_000,
+      paidUsd: 0,
+      fallbacks: 3,
       audioSeconds: 90,
       models: [
         { model: "@cf/zai-org/glm-4.7-flash", kind: "chat", billable: true, calls: requests, inputTokens: 900_000, outputTokens: 40_000, estimatedTokens: 0, audioSeconds: 0, neurons, costUsd: (neurons * 0.011) / 1_000 },
       ],
     },
-    limits: { requestsPerDay: 200, neuronsPerDay: 9_000, audioSecondsPerDay: 3_600, maxOutputTokens: 1_024 },
+    limits: { requestsPerDay: 200, neuronsPerDay: 9_000, audioSecondsPerDay: 3_600, maxOutputTokens: 1_024, usdCentsPerDay: 0 },
     lastDays: [{ day: "2026-10-31", requests, neurons }],
+    providers: [
+      { id: "anthropic", configured: true, state: "no_credit" },
+      { id: "openai", configured: false, state: "ok" },
+    ],
     pricing: { asOf: "2026-10-31", sourceUrl: "https://developers.cloudflare.com/workers-ai/platform/pricing/", usdPer1000Neurons: 0.011, freeNeuronsPerDay: 10_000 },
   });
   await page.route("**/api/usage", (route) =>
@@ -158,6 +164,12 @@ test("the usage card warns near and at the limit, and a failed report shows an e
   await expect(usage.getByText(/Limite do dia atingido/)).toHaveCount(0);
   await expect(usage.getByRole("meter", { name: "Pedidos à IA" })).toHaveAttribute("aria-valuetext", "170 de 200 · 85% usado");
   await expect(usage.getByText("2 com erro · 1 interrompidas")).toBeVisible();
+  await expect(usage.getByText("US$\u00a00,00 hoje, sem teto de gastos")).toBeVisible();
+  // The paid companies: one out of credit, one with no key.
+  const companies = page.getByRole("region", { name: "Modelos pagos" });
+  await expect(companies.getByRole("listitem").filter({ hasText: "Anthropic" }).getByText("Sem crédito")).toBeVisible();
+  await expect(companies.getByRole("listitem").filter({ hasText: "OpenAI" }).getByText("Sem chave")).toBeVisible();
+  await expect(companies.getByRole("button", { name: "Já recarreguei" })).toBeVisible();
 
   mode = "at";
   await page.reload();
@@ -173,4 +185,82 @@ test("the usage card warns near and at the limit, and a failed report shows an e
   await retry.focus();
   await page.keyboard.press("Enter");
   await expect(usage.getByText(/Perto do limite/)).toBeVisible();
+});
+
+test("a paid model: the warning on what leaves comes before the save, and the spending shows up today and by period @mobile", async ({ page }) => {
+  await openAiTab(page);
+  const form = page.getByRole("region", { name: "Modelo e limites" });
+  const model = form.getByLabel("Modelo de conversa");
+  // Local development has no keys and needs none: the paid models are simulated (src/ai/index.ts).
+  await model.selectOption({ label: "Claude Haiku 5.5 · US$\u00a00,10 / US$\u00a00,50 por milhão de tokens" });
+  await expect(form.getByText("Cerca de US$\u00a00,0008 por resposta comum, cobrados pela Anthropic na sua conta de lá.")).toBeVisible();
+
+  let patched = 0;
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/settings") && r.method() === "PATCH") patched += 1;
+  });
+  await form.getByRole("button", { name: "Salvar limites" }).click();
+  const warning = page.getByRole("dialog", { name: "Usar um modelo pago?" });
+  await expect(warning).toBeVisible();
+  await expect(warning.getByText(/Fica na sua conta: o que estiver marcado como “Nunca enviar para fora”/)).toBeVisible();
+  await expect(warning.getByText(/guarda os dados por até 30 dias/)).toBeVisible();
+  await expect(warning.getByRole("link", { name: "Ler as regras da Anthropic" })).toHaveAttribute("target", "_blank");
+  await expectAccessible(page, "ia-aviso-modelo-pago");
+  // Going back saves nothing.
+  await warning.getByRole("button", { name: "Voltar" }).click();
+  await expect(warning).toBeHidden();
+  expect(patched).toBe(0);
+
+  await form.getByRole("button", { name: "Salvar limites" }).click();
+  const saved = page.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PATCH");
+  await page.getByRole("dialog", { name: "Usar um modelo pago?" }).getByRole("button", { name: "Usar o modelo pago" }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(page.getByRole("status").filter({ hasText: "Limites salvos." })).toBeVisible();
+
+  // The ceiling: off by default, a value of the owner's, refused past the top.
+  const cap = form.getByLabel("Teto de gastos por dia (US$)");
+  await expect(cap).toHaveValue("0");
+  await cap.fill("2,555");
+  await expect(form.getByText("Use um valor de 0 a 10.000, com até 2 casas depois da vírgula.")).toBeVisible();
+  await cap.fill("2,5");
+  const capSaved = page.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PATCH");
+  await form.getByRole("button", { name: "Salvar limites" }).click();
+  expect((await capSaved).status()).toBe(200);
+  const usage = page.getByRole("region", { name: "Uso de hoje" });
+  await expect(usage.getByRole("meter", { name: "Modelos pagos hoje" })).toHaveAttribute("max", "2.5");
+
+  // One answer on the paid model: today and the period both show what it cost.
+  const chat = await page.request.post("/api/chat", { headers: CSRF, data: { message: "Oi, Zuri" } });
+  expect(chat.status()).toBe(200);
+  await page.reload();
+  await expect(usage.getByRole("meter", { name: "Modelos pagos hoje" })).not.toHaveAttribute("value", "0");
+  const panel = page.getByRole("region", { name: "Consumo por período" });
+  await expect(panel.getByRole("figure", { name: "Gasto por dia com modelos pagos" }).getByText("Claude Haiku 5.5")).toBeVisible();
+  await expect(panel.getByRole("table").last().getByRole("rowheader").filter({ hasText: "Claude Haiku 5.5" })).toBeVisible();
+  await panel.getByRole("button", { name: "30 dias" }).click();
+  await expect(panel.getByRole("button", { name: "30 dias" })).toHaveAttribute("aria-pressed", "true");
+  // The numbers behind the bars, a row per day with use.
+  await panel.getByText("Ver os números de cada dia").click();
+  await expect(panel.getByRole("table").first().getByRole("row")).not.toHaveCount(1);
+  await expectAccessible(page, "ia-consumo-pago");
+  expect(await tooSmallControls(page), "every control of the AI tab is a 44 px target").toEqual([]);
+
+  const reset = await page.request.patch("/api/settings", { headers: CSRF, data: { aiModel: "@cf/zai-org/glm-4.7-flash", aiUsdCentsPerDay: 0 } });
+  expect(reset.status()).toBe(200);
+});
+
+test("the usage panel follows a new answer while it is open, without a reload", async ({ page }) => {
+  await openAiTab(page);
+  // At least one answer today, so the panel has its numbers (not the empty state).
+  expect((await page.request.post("/api/chat", { headers: CSRF, data: { message: "Oi" } })).status()).toBe(200);
+  await page.reload();
+  const panel = page.getByRole("region", { name: "Consumo por período" });
+  const requests = panel.getByText("Pedidos à IA", { exact: true }).locator("..").getByRole("definition").first();
+  await expect(requests).toHaveText(/^\d[\d.]*$/);
+  const before = Number((await requests.textContent())?.replace(/\D/g, ""));
+  await page.evaluate(() => Object.assign(window, { __zuriMark: 1 }));
+  const chat = await page.request.post("/api/chat", { headers: CSRF, data: { message: "Oi de novo" } });
+  expect(chat.status()).toBe(200);
+  await expect.poll(async () => Number((await requests.textContent())?.replace(/\D/g, "")), { timeout: 10_000 }).toBeGreaterThan(before);
+  expect(await page.evaluate(() => (window as unknown as { __zuriMark?: number }).__zuriMark)).toBe(1);
 });
