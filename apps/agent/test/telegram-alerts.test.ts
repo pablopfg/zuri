@@ -739,7 +739,7 @@ describe("the notices' group", () => {
     expect(sent()[0]?.body.chat_id).toBe(OWNER);
   });
 
-  it("Remover grupo (password typed recently) and Desvincular both take the group away; the bot leaves it", async () => {
+  it("Remover grupo (password typed recently) and Desconectar both take the group away; the bot leaves it", async () => {
     await linkOwner();
     await linkGroup();
     const status = await json<TelegramStatus>(await api("DELETE", "/telegram/group"), 200);

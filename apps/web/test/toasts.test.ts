@@ -44,12 +44,12 @@ describe("toast store", () => {
 
   it("gives each toast its own id, its close label and whether it stays until closed", () => {
     const { s, paint } = store();
-    const first = s.show("Salvo.", "Fechar");
+    const first = s.show("Salvo", "Fechar");
     const second = s.show("2 conflitos", "Close", { persistent: true });
     paint();
     expect(first).not.toBe(second);
     expect(s.snapshot()).toEqual([
-      { id: first, message: "Salvo.", closeLabel: "Fechar", persistent: false },
+      { id: first, message: "Salvo", closeLabel: "Fechar", persistent: false },
       { id: second, message: "2 conflitos", closeLabel: "Close", persistent: true },
     ]);
   });

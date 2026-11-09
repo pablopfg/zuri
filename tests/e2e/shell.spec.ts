@@ -29,7 +29,7 @@ test("an unsafe ?next= opens the home page instead of another site", async ({ pa
 test("a wrong password shows the server's message and keeps the e-mail", async ({ page }) => {
   await page.goto("/entrar");
   await signIn(page, "senha errada para o teste de ponta a ponta");
-  await expect(page.getByRole("alert")).toHaveText("E-mail ou senha incorretos.");
+  await expect(page.getByRole("alert")).toHaveText("E-mail ou senha incorretos. Confira e tente de novo.");
   await expect(page.getByLabel("E-mail")).toHaveValue(EMAIL);
   await expect(page.getByLabel("Senha", { exact: true })).toHaveValue("");
   await expect(page.getByLabel("Senha", { exact: true })).toBeFocused();
@@ -172,7 +172,7 @@ test("changing the language to English changes the interface and the API's error
     await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     const res = await page.request.get("/api/nada", { headers: CSRF });
-    expect((await res.json()).message).toBe("Not found.");
+    expect((await res.json()).message).toBe("This doesn't exist or is already gone. Check the address.");
   } finally {
     const back = await page.request.patch("/api/settings", { headers: CSRF, data: { language: "pt-BR" } });
     expect(back.status()).toBe(200);
@@ -270,6 +270,6 @@ test("a sensitive change asks for the password again, then repeats itself", asyn
   await password.fill(PASSWORD);
   await dialog.getByRole("button", { name: "Confirmar" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("status").filter({ hasText: "Salvo." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Salvo" })).toBeVisible();
   expect(saves).toBe(3);
 });

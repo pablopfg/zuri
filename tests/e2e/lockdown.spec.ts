@@ -89,12 +89,12 @@ test("without two-step sign-in it is one tap; Não fui eu unlinks Telegram, aski
   await expect(page.getByText("Se foi você que pediu o bloqueio e está tudo bem, é só sair.")).toBeVisible();
   await expect(page.getByLabel("Código do aplicativo")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Não fui eu: desvincular o Telegram" }).click();
+  await page.getByRole("button", { name: "Não fui eu: desconectar o Telegram" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Senha", { exact: true }).fill("qualquer senha de teste");
   await dialog.getByRole("button", { name: "Confirmar" }).click();
-  await expect(page.getByText("Telegram desvinculado. O bloqueio continua até você sair dele.")).toBeVisible();
+  await expect(page.getByText("Telegram desconectado. O bloqueio continua até você sair dele.")).toBeVisible();
   expect(unlinks).toBe(2);
   await expectAccessible(page, "modo de bloqueio sem código");
 });

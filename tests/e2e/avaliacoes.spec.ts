@@ -49,7 +49,7 @@ test("turns the reviews on, tells the team of a negative one and publishes an ap
   // The trial is the owner's and outlives turning the reviews off: another project's run may have counted one already.
   await expect(reviews.getByText(/Você aprovou \d de 10 rascunhos sem mudar nada\./)).toBeVisible();
   await reviews.getByRole("button", { name: "Salvar avaliações" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Avaliações salvas." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Avaliações salvas" })).toBeVisible();
   await expectAccessible(page, "integracoes-avaliacoes");
 
   await reviews.getByRole("link", { name: "Abrir avaliações" }).click();
@@ -58,7 +58,7 @@ test("turns the reviews on, tells the team of a negative one and publishes an ap
   // Saving made the first read, which keeps what exists as history; this one brings the three new reviews.
   await expect(page.getByText(/^Última leitura:/)).toBeVisible();
   await page.getByRole("button", { name: "Conferir agora" }).click();
-  await expect(page.getByRole("status").filter({ hasText: /Avaliações conferidas\.|Conferi uma parte/ })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: /Avaliações conferidas|Uma parte foi conferida/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Precisa de você (3)" })).toHaveAttribute("aria-pressed", "true");
 
   const diego = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Diego" }) });
@@ -111,7 +111,7 @@ test("turns the reviews on, tells the team of a negative one and publishes an ap
   await page.goto("/configuracoes/integracoes");
   await reviews.getByRole("button", { name: "Desligar avaliações" }).click();
   await page.getByRole("dialog", { name: "Desligar as avaliações?" }).getByRole("button", { name: "Desligar avaliações" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Avaliações desligadas." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Avaliações desligadas" })).toBeVisible();
   await page.goto("/contatos/avaliacoes");
   await expect(page.getByText("Avaliações desligadas", { exact: true })).toBeVisible();
 });

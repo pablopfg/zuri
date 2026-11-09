@@ -192,7 +192,7 @@ describe("MCP with OAuth sign-in", () => {
     await fresh();
     const refused = await api("POST", "/mcp/oauth/callback", { ...theirs, iss: ISSUER });
     expect(refused.status).toBe(400);
-    expect((await errorBody(refused)).message).toBe("Esse login venceu ou já foi usado. Comece de novo em Configurações › Integrações.");
+    expect((await errorBody(refused)).message).toBe("Essa entrada no serviço venceu ou já foi usada. Comece de novo em Configurações › Integrações.");
     expect(oauth.tokens.size).toBe(0);
     // Left alone: still that session's to finish, and the owner's own attempt works.
     expect((await record(server.id))?.state).toBe(theirs.state);
@@ -221,7 +221,7 @@ describe("MCP with OAuth sign-in", () => {
   it("checks the callback's size and fields at their exact limits", async () => {
     const server = await addOAuthServer();
     const { state } = approve(server);
-    const expiredMessage = "Esse login venceu ou já foi usado. Comece de novo em Configurações › Integrações.";
+    const expiredMessage = "Essa entrada no serviço venceu ou já foi usada. Comece de novo em Configurações › Integrações.";
     const fields = async (body: unknown) => ((await (await api("POST", "/mcp/oauth/callback", body)).json()) as { details?: unknown }).details;
     // 2,049 characters of code and 201 of error never reach the service; 2,048 and 200 do (and fail there).
     expect(await fields({ state: `${server.id}.${"B".repeat(43)}`, code: "c".repeat(2049) })).toMatchObject({ fields: ["code"] });

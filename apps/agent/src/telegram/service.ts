@@ -35,7 +35,7 @@ import { ReadLock } from "./read-lock.ts";
 import { isSecurityAction, isSecurityCommand, OPEN_SECURITY_COMMANDS, type TelegramSecurity } from "./security.ts";
 
 /** Bump when the menu's commands change: the object re-sends it on start (setMyCommands). */
-export const TELEGRAM_MENU_VERSION = 5;
+export const TELEGRAM_MENU_VERSION = 6;
 
 /** The commands in the bot's menu. Steps 13 to 16 add theirs and bump TELEGRAM_MENU_VERSION. */
 const MENU: readonly { command: string; description: MessageKey }[] = [
@@ -1245,7 +1245,7 @@ export class TelegramService {
     return this.#statusNow(null);
   }
 
-  /** "Desvincular": the account stops being heard at once; the bot says goodbye if it can. */
+  /** "Desconectar": the account stops being heard at once; the bot says goodbye if it can. */
   async unlink(client: ClientInfo, session: string): Promise<void> {
     const link = this.deps.links.private();
     const group = this.deps.links.group();

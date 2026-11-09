@@ -295,7 +295,7 @@ describe("linking the owner's account", () => {
         { command: "sessoes", description: "Sessões abertas no app" },
         { command: "encerrar_sessoes", description: "Encerrar todas as sessões do app" },
         { command: "tokens", description: "Tokens de acesso remoto" },
-        { command: "pausar_rotinas", description: "Pausar as rotinas com IA" },
+        { command: "pausar_rotinas", description: "Pausar as rotinas da Zuri" },
         { command: "bloquear", description: "Modo de bloqueio de emergência" },
         { command: "ajuda", description: "O que eu faço por aqui" },
       ],

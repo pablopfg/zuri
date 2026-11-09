@@ -4,7 +4,7 @@
  */
 export const ptBRAgents = {
   "web.agents.title": "Agentes",
-  "web.agents.description": "Cada parte da Zuri que usa IA tem os próprios ajustes. As regras de segurança ficam fixas e valem acima do que você escrever aqui.",
+  "web.agents.description": "Cada parte da Zuri que usa IA tem as próprias configurações. As regras de segurança ficam fixas e valem acima do que você escrever aqui.",
   "web.agents.name.chat": "Conversa",
   "web.agents.about.chat": "Responde você no app e no Telegram e faz as rotinas.",
   "web.agents.name.summary": "Resumo da conversa",
@@ -44,7 +44,7 @@ export const ptBRAgents = {
   "web.agents.invalid.tokens": "Use um número inteiro de {min} a {max}.",
   "web.agents.invalid.prompt": "Até {max} caracteres, sem < nem > e sem caracteres invisíveis.",
   "web.agents.save": "Salvar",
-  "web.agents.saved": "Ajustes salvos. Valem a partir da próxima resposta.",
+  "web.agents.saved": "Configurações salvas. Valem a partir da próxima resposta.",
   "web.agents.unchanged": "Nada mudou.",
   "web.agents.passwordNote": "Para salvar, a Zuri pede sua senha se você não a digitou nos últimos 15 minutos.",
   "web.agents.reset": "Voltar ao padrão",
@@ -57,7 +57,7 @@ export const ptBRAgents = {
   "web.agents.versionCurrent": "Em uso",
   "web.agents.restore": "Voltar para esta",
   "web.agents.restoreLabel": "Voltar para esta, a versão {version}",
-  "web.agents.restored": "Voltou para a versão {version}.",
+  "web.agents.restored": "Voltou para a versão {version}",
   "web.agents.versionKept": "A Zuri guarda as {count} versões mais recentes.",
   "web.agents.promptVersion": "Marca do prompt em uso: {value}",
 } as const;

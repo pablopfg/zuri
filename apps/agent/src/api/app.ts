@@ -154,7 +154,7 @@ const WHILE_SECOND_STEP_SETUP = new Set([
 /**
  * Signed-in routes that still work during a lockdown (step 16): the session
  * itself, typing the password again, "Sair do bloqueio", reading the settings (the language), and the
- * Telegram card, whose Desvincular is "Não fui eu". Everything else answers
+ * Telegram card, whose Desconectar is "Não fui eu". Everything else answers
  * 423 LOCKDOWN_ACTIVE until the owner leaves it.
  */
 const WHILE_LOCKDOWN = new Set([

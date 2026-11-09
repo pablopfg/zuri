@@ -59,7 +59,7 @@ test("adds a server, turns a tool on, approves its call in the chat and removes 
   await refused.getByRole("button", { name: "Cancelar" }).click();
 
   await addServer(page, name, "https://docs.exemplo.com.br/mcp");
-  await expect(page.getByRole("status").filter({ hasText: "Servidor adicionado e conectado." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Servidor adicionado e conectado" })).toBeVisible();
   const card = page.getByRole("article").filter({ has: page.getByRole("heading", { name }) });
   await expect(card.getByText("Conectado")).toBeVisible();
   await expect(card.getByText("0 de 2 ferramentas ligadas")).toBeVisible();
@@ -98,7 +98,7 @@ test("adds a server, turns a tool on, approves its call in the chat and removes 
   const confirm = page.getByRole("dialog", { name: "Remover servidor?" });
   await expect(confirm).toContainText(name);
   await confirm.getByRole("button", { name: "Remover" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Servidor removido." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Servidor removido" })).toBeVisible();
   await expect(page.getByRole("heading", { name })).toHaveCount(0);
 });
 
@@ -142,7 +142,7 @@ test("signs in to a service with OAuth: the service's page, back to the app, con
   await dialog.getByRole("textbox", { name: "Nome" }).fill(name);
   await dialog.getByRole("textbox", { name: "Endereço" }).fill("https://conta.exemplo.com.br/mcp");
   await dialog.getByRole("combobox", { name: "Acesso" }).selectOption("oauth");
-  await expect(dialog.getByText("Ao salvar, a Zuri prepara o login")).toBeVisible();
+  await expect(dialog.getByText("Ao salvar, a Zuri prepara a entrada")).toBeVisible();
   await dialog.getByRole("button", { name: "Adicionar e conectar" }).click();
   const card = page.getByRole("article").filter({ has: page.getByRole("heading", { name }) });
   // Waiting for the first sign-in is a step to take, not a fault.
@@ -204,7 +204,7 @@ test("raises a tool that writes up to routines, with the warning, and sets the o
     await free.check();
     await expectAccessible(page, "automacoes-ferramentas");
     await edit.getByRole("button", { name: "Salvar" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Alterações salvas." }).first()).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Alterações salvas" }).first()).toBeVisible();
     const saved = (await (await page.request.get(`/api/mcp/routines/${routineId}/tools`, { headers: CSRF })).json()) as { tools: { label: string; allowed: boolean }[] };
     expect(saved.tools.find((t) => t.label === `Buscar documentos · ${name}`)?.allowed).toBe(true);
   } finally {

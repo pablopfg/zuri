@@ -89,8 +89,8 @@ test("a task: create with a deadline and a project, edit, complete, delete and r
   await expect(page).toHaveURL(/\/configuracoes\/dados$/);
   await page.getByRole("button", { name: `Restaurar ${title} de dezembro` }).click();
   // The confirmation is a toast: spoken once by the status region, shown at the foot of the screen.
-  await expect(page.getByRole("status").filter({ hasText: `"${title} de dezembro" voltou para o lugar.` })).toHaveCount(1);
-  await expect(page.getByText(`"${title} de dezembro" voltou para o lugar.`).last()).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: `"${title} de dezembro" voltou para o lugar` })).toHaveCount(1);
+  await expect(page.getByText(`"${title} de dezembro" voltou para o lugar`).last()).toBeVisible();
 
   await page.goto("/tarefas");
   await page.getByRole("button", { name: "Concluídas" }).click();
@@ -113,7 +113,7 @@ test("a note: write Markdown, preview it safely, search, delete and restore @mob
   await page.getByRole("button", { name: "Salvar" }).click();
   await expect(page).toHaveURL(/\/notas\/[0-9a-f-]{36}$/);
 
-  await page.getByRole("tab", { name: "Visualizar" }).click();
+  await page.getByRole("tab", { name: "Prévia" }).click();
   const panel = page.getByRole("tabpanel");
   await expect(panel.getByRole("heading", { name: "Bolo de laranja" })).toBeVisible();
   await expect(panel.locator("img")).toHaveCount(0);
@@ -126,7 +126,7 @@ test("a note: write Markdown, preview it safely, search, delete and restore @mob
   await page.getByLabel("Texto da nota").pressSequentially("\n- açúcar");
   await expect(page.getByText("Alterações não salvas")).toBeVisible();
   await page.getByLabel("Texto da nota").press("ControlOrMeta+s");
-  await expect(page.getByRole("status").filter({ hasText: "Salvo." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Salvo" })).toBeVisible();
 
   // Leaving with unsaved text asks first; staying keeps the text.
   await page.getByLabel("Texto da nota").pressSequentially("\n- canela");

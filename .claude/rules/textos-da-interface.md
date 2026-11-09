@@ -21,8 +21,14 @@ novo ou mexido** já segue isto. Detalhes, glossário completo e exemplos:
 - Erro diz o que houve e o que fazer ("Não deu para salvar. Tente de novo.").
   Nada de "Ops", "Erro!" ou código cru na frente.
 - Glossário: Apagar (não Excluir), Remover só para ligações sem perda de dado,
+  Conectar/Desconectar para contas (Telegram, Google; nunca Desvincular),
   Salvar, Editar, Cancelar, Tentar de novo, Ligar/Desligar, Aprovar/Recusar,
-  Aviso, Automação (e "Rotina da Zuri" para a com IA), Conversa, Entrar/Sair.
+  Aviso, Automação (e "Rotina da Zuri" para a com IA), Conversa, Entrar/Sair
+  ("a entrada", nunca "login").
+- O lint de microcopy (`scripts/lint-microcopy.ts`, dentro de
+  `npm run lint`) barra o que dá para barrar; exceção só em `i18n-ignore.json`
+  › `microcopy`, por chave e regra, com o motivo. `node
+  scripts/inventario-de-textos.ts` lista todas as chaves com o tipo.
 - Sem marcas de IA: sem travessão (—), sem "!" em texto de sistema (só no
   cumprimento da Zuri), sem "não é só X, é Y", trios forçados, "com
   certeza", "perfeito", emoji. Passe o `humanizer:humanizer` antes do commit.

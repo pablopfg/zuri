@@ -26,7 +26,7 @@ test("turns remote access on, makes an events token shown once, sends an event w
   await page.getByRole("button", { name: "Novo token" }).click();
   await page.getByLabel("Nome do token").fill("n8n");
   await page.getByRole("radio", { name: /Só enviar eventos/ }).check();
-  await page.getByRole("button", { name: "Gerar token" }).click();
+  await page.getByRole("button", { name: "Criar token" }).click();
   const dialog = page.getByRole("dialog", { name: "Copie o token agora" });
   await expect(dialog).toBeVisible();
   const secret = (await dialog.locator("code").textContent())?.trim() ?? "";

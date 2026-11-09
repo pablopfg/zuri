@@ -65,7 +65,7 @@ describe("GET and PATCH /api/settings", () => {
 
     const refused = await patchSettings(ip, cookie, { language: "fr" });
     expect(refused.status).toBe(400);
-    expect(await errorBody(refused)).toMatchObject({ code: "VALIDATION_FAILED", message: "Check the data you sent." });
+    expect(await errorBody(refused)).toMatchObject({ code: "VALIDATION_FAILED", message: "Some of the data isn't right. Check the fields and try again." });
   });
 
   it.each([

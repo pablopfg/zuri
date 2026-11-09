@@ -121,7 +121,7 @@ describe("signing in with the second step", () => {
     await runOwner((db) => db.run(`UPDATE zur_mfa_challenges SET expires_at = ?`, Date.now() - 1));
     const res = await post("/api/auth/mfa", ip, mfa, { code: await totpCode(secret, now() + 1) });
     expect(res.status).toBe(401);
-    expect(apiErrorSchema.parse(await res.json()).message).toBe("Este login venceu. Digite a sua senha de novo.");
+    expect(apiErrorSchema.parse(await res.json()).message).toBe("Esta entrada venceu. Digite a sua senha de novo.");
     expect(res.headers.getSetCookie()).toEqual(["__Host-zuri_mfa=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0; Secure"]);
   });
 

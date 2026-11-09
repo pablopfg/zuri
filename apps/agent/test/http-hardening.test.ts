@@ -140,7 +140,7 @@ describe("sign-in body limit over HTTP", () => {
       const body = JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, pad: "x".repeat(8 * 1024) });
       const res = await login(h, { "cf-connecting-ip": "192.0.2.80" }, body);
       expect(res.status).toBe(400);
-      expect(await errorBody(res)).toMatchObject({ code: "VALIDATION_FAILED", message: "O pedido é grande demais." });
+      expect(await errorBody(res)).toMatchObject({ code: "VALIDATION_FAILED", message: "O envio é grande demais. Mande menos coisa de uma vez." });
       expect(res.headers.getSetCookie()).toEqual([]);
     });
   });
