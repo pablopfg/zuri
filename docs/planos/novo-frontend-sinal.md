@@ -1,10 +1,10 @@
 # Plano · Levar o Sinal refinado para o app
 
-Situação: plano. Pedido do Pablo em 09/11/2026, 20:19. Base: o protótipo da rodada 5 (`docs/planos/modelos-frontend/prototipo-v5.html`), o desenho das funcionalidades ([sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md)) e a develop de 09/11.
+Situação: plano. Pedido do Pablo em 09/11/2026, 20:19; revisto com os pedidos das 21:51 e 22:08 (seção 11, cronograma). Base: o protótipo da rodada 5 (`docs/planos/modelos-frontend/prototipo-v5.html`), o desenho das funcionalidades ([sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md)) e a develop de 09/11.
 
 ## 1. Resumo
 
-O Sinal refinado entra no app em **9 PRs de interface**, uma área por vez, sem mudar a API. As funcionalidades novas que pedem servidor (pedidos de avaliação, homônimos, Chatwoot, fluxos prontos, catálogo de modelos, endereço e foto dos contatos) vêm em PRs próprias, cada uma com o seu plano, e a interface delas entra junto.
+O Sinal refinado entra no app em **9 PRs de interface**, uma área por vez, sem mudar a API. As funcionalidades novas que pedem servidor (pedidos de avaliação, homônimos, Chatwoot, módulos e conexões, catálogo de modelos, campos e sincronização dos contatos, área de Avaliações, sugestões do Início, consumo por hora e por mês) vêm em PRs próprias, cada uma com o seu plano, e a interface delas entra junto.
 
 Duas travas mandam na ordem:
 
@@ -37,17 +37,17 @@ A varredura de 09/11 comparou as rotas, os cartões de Configurações e os comp
 
 | Da develop | No protótipo | Entra na PR |
 | --- | --- | --- |
-| Início (saudação, "Precisa de você", seu dia, próximos dias) | Sim, com a cortina do que passou e as pendências | C |
+| Início (saudação, "Precisa de você", seu dia, próximos dias) | Sim, com a cortina do que passou e as pendências; saudação pela hora (bom dia até 11:59, boa tarde até 17:59, boa noite depois) | C |
 | Conversa (lista, voz, cartões de plano, aprovações) | Sim; sem o clipe, que não existe no servidor | D |
 | Tarefas (abas, pastas, prioridade, lixeira) | Sim; abas filtram, o diálogo de Pastas cria, renomeia e apaga, e a lixeira abre só com as tarefas | E |
 | Notas (lista, editor, Escrever e Prévia, pastas) | Sim, com "Nova nota", salvamento automático, "Pôr numa pasta", menu da nota e lixeira só com as notas | E |
-| Agenda (dia, semana, mês, criar e editar evento) | Sim: as três visões funcionam, "Novo evento" cria na semana, com a linha de agora | F |
-| Contatos (pessoas, clientes do CRM, avaliações) | Sim, com campos completos, WhatsApp, homônimos e pedidos | G |
-| Automações (rotinas, sugestão da Zuri, fluxos, conexões, editor de fluxo, menu ⋯) | Sim, mais o assistente, o editor de passos, "Nova conexão" e a aba Prontos | H |
+| Agenda (dia, semana, mês, criar e editar evento) | Sim: as três visões funcionam, "Novo evento" cria na semana, com a linha de agora; o atalho do rodapé diz só "Configurações" | F |
+| Contatos (pessoas, clientes do CRM, avaliações) | Pessoas, com todos os campos do Google, etiquetas no topo e contagem regressiva. Clientes sai da tela (o CRM continua guardando). Avaliações vira item próprio do menu | G e G2 |
+| Automações (rotinas, sugestão da Zuri, fluxos, conexões, editor de fluxo, menu ⋯) | Sim, em quatro partes no menu lateral: Rotinas, Fluxos, Módulos e Conexões | H |
 | Memória ("Nova memória" em diálogo, tipos, filtros, conflitos, "nunca enviar para fora" marcável no menu ⋯) | Sim, com o microfone dentro do diálogo | D |
 | Configurações › Conta (preferências, senha, tema; sem o cartão "Sair deste aparelho") | Sim, tema só com ícones | H |
 | Configurações › Segurança (duas etapas, passkeys, limites de sessão, atividade, acesso pela API) | Sim; limites de sessão em "Saída automática". Encerrar as sessões abertas continua só no Telegram (`/sessoes`, `/encerrar_sessoes`), como na develop | H |
-| Configurações › Uso da IA (uso de hoje, consumo por período) e › Modelos e limites (modelo, catálogo, "Limites avançados" recolhidos, agentes, modelos pagos, busca por significado) | Sim, nas duas seções, com o painel "Ajustar" | H |
+| Configurações › Uso da IA (uso de hoje, consumo por período por dia, semana, mês e ano) e › Modelos e limites (modelo, catálogo, "Limites avançados" recolhidos, agentes, modelos pagos, busca por significado) | Sim, nas duas seções, com o painel "Ajustar" | H |
 | Configurações › Avisos (canais, o que vai para cada canal, Telegram, resumo do dia, a Zuri de olho, prioridades aprendidas e últimos envios no fim) | Sim, na ordem da develop | H |
 | Configurações › Integrações (Google, servidores MCP) | Sim | H |
 | Configurações › Dados (backup, importar, backup automático, restaurar, lixeira com "Voltar" e "Ver tudo") | Sim; "Baixar backup" baixa um arquivo de exemplo | H |
@@ -55,7 +55,7 @@ A varredura de 09/11 comparou as rotas, os cartões de Configurações e os comp
 | Acessos (`/acessos`) | "Ver todos os acessos" em Segurança abre a lista com filtro | H |
 | Paleta ⌘K | Sim | B |
 | Lembrete de duas etapas, aviso de sessão perto do fim, senha de novo, confirmação | Estados das telas | A |
-| Entrar, primeiro acesso, segundo passo, recuperação, troca de senha, bloqueio, `/aprovar`, 404 | Entrar no protótipo; o resto segue o mesmo desenho | I |
+| Entrar, primeiro acesso, segundo passo, recuperação, troca de senha, bloqueio, `/aprovar`, 404 | Entrar e "Esqueci minha senha" no protótipo, com a verificação de robô; o resto segue o mesmo desenho | I |
 
 ### O que precisa de servidor (PRs à parte, cada uma com plano)
 
@@ -63,9 +63,12 @@ A varredura de 09/11 comparou as rotas, os cartões de Configurações e os comp
 | --- | --- |
 | Fila do pedido de avaliação, dias úteis, homônimos | [sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md), seção 8 |
 | Envio pelo Chatwoot | [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md) |
-| Fluxos prontos | [fluxos-prontos.md](fluxos-prontos.md) |
+| Módulos e conexões compartilhadas (Chatwoot uma vez só) | [modulos.md](modulos.md) |
+| Contatos a cada 5 min, Avaliações a cada 10 min, campos do Google, área de Avaliações com métricas | [sincronizacao-contatos-avaliacoes.md](sincronizacao-contatos-avaliacoes.md) |
+| Sugestões do Início pelo uso real | [sugestoes-do-inicio.md](sugestoes-do-inicio.md) |
+| Consumo da IA por hora (hoje) e por mês (ano) | seção 7, "Consumo por período" |
 | Catálogo de modelos da Cloudflare conferido sozinho | seção 9b do desenho das funcionalidades |
-| Endereço e foto dos contatos | seção 6 do desenho das funcionalidades |
+| Foto dos contatos | seção 6 do desenho das funcionalidades |
 | Configurações › Agenda (horário visível) | nova preferência; hoje a semana mostra o dia todo |
 
 Até a PR de servidor chegar, a interface daquela parte **não aparece**. Nada de botão que não faz nada.
@@ -102,9 +105,25 @@ Os textos do protótipo entram no catálogo pelas chaves existentes sempre que o
 | H · Automações e Configurações | Assistente de 5 passos, abas, "Acesso pela API", painéis | `pages/automations/*`, `pages/settings/*`, `components/security/*` |
 | I · Entrada | Entrar, primeiro acesso, segundo passo, recuperação, troca de senha, bloqueio, aprovar, 404 | `pages/LoginPage.tsx`, `pages/setup/*`, `pages/*Page.tsx` |
 
+### Tela de entrar (PR I)
+
+- **Textos:** "Seu dia em ordem, sem esforço." no lado da marca e "Continue de onde parou." embaixo de "Entrar". Só a marca e uma frase, como decidido às 13:37.
+- **Campo de e-mail sem exemplo dentro.** O texto de exemplo some quando a pessoa digita, tem pouco contraste e confunde com campo já preenchido. Fica o rótulo "E-mail" sempre visível em cima, `type="email"`, `autocomplete="username"`, `inputmode="email"`, `autocapitalize="none"` e `spellcheck="false"`, para o gerenciador de senhas preencher. Erro embaixo do campo, ligado por `aria-describedby`: "Digite o seu e-mail." ou "Confira o e-mail: falta alguma parte.".
+- **Verificação de robô.** Já existe na develop (`components/TurnstileWidget.tsx`, `auth/turnstile.ts`): é o Turnstile da Cloudflare, grátis, no modo "só quando precisa" (`appearance: interaction-only`). Na maioria das vezes passa sozinho, sem clique; só quando a Cloudflare desconfia da conexão aparece a caixa para marcar. O servidor confere cada token com a chave secreta, e o token vale uma vez. O cartão "Verificação concluída" do protótipo antigo sai: no lugar, uma linha discreta com três estados, "Conferindo a conexão…", "Conexão conferida" e, se o script não carregar, "A verificação de segurança não carregou." com "Recarregar a verificação". Entrar antes do fim mostra "Preparando a verificação de segurança…".
+- **"Esqueci minha senha"** fica ao lado do rótulo da senha e abre a recuperação que já existe (`/recuperar-senha`, etapa 11): e-mail, verificação, "Enviar o link" e a mesma resposta para qualquer e-mail ("Se o e-mail for o da conta, o link chega em alguns minutos. Ele vale por 30 minutos e funciona uma vez só."). O link pede o código de duas etapas quando ele está ligado. A tela deixa de dizer quando o envio de e-mail não está configurado; isso fica para o achado de auditoria já registrado (resposta uniforme), que precisa da decisão do Pablo.
+
+### Consumo por período (PR H e PR de servidor)
+
+Dia, Semana, Mês e Ano num seletor só, com um gráfico de colunas, a linha tracejada do teto diário (Semana e Mês), total, média e pico, e "Ver em tabela". A develop já tem `/api/usage/history?days=7|30|90` com retenção de 90 dias (P13). Faltam:
+
+- **Dia (por hora):** contadores por hora só de hoje, 24 linhas que se reaproveitam, zeradas à meia-noite.
+- **Ano (por mês):** um resumo por mês, gravado no primeiro uso de cada dia a partir do dia anterior; 12 linhas.
+
+Migration de acréscimo com as duas tabelas pequenas, `days=365` não é aceito: o ano lê o resumo por mês.
+
 ### Rotas e contratos
 
-Nenhuma mudança nas PRs A a I.
+Nenhuma mudança nas PRs A a I. As PRs de servidor listadas na seção 4 trazem as suas.
 
 ### Banco
 
@@ -138,14 +157,40 @@ Nenhum custo na Cloudflare. A fonte Figtree (licença OFL) vai em woff2 com subc
 - Capturas por `node scripts/capturas-da-interface.ts` em `docs/capturas/pr/<assunto>/`.
 - `npm run size` em cada PR.
 
-## 11. Entrega
+## 11. Entrega e cronograma
 
-| Ordem | PR | Depende de |
-| --- | --- | --- |
-| 1 | A · Fundamentos | Aprovação do Sinal refinado |
-| 2 | B · Casca | A; teto do JS aprovado pelo Pablo |
-| 3 | C, D, E, F, G, H, I | B; podem ir em paralelo, uma área por PR |
-| junto | PRs de servidor | Cada uma com o seu plano; a interface da parte entra junto |
+Tudo o que foi definido no protótipo entra no app. A ordem respeita as dependências; cada linha é uma PR para a `develop`, com plano, testes, QA, auditoria e capturas. "Servidor" vem antes da interface que usa aquilo, ou junto.
+
+| # | PR | O que entra | Depende de | Tamanho |
+| --- | --- | --- | --- | --- |
+| 1 | A · Fundamentos | Tokens, Figtree em woff2, peças base, tema só com ícones | Aprovação do Sinal refinado | M |
+| 2 | B · Casca | Menu lateral com Avaliações e as partes de Automações, menu de baixo no celular, folha "Mais", perfil e avisos em painel, ⌘K | A; teto do JS aprovado | G |
+| 3 | I · Entrada | Textos novos, campo de e-mail sem exemplo, linha da verificação, "Esqueci minha senha" ao lado da senha, recuperação no desenho novo | A | P |
+| 4 | C · Início | Saudação pela hora, cortina do que passou, pendências | B | M |
+| 5 | Servidor · sugestões | [sugestoes-do-inicio.md](sugestoes-do-inicio.md) e as sugestões no Início | C | M |
+| 6 | D · Conversa e Memória | Sem clipe; um componente de gravação para todos os microfones | B | M |
+| 7 | E · Tarefas e Notas | "Pastas", "Nova nota", salvamento automático | B | M |
+| 8 | F · Agenda | Linha de agora, legenda, rodapé "Configurações", preferência do horário visível (servidor pequeno junto) | B | M |
+| 9 | Servidor · sincronização | Contatos 5 min, Avaliações 10 min, etiquetas por hora, recarga só com mudança, campos novos ([plano](sincronizacao-contatos-avaliacoes.md), PR 1) | — | M |
+| 10 | G · Contatos | Sem Clientes, etiquetas no topo, contagem, ficha com todos os campos e "Vazio no Google" | B, 9 | M |
+| 11 | Servidor · métricas | Métricas das avaliações ([plano](sincronizacao-contatos-avaliacoes.md), PR 2) | — | P |
+| 12 | G2 · Avaliações | Área própria: Visão geral, Avaliações, Pedidos | B, 11 | M |
+| 13 | Servidor · consumo | Contadores por hora e resumo por mês | — | P |
+| 14 | H · Automações e Configurações | Rotinas, Fluxos, Módulos (vazia até a 16), Conexões, Configurações, consumo por dia/semana/mês/ano | B, 13 | G |
+| 15 | Servidor · conexões | Tipo de conexão (`http`, `chatwoot`), senha, troca de chave, remoção bloqueada em uso ([modulos.md](modulos.md)) | H | M |
+| 16 | Servidor · módulos | Manifesto, ensaio, comparação, rotas ([modulos.md](modulos.md), PR 1) | 15 | G |
+| 17 | Módulo · Pedido de avaliação | Fila, dias úteis, homônimos, Chatwoot ([envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md)) | 16, 12 | G |
+| 18 | Catálogo de modelos | Conferido sozinho uma vez por dia | H | P |
+| 19 em diante | Um módulo por fluxo do n8n | Na ordem do Pablo, cada um com a aprovação da exceção, se mandar mensagem a pacientes | 16 | M cada |
+
+Em paralelo depois da B: I, C, D, E, F; os servidores 9, 11 e 13 não dependem de interface e podem começar já. A PR de README da outra thread troca as capturas quando as PRs B a H entrarem.
+
+### Conferência antes de cada merge
+
+1. As capturas da PR batem com o protótipo nos 4 jeitos (claro, escuro, computador, celular).
+2. Todo botão da tela faz o que diz (mesma varredura de cliques do protótipo, agora no e2e).
+3. A tabela da seção 4 não perde nenhuma linha.
+4. `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:e2e` e `npm run size` verdes.
 
 ## 12. Riscos
 
@@ -165,3 +210,4 @@ Nenhum custo na Cloudflare. A fonte Figtree (licença OFL) vai em woff2 com subc
 1. Aprovar o Sinal refinado como a nova interface? Recomendação: sim; a PR A começa em seguida.
 2. Teto do JS inicial para a casca nova: medir na PR B e pedir com o número. Recomendação: aceitar até 141 kB se a economia não bastar.
 3. Configurações › Agenda (horário visível da semana) entra como preferência nova? Recomendação: sim, numa PR pequena de servidor junto da F.
+4. Ordem do cronograma da seção 11? Recomendação: como está, com os servidores 9, 11 e 13 começando já, porque não dependem da interface.

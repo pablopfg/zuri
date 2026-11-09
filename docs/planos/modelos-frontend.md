@@ -27,7 +27,7 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 
 - Protótipo: `docs/planos/modelos-frontend/prototipo-v5.html` (a barra do topo troca a tela e o tema).
 - Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, **Contatos**, Automações, Memória, Configurações, **Estados das telas** e Identidade visual.
-- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (160 imagens: as 12 telas e mais 28 vistas de dentro delas, entre elas o carregando, os painéis de perfil e de avisos, a nota nova, a memória e a conversa por voz, o assistente de automação, os fluxos, a ficha de contato com WhatsApp, a avaliação com homônimos, os pedidos de avaliação, as nove seções das configurações, o ajuste de um agente, o mês da agenda e a aba Prontos), e a comparação com a rodada 3 em `antes-depois-*.png`.
+- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (184 imagens: as 13 telas e mais 33 vistas de dentro delas, entre elas o carregando, "Esqueci minha senha" e "Confira o seu e-mail", os painéis de perfil e de avisos, a nota nova, a memória e a conversa por voz, o assistente de automação, os fluxos, os módulos, as conexões, a ficha de contato com WhatsApp, o contato sem nome e o só com e-mail, as avaliações com a lista, os homônimos e os pedidos, as nove seções das configurações, o consumo por ano, o ajuste de um agente e o mês da agenda), e a comparação com a rodada 3 em `antes-depois-*.png`.
 - Acessibilidade: axe (WCAG 2.1 e 2.2 A/AA e boas práticas) sem nenhuma violação nas 136 combinações, e nenhum erro de script.
 
 O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a fonte Figtree, os neutros em zinco e o verde como cor de ação. O que mudou foi o acabamento, regra por regra.
@@ -94,12 +94,30 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 ### Ajustes pedidos pelo Pablo (09/11, 20:19)
 
 - **Seu dia:** o que já passou e não pede nada vai para uma cortina recolhida ("4 já passaram"), que abre e fecha com animação curta (parada com "reduzir movimento"). Tarefa ou confirmação que passou da hora sem ser feita sobe para o topo, marcada como pendente, e o contador "N pendentes" fica ao lado da cortina. A lista se refaz a cada 30 segundos, junto com a linha vermelha, sem tirar o foco de quem está usando o teclado.
-- **Fluxos prontos:** Automações ganhou a aba "Prontos" (e não "Workflows", que confundiria com a aba "Fluxos", onde ficam os fluxos que o Pablo monta). Ali entram os fluxos do n8n reescritos no código da Zuri: vêm desligados, pedem só as chaves, testam a conexão e começam sempre em ensaio, que roda junto com o n8n sem enviar nada. Plano completo em [fluxos-prontos.md](fluxos-prontos.md).
+- **Fluxos prontos:** Automações ganhou a aba "Prontos" (e não "Workflows", que confundiria com a aba "Fluxos", onde ficam os fluxos que o Pablo monta). Ali entram os fluxos do n8n reescritos no código da Zuri: vêm desligados, pedem só as chaves, testam a conexão e começam sempre em ensaio, que roda junto com o n8n sem enviar nada. Plano completo em [modulos.md](modulos.md) (a aba virou "Módulos" às 21:51).
 - **Clipe:** o botão de anexar saiu de todas as conversas, porque a develop não trata arquivo enviado pelo chat.
 - **Todos os botões funcionam:** cada botão abre o diálogo, a lista ou o arquivo que promete (pastas, editor de fluxo, nova conexão, novo evento, visão de dia e de mês, códigos de recuperação, passkeys, chaves de API, todos os acessos, servidor MCP, backup, lixeira por tipo, funil, cliente, marca em SVG), com foco preso no diálogo, Esc e volta do foco a quem abriu. Ações que mexem em segurança pedem a senha, como no app.
 - **Conferência com a develop e plano de incorporação:** a lista do que existe na develop e onde fica no protótipo, mais as 9 PRs de interface, estão em [novo-frontend-sinal.md](novo-frontend-sinal.md). Faltavam "Últimos envios" nos avisos (entrou) e as páginas de primeira configuração, bloqueio, aprovação pelo Telegram e 404, que entram na PR I do plano.
 - **Etapa 26c (0.38.0):** a reorganização que entrou na develop hoje passou para o protótipo: Configurações com "Uso da IA" e "Modelos e limites" separados e os limites recolhidos, "Nova memória" num diálogo (com o microfone), menu "Mais opções" (⋯) em rotinas, fluxos e memórias com Apagar por último, lixeira aberta só com as tarefas ou só com as notas, Avisos na ordem nova e Conta sem o cartão "Sair deste aparelho".
 - **Protótipo interativo no repositório:** `docs/planos/modelos-frontend/prototipo-interativo.html` é a mesma versão do link publicado, com navegação pelo endereço e tema do aparelho. O `prototipo-v5.html` continua sendo o das capturas.
+
+### Ajustes pedidos pelo Pablo (09/11, 21:51)
+
+- **Contatos a cada 5 min, com contagem:** o topo da lista mostra "Nada mudou às 08:08 · Próxima em 4:12", que conta de verdade, sincroniza ao chegar a zero e recomeça. O "cache" já existe no servidor (o Google só manda o que mudou e contato igual não é regravado); o plano acrescenta etiquetas lidas por hora e a tela recarregando só com mudança. Plano em [sincronizacao-contatos-avaliacoes.md](sincronizacao-contatos-avaliacoes.md).
+- **Filtro por etiquetas:** já existia em Configurações. Agora o ícone de etiqueta no topo de Contatos abre a escolha das etiquetas sincronizadas (desmarcar tira as cópias da Zuri, nada muda no Google), e uma fileira de etiquetas filtra a lista na hora.
+- **Mesmos campos do Google:** a ficha mostra nome, telefones, e-mails, endereço, aniversário, datas, relações, empresa, site, chat, etiquetas, campos personalizados e observações. O que estiver vazio entra em "Vazio no Google". Contato sem nome aparece pelo telefone ("Sem nome no Google") e contato sem telefone mostra Ligar e WhatsApp desligados.
+- **Clientes:** saiu de Contatos. O CRM continua guardando os dados.
+- **Avaliações com área própria:** item no menu lateral, com Visão geral (índice de recomendação, nota média, respondidas, tempo até responder, índice por mês, notas por estrela, funil dos pedidos e o que precisa de você, por 30 dias, 6 meses ou 12 meses), Avaliações e Pedidos. Leitura a cada 10 min com contagem.
+- **Módulos e Conexões:** "Prontos" virou "Módulos". Automações tem quatro partes que aparecem no menu lateral: Rotinas, Fluxos, Módulos e Conexões. O Chatwoot é configurado uma vez em Conexões e os módulos só escolhem a conexão; mudar o endereço pede a chave de novo, e conexão em uso não pode ser removida. Plano em [modulos.md](modulos.md).
+- **Saudação pela hora:** bom dia até 11:59, boa tarde até 17:59, boa noite depois.
+
+### Ajustes pedidos pelo Pablo (09/11, 22:08)
+
+- **Tela de entrar:** "Seu dia em ordem, sem esforço." e "Continue de onde parou."; o e-mail ficou sem o exemplo dentro do campo; o cartão "Verificação concluída" virou uma linha discreta que confere sozinha; "Esqueci minha senha" fica ao lado do rótulo da senha e abre a recuperação por e-mail, com a mesma resposta para qualquer e-mail. Detalhes em [novo-frontend-sinal.md](novo-frontend-sinal.md), seção 7.
+- **Sugestões do Início:** saem do dia real (atrasadas, conta do dia, hora, segunda-feira, avaliação esperando). Plano com a IA só escolhendo e ordenando, nunca escrevendo o texto: [sugestoes-do-inicio.md](sugestoes-do-inicio.md).
+- **Agenda:** o atalho do rodapé diz só "Configurações".
+- **Consumo por período:** Dia, Semana, Mês e Ano, com teto diário tracejado, total, média, pico e tabela.
+- **Cronograma:** [novo-frontend-sinal.md](novo-frontend-sinal.md), seção 11, com as 19 PRs na ordem.
 
 ### Recomendação
 
