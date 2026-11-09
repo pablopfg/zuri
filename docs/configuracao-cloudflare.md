@@ -188,7 +188,7 @@ verificados na conta, o que é gratuito em todos os planos.
    exemplo `zuri@exemplo.com.br`). Fica como segredo para o domínio não ir para o
    repositório.
 3. O binding `SEND_EMAIL` com `destination_address` é gerado pelo deploy a partir
-   da variável `ZURI_ALERT_EMAIL_TO` do ambiente `production` do GitHub (etapa
+   do segredo `ZURI_ALERT_EMAIL_TO` do ambiente `production` do GitHub (etapa
    24). O endereço nunca entra no `wrangler.jsonc`.
 
 O destino é sempre o e-mail cadastrado na Zuri; o binding restrito ao endereço
@@ -264,7 +264,7 @@ cadastrado.
 
 1. Em **R2 Object Storage**, ligue o R2 e crie um bucket privado, por exemplo
    `zuri-backup`. Não ligue o acesso público nem um domínio para ele.
-2. O binding `BACKUP_BUCKET` é gerado pelo deploy a partir da variável
+2. O binding `BACKUP_BUCKET` é gerado pelo deploy a partir do segredo
    `ZURI_BACKUP_BUCKET` (o nome do bucket) do ambiente `production` do GitHub
    ([instalacao-cloudflare.md](instalacao-cloudflare.md#parte-3--github-ambiente-production)), como o `SEND_EMAIL`. Não crie o binding pelo painel: o deploy
    seguinte, que parte do `wrangler.jsonc`, o tiraria.

@@ -4,6 +4,7 @@
 //   node scripts/deploy/conferir-producao.ts enderecos   asks Cloudflare's API that workers.dev and the
 //                                                        preview URLs are off, then that workers.dev answers nothing
 //   node scripts/deploy/conferir-producao.ts saude       http:// goes to https://, and /api/health answers 200
+//   node scripts/deploy/conferir-producao.ts mascarar    masks the account's name before wrangler can print it
 //
 // The repository's Actions log is public: only HTTP statuses and setting names are
 // printed. The API token comes from the environment (CLOUDFLARE_API_TOKEN), never
@@ -12,6 +13,7 @@
 export const WORKER_NAME = "zuri";
 export const API = "https://api.cloudflare.com/client/v4";
 const ACCOUNT_ID = /^[0-9a-f]{32}$/;
+const NO_SUBDOMAIN = 10007;
 const SUBDOMAIN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const HOSTNAME = /^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/;
 // Cloudflare Access sends a visitor without its cookie to the team's sign-in page.
@@ -76,16 +78,22 @@ export async function checkAddresses(env: NodeJS.ProcessEnv, io: Io): Promise<Re
   }
   lines.push("workers.dev and preview URLs: off");
 
-  // From outside too: the account's workers.dev address must not serve anything.
+  // From outside too: the account's workers.dev address must not serve anything. Only a clear
+  // answer without a subdomain skips the probe; anything else fails, like the check above.
   let subdomain = "";
+  let none = false;
   try {
     const response = await io.fetch(`${base}/subdomain`, { headers, signal: timeout() });
-    const body = (await json(response)) as { result?: { subdomain?: unknown } } | null;
+    const body = (await json(response)) as { success?: boolean; result?: { subdomain?: unknown } | null; errors?: { code?: unknown }[] } | null;
     const found = body?.result?.subdomain;
-    if (response.ok && typeof found === "string" && SUBDOMAIN.test(found)) subdomain = found;
+    if (response.ok && body?.success === true && typeof found === "string" && SUBDOMAIN.test(found)) subdomain = found;
+    else if (response.ok && body?.success === true && (found === undefined || found === null || found === "")) none = true;
+    // 10007: the account never registered a workers.dev subdomain (wrangler reads it the same way).
+    else if (body?.success === false && body.errors?.some((e) => e.code === NO_SUBDOMAIN)) none = true;
   } catch {
-    // An account without a workers.dev subdomain has nothing to probe.
+    // Unreadable: fails below.
   }
+  if (!subdomain && !none) return fail("could not read the account's workers.dev subdomain to probe it");
   if (!subdomain) {
     lines.push("the account has no workers.dev subdomain to probe");
     return { ok: true, lines };
@@ -103,6 +111,27 @@ export async function checkAddresses(env: NodeJS.ProcessEnv, io: Io): Promise<Re
     if (status >= 200 && status < 400) return fail(`the workers.dev address still answers ${path}`);
   }
   return { ok: true, lines };
+}
+
+/**
+ * Masks the account's name before the deploy. On an authentication error wrangler
+ * prints the accounts the token sees, and a new account is named after the
+ * owner's e-mail ("<e-mail>'s Account"). Prints nothing else and never fails.
+ */
+export async function maskAccountName(env: NodeJS.ProcessEnv, io: Io): Promise<Result> {
+  const token = env.CLOUDFLARE_API_TOKEN ?? "";
+  const account = (env.CLOUDFLARE_ACCOUNT_ID ?? "").trim();
+  if (!token || !ACCOUNT_ID.test(account)) return { ok: true, lines: [] };
+  try {
+    const response = await io.fetch(`${API}/accounts/${account}`, { headers: { authorization: `Bearer ${token}` }, signal: timeout() });
+    const name = ((await json(response)) as { result?: { name?: unknown } } | null)?.result?.name;
+    if (typeof name !== "string" || !name.trim()) return { ok: true, lines: [] };
+    // Each line masks one piece, so the name is hidden whole and in the pieces wrangler may wrap.
+    const pieces = new Set([name, name.trim(), ...name.split(/\s+/).filter((p) => p.length >= 4)]);
+    return { ok: true, lines: [...pieces].filter((p) => !/[\r\n]/.test(p)).map((p) => `::add-mask::${p}`) };
+  } catch {
+    return { ok: true, lines: [] };
+  }
 }
 
 /** Plain HTTP moves to HTTPS, and the health check answers 200 (or Access asks for the sign-in). */
@@ -159,9 +188,9 @@ if (import.meta.main) {
     out: (line) => console.log(line),
   };
   const command = process.argv[2];
-  const check = command === "enderecos" ? checkAddresses : command === "saude" ? checkHealth : null;
+  const check = command === "enderecos" ? checkAddresses : command === "saude" ? checkHealth : command === "mascarar" ? maskAccountName : null;
   if (!check) {
-    console.error("usage: node scripts/deploy/conferir-producao.ts enderecos|saude");
+    console.error("usage: node scripts/deploy/conferir-producao.ts mascarar|enderecos|saude");
     process.exit(2);
   }
   const result = await check(process.env, io);

@@ -13,8 +13,9 @@ name: Deploy
 #   interface build) have no secret. The deploy job installs with
 #   --ignore-scripts and without the npm cache, so no install script and no
 #   shared cache entry run next to the token.
-# - The domain, the alert address and the bucket are environment variables:
-#   masked before anything prints, never in the repository.
+# - The domain, the alert address and the bucket are secrets of the environment
+#   too, not variables: the runner prints a step's env in its header before the
+#   step runs, and only secrets come out masked there. Never in the repository.
 # - The Worker's secrets never pass through GitHub: the owner sets them in the
 #   dashboard and every deploy keeps them.
 # - Every action is pinned to a full commit SHA; GITHUB_TOKEN is read-only,
@@ -76,17 +77,6 @@ jobs:
     timeout-minutes: 15
     environment: production
     steps:
-      # Before anything prints: the domain, the address and the bucket name of this installation.
-      - name: Mask the installation's values
-        env:
-          ZURI_DOMAIN: ${{ vars.ZURI_DOMAIN }}
-          ZURI_ALERT_EMAIL_TO: ${{ vars.ZURI_ALERT_EMAIL_TO }}
-          ZURI_BACKUP_BUCKET: ${{ vars.ZURI_BACKUP_BUCKET }}
-        run: |
-          for value in "$ZURI_DOMAIN" "$ZURI_ALERT_EMAIL_TO" "$ZURI_BACKUP_BUCKET"; do
-            [ -n "$value" ] && echo "::add-mask::$value"
-          done
-          true
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -103,10 +93,16 @@ jobs:
           path: apps/web/dist
       - name: Write the deploy config
         env:
-          ZURI_DOMAIN: ${{ vars.ZURI_DOMAIN }}
-          ZURI_ALERT_EMAIL_TO: ${{ vars.ZURI_ALERT_EMAIL_TO }}
-          ZURI_BACKUP_BUCKET: ${{ vars.ZURI_BACKUP_BUCKET }}
+          ZURI_DOMAIN: ${{ secrets.ZURI_DOMAIN }}
+          ZURI_ALERT_EMAIL_TO: ${{ secrets.ZURI_ALERT_EMAIL_TO }}
+          ZURI_BACKUP_BUCKET: ${{ secrets.ZURI_BACKUP_BUCKET }}
         run: node scripts/deploy/gerar-config.ts
+      # wrangler names the account on an authentication error, and a new account carries the e-mail.
+      - name: Mask the account name
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/deploy/conferir-producao.ts mascarar
       - name: Deploy to Cloudflare
         working-directory: apps/agent
         env:
@@ -127,7 +123,7 @@ jobs:
       # Fails the run when the new version is unhealthy (a Worker secret missing, for example).
       - name: Check HTTPS and the health check
         env:
-          ZURI_DOMAIN: ${{ vars.ZURI_DOMAIN }}
+          ZURI_DOMAIN: ${{ secrets.ZURI_DOMAIN }}
         run: node scripts/deploy/conferir-producao.ts saude
 
   # The version on main becomes the full release, with its notes in pt-BR.

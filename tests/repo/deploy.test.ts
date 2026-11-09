@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkAddresses, checkHealth, type Fetch, type Io, WORKER_NAME } from "../../scripts/deploy/conferir-producao.ts";
+import { checkAddresses, checkHealth, type Fetch, type Io, maskAccountName, WORKER_NAME } from "../../scripts/deploy/conferir-producao.ts";
 import { BASE_CONFIG, ConfigError, renderDeployConfig, stripJsonc } from "../../scripts/deploy/gerar-config.ts";
 import { planPublish } from "../../scripts/deploy/publicar-release.ts";
 import { loadWorkflow, readText, triggers } from "./helpers.ts";
@@ -22,7 +22,7 @@ describe("deploy config (scripts/deploy/gerar-config.ts)", () => {
   });
 
   it("serves only the Custom Domain, with workers.dev and preview URLs off", () => {
-    const config = renderDeployConfig({ ...base(), workers_dev: true, preview_urls: true, assets: { directory: "x", run_worker_first: false } }, { ZURI_DOMAIN: ` ${DOMAIN.toUpperCase()} ` });
+    const config = renderDeployConfig({ ...base(), workers_dev: true, preview_urls: true, assets: { directory: "x", run_worker_first: false } }, { ZURI_DOMAIN: DOMAIN });
     expect(config.routes).toEqual([{ pattern: DOMAIN, custom_domain: true }]);
     expect(config.workers_dev).toBe(false);
     expect(config.preview_urls).toBe(false);
@@ -49,7 +49,7 @@ describe("deploy config (scripts/deploy/gerar-config.ts)", () => {
   it("binds BACKUP_BUCKET only when the bucket variable is set (R2 ⚠)", () => {
     const config = renderDeployConfig(base(), { ZURI_DOMAIN: DOMAIN, ZURI_BACKUP_BUCKET: "zuri-backup" });
     expect(config.r2_buckets).toEqual([{ binding: "BACKUP_BUCKET", bucket_name: "zuri-backup" }]);
-    expect(renderDeployConfig(base(), { ZURI_DOMAIN: DOMAIN, ZURI_BACKUP_BUCKET: "  " })).not.toHaveProperty("r2_buckets");
+    expect(renderDeployConfig(base(), { ZURI_DOMAIN: DOMAIN, ZURI_BACKUP_BUCKET: "" })).not.toHaveProperty("r2_buckets");
   });
 
   it.each([
@@ -64,6 +64,16 @@ describe("deploy config (scripts/deploy/gerar-config.ts)", () => {
     ["zuri.exemplo.com.br.", /host alone/],
   ])("refuses the domain %j", (domain, message) => {
     expect(() => renderDeployConfig(base(), { ZURI_DOMAIN: domain })).toThrow(message);
+  });
+
+  it.each([
+    ["ZURI_DOMAIN", "Zuri.Exemplo.com.br"],
+    ["ZURI_DOMAIN", ` ${DOMAIN}`],
+    ["ZURI_DOMAIN", `${DOMAIN}\n`],
+    ["ZURI_ALERT_EMAIL_TO", "dono@exemplo.com.br "],
+    ["ZURI_BACKUP_BUCKET", " zuri-backup"],
+  ])("refuses %s written in another form than the one the runner masks (%j)", (name, raw) => {
+    expect(() => renderDeployConfig(base(), { ZURI_DOMAIN: DOMAIN, [name]: raw })).toThrow(new RegExp(`${name} must be written without blanks`));
   });
 
   it.each(["dono", "dono@", "@exemplo.com.br", "dono@exemplo", "a b@exemplo.com.br", "dono@exemplo.com.br\nBcc: x@y.z"])("refuses the address %j", (email) => {
@@ -100,7 +110,7 @@ describe("deploy config (scripts/deploy/gerar-config.ts)", () => {
 
 interface Call {
   url: string;
-  init?: RequestInit;
+  init: RequestInit | undefined;
 }
 
 function fakeIo(answers: Record<string, () => Response>): Io & { calls: Call[]; waits: number[] } {
@@ -179,20 +189,46 @@ describe("workers.dev and preview URL check", () => {
     expect(result.lines.at(-1)).toMatch(/still answers \//);
   });
 
-  it("passes without a workers.dev subdomain to probe, and ignores a malformed one", async () => {
-    for (const subdomain of [undefined, "conta.outra", "-x"]) {
-      const io = fakeIo({ [`${API}/scripts/zuri/subdomain`]: cf({ enabled: false, previews_enabled: false }), [`${API}/subdomain`]: cf({ subdomain }) });
-      const result = await checkAddresses(env, io);
-      expect(result.ok).toBe(true);
+  it("passes when the account clearly has no workers.dev subdomain", async () => {
+    for (const result of [{}, { subdomain: "" }, { subdomain: null }]) {
+      const io = fakeIo({ [`${API}/scripts/zuri/subdomain`]: cf({ enabled: false, previews_enabled: false }), [`${API}/subdomain`]: cf(result) });
+      expect((await checkAddresses(env, io)).ok).toBe(true);
       expect(io.calls.some((c) => c.url.includes(".workers.dev"))).toBe(false);
     }
+  });
+
+  it("passes when Cloudflare answers that the account has no workers.dev subdomain (10007)", async () => {
+    const io = fakeIo({
+      [`${API}/scripts/zuri/subdomain`]: cf({ enabled: false, previews_enabled: false }),
+      [`${API}/subdomain`]: () => Response.json({ success: false, errors: [{ code: 10007, message: "not found" }], result: null }, { status: 404 }),
+    });
+    expect((await checkAddresses(env, io)).ok).toBe(true);
+  });
+
+  it.each([
+    ["another API error code", () => Response.json({ success: false, errors: [{ code: 10000 }] }, { status: 403 })],
+    ["a malformed subdomain", cf({ subdomain: "conta.outra" })],
+    ["another malformed subdomain", cf({ subdomain: "-x" })],
+    ["an API error", cf(null, 403)],
+    ["a body that is not JSON", () => new Response("<html>")],
+  ])("fails closed on %s for the account's subdomain", async (_, answer) => {
+    const io = fakeIo({ [`${API}/scripts/zuri/subdomain`]: cf({ enabled: false, previews_enabled: false }), [`${API}/subdomain`]: answer });
+    const result = await checkAddresses(env, io);
+    expect(result.ok).toBe(false);
+    expect(result.lines.at(-1)).toMatch(/workers\.dev subdomain/);
+    expect(io.calls.some((c) => c.url.includes(".workers.dev"))).toBe(false);
+  });
+
+  it("fails closed when the account's subdomain does not answer", async () => {
+    const io = fakeIo({ [`${API}/scripts/zuri/subdomain`]: cf({ enabled: false, previews_enabled: false }) });
+    expect((await checkAddresses(env, io)).ok).toBe(false);
   });
 
   it.each([
     [{}, "no token"],
     [{ CLOUDFLARE_API_TOKEN: "t", CLOUDFLARE_ACCOUNT_ID: "conta" }, "a malformed account id"],
     [{ CLOUDFLARE_API_TOKEN: "t", CLOUDFLARE_ACCOUNT_ID: `${ACCOUNT}/../x` }, "a path in the account id"],
-  ])("refuses to call the API with %s", async (bad) => {
+  ])("refuses to call the API with %s", async (bad: NodeJS.ProcessEnv, _case: string) => {
     const io = fakeIo({});
     expect((await checkAddresses(bad, io)).ok).toBe(false);
     expect(io.calls).toEqual([]);
@@ -201,6 +237,30 @@ describe("workers.dev and preview URL check", () => {
   it("never prints the token", async () => {
     const io = fakeIo({ [`${API}/scripts/zuri/subdomain`]: cf({ enabled: true, previews_enabled: true }) });
     expect((await checkAddresses(env, io)).lines.join("\n")).not.toContain("token-de-teste");
+  });
+});
+
+describe("account name mask", () => {
+  it("masks the account name, whole and by its longer pieces, before wrangler can print it", async () => {
+    const io = fakeIo({ [`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}`]: cf({ name: "dono@exemplo.com.br's Account" }) });
+    const result = await maskAccountName(env, io);
+    expect(result).toEqual({ ok: true, lines: ["::add-mask::dono@exemplo.com.br's Account", "::add-mask::dono@exemplo.com.br's", "::add-mask::Account"] });
+    expect(JSON.stringify(io.calls[0]?.init?.headers)).toContain("token-de-teste");
+  });
+
+  it.each([
+    ["an API error", cf(null, 403)],
+    ["no name", cf({})],
+    ["a blank name", cf({ name: "  " })],
+  ])("prints nothing and never fails on %s", async (_, answer) => {
+    expect(await maskAccountName(env, fakeIo({ [`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}`]: answer }))).toEqual({ ok: true, lines: [] });
+  });
+
+  it("prints nothing without the API answering or without credentials", async () => {
+    expect(await maskAccountName(env, fakeIo({}))).toEqual({ ok: true, lines: [] });
+    const io = fakeIo({});
+    expect(await maskAccountName({}, io)).toEqual({ ok: true, lines: [] });
+    expect(io.calls).toEqual([]);
   });
 });
 
@@ -347,10 +407,20 @@ describe("deploy workflow", () => {
     expect(text).not.toMatch(/secrets: inherit/);
   });
 
-  it("masks the installation's values before checkout and before anything prints", () => {
-    const steps = job("deploy").steps ?? [];
-    expect(steps[0]?.run).toContain("::add-mask::");
-    for (const name of ["ZURI_DOMAIN", "ZURI_ALERT_EMAIL_TO", "ZURI_BACKUP_BUCKET"]) expect(steps[0]?.env?.[name]).toBe(`\${{ vars.${name} }}`);
+  it("reads the installation's values only from secrets, which the runner masks in every step header", () => {
+    // A variable shows in plain text in the "Run" header of the step that reads it, before any add-mask.
+    expect(text).not.toMatch(/vars\./);
+    const env = (job("deploy").steps ?? []).flatMap((s) => Object.entries(s.env ?? {}));
+    for (const name of ["ZURI_DOMAIN", "ZURI_ALERT_EMAIL_TO", "ZURI_BACKUP_BUCKET"]) {
+      expect(env.filter(([key]) => key === name).length, name).toBeGreaterThan(0);
+      for (const [key, value] of env) if (key === name) expect(value).toBe(`\${{ secrets.${name} }}`);
+    }
+  });
+
+  it("masks the account name before wrangler runs", () => {
+    const deploy = runs("deploy");
+    expect(deploy.indexOf("conferir-producao.ts mascarar")).toBeGreaterThanOrEqual(0);
+    expect(deploy.indexOf("conferir-producao.ts mascarar")).toBeLessThan(deploy.indexOf("wrangler deploy"));
   });
 
   it("installs without scripts or cache next to the token", () => {

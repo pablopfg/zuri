@@ -45,15 +45,17 @@ aparecem como `***`.
 | Passo e mensagem | Causa provável | O que fazer |
 | --- | --- | --- |
 | Um job de `ci` | Um teste, o lint ou o `npm audit` falhou no commit da `main` | Corrija na `develop` por PR e mande para a `main` de novo. `npm audit` falha com alerta `high` ou `critical` numa dependência: atualize a dependência |
-| *Write the deploy config*: `ZURI_DOMAIN is required` | Variável faltando ou criada fora do ambiente | Crie em **Settings > Environments > production > Environment variables** |
+| *Write the deploy config*: `ZURI_DOMAIN is required` | Segredo faltando, criado como *variable* ou fora do ambiente | Crie em **Settings > Environments > production > Environment secrets** |
+| *Write the deploy config*: `must be written without blanks around` | Espaço antes ou depois, ou letra maiúscula no domínio | Grave o valor de novo, exato e em minúsculas |
 | *Write the deploy config*: `must be the host alone` | `https://`, barra, porta ou um endereço `workers.dev` | Só o host: `zuri.exemplo.com.br` |
 | *Write the deploy config*: `ZURI_ALERT_EMAIL_TO` ou `ZURI_BACKUP_BUCKET` | Valor com espaço ou formato errado | E-mail simples; bucket com 3 a 63 letras minúsculas, números e hífens |
 | *Deploy to Cloudflare*: `must be secrets of the production environment` | Segredo do GitHub faltando ou em *Repository secrets* | Grave `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` no ambiente `production` |
 | *Deploy*: `Authentication error` ou código `10000` | Token errado, vencido ou sem permissão | Refaça o token ([instalação, parte 2](instalacao-cloudflare.md#parte-2--token-do-deploy)) e troque o segredo |
 | *Deploy*: `The following required secrets have not been set` | O Worker `zuri` não existe, ou falta `SESSION_SECRET` ou `PASSWORD_PEPPER` | Crie o Worker vazio e grave os segredos ([instalação, passos 4 e 5](instalacao-cloudflare.md#4-criar-o-worker-zuri-vazio)) |
 | *Deploy*: erro de permissão no Custom Domain | Falta permissão na zona | Acrescente **Zona > Workers Routes: Editar** e, se preciso, **Zona > DNS: Editar**, só nessa zona |
-| *Deploy*: o host já tem registro DNS | Um registro antigo em `zuri.exemplo.com.br` | Apague o registro em **DNS** e rode de novo |
-| *Deploy*: bucket não encontrado | `ZURI_BACKUP_BUCKET` aponta para um bucket que não existe | Crie o bucket no R2 com esse nome, ou apague a variável |
+| *Deploy*: `Unable to fetch bindings, routes, or services metadata` | Depois de gravar um segredo no painel, o wrangler relê a config do Worker e uma leitura falhou | Use **Re-run failed jobs**; se repetir, confira as permissões do token |
+| *Deploy*: erro de permissão no binding de e-mail | O token não lê os endereços do Email Routing | Acrescente **Conta > Email Routing Addresses: Ler** ao token |
+| *Deploy*: bucket não encontrado | `ZURI_BACKUP_BUCKET` aponta para um bucket que não existe | Crie o bucket no R2 com esse nome, ou apague o segredo |
 | *Check workers.dev…*: `workers.dev is on` ou `preview URLs are on` | Ligados pelo painel | **zuri > Configurações > Domínios e rotas**: desligue os dois e rode o Deploy |
 | *Check workers.dev…*: `could not read the workers.dev setting` | O token não lê o Worker | Confira **Workers Scripts: Editar** na conta certa |
 | *Check workers.dev…*: `still answers` | O `workers.dev` ainda serve o Worker | Desligue em **Domínios e rotas** e rode de novo |

@@ -36,6 +36,6 @@
 
 - ⚠️ Opcional: para ligar o backup automático, crie um bucket privado no R2
   (dentro da faixa grátis, mas ligar o R2 pede cartão) e ponha o nome dele na
-  variável `ZURI_BACKUP_BUCKET` do ambiente `production`; o deploy cria o
+  segredo `ZURI_BACKUP_BUCKET` do ambiente `production`; o deploy cria o
   binding `BACKUP_BUCKET`. Passo a passo em
   `docs/configuracao-cloudflare.md` › Backup automático. Nenhuma migration.

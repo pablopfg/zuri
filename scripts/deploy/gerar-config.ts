@@ -4,8 +4,9 @@
 //   node scripts/deploy/gerar-config.ts   reads apps/agent/wrangler.jsonc, writes apps/agent/wrangler.deploy.json
 //
 // The repository is public, so nothing personal is in wrangler.jsonc. What only
-// the owner's installation has comes from variables of the GitHub "production"
-// environment, read here from the process environment:
+// the owner's installation has comes from secrets of the GitHub "production"
+// environment (secrets, not variables: the runner masks them from the first
+// byte of the log), read here from the process environment:
 //
 //   ZURI_DOMAIN          required: the Custom Domain (zuri.exemplo.com.br)
 //   ZURI_ALERT_EMAIL_TO  optional: the verified address the SEND_EMAIL binding may write to
@@ -92,18 +93,28 @@ function withoutTrailingCommas(json: string): string {
   return out;
 }
 
-const value = (raw: string | undefined) => (raw ?? "").trim();
+/**
+ * The value exactly as given. One with blanks or capitals around would be written
+ * in another form than the one the runner masks (it masks the exact text), and the
+ * normalized form would show in the public log: it is refused instead.
+ */
+function exact(raw: string | undefined, name: string, lower: boolean): string {
+  const text = raw ?? "";
+  const normal = lower ? text.trim().toLowerCase() : text.trim();
+  if (text !== normal) throw new ConfigError(`${name} must be written without blanks around${lower ? " and in lowercase" : ""}`);
+  return text;
+}
 
 /** The deploy config: the base plus the owner's domain and optional bindings, with every exposure off. */
 export function renderDeployConfig(base: Config, vars: DeployVars): Config {
-  const domain = value(vars.ZURI_DOMAIN).toLowerCase();
+  const domain = exact(vars.ZURI_DOMAIN, "ZURI_DOMAIN", true);
   if (!domain) throw new ConfigError("ZURI_DOMAIN is required (variable of the production environment)");
   if (!HOSTNAME.test(domain) || SHARED_HOST.test(domain)) {
     throw new ConfigError("ZURI_DOMAIN must be the host alone, on your own domain, without https:// or a path");
   }
-  const email = value(vars.ZURI_ALERT_EMAIL_TO);
+  const email = exact(vars.ZURI_ALERT_EMAIL_TO, "ZURI_ALERT_EMAIL_TO", false);
   if (email && !EMAIL.test(email)) throw new ConfigError("ZURI_ALERT_EMAIL_TO is not an e-mail address");
-  const bucket = value(vars.ZURI_BACKUP_BUCKET);
+  const bucket = exact(vars.ZURI_BACKUP_BUCKET, "ZURI_BACKUP_BUCKET", false);
   if (bucket && (!BUCKET.test(bucket) || bucket.includes("--"))) {
     throw new ConfigError("ZURI_BACKUP_BUCKET is not an R2 bucket name (3 to 63 lowercase letters, digits and dashes)");
   }

@@ -45,7 +45,7 @@ job `build`, três scripts em `scripts/deploy/`, testes em
 ## 5. Como funciona para o Pablo
 
 Uma vez: domínio na Cloudflare, Worker `zuri` vazio, segredos, token, ambiente
-`production` com dois segredos e a variável `ZURI_DOMAIN`. Depois, a cada PR
+`production` com três segredos (token, conta e `ZURI_DOMAIN`). Depois, a cada PR
 `develop → main` mesclada: aprova o deploy em **Review deployments**. Tudo no
 navegador (`docs/instalacao-cloudflare.md`). Sem texto novo na interface.
 
@@ -56,7 +56,11 @@ navegador (`docs/instalacao-cloudflare.md`). Sem texto novo na interface.
 - `ZURI_ALERT_EMAIL_TO`: endereço simples. `ZURI_BACKUP_BUCKET`: 3 a 63
   caracteres `[a-z0-9-]`, sem hífen nas pontas nem `--`.
 - A config base não pode trazer `routes`, `route`, `send_email` nem
-  `r2_buckets`: só as variáveis os definem.
+  `r2_buckets`: só os segredos do deploy os definem.
+- Os três valores da instalação são segredos do ambiente, não *variables*
+  (achado SEC-A12-01 da auditoria: o runner imprime o `env` do passo antes de
+  qualquer `add-mask`); valor com espaço ou maiúscula é recusado (SEC-A12-03);
+  o nome da conta é mascarado antes do wrangler (SEC-A12-02).
 - Saúde: até 6 tentativas (5, 10, 15, 20, 25 s); 200, ou redirecionamento ao
   login do Access (`*.cloudflareaccess.com`) com aviso.
 
@@ -78,7 +82,7 @@ Sem rota, banco, migration, ferramenta do agente ou agendamento.
 Nada muda nas cotas da Cloudflare em uso: o deploy é uma chamada à API por
 publicação e um `GET /api/health` (1 requisição do Worker, sem Durable Object
 quando falta configuração; com tudo pronto, 1 pedido ao objeto). GitHub Actions
-é grátis em repositório público. R2 ⚠ só com a variável, já aprovado.
+é grátis em repositório público. R2 ⚠ só com o segredo do bucket, já aprovado.
 
 ## 9. Segurança e privacidade
 

@@ -62,6 +62,10 @@ GitHub: você grava no painel da Cloudflare e cada deploy os mantém.
 1. Crie a conta em <https://dash.cloudflare.com/sign-up> (plano Free).
 2. Em **Perfil > Autenticação**, ligue a **verificação em duas etapas**. A
    conta da Cloudflare guarda tudo da Zuri: proteja-a como o seu e-mail.
+3. Em **Gerenciar conta > Configurações**, renomeie a conta para um nome neutro,
+   como `Zuri`. A Cloudflare cria a conta com o seu e-mail no nome, e esse nome
+   pode aparecer no log público do deploy quando o token falha (o deploy tenta
+   escondê-lo, mas não dependa só disso).
 
 ### 2. Domínio
 
@@ -70,8 +74,11 @@ GitHub: você grava no painel da Cloudflare e cada deploy os mantém.
 2. No site onde você comprou o domínio, troque os **nameservers** pelos dois
    que a Cloudflare mostrou. Espere o domínio ficar **Ativo** (de minutos a
    algumas horas; a Cloudflare manda um e-mail).
-3. Escolha o endereço da Zuri, por exemplo `zuri.exemplo.com.br`. Ele **não
-   pode** ter registro DNS ainda: o deploy cria o registro sozinho.
+3. Escolha o endereço da Zuri, por exemplo `zuri.exemplo.com.br`, um
+   subdomínio que ainda não usa para nada. Confira o nome com calma: o deploy
+   **assume** esse nome sozinho, cria o registro DNS e, se já houver um
+   registro ou outro Worker nele, troca sem perguntar. Nunca use o domínio
+   principal (`exemplo.com.br`) nem `www` se eles já têm um site.
 
 ### 3. HTTPS no domínio
 
@@ -135,7 +142,6 @@ O GitHub Actions publica com um token **da conta**, com o mínimo de poder.
    | Conta | Workers Scripts | Editar | Publicar o Worker e conferir o `workers.dev` |
    | Conta | Configurações da conta (Account Settings) | Ler | O wrangler lê a conta antes de publicar |
    | Zona | Workers Routes | Editar | Ligar o domínio próprio (Custom Domain) |
-   | Conta | Email Routing Addresses | Ler | Só se for usar e-mail (parte 5) |
 
    Não acrescente R2, KV, D1, Pages, Tail nem DNS. Sem permissão no R2, o
    deploy também não consegue criar um bucket por engano.
@@ -151,7 +157,9 @@ O GitHub Actions publica com um token **da conta**, com o mínimo de poder.
 
 Se o primeiro deploy falhar com erro de permissão ao ligar o domínio
 (`Custom Domain`), acrescente **Zona > DNS > Editar**, só nessa zona, e rode
-o deploy de novo.
+o deploy de novo. Com e-mail (parte 5), se o deploy falhar por permissão ao
+subir o binding de e-mail, acrescente **Conta > Email Routing Addresses >
+Ler**.
 
 ## Parte 3 · GitHub: ambiente `production`
 
@@ -165,23 +173,21 @@ No repositório, em **Settings > Environments > New environment**, nome
 
 Ainda no ambiente:
 
-**Environment secrets** (nunca em *Repository secrets*):
+Em **Environment secrets > Add environment secret** (nunca em *Repository
+secrets* nem em *Environment variables*), crie:
 
-| Nome | Valor |
-| --- | --- |
-| `CLOUDFLARE_API_TOKEN` | o token da parte 2 |
-| `CLOUDFLARE_ACCOUNT_ID` | o ID da conta (32 caracteres) |
-
-**Environment variables:**
-
-| Nome | Obrigatória | Exemplo | Para quê |
+| Nome | Obrigatório | Exemplo | Para quê |
 | --- | --- | --- | --- |
-| `ZURI_DOMAIN` | sim | `zuri.exemplo.com.br` | O domínio próprio, sem `https://` nem barra. O deploy liga só ele e desliga o `workers.dev` |
+| `CLOUDFLARE_API_TOKEN` | sim | | O token da parte 2 |
+| `CLOUDFLARE_ACCOUNT_ID` | sim | | O ID da conta (32 caracteres) |
+| `ZURI_DOMAIN` | sim | `zuri.exemplo.com.br` | O domínio próprio, em minúsculas, sem `https://`, barra nem espaço. O deploy liga só ele e desliga o `workers.dev` |
 | `ZURI_ALERT_EMAIL_TO` | não | `voce@exemplo.com.br` | O seu e-mail verificado no Email Routing; gera o binding `SEND_EMAIL`, que só manda para ele |
 | `ZURI_BACKUP_BUCKET` | não ⚠ | `zuri-backup` | O nome do bucket R2 do backup; gera o binding `BACKUP_BUCKET` |
 
-O log do Actions é público: o deploy esconde esses três valores (`add-mask`)
-antes de imprimir qualquer coisa, e as conferências mostram só códigos HTTP.
+O domínio, o e-mail e o bucket não são segredos de verdade, mas ficam como
+segredo de propósito: o log do Actions é público, e só os segredos saem como
+`***` em todas as linhas. Uma *variable* apareceria em texto puro. As
+conferências mostram só códigos HTTP.
 
 ## Parte 4 · Primeiro deploy e primeiro acesso
 
@@ -284,8 +290,9 @@ Token vazou? `/revoke` no BotFather, grave o novo e reconecte. Mais em
    outro serviço, use um subdomínio para não perder as mensagens.
 2. Grave como **Secret** `ALERT_EMAIL_FROM`, um endereço do domínio, como
    `zuri@exemplo.com.br`.
-3. No GitHub, crie a variável `ZURI_ALERT_EMAIL_TO` (parte 3) com o e-mail
-   verificado e acrescente a permissão **Email Routing Addresses: Ler** ao token.
+3. No GitHub, crie o segredo `ZURI_ALERT_EMAIL_TO` (parte 3) com o e-mail
+   verificado (se o deploy reclamar de permissão no e-mail, veja o fim da
+   parte 2).
 4. Rode o deploy. Detalhes em
    [configuracao-cloudflare.md › E-mail](configuracao-cloudflare.md#e-mail-opcional).
 
@@ -306,7 +313,7 @@ cartão cadastrado.
 
 1. Em **R2 Object Storage**, ligue o R2 e crie um bucket **privado**, como
    `zuri-backup`. Não ligue acesso público nem domínio para ele.
-2. No GitHub, crie a variável `ZURI_BACKUP_BUCKET` com o nome do bucket e rode
+2. No GitHub, crie o segredo `ZURI_BACKUP_BUCKET` (parte 3) com o nome do bucket e rode
    o deploy. Não crie o binding pelo painel: o deploy seguinte o tiraria.
 3. Na Zuri, em **Configurações > Dados**, toque em **Criar chave do backup** e
    guarde o arquivo fora da Zuri. A primeira cópia sai na madrugada seguinte.
@@ -348,7 +355,7 @@ Cloudflare:
 
 GitHub:
 
-- [ ] `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` só no ambiente `production`; **Repository secrets** vazio.
+- [ ] Os cinco segredos do deploy só no ambiente `production`; **Repository secrets** e **Environment variables** vazios.
 - [ ] Ambiente `production` com *Required reviewers* e só a branch `main`.
 - [ ] Rulesets `develop` e `main` ativos; secret scanning, push protection, CodeQL e Dependabot ligados.
 - [ ] **Deployments** mostra `production` verde, e **Releases** mostra a versão como *Latest*.
@@ -367,6 +374,7 @@ Zuri:
 | Quando | O quê |
 | --- | --- |
 | A cada release | Baixe o backup antes, se o changelog fala em migration. Aprove o deploy e confira a versão em **Configurações > Diagnóstico**. |
+| Domínios no painel | O deploy deixa no Worker `zuri` só o `ZURI_DOMAIN`: um domínio ou rota ligado à mão no painel some no deploy seguinte. Para trocar o endereço, mude o segredo `ZURI_DOMAIN` (e o `PUBLIC_URL`) |
 | Deploy ruim | **Workers e Pages > zuri > Implantações**: escolha a versão anterior e **Reverter**. Vale só para o código: migrations do banco não voltam. |
 | Antes de o token vencer | Crie o novo, troque o segredo no ambiente `production`, rode o Deploy e só então apague o antigo. |
 | Todo mês | **Acessos** na Zuri e a aba **Security** do GitHub (Dependabot, CodeQL e secret scanning). |
@@ -376,9 +384,9 @@ Quando algo não funciona: [solucao-de-problemas.md](solucao-de-problemas.md).
 
 ## Referência: o que fica em cada lugar
 
-**Ambiente `production` do GitHub:** os segredos `CLOUDFLARE_API_TOKEN` e
-`CLOUDFLARE_ACCOUNT_ID`, e as variáveis `ZURI_DOMAIN` (obrigatória),
-`ZURI_ALERT_EMAIL_TO` e `ZURI_BACKUP_BUCKET`.
+**Ambiente `production` do GitHub** (todos como *Environment secrets*):
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` e `ZURI_DOMAIN`
+(obrigatórios), `ZURI_ALERT_EMAIL_TO` e `ZURI_BACKUP_BUCKET` (opcionais).
 
 **Segredos do Worker na Cloudflare** (sempre **Secret**, nunca no GitHub):
 
