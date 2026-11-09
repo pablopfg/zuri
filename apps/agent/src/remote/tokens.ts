@@ -67,9 +67,10 @@ export class RemoteTokens implements RemoteTokenHook {
     else this.deps.state.delete("remote_enabled");
   }
 
+  /** Oldest first. Ties (same millisecond) go by insertion order: `id` is a random UUID and would shuffle them (#187). */
   list(): RemoteTokenInfo[] {
     return this.deps.db
-      .all<TokenRow>(`SELECT id, name, hint, scope, created_at, expires_at, last_used_at, suspended FROM zur_remote_tokens ORDER BY created_at, id`)
+      .all<TokenRow>(`SELECT id, name, hint, scope, created_at, expires_at, last_used_at, suspended FROM zur_remote_tokens ORDER BY created_at, rowid`)
       .map(info);
   }
 
