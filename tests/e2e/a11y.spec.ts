@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures.ts";
-import { expectAccessible, PASSWORD, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { expectAccessible, PASSWORD, settingsTitle, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // axe (WCAG 2.1 A and AA) on every screen of the shell, in both themes. Serious
 // and critical violations fail; the Lighthouse score is in the PR.
@@ -38,9 +38,17 @@ for (const scheme of ["light", "dark"] as const) {
       await expectAccessible(page, "avisos");
       await page.keyboard.press("Escape");
 
-      for (const tab of ["conta", "seguranca", "ia", "avisos", "integracoes", "dados", "diagnostico"]) {
+      for (const [tab, title] of [
+        ["conta", "Conta"],
+        ["seguranca", "Segurança"],
+        ["ia", "IA"],
+        ["avisos", "Avisos"],
+        ["integracoes", "Integrações"],
+        ["dados", "Dados"],
+        ["diagnostico", "Diagnóstico"],
+      ] as const) {
         await page.goto(`/configuracoes/${tab}`);
-        await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
+        await expect(settingsTitle(page, title)).toBeVisible();
         await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
         await expectAccessible(page, tab);
       }
