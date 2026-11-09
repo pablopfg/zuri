@@ -7,7 +7,7 @@ Dependências: nenhuma para escolher. A implementação, se houver, vira PR pró
 
 ## 1. Resumo
 
-Na rodada 5 o Pablo escolheu partir do **Sinal** da rodada 3 e pediu para aplicar nele as melhorias das skills de design avaliadas (`ui-ux-pro-max` e `open-design`), com foco em beleza, função, leitura e contraste. O resultado é um modelo só, o **Sinal refinado**, com onze telas: as nove do sistema, a tela nova **Estados das telas** (carregando, vazio, erro, sem conexão, confirmação e aviso com desfazer) e a de identidade visual (seção 2).
+Na rodada 5 o Pablo escolheu partir do **Sinal** da rodada 3 e pediu para aplicar nele as melhorias das skills de design avaliadas (`ui-ux-pro-max` e `open-design`), com foco em beleza, função, leitura e contraste. O resultado é um modelo só, o **Sinal refinado**, com doze telas: as nove do sistema, a tela nova de **Contatos**, a tela nova **Estados das telas** (carregando, vazio, erro, sem conexão, confirmação e aviso com desfazer) e a de identidade visual (seção 2).
 
 Na rodada 4 o Pablo pediu um rebranding completo: cinco identidades novas (logomarca, ícone do app, família de ícones, cores, letras e jeito de falar) e mais três modelos com cada uma das skills `ui-ux-pro-max` e `open-design`. São onze modelos, cada um com as nove telas e uma tela nova de identidade visual (seção 3). A tela de entrar de todos mostra só a marca e uma frase, sem pistas do sistema. As rodadas anteriores ficam abaixo como histórico.
 
@@ -26,9 +26,9 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 ## 2. Rodada 5 · Sinal refinado
 
 - Protótipo: `docs/planos/modelos-frontend/prototipo-v5.html` (a barra do topo troca a tela e o tema).
-- Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, Automações, Memória, Configurações, **Estados das telas** e Identidade visual.
-- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (44 imagens), e a comparação com a rodada 3 em `antes-depois-*.png`.
-- Acessibilidade: axe (WCAG 2.1 e 2.2 A/AA e boas práticas) sem nenhuma violação nas 44 combinações, e nenhum erro de script.
+- Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, **Contatos**, Automações, Memória, Configurações, **Estados das telas** e Identidade visual.
+- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (48 imagens), e a comparação com a rodada 3 em `antes-depois-*.png`.
+- Acessibilidade: axe (WCAG 2.1 e 2.2 A/AA e boas práticas) sem nenhuma violação nas 48 combinações, e nenhum erro de script.
 
 O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a fonte Figtree, os neutros em zinco e o verde como cor de ação. O que mudou foi o acabamento, regra por regra.
 
@@ -38,7 +38,7 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 | --- | --- | --- |
 | Contraste medido, não estimado | `ui-ux-pro-max` (prioridade 1) e `open-design` (`craft/color.md`) | Todo texto com 4,5:1 ou mais nos dois temas (texto de apoio: 6,6:1 no claro e 6,9:1 no escuro). Bordas de campo, caixas de seleção e chaves com 3:1, o mínimo para controles. A tela de identidade mostra o contraste de cada cor. |
 | Verde só onde importa | `open-design` (no máximo duas cores de destaque por tela) | "Nova conversa" virou botão claro com ícone verde; links e "Abrir agenda" ficaram em grafite; os ícones dos cartões ficaram neutros. Sobram o botão de enviar, a ação principal da tela e o sinal da marca. |
-| Escuro de verdade | `open-design` (nada de preto e branco puros; bordas brancas translúcidas) | Fundo #111113, superfícies #18181b, texto #ededef e bordas a 8% de branco. O verde do escuro (#4ade80) tem 10:1 sobre o grafite. |
+| Escuro de verdade | `open-design` (nada de preto e branco puros; bordas brancas translúcidas) | Fundo #0c0c0e, superfícies #17171a, texto #f5f5f7, texto de apoio #b6b6bf e bordas a 11% de branco, para cada cartão se destacar do fundo. O verde do escuro (#4ade80) tem 10:1 sobre o grafite, e a aba aberta na lateral ganha um traço verde. |
 | Letras com hierarquia | `open-design` (`craft/typography.md`) | Escala 13, 14, 16, 18, 22, 28, 34 e 40; três pesos (400, 500, 600); títulos grandes com espaçamento negativo; rótulos em maiúsculas com 0,06em; números em largura fixa; texto corrido com no máximo 65 caracteres por linha. |
 | Toque e foco | `ui-ux-pro-max` (prioridades 1 e 2) | Alvos de 44 px no celular (a caixa de seleção tem 20 px de desenho e 44 px de toque); anel de foco largo nos campos; ao pressionar, o botão afunda 1 px sem mexer no resto. |
 | Menu de baixo no celular | `ui-ux-pro-max` (navegação com até cinco itens) | Início, Conversa, Tarefas, Agenda e Mais, sempre à mão. O topo ficou com a marca, buscar, avisos e a conta. Barras fora da área que rola: nada fica escondido embaixo delas. |
@@ -46,6 +46,14 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 | Sem cara de modelo pronto | `open-design` (`craft/anti-ai-slop.md`) | Nada de gradiente, emoji, roxo, cartão com borda colorida à esquerda ou número inventado. Os eventos da agenda perderam a faixa colorida e ganharam fundo suave. |
 | Tela de entrar discreta | `open-design` (`login-flow`) e o pedido do Pablo de 13:37 | Só a marca, uma frase e o formulário; rótulos acima dos campos, mostrar senha, preenchimento automático do gerenciador de senhas. O desenho do lado esquerdo são as ondas do sinal. |
 | O agora no seu dia | detalhe de produto | A linha vermelha das 08:12 aparece entre o que já passou e o que vem, no Início e na Agenda. |
+
+### Ajustes pedidos pelo Pablo (09/11, 15:56)
+
+- **Tema escuro com mais contraste:** fundo mais fundo, cartões e bordas mais visíveis, texto de apoio mais claro e o traço verde na aba aberta.
+- **Agenda das 08:00 às 18:00:** é o intervalo padrão. Em "Mostrar" dá para escolher outro início e outro fim, e "Voltar para 08:00 até 18:00" desfaz. O que cai fora do intervalo não some: aparece nas linhas "Antes" e "Depois" (no celular, numa nota "Fora do horário").
+- **Tela de Contatos:** lista com busca e as abas Pessoas, Clientes e Avaliações; ao lado, a pessoa escolhida com telefone, e-mail, aniversário, o que está na agenda com ela e o que a Zuri sabe sobre ela. Só leitura, como no app (vem do Google Contatos), com "Perguntar à Zuri sobre a Bia" e "Copiar telefone".
+- **Lateral sem "Recentes".** A conta ficou só com o nome, sem "Configurações e tema".
+- **Busca sem o atalho Ctrl + K** na caixa. A paleta de comandos continua no atalho, só não aparece escrita.
 
 ### Recomendação
 
