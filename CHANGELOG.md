@@ -19,6 +19,39 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.34.2] - 2026-11-09
+
+Mesclada às 04:19 (UTC-3) · commit [`c5982a7`](https://github.com/pablopfg/Zuri/commit/c5982a7cea3850cbd120b805e5017fcd48d40adc) · PR [#196](https://github.com/pablopfg/Zuri/pull/196) · Ajustes de cada agente na tela de IA, com versões e senha
+
+### Adicionado
+
+- **Agentes na tela de IA.** Em Configurações › IA, o cartão "Agentes" mostra
+  cada parte da Zuri que usa IA (conversa, resumo, passo de IA dos fluxos,
+  rascunho e segunda leitura das avaliações, conferência das rotinas). Em
+  "Ajustar" você muda a temperatura, o `top_p`, o tamanho máximo da resposta e
+  o estilo e a tarefa de cada um, e lê as regras fixas de segurança, que valem
+  acima do que você escrever.
+- Cada mudança vira uma versão com data. Dá para voltar a qualquer uma das 20
+  mais recentes ou ao padrão. Cada resposta, rodada de rotina e rascunho de
+  avaliação guarda a versão do prompt com que foi feito.
+
+### Segurança
+
+- Salvar pede a senha digitada nos últimos 15 minutos e não funciona no modo de
+  bloqueio. Só a tela muda esses ajustes: nenhuma ferramenta, comando do bot,
+  MCP, fluxo ou token de acesso remoto chega a eles. O estilo aceita até 2.000
+  caracteres, sem `<`, `>` nem caracteres invisíveis. Os dois agentes que só
+  conferem não aceitam estilo nenhum e ficam com temperatura e `top_p` fixos.
+- Toda mudança nos agentes aparece na atividade de acesso e manda um alerta de
+  segurança.
+
+### Atualização
+
+- Migration 30 (`agent_configs`): tabela das versões dos agentes e a coluna
+  `prompt_version` nas mensagens, nas rodadas das rotinas e nas avaliações. Roda
+  sozinha no primeiro acesso depois da atualização. Precisa da migration 29 da
+  etapa 21 antes.
+
 ## [0.34.1] - 2026-11-09
 
 Mesclada às 00:54 (UTC-3) · commit [`e13f45f`](https://github.com/pablopfg/Zuri/commit/e13f45f91ed8ac7b04ff7609bfc5ce3d19302d57) · PR [#197](https://github.com/pablopfg/Zuri/pull/197) · Etapa 21 mesclada, próxima é a 23
@@ -2569,7 +2602,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.34.1...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.34.2...develop
+[0.34.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.2
 [0.34.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.1
 [0.34.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.0
 [0.33.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.33.3
