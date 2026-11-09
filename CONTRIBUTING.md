@@ -53,8 +53,8 @@ aparece nas capturas ou mexe na arquitetura, atualize o README **no mesmo PR**:
   aviso do topo. A coluna Situação do mapa das etapas, o selo de etapas e as
   contagens ("0 a X", "steps 0 to X") se atualizam sozinhos pelo workflow
   `README` depois do merge; não mexa neles à mão.
-- **Funcionalidade nova:** acrescente à tabela "O que já funciona" e tire de
-  "O que vem a seguir".
+- **Funcionalidade nova:** atualize a linha da área na tabela "O que já funciona"
+  (uma frase curta; o detalhe vai para o documento da área em `docs/`).
 - **Tela mudou:** suba o servidor do e2e numa base vazia (o comando
   `webServer` do [`playwright.config.ts`](playwright.config.ts)) e rode
   `node scripts/capturas-do-readme.ts`. As imagens novas vão para

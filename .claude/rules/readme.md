@@ -19,14 +19,14 @@ Todo PR que muda um destes itens atualiza o README **no mesmo PR**, junto com o 
 
 | O PR muda | O que mexer no README |
 | --- | --- |
-| Funcionalidade visível (tela, rota, comando do bot, integração) | Tabela "O que já funciona"; tire o item de "O que vem a seguir" quando ele chegar |
+| Funcionalidade visível (tela, rota, comando do bot, integração) | A linha da área em "O que já funciona" (uma linha por área, frase curta; o detalhe vai para o documento da área em `docs/`). Área nova só quando nenhuma das atuais cabe |
 | Etapa concluída (`proxima-etapa`) | O `progresso.md` e o resumo do aviso do topo (o que já existe): a coluna Situação do mapa, o selo de etapas, "A Zuri sai em N etapas", "As etapas 0 a X" e "steps 0 to X" de "In English" são automáticos (veja abaixo). Etapa nova ou dividida (22a, 22b…) ganha a linha dela no mapa, dentro dos marcadores |
 | Tela que aparece nas capturas | Rode `node scripts/capturas-do-readme.ts` com o servidor do e2e numa base vazia e faça commit de `docs/capturas/` |
 | Tela criada ou alterada (qualquer uma) | Capturas na descrição do PR, em `docs/capturas/pr/<assunto>/` (`.claude/rules/capturas.md`) |
 | Tela nova importante | Acrescente a tela ao script e ao quadro "Telas" (claro e escuro com `<picture>`) |
 | Arquitetura, stack, recurso da Cloudflare ou cota | "Como funciona", "Plano Free, sem surpresa na fatura" e o diagrama Mermaid |
-| Comando, requisito ou passo de instalação | "Rodar localmente" e o `CONTRIBUTING.md` |
-| Documento novo de entrada em `docs/` | Tabela "Documentação" |
+| Comando, requisito ou passo de instalação | "Instalar" e o `CONTRIBUTING.md` |
+| Documento novo de entrada em `docs/` | Tabela "Documentação", no grupo certo (Instalar e manter, Entender, Usar, Integrar) |
 
 PR só interno (refatoração, teste, CI) não mexe no README. Na dúvida, mexa.
 
@@ -48,7 +48,10 @@ O selo de versão (pedido do Pablo, 03/11/2026) é dinâmico: o shields.io lê a
 ## Como escrever
 
 - Mantenha o desenho: banner Sinal com `<picture>` claro/escuro, selos, sumário, tabelas com ícone, capturas que seguem o tema, Mermaid, seção curta "In English".
-- Descreva o que existe na `develop`. O que ainda não foi feito fica em "O que vem a seguir" ou no mapa, nunca em "O que já funciona".
+- Descreva o que existe na `develop`. O que ainda não foi feito fica no mapa, nunca em "O que já funciona".
+- README curto (pedido do Pablo, 09/11/2026): o README é a porta de entrada, não o manual. Uma frase por área, sem números de limite que já estão no documento da área, e nada de lista de planos.
+- O mesmo README vai para a `main` na release (`docs/planos/release-main-limpa.md`). Link relativo só para o que vai junto (código, `docs/` de uso, `LICENSE`, `SECURITY.md`, `CHANGELOG.md`); para o que fica só na `develop` (especificação, `AGENTS.md`, `CONTRIBUTING.md`, `docs/agente/`, `docs/qa/`, `docs/planos/`, `.claude/`), use o endereço absoluto `https://github.com/pablopfg/Zuri/blob/develop/...`.
+- As capturas do quadro "Telas" serão refeitas quando o novo visual entrar na `develop`; até lá, não gere capturas novas do visual antigo só para o README.
 - Números do README (cota, limites, coberturas, etapas) batem com a especificação e com o código. Confira antes de escrever.
 - Capturas com dados de exemplo, sem dado real. Nada de domínio, e-mail, id ou chave: use `exemplo.com.br`.
 - Passada final com a skill `humanizer:humanizer`, sem mudar fatos nem termos técnicos.

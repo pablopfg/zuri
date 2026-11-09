@@ -18,7 +18,7 @@ lê só `progresso.md`, `decisoes.md` e o trecho da especificação dela.
       médio aberto; relatórios no corpo do PR.
 - [ ] Matriz de rastreabilidade completa (todo critério de aceite com teste).
 - [ ] Changelog em `changelog/nao-lancado/`, começando por `<!-- versao: minor -->`, e docs atualizados; `progresso.md` atualizado neste PR.
-- [ ] `README.md` atualizado neste PR: "O que já funciona", "O que vem a seguir" e o resumo do aviso do topo. A coluna Situação do mapa, o selo e as contagens são do workflow `README`; não mexa neles à mão (`.claude/rules/readme.md`).
+- [ ] `README.md` atualizado neste PR: a linha da área em "O que já funciona" e o resumo do aviso do topo. A coluna Situação do mapa, o selo e as contagens são do workflow `README`; não mexa neles à mão (`.claude/rules/readme.md`).
 - [ ] Etapa com telas: capturas no corpo do PR (computador e celular, claro e escuro) e em `docs/capturas/pr/<assunto>/` (`.claude/rules/capturas.md`).
 - [ ] Nenhuma decisão de produto pendente.
 - [ ] Os rulesets da `develop` e da `main` estão ativos no GitHub (o Pablo
