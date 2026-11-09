@@ -52,6 +52,18 @@ async function connect(page: Page) {
   return card;
 }
 
+/**
+ * Closes a toast the way the owner would. On a phone the toast sits over the bottom of the
+ * day, and a click on an event under it lands on the toast instead: the pointer on it holds
+ * its timer (WCAG 2.2.1), so it never leaves and the click retries until the test times out.
+ */
+async function closeToast(page: Page, text: string) {
+  // The toast is the box with its own close button and the text; the spoken status copy has no button.
+  const toast = page.locator("div:has(> button[aria-label='Fechar'])").filter({ hasText: text });
+  await toast.getByRole("button", { name: "Fechar" }).click();
+  await expect(toast).toHaveCount(0);
+}
+
 test("connects Google, opens calendars, and creates, edits and deletes an event in the Agenda; accessible @mobile", async ({ page }) => {
   const card = await connect(page);
   // Every calendar starts closed; the free/busy one can't be opened at all.
@@ -103,6 +115,7 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   await form.getByRole("textbox", { name: "Local (opcional)" }).fill("Rua das Flores, 10");
   await form.getByRole("button", { name: "Criar evento" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Evento criado" })).toBeVisible();
+  await closeToast(page, "Evento criado");
   const created = page.getByRole("button", { name: /^Consulta de teste/ });
   await expect(created).toContainText("20:00 – 21:00 · Rua das Flores, 10");
 
@@ -121,6 +134,7 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   await stale.getByRole("textbox", { name: "Título" }).fill("Não deve valer");
   await stale.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("status").filter({ hasText: "O evento mudou no Google enquanto isso" })).toBeVisible();
+  await closeToast(page, "O evento mudou no Google enquanto isso");
   await expect(stale).toHaveCount(0);
   await expect(created).toContainText("Rua Nova, 20");
   await expect(page.getByRole("button", { name: /^Não deve valer/ })).toHaveCount(0);
@@ -134,6 +148,7 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   await edit.getByRole("textbox", { name: "Título" }).fill("Consulta remarcada");
   await edit.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Evento salvo" })).toBeVisible();
+  await closeToast(page, "Evento salvo");
   const renamed = page.getByRole("button", { name: /^Consulta remarcada/ });
   await expect(renamed).toBeVisible();
 

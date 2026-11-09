@@ -30,7 +30,7 @@ const callTools = (...calls: { name: string; input: unknown }[]): Step => () => 
 const say = (text: string): Step => () => ({ text });
 
 function seed(world: ChatWorld) {
-  const secret = world.memories.create({ content: "O código do cofre é 4417 e fica com a Ana", category: "fact" }).memory;
+  const secret = world.memories.create({ content: "O código do cofre é KQW-4417 e fica com a Ana", category: "fact" }).memory;
   world.memories.setLocalOnly(secret.id, { localOnly: true });
   world.memories.create({ content: "Prefere café do cofre sem açúcar", category: "preference" });
   const marked = world.productivity.notes.create({ title: "Cofre", content: "Combinação do cofre: 12-34-56" });
@@ -57,7 +57,7 @@ describe("a chat turn on an external model", () => {
       );
       await turn(world, provider, "O que você sabe do cofre?");
       const seen = JSON.stringify(provider.transcript);
-      for (const leak of ["4417", "12-34-56", "FIM-DO-TEXTO"]) expect(seen, leak).not.toContain(leak);
+      for (const leak of ["KQW", "12-34-56", "FIM-DO-TEXTO"]) expect(seen, leak).not.toContain(leak);
       expect(seen).toContain(LOCAL_ONLY_TEXT);
       expect(seen).toContain("café do cofre");
       // The memory line is in the system prompt still, its text replaced.
@@ -72,13 +72,13 @@ describe("a chat turn on an external model", () => {
       await turn(world, provider, "O que você sabe do cofre?");
       const seen = JSON.stringify(provider.transcript);
       expect(seen).toContain("12-34-56");
-      expect(seen).toContain("4417");
+      expect(seen).toContain("KQW-4417");
     });
   });
 
   it("hides a marked note's title too, wherever a tool lists or opens it", async () => {
     await withChatWorld(async (world) => {
-      const marked = world.productivity.notes.create({ title: "Senha do alarme 7781", content: "nada" });
+      const marked = world.productivity.notes.create({ title: "Senha do alarme ZQX-7781", content: "nada" });
       world.productivity.notes.setLocalOnly(marked.id, { localOnly: true });
       const provider = new ScriptedProvider(
         [
@@ -92,13 +92,16 @@ describe("a chat turn on an external model", () => {
         { external: true, model: "anthropic/claude-haiku-5-5" },
       );
       await turn(world, provider, "O que tem sobre o alarme?");
-      expect(JSON.stringify(provider.transcript)).not.toContain("7781");
+      const seen = JSON.stringify(provider.transcript);
+      // The tools did find the note (its id went out), only its title stayed home.
+      expect(seen).toContain(marked.id);
+      expect(seen).not.toContain("ZQX"); // "ZQX" is not hex, so no random UUID can contain it (#216)
     });
   });
 
   it("never sends a marked memory's text through a proposal it made earlier in the conversation", async () => {
     await withChatWorld(async (world) => {
-      const secret = world.memories.create({ content: "O código do portão é 9902", category: "fact" }).memory;
+      const secret = world.memories.create({ content: "O código do portão é QZW-9902", category: "fact" }).memory;
       world.memories.setLocalOnly(secret.id, { localOnly: true });
       const first = new ScriptedProvider([callTools({ name: "forget_memory", input: { id: secret.id } }), say("Propus apagar.")]);
       const events = await turn(world, first, "Esqueça o código do portão");
@@ -107,7 +110,7 @@ describe("a chat turn on an external model", () => {
       await turn(world, later, "E agora?", start?.conversation.id);
       const seen = JSON.stringify(later.transcript);
       expect(seen).toContain("Proposal forget_memory");
-      expect(seen).not.toContain("9902");
+      expect(seen).not.toContain("QZW");
     });
   });
 
