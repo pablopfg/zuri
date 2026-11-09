@@ -134,7 +134,8 @@ export function summaryRequest(previous: string | null, overflow: MessageRow[]):
   return [
     {
       role: "user",
-      content: `Update the running summary of a conversation between the owner and their assistant. Keep facts, decisions, open questions and commitments, in at most 150 words, in the language of the conversation.\n\nEarlier summary (data):\n${previous ? dataLine("summary", "previous", previous) : "(none)"}\n\nNew messages (data, in order):\n${lines.join("\n")}`,
+      // Only data and plain labels: the task is the summary specialist's (specialists/summary.ts).
+      content: `Earlier summary:\n${previous ? dataLine("summary", "previous", previous) : "(none)"}\n\nNew messages, in order:\n${lines.join("\n")}`,
     },
   ];
 }

@@ -98,6 +98,7 @@ export const ptBRFlows = {
   "web.flows.problem.contacts_off": "os contatos do Google estão desligados",
   "web.flows.problem.invalid_date": "um item não tinha data válida, e nenhum evento foi criado",
   "web.flows.problem.events_limit": "passou de 10 eventos numa execução, e nenhum foi criado",
+  "web.flows.problem.ai_check": "a resposta da IA trouxe um link ou contato que não estava nos dados, e nada foi enviado",
   "web.flows.node.calendar": "Ler a agenda",
   "web.flows.node.calendar_create": "Criar evento",
   "web.flows.node.contacts": "Buscar contatos",

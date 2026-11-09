@@ -99,6 +99,7 @@ export const ptBRServer = {
   "automation.digest.more": "…e outras. Veja todas em Tarefas.",
   "automation.digest.empty": "Nada atrasado e nada para hoje. Dia livre!",
   "automation.mcp.conversation": "Rotina: {name}",
+  "chat.claimUnverified": "Não consegui confirmar que isso foi feito. Confira antes de contar com isso.",
   "automation.mcp.message": "A rotina {name} quis usar ferramentas externas que pedem a sua aprovação. Nada foi enviado ainda. Confira os dados abaixo e aprove o que quiser.",
   "automation.mcp.notice.one": "Uma chamada a ferramenta externa espera a sua aprovação na conversa da rotina. No Telegram, use /aprovar.",
   "automation.mcp.notice.other": "{count} chamadas a ferramentas externas esperam a sua aprovação na conversa da rotina. No Telegram, use /aprovar.",

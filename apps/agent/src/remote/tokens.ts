@@ -69,7 +69,8 @@ export class RemoteTokens implements RemoteTokenHook {
 
   list(): RemoteTokenInfo[] {
     return this.deps.db
-      .all<TokenRow>(`SELECT id, name, hint, scope, created_at, expires_at, last_used_at, suspended FROM zur_remote_tokens ORDER BY created_at, id`)
+      // Two made in the same millisecond keep the order they were made in (rowid), never the random id's.
+      .all<TokenRow>(`SELECT id, name, hint, scope, created_at, expires_at, last_used_at, suspended FROM zur_remote_tokens ORDER BY created_at, rowid`)
       .map(info);
   }
 

@@ -230,10 +230,15 @@ function nextPrompt(steps: StepMeter[], done: { toolResults?: unknown }[]): numb
   return previous + estimateTokens(JSON.stringify(done.at(-1)?.toolResults ?? []));
 }
 
-/** Optional call settings, left out rather than passed as undefined. */
-export function callOptions(req: GenerateRequest): { temperature?: number; abortSignal?: AbortSignal } {
+/**
+ * Optional call settings, left out rather than passed as undefined. Only
+ * these reach the model through the SDK: `seed`, `top_k` and the penalties
+ * are not sent (docs/planos/guardrails-multiagentes-ia.md, section 6).
+ */
+export function callOptions(req: GenerateRequest): { temperature?: number; topP?: number; abortSignal?: AbortSignal } {
   return {
     ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
+    ...(req.topP === undefined ? {} : { topP: req.topP }),
     ...(req.signal ? { abortSignal: req.signal } : {}),
   };
 }

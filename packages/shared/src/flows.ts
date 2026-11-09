@@ -188,6 +188,8 @@ export const FLOW_RUN_PROBLEMS = [
   "contacts_off",
   "invalid_date",
   "events_limit",
+  // The fixed check of an AI step's answer (guardrails, 04/11/2026).
+  "ai_check",
 ] as const;
 export type FlowRunProblem = (typeof FLOW_RUN_PROBLEMS)[number];
 
