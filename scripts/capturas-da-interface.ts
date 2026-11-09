@@ -33,7 +33,10 @@ if (!out) {
 const withSamples = args.includes("--exemplos");
 const pairs = args.filter((arg) => arg.includes("="));
 const screens = (pairs.length > 0 ? pairs : ["entrar=/entrar", "inicio=/"]).map((pair) => {
-  const [name = "", target = ""] = pair.split("=", 2);
+  // Split at the first "=" only: a path may carry a query (`lixeira=/configuracoes/dados?tipo=tarefas`).
+  const at = pair.indexOf("=");
+  const name = pair.slice(0, at);
+  const target = pair.slice(at + 1);
   // `name=/path>Region name` scrolls that region (role region, by its name) to the top before the shot.
   const [path = "", region] = target.split(">", 2);
   // The name becomes a file name: keep it to a plain slug.

@@ -212,10 +212,11 @@ export function ChatPage() {
                 <span className="sr-only sm:not-sr-only">{t("web.chat.listOpen")}</span>
               </Button>
               {id && conversation && <ConversationOptions conversation={conversation} disabled={streamingHere} />}
+              {/* On a computer the list beside the page already starts a new one: one "Nova conversa" (stage 26c). */}
               {id && (
                 <Link
                   to="/conversa"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-fg hover:bg-accent-hover"
+                  className="inline-flex min-h-11 lg:hidden items-center justify-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-fg hover:bg-accent-hover"
                 >
                   <Plus className="h-4 w-4" aria-hidden />
                   <span className="sr-only sm:not-sr-only">{t("web.chat.new")}</span>

@@ -121,7 +121,7 @@ function TodayCard() {
       : plural("web.home.today.count", list.length)
     : undefined;
   return (
-    <HomeCard title={t("web.home.today.title")} summary={list.length > 0 ? summary : undefined} link={<SeeAll label={t("web.home.today.link")} />}>
+    <HomeCard title={t("web.home.today.title")} summary={list.length > 0 ? summary : t("web.home.today.summary")} link={<SeeAll label={t("web.home.today.link")} />}>
       {tasks.isPending ? (
         <Loading />
       ) : tasks.isError ? (

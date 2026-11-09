@@ -12,8 +12,9 @@ import {
   ptBRMemory,
   type Settings,
 } from "@zuri/shared";
-import { Archive, ArchiveRestore, BadgeCheck, Brain, CircleHelp, GitCompareArrows, History, Pencil, RefreshCw, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, BadgeCheck, Brain, CircleHelp, GitCompareArrows, History, Pencil, Plus, RefreshCw, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useId, useState } from "react";
+import { ActionsMenu } from "../../components/ActionsMenu.tsx";
 import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, fieldClass, PageHeader, SelectField, Loading, TextAreaField } from "../../components/ui.tsx";
 import { MEMORIES_KEY, useMemories, useMemoryHistory, useMemoryReviews } from "../../hooks/memory.ts";
 import { SETTINGS_KEY } from "../../hooks/session.tsx";
@@ -63,13 +64,31 @@ export function MemoryPage() {
   const toast = useToast();
   // A write that raised conflicts leaves something to do: that toast stays until closed.
   const notify = (message: string, pending: boolean) => toast(message, { persistent: pending });
+  // Saving by hand is the rarer visit (the Zuri saves most memories herself): a button and a dialog, so the list gets the top (stage 26c).
+  const [creating, setCreating] = useState(false);
 
   return (
     <>
-      <PageHeader title={t("web.memory.title")} description={t("web.memory.description")} />
+      <PageHeader
+        title={t("web.memory.title")}
+        description={t("web.memory.description")}
+        actions={
+          <Button onClick={() => setCreating(true)} aria-haspopup="dialog">
+            <Plus className="h-4 w-4" aria-hidden />
+            {t("web.memory.new")}
+          </Button>
+        }
+      />
 
-
-      <NewMemory onSaved={notify} />
+      <Dialog open={creating} onClose={() => setCreating(false)} title={t("web.memory.new")}>
+        <NewMemory
+          onCancel={() => setCreating(false)}
+          onSaved={(message, pending) => {
+            setCreating(false);
+            notify(message, pending);
+          }}
+        />
+      </Dialog>
 
       {(counts?.reviews ?? 0) > 0 && <ReviewQueue total={counts?.reviews ?? 0} onDone={toast} />}
 
@@ -177,7 +196,7 @@ function useWriteMessage() {
   };
 }
 
-function NewMemory({ onSaved }: { onSaved: (message: string, pending: boolean) => void }) {
+function NewMemory({ onSaved, onCancel }: { onSaved: (message: string, pending: boolean) => void; onCancel: () => void }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const message = useWriteMessage();
@@ -204,37 +223,39 @@ function NewMemory({ onSaved }: { onSaved: (message: string, pending: boolean) =
   }
 
   return (
-    <Card title={t("web.memory.new")} description={t("web.memory.newHint")}>
-      <form onSubmit={(e) => void submit(e)} className="space-y-3">
-        <TextAreaField
-          label={t("web.memory.content")}
-          value={content}
-          maxLength={MEMORY_CONTENT_MAX}
-          required
-          onChange={(e) => setContent(e.target.value)}
-          placeholder={t("web.memory.placeholder")}
-          hint={t("web.memory.counter", { used: content.length, max: MEMORY_CONTENT_MAX })}
-          className="[&_textarea]:min-h-20"
-        />
-        <div className="flex flex-wrap items-end gap-3">
-          <SelectField label={t("web.memory.category")} value={category} onChange={(e) => setCategory(e.target.value as MemoryCategory)} className="min-w-48 flex-1 sm:flex-none">
-            {MEMORY_CATEGORIES.map((item) => (
-              <option key={item} value={item}>
-                {t(CATEGORY_LABEL[item])}
-              </option>
-            ))}
-          </SelectField>
-          <Button type="submit" loading={pending} disabled={!content.trim()}>
-            {t("web.memory.save")}
-          </Button>
-        </div>
-        {error && (
-          <p role="alert" className="text-sm text-danger">
-            {error}
-          </p>
-        )}
-      </form>
-    </Card>
+    <form onSubmit={(e) => void submit(e)} className="space-y-3">
+      <p className="text-sm leading-6 text-fg-muted">{t("web.memory.newHint")}</p>
+      <TextAreaField
+        label={t("web.memory.content")}
+        value={content}
+        maxLength={MEMORY_CONTENT_MAX}
+        required
+        onChange={(e) => setContent(e.target.value)}
+        placeholder={t("web.memory.placeholder")}
+        hint={t("web.memory.counter", { used: content.length, max: MEMORY_CONTENT_MAX })}
+        className="[&_textarea]:min-h-20"
+      />
+      <SelectField label={t("web.memory.category")} value={category} onChange={(e) => setCategory(e.target.value as MemoryCategory)}>
+        {MEMORY_CATEGORIES.map((item) => (
+          <option key={item} value={item}>
+            {t(CATEGORY_LABEL[item])}
+          </option>
+        ))}
+      </SelectField>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="secondary" onClick={onCancel}>
+          {t("web.cancel")}
+        </Button>
+        <Button type="submit" loading={pending} disabled={!content.trim()}>
+          {t("web.memory.save")}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -316,58 +337,33 @@ function MemoryRow({
           <span className="text-fg-muted">{t("web.memory.savedAt", { time: dateTime(memory.updatedAt) })}</span>
         </div>
         <div className="flex flex-wrap items-center">
-          {!past && (
-            <button type="button" className={action} onClick={onCorrect} disabled={pending} aria-label={t("web.memory.correct")} title={t("web.memory.correct")}>
-              <RefreshCw className="h-4 w-4" aria-hidden />
-            </button>
-          )}
           <button type="button" className={action} onClick={onEdit} disabled={pending} aria-label={t("web.memory.edit")} title={t("web.memory.edit")}>
             <Pencil className="h-4 w-4" aria-hidden />
           </button>
-          <button
-            type="button"
-            className={cn(action, memory.localOnly && "text-accent-text")}
-            onClick={() => void setLocalOnly(!memory.localOnly)}
-            disabled={pending}
-            aria-pressed={memory.localOnly}
-            aria-label={t("web.memory.localOnly")}
-            title={t("web.memory.localOnlyHint")}
-          >
-            <ShieldCheck className="h-4 w-4" aria-hidden />
-          </button>
-          <button type="button" className={action} onClick={onHistory} disabled={pending} aria-label={t("web.memory.history")} title={t("web.memory.history")}>
-            <History className="h-4 w-4" aria-hidden />
-          </button>
-          {past ? (
-            <button type="button" className={action} onClick={() => void setStatus("active")} disabled={pending} aria-label={t("web.memory.restore")} title={t("web.memory.restore")}>
-              <ArchiveRestore className="h-4 w-4" aria-hidden />
-            </button>
-          ) : (
-            <>
-              {memory.status === "active" ? (
-                <button type="button" className={action} onClick={() => void setStatus("uncertain")} disabled={pending} aria-label={t("web.memory.markUncertain")} title={t("web.memory.markUncertain")}>
-                  <CircleHelp className="h-4 w-4" aria-hidden />
-                </button>
-              ) : (
-                <button type="button" className={action} onClick={() => void setStatus("active")} disabled={pending} aria-label={t("web.memory.confirmCurrent")} title={t("web.memory.confirmCurrent")}>
-                  <BadgeCheck className="h-4 w-4" aria-hidden />
-                </button>
-              )}
-              <button type="button" className={action} onClick={() => void setStatus("historical")} disabled={pending} aria-label={t("web.memory.markPast")} title={t("web.memory.markPast")}>
-                <Archive className="h-4 w-4" aria-hidden />
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            className={cn(action, "hover:bg-danger-soft hover:text-danger")}
-            onClick={onDelete}
-            disabled={pending}
-            aria-label={t("web.memory.delete")}
-            title={t("web.memory.delete")}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden />
-          </button>
+          <ActionsMenu
+            name={memory.content}
+            busy={pending}
+            actions={[
+              ...(past ? [] : [{ label: t("web.memory.correct"), icon: <RefreshCw className="h-4 w-4" />, onSelect: onCorrect, disabled: pending }]),
+              {
+                label: t("web.memory.localOnly"),
+                icon: <ShieldCheck className="h-4 w-4" />,
+                onSelect: () => void setLocalOnly(!memory.localOnly),
+                checked: memory.localOnly,
+                disabled: pending,
+              },
+              { label: t("web.memory.history"), icon: <History className="h-4 w-4" />, onSelect: onHistory, disabled: pending },
+              ...(past
+                ? [{ label: t("web.memory.restore"), icon: <ArchiveRestore className="h-4 w-4" />, onSelect: () => void setStatus("active"), disabled: pending }]
+                : [
+                    memory.status === "active"
+                      ? { label: t("web.memory.markUncertain"), icon: <CircleHelp className="h-4 w-4" />, onSelect: () => void setStatus("uncertain"), disabled: pending }
+                      : { label: t("web.memory.confirmCurrent"), icon: <BadgeCheck className="h-4 w-4" />, onSelect: () => void setStatus("active"), disabled: pending },
+                    { label: t("web.memory.markPast"), icon: <Archive className="h-4 w-4" />, onSelect: () => void setStatus("historical"), disabled: pending },
+                  ]),
+              { label: t("web.memory.delete"), icon: <Trash2 className="h-4 w-4" />, onSelect: onDelete, danger: true, disabled: pending },
+            ]}
+          />
         </div>
       </div>
       {error && (

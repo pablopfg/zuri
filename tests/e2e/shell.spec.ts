@@ -1,6 +1,6 @@
 import { APP_VERSION } from "@zuri/shared";
 import { expect, test } from "./fixtures.ts";
-import { CSRF, EMAIL, expectAccessible, openAccountMenu, openSettingsSection, openSidebar, PASSWORD, settingsHasTabs, signIn, signOutFromMenu } from "./ui-helpers.ts";
+import { CSRF, EMAIL, expectAccessible, openAccountMenu, openSettingsSection, openSidebar, PASSWORD, settingsHasTabs, settingsTitle, signIn, signOutFromMenu } from "./ui-helpers.ts";
 
 // The interface against the real Worker: sign-in, the session guard, sign-out
 // and the ways a session ends. pt-BR is the default language.
@@ -15,7 +15,7 @@ test("a private page sends to the sign-in with ?next= and opens after it @mobile
 
   await signIn(page);
   await expect(page).toHaveURL(/\/configuracoes\/seguranca$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
+  await expect(settingsTitle(page, "Segurança")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Verificação em duas etapas" })).toBeVisible();
 });
 
@@ -41,7 +41,7 @@ test("signing out ends the session on the server and in every tab @mobile", asyn
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
   const other = await context.newPage();
   await other.goto("/configuracoes/conta");
-  await expect(other.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
+  await expect(settingsTitle(other, "Conta")).toBeVisible();
 
   const logout = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/auth/logout");
   await signOutFromMenu(page);
@@ -113,7 +113,7 @@ test("the notification center opens from the bell and closes with Escape", async
   await expect(bell).toBeFocused();
 });
 
-test("settings has the seven sections, each with its address and content: tabs on a computer, a list on a phone @mobile", async ({ page }) => {
+test("settings has the eight sections, each with its address and content: tabs on a computer, a list on a phone @mobile", async ({ page }) => {
   await page.goto("/configuracoes");
   await signIn(page);
   const sections = page.getByRole("navigation", { name: "Seções das configurações" });
@@ -127,14 +127,15 @@ test("settings has the seven sections, each with its address and content: tabs o
     await expect(page.getByRole("main").getByText(version, { exact: true })).toBeVisible();
     // The list is the page: each section with what it holds, no section open yet.
     await expect(page).toHaveURL(/\/configuracoes$/);
-    await expect(sections.getByRole("link")).toHaveCount(7);
+    await expect(sections.getByRole("link")).toHaveCount(8);
         await expect(page.getByRole("link", { name: "Todas as configurações" })).toHaveCount(0);
     await expect(sections.getByRole("link", { name: "Segurança", exact: true })).toHaveAccessibleDescription("Verificação em duas etapas, passkeys e saída automática");
     await expectAccessible(page, "configuracoes (lista)");
   }
   for (const [name, path, text] of [
     ["Segurança", "seguranca", "Atividade de acesso"],
-    ["IA", "ia", "Uso de hoje"],
+    ["Uso da IA", "ia", "Uso de hoje"],
+    ["Modelos e limites", "modelos", "Modelo de conversa"],
     ["Avisos", "avisos", "Resumo do dia"],
     ["Integrações", "integracoes", "Serviços externos (MCP)"],
     ["Dados", "dados", "Exportar e importar"],
@@ -147,16 +148,17 @@ test("settings has the seven sections, each with its address and content: tabs o
     if (settingsHasTabs(page)) {
       await expect(sections.getByRole("link", { name, exact: true })).toHaveAttribute("aria-current", "page");
     } else {
-      // One section per screen: its name on top and the way back, no tabs.
-      await expect(page.getByRole("heading", { level: 2, name, exact: true })).toBeVisible();
+      // One section per screen: its name is the page's title, under the way back, no tabs.
+      await expect(page.getByRole("heading", { level: 1, name, exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Todas as configurações" })).toBeVisible();
       await expect(sections).toHaveCount(0);
     }
   }
   // These texts arrive with the screen, not with the first download: they must still show, never as raw keys.
-  await expect(page.getByRole("main")).toContainText("Sua conta, a segurança e o que a Zuri pode usar.");
+  // On a phone the section's own line shows instead of the settings' one.
+  await expect(page.getByRole("main")).toContainText(settingsHasTabs(page) ? "Sua conta, a segurança e o que a Zuri pode usar." : "Nome, idioma, fuso, tema e senha");
   await openSettingsSection(page, "Segurança");
   await expect(page.getByRole("main")).toContainText("Saída automática");
-  await expect(page.getByRole("main")).toContainText("Em breve nesta aba");
   await expect(page.getByRole("main")).not.toContainText("web.");
   if (!settingsHasTabs(page)) {
     await page.getByRole("link", { name: "Todas as configurações" }).click();

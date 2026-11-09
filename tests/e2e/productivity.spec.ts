@@ -86,7 +86,21 @@ test("a task: create with a deadline and a project, edit, complete, delete and r
   await list.getByRole("button", { name: `${title} de dezembro` }).click();
   await page.getByRole("dialog", { name: "Editar tarefa" }).getByRole("button", { name: "Mover para a lixeira" }).click();
   await page.getByRole("link", { name: "Lixeira" }).click();
+  // From Tasks the trash opens with only the tasks, the way back and "Ver tudo" (stage 26c).
+  await expect(page).toHaveURL(/\/configuracoes\/dados\?tipo=tarefas$/);
+  await expect(page.getByText("Só as tarefas apagadas.")).toBeVisible();
+  // The trash leads the page, above the storage cards that load after it.
+  await expect(page.getByRole("main").getByRole("heading", { level: 2 }).first()).toHaveText("Lixeira");
+  await expect(page.getByRole("link", { name: "Voltar para Tarefas" })).toHaveAttribute("href", "/tarefas");
+  // Emptying takes every kind, so it waits for "Ver tudo".
+  await expect(page.getByRole("button", { name: "Esvaziar a lixeira" })).toHaveCount(0);
+  const trashKinds = await page.getByRole("button", { name: /^Restaurar / }).count();
+  await expect(page.getByText(/^Nota · /)).toHaveCount(0);
+  await expectAccessible(page, "lixeira filtrada");
+  await page.getByRole("button", { name: "Ver tudo" }).click();
   await expect(page).toHaveURL(/\/configuracoes\/dados$/);
+  await expect(page.getByText("Só as tarefas apagadas.")).toHaveCount(0);
+  expect(await page.getByRole("button", { name: /^Restaurar / }).count()).toBeGreaterThanOrEqual(trashKinds);
   await page.getByRole("button", { name: `Restaurar ${title} de dezembro` }).click();
   // The confirmation is a toast: spoken once by the status region, shown at the foot of the screen.
   await expect(page.getByRole("status").filter({ hasText: `"${title} de dezembro" voltou para o lugar` })).toHaveCount(1);
@@ -104,8 +118,9 @@ test("a note: write Markdown, preview it safely, search, delete and restore @mob
   const title = `Receita ${test.info().repeatEachIndex} de bolo ${test.info().project.name}`;
   await openSignedIn(page, "/notas");
   await expect(page.getByRole("heading", { level: 1, name: "Notas" })).toBeVisible();
-  // The header's "+" (the empty list may offer a second "Nova nota" below it).
-  await page.getByRole("link", { name: "Nova nota" }).first().click();
+  // One "Nova nota", in the header (stage 26c: one main action per screen).
+  await expect(page.getByRole("link", { name: "Nova nota" })).toHaveCount(1);
+  await page.getByRole("link", { name: "Nova nota" }).click();
   await page.getByLabel("Título").fill(title);
   await page
     .getByLabel("Texto da nota")

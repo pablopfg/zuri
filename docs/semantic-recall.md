@@ -8,7 +8,7 @@ Plano da etapa: [`docs/planos/etapa-17-busca-semantica.md`](planos/etapa-17-busc
 
 ## Para o dono
 
-- **Ligar:** Configurações › IA › **Busca por significado**. O cartão mostra
+- **Ligar:** Configurações › Modelos e limites › **Busca por significado**. O cartão mostra
   quantos itens estão prontos, quantos faltam e quantos foram preparados hoje.
 - **Enquanto prepara:** a busca já usa o que está pronto e, para o resto, as
   palavras. Nada some da busca.

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, rowAction, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // The Google steps of the flows (step 22c) against the real Worker: over
 // loopback the Worker answers Google itself (apps/agent/src/google/dev-google.ts),
@@ -106,18 +106,18 @@ test("a flow reads a calendar and creates a follow-up once; the Google steps say
   await expect(toast(page, "Fluxo criado, ainda desligado")).toBeVisible();
 
   const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
-  await row.getByRole("button", { name: "Executar agora" }).click();
+  await rowAction(row, page, "Executar agora");
   await expect(toast(page, "Fluxo executado")).toBeVisible();
   const history = page.getByRole("region", { name: "Histórico dos fluxos" });
   await expect(history.getByRole("listitem").filter({ hasText: name }).first().getByText("Concluída")).toBeVisible();
   expect(await followUps(page)).toEqual(["Retorno Atendimento"]);
 
   // Again: the key keeps it to one.
-  await row.getByRole("button", { name: "Executar agora" }).click();
+  await rowAction(row, page, "Executar agora");
   await expect(history.getByRole("listitem").filter({ hasText: name })).toHaveCount(2);
   expect(await followUps(page)).toEqual(["Retorno Atendimento"]);
 
-  await row.getByRole("button", { name: "Apagar" }).click();
+  await rowAction(row, page, "Apagar");
   await page.getByRole("dialog", { name: `Apagar ${name}?` }).getByRole("button", { name: "Apagar" }).click();
   await expect(row).toHaveCount(0);
 });

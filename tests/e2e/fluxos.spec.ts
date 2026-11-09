@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { expectAccessible, rowAction, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // The Flows tab of Automations (step 22a) against the real Worker: the site
 // monitor from its model, a connection with a credential that never comes back,
@@ -49,7 +49,7 @@ test("the site monitor: from its model, run now, turn on and off, delete @mobile
   expect(await tooSmallControls(page), "every control of the Flows tab is a 44 px target").toEqual([]);
 
   // Run now: the shop answers; the site that is down gets its next try in a minute.
-  await row.getByRole("button", { name: "Executar agora" }).click();
+  await rowAction(row, page, "Executar agora");
   await expect(toast(page, /^Fluxo em andamento\. Ele continua sozinho em /)).toBeVisible();
   const shop = sites.getByRole("listitem").filter({ hasText: "loja.exemplo.com.br" });
   await expect(shop.getByText("No ar")).toBeVisible();
@@ -67,14 +67,14 @@ test("the site monitor: from its model, run now, turn on and off, delete @mobile
   await expect(row.getByText(/^Próxima: /)).toHaveCount(0);
 
   // An address the monitor refuses: the server says why and nothing is saved.
-  await row.getByRole("button", { name: "Editar" }).click();
+  await rowAction(row, page, "Editar");
   const edit = page.getByRole("dialog", { name: "Editar fluxo" });
   await edit.getByLabel("Endereços").fill("http://loja.exemplo.com.br");
   await edit.getByRole("button", { name: "Salvar" }).click();
   await expect(edit.getByRole("alert")).toBeVisible();
   await edit.getByRole("button", { name: "Cancelar" }).click();
 
-  await row.getByRole("button", { name: "Apagar" }).click();
+  await rowAction(row, page, "Apagar");
   await page.getByRole("dialog", { name: `Apagar ${name}?` }).getByRole("button", { name: "Apagar" }).click();
   await expect(toast(page, "Fluxo apagado")).toBeVisible();
   await expect(row).toHaveCount(0);
@@ -143,7 +143,7 @@ test("a connection keeps its credential on the server; a flow calls it, filters 
   const row = flowRow(page, name);
   await expect(row.getByText("Só quando você executar · 3 passos")).toBeVisible();
   await expect(item.getByText(`Usada por ${name}`)).toBeVisible();
-  await row.getByRole("button", { name: "Executar agora" }).click();
+  await rowAction(row, page, "Executar agora");
   await expect(toast(page, "Fluxo executado")).toBeVisible();
   const run = page.getByRole("region", { name: "Histórico dos fluxos" }).getByRole("listitem").filter({ hasText: name }).first();
   await expect(run.getByText("Concluída")).toBeVisible();
@@ -155,7 +155,7 @@ test("a connection keeps its credential on the server; a flow calls it, filters 
   await expect(toast(page, "Um fluxo usa esta conexão. Tire-a do fluxo antes.")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(item).toBeVisible();
-  await row.getByRole("button", { name: "Apagar" }).click();
+  await rowAction(row, page, "Apagar");
   await page.getByRole("dialog", { name: `Apagar ${name}?` }).getByRole("button", { name: "Apagar" }).click();
   await expect(row).toHaveCount(0);
   await item.getByRole("button", { name: `Apagar a conexão ${connection}` }).click();
@@ -243,7 +243,7 @@ test("a flow the chat suggests waits on the tab; saved by the owner, it starts o
   const row = flowRow(page, name);
   await expect(row.getByRole("button", { name: "Ligar" })).toBeVisible();
 
-  await row.getByRole("button", { name: "Apagar" }).click();
+  await rowAction(row, page, "Apagar");
   await page.getByRole("dialog", { name: `Apagar ${name}?` }).getByRole("button", { name: "Apagar" }).click();
   await expect(flowRow(page, name)).toHaveCount(0);
 });

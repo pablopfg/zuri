@@ -596,7 +596,7 @@ Desde 04/11/2026 (`docs/planos/guardrails-especialistas-ia.md`):
   fixo e a conferência dos contatos; `prompt-snapshot.test.ts` deixa toda
   mudança de prompt visível no diff.
 - A camada do dono e os parâmetros de cada agente mudam só pela tela
-  (Configurações › IA › Agentes): senha digitada nos últimos 15 minutos, fora do
+  (Configurações › Modelos e limites › Agentes): senha digitada nos últimos 15 minutos, fora do
   modo de bloqueio (as rotas `/api/ai/agents` respondem 423 nele), fora dos
   tokens remotos e sem ferramenta, comando do bot, MCP ou fluxo que as alcance.
   O servidor recusa `<`, `>` (e sinais parecidos), caracteres invisíveis e mais
@@ -645,7 +645,7 @@ limite real está no servidor:
 - **Planos são rascunhos.** Um plano de tarefas não cria nada até o dono
   confirmar. O servidor recusa tarefas que o agente não propôs.
 - **Limites por turno.** Até 6 chamadas de ferramenta e 4 passos por resposta
-  (o dono ajusta em Configurações > IA), limite por ferramenta, recusa da
+  (o dono ajusta em Configurações > Modelos e limites), limite por ferramenta, recusa da
   chamada exata repetida e prazo de 120 s. O uso de IA passa pelo medidor
   diário (9.000 Neurons).
 - **Sem vazamento do prompt.** O prompt de sistema não tem segredos, chaves,

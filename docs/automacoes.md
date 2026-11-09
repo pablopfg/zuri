@@ -43,7 +43,7 @@ Cada automação tem também a prioridade dos seus avisos (`priority`: baixa, no
 | Rotinas esperando aprovação | 10 |
 | Repetição mínima | 1 hora |
 | Execuções no histórico | 2.000; passando de 2.050, as 50 mais antigas saem de uma vez (as de IA do dia ficam, porque o teto conta com elas) |
-| Rotinas com IA por dia | 6 por padrão, de 0 a 48 (Configurações › IA), contadas desde 00:00 UTC |
+| Rotinas com IA por dia | 6 por padrão, de 0 a 48 (Configurações › Modelos e limites), contadas desde 00:00 UTC |
 
 Cada execução com IA passa por `agent.ai()` e conta no teto diário de 9.000 Neurons. O limite de rotinas por dia conta toda execução com IA, inclusive o "Executar agora", porque o que ele protege é a cota de Neurons. Quando o limite de rotinas ou o teto chega, a execução é pulada e o motivo aparece no histórico.
 

@@ -16,6 +16,7 @@ export const ptBRHome = {
   "web.home.today.withLate": "{tasks}, {late}",
   "web.home.today.empty": "Nada para hoje. Quer adiantar algo dos próximos dias?",
   "web.home.today.link": "Ver tarefas",
+  "web.home.today.summary": "Tarefas que vencem hoje",
   "web.home.next.title": "Próximos dias",
   "web.home.next.summary": "Tarefas com prazo e automações marcadas",
   "web.home.next.automation": "Automação",

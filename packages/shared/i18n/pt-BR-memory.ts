@@ -3,7 +3,7 @@
 export const ptBRMemory = {
   "web.memory.title": "Memória",
   "web.memory.description": "O que a Zuri sabe sobre você. Corrija ou apague o que quiser; nada muda sem você saber.",
-  "web.memory.new": "Guardar uma memória",
+  "web.memory.new": "Nova memória",
   "web.memory.newHint": "Um fato por vez, com as suas palavras. Se ele mudar algo já guardado, a Zuri pergunta antes.",
   "web.memory.content": "Memória",
   "web.memory.placeholder": "Ex.: Moro em Curitiba desde 2024",
@@ -33,7 +33,7 @@ export const ptBRMemory = {
   "web.memory.filterCategory": "Filtrar por tipo",
   "web.memory.allCategories": "Todos os tipos",
   "web.memory.empty.title": "Nenhuma memória ainda",
-  "web.memory.empty.body": "Guarde aqui o que a Zuri deve lembrar sobre você: onde mora, do que gosta, no que trabalha. Você vê, corrige e apaga tudo.",
+  "web.memory.empty.body": "Guarde em Nova memória, ou conte na conversa, o que a Zuri deve lembrar sobre você: onde mora, do que gosta, no que trabalha. Você vê, corrige e apaga tudo.",
   "web.memory.empty.filter": "Nenhuma memória neste filtro.",
   "web.memory.empty.search": "Nenhuma memória com essas palavras.",
   "web.memory.status.active": "Atual",

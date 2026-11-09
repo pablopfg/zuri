@@ -7,9 +7,9 @@ import { CSRF, expectAccessible, PASSWORD, signIn, tooSmallControls } from "./ui
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
 async function openAgents(page: Page) {
-  await page.goto("/configuracoes/ia");
+  await page.goto("/configuracoes/modelos");
   await signIn(page);
-  await expect(page).toHaveURL(/\/configuracoes\/ia$/);
+  await expect(page).toHaveURL(/\/configuracoes\/modelos$/);
   const card = page.getByRole("region", { name: "Agentes" });
   await expect(card.getByRole("listitem").first()).toBeVisible();
   return card;
@@ -149,7 +149,7 @@ test("a failed list shows an error with a retry", async ({ page }) => {
     if (fail) return route.fulfill({ status: 503, json: { code: "SERVICE_UNAVAILABLE", message: "Serviço indisponível. Tente de novo em instantes." } });
     return route.continue();
   });
-  await page.goto("/configuracoes/ia");
+  await page.goto("/configuracoes/modelos");
   await signIn(page);
   const card = page.getByRole("region", { name: "Agentes" });
   await expect(card.getByText("Serviço indisponível. Tente de novo em instantes.")).toBeVisible();

@@ -2,6 +2,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { FLOW_LIMITS, type Flow, type FlowConnection, type FlowDraft, type FlowList, type FlowRun, type FlowRunPage, type FlowSite, ptBRFlows, type Schedule } from "@zuri/shared";
 import { History, KeyRound, Pause, Pencil, Play, Plus, Trash2, Radar, Workflow, Zap } from "lucide-react";
 import { useEffect, useId, useState } from "react";
+import { ActionsMenu } from "../../../components/ActionsMenu.tsx";
 import { useToast } from "../../../components/Toaster.tsx";
 import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, Loading } from "../../../components/ui.tsx";
 import { api, errorMessage } from "../../../lib/api.ts";
@@ -250,18 +251,6 @@ function FlowRow({ flow, glow, onEdit, onDelete }: { flow: Flow; glow: string; o
         </div>
         {/* biome-ignore lint/a11y/useSemanticElements: a row of buttons, not form fields: a fieldset would add a frame and a legend. */}
         <div role="group" aria-label={t("web.flows.actionsFor", { name: flow.name })} className="flex shrink-0 items-center pl-10 sm:pl-0">
-          <IconButton
-            label={t("web.flows.runNow")}
-            busy={busy === "run"}
-            onClick={() =>
-              void act("run", async () => {
-                const { run } = await api<{ run: FlowRun }>(`/flows/${flow.id}/run`, { method: "POST" });
-                return runText(run);
-              })
-            }
-          >
-            <Zap />
-          </IconButton>
           {flow.enabled ? (
             <IconButton label={t("web.flows.turnOff")} busy={busy === "toggle"} onClick={() => void toggle(false)}>
               <Pause />
@@ -271,12 +260,25 @@ function FlowRow({ flow, glow, onEdit, onDelete }: { flow: Flow; glow: string; o
               <Play />
             </IconButton>
           )}
-          <IconButton label={t("web.flows.edit")} onClick={onEdit}>
-            <Pencil />
-          </IconButton>
-          <IconButton label={t("web.flows.delete")} onClick={onDelete} danger>
-            <Trash2 />
-          </IconButton>
+          {/* The main action stays in view; the rest waits in the menu (stage 26c). */}
+          <ActionsMenu
+            name={flow.name}
+            busy={busy === "run"}
+            actions={[
+              {
+                label: t("web.flows.runNow"),
+                icon: <Zap className="h-4 w-4" />,
+                disabled: busy !== null,
+                onSelect: () =>
+                  void act("run", async () => {
+                    const { run } = await api<{ run: FlowRun }>(`/flows/${flow.id}/run`, { method: "POST" });
+                    return runText(run);
+                  }),
+              },
+              { label: t("web.flows.edit"), icon: <Pencil className="h-4 w-4" />, onSelect: onEdit },
+              { label: t("web.flows.delete"), icon: <Trash2 className="h-4 w-4" />, onSelect: onDelete, danger: true },
+            ]}
+          />
         </div>
       </div>
       {flow.sites.length > 0 && <SiteList name={flow.name} sites={flow.sites} />}

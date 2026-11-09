@@ -2,7 +2,7 @@ import { startRegistration } from "@simplewebauthn/browser";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PASSKEY_NAME_MAX, type PasskeyInfo } from "@zuri/shared";
 import { Fingerprint, KeyRound } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { useMfaStatus } from "../../hooks/mfa.ts";
 import { api, errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
@@ -20,6 +20,8 @@ export function PasskeysCard() {
   const list = useQuery({ queryKey: PASSKEYS_KEY, queryFn: () => api<{ passkeys: PasskeyInfo[] }>("/auth/passkeys") });
   const mfa = useMfaStatus();
   const [mode, setMode] = useState<Mode>({ kind: "idle" });
+  // Names the in-place confirmation's buttons with its question, for screen readers.
+  const confirmId = useId();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -141,20 +143,22 @@ export function PasskeysCard() {
                   {mode.kind === "rename" && mode.id === key.id && nameForm((e) => rename(e, key.id), t("web.save"))}
                   {mode.kind === "remove" && mode.id === key.id && (
                     <div className="space-y-3">
-                      <p className="text-sm">{t("web.passkeys.removeConfirm", { name: key.name })}</p>
+                      <p id={confirmId} className="text-sm">
+                        {t("web.passkeys.removeConfirm", { name: key.name })}
+                      </p>
                       {error && (
                         <p role="alert" className="text-sm text-danger">
                           {error}
                         </p>
                       )}
-                      <div className="flex flex-wrap justify-end gap-2">
+                      <fieldset aria-labelledby={confirmId} className="min-w-0 flex flex-wrap justify-end gap-2">
                         <Button variant="ghost" autoFocus onClick={() => reset()}>
                           {t("web.cancel")}
                         </Button>
                         <Button variant="danger" loading={pending} onClick={() => remove(key.id)}>
                           {t("web.passkeys.remove")}
                         </Button>
-                      </div>
+                      </fieldset>
                     </div>
                   )}
                 </li>
