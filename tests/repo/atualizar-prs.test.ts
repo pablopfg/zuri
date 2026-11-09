@@ -9,6 +9,7 @@ import {
   isSafeBranchName,
   MERGE_MESSAGE,
   mergeBase,
+  APPROVE_ATTEMPTS,
   approveHeldRuns,
   PR_WORKFLOWS,
   type WorkflowRun,
@@ -225,30 +226,41 @@ describe("approveHeldRuns (fake gh)", () => {
     head_repository: { full_name: "dono/zuri" },
     ...extra,
   });
-  /** Each read returns the next list (GitHub creates the runs a few seconds after the push). */
-  const fake = (reads: WorkflowRun[][], refuse: number[] = []) => {
+  /**
+   * Each read returns the next list (GitHub creates the runs a few seconds after the push).
+   * `refuse` maps a run id to how many approval calls fail before one goes through (Infinity: all).
+   */
+  const fake = (reads: WorkflowRun[][], refuse: number[] | Record<number, number> = []) => {
     const approved: number[] = [];
+    const calls: number[] = [];
+    const refusals: Record<number, number> = Array.isArray(refuse)
+      ? Object.fromEntries(refuse.map((id) => [id, Number.POSITIVE_INFINITY]))
+      : { ...refuse };
     let read = 0;
     const exec = (_cmd: string, args: string[]) => {
       const path = args.at(-1) ?? "";
       const approve = path.match(/actions\/runs\/(\d+)\/approve$/);
       if (approve) {
         const id = Number(approve[1]);
-        if (refuse.includes(id)) throw new Error("403");
+        calls.push(id);
+        if ((refusals[id] ?? 0) > 0) {
+          refusals[id] = (refusals[id] ?? 0) - 1;
+          throw Object.assign(new Error("gh failed"), { stderr: "gh: Server Error (HTTP 500)\n" });
+        }
         approved.push(id);
         return "";
       }
       expect(path).toBe(`repos/dono/zuri/actions/runs?head_sha=${SHA}&event=pull_request&per_page=100`);
       return JSON.stringify({ workflow_runs: reads[Math.min(read++, reads.length - 1)] });
     };
-    return { ctx: { repository: "dono/zuri", exec }, approved, reads: () => read };
+    return { ctx: { repository: "dono/zuri", exec }, approved, calls, reads: () => read };
   };
   const all = () => Object.values(PR_WORKFLOWS).map((name, i) => run(i + 1, name));
   const noWait = { sleep: () => undefined };
 
   it("approves every run its own push started", () => {
     const { ctx, approved } = fake([all()]);
-    expect(approveHeldRuns(ctx, SHA, noWait)).toEqual({ approved: ["CI", "CodeQL", "Merge order"], failed: [], missing: [] });
+    expect(approveHeldRuns(ctx, SHA, noWait)).toEqual({ approved: ["CI", "CodeQL", "Merge order"], failed: [], errors: [], missing: [] });
     expect(approved).toEqual([1, 2, 3]);
   });
 
@@ -257,11 +269,12 @@ describe("approveHeldRuns (fake gh)", () => {
     const { ctx, reads } = fake([[], [run(1, "CI")], all()]);
     expect(approveHeldRuns(ctx, SHA, { sleep: (ms) => waits.push(ms) }).missing).toEqual([]);
     expect(reads()).toBe(3);
-    expect(waits).toEqual([5000, 5000]);
+    expect(waits).toEqual([10_000, 10_000]);
     const never = fake([[run(1, "CI")]]);
     expect(approveHeldRuns(never.ctx, SHA, { attempts: 3, ...noWait })).toEqual({
       approved: ["CI"],
       failed: [],
+      errors: [],
       missing: ["CodeQL", "Merge order"],
     });
   });
@@ -283,10 +296,42 @@ describe("approveHeldRuns (fake gh)", () => {
     expect(result.missing).toEqual(["CodeQL"]);
   });
 
-  it("reports a refused approval without stopping the others", () => {
-    const { ctx, approved } = fake([all()], [2]);
-    expect(approveHeldRuns(ctx, SHA, noWait)).toEqual({ approved: ["CI", "Merge order"], failed: ["CodeQL"], missing: [] });
+  it("reports a refused approval, with GitHub's answer, without stopping the others", () => {
+    const { ctx, approved, calls } = fake([all()], [2]);
+    expect(approveHeldRuns(ctx, SHA, noWait)).toEqual({
+      approved: ["CI", "Merge order"],
+      failed: ["CodeQL"],
+      errors: ["CodeQL: gh: Server Error (HTTP 500)"],
+      missing: [],
+    });
     expect(approved).toEqual([1, 3]);
+    expect(calls.filter((id) => id === 2)).toHaveLength(APPROVE_ATTEMPTS);
+  });
+
+  it("retries an approval GitHub refused once (issue #201)", () => {
+    const waits: number[] = [];
+    const { ctx, approved } = fake([all()], { 3: 1 });
+    expect(approveHeldRuns(ctx, SHA, { sleep: (ms) => waits.push(ms) })).toEqual({
+      approved: ["CI", "CodeQL", "Merge order"],
+      failed: [],
+      errors: [],
+      missing: [],
+    });
+    expect(approved).toEqual([1, 2, 3]);
+    expect(waits).toEqual([10_000]);
+  });
+
+  it("counts an approval that answered an error but took, once the run left action_required (issues #166 and #190)", () => {
+    const started = all().map((r) => (r.name === "Merge order" ? { ...r, status: "queued", conclusion: null } : r));
+    const { ctx, calls } = fake([all(), started], [3]);
+    expect(approveHeldRuns(ctx, SHA, noWait)).toEqual({
+      approved: ["CI", "CodeQL", "Merge order"],
+      failed: [],
+      errors: [],
+      missing: [],
+    });
+    // The run moved on, so it is never approved a second time.
+    expect(calls).toEqual([1, 2, 3]);
   });
 });
 
