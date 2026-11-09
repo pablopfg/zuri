@@ -1,6 +1,6 @@
 import { CHAT_MESSAGE_MAX } from "@zuri/shared";
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // The new interface, part 1 (docs/planos/nova-ui.md): the home page with the
 // field to write to Zuri and the two cards, the recent conversations by day
@@ -9,7 +9,7 @@ import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.t
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
 /** A word of its own per run: the database keeps what earlier runs and the other project saved. */
-const tag = () => `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+const tag = () => uniqueTag(test.info().project.name);
 
 async function openHome(page: Page) {
   await page.goto("/");

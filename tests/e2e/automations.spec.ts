@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, openSidebar, rowAction, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { expectAccessible, openSidebar, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // Automations against the real Worker (step 10): create with the preview, run
 // now, pause, edit and delete; a routine Zuri proposes in the chat waits for the
@@ -8,7 +8,7 @@ import { expectAccessible, openSidebar, rowAction, signIn, tooSmallControls } fr
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
 /** A word of its own per run: the database keeps what earlier runs and the other project saved. */
-const tag = () => `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+const tag = () => uniqueTag(test.info().project.name);
 
 async function openAutomations(page: Page) {
   await page.goto("/automacoes");
