@@ -89,6 +89,8 @@ test("a task: create with a deadline and a project, edit, complete, delete and r
   // From Tasks the trash opens with only the tasks, the way back and "Ver tudo" (stage 26c).
   await expect(page).toHaveURL(/\/configuracoes\/dados\?tipo=tarefas$/);
   await expect(page.getByText("Só as tarefas apagadas.")).toBeVisible();
+  // The trash leads the page, above the storage cards that load after it.
+  await expect(page.getByRole("main").getByRole("heading", { level: 2 }).first()).toHaveText("Lixeira");
   await expect(page.getByRole("link", { name: "Voltar para Tarefas" })).toHaveAttribute("href", "/tarefas");
   // Emptying takes every kind, so it waits for "Ver tudo".
   await expect(page.getByRole("button", { name: "Esvaziar a lixeira" })).toHaveCount(0);

@@ -32,7 +32,7 @@ import {
   type UsageReport,
   usageReportSchema,
 } from "@zuri/shared";
-import { Bot, ExternalLink, FlaskConical, RotateCw } from "lucide-react";
+import { Bot, ChevronDown, ExternalLink, FlaskConical, RotateCw } from "lucide-react";
 import { type FormEvent, lazy, Suspense, useEffect, useId, useState } from "react";
 import { Switch } from "../../components/Switch.tsx";
 import { AgentsCard } from "./AgentsCard.tsx";
@@ -473,8 +473,11 @@ function LimitsForm({ settings }: { settings: Settings }) {
         <optgroup label={t("web.ai.modelsFree")}>{CHAT_MODEL_IDS.filter((id) => id !== model).map((id) => option(id, false))}</optgroup>
         <optgroup label={t("web.ai.modelsPaid")}>{PAID_MODEL_IDS.filter((id) => id !== model).map((id) => option(id, false))}</optgroup>
       </SelectField>
-      <details open={advanced} onToggle={(event) => setAdvanced(event.currentTarget.open)} className="rounded-xl border border-border">
-        <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-medium">{t("web.ai.advanced")}</summary>
+      <details open={advanced} onToggle={(event) => setAdvanced(event.currentTarget.open)} className="group rounded-xl border border-border">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
+          {t("web.ai.advanced")}
+          <ChevronDown className="h-4 w-4 shrink-0 text-fg-muted transition-transform group-open:rotate-180" aria-hidden />
+        </summary>
         <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-3">
           {LIMIT_FIELDS.map((field) => {
             const range = AI_LIMIT_RANGES[field];
