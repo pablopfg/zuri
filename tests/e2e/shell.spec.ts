@@ -218,7 +218,7 @@ test("the two-step reminder shows until put off, and never on the settings @mobi
 
   await (await openSidebar(page)).getByRole("link", { name: "Início" }).click();
   await expect(reminder).toBeVisible();
-  await reminder.getByRole("button", { name: "Lembrar depois" }).click();
+  await reminder.getByRole("button", { name: "Dispensar por 3 dias" }).click();
   await expect(reminder).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();

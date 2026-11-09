@@ -147,12 +147,12 @@ export function PasskeysCard() {
                           {error}
                         </p>
                       )}
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button variant="ghost" autoFocus onClick={() => reset()}>
+                          {t("web.cancel")}
+                        </Button>
                         <Button variant="danger" loading={pending} onClick={() => remove(key.id)}>
                           {t("web.passkeys.remove")}
-                        </Button>
-                        <Button variant="ghost" onClick={() => reset()}>
-                          {t("web.cancel")}
                         </Button>
                       </div>
                     </div>

@@ -224,6 +224,8 @@ test("rename and delete a conversation", async ({ page }) => {
 
   await page.getByRole("button", { name: "Apagar conversa" }).click();
   const confirm = page.getByRole("dialog", { name: "Apagar esta conversa?" });
+  // The standard confirmation (stage 26b): opening focuses Cancelar, not the verb.
+  await expect(confirm.getByRole("button", { name: "Cancelar" })).toBeFocused();
   await confirm.getByRole("button", { name: "Apagar conversa" }).click();
   await expect(page).toHaveURL(/\/conversa$/);
   await expect(page.getByRole("status").filter({ hasText: "Conversa apagada" })).toBeVisible();
