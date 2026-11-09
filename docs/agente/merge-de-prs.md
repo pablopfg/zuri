@@ -134,8 +134,14 @@ base `develop` (menos rascunho, branch de fork e PR com o rótulo
    `github-actions[bot]` gera as execuções de `pull_request` (CI, CodeQL e
    Merge order), mas o GitHub as segura como "action_required" até alguém
    aprovar, porque o repositório pede aprovação para colaborador de fora e o
-   bot conta como um. O script espera elas aparecerem (até uns 40 s) e aprova
-   só as do bot, no commit que ele enviou, da própria branch (nunca de fork).
+   bot conta como um. O script espera elas aparecerem (até 2 minutos; 40 s
+   não bastaram na #201) e aprova só as do bot, no commit que ele enviou, da
+   própria branch (nunca de fork).
+   Aprovação que volta com erro é tentada até 3 vezes, 10 s entre elas, e antes
+   de cada nova tentativa o script relê a execução: o GitHub às vezes responde
+   erro para uma aprovação que aceitou (#166, #190) ou recusa uma que passa
+   logo depois. Se a execução já saiu de "action_required", conta como
+   aprovada. O que sobrar sai no log com a resposta do GitHub.
    Disparar a CI por `workflow_dispatch` não serve: os checks aparecem verdes
    no commit, mas o ruleset só conta os de `pull_request`, e o merge fica em
    "Expected" (caso da #60, 02/11/2026).
