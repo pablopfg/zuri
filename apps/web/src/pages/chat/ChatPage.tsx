@@ -556,24 +556,18 @@ function Thread({
       )}
       <div role="log" aria-relevant="additions">
         <ol className="space-y-5">
-        {shown.map((message) => (
-          <MessageItem key={message.id} message={message} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} />
-        ))}
-        {live && (
-          <>
-            <MessageItem
-              message={{ id: "live-user", conversationId: "", role: "user", content: live.user, tools: [], status: "complete", error: null, source: "app", createdAt: "" }}
-              actions={actions}
-              plans={plans}
-              onAction={onAction}
-              onPlan={onPlan}
-            />
-            <li aria-busy={!live.error} className="space-y-3">
-              <AssistantBody text={live.text} tools={live.tools} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} streaming />
-              {live.error && <ErrorLine text={live.error} />}
-            </li>
-          </>
-        )}
+        {/* One keyed list with the live turn under the ids its stored messages will carry: when the turn
+            ends and they take over, React keeps these items, so a plan the owner is editing keeps its
+            edits instead of mounting again (#223). */}
+        {[
+          ...shown.map((message) => <MessageItem key={message.id} message={message} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} />),
+          ...(live
+            ? [
+                <MessageItem key={live.userMessageId ?? "live-user"} message={liveMessage("user", live.user)} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} />,
+                <MessageItem key={live.assistantId ?? "live-assistant"} message={liveMessage("assistant", live.text)} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} live={live} />,
+              ]
+            : []),
+        ]}
         </ol>
       </div>
       <div ref={end} />
@@ -581,18 +575,23 @@ function Thread({
   );
 }
 
+const liveMessage = (role: ChatMessage["role"], content: string): ChatMessage => ({ id: "", conversationId: "", role, content, tools: [], status: "complete", error: null, source: "app", createdAt: "" });
+
 function MessageItem({
   message,
   actions,
   plans,
   onAction,
   onPlan,
+  live,
 }: {
   message: ChatMessage;
   actions: Map<string, PendingAction>;
   plans: Map<string, TaskPlan>;
   onAction: (action: PendingAction) => void;
   onPlan: (plan: TaskPlan) => void;
+  /** The answer still streaming: the same element tree as the stored answer that replaces it. */
+  live?: LiveTurn;
 }) {
   const { t } = useI18n();
   if (message.role === "user") {
@@ -611,6 +610,14 @@ function MessageItem({
         )}
         {message.source === "import" && <span className="text-xs text-fg-muted">{t("web.chat.restored")}</span>}
         {message.source === "telegram" && <span className="text-xs text-fg-muted">{t("web.chat.viaTelegram")}</span>}
+      </li>
+    );
+  }
+  if (live) {
+    return (
+      <li aria-busy={!live.error} className="space-y-3">
+        <AssistantBody text={live.text} tools={live.tools} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} streaming />
+        {live.error && <ErrorLine text={live.error} />}
       </li>
     );
   }
