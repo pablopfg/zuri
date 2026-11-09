@@ -19,6 +19,14 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.34.1] - 2026-11-09
+
+Mesclada às 00:54 (UTC-3) · commit [`e13f45f`](https://github.com/pablopfg/Zuri/commit/e13f45f91ed8ac7b04ff7609bfc5ce3d19302d57) · PR [#197](https://github.com/pablopfg/Zuri/pull/197) · Etapa 21 mesclada, próxima é a 23
+
+### Alterado
+
+- Sem mudança visível: etapa 21 mesclada, próxima é a 23.
+
 ## [0.34.0] - 2026-11-09
 
 Mesclada às 00:15 (UTC-3) · commit [`6a2ba55`](https://github.com/pablopfg/Zuri/commit/6a2ba556689ea378ba851ee5b9c1964e780a4406) · PR [#194](https://github.com/pablopfg/Zuri/pull/194) · ⚠️ modelos pagos opcionais (Anthropic e OpenAI) e consumo por período
@@ -2561,7 +2569,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.34.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.34.1...develop
+[0.34.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.1
 [0.34.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.0
 [0.33.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.33.3
 [0.33.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.33.2
