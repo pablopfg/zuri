@@ -75,7 +75,7 @@ export const memoryTools = [
     input: z.object({ id: memoryId }).strict(),
     target: (input, ctx) => {
       const found = memory(input.id, ctx);
-      return { id: found.id, label: found.content };
+      return { id: found.id, label: found.content, localOnly: found.localOnly };
     },
     snapshot: (id, ctx) => {
       const found = orNull(() => ctx.memories.get(id));

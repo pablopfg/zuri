@@ -160,6 +160,17 @@ describe("the paid models through the routes (step 21)", () => {
     expect(usageReportSchema.parse(await (await usage(ip, cookie)).json()).limits.usdCentsPerDay).toBe(AI_LIMIT_RANGES.aiUsdCentsPerDay.max);
   });
 
+  it("asks for the password again before the US$ ceiling changes, and never for a free model", async () => {
+    const ip = "192.0.2.98";
+    const cookie = await signIn(ip);
+    await runOwner((db) => db.run(`UPDATE zur_sessions SET confirmed_at = ?`, Date.now() - 16 * 60_000));
+    const res = await patch(ip, cookie, { aiUsdCentsPerDay: 500 });
+    expect(res.status).toBe(403);
+    expect(apiErrorSchema.parse(await res.json()).code).toBe("RECENT_AUTH_REQUIRED");
+    expect(usageReportSchema.parse(await (await usage(ip, cookie)).json()).limits.usdCentsPerDay).toBe(0);
+    expect((await patch(ip, cookie, { aiModel: DEFAULT_CHAT_MODEL })).status).toBe(200);
+  });
+
   it("gives the usage history for 7, 30 or 90 days only", async () => {
     const ip = "192.0.2.96";
     const cookie = await signIn(ip);

@@ -123,8 +123,10 @@ infraestrutura.
 
 ### Banco
 
-Migration 29 `paid_models`: `zur_usage_daily.paid_usd`, `zur_memories.local_only`,
-`zur_notes.local_only`, coluna e gatilhos da área `usage`. Entra no backup (sem segredo).
+Migration 29 `paid_models`: `zur_usage_daily.paid_usd` e `ai_fallbacks`,
+`zur_memories.local_only` e `zur_notes.local_only`. Sem gatilho: a versão da
+área `usage` fica na memória do medidor (base aleatória + escritas), para não
+custar uma leitura a mais em cada pedido. Entra no backup (sem segredo).
 
 ### Agendamentos, IA e integrações externas
 
@@ -134,7 +136,7 @@ tentativas (`maxRetries: 0`), dentro do prazo de 120 s e do limite de subrequisi
 ## 8. Custo e cotas do plano Free
 
 ⚠️ Gera cobrança na Anthropic/OpenAI quando o dono escolhe um modelo pago.
-Workers/DO: um gatilho a mais por escrita de uso; o histórico lê no máximo 90
+Workers/DO: nenhuma escrita a mais (a versão do uso fica na memória); o histórico lê no máximo 90
 linhas de dia e um agregado por modelo (índice por dia já existe). Sem cron novo,
 sem polling: o painel atualiza pelo canal `/api/live`. JS inicial sem mudança
 (gráficos num pedaço lazy).
@@ -158,7 +160,7 @@ E2E: painel com período e tempo real, escolha de modelo pago com aviso, axe.
 
 ## 11. Entrega
 
-Um PR para a `develop` com ⚠️ no título do changelog, `docs/modelos-de-ia.md`,
+Um PR para a `develop` com ⚠️ no título do changelog, `docs/ia.md` (seção Modelos pagos),
 README, decisões, capturas da aba IA.
 
 ## 12. Riscos

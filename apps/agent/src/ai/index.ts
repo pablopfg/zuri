@@ -3,7 +3,7 @@ import { AppError } from "../http/errors.ts";
 import { type CircuitBreaker, ProviderChain } from "./chain.ts";
 import { MockAIProvider } from "./mock.ts";
 import { PaidProvider, type PaidKeys, paidKey } from "./paid.ts";
-import type { AIProvider } from "./provider.ts";
+import type { AgentEvent, AIProvider } from "./provider.ts";
 import { WorkersAIProvider } from "./workers-ai.ts";
 
 export { CircuitBreaker, ProviderChain } from "./chain.ts";
@@ -67,11 +67,37 @@ export function chooseChain(options: {
       : null;
     return new ProviderChain(primary, fallback, options.breaker);
   }
-  const primary = chooseProvider(options);
   let fallback: AIProvider | null = null;
   // A fallback that can't be built (no binding, no key) is no fallback: the chosen model still answers.
   if (wanted && (isChatModel(wanted) ? options.binding : paidKey(options.keys ?? {}, paidProviderOf(wanted)))) {
     fallback = realProvider(wanted, options.binding, options.keys ?? {});
   }
+  let primary: AIProvider;
+  try {
+    primary = chooseProvider(options);
+  } catch (error) {
+    if (!(error instanceof AppError) || error.code !== "NOT_CONFIGURED") throw error;
+    // The chosen model can't be built (a paid one whose key was removed): the fallback answers alone,
+    // and without one the chat says "not configured" while voice and the search by meaning go on.
+    return new ProviderChain(fallback ?? new UnavailableProvider(options.model), null, options.breaker);
+  }
   return new ProviderChain(primary, fallback, options.breaker);
+}
+
+/** A chosen model that can't be built: every call says NOT_CONFIGURED, before anything leaves or is counted. */
+class UnavailableProvider implements AIProvider {
+  readonly id = "mock";
+  readonly billable = false;
+  constructor(readonly model: string) {}
+  async generate(): Promise<{ text: string }> {
+    throw new AppError("NOT_CONFIGURED");
+  }
+  // biome-ignore lint/correctness/useYield: it fails before any event, like a provider that can't be reached.
+  async *stream(): AsyncIterable<AgentEvent> {
+    throw new AppError("NOT_CONFIGURED");
+  }
+  // biome-ignore lint/correctness/useYield: as above.
+  async *generateWithTools(): AsyncIterable<AgentEvent> {
+    throw new AppError("NOT_CONFIGURED");
+  }
 }

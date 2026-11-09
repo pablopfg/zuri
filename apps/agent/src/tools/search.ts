@@ -27,7 +27,7 @@ export const searchTools = [
       const found = await hybridSearch(ctx, input.query, words, PER_KIND);
       return {
         tasks: (found ?? words).tasks.map((task) => presentTask(task, ctx)),
-        notes: (found ?? words).notes.map((n) => ({ id: n.id, title: n.title, excerpt: hidden(n, ctx) ? LOCAL_ONLY_TEXT : n.excerpt })),
+        notes: (found ?? words).notes.map((n) => ({ id: n.id, title: hidden(n, ctx) ? LOCAL_ONLY_TEXT : n.title, excerpt: hidden(n, ctx) ? LOCAL_ONLY_TEXT : n.excerpt })),
         memories: (found ?? words).memories.map((m) => presentMemory(m, ctx)),
         conversations,
         ...(found ? { automations: found.automations.map((automation) => presentAutomation(automation, ctx)) } : {}),

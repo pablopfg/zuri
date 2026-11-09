@@ -140,7 +140,7 @@ export type MemoryUpdate = z.input<typeof memoryUpdateSchema>;
 export const memoryCorrectSchema = /* @__PURE__ */ z.object({ content, category: z.enum(MEMORY_CATEGORIES).optional() }).strict();
 export type MemoryCorrect = z.input<typeof memoryCorrectSchema>;
 
-/** PUT /memories/:id/local-only and /notes/:id/local-only (step 21, plan D3). */
+/** POST /memories/:id/local-only and /notes/:id/local-only (step 21, plan D3). */
 export const localOnlySchema = /* @__PURE__ */ z.object({ localOnly: z.boolean() }).strict();
 
 export const memoryStatusSchema = /* @__PURE__ */ z.object({ status: z.enum(MEMORY_STATUSES) }).strict();

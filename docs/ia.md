@@ -61,7 +61,21 @@ mudança de preço não reescreve o passado.
   Haiku sem raciocínio; Sonnet com raciocínio só entre ferramentas; OpenAI com
   `reasoningEffort: "none"`.
 - O uso vem da própria resposta (tokens de entrada, de saída e de cache) por um
-  `fetch` medido, e cada passo é acertado no medidor como os do Workers AI.
+  `fetch` medido, e cada passo é acertado no medidor como os do Workers AI. Os
+  tokens de cache entram pelo preço cheio de entrada: a conta fica um pouco
+  acima da fatura, nunca abaixo. Uma chamada que a empresa recusa (sem
+  crédito, chave errada, erro do servidor) conta como pedido e custa zero.
+- Os endereços das APIs são fixos no código (`api.anthropic.com` e
+  `api.openai.com`): uma variável de ambiente com o nome de base dos SDKs não
+  desvia a chave para outro lugar.
+- Sem a chave do modelo escolhido (o segredo foi apagado depois), a reserva
+  responde sozinha; sem reserva, a conversa diz "não configurado", e voz e
+  busca seguem.
+- Fluxos e respostas a avaliações têm teto próprio em Neurons e nunca vão para
+  um modelo pago; sem modelo grátis na cadeia, são recusados
+  (`error.aiPaidBackground`).
+- Um modelo que se recusa a responder (o `refusal` da Anthropic ou o filtro da
+  OpenAI) sem dizer nada vira pedido recusado, sem troca para a reserva.
 - **Teto em US$** (`aiUsdCentsPerDay`, em centavos): 0 é sem teto, o padrão.
   Com valor, a chamada que passaria do teto é recusada antes de sair
   (`AI_LIMIT_REACHED`, `error.aiLimit.usd`); a conta é feita em centavos, sem
@@ -81,7 +95,13 @@ mudança de preço não reescreve o passado.
     viram marcadores (`[EMAIL_1]`). A tabela vive só na tentativa: a resposta
     mostrada ao dono e os argumentos das ferramentas recebem os valores de
     volta, e o resultado das ferramentas é mascarado de novo antes de voltar ao
-    modelo. Um marcador que a tentativa não entregou fica como está.
+    modelo. Um marcador que a tentativa não entregou fica como está, e um que
+    já vinha escrito no conteúdo vira texto comum (`(EMAIL_1)`), para nunca
+    trazer de volta um valor de outro lugar.
+  - a marca acompanha a memória corrigida, a nota que volta da lixeira e o
+    título da nota; a linha de um fato antigo não cita a substituta marcada, e
+    uma proposta sobre item marcado (apagar, reescrever) entra no histórico com
+    o rótulo trocado.
   - Uma troca para o Workers AI no meio do caminho manda o contexto inteiro, e
     o inverso manda o perfil de fora.
 

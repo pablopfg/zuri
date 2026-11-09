@@ -100,7 +100,8 @@ export class MeteredAI {
     private readonly embedder: Embedder | null = null,
   ) {
     this.chain = providers instanceof ProviderChain ? providers : new ProviderChain(providers, null);
-    this.secrets = [...new Set(secrets.filter((value): value is string => typeof value === "string" && value.length >= MIN_SECRET_LENGTH))];
+    // Trimmed: a secret pasted with a trailing newline is used trimmed (paidKey), and must be found that way too.
+    this.secrets = [...new Set(secrets.map((value) => value?.trim()).filter((value): value is string => typeof value === "string" && value.length >= MIN_SECRET_LENGTH))];
   }
 
   /**
@@ -213,7 +214,7 @@ export class MeteredAI {
    */
   async generate(req: MeteredRequest): Promise<{ text: string }> {
     const clean = this.scrubRequest(req);
-    const providers = this.chain.candidates();
+    const providers = this.candidates(req);
     const deadline = Date.now() + this.deadlineMs;
     let previous: AppError | null = null;
     for (const [index, provider] of providers.entries()) {
@@ -244,6 +245,20 @@ export class MeteredAI {
       }
     }
     throw previous ?? new AppError("SERVICE_UNAVAILABLE", "error.aiUnavailable");
+  }
+
+  /**
+   * The providers for this request. One with its own Neuron budget (a flow, a
+   * reply to a review: work no one watches, started by others) never goes to a
+   * paid company (step 21): its budget is in Neurons, and the US$ ceiling is off
+   * by default. Without a free model in the chain it is refused.
+   */
+  private candidates(req: { maxNeurons?: number | undefined }): AIProvider[] {
+    const providers = this.chain.candidates();
+    if (req.maxNeurons === undefined) return providers;
+    const free = providers.filter((provider) => provider.external !== true);
+    if (free.length === 0) throw new AppError("SERVICE_UNAVAILABLE", "error.aiPaidBackground");
+    return free;
   }
 
   /**

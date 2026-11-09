@@ -123,6 +123,8 @@ export interface Target {
   label: string;
   /** What `commit` needs besides the target (a rewrite's new text). */
   payload?: { text: string };
+  /** The target is marked "never send out" (plan D3): its label is emptied in a prompt for an external model. */
+  localOnly?: boolean;
 }
 
 /**
@@ -404,7 +406,7 @@ export class ToolExecutor {
       targetId: target.id,
       targetHash: await sha256Hex(stableStringify(snapshot)),
       targetLabel: [...target.label.replace(/\s+/g, " ").trim()].slice(0, 120).join(""),
-      payload: target.payload,
+      payload: target.localOnly ? { ...target.payload, local: true } : target.payload,
     });
     this.ctx.actions.prune();
     this.actionsByCall.set(callId, action.id);

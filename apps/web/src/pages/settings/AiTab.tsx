@@ -105,6 +105,13 @@ function UsageDescription({ report }: { report: UsageReport }) {
   return <>{t("web.ai.usage.description", { time: formatDateTimeParts(report.resetsAt, locale, timeZone).time })}</>;
 }
 
+const PROVIDER_LABELS = {
+  "workers-ai": "web.ai.provider.workers-ai",
+  anthropic: "web.ai.provider.anthropic",
+  openai: "web.ai.provider.openai",
+  mock: "web.ai.provider.mock",
+} as const satisfies Record<UsageReport["provider"], string>;
+
 function ProviderBadge({ provider }: { provider: UsageReport["provider"] }) {
   const { t } = useI18n();
   const Icon = provider === "mock" ? FlaskConical : Bot;
@@ -112,7 +119,7 @@ function ProviderBadge({ provider }: { provider: UsageReport["provider"] }) {
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-raised px-3 py-1 text-xs font-medium">
       <Icon className="h-3.5 w-3.5" aria-hidden />
       <span className="sr-only">{t("web.ai.provider")}: </span>
-      {t(provider === "mock" ? "web.ai.provider.mock" : "web.ai.provider.workers-ai")}
+      {t(PROVIDER_LABELS[provider])}
     </span>
   );
 }

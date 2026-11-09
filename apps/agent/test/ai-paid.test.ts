@@ -129,6 +129,13 @@ describe("US$ counted before the call and settled after it", () => {
     });
   });
 
+  it("gives back the fallback's count too when its try never started", async () => {
+    await withAiWorld(({ meter }) => {
+      meter.release(meter.reserveChat({ model: GLM, billable: true, inputTokens: 100, maxOutputTokens: 50, fallback: true }, LIMITS));
+      expect(meter.report(LIMITS, "workers-ai", HAIKU).today.fallbacks).toBe(0);
+    });
+  });
+
   it("has no ceiling when it is 0: a dear day goes on", async () => {
     await withAiWorld(({ meter }) => {
       for (let i = 0; i < 5; i++) {
@@ -223,9 +230,9 @@ describe("the paid provider", () => {
     expect(sent[0]?.headers.get("authorization")).toBe("Bearer sk-proj-test-key-1234567");
     expect(sent[0]?.body).toMatchObject({ model: "gpt-6-luna", store: false, reasoning: { effort: "none" } });
     expect(sent[0]?.body).not.toHaveProperty("temperature");
-    // A call that reached the company is metered even when it failed.
+    // A call that reached the company is counted even when it failed; one the company answered with an error costs nothing.
     expect(steps).toHaveLength(1);
-    expect(steps[0]?.input.estimated).toBeGreaterThan(0);
+    expect(steps[0]).toMatchObject({ input: { reported: 0 }, output: { reported: 0 } });
   });
 
   it("turns Sonnet's reasoning off the way it accepts (between_tools)", async () => {
@@ -236,17 +243,53 @@ describe("the paid provider", () => {
 
   it("reads a company's refusals as stable errors: no credit and a refused key switch, a bad request doesn't", () => {
     const status = (code: number, message: string) => Object.assign(new Error(message), { statusCode: code });
-    const noCredit = classifyAiError(status(400, "Your credit balance is too low to access the Anthropic API."));
+    const noCredit = classifyAiError(status(400, "Your credit balance is too low to access the Anthropic API."), true);
     expect(noCredit.messageKey).toBe("error.aiNoCredit");
-    expect(classifyAiError(status(429, "You exceeded your current quota, please check your plan and billing details.")).messageKey).toBe("error.aiNoCredit");
-    expect(classifyAiError(status(402, "Payment required")).messageKey).toBe("error.aiNoCredit");
-    const key = classifyAiError(status(401, "invalid x-api-key"));
+    expect(classifyAiError(status(429, "You exceeded your current quota, please check your plan and billing details."), true).messageKey).toBe("error.aiNoCredit");
+    expect(classifyAiError(status(402, "Payment required"), true).messageKey).toBe("error.aiNoCredit");
+    const key = classifyAiError(status(401, "invalid x-api-key"), true);
     expect(key.messageKey).toBe("error.aiKeyRefused");
-    expect(classifyAiError(status(403, "forbidden")).messageKey).toBe("error.aiKeyRefused");
+    expect(classifyAiError(status(403, "forbidden"), true).messageKey).toBe("error.aiKeyRefused");
     expect([noCredit, key].every(isSwitchable)).toBe(true);
     // An ordinary rate limit is still "busy", and a bad request never switches.
-    expect(classifyAiError(status(429, "rate limit")).messageKey).toBe("error.aiBusy");
-    expect(isSwitchable(classifyAiError(status(400, "messages: too long")))).toBe(false);
+    expect(classifyAiError(status(429, "rate limit"), true).messageKey).toBe("error.aiBusy");
+    expect(isSwitchable(classifyAiError(status(400, "messages: too long"), true))).toBe(false);
+  });
+
+  it("never reads Workers AI's 401, 403 or 402 as a company's key or credit: those states are the paid companies' only", () => {
+    const status = (code: number, message: string) => Object.assign(new Error(message), { statusCode: code });
+    for (const error of [status(401, "Authentication error"), status(403, "forbidden"), status(402, "Payment required"), status(400, "credit balance is too low")]) {
+      expect(["error.aiNoCredit", "error.aiKeyRefused"]).not.toContain(classifyAiError(error).messageKey);
+    }
+  });
+
+  it("costs nothing when the company refuses the call (no credit, bad key): it counts as a request, never as US$", async () => {
+    const { fetcher } = fakeFetch(() => errorResponse(402, { type: "error", error: { type: "billing_error", message: "Your credit balance is too low" } }));
+    const steps: StepUsage[] = [];
+    await expect(
+      collect(new PaidProvider(HAIKU, "sk-ant-test-key-123456", fetcher).stream({ system: "x", messages: [{ role: "user", content: "Oi" }], maxOutputTokens: 100, onStepUsage: (u) => steps.push(u) })),
+    ).rejects.toMatchObject({ messageKey: "error.aiNoCredit" });
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({ input: { reported: 0 }, output: { reported: 0 } });
+    expect(stepUsd(steps[0] as StepUsage)).toBe(0);
+  });
+
+  it("says the request was refused when the model declines with nothing said, and never switches for it", async () => {
+    const { fetcher } = fakeFetch(() => {
+      const events = [
+        { type: "message_start", message: { id: "msg_1", type: "message", role: "assistant", model: "claude-haiku-5-5", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 20, output_tokens: 1 } } },
+        { type: "message_delta", delta: { stop_reason: "refusal", stop_sequence: null }, usage: { output_tokens: 1 } },
+        { type: "message_stop" },
+      ];
+      const body = events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join("");
+      return new Response(encoder.encode(body), { status: 200, headers: { "content-type": "text/event-stream" } });
+    });
+    const error = await collect(new PaidProvider(HAIKU, "sk-ant-test-key-123456", fetcher).stream({ system: "x", messages: [{ role: "user", content: "Oi" }], maxOutputTokens: 100 })).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(error).toMatchObject({ messageKey: "error.aiRequestRejected" });
+    expect(isSwitchable(error as AppError)).toBe(false);
   });
 });
 
@@ -308,6 +351,32 @@ describe("choosing a paid model", () => {
     expect(chain.fallback).toBeNull();
     const withKey = chooseChain({ development: false, binding: fake, model: GLM, fallback: LUNA, locale: () => "pt-BR", breaker: new CircuitBreaker(), keys: { openai: "sk-proj-1234567890" } });
     expect(withKey.fallback).toMatchObject({ id: "openai", model: LUNA });
+  });
+
+  it("answers from the fallback alone when the chosen paid model's key is gone, and says \"not configured\" without one", async () => {
+    const fake = { run: async () => ({}) } as unknown as Ai;
+    const chain = chooseChain({ development: false, binding: fake, model: HAIKU, fallback: GLM, locale: () => "pt-BR", breaker: new CircuitBreaker() });
+    expect(chain.primary).toMatchObject({ id: "workers-ai", model: GLM });
+    expect(chain.fallback).toBeNull();
+    const none = chooseChain({ development: false, binding: fake, model: HAIKU, fallback: "none", locale: () => "pt-BR", breaker: new CircuitBreaker() });
+    expect(none.primary.model).toBe(HAIKU);
+    await expect(collect(none.primary.stream({ system: "x", messages: [{ role: "user", content: "Oi" }], maxOutputTokens: 10 }))).rejects.toMatchObject({ code: "NOT_CONFIGURED" });
+    await expect(none.primary.generate({ system: "x", messages: [{ role: "user", content: "Oi" }], maxOutputTokens: 10 })).rejects.toMatchObject({ code: "NOT_CONFIGURED" });
+  });
+
+  it("keeps work with its own Neuron budget (a flow, a review reply) on the free model, and refuses it with only a paid one", async () => {
+    await withAiWorld(async ({ meter }) => {
+      const { fetcher, sent } = fakeFetch(() => anthropicStream("never", { input: 1, output: 1 }));
+      const paid = new PaidProvider(HAIKU, "sk-ant-test-key-123456", fetcher);
+      const free = new MockAIProvider(() => "pt-BR", { model: "mock-free" });
+      const request = { system: "x", messages: [{ role: "user" as const, content: "Oi" }], maxOutputTokens: 50, maxNeurons: 30 };
+      const ai = new MeteredAI(new ProviderChain(paid, free, new CircuitBreaker()), meter, () => LIMITS);
+      await ai.generate(request);
+      expect(sent).toHaveLength(0);
+      const alone = new MeteredAI(new ProviderChain(paid, null, new CircuitBreaker()), meter, () => LIMITS);
+      await expect(alone.generate(request)).rejects.toMatchObject({ messageKey: "error.aiPaidBackground" });
+      expect(sent).toHaveLength(0);
+    });
   });
 
   it("is the mock under the paid name in local development: nothing leaves, and it gets the external profile", () => {

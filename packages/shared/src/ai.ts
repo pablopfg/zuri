@@ -176,7 +176,8 @@ export const usageReportSchema = /* @__PURE__ */ mini.strictObject({
   /** The UTC day the counters belong to: Cloudflare's allocation resets at 00:00 UTC. */
   day,
   resetsAt: mini.iso.datetime(),
-  provider: mini.enum(["workers-ai", "mock"]),
+  /** Who answers with the main model: Workers AI, a paid company (step 21) or the simulator. */
+  provider: mini.enum(["workers-ai", "anthropic", "openai", "mock"]),
   model: mini.enum(AI_MODEL_IDS),
   today: mini.strictObject({
     requests: count,

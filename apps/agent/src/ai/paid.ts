@@ -20,6 +20,9 @@ export function paidKey(keys: PaidKeys, provider: PaidProviderId): string | null
   return key ? key : null;
 }
 
+const ANTHROPIC_URL = "https://api.anthropic.com/v1";
+const OPENAI_URL = "https://api.openai.com/v1";
+
 /**
  * A paid model (step 21, ⚠️) through the AI SDK and the company's own
  * provider package, with the same loop, tools and metering as Workers AI.
@@ -35,7 +38,7 @@ export function paidKey(keys: PaidKeys, provider: PaidProviderId): string | null
 export class PaidProvider extends SdkProvider {
   readonly id: PaidProviderId;
   readonly billable = false;
-  readonly external = true;
+  override readonly external = true;
 
   constructor(
     readonly model: PaidModel,
@@ -54,8 +57,10 @@ export class PaidProvider extends SdkProvider {
 
   protected createModel(steps: StepMeter[], closed: () => boolean): LanguageModel {
     const metered = meteredFetch(this.fetcher, steps, closed);
-    if (this.id === "anthropic") return createAnthropic({ apiKey: this.key, fetch: metered })(this.remoteModel);
-    return createOpenAI({ apiKey: this.key, fetch: metered }).responses(this.remoteModel);
+    // Fixed hosts: the SDKs would otherwise read ANTHROPIC_BASE_URL / OPENAI_BASE_URL from the environment,
+    // and a var with that name would send the key elsewhere.
+    if (this.id === "anthropic") return createAnthropic({ apiKey: this.key, baseURL: ANTHROPIC_URL, fetch: metered })(this.remoteModel);
+    return createOpenAI({ apiKey: this.key, baseURL: OPENAI_URL, fetch: metered }).responses(this.remoteModel);
   }
 
   protected override settings(req: GenerateRequest): Record<string, unknown> {
@@ -126,6 +131,13 @@ export function meteredFetch(fetcher: typeof fetch, steps: StepMeter[], closed: 
     const meter: StepMeter = { inputEstimate: estimateTokens(body.length), outputChars: 0, reported: false };
     steps.push(meter);
     const response = await fetcher(input, init);
+    // A refused call (no credit, bad key, bad request) is not billed by the company: it counts as a
+    // request, but costs nothing and never eats the US$ ceiling.
+    if (!response.ok) {
+      meter.input = 0;
+      meter.output = 0;
+      return response;
+    }
     if (!response.body) return response;
     const type = response.headers.get("content-type") ?? "";
     if (!type.includes("text/event-stream")) {

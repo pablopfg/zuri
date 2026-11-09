@@ -1,6 +1,7 @@
 import { generateText, type LanguageModel, streamText, type ToolSet } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import type { AgentEvent, AIProvider, GenerateRequest, ToolRequest } from "./provider.ts";
+import { AppError } from "../http/errors.ts";
 import { classifyAiError, estimateTokens } from "./provider.ts";
 import { meteredBinding, type StepMeter, stepUsage } from "./workers-ai-usage.ts";
 
@@ -26,6 +27,8 @@ export abstract class SdkProvider implements AIProvider {
   abstract readonly id: AIProvider["id"];
   abstract readonly model: string;
   abstract readonly billable: boolean;
+  /** A company outside the owner's account (the paid models, step 21). */
+  readonly external: boolean = false;
 
   protected abstract createModel(steps: StepMeter[], closed: () => boolean): LanguageModel;
 
@@ -66,9 +69,10 @@ export abstract class SdkProvider implements AIProvider {
         telemetry: { isEnabled: false },
       });
       outputChars = result.text.length + (result.reasoningText?.length ?? 0);
+      if (result.finishReason === "content-filter" && !result.text) throw refused();
       return { text: result.text };
     } catch (error) {
-      throw classifyAiError(error);
+      throw classifyAiError(error, this.external === true);
     } finally {
       // A call that reached the binding is metered, whether it answered, failed or was aborted.
       closed = true;
@@ -95,6 +99,9 @@ export abstract class SdkProvider implements AIProvider {
     let stepIndex = 0;
     let stepOutputChars = 0;
     let streamError: unknown = null;
+    // A model that declines (Anthropic's "refusal", OpenAI's content filter) ends with nothing said.
+    let said = false;
+    let declined = false;
     const result = streamText({
       model: this.createModel(steps, () => closed),
       instructions: req.system,
@@ -130,9 +137,13 @@ export abstract class SdkProvider implements AIProvider {
             break;
           case "text-delta":
             stepOutputChars += part.text.length;
-            if (part.text) yield { type: "text", delta: part.text };
+            if (part.text) {
+              said = true;
+              yield { type: "text", delta: part.text };
+            }
             break;
           case "tool-call":
+            said = true;
             stepOutputChars += JSON.stringify({ name: part.toolName, input: part.input }).length;
             yield { type: "tool-start", id: part.toolCallId, name: part.toolName, input: part.input };
             break;
@@ -149,6 +160,7 @@ export abstract class SdkProvider implements AIProvider {
             };
             break;
           case "finish-step": {
+            if (part.finishReason === "content-filter") declined = true;
             const meter = steps[stepIndex];
             if (meter && !meter.reported) {
               meter.reported = true;
@@ -173,8 +185,15 @@ export abstract class SdkProvider implements AIProvider {
       this.flush(req, steps, stepOutputChars);
     }
     failure ??= streamError;
-    if (failure) throw classifyAiError(failure);
+    if (failure) throw classifyAiError(failure, this.external === true);
+    // Another model would decline the same request: a refused request, never a switch.
+    if (declined && !said) throw refused();
   }
+}
+
+/** The model declined to answer: like a refused request, the same for any model (no switch). */
+function refused(): AppError {
+  return new AppError("SERVICE_UNAVAILABLE", "error.aiRequestRejected");
 }
 
 /**

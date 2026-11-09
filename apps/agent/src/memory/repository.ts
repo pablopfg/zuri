@@ -189,7 +189,7 @@ export class MemoryRepository {
     return rows.find((row) => row.id !== exceptId && fold(row.content) === folded) ?? null;
   }
 
-  insert(input: { content: string; category: MemoryCategory; origin: MemoryOrigin; author: MemoryAuthor; validFrom: string | null }): MemoryRow {
+  insert(input: { content: string; category: MemoryCategory; origin: MemoryOrigin; author: MemoryAuthor; validFrom: string | null; localOnly?: boolean }): MemoryRow {
     this.storage.assertRoom("memories");
     const at = this.now();
     const row: MemoryRow = {
@@ -203,13 +203,13 @@ export class MemoryRepository {
       valid_from: input.validFrom,
       valid_until: null,
       dedupe_key: dedupeKey(input.content),
-      local_only: 0,
+      local_only: input.localOnly ? 1 : 0,
       created_at: at,
       updated_at: at,
     };
     this.db.run(
-      `INSERT INTO zur_memories (id, content, category, origin, author, status, superseded_by, valid_from, valid_until, dedupe_key, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'active', NULL, ?, NULL, ?, ?, ?)`,
+      `INSERT INTO zur_memories (id, content, category, origin, author, status, superseded_by, valid_from, valid_until, dedupe_key, local_only, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'active', NULL, ?, NULL, ?, ?, ?, ?)`,
       row.id,
       row.content,
       row.category,
@@ -217,6 +217,7 @@ export class MemoryRepository {
       row.author,
       row.valid_from,
       row.dedupe_key,
+      row.local_only,
       row.created_at,
       row.updated_at,
     );

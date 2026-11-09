@@ -79,7 +79,8 @@ export function memoryPromptSection(selected: MemoryRow[], maxTokens: number, lo
     if (memory.status === "historical") {
       if (memory.valid_until) extra.until = memory.valid_until;
       const successor = memory.superseded_by ? lookup(memory.superseded_by) : null;
-      if (successor) extra.replaced_by = [...successor.content].slice(0, 120).join("");
+      // A local-only text never rides along in another line's attribute, where the external profile would not empty it.
+      if (successor && memory.local_only !== 1 && successor.local_only !== 1) extra.replaced_by = [...successor.content].slice(0, 120).join("");
     }
     const line = dataLine(SOURCE, memory.id, memory.content, extra);
     const cost = estimateTokens(line);

@@ -48,6 +48,7 @@ describe("the pseudonymizer (D5)", () => {
     expect(hidden).toMatch(/\[CARD_1\]/);
     expect(hidden).toMatch(/\[IBAN_1\]/);
     expect(hidden).toMatch(/\[KEY_1\]/);
+    expect(hidden).toMatch(/\[PHONE_1\]/);
     expect(p.size).toBe(6);
     expect(p.reveal(hidden)).toBe(original);
   });
@@ -70,6 +71,13 @@ describe("the pseudonymizer (D5)", () => {
     p.hide(`Fale com ${EMAIL}`);
     expect(p.reveal("[EMAIL_1] e [EMAIL_2] e [CPF_1]")).toBe(`${EMAIL} e [EMAIL_2] e [CPF_1]`);
     expect(new Pseudonymizer().reveal("[EMAIL_1]")).toBe("[EMAIL_1]");
+  });
+
+  it("turns a marker already written in the content into plain text, so it never gives back a value from elsewhere", () => {
+    const p = new Pseudonymizer();
+    const hidden = p.hide(`Mande para [EMAIL_1]. O meu é ${EMAIL}`);
+    expect(hidden).toBe("Mande para (EMAIL_1). O meu é [EMAIL_1]");
+    expect(p.reveal(hidden)).toBe(`Mande para (EMAIL_1). O meu é ${EMAIL}`);
   });
 
   it("puts back whole a marker split between two pieces of a streamed answer", () => {

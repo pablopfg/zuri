@@ -23,9 +23,10 @@ const report = () => ({
   resetsAt: "2026-11-01T00:00:00.000Z",
   provider: "workers-ai",
   model: DEFAULT_CHAT_MODEL,
-  today: { requests: 1, errors: 0, aborted: 0, neurons: 47.56, costUsd: 0.0005, audioSeconds: 0, models: [] as unknown[] },
-  limits: { requestsPerDay: 200, neuronsPerDay: 9_000, audioSecondsPerDay: 3_600, maxOutputTokens: 1_024 },
+  today: { requests: 1, errors: 0, aborted: 0, neurons: 47.56, costUsd: 0.0005, paidUsd: 0, fallbacks: 0, audioSeconds: 0, models: [] as unknown[] },
+  limits: { requestsPerDay: 200, neuronsPerDay: 9_000, audioSecondsPerDay: 3_600, maxOutputTokens: 1_024, usdCentsPerDay: 0 },
   lastDays: [{ day: "2026-10-31", requests: 1, neurons: 47.56 }],
+  providers: [] as unknown[],
   pricing: { ...WORKERS_AI_PRICING },
 });
 
@@ -83,7 +84,7 @@ describe("the usage report schema", () => {
   it.each([
     ["a negative count", (r: ReturnType<typeof report>) => ({ ...r, today: { ...r.today, requests: -1 } })],
     ["a fractional request count", (r: ReturnType<typeof report>) => ({ ...r, today: { ...r.today, requests: 1.5 } })],
-    ["an unknown provider", (r: ReturnType<typeof report>) => ({ ...r, provider: "openai" })],
+    ["an unknown provider", (r: ReturnType<typeof report>) => ({ ...r, provider: "google" })],
     ["a model off the list", (r: ReturnType<typeof report>) => ({ ...r, model: "mock" })],
     ["a day in another format", (r: ReturnType<typeof report>) => ({ ...r, day: "31/10/2026" })],
     ["an extra field", (r: ReturnType<typeof report>) => ({ ...r, secret: "x" })],

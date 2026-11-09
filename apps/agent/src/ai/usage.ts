@@ -43,6 +43,8 @@ export interface Reservation {
   readonly audioSeconds: number;
   /** US$ held for a paid model's call (step 21); 0 for every other. */
   readonly usd: number;
+  /** The try was the fallback's (step 21): a release gives the count back too. */
+  readonly fallback?: boolean;
   done: boolean;
 }
 
@@ -195,7 +197,7 @@ export class UsageMeter {
       usd,
       call.fallback ? 1 : 0,
     );
-    return { day, kind: "chat", model: call.model, billable: call.billable, neurons: estimate, audioSeconds: 0, usd, done: false };
+    return { day, kind: "chat", model: call.model, billable: call.billable, neurons: estimate, audioSeconds: 0, usd, fallback: call.fallback === true, done: false };
   }
 
   /** Counts `seconds` of audio to transcribe against the hour a day and the Neuron cap. */
@@ -317,12 +319,14 @@ export class UsageMeter {
          ai_requests = max(0, ai_requests - ?),
          audio_seconds = max(0, audio_seconds - ?),
          neurons = max(0, neurons - ?),
-         paid_usd = max(0, paid_usd - ?)
+         paid_usd = max(0, paid_usd - ?),
+         ai_fallbacks = max(0, ai_fallbacks - ?)
        WHERE day = ?`,
       reservation.kind === "chat" ? 1 : 0,
       reservation.audioSeconds,
       reservation.neurons,
       reservation.usd,
+      reservation.fallback ? 1 : 0,
       reservation.day,
     );
   }

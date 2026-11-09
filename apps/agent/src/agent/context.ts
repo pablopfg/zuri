@@ -52,7 +52,8 @@ function outcomes(row: MessageRow, actions: Map<string, PendingAction>, plans: M
       notes.push(`[External call ${tool.name}: ${outcome}] ${dataLine("tool", action.id, action.target)}${answer}`);
     } else if (tool.actionId) {
       // The label is stored text (a title): inside a <data> line, it can't pose as another note.
-      const label = action ? dataLine("tool", action.id, action.target) : "";
+      // A "never send out" target keeps local="1", so the external profile empties its label too (plan D3).
+      const label = action ? dataLine("tool", action.id, action.target, action.localOnly ? { local: "1" } : {}) : "";
       notes.push(`[Proposal ${tool.name}: ${action ? ACTION_OUTCOME[action.status] : ACTION_OUTCOME.expired}] ${label}`.trim());
     }
     const plan = tool.planId ? plans.get(tool.planId) : undefined;

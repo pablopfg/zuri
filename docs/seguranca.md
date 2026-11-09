@@ -995,6 +995,19 @@ que saem da conta Cloudflare do dono. Por isso:
 - Testes: `apps/agent/test/ai-external.test.ts`, `ai-paid.test.ts` e
   `chat-external.test.ts`.
 
+### O que isso não resolve
+
+- O mascaramento acha formatos conhecidos (e-mail, telefone, CPF, cartão, IBAN,
+  chaves). Nome, endereço, saúde ou senha escrita em texto livre saem como estão.
+  Para isso existe "Nunca enviar para fora".
+- O resumo da conversa e as respostas antigas da Zuri já são texto pronto: se
+  ela citou uma nota marcada numa resposta com o Workers AI, essa resposta pode
+  ir no histórico curto de uma vez seguinte com modelo pago.
+- O que sai fica até 30 dias na empresa, pelas regras dela; a Zuri não apaga
+  nada do lado de lá.
+- O teto em US$ é estimado antes e acertado depois pela conta da empresa. Uma
+  chamada longa pode passar um pouco do teto, nunca mais que uma resposta.
+
 ## Dados apagados
 
 Apagar uma memória (ou esvaziar a lixeira) tira o registro da tabela e do

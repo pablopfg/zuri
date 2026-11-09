@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, isPasswordHash, isUsableSetupCode, type Locale, PAID_PROVIDER_IDS, type PaidProviderId, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
+import { DEFAULT_LOCALE, isPaidModel, isPasswordHash, isUsableSetupCode, type Locale, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
 import { Agent } from "agents";
 import { chooseChain, CircuitBreaker, MeteredAI, type PaidKeys, ProviderChain, paidKey, UsageMeter } from "../ai/index.ts";
 import type { AIProvider } from "../ai/provider.ts";
@@ -449,7 +449,9 @@ export class ZuriAgent extends Agent<WorkerEnv> {
   usageReport(): UsageReport {
     const breaker = this.breaker();
     const providers = PAID_PROVIDER_IDS.map((id) => ({ id, configured: this.paidConfigured(id), state: breaker.state(id) }));
-    return this.store.usage.report(this.aiLimits(), this.development() ? "mock" : "workers-ai", this.store.settings.field("aiModel"), providers);
+    const model = this.store.settings.field("aiModel");
+    const provider = this.development() ? "mock" : isPaidModel(model) ? paidProviderOf(model) : "workers-ai";
+    return this.store.usage.report(this.aiLimits(), provider, model, providers);
   }
 
   /** The paid companies' keys (Worker secrets, step 21): they never leave this object. */

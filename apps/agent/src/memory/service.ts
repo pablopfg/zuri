@@ -144,9 +144,12 @@ export class MemoryService {
       const old = this.repo.require(id);
       const existing = this.repo.findCurrentDuplicate(data.content);
       if (existing?.id === old.id) throw new AppError("VALIDATION_FAILED", "error.memorySame", { fields: ["content"] });
+      // A correction of a "never send out" memory stays out too (plan D3), on a new row or on the duplicate it lands on.
+      const localOnly = old.local_only === 1;
+      if (existing && localOnly && existing.local_only !== 1) this.repo.setLocalOnly(existing.id, true);
       const newer =
         existing ??
-        this.repo.insert({ content: data.content, category: data.category ?? old.category, origin, author, validFrom: extractStatedDate(data.content) });
+        this.repo.insert({ content: data.content, category: data.category ?? old.category, origin, author, validFrom: extractStatedDate(data.content), localOnly });
       const superseded = this.lifecycle.supersede(old.id, newer.id, newer.valid_from);
       const rest = existing ? null : this.afterWrite(this.repo.require(newer.id));
       return {

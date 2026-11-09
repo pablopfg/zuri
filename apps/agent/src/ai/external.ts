@@ -113,7 +113,9 @@ export class Pseudonymizer {
 
   /** The text with every value of the list replaced by its marker (the same value, the same marker). */
   hide(text: string): string {
-    let out = text;
+    // A marker already written in the content (a note, a third party's text) is not one of ours: it becomes
+    // `(EMAIL_1)`, so `reveal` can never turn it into a value the content did not hold.
+    let out = text.replace(MARKER, (marker) => `(${marker.slice(1, -1)})`);
     for (const kind of KINDS) {
       out = out.replace(PATTERNS[kind], (match) => {
         if (ACCEPT[kind] && !ACCEPT[kind](match)) return match;

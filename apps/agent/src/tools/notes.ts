@@ -55,7 +55,7 @@ export const noteTools = [
     input: z.object({ query: z.string().min(1).max(200) }).strict(),
     detail: (input) => input.query,
     execute: (input, ctx) => ({
-      results: ctx.productivity.notes.list({ q: input.query, limit: 8 }).map((n) => ({ id: n.id, title: n.title, excerpt: hidden(n, ctx) ? LOCAL_ONLY_TEXT : n.excerpt })),
+      results: ctx.productivity.notes.list({ q: input.query, limit: 8 }).map((n) => ({ id: n.id, title: hidden(n, ctx) ? LOCAL_ONLY_TEXT : n.title, excerpt: hidden(n, ctx) ? LOCAL_ONLY_TEXT : n.excerpt })),
     }),
   }),
   defineTool({
@@ -66,7 +66,7 @@ export const noteTools = [
     input: z.object({ id: noteId }).strict(),
     execute: (input, ctx) => {
       const found = note(input.id, ctx);
-      if (hidden(found, ctx)) return { id: found.id, title: found.title, content: LOCAL_ONLY_TEXT };
+      if (hidden(found, ctx)) return { id: found.id, title: LOCAL_ONLY_TEXT, content: LOCAL_ONLY_TEXT };
       // A company outside the owner's account reads a note in part (plan D4).
       return { id: found.id, title: found.title, content: cut(found.content, ctx.exposure?.external ? EXTERNAL_NOTE_CHARS : READ_CHARS) };
     },
@@ -107,7 +107,7 @@ export const noteTools = [
     input: z.object({ id: noteId, content: z.string().min(1).max(20_000) }).strict(),
     target: (input, ctx) => {
       const found = note(input.id, ctx);
-      return { id: found.id, label: found.title, payload: { text: input.content } };
+      return { id: found.id, label: found.title, payload: { text: input.content }, localOnly: found.localOnly };
     },
     snapshot: noteSnapshot,
     commit: (id, payload, ctx) => {
@@ -123,7 +123,7 @@ export const noteTools = [
     input: z.object({ id: noteId }).strict(),
     target: (input, ctx) => {
       const found = note(input.id, ctx);
-      return { id: found.id, label: found.title };
+      return { id: found.id, label: found.title, localOnly: found.localOnly };
     },
     snapshot: noteSnapshot,
     commit: (id, _payload, ctx) => {

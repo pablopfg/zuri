@@ -111,7 +111,11 @@ export function tokens(reported: number | undefined, estimate: number): TokenCou
  * message (it may quote the prompt). 4006 is the account's daily allocation,
  * spent elsewhere or before this install counted it; 3040 and 429 are capacity.
  */
-export function classifyAiError(error: unknown): AppError {
+/**
+ * `external`: the error came from a paid company (step 21). Only theirs say
+ * "no credit" or "key refused"; on Workers AI a 401/403 stays a refused request.
+ */
+export function classifyAiError(error: unknown, external = false): AppError {
   if (error instanceof AppError) return error;
   const text = errorText(error).toLowerCase();
   // Cloudflare's own wording only: any error that merely mentions Neurons is not a spent allocation.
@@ -122,9 +126,9 @@ export function classifyAiError(error: unknown): AppError {
   if (isAbort(error) || text.includes("abort")) return new AppError("SERVICE_UNAVAILABLE", "error.aiAborted");
   const status = httpStatus(error);
   // A paid company out of the owner's credit (step 21): OpenAI says it with a 429, so before "busy".
-  if (status === 402 || NO_CREDIT.test(text)) return new AppError("SERVICE_UNAVAILABLE", "error.aiNoCredit");
+  if (external && (status === 402 || NO_CREDIT.test(text))) return new AppError("SERVICE_UNAVAILABLE", "error.aiNoCredit");
   // The key was refused (wrong, revoked, without access to the model): only the owner can fix it.
-  if (status === 401 || status === 403 || KEY_REFUSED.test(text)) return new AppError("SERVICE_UNAVAILABLE", "error.aiKeyRefused");
+  if (external && (status === 401 || status === 403 || KEY_REFUSED.test(text))) return new AppError("SERVICE_UNAVAILABLE", "error.aiKeyRefused");
   if (text.includes("3040") || text.includes("capacity") || httpStatus(error) === 429 || text.includes("rate limit") || text.includes("too many requests")) {
     return new AppError("SERVICE_UNAVAILABLE", "error.aiBusy");
   }

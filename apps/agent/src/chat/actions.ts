@@ -174,6 +174,7 @@ export function present(row: ActionRow, at: string): PendingAction {
   const preview = previewOf(row);
   if (preview !== undefined) action.preview = preview;
   if (row.problem) action.problem = row.problem;
+  if (localOnlyTarget(row)) action.localOnly = true;
   if (externalCall && row.result) {
     try {
       const stored = JSON.parse(row.result) as { text?: unknown; error?: unknown };
@@ -190,6 +191,15 @@ export function present(row: ActionRow, at: string): PendingAction {
 const ARGS_PREVIEW_MAX = 4_000;
 
 /** The full text a rewrite would write: what the owner reads before approving. */
+function localOnlyTarget(row: ActionRow): boolean {
+  if (row.tool.startsWith("mcp_") || !row.payload) return false;
+  try {
+    return (JSON.parse(row.payload) as { local?: unknown } | null)?.local === true;
+  } catch {
+    return false;
+  }
+}
+
 function previewOf(row: ActionRow): string | undefined {
   if (row.tool.startsWith("mcp_")) {
     try {

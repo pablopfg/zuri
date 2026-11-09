@@ -17,6 +17,8 @@ export const ptBRAi = {
   "error.aiRequestRejected": "A IA não aceitou este pedido. Tente uma mensagem mais curta ou com outras palavras.",
   "error.aiLimit.usd":
     "Os modelos pagos chegaram ao teto de gasto que você escolheu para hoje (US$ {max}). Ele renova à meia-noite UTC (21h em Brasília); o valor muda em Configurações > IA.",
+  "error.aiPaidBackground":
+    "Fluxos e respostas automáticas usam só os modelos grátis. Escolha um modelo grátis como principal ou como reserva em Configurações > IA.",
   "error.aiNoCredit": "A empresa do modelo pago recusou por falta de crédito. Recarregue na conta dela e toque em “Já recarreguei” em Configurações > IA.",
   "error.aiKeyRefused": "A empresa do modelo pago recusou a chave cadastrada. Confira a chave e toque em “Tentar de novo” em Configurações > IA.",
   "ai.mock.reply":
@@ -27,6 +29,8 @@ export const ptBRAi = {
   "web.ai.usage.description": "Cada pedido é contado antes de chamar a IA. Os contadores recomeçam às {time}, quando a cota grátis da Cloudflare renova.",
   "web.ai.provider": "Provedor",
   "web.ai.provider.workers-ai": "Workers AI",
+  "web.ai.provider.anthropic": "Anthropic",
+  "web.ai.provider.openai": "OpenAI",
   "web.ai.provider.mock": "IA simulada",
   "web.ai.provider.mockHint": "Neste ambiente as respostas vêm de um simulador, que não gasta Neurons. Os pedidos contam do mesmo jeito.",
   "web.ai.neurons": "Neurons",
@@ -111,7 +115,7 @@ export const ptBRAi = {
   "web.ai.paidOptionNoKey": "{label} (precisa da chave)",
   "web.ai.modelHintPaid": "Cerca de {usd} por resposta comum, cobrados pela {company} na sua conta de lá.",
   "web.ai.usdCap": "Teto de gastos por dia (US$)",
-  "web.ai.usdCapHint": "0 deixa sem teto. Com um valor, os modelos pagos param quando o gasto do dia passaria dele, e a reserva grátis responde, se houver.",
+  "web.ai.usdCapHint": "0 deixa sem teto. Com um valor, a Zuri para de chamar os modelos pagos quando o gasto do dia passaria dele, até a meia-noite UTC (21h em Brasília).",
   "web.ai.usdCapInvalid": "Use um valor de 0 a {max}, com até 2 casas depois da vírgula.",
   "web.ai.paidDialog.title": "Usar um modelo pago?",
   "web.ai.paidDialog.cost": "A {company} cobra cada resposta na sua conta de lá. O gasto aparece aqui, e a Zuri só para sozinha se você ligar o teto.",
