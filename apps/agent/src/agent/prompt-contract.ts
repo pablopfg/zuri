@@ -1,4 +1,5 @@
 import { AppError } from "../http/errors.ts";
+import { CLOSING, OPENING } from "./data.ts";
 
 /**
  * The prompt contract (plan D1, docs/planos/troca-de-provedores-e-protecao-de-dados.md).
@@ -114,8 +115,6 @@ export function composePrompt(sections: readonly PromptSection[]): string {
   return parts.join("\n\n");
 }
 
-/** Brackets and their look-alikes in the owner's instructions: none may pass as markup. */
-const OWNER_BRACKETS = /[<>＜＞﹤﹥〈〉⟨⟩〈〉]/g;
 /** Controls but the line break and the tab, invisible format characters (the emoji joiner stays), blank letters and the line separators. */
 const OWNER_HIDDEN = /(?!\u200d)[\p{Cf}\u2028\u2029\u115f\u1160\u3164\uffa0\u2800]|(?![\n\t])\p{Cc}|(?![\ufe0e\ufe0f])\p{Variation_Selector}/gu;
 
@@ -127,5 +126,5 @@ export function ownerText(text: string): string {
   return text
     .replace(/\r\n?/g, "\n")
     .replace(OWNER_HIDDEN, "")
-    .replace(OWNER_BRACKETS, (char) => ("<＜﹤〈⟨〈".includes(char) ? "‹" : "›"));
+    .replace(/[^\n]/gu, (char) => (OPENING.has(char) ? "‹" : CLOSING.has(char) ? "›" : char));
 }

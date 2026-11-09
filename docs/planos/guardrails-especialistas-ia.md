@@ -181,16 +181,16 @@ Nível da auditoria: orientação (não toca autenticação nem segredos na PR 1
 
 | CA | Teste | Camada | Arquivo |
 | --- | --- | --- | --- |
-| CA1 | perfis com padrões dentro das faixas; conversa manda temperatura | unitário/integração | `packages/shared/test/agents.test.ts`, `apps/agent/test/chat-runner.test.ts` |
-| CA2 | especialista com JSON fora do formato falha; texto além do teto é cortado; prompt via `composePrompt` | unitário | `apps/agent/test/specialists.test.ts` |
-| CA3 | `callOptions` repassa `topP`; não repassa outros | unitário | `apps/agent/test/workers-ai.test.ts` |
-| CA4 | pedido + "Anotei" sem ferramenta → aviso; com ferramenta → sem aviso; negação; follow-up sem pedido | unitário + integração | `apps/agent/test/claims.test.ts` |
+| CA1 | perfis com padrões dentro das faixas; conversa manda temperatura 0,4 | unitário/integração | `packages/shared/test/agents.test.ts`, `apps/agent/test/guardrails.test.ts`, `chat-runner.test.ts` |
+| CA2 | especialista com JSON fora do formato falha; texto além do teto é cortado; entrada com marcação fora de `<data>` falha | unitário | `apps/agent/test/guardrails.test.ts` |
+| CA3 | `callOptions` repassa `topP`; não repassa outros | unitário | `apps/agent/test/guardrails.test.ts` |
+| CA4 | pedido + "Anotei" sem ferramenta → aviso; com ferramenta → sem aviso; negação; cortesia; perguntas sobre o passado | unitário + integração | `apps/agent/test/guardrails.test.ts`, `chat-runner.test.ts` |
 | CA5 | testes das avaliações continuam passando | regressão | `apps/agent/test/reviews*.test.ts` |
-| CA6 | link novo para o passo; link que veio nos dados passa; invisível removido | integração | `apps/agent/test/flows-engine.test.ts` |
-| CA7 | reprovado/erro/sem Neurons → proposta; aprovado → roda | integração | `apps/agent/test/routine-check.test.ts` |
-| CA8 | versão muda quando o texto muda | unitário | `apps/agent/test/specialists.test.ts` |
-| CA9 | corpus contra cada defesa; instantâneo | segurança | `apps/agent/test/injection-corpus.test.ts`, `prompt-snapshot.test.ts` |
-| CA10 | modo seco do script (sem conta) lista os casos e o teto | unitário | `scripts/avaliar-prompts.test.ts` |
+| CA6 | link novo para o passo; link da instrução passa; invisível removido; prompt pelo contrato | integração | `apps/agent/test/flows-edges.test.ts` |
+| CA7 | aprovado roda; reprovado, fora do formato, erro, sem Neurons e contato novo viram proposta; parada não deixa proposta; resposta externa não abona contato | integração | `apps/agent/test/mcp-chat.test.ts` |
+| CA8 | versão muda quando o texto muda | unitário | `apps/agent/test/guardrails.test.ts` |
+| CA9 | corpus contra cada defesa; instantâneo | segurança | `apps/agent/test/guardrails.test.ts`, `prompt-snapshot.test.ts` |
+| CA10 | casos do `avaliar-prompts` distinguem certo de errado; teto; `--seco` rodado à mão | unitário | `apps/agent/test/guardrails.test.ts` |
 | CA11–14 | rotas, faixas n−1/n/n+1, senha, bloqueio, versões; e2e + axe da tela | contrato/e2e/a11y | PR 2 |
 
 ## 11. Entrega
@@ -210,6 +210,7 @@ Nível da auditoria: orientação (não toca autenticação nem segredos na PR 1
 | Conferência de afirmações com falso positivo | média | baixo | só com pedido de ação na mensagem e sem negação; aviso é discreto |
 | Segunda leitura reprova chamadas legítimas | média | médio | vira proposta (nada se perde); contador no aviso da rotina |
 | Teste de rotina existente quebra com a segunda leitura | alta | baixo | simulado responde JSON "ok" aos especialistas que pedem JSON |
+| Conferência de contatos com falso positivo (nome de arquivo com final que parece domínio, como `relatorio.app`; número de 7 dígitos) | média | baixo | risco aceito: na rotina vira proposta, no fluxo para o passo com `ai_check`; arquivos comuns (`.pdf`, `.png`…) e datas ISO ficam de fora |
 
 ## 13. Suposições
 

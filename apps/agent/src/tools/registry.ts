@@ -342,10 +342,13 @@ export class ToolExecutor {
 
   /** Outside a routine, or without a checker, nothing more to ask; a checker that fails counts as a refusal. */
   private async passesRoutineCheck(tool: ExternalTool, args: Record<string, unknown>): Promise<boolean> {
-    if (this.ctx.mode !== "scheduled" || !this.ctx.routineCheck) return true;
+    if (this.ctx.mode !== "scheduled") return true;
+    // A routine's run without its checker never sends on its own.
+    if (!this.ctx.routineCheck) return false;
     try {
       return await this.ctx.routineCheck({ label: tool.label, args });
     } catch (error) {
+      if (error instanceof AppError && error.messageKey === "error.aiAborted") throw error;
       log("warn", "routine_check_failed", { error });
       return false;
     }

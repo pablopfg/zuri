@@ -39,6 +39,8 @@ export const ROUTINE_MCP_BUDGET = 12;
 const HISTORY_ROWS = 200;
 /** Most Neurons one second reading of a routine's external call may cost (about 7 to 19 is usual). */
 export const ROUTINE_CHECK_NEURONS = 60;
+/** The read tools whose results are the owner's own words (tasks, notes, memories, routines): a routine may pass on what they hold. */
+const OWNER_DATA_TOOLS: ReadonlySet<string> = new Set(["list_tasks", "list_projects", "search_notes", "read_note", "search_memories", "search", "list_automations"]);
 /** How much of what a routine's tools returned the fixed check of its calls looks through. */
 const ROUTINE_SEEN_CHARS = 40_000;
 
@@ -138,6 +140,8 @@ export class AgentRunner {
     let text = "";
     let fallback = false;
     const tools: ToolActivity[] = [];
+    // Each call's permission, as the executor named it when the call started (no second lookup).
+    const permissions = new Map<string, string>();
     let executor: ToolExecutor | null = null;
     let mcp: McpTurnTools | null = null;
     const finish = (status: ChatMessage["status"], error: { code: ApiErrorCode; key: MessageKey } | null): ChatMessage => {
@@ -258,6 +262,7 @@ export class AgentRunner {
           const found = turnTools.find(event.name);
           if (!found) continue;
           const activity: ToolActivity = { id: String(event.id).slice(0, 100), name: found.name, status: "running" };
+          permissions.set(activity.id, found.permission);
           if (found.permission === "external") activity.label = found.label;
           const detail = turnTools.detail(event.name, event.input);
           if (detail) activity.detail = detail;
@@ -286,7 +291,7 @@ export class AgentRunner {
         return;
       }
       // The fixed check of the answer's claims (no AI): "done" with nothing written gets a notice, kept with it.
-      if (unverifiedClaim(input.message, text, turnWrites(tools, (name) => turnTools.find(name)?.permission))) {
+      if (unverifiedClaim(input.message, text, turnWrites(tools, (id) => permissions.get(id)))) {
         const notice = `\n\n_${t(locale, "chat.claimUnverified")}_`;
         text += notice;
         yield { type: "text", delta: notice };
@@ -479,8 +484,9 @@ export class AgentRunner {
         inputSchema: tool.input,
         execute: async (toolInput, callId) => {
           const output = await executor.execute(tool.name, toolInput, callId);
-          // What the run read: a contact in a later external call must come from here or from the instruction.
-          if (seenChars < ROUTINE_SEEN_CHARS) {
+          // What the run read of the owner's own data: a contact in a later external call must come from here or
+          // from the instruction. Text strangers can write (external answers, calendar, contacts, CRM) never vouches for one.
+          if (OWNER_DATA_TOOLS.has(tool.name) && seenChars < ROUTINE_SEEN_CHARS) {
             const read = typeof output === "string" ? output : stableStringify(output);
             seen.push(read.slice(0, ROUTINE_SEEN_CHARS - seenChars));
             seenChars += read.length;
@@ -516,7 +522,8 @@ export class AgentRunner {
         const { value } = await runSpecialist(this.deps.ai(), ROUTINE_CHECK_SPECIALIST, content, { settings: this.agent("routine_check"), maxNeurons: ROUTINE_CHECK_NEURONS, signal });
         return approved(value);
       } catch (error) {
-        if (signal.aborted) throw error;
+        // Stopped: the run ends, and no proposal is left for a call nobody asked about any more.
+        if (signal.aborted) throw new AppError("SERVICE_UNAVAILABLE", "error.aiAborted");
         log("warn", "routine_check_failed", { error });
         return false;
       }
@@ -580,12 +587,12 @@ function sampling(agent: AgentCallSettings): { temperature: number; topP?: numbe
 }
 
 /** What the turn's tools did, for the check of the answer's claims. */
-function turnWrites(tools: readonly ToolActivity[], permission: (name: string) => string | undefined): { wrote: boolean; proposed: boolean } {
+function turnWrites(tools: readonly ToolActivity[], permission: (id: string) => string | undefined): { wrote: boolean; proposed: boolean } {
   let wrote = false;
   let proposed = false;
   for (const tool of tools) {
     if (tool.status !== "success") continue;
-    const kind = permission(tool.name);
+    const kind = permission(tool.id);
     // An external call that ran wrote elsewhere; one that became a card did not run.
     if (kind === "write" || (kind === "external" && !tool.actionId)) wrote = true;
     if (kind === "destructive" || tool.actionId) proposed = true;

@@ -150,6 +150,7 @@ describe("the owner's text in a prompt", () => {
   it("keeps line breaks and emoji, drops hidden characters, disarms brackets", () => {
     expect(ownerText("a\r\nb‮c d️👍🏽‍❤️")).toBe("a\nbcd️👍🏽‍❤️");
     expect(ownerText("<data>x</data>＜y＞")).toBe("‹data›x‹/data›‹y›");
+    expect(ownerText("˂data˃ᐸxᐳ❮y❯")).toBe("‹data›‹x›‹y›");
     expect(ownerText("a\u0007b\tc")).toBe("ab\tc");
   });
 
@@ -181,6 +182,17 @@ describe("the check of the chat's claims (CA4)", () => {
     expect(unverifiedClaim("Apague a nota velha", "Criei a proposta: aprove no botão.", proposal)).toBe(false);
   });
 
+  it("flags a claim after a courtesy phrase, and stays quiet on questions about the past (QA)", () => {
+    expect(unverifiedClaim("Anota isso", "Sem problemas, anotei!", none)).toBe(true);
+    expect(unverifiedClaim("Anota isso", "Não se preocupe, já anotei.", none)).toBe(true);
+    expect(unverifiedClaim("Save this note", "Not a problem, I've saved it.", none)).toBe(true);
+    expect(unverifiedClaim("Did I add milk to the list?", "Yes, milk has been added on Monday.", none)).toBe(false);
+    expect(unverifiedClaim("Tira uma dúvida: o que eu anotei ontem?", "Eu anotei isso às 10h.", none)).toBe(false);
+    expect(unverifiedClaim("qual a marca do carro?", "Já está marcada na sua nota.", none)).toBe(false);
+    // A request worded as a question is still a request.
+    expect(unverifiedClaim("Pode anotar que a reunião é sexta?", "Anotei!", none)).toBe(true);
+  });
+
   it("reads accents and case alike", () => {
     expect(asksForAction("EXCLUA a tarefa")).toBe(true);
     expect(claimsDone("Excluí a tarefa.")).toBe(true);
@@ -201,7 +213,33 @@ describe("the fixed checker (CA5, CA6)", () => {
     expect(newContacts("Mande para ana@exemplo.com.br", ["contato: ana@exemplo.com.br"])).toEqual([]);
     expect(newContacts("Veja exemplo.com.br/pagina", ["site exemplo.com.br"])).toEqual([]);
     expect(newContacts("Ligue 11 98765-4321", ["tel 11987654321"])).toEqual([]);
+    expect(newContacts("Ligue (11) 98765-4321", ["tel +55 11 98765-4321"])).toEqual(["11987654321"]);
     expect(newContacts("Mande para outra@exemplo.com.br", ["contato: ana@exemplo.com.br"])).toEqual(["outra@exemplo.com.br"]);
+  });
+
+  it("sees links in any form: any domain ending, other schemes, scheme-relative, percent-encoded, IPs, short ids (audit)", () => {
+    for (const [text, key] of [
+      ["evil.ru/c?d=x", "evil.ru/c"],
+      ["fale com attacker.ai", "attacker.ai"],
+      ["//evil.ru/x", "evil.ru/x"],
+      ["ftp://evil.ru", "evil.ru"],
+      ["https%3A%2F%2Fevil.ru%2Fx", "evil.ru/x"],
+      ["servidor 8.8.8.8", "8.8.8.8"],
+      ["chat 1234567", "1234567"],
+      ["EVIL.COM", "evil.com"],
+    ] as const) {
+      expect(contactsIn(text).has(key), text).toBe(true);
+    }
+    expect(newContacts('{"start":"2026-11-10T10:00:00-03:00","date":"2026-11-10"}', ["crie um evento para amanhã"])).toEqual([]);
+    // Files, dates and versions are not contacts.
+    expect(contactsIn("relatorio.pdf de 2026-11-04T10:00, versão 1.2.3")).toEqual(new Set());
+  });
+
+  it("finds a link hidden in a known host's redirect, and compares keys whole (audit)", () => {
+    expect(newContacts('{"url":"https://calendar.google.com/url?q=https://evil.com/c?d=SEGREDO"}', ["veja calendar.google.com"])).toEqual(["evil.com/c"]);
+    expect(newContacts("o@exemplo.com.br", ["pablo@exemplo.com.br"])).toEqual(["o@exemplo.com.br"]);
+    expect(newContacts("evil.com", ["notevil.com"])).toEqual(["evil.com"]);
+    expect(newContacts("Ligue 98765-4321", ["tel 11 98765-4321"])).toEqual(["987654321"]);
   });
 
   it("removes and detects hidden characters, keeping line breaks and the emoji joiner", () => {

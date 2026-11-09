@@ -98,12 +98,23 @@ const CLAIMS = new RegExp(
   "gu",
 );
 
-/** A negation in the few words before a claim: "não criei", "ainda não foi criada", "I haven't saved". */
-const NEGATION = /\b(?:nao|nunca|sem|not|never|haven't|hasn't|didn't|couldn't|could not|wasn't|weren't|n't)\b[^.!?\n]{0,24}$/u;
+/**
+ * A negation that governs the claim: right before it, at most one word in
+ * between and no comma ("não criei", "ainda não foi criada", "not yet
+ * saved"). "Sem problemas, anotei!" is a claim: the comma ends the courtesy.
+ */
+const NEGATION = /(?:^|[^\p{L}'])(?:nao|nunca|not|never|[\p{L}]+n't)(?:\s+[\p{L}']+)?\s+$/u;
 
-/** The owner's message asks for something to be done. */
+/** A question: it ends with "?" or opens with a question word. */
+const QUESTION = /\?\s*$|^\s*(?:did|do|does|when|what|which|where|who|why|how|is|are|was|were|have|has|quando|qual|quais|que|o que|onde|quem|por que|porque|como|sera|eu ja|ja)\b/u;
+/** A request worded as a question: "pode anotar?", "can you save it?". */
+const POLITE = /\b(?:pode|poderia|consegue|voce pode|da para|can you|could you|would you|will you|please)\b/u;
+
+/** The owner's message asks for something to be done; a question only when worded as a request. */
 export function asksForAction(message: string): boolean {
-  return ASKS.test(fold(message));
+  const text = fold(message).trim();
+  if (!ASKS.test(text)) return false;
+  return !QUESTION.test(text) || POLITE.test(text);
 }
 
 /** The answer claims, without a negation right before, that something was done. */

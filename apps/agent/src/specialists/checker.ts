@@ -39,53 +39,91 @@ export function copied(text: string, source: string, run = 5): boolean {
   return false;
 }
 
-const LINK = /\b(?:https?:\/\/|www\.)[^\s<>"'`)\]]+/giu;
+/** Any scheme ("https://", "ftp://"), a scheme-relative "//host" or "www.", up to a space or a quote. */
+const LINK = /(?:\b[a-z][a-z0-9+.-]*:\/\/|(?<![\p{L}\p{N}:/])\/\/(?=[\p{L}\p{N}])|\bwww\.)[^\s<>"'`)\]]+/giu;
 const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}/giu;
-const DOMAIN = /\b[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:com|br|net|org|io|me|app|link|ly|info|biz|xyz|site|online|store|shop|dev|co)\b/giu;
+/** label.label with a final label of 2 to 24 letters: any top-level domain, not only the common ones. */
+const DOMAIN = /(?<![\p{L}\p{N}-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.\p{L}{2,24}(?![\p{L}\p{N}])(?:\/[^\s<>"'`)\]]*)?/giu;
+/** File names look like domains; these endings are files, not hosts. */
+const FILE_ENDINGS = new Set(["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "txt", "md", "doc", "docx", "xls", "xlsx", "csv", "json", "js", "ts", "html", "zip", "mp3", "mp4"]);
+const IP = /(?<![\d.])\d{1,3}(?:\.\d{1,3}){3}(?![\d.])/gu;
 const HANDLE = /(?<![\p{L}\p{N}._%+-])@[\p{L}\p{N}_.]{2,}/gu;
-/** Eight or more digits, with the usual separators between them: a phone, an account, a document. */
-const LONG_NUMBER = /\+?\d(?:[\s().-]{0,2}\d){7,}/gu;
+/** Seven or more digits, with the usual separators between them: a phone, a chat id, an account, a document. */
+const LONG_NUMBER = /\+?\d(?:[\s().-]{0,2}\d){6,}/gu;
+/** Dates and times in ISO form are not contacts: they leave the text before the numbers are read. */
+const ISO_DATE = /\b\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?\b/gu;
+/** How deep links inside links are looked for. */
+const NESTED_DEPTH = 3;
 
-/**
- * The contacts in a text, as plain keys: links and domains (lower case,
- * without the scheme, "www." and the final slash), e-mails, @handles and long
- * numbers (digits only). Wide and styled look-alikes are made plain first, so
- * "exemplo．com" and "＠perfil" count.
- */
-export function contactsIn(text: string): Set<string> {
-  const plain = withoutHidden(text.normalize("NFKC"));
-  const out = new Set<string>();
-  for (const match of plain.match(LINK) ?? []) out.add(hostKey(match));
-  for (const match of plain.match(EMAIL) ?? []) out.add(match.toLowerCase());
-  const withoutEmails = plain.replace(EMAIL, " ");
-  for (const match of withoutEmails.replace(LINK, " ").match(DOMAIN) ?? []) out.add(hostKey(match));
-  for (const match of withoutEmails.match(HANDLE) ?? []) out.add(match.toLowerCase());
-  for (const match of plain.match(LONG_NUMBER) ?? []) out.add(match.replace(/\D/g, ""));
+/** Percent-encoded text decoded (three times at most, for double encoding); a broken escape stays as it is. */
+function decoded(text: string): string {
+  let out = text;
+  for (let round = 0; round < 3 && /%[0-9a-f]{2}/i.test(out); round++) {
+    out = out.replace(/(?:%[0-9a-f]{2})+/gi, (run) => {
+      try {
+        return decodeURIComponent(run);
+      } catch {
+        return run;
+      }
+    });
+  }
   return out;
 }
 
+/**
+ * The contacts in a text, as plain keys: links and domains (lower case,
+ * without the scheme, "www.", the query and the final slash), IP addresses,
+ * e-mails, @handles and long numbers (digits only). Wide and styled
+ * look-alikes are made plain and percent escapes decoded first, so
+ * "exemplo．com", "＠perfil" and "https%3A%2F%2F" count; a link inside
+ * another one's path or query (a redirect) counts on its own.
+ */
+export function contactsIn(text: string, depth = 0): Set<string> {
+  const plain = withoutHidden(decoded(text.normalize("NFKC")).normalize("NFKC"));
+  const out = new Set<string>();
+  const nested = (rest: string) => {
+    if (depth < NESTED_DEPTH && rest) for (const key of contactsIn(rest, depth + 1)) out.add(key);
+  };
+  for (const match of plain.match(LINK) ?? []) {
+    out.add(hostKey(match));
+    nested(match.replace(/^(?:[a-z][a-z0-9+.-]*:)?\/\/|^www\./i, "").replace(/^[^/?#]*/, ""));
+  }
+  for (const match of plain.match(EMAIL) ?? []) out.add(match.toLowerCase());
+  const rest = plain.replace(LINK, " ").replace(EMAIL, " ");
+  for (const match of rest.match(DOMAIN) ?? []) {
+    const host = match.split("/")[0] ?? "";
+    if (FILE_ENDINGS.has(host.split(".").at(-1)?.toLowerCase() ?? "")) continue;
+    out.add(hostKey(match));
+    nested(match.slice(host.length));
+  }
+  for (const match of rest.match(IP) ?? []) out.add(match);
+  for (const match of rest.match(HANDLE) ?? []) out.add(match.toLowerCase());
+  for (const match of plain.replace(ISO_DATE, " ").replace(IP, " ").match(LONG_NUMBER) ?? []) out.add(match.replace(/\D/g, ""));
+  return out;
+}
+
+/** A link as a key: lower case, no scheme, no "www.", no query or fragment, no final punctuation. */
 function hostKey(link: string): string {
   return link
     .toLowerCase()
-    .replace(/^https?:\/\//, "")
+    .replace(/^(?:[a-z][a-z0-9+.-]*:)?\/\//, "")
     .replace(/^www\./, "")
+    .replace(/[?#].*$/, "")
     .replace(/[/.,;:!?]+$/, "");
 }
 
 /**
  * The contacts of `text` that appear nowhere in `known`: what a specialist or a
- * routine made up, or copied from a stranger's text it was told to ignore. A
- * link counts as known when a known link or domain starts it.
+ * routine made up, or copied from a stranger's text it was told to ignore.
+ * Keys are compared whole (never as a piece of a longer one); a link counts
+ * as known when its host is a known domain.
  */
 export function newContacts(text: string, known: readonly string[]): string[] {
   const seen = new Set<string>();
   for (const source of known) for (const key of contactsIn(source)) seen.add(key);
-  const plainKnown = known.map((value) => withoutHidden(value.normalize("NFKC")).toLowerCase());
-  const digitsKnown = known.map((value) => value.normalize("NFKC").replace(/\D/g, ""));
   return [...contactsIn(text)].filter((key) => {
     if (seen.has(key)) return false;
-    if (/^\d+$/.test(key)) return !digitsKnown.some((digits) => digits.includes(key));
-    if ([...seen].some((other) => key.startsWith(`${other}/`) || key === other)) return false;
-    return !plainKnown.some((value) => value.includes(key));
+    const host = key.split("/")[0] ?? key;
+    return !(key.includes("/") && seen.has(host));
   });
 }
