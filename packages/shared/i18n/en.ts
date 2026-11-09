@@ -723,6 +723,10 @@ export const en: Messages = {
   "error.aiModelUnavailable": "The chosen AI model is not available. Pick another one in Settings > AI.",
   "error.aiUnavailable": "The AI could not answer. Try again.",
   "error.aiRequestRejected": "The AI did not accept this request. Try a shorter message or different words.",
+  "error.aiLimit.usd":
+    "The paid models have reached the spending cap you picked for today (US$ {max}). It resets at midnight UTC; change it in Settings > AI.",
+  "error.aiNoCredit": "The paid model's company refused for lack of credit. Top up your account there and tap “I topped up” in Settings > AI.",
+  "error.aiKeyRefused": "The paid model's company refused the saved key. Check the key and tap “Try again” in Settings > AI.",
   "ai.mock.reply": "(Simulated AI) You said: “{message}”. Answers here are for testing; tasks, notes and memories work the same way.",
   "ai.mock.toolDone": "(Simulated AI) I used the tool {tool}.",
   "ai.mock.toolFailed": "(Simulated AI) The tool {tool} did not work.",

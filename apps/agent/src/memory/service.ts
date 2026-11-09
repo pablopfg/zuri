@@ -1,4 +1,5 @@
 import {
+  localOnlySchema,
   MEMORY_REVIEWS_PENDING_MAX,
   type Memory,
   type MemoryCorrect,
@@ -106,6 +107,12 @@ export class MemoryService {
       const row = this.repo.insert({ content: data.content, category: data.category, origin, author, validFrom: extractStatedDate(data.content) });
       return this.afterWrite(row);
     });
+  }
+
+  /** Marks a memory "never send out", or clears the mark (step 21, plan D3). */
+  setLocalOnly(id: string, input: unknown): Memory {
+    const { localOnly } = parse(localOnlySchema, input);
+    return toMemory(this.repo.setLocalOnly(id, localOnly));
   }
 
   /** Fixes the text or category in place (a typo: no history). A new text is checked for conflicts again. */

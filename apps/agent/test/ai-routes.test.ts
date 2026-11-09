@@ -118,7 +118,7 @@ describe("the AI settings", () => {
       db.run(`INSERT INTO zur_settings (key, value, updated_at) VALUES ('ai_neurons_per_day', '99999', 'x')`);
     });
     await runOwner((_db, agent) => {
-      expect(agent.aiLimits()).toEqual({ requestsPerDay: 12, neuronsPerDay: 9_000, maxOutputTokens: 1_024 });
+      expect(agent.aiLimits()).toEqual({ requestsPerDay: 12, neuronsPerDay: 9_000, maxOutputTokens: 1_024, usdCentsPerDay: 0 });
       // Outside local development the provider is Workers AI with the stored (here: default) model.
       expect([agent.ai().id, agent.ai().model]).toEqual(["workers-ai", DEFAULT_CHAT_MODEL]);
     });

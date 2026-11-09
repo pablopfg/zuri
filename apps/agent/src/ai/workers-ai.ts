@@ -1,4 +1,4 @@
-import { generateText, streamText, type ToolSet } from "ai";
+import { generateText, type LanguageModel, streamText, type ToolSet } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import type { AgentEvent, AIProvider, GenerateRequest, ToolRequest } from "./provider.ts";
 import { classifyAiError, estimateTokens } from "./provider.ts";
@@ -16,25 +16,26 @@ import { meteredBinding, type StepMeter, stepUsage } from "./workers-ai-usage.ts
 const THINKING_MODELS: ReadonlySet<string> = new Set(["@cf/zai-org/glm-4.7-flash", "@cf/qwen/qwen3-30b-a3b-fp8"]);
 
 /**
- * Cloudflare Workers AI through the AI SDK and Cloudflare's own provider for it.
- * Reasoning ("thinking") is off: it would multiply the output Neurons. The SDK's
- * retries are off too: a retry is a model call the daily limits would not see.
+ * A model reached through the AI SDK (Workers AI here, the paid companies in
+ * paid.ts): the turn's loop, the tools and the metering of every call that
+ * started. A subclass gives the model, already wrapped so each call it makes
+ * pushes one StepMeter, and the call settings it accepts. The SDK's retries
+ * are off: a retry is a model call the daily limits would not see.
  */
-export class WorkersAIProvider implements AIProvider {
-  readonly id = "workers-ai";
-  readonly billable = true;
+export abstract class SdkProvider implements AIProvider {
+  abstract readonly id: AIProvider["id"];
+  abstract readonly model: string;
+  abstract readonly billable: boolean;
 
-  constructor(
-    private readonly binding: Ai,
-    readonly model: string,
-  ) {}
+  protected abstract createModel(steps: StepMeter[], closed: () => boolean): LanguageModel;
 
-  private createModel(steps: StepMeter[], closed: () => boolean) {
-    const workersai = createWorkersAI({ binding: meteredBinding(this.binding, steps, closed) });
-    return workersai(
-      this.model as Parameters<typeof workersai>[0],
-      THINKING_MODELS.has(this.model) ? { chat_template_kwargs: { enable_thinking: false } } : {},
-    );
+  /** The settings of one call: Workers AI takes the temperature; the paid models get their own (paid.ts). */
+  protected settings(req: GenerateRequest): Record<string, unknown> {
+    return callOptions(req);
+  }
+
+  private usage(meter: StepMeter, outputChars: number) {
+    return { ...stepUsage(this.model, meter, outputChars), billable: this.billable };
   }
 
   /**
@@ -46,7 +47,7 @@ export class WorkersAIProvider implements AIProvider {
     for (const [index, meter] of steps.entries()) {
       if (meter.reported) continue;
       meter.reported = true;
-      req.onStepUsage?.(stepUsage(this.model, meter, index === steps.length - 1 ? lastOutputChars : 0));
+      req.onStepUsage?.(this.usage(meter, index === steps.length - 1 ? lastOutputChars : 0));
     }
   }
 
@@ -60,7 +61,7 @@ export class WorkersAIProvider implements AIProvider {
         instructions: req.system,
         messages: req.messages,
         maxOutputTokens: req.maxOutputTokens,
-        ...callOptions(req),
+        ...this.settings(req),
         maxRetries: 0,
         telemetry: { isEnabled: false },
       });
@@ -99,7 +100,7 @@ export class WorkersAIProvider implements AIProvider {
       instructions: req.system,
       messages: req.messages,
       maxOutputTokens: req.maxOutputTokens,
-      ...callOptions(req),
+      ...this.settings(req),
       maxRetries: 0,
       telemetry: { isEnabled: false },
       ...(hasTools
@@ -151,7 +152,7 @@ export class WorkersAIProvider implements AIProvider {
             const meter = steps[stepIndex];
             if (meter && !meter.reported) {
               meter.reported = true;
-              req.onStepUsage?.(stepUsage(this.model, meter, stepOutputChars));
+              req.onStepUsage?.(this.usage(meter, stepOutputChars));
             }
             stepIndex++;
             stepOutputChars = 0;
@@ -177,6 +178,30 @@ export class WorkersAIProvider implements AIProvider {
 }
 
 /**
+ * Cloudflare Workers AI through the AI SDK and Cloudflare's own provider for it.
+ * Reasoning ("thinking") is off: it would multiply the output Neurons.
+ */
+export class WorkersAIProvider extends SdkProvider {
+  readonly id = "workers-ai";
+  readonly billable = true;
+
+  constructor(
+    private readonly binding: Ai,
+    readonly model: string,
+  ) {
+    super();
+  }
+
+  protected createModel(steps: StepMeter[], closed: () => boolean) {
+    const workersai = createWorkersAI({ binding: meteredBinding(this.binding, steps, closed) });
+    return workersai(
+      this.model as Parameters<typeof workersai>[0],
+      THINKING_MODELS.has(this.model) ? { chat_template_kwargs: { enable_thinking: false } } : {},
+    );
+  }
+}
+
+/**
  * The next step's prompt, in tokens: the last prompt, plus what the model
  * answered in it, plus the tool results it gets back.
  */
@@ -187,7 +212,7 @@ function nextPrompt(steps: StepMeter[], done: { toolResults?: unknown }[]): numb
 }
 
 /** Optional call settings, left out rather than passed as undefined. */
-function callOptions(req: GenerateRequest): { temperature?: number; abortSignal?: AbortSignal } {
+export function callOptions(req: GenerateRequest): { temperature?: number; abortSignal?: AbortSignal } {
   return {
     ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
     ...(req.signal ? { abortSignal: req.signal } : {}),

@@ -66,6 +66,8 @@ export interface Memory {
   validFrom: string | null;
   /** When it stopped being true, if known. */
   validUntil: string | null;
+  /** "Never send out" (step 21, plan D3): only the model on the owner's own account reads it. */
+  localOnly: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -137,6 +139,9 @@ export type MemoryUpdate = z.input<typeof memoryUpdateSchema>;
 /** Records a newer version of a fact; the old one is kept as a past fact linked to it. */
 export const memoryCorrectSchema = /* @__PURE__ */ z.object({ content, category: z.enum(MEMORY_CATEGORIES).optional() }).strict();
 export type MemoryCorrect = z.input<typeof memoryCorrectSchema>;
+
+/** PUT /memories/:id/local-only and /notes/:id/local-only (step 21, plan D3). */
+export const localOnlySchema = /* @__PURE__ */ z.object({ localOnly: z.boolean() }).strict();
 
 export const memoryStatusSchema = /* @__PURE__ */ z.object({ status: z.enum(MEMORY_STATUSES) }).strict();
 export const memoryReviewResolveSchema = /* @__PURE__ */ z.object({ action: z.enum(MEMORY_REVIEW_ACTIONS) }).strict();

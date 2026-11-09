@@ -25,6 +25,12 @@ export type ToolPermission = "read" | "write" | "destructive";
 /** What a tool may touch: the owner's data through the services, nothing else (no network, no shell). */
 export interface ToolContext {
   db: Database;
+  /**
+   * Who reads the results (step 21): MeteredAI sets `external` before each try.
+   * With a company outside the owner's account, items marked "never send out"
+   * are left out (plan D3) and notes go in part (D4).
+   */
+  exposure?: { external: boolean };
   productivity: Productivity;
   memories: MemoryService;
   conversations: ConversationRepository;

@@ -5,6 +5,14 @@ import "./zod-config.ts";
 import { z as mini } from "zod/mini";
 import {
   AI_LIMIT_RANGES,
+  AI_MODEL_IDS,
+  type AiModel,
+  isPaidModel,
+  PAID_MODEL_IDS,
+  PAID_PROVIDER_IDS,
+  type PaidModel,
+  type PaidProviderId,
+  paidProviderOf,
   CHAT_MODEL_IDS,
   type ChatModel,
   DEFAULT_CHAT_MODEL,
@@ -17,6 +25,14 @@ import {
 
 export {
   AI_LIMIT_RANGES,
+  AI_MODEL_IDS,
+  type AiModel,
+  isPaidModel,
+  PAID_MODEL_IDS,
+  PAID_PROVIDER_IDS,
+  type PaidModel,
+  type PaidProviderId,
+  paidProviderOf,
   CHAT_MODEL_IDS,
   type ChatModel,
   DEFAULT_CHAT_MODEL,
@@ -56,6 +72,59 @@ export const CHAT_MODELS = {
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast": { label: "Llama 3.3 70B", input: 26_668, output: 204_805, context: 24_000 },
 } as const satisfies Record<string, { label: string; input: number; output: number; context: number }>;
 
+/**
+ * Paid models (step 21, ⚠️), US$ per million tokens, copied from each
+ * company's pricing page on `PAID_PRICING.asOf`. The cost is written when a
+ * call is recorded, so a later price change does not rewrite the past. Haiku
+ * 5.5's price is the one for prompts up to 100,000 tokens: Zuri's prompt cap
+ * (aiMaxContextTokens) stays far below it.
+ */
+export const PAID_MODELS = {
+  "anthropic/claude-haiku-5-5": { label: "Claude Haiku 5.5", input: 0.1, output: 0.5, context: 1_000_000 },
+  "anthropic/claude-sonnet-5-5": { label: "Claude Sonnet 5.5", input: 2, output: 10, context: 1_000_000 },
+  "openai/gpt-6-luna": { label: "GPT-6 Luna", input: 0.1, output: 0.5, context: 272_000 },
+  "openai/gpt-6.1-terra": { label: "GPT-6.1 Terra", input: 1, output: 5, context: 272_000 },
+} as const satisfies Record<PaidModel, { label: string; input: number; output: number; context: number }>;
+
+export const PAID_PRICING = {
+  asOf: "2026-11-04",
+  sources: {
+    anthropic: "https://platform.claude.com/docs/en/about-claude/pricing",
+    openai: "https://developers.openai.com/api/docs/pricing",
+  },
+} as const satisfies { asOf: string; sources: Record<PaidProviderId, string> };
+
+/**
+ * What each company does with what it receives (plan D6), checked on `asOf`.
+ * A company only enters the list if it does not train on API data. Zuri asks
+ * nothing to be kept on their side (no files, no saved conversations; OpenAI
+ * gets `store: false`).
+ */
+export const PAID_PROVIDERS = {
+  anthropic: {
+    label: "Anthropic",
+    secret: "ANTHROPIC_API_KEY",
+    trainsOnData: false,
+    retentionDays: 30,
+    termsUrl: "https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data",
+  },
+  openai: {
+    label: "OpenAI",
+    secret: "OPENAI_API_KEY",
+    trainsOnData: false,
+    retentionDays: 30,
+    termsUrl: "https://developers.openai.com/api/docs/guides/your-data",
+  },
+} as const satisfies Record<PaidProviderId, { label: string; secret: string; trainsOnData: false; retentionDays: number; termsUrl: string }>;
+
+export const PAID_TERMS_AS_OF = "2026-11-04";
+
+/** US$ of `inputTokens` in and `outputTokens` out on a paid model. */
+export function paidUsd(model: PaidModel, inputTokens: number, outputTokens: number): number {
+  const rate = PAID_MODELS[model];
+  return (inputTokens * rate.input + outputTokens * rate.output) / 1_000_000;
+}
+
 /** A typical answer for the cost hints: 6,000 tokens of context in, 400 out. */
 export const TYPICAL_TURN_TOKENS = { input: 6_000, output: 400 } as const;
 
@@ -73,6 +142,10 @@ export const AUDIO_SECONDS_PER_DAY = 3_600;
 
 /** Days of usage history kept; older rows are removed when a new day starts (rule P13). */
 export const USAGE_RETENTION_DAYS = 90;
+
+/** How a paid company answers: fine, out of credit, or its key refused, until the owner says to try again. */
+export const PROVIDER_STATES = ["ok", "no_credit", "bad_key"] as const;
+export type ProviderState = (typeof PROVIDER_STATES)[number];
 
 export const USAGE_KINDS = ["chat", "transcription", "embedding"] as const;
 export type UsageKind = (typeof USAGE_KINDS)[number];
@@ -104,13 +177,15 @@ export const usageReportSchema = /* @__PURE__ */ mini.strictObject({
   day,
   resetsAt: mini.iso.datetime(),
   provider: mini.enum(["workers-ai", "mock"]),
-  model: mini.enum(CHAT_MODEL_IDS),
+  model: mini.enum(AI_MODEL_IDS),
   today: mini.strictObject({
     requests: count,
     errors: count,
     aborted: count,
     neurons: amount,
     costUsd: amount,
+    /** What the paid models cost today, in US$ (step 21). */
+    paidUsd: amount,
     audioSeconds: count,
     models: mini.array(modelUsageSchema),
   }),
@@ -119,8 +194,18 @@ export const usageReportSchema = /* @__PURE__ */ mini.strictObject({
     neuronsPerDay: count,
     audioSecondsPerDay: count,
     maxOutputTokens: count,
+    /** The paid models' ceiling for the day in US cents; 0 is no ceiling. */
+    usdCentsPerDay: count,
   }),
   lastDays: mini.array(mini.strictObject({ day, requests: count, neurons: amount })),
+  /** The paid companies: whether the key is set, and whether they answer (step 21). */
+  providers: mini.array(
+    mini.strictObject({
+      id: mini.enum(PAID_PROVIDER_IDS),
+      configured: mini.boolean(),
+      state: mini.enum(PROVIDER_STATES),
+    }),
+  ),
   pricing: mini.strictObject({
     asOf: day,
     sourceUrl: mini.string(),
@@ -130,6 +215,44 @@ export const usageReportSchema = /* @__PURE__ */ mini.strictObject({
 });
 
 export type UsageReport = mini.infer<typeof usageReportSchema>;
+
+/** The periods the usage panel shows, in days, today included. */
+export const USAGE_HISTORY_DAYS = [7, 30, 90] as const;
+export type UsageHistoryDays = (typeof USAGE_HISTORY_DAYS)[number];
+
+/** GET /api/usage/history?days=…: one line per day that had any use, and the period by model. Numbers only. */
+export const usageHistorySchema = /* @__PURE__ */ mini.strictObject({
+  from: day,
+  to: day,
+  days: mini.array(
+    mini.strictObject({
+      day,
+      requests: count,
+      errors: count,
+      aborted: count,
+      neurons: amount,
+      paidUsd: amount,
+      audioSeconds: count,
+    }),
+  ),
+  models: mini.array(
+    mini.strictObject({
+      model: mini.string().check(mini.minLength(1)),
+      kind: mini.enum(USAGE_KINDS),
+      calls: count,
+      inputTokens: count,
+      outputTokens: count,
+      neurons: amount,
+      /** Real US$ for a paid model; Workers AI's list price otherwise (free within the allocation). */
+      costUsd: amount,
+      paid: mini.boolean(),
+    }),
+  ),
+  /** Paid US$ per day and model, for the stacked bars. */
+  paidByDay: mini.array(mini.strictObject({ day, model: mini.string().check(mini.minLength(1)), usd: amount })),
+});
+
+export type UsageHistory = mini.infer<typeof usageHistorySchema>;
 
 /** Neurons of `tokens` input and `outputTokens` output on a chat model of the list. */
 export function chatNeurons(model: ChatModel, inputTokens: number, outputTokens: number): number {
@@ -145,6 +268,7 @@ export function neuronsToUsd(neurons: number): number {
 /** The name a person reads for any model Zuri uses; an unknown id is shown as it is. */
 export function modelLabel(model: string): string {
   if (isChatModel(model)) return CHAT_MODELS[model].label;
+  if (isPaidModel(model)) return PAID_MODELS[model].label;
   if (model === TRANSCRIPTION_MODEL) return "Whisper Large v3 Turbo";
   if (model === EMBEDDING_MODEL) return "BGE-M3";
   return model;

@@ -38,6 +38,8 @@ export interface MockOptions {
   failOnRequest?: boolean;
   /** Tests only: every prompt it receives. */
   record?: (prompt: RecordedPrompt) => void;
+  /** Stands in for a paid model in local development (step 21): MeteredAI then sends it the external profile. */
+  external?: boolean;
 }
 
 /**
@@ -55,12 +57,14 @@ export class MockAIProvider implements AIProvider {
   readonly id = "mock";
   readonly model: string;
   readonly billable = false;
+  readonly external: boolean;
 
   constructor(
     private readonly locale: () => Locale = () => "pt-BR",
     private readonly options: MockOptions = {},
   ) {
     this.model = options.model ?? "mock";
+    this.external = options.external === true;
   }
 
   async generate(req: GenerateRequest): Promise<{ text: string }> {

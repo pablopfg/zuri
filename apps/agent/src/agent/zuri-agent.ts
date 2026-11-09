@@ -1,6 +1,6 @@
-import { DEFAULT_LOCALE, isPasswordHash, isUsableSetupCode, type Locale, RECOVERY_LIMITS, RECOVERY_PATH, t } from "@zuri/shared";
+import { DEFAULT_LOCALE, isPasswordHash, isUsableSetupCode, type Locale, PAID_PROVIDER_IDS, type PaidProviderId, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
 import { Agent } from "agents";
-import { chooseChain, CircuitBreaker, MeteredAI, ProviderChain, UsageMeter } from "../ai/index.ts";
+import { chooseChain, CircuitBreaker, MeteredAI, type PaidKeys, ProviderChain, paidKey, UsageMeter } from "../ai/index.ts";
 import type { AIProvider } from "../ai/provider.ts";
 import { breachCheckFor } from "../auth/dev-breach.ts";
 import { MockTranscriber, type Transcriber, WorkersAITranscriber } from "../ai/transcription.ts";
@@ -191,7 +191,10 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         if (this.store.mcp.routinesReachOut()) this.store.auth.requireRecentAuth(session);
       },
     }),
-    aiUsage: () => this.store.usage.report(this.aiLimits(), this.development() ? "mock" : "workers-ai", this.store.settings.field("aiModel")),
+    aiUsage: () => this.usageReport(),
+    aiHistory: (days) => this.store.usage.history(days),
+    paidConfigured: (provider) => this.paidConfigured(provider),
+    retryPaidProvider: (provider) => this.breaker().reset(provider),
     versions: () => readAreaVersions(this.store.db),
     passwordSecretSet: () => this.passwordSecretSet(),
     setupCodeSet: () => isUsableSetupCode(this.env.SETUP_CODE),
@@ -438,7 +441,25 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       requestsPerDay: settings.field("aiRequestsPerDay"),
       neuronsPerDay: settings.field("aiNeuronsPerDay"),
       maxOutputTokens: settings.field("aiMaxOutputTokens"),
+      usdCentsPerDay: settings.field("aiUsdCentsPerDay"),
     };
+  }
+
+  /** Today's AI use against the limits, with the paid companies' state (step 21). */
+  usageReport(): UsageReport {
+    const breaker = this.breaker();
+    const providers = PAID_PROVIDER_IDS.map((id) => ({ id, configured: this.paidConfigured(id), state: breaker.state(id) }));
+    return this.store.usage.report(this.aiLimits(), this.development() ? "mock" : "workers-ai", this.store.settings.field("aiModel"), providers);
+  }
+
+  /** The paid companies' keys (Worker secrets, step 21): they never leave this object. */
+  private paidKeys(): PaidKeys {
+    return { anthropic: this.env.ANTHROPIC_API_KEY, openai: this.env.OPENAI_API_KEY };
+  }
+
+  /** Whether a paid company's models can be picked: its key is set, or local development simulates them. */
+  paidConfigured(provider: PaidProviderId): boolean {
+    return this.development() || paidKey(this.paidKeys(), provider) !== null;
   }
 
   /**
@@ -457,6 +478,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           fallback: this.store.settings.field("aiFallbackModel"),
           locale: () => this.locale(),
           breaker,
+          keys: this.paidKeys(),
         });
     const transcriber = this.testTranscriber ?? (this.development() ? new MockTranscriber() : this.env.AI ? new WorkersAITranscriber(this.env.AI) : null);
     return new MeteredAI(chain, this.store.usage, () => this.aiLimits(), undefined, transcriber, this.secretValues(), this.embedder());
@@ -477,13 +499,28 @@ export class ZuriAgent extends Agent<WorkerEnv> {
   breaker(): CircuitBreaker {
     if (!this.#breaker) {
       const state = new InternalState(this.store.db);
-      this.#breaker = new CircuitBreaker(Date.now, {
-        load: () => {
-          const day = state.get<unknown>("ai_quota_exhausted_day");
-          return typeof day === "string" ? day : undefined;
+      this.#breaker = new CircuitBreaker(
+        Date.now,
+        {
+          load: () => {
+            const day = state.get<unknown>("ai_quota_exhausted_day");
+            return typeof day === "string" ? day : undefined;
+          },
+          save: (day) => (day === null ? state.delete("ai_quota_exhausted_day") : state.set("ai_quota_exhausted_day", day)),
         },
-        save: (day) => (day === null ? state.delete("ai_quota_exhausted_day") : state.set("ai_quota_exhausted_day", day)),
-      });
+        {
+          // A paid company out of credit or with its key refused stays so until the owner says to try again (step 21).
+          load: () => {
+            const out: Partial<Record<PaidProviderId, ProviderState>> = {};
+            for (const id of PAID_PROVIDER_IDS) {
+              const value = state.get<unknown>(`ai_provider_state_${id}`);
+              if (value === "no_credit" || value === "bad_key") out[id] = value;
+            }
+            return out;
+          },
+          save: (provider, value) => (value === "ok" ? state.delete(`ai_provider_state_${provider}`) : state.set(`ai_provider_state_${provider}`, value)),
+        },
+      );
     }
     return this.#breaker;
   }
@@ -491,7 +528,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
   /** The deploy's secrets: none may ever reach a model (prompt contract, D1). */
   private secretValues(): (string | undefined)[] {
     const env = this.env;
-    return [env.SESSION_SECRET, env.PASSWORD_PEPPER, env.OWNER_PASSWORD, env.OWNER_PASSWORD_HASH, env.SETUP_CODE, env.TURNSTILE_SECRET_KEY, env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_ADMIN_ID, env.VAPID_PRIVATE_KEY, env.MCP_CREDENTIAL_KEY];
+    return [env.SESSION_SECRET, env.PASSWORD_PEPPER, env.OWNER_PASSWORD, env.OWNER_PASSWORD_HASH, env.SETUP_CODE, env.TURNSTILE_SECRET_KEY, env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_ADMIN_ID, env.VAPID_PRIVATE_KEY, env.MCP_CREDENTIAL_KEY, env.ANTHROPIC_API_KEY, env.OPENAI_API_KEY, env.GOOGLE_CLIENT_SECRET];
   }
 
   /** The VAPID pair from the two secrets, or null while either is missing, malformed or the published test pair (push stays "not configured"). */
@@ -846,7 +883,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         automations,
         semantic,
         alerts: () => alerts,
-        usage: () => usage.report(this.aiLimits(), this.development() ? "mock" : "workers-ai", settings.field("aiModel")),
+        usage: () => this.usageReport(),
         diagnostics: () => diagnostics.report(),
         healthy: () => this.healthy(),
         aiAvailable: () => usage.room(this.aiLimits()).neurons > 0,

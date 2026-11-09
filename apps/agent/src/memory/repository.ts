@@ -28,6 +28,8 @@ export interface MemoryRow {
   valid_from: string | null;
   valid_until: string | null;
   dedupe_key: number;
+  /** 1 when marked "never send out" (step 21). */
+  local_only: number;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +54,7 @@ export const toMemory = (row: MemoryRow): Memory => ({
   supersededBy: row.superseded_by,
   validFrom: row.valid_from,
   validUntil: row.valid_until,
+  localOnly: row.local_only === 1,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -60,7 +63,7 @@ export const toMemory = (row: MemoryRow): Memory => ({
 export const SEARCH_WINDOW = 200;
 
 /** The columns a list reads: everything but the duplicate key. */
-const COLUMNS = "m.id, m.content, m.category, m.origin, m.author, m.status, m.superseded_by, m.valid_from, m.valid_until, m.dedupe_key, m.created_at, m.updated_at";
+const COLUMNS = "m.id, m.content, m.category, m.origin, m.author, m.status, m.superseded_by, m.valid_from, m.valid_until, m.dedupe_key, m.local_only, m.created_at, m.updated_at";
 
 /** SQL for a list filter over the table aliased `m`. Every one is served by an index. */
 function filterWhere(filter: MemoryFilter): string {
@@ -200,6 +203,7 @@ export class MemoryRepository {
       valid_from: input.validFrom,
       valid_until: null,
       dedupe_key: dedupeKey(input.content),
+      local_only: 0,
       created_at: at,
       updated_at: at,
     };
@@ -231,6 +235,13 @@ export class MemoryRepository {
   }
 
   /** Edits text and category in place (a typo fix: no history). Only the owner edits, so it becomes theirs. */
+  /** "Never send out" on or off (plan D3). Not an edit of the fact: no history, the author stays. */
+  setLocalOnly(id: string, on: boolean): MemoryRow {
+    this.require(id);
+    this.db.run(`UPDATE zur_memories SET local_only = ?, updated_at = ? WHERE id = ?`, on ? 1 : 0, this.now(), id);
+    return this.require(id);
+  }
+
   edit(id: string, next: { content: string; category: MemoryCategory; validFrom: string | null }): MemoryRow {
     const current = this.require(id);
     this.storage.assertEditFits([current.content], [next.content]);

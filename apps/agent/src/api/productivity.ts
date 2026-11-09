@@ -79,6 +79,13 @@ export function registerProductivityRoutes(app: Hono<ApiEnv>, productivity: () =
     return Response.json({ note: productivity().notes.update(id, input) });
   });
 
+  // Step 21 (plan D3): "never send out" on or off.
+  app.put("/notes/:id/local-only", async (c) => {
+    const id = recordId(c.req.param("id"));
+    const input = await readJson(c.req.raw, anyObject, 1024);
+    return Response.json({ note: productivity().notes.setLocalOnly(id, input) });
+  });
+
   app.delete("/notes/:id", (c) => Response.json({ trashItem: productivity().notes.delete(recordId(c.req.param("id"))) }));
 
   // ---------- Projects ----------

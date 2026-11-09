@@ -3,6 +3,7 @@ import { z } from "zod";
 import { hasHistoricalIntent } from "../memory/intent.ts";
 import { defineTool, type ToolContext, ToolError } from "./registry.ts";
 import { orNull } from "./tasks.ts";
+import { LOCAL_ONLY_TEXT } from "../ai/external.ts";
 
 const memoryId = z.string().regex(RECORD_ID, "Use the memory's id from search_memories").describe("The memory's id");
 
@@ -12,9 +13,12 @@ function memory(id: string, ctx: ToolContext): Memory {
   return found;
 }
 
-export const presentMemory = (m: Memory) => ({
+/** True when the model reading this turn is outside the owner's account and the item may not go to it (plan D3). */
+export const hidden = (item: { localOnly: boolean }, ctx: Pick<ToolContext, "exposure">) => item.localOnly && ctx.exposure?.external === true;
+
+export const presentMemory = (m: Memory, ctx: Pick<ToolContext, "exposure"> = {}) => ({
   id: m.id,
-  content: m.content,
+  content: hidden(m, ctx) ? LOCAL_ONLY_TEXT : m.content,
   category: m.category,
   ...(m.status !== "active" ? { status: m.status } : {}),
   ...(m.author === "agent" ? { saved_by: "assistant" } : {}),
@@ -31,7 +35,7 @@ export const memoryTools = [
     execute: (input, ctx) => {
       const result = ctx.memories.create({ content: input.content, category: input.category ?? "other" }, ctx.source === "telegram" ? "telegram" : "app", "agent");
       return {
-        ...(result.duplicate ? { already_known: presentMemory(result.memory) } : { remembered: presentMemory(result.memory) }),
+        ...(result.duplicate ? { already_known: presentMemory(result.memory, ctx) } : { remembered: presentMemory(result.memory, ctx) }),
         ...(result.reviews ? { needs_owner_review: "This may conflict with an older memory; both are kept until the owner reviews them." } : {}),
       };
     },
@@ -45,7 +49,7 @@ export const memoryTools = [
     detail: (input) => input.query,
     execute: (input, ctx) => {
       const past = input.include_history ?? hasHistoricalIntent(input.query);
-      return { memories: ctx.memories.list({ q: input.query, status: past ? "all" : "current", limit: 10 }).memories.map(presentMemory) };
+      return { memories: ctx.memories.list({ q: input.query, status: past ? "all" : "current", limit: 10 }).memories.map((m) => presentMemory(m, ctx)) };
     },
   }),
   defineTool({
@@ -60,7 +64,7 @@ export const memoryTools = [
       // A new version, never an overwrite: the agent can't erase what the owner told it (rule 4 of the tools).
       const result = ctx.memories.correct(before.id, { content: input.content, ...(input.category ? { category: input.category } : {}) }, ctx.source === "telegram" ? "telegram" : "app", "agent");
       ctx.changed?.add(before.id).add(result.memory.id);
-      return { updated: presentMemory(result.memory), previous_kept_as_history: before.id };
+      return { updated: presentMemory(result.memory, ctx), previous_kept_as_history: before.id };
     },
   }),
   defineTool({

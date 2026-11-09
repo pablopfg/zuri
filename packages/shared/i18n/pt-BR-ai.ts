@@ -15,6 +15,10 @@ export const ptBRAi = {
   "error.aiModelUnavailable": "O modelo de IA escolhido não está disponível. Escolha outro em Configurações > IA.",
   "error.aiUnavailable": "A IA não conseguiu responder. Tente de novo.",
   "error.aiRequestRejected": "A IA não aceitou este pedido. Tente uma mensagem mais curta ou com outras palavras.",
+  "error.aiLimit.usd":
+    "Os modelos pagos chegaram ao teto de gasto que você escolheu para hoje (US$ {max}). Ele renova à meia-noite UTC (21h em Brasília); o valor muda em Configurações > IA.",
+  "error.aiNoCredit": "A empresa do modelo pago recusou por falta de crédito. Recarregue na conta dela e toque em “Já recarreguei” em Configurações > IA.",
+  "error.aiKeyRefused": "A empresa do modelo pago recusou a chave cadastrada. Confira a chave e toque em “Tentar de novo” em Configurações > IA.",
   "ai.mock.reply":
     "(IA simulada) Você disse: “{message}”. Neste ambiente as respostas são de teste; tarefas, notas e memórias funcionam do mesmo jeito.",
   "ai.mock.toolDone": "(IA simulada) Usei a ferramenta {tool}.",

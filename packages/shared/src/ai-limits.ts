@@ -15,10 +15,34 @@ export const CHAT_MODEL_IDS = [
 export type ChatModel = (typeof CHAT_MODEL_IDS)[number];
 export const DEFAULT_CHAT_MODEL: ChatModel = "@cf/zai-org/glm-4.7-flash";
 
+/**
+ * Paid models (step 21, ⚠️): each one only with its provider's key set as a
+ * Worker secret, and never by default. ai.ts holds their dated prices.
+ */
+export const PAID_MODEL_IDS = ["anthropic/claude-haiku-5-5", "anthropic/claude-sonnet-5-5", "openai/gpt-6-luna", "openai/gpt-6.1-terra"] as const;
+export type PaidModel = (typeof PAID_MODEL_IDS)[number];
+
+/** Every model the owner may pick to chat: the free ones of Workers AI, then the paid ones. */
+export const AI_MODEL_IDS = [...CHAT_MODEL_IDS, ...PAID_MODEL_IDS] as const;
+export type AiModel = (typeof AI_MODEL_IDS)[number];
+
+/** The companies behind the paid models. */
+export const PAID_PROVIDER_IDS = ["anthropic", "openai"] as const;
+export type PaidProviderId = (typeof PAID_PROVIDER_IDS)[number];
+
+export function isPaidModel(value: unknown): value is PaidModel {
+  return typeof value === "string" && (PAID_MODEL_IDS as readonly string[]).includes(value);
+}
+
+/** The company of a paid model, from its id (`anthropic/…`, `openai/…`). */
+export function paidProviderOf(model: PaidModel): PaidProviderId {
+  return model.startsWith("anthropic/") ? "anthropic" : "openai";
+}
+
 /** "No fallback model": the owner may turn the fallback off. */
 export const NO_FALLBACK_MODEL = "none";
-/** What the fallback setting holds: no model, or one of the list. */
-export const FALLBACK_MODEL_IDS = [NO_FALLBACK_MODEL, ...CHAT_MODEL_IDS] as const;
+/** What the fallback setting holds: no model, or one of the list (paid ones too). */
+export const FALLBACK_MODEL_IDS = [NO_FALLBACK_MODEL, ...AI_MODEL_IDS] as const;
 export type FallbackModel = (typeof FALLBACK_MODEL_IDS)[number];
 /**
  * The model that answers when the chosen one fails before answering (busy,
@@ -47,4 +71,10 @@ export const AI_LIMIT_RANGES = {
   aiMaxContextTokens: { min: 2_000, max: 32_000, default: 6_000 },
   /** Step 10: AI routine runs per day ("Execuções de IA agendadas"); 0 turns them off. Resets at 00:00 UTC. */
   aiScheduledRunsPerDay: { min: 0, max: 48, default: 6 },
+  /**
+   * Step 21: the day's ceiling for the paid models, in US cents. 0 means no
+   * ceiling, the default (decision of 04/11/2026); any other value up to
+   * US$ 10,000 a day is the owner's to pick.
+   */
+  aiUsdCentsPerDay: { min: 0, max: 1_000_000, default: 0 },
 } as const;

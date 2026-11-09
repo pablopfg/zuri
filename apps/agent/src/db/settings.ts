@@ -28,6 +28,7 @@ const STORAGE_KEYS = {
   aiMaxIterations: "ai_max_iterations",
   aiMaxContextTokens: "ai_max_context_tokens",
   aiScheduledRunsPerDay: "ai_scheduled_runs_per_day",
+  aiUsdCentsPerDay: "ai_usd_cents_per_day",
   ownerName: "owner_name",
   digestEnabled: "digest_enabled",
   digestTime: "digest_time",
