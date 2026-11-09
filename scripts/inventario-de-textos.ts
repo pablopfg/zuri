@@ -31,7 +31,7 @@ export function kindOf(key: string): string {
   return "texto curto";
 }
 
-const cell = (text: string | undefined) => (text ?? "").replace(/\|/g, "\\|").replace(/\n/g, "<br>");
+const cell = (text: string | undefined) => (text ?? "").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, "<br>");
 
 export function inventory(sources: Catalogs): string {
   const keys = Object.keys(sources["pt-BR"]).sort();

@@ -41,6 +41,11 @@ describe("inventory", () => {
     expect(md).toContain("1 chaves.");
     expect(md).toContain("| `x` | texto curto | a \\| b<br>c | d |");
   });
+
+  it("escapes a backslash before the pipe, so a text ending in one can't break out of its cell", () => {
+    const md = inventory({ "pt-BR": { x: "a\\|b" }, en: { x: "d" } });
+    expect(md).toContain("| `x` | texto curto | a\\\\\\|b | d |");
+  });
 });
 
 describe("the command line", () => {
