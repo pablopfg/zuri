@@ -6,4 +6,4 @@
   que os 2 minutos de espera: a rodada terminava vermelha, abria issue de falha
   e a PR ficava com a CI parada esperando aprovação. Agora a PR cuja CI ainda
   não apareceu fica para o fim da rodada, e a automação espera por todas juntas
-  até 15 minutos depois de cada push, sem passar do tempo do job.
+  até 15 minutos depois de cada push, dentro do tempo do job.

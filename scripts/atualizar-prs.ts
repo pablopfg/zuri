@@ -393,6 +393,9 @@ export interface LateCommit {
   approved: string[];
 }
 
+/** Between approval retries in the late round: short, so the approvals fit the job's timeout. */
+export const LATE_APPROVE_RETRY_MS = 3_000;
+
 /** How long after a push GitHub may still create its runs: 9 minutes on #208 (issue #210). */
 export const LATE_RUNS_MS = 15 * 60_000;
 
@@ -401,7 +404,8 @@ export const LATE_RUNS_MS = 15 * 60_000;
  * pull_request runs of a bot push many minutes after it (issue #210: 9 minutes,
  * long after the 2 minutes of approveHeldRuns), and a run left held keeps the
  * pull request from ever merging. So once every pull request had its turn, the
- * commits still missing runs are read again, `waitMs` apart, all in the same
+ * commits still missing runs are read again, `waitMs` apart (20 s, so a few
+ * late commits stay far from the API's hourly limit), all in the same
  * loop, until each has every required run (and its held ones are approved) or
  * `LATE_RUNS_MS` passed since its push, never past `deadline`, which keeps the
  * job inside its timeout. Results come in the order of `late`.
@@ -411,7 +415,7 @@ export function approveLateRuns(
   late: LateCommit[],
   {
     deadline,
-    waitMs = 10_000,
+    waitMs = 20_000,
     lateMs = LATE_RUNS_MS,
     now = Date.now,
     sleep = sleepMs,
@@ -428,8 +432,9 @@ export function approveLateRuns(
       const runs = lastRuns[i] ?? [];
       const complete = missingWorkflows(runs).length === 0;
       if (complete || now() >= Math.min(commit.pushedAt + lateMs, deadline)) {
-        const approval = approveFound(ctx, commit.sha, runs, { waitMs, sleep });
-        results[i] = { ...approval, approved: [...commit.approved, ...approval.approved] };
+        const approval = approveFound(ctx, commit.sha, runs, { waitMs: LATE_APPROVE_RETRY_MS, sleep });
+        // A run approved in the first round may still read as held for a moment: name it once.
+        results[i] = { ...approval, approved: [...new Set([...commit.approved, ...approval.approved])] };
       }
     }
     if (results.every(Boolean)) return results as Approval[];
@@ -487,12 +492,16 @@ export function authEnv(token: string): NodeJS.ProcessEnv {
 /**
  * How long a round may keep waiting for late runs: the update job stops at
  * 20 minutes (timeout-minutes in update-prs.yml), and checkout, setup and the
- * merge-order refresh after this script need the rest.
+ * merge-order refresh after this script need the rest, as do the approvals
+ * of the late round (each retried for up to about 12 s).
  */
-export const RUN_BUDGET_MS = 15 * 60_000;
+export const RUN_BUDGET_MS = 12 * 60_000;
+
+/** Reads of the first wait for each pushed commit (20 s), before the late round. */
+export const FIRST_ATTEMPTS = 3;
 
 function updateAll(root: string): number {
-  const startedAt = Date.now();
+  const deadline = Date.now() + RUN_BUDGET_MS;
   const repository = process.env.GITHUB_REPOSITORY;
   const token = process.env.GH_TOKEN;
   if (!repository || !token) throw new Error("GITHUB_REPOSITORY and GH_TOKEN are required");
@@ -581,10 +590,12 @@ function updateAll(root: string): number {
       }
       const pushedAt = Date.now();
       const sha = git(["rev-parse", "HEAD"], dir).trim();
-      const approval = approveHeldRuns(ctx, sha);
+      // Short first wait: the late round below waits for every pull request at once.
+      const approval = approveHeldRuns(ctx, sha, { attempts: Date.now() < deadline ? FIRST_ATTEMPTS : 1 });
       const updated = `${label}: updated${outcome.resolved.length ? `, resolved ${outcome.resolved.join(", ")}` : ""}`;
       // Runs GitHub has not created yet get a second chance once every pull request had its turn.
-      if (approval.failed.length === 0 && approval.missing.length > 0) {
+      // A refused approval among them is retried there too, since its run is still held.
+      if (approval.missing.length > 0) {
         console.log(`${updated}; approved ${approval.approved.join(", ") || "none"}; not created yet: ${approval.missing.join(", ")}`);
         late.push({ number: pr.number, label, resolved: outcome.resolved, commit: { sha, pushedAt, approved: approval.approved } });
         continue;
@@ -603,7 +614,7 @@ function updateAll(root: string): number {
     const approvals = approveLateRuns(
       ctx,
       late.map((l) => l.commit),
-      { deadline: startedAt + RUN_BUDGET_MS },
+      { deadline },
     );
     for (const [i, l] of late.entries()) {
       const approval = approvals[i] as Approval;

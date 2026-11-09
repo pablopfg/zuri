@@ -134,13 +134,14 @@ base `develop` (menos rascunho, branch de fork e PR com o rótulo
    `github-actions[bot]` gera as execuções de `pull_request` (CI, CodeQL e
    Merge order), mas o GitHub as segura como "action_required" até alguém
    aprovar, porque o repositório pede aprovação para colaborador de fora e o
-   bot conta como um. O script espera elas aparecerem (até 2 minutos; 40 s
-   não bastaram na #201) e aprova só as do bot, no commit que ele enviou, da
-   própria branch (nunca de fork). Se alguma ainda não apareceu, a PR fica
-   para o fim da rodada: depois de todas as outras, o script relê esses
-   commits juntos, a cada 10 s, até 15 minutos depois de cada push (o GitHub
-   levou 9 minutos na #210) e sem passar de 15 minutos de rodada, para o job
-   caber nos 20 minutos do `timeout-minutes`.
+   bot conta como um. O script espera elas aparecerem (20 s) e aprova só as
+   do bot, no commit que ele enviou, da própria branch (nunca de fork). Se
+   alguma ainda não apareceu, a PR fica para o fim da rodada: depois de todas
+   as outras, o script relê esses commits juntos, a cada 20 s, até 15 minutos
+   depois de cada push (40 s não bastaram na #201, e o GitHub levou 9 minutos
+   na #210) e sem passar de 12 minutos de rodada, para o job caber nos 20
+   minutos do `timeout-minutes`. Aprovação recusada nessas PRs também é
+   tentada de novo no fim.
    Aprovação que volta com erro é tentada até 3 vezes, 10 s entre elas, e antes
    de cada nova tentativa o script relê a execução: o GitHub às vezes responde
    erro para uma aprovação que aceitou (#166, #190) ou recusa uma que passa
