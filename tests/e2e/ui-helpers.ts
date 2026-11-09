@@ -19,6 +19,9 @@ export async function signIn(page: Page, password = PASSWORD) {
 export async function expectAccessible(page: Page, label: string) {
   // Mid-entrance a fading element reads as low contrast: check the state the owner ends up seeing.
   // Only finite animations: an endless one (a spinner, the busy logo) never settles.
+  // A theme switched just before (emulateMedia) starts its color transitions only at the next style pass:
+  // wait two frames so getAnimations sees them, instead of reading half-faded colors.
+  await page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
   await page.evaluate(() =>
     Promise.all(
       document
