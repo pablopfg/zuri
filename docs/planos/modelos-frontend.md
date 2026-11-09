@@ -1,11 +1,13 @@
 # Plano · Modelos de interface
 
-Situação: rodada 3 entregue, esperando o Pablo aprovar
-Origem: pedido do Pablo em 09/11/2026 ("use a skill taste para criar 5 novos modelos de frontend para eu aprovar") e, na rodada 2, "Aperfeiçoe o modelo 4 - menta… inclua também a tela de login… avalie a skill ui-skills, se for segura, crie 3 novos modelos"
+Situação: rodada 4 entregue, esperando o Pablo aprovar
+Origem: pedido do Pablo em 09/11/2026 ("use a skill taste para criar 5 novos modelos de frontend para eu aprovar") ; na rodada 2, "Aperfeiçoe o modelo 4 - menta… inclua também a tela de login… avalie a skill ui-skills, se for segura, crie 3 novos modelos"; e, na rodada 4, "Crie 5 novos frontend, faça um rebranding completo… crie uma nova identidade visual, ícones e logomarca. Verifique as skills abaixo e crie 3 novos modelos com cada skill" (ui-ux-pro-max e open-design)
 
 Dependências: nenhuma para escolher. A implementação, se houver, vira PR própria.
 
 ## 1. Resumo
+
+Na rodada 4 o Pablo pediu um rebranding completo: cinco identidades novas (logomarca, ícone do app, família de ícones, cores, letras e jeito de falar) e mais três modelos com cada uma das skills `ui-ux-pro-max` e `open-design`. São onze modelos, cada um com as nove telas e uma tela nova de identidade visual (seção 2). A tela de entrar de todos mostra só a marca e uma frase, sem pistas do sistema. As rodadas anteriores ficam abaixo como histórico.
 
 Na rodada 3 o Pablo achou as interfaces anteriores feias e fora da função do sistema. Os três exemplos novos (Sinal, Painel e Caderno) foram refeitos do zero a partir das telas reais do app, conciliando a `taste-skill` e a `ui-skills` (seção 2). As rodadas 1 e 2 ficam abaixo como histórico.
 
@@ -19,7 +21,69 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 - Capturas: `docs/capturas/pr/modelos-frontend/`, nome `<modelo>-<inicio|conversa>-<computador|celular>-<claro|escuro>.png` (40 imagens).
 - Acessibilidade: axe (WCAG 2.1 A/AA e boas práticas) sem nenhuma violação nas 40 combinações.
 
-## 2. Rodada 3 · Sinal, Painel e Caderno
+## 2. Rodada 4 · Rebranding e seis modelos das skills
+
+- Protótipo: `docs/planos/modelos-frontend/prototipo-v4.html` (a barra do topo troca modelo, tela e tema; os modelos estão agrupados por origem).
+- Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, Automações, Memória, Configurações e **Identidade visual** (logomarca, versões sobre fundo claro, escuro e da marca, ícone do app em 72, 48, 32 e 20 px, cores, letras, ícones e jeito de falar).
+- Capturas: `docs/capturas/pr/modelos-frontend-v4/`, nome `<modelo>-<tela>-<computador|celular>-<claro|escuro>.png` (440 imagens), e uma folha de resumo por modelo em `resumo-<modelo>.png`.
+- Acessibilidade: axe (WCAG 2.1 A/AA e boas práticas) sem nenhuma violação nas 440 combinações, e nenhum erro de script.
+- Avaliação das skills: [skill-ui-ux-pro-max.md](skill-ui-ux-pro-max.md) e [skill-open-design.md](skill-open-design.md).
+
+### Tela de entrar sem pistas
+
+O Pablo apontou que a tela de entrar dizia demais ("No computador, no celular e no Telegram", "Depois, o código ou a passkey"). Nos onze modelos ela mostra só a logomarca, uma frase da marca, e-mail, senha, a verificação de segurança e "Esqueci minha senha". Nada sobre canais, segundo passo, tipo de sistema ou proteção. No app de verdade, a mesma limpeza saiu numa PR própria para a `develop`.
+
+### O que vale para os onze
+
+- O nome continua **Zuri**; o que muda é a identidade em volta dele.
+- Logomarcas desenhadas à mão em SVG com o método da skill `brandkit` (inicial com significado, ação do produto, espaço negativo, geometria). Nenhuma foi gerada por IA paga.
+- Cada modelo tem a sua família de ícones, todas de licença livre e copiadas como SVG: Lucide, Tabler Icons 3.31.0 e Phosphor 2.1.1 (regular, bold, light ou duotone).
+- Cinco montagens de tela: **coluna** (conversa no centro e menu lateral), **topo** (menu em cima e o dia ao lado), **painel** (menu escuro e coluna "Agora"), **trilho** (menu estreito com ícone e nome) e **carta** (a Zuri escreve um bilhete, serifada).
+- Continuam valendo as regras da rodada 3: um botão principal por tela, interface neutra com uma cor, texto de leitura de 16 px ou mais, cores do Tailwind, sem gradiente nem roxo, alvos de 44 px, foco visível.
+
+### Identidades novas
+
+| Modelo | Logomarca | Cores | Letras | Ícones | Montagem |
+| --- | --- | --- | --- | --- | --- |
+| 1 · Farol | Um Z cujo traço de cima termina numa luz | azul-noite `#172554`, âmbar `#fbbf24` só na luz, botão azul `#1e3a8a` | Manrope | Tabler, traço fino | topo |
+| 2 · Trama | Três faixas que se cruzam por cima e por baixo, como tecido | terracota `#c2410c`, pedra escura `#1c1917` | Schibsted Grotesk | Phosphor bold | painel |
+| 3 · Norte | Agulha de bússola num círculo; ícone do app redondo | azul `#1d4ed8`, ouro na ponta da agulha | Public Sans | Lucide 1,5 | trilho |
+| 4 · Ninho | Um arco que abriga um ponto | mel escuro `#92400e`, papel `#fbfaf7` | Newsreader e Nunito Sans | Phosphor duotone | carta |
+| 5 · Pulso | O Z num traço só, com uma batida no meio | rosa `#e11d48`, preto `#0a0a0a` | Sora | Phosphor regular | coluna |
+
+### Modelos da skill `ui-ux-pro-max`
+
+Saíram da busca local da skill (`--design-system` para "personal AI assistant productivity calm" e "AI chat assistant private minimal", e `--domain color` para "productivity assistant").
+
+| Modelo | O que a skill sugeriu | Como ficou |
+| --- | --- | --- |
+| 6 · Suíço | Estilo Minimalism & Swiss: grade, preto e branco, sem sombra | Preto `#0a0a0a`, verde-azulado `#0f766e` só para agir, cantos de 2 a 4 px, Inter, Lucide de pontas retas, montagem topo |
+| 7 · Fluxo | Flat Design com a paleta "Productivity Tool" (verde-azulado e laranja) e Plus Jakarta Sans | Verde-azulado `#0f766e` em foco e seleção, laranja `#ea580c` só no botão principal, fundo menta claro, montagem painel |
+| 8 · Nativo | AI-Native UI: pouca moldura, conversa no centro; paleta roxa | O roxo virou azul-céu `#0369a1` pela regra do Zuri; Lexend nos títulos e Source Sans 3 no texto; montagem coluna |
+
+### Modelos do `open-design`
+
+Saíram dos sistemas de design genéricos do catálogo (nenhum com nome de marca) e da skill `login-flow`.
+
+| Modelo | Sistema de origem | Como ficou |
+| --- | --- | --- |
+| 9 · Agêntico | `agentic`: conversa primeiro e tarefas delegadas | Menu azul-noite `#0b1020`, azul `#2563eb`; o Início mostra "Com a Zuri", com o que espera você, o que está agendado e o que já foi feito; montagem trilho |
+| 10 · Espaçoso | `spacious`: muito respiro, creme e bronze | Fundo creme `#faf3df`, bronze `#8f5d24`, o dobro de espaço entre blocos, Phosphor light; montagem coluna |
+| 11 · Refinado | `refined`: serifada e paleta de papel e cobre | Georgia nos títulos, Inter no texto, cobre `#9b5b32`, monograma em itálico num anel fino; montagem carta |
+
+### Custo de implementar (rodada 4)
+
+- **JS inicial:** nenhum modelo pede biblioteca nova. Trocar a família de ícones (Tabler ou Phosphor no lugar do Lucide) só vale se couber no teto de 139.700 B; os ícones usados entram um a um, como hoje.
+- **Fontes:** uma ou duas famílias em `woff2`, servidas pelo Worker, fora do JS inicial. Refinado usa a Georgia do sistema nos títulos.
+- **Marca:** a logomarca nova troca o `Logo`, o favicon e os ícones do PWA (gerados por `scripts/gerar-icones.ts`).
+- **Montagem:** coluna e carta mexem pouco na moldura; topo e trilho trocam o menu lateral; painel acrescenta a coluna "Agora".
+- Nenhum recurso novo da Cloudflare.
+
+### Recomendação (rodada 4)
+
+**Farol.** É a identidade com a ideia mais clara (a Zuri mostra o próximo passo), tem a paleta mais séria para usar o dia todo e o menu em cima deixa a tela inteira para o dia e a conversa. A segunda opção é o **Norte**, para quem prefere o menu estreito à esquerda e o ícone redondo no celular.
+
+## 3. Rodada 3 · Sinal, Painel e Caderno
 
 - Protótipo: `docs/planos/modelos-frontend/prototipo-v3.html` (a barra do topo troca modelo, tela e tema).
 - Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, Automações, Memória e Configurações.
@@ -96,7 +160,7 @@ Também foram evitados os vícios de página gerada apontados pelo `frontend-des
 
 **Sinal.** É o que mais conversa com a marca e com o app de hoje, deixa a conversa no centro, que é o que a Zuri é, e mostra logo no Início o que precisa da dona. Se a ideia for ter o dia sempre à vista enquanto conversa, a segunda opção é o **Painel**.
 
-## 3. Rodada 2 · Menta refinado e três modelos da `ui-skills`
+## 4. Rodada 2 · Menta refinado e três modelos da `ui-skills`
 
 O Pablo escolheu seguir com o **Menta** e pediu para melhorar, com todas as telas e a de entrar. Pediu também três modelos novos pela skill `ui-skills`, que foi avaliada como segura para usar como texto (`docs/planos/skill-ui-skills.md`, commit `97dea9e7`).
 
@@ -154,7 +218,7 @@ Os três seguem a `baseline-ui` à risca: cores e sombras padrão do Tailwind, f
 
 **Menta refinado**, que é a direção que o Pablo escolheu e agora cobre o sistema todo com contraste em dia. Se ele preferir algo mais sóbrio e sem fonte extra, a segunda opção é o **Pedra**, o mais confortável para usar o dia todo dos três novos.
 
-## 4. Rodada 1 · Os cinco modelos
+## 5. Rodada 1 · Os cinco modelos
 
 ### 1 · Lima
 
@@ -201,24 +265,24 @@ Os três seguem a `baseline-ui` à risca: cores e sombras padrão do Tailwind, f
 - **Início:** três números grandes (tarefas hoje, atrasada, compromissos amanhã), listas abaixo e a conversa rápida numa coluna à direita (no celular ela some e fica no menu).
 - **Conversa:** lista de conversas à esquerda e a conversa à direita, como um e-mail.
 
-## 5. O que vale para todos
+## 6. O que vale para todos
 
 - Mesmos textos e dados de exemplo (a dona "Ana", nada real), em pt-BR, "a Zuri" no feminino, sem citar infraestrutura.
 - Alvos de toque de 44 px, foco visível na cor do destaque, texto de leitura com 16 px ou mais, "Pular para o conteúdo", pontos que piscam param com "reduzir movimento".
 - Claro e escuro em todos.
 - Ícones no traço do lucide, que o app já usa.
 
-## 6. Custo de implementar (rodada 1)
+## 7. Custo de implementar (rodada 1)
 
 - **JS inicial:** nenhum dos modelos pede biblioteca nova. A troca é de CSS (tokens em `apps/web/src/styles.css`) e de montagem das telas Início e Conversa, que já são carregadas à parte.
 - **Fontes:** hoje o app usa a fonte do sistema. Cada modelo traz arquivos `woff2` da sua família e da mono (o Lima tem uma família a mais, a Red Hat Display para títulos), uns 60 a 120 KB, servidos pelo próprio Worker e fora do JS inicial. Nada é buscado no Google na hora de abrir. Dá para ficar com a fonte do sistema e levar só cores e montagem.
 - **Floresta** é o que mais mexe na estrutura (conversa fixa ao lado e lista de conversas própria). **Lima** e **Cobalto** são os que menos mexem.
 - Sem custo na Cloudflare.
 
-## 7. Recomendação (rodada 1)
+## 8. Recomendação (rodada 1)
 
 **Lima.** É o que mais conversa com a marca atual (verde, escuro forte), muda pouco a estrutura e traz a faixa de estado do dia, que é útil. Se a ideia for algo mais leve para usar o dia todo no claro, a segunda opção é **Petróleo**.
 
-## 8. Próximo passo
+## 9. Próximo passo
 
-O Pablo aprova um dos modelos da rodada 3 (ou uma mistura, por exemplo "Sinal com a coluna Agora do Painel"). Aí sai um plano de implementação pela skill `planejar`, com testes, axe, capturas antes e depois e o teto de JS conferido.
+O Pablo aprova um dos modelos da rodada 4 (ou uma mistura, por exemplo "logomarca do Farol com a montagem do Norte"). Aí sai um plano de implementação pela skill `planejar`, com testes, axe, capturas antes e depois e o teto de JS conferido.
