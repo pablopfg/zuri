@@ -22,6 +22,7 @@ import { ptBRContacts } from "./pt-BR-contacts.ts";
 import { ptBRFlows } from "./pt-BR-flows.ts";
 import { ptBRCrm } from "./pt-BR-crm.ts";
 import { ptBRReviews } from "./pt-BR-reviews.ts";
+import { ptBRAgents } from "./pt-BR-agents.ts";
 import { ptBRUsage } from "./pt-BR-usage.ts";
 import { ptBRBackup } from "./pt-BR-backup.ts";
 
@@ -154,6 +155,7 @@ export const ptBR = /* @__PURE__ */ join(
   ptBRFlows,
   ptBRCrm,
   ptBRReviews,
+  ptBRAgents,
   ptBRUsage,
   ptBRBackup,
 );

@@ -38,6 +38,7 @@ export {
   ptBRFlows,
   ptBRCrm,
   ptBRReviews,
+  ptBRAgents,
   ptBRUsage,
   ptBRBackup,
   t,
@@ -153,3 +154,4 @@ export * from "./crm-schemas.ts";
 export * from "./reviews.ts";
 export * from "./reviews-schemas.ts";
 export * from "./backup.ts";
+export * from "./agents-schemas.ts";

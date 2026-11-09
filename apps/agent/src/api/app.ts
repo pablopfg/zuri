@@ -71,6 +71,8 @@ import { type RemoteRouteDeps, registerRemoteGate, registerRemoteRoutes } from "
 import { type BackupRouteDeps, registerBackupRoutes } from "./backup.ts";
 import type { RemoteCaller } from "../remote/tokens.ts";
 import { log, rayOf, routeLabel } from "../log.ts";
+import type { AgentConfigs } from "../specialists/configs.ts";
+import { registerAgentRoutes } from "./agents.ts";
 
 export interface ApiEnv {
   Bindings: WorkerEnv;
@@ -120,6 +122,8 @@ export interface ApiDeps {
   backup?(): BackupRouteDeps;
   /** Remote access tokens and the events they send (step 20). Absent: every Bearer token is refused. */
   remote?(): RemoteRouteDeps;
+  /** Each agent's settings on the AI screen (guardrails, PR 2). Absent only in tests of other routes. */
+  agents?(): AgentConfigs;
   /** The number of each screen area, sent with the session check and the heartbeat (nova UI, PR 2). Absent only in tests of other routes. */
   versions?(): AreaVersions;
   /** True when a password secret is set, so the health check can answer without opening the database. */
@@ -544,6 +548,8 @@ export function createApi(deps: ApiDeps) {
 
   // Step 8: what the AI used today and the last 7 days. Read only: the limits change through /settings.
   app.get("/usage", () => Response.json(deps.aiUsage()));
+  const agents = deps.agents;
+  if (agents) registerAgentRoutes(app, () => agents(), () => deps.auth(), client);
 
   // Step 21: the usage panel, by period. Numbers only, never what was said.
   const history = deps.aiHistory;

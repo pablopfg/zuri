@@ -20,6 +20,7 @@ import {
   flowUpdateSchema,
   flowUsesAi,
   nextRun,
+  type AgentCallSettings,
 } from "@zuri/shared";
 import { currentWake } from "../agent/wake-budget.ts";
 import type { MeteredAI } from "../ai/metered.ts";
@@ -85,6 +86,8 @@ export interface FlowServiceDeps {
   /** Zuri's own host: a monitor never watches it (specification, step 22). */
   publicHost: () => string;
   ai: () => MeteredAI;
+  /** The flows' AI step settings on the AI screen; the code's defaults when absent. */
+  agentSettings?: (() => AgentCallSettings) | undefined;
   lockdown: () => boolean;
   /** Sets the shared alarm again (AutomationService.rearm). */
   rearm: () => Promise<void>;
@@ -646,6 +649,7 @@ export class FlowService {
           network: () => this.network,
           development: this.deps.development,
           ai: this.deps.ai,
+          ...(this.deps.agentSettings ? { agentSettings: this.deps.agentSettings } : {}),
           notify: (notice) => this.deps.notify({ kind: "step", flowId: flow.id, flowName: flow.name, ...notice }),
           siteChanged: (change) => this.deps.notify({ kind: "site", flowId: flow.id, flowName: flow.name, change }),
           neuronsLeft: () => FLOW_LIMITS.neuronsPerDay - this.neuronsToday() - (state.neurons - kept),

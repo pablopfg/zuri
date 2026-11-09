@@ -86,11 +86,12 @@ export interface PromptInput {
 
 /** The system prompt of a turn, section by section through the prompt contract (D1). */
 export function buildSystemPrompt(input: PromptInput): string {
+  // The style layer after the rules it can't relax (specialists/contract.ts); an owner who emptied it has none.
+  const layer = (input.agent?.prompt ?? CHAT_PERSONA).trim();
   const sections: PromptSection[] = [
     { origin: "agent_name", text: agentNameLine(input.agentName) },
     { origin: "fixed_instructions", text: FIXED_INSTRUCTIONS.replaceAll("{{language}}", () => input.language) },
-    // The style layer after the rules it can't relax (specialists/contract.ts).
-    { origin: "owner_prompt", text: `${OWNER_LAYER_LEAD}\n${(input.agent?.prompt ?? CHAT_PERSONA).trim()}` },
+    ...(layer ? [{ origin: "owner_prompt" as const, text: `${OWNER_LAYER_LEAD}\n${layer}` }] : []),
     { origin: "clock", text: clockSection({ now: input.now, timeZone: input.timeZone, message: input.message, locale: input.locale, previousMessageAt: input.previousMessageAt }) },
   ];
   if (input.ownerName) {

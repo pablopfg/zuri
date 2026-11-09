@@ -595,6 +595,20 @@ Desde 04/11/2026 (`docs/planos/guardrails-especialistas-ia.md`):
 - `apps/agent/test/injection-corpus.ts` roda contra `dataLine`, o verificador
   fixo e a conferência dos contatos; `prompt-snapshot.test.ts` deixa toda
   mudança de prompt visível no diff.
+- A camada do dono e os parâmetros de cada agente mudam só pela tela
+  (Configurações › IA › Agentes): senha digitada nos últimos 15 minutos, fora do
+  modo de bloqueio (as rotas `/api/ai/agents` respondem 423 nele), fora dos
+  tokens remotos e sem ferramenta, comando do bot, MCP ou fluxo que as alcance.
+  O servidor recusa `<`, `>` (e sinais parecidos), caracteres invisíveis e mais
+  de 2.000 caracteres; os verificadores não aceitam camada nenhuma, e a
+  temperatura e o top_p deles ficam fixos (só o tamanho da resposta muda). Cada
+  mudança que vale grava o evento `agent_settings_changed` na atividade de
+  acesso, com alerta de segurança. O corpus de
+  injeção roda também plantado como camada do dono: recusado na tela ou, se
+  passar, depois das regras fixas e sem marcação. Uma sessão roubada que ainda
+  tenha a senha recente consegue mudar o tom da Zuri, mas não as regras de
+  segurança, a aprovação de ações nem o que os verificadores aprovam; cada
+  mudança fica nas versões, com data, e `prompt_version` nas respostas.
 
 ## Ferramentas do agente e injeção de prompt
 

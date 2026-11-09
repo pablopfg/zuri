@@ -1,4 +1,5 @@
-import { type ChatEvent, CHAT_MODELS, type Settings } from "@zuri/shared";
+import { type AgentId, type ChatEvent, CHAT_MODELS, type Settings } from "@zuri/shared";
+import { AgentConfigs } from "../src/specialists/configs.ts";
 import { describe, expect, it } from "vitest";
 import { contextBudget, contextWindow, IMPORTED_PREFIX, SUMMARIZE_THRESHOLD, summaryRequest } from "../src/agent/context.ts";
 import { decodeQuoted } from "../src/chat/conversations.ts";
@@ -16,7 +17,8 @@ import { type ChatWorld, collect, ScriptedProvider, type Step, withChatWorld } f
 // tries what the injected text asked. The scenarios follow the prompt
 // injection section of the security document (docs/seguranca.md).
 
-function runner(world: ChatWorld, provider: AIProvider | ProviderChain, options: { agentName?: string; settings?: Partial<Settings> } = {}) {
+function runner(world: ChatWorld, provider: AIProvider | ProviderChain, options: { agentName?: string; settings?: Partial<Settings>; agents?: AgentConfigs } = {}) {
+  const agents = options.agents;
   return new AgentRunner({
     tools: world.services(),
     conversations: world.conversations,
@@ -25,6 +27,7 @@ function runner(world: ChatWorld, provider: AIProvider | ProviderChain, options:
     ai: () => world.ai(provider),
     agentName: options.agentName,
     clock: () => world.clock.now,
+    ...(agents ? { agentSettings: (id: AgentId) => agents.settings(id) } : {}),
   });
 }
 
@@ -645,6 +648,34 @@ describe("guardrails in the chat (docs/planos/guardrails-especialistas-ia.md)", 
       await turn(world, provider, "Oi");
       expect(provider.transcript.requests[0]).toMatchObject({ temperature: 0.4 });
       expect(provider.transcript.requests[0]).not.toHaveProperty("topP");
+    });
+  });
+
+  it("uses the owner's saved chat settings and layer, and keeps PROMPT_VERSION with the answer (CA11, CA13)", async () => {
+    await withChatWorld(async (world) => {
+      const agents = new AgentConfigs(world.db);
+      const plain = new ScriptedProvider([say("Oi.")]);
+      const first = await turn(world, plain, "Oi", { agents });
+      const stored = (id: string) => world.db.one<{ prompt_version: string | null }>(`SELECT prompt_version FROM zur_messages WHERE id = ?`, id)?.prompt_version;
+      expect(stored(first.done.message.id)).toBe(agents.view("chat").promptVersion);
+      expect(stored(first.start.userMessage.id)).toBeNull();
+      agents.save("chat", { temperature: 0.7, topP: 0.9, maxOutputTokens: null, prompt: "Fale como um amigo de longa data, com humor leve." });
+      const provider = new ScriptedProvider([say("Oi!")]);
+      const { done } = await turn(world, provider, "Oi de novo", { agents, conversationId: first.conversationId });
+      expect(provider.transcript.requests[0]).toMatchObject({ temperature: 0.7, topP: 0.9 });
+      const system = JSON.stringify(provider.transcript.requests[0]?.system);
+      expect(system).toContain("Fale como um amigo de longa data, com humor leve.");
+      expect(system).not.toContain("Personality: you are warm");
+      // The fixed rules come before the owner's layer, which can't relax them.
+      expect(system.indexOf("Rules:")).toBeLessThan(system.indexOf("Fale como um amigo"));
+      expect(stored(done.message.id)).toMatch(/^chat\.[0-9a-z]+\+1$/);
+      // An emptied layer leaves the chat without one, the rules untouched.
+      agents.save("chat", { temperature: 0.7, topP: 0.9, maxOutputTokens: null, prompt: "" });
+      const bare = new ScriptedProvider([say("Oi.")]);
+      await turn(world, bare, "Mais uma", { agents, conversationId: first.conversationId });
+      const text = JSON.stringify(bare.transcript.requests[0]?.system);
+      expect(text).not.toContain("The owner's notes on style");
+      expect(text).toContain("Rules:");
     });
   });
 

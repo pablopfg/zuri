@@ -14,6 +14,7 @@ import { GoogleCalendar } from "../src/google/service.ts";
 import { GoogleContacts } from "../src/google/contacts.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { DEFAULT_SETTINGS } from "@zuri/shared";
+import { AgentConfigs } from "../src/specialists/configs.ts";
 import { testEnv } from "./helpers.ts";
 
 // 2026-11-03 12:00 UTC: 09:00 in São Paulo.
@@ -66,6 +67,8 @@ export class FakeNetwork implements FlowNetwork {
 
 export interface FlowWorld {
   db: Database;
+  /** The agents' settings the AI step reads (the AI screen). */
+  agents: AgentConfigs;
   flows: FlowService;
   connections: FlowConnections;
   sites: SiteStates;
@@ -116,9 +119,11 @@ export function withFlowWorld<T>(fn: (world: FlowWorld) => T | Promise<T>, optio
     });
     google.network = googleNetwork(googleSim, { fetch: () => Promise.reject(new Error("no network in tests")) });
     const contacts = new GoogleContacts({ db, google, timeZone: () => TIME_ZONE, notify: () => {}, createTask: () => {}, clock: tick });
+    const agents = new AgentConfigs(db);
     const flows = new FlowService(
       {
         db,
+        agentSettings: () => agents.settings("flow_ai"),
         connections,
         sites,
         timeZone: () => TIME_ZONE,
@@ -140,7 +145,7 @@ export function withFlowWorld<T>(fn: (world: FlowWorld) => T | Promise<T>, optio
       },
       network,
     );
-    return fn({ db, flows, connections, sites, network, clock, lockdown, notices, rearms, model, meter, google, googleSim, contacts, googleLockdown });
+    return fn({ db, agents, flows, connections, sites, network, clock, lockdown, notices, rearms, model, meter, google, googleSim, contacts, googleLockdown });
   });
 }
 

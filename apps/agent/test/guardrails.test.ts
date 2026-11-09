@@ -1,11 +1,12 @@
-import { AGENT_PROFILES, AGENT_IDS, AGENT_TEMPERATURE, AGENT_TOP_P, defaultAgentSettings, reviewSecondReadSchema } from "@zuri/shared";
+import { AGENT_PROFILES, AGENT_IDS, AGENT_TEMPERATURE, AGENT_TOP_P, agentConfigProblems, defaultAgentSettings, reviewSecondReadSchema } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { dataLine } from "../src/agent/data.ts";
+import { CLOSING, dataLine, OPENING } from "../src/agent/data.ts";
 import { CHAT_PERSONA, buildSystemPrompt, chatPromptVersion, FIXED_INSTRUCTIONS } from "../src/agent/prompt.ts";
 import { composePrompt, ownerText } from "../src/agent/prompt-contract.ts";
 import type { MeteredRequest } from "../src/ai/metered.ts";
 import { callOptions } from "../src/ai/workers-ai.ts";
 import { guard } from "../src/reviews/guard.ts";
+import { ReviewResponder } from "../src/reviews/responder.ts";
 import { asksForAction, claimsDone, unverifiedClaim } from "../src/specialists/claims.ts";
 import { contactsIn, hasHidden, newContacts, withoutHidden } from "../src/specialists/checker.ts";
 import { OWNER_LAYER_LEAD, promptVersion, runSpecialist, type Specialist, specialistSystem, specialistVersion, textHash } from "../src/specialists/contract.ts";
@@ -339,5 +340,76 @@ describe("the prompt evaluation's cases (CA10)", () => {
     const price = { input: 1_000_000, output: 2_000_000 };
     expect(usedNeurons({ prompt_tokens: 10, completion_tokens: 5 }, request, price)).toBe(20);
     expect(usedNeurons(undefined, request, price)).toBe(worstNeurons(request, price));
+  });
+});
+
+describe("the owner's layer planted with the corpus (CA14)", () => {
+  it("is refused by the screen's check, or reaches the prompt after the rules with no tag of its own", () => {
+    for (const item of INJECTION_CORPUS) {
+      const refused = agentConfigProblems("summary", { temperature: 0.2, topP: null, maxOutputTokens: 300, prompt: item.text }).includes("prompt");
+      const planted = { ...defaultAgentSettings("summary"), prompt: item.text, version: 1 };
+      const system = specialistSystem(SUMMARY_SPECIALIST, planted);
+      // Saved or not, the fixed rules open the prompt and the owner's layer follows its lead.
+      expect(system.startsWith(SUMMARY_SPECIALIST.rules), item.id).toBe(true);
+      expect(system.indexOf(OWNER_LAYER_LEAD), item.id).toBeGreaterThan(SUMMARY_SPECIALIST.rules.length);
+      // No bracket of the layer survives as a tag, and nothing hidden is left.
+      const layer = system.slice(system.indexOf(OWNER_LAYER_LEAD));
+      expect(/[<>＜＞]/.test(layer), item.id).toBe(false);
+      expect(hasHidden(layer), item.id).toBe(false);
+      // Text with brackets or hidden characters never gets saved in the first place.
+      if (/[<>＜＞]/.test(item.text) || hasHidden(item.text.replace(/\n/g, " "))) expect(refused, item.id).toBe(true);
+    }
+  });
+
+  it("in the chat, comes after the fixed rules whatever it says", () => {
+    for (const item of INJECTION_CORPUS) {
+      const system = buildSystemPrompt({
+        agent: { ...defaultAgentSettings("chat"), prompt: item.text, version: 1 },
+        agentName: "Zuri",
+        language: "Brazilian Portuguese (pt-BR)",
+        timeZone: "America/Sao_Paulo",
+        now: new Date("2026-11-09T12:00:00Z"),
+        ownerName: "",
+        message: "Oi",
+        locale: "pt-BR",
+        memories: "",
+        summary: null,
+      });
+      expect(system.indexOf(OWNER_LAYER_LEAD), item.id).toBeGreaterThan(system.indexOf("Rules:"));
+      expect(system).not.toContain("</data><system>");
+    }
+  });
+});
+
+describe("the owner's saved settings reach the reviews' agents (CA11)", () => {
+  it("sends the draft's and the second reading's own settings and records the draft's PROMPT_VERSION", async () => {
+    const requests: MeteredRequest[] = [];
+    const ai = {
+      generate: async (req: MeteredRequest) => {
+        requests.push(req);
+        return { text: req.system.includes("second reading") || requests.length > 1 ? '{"ok":true,"issues":[]}' : '{"reply":"Obrigado!","sentiment":"positive","health":false,"language":"pt"}' };
+      },
+    };
+    const saved = { ...defaultAgentSettings("review_draft"), temperature: 0.5, maxOutputTokens: 400, prompt: "Seja breve.", version: 3 };
+    const check = { ...defaultAgentSettings("review_check"), maxOutputTokens: 200, version: 1 };
+    const responder = new ReviewResponder(() => ai, (id) => (id === "review_draft" ? saved : check));
+    const draft = await responder.draft({ id: "r1", rating: 5, firstName: "Ana", comment: "Ótimo", signature: "Equipe", tone: "close", mode: "positive" }, 100, () => {});
+    expect(draft.version).toBe(specialistVersion(REVIEW_DRAFT_SPECIALIST, saved));
+    expect(draft.version).toMatch(/\+3$/);
+    await responder.secondRead("Obrigado!", 100, () => {});
+    expect(requests[0]).toMatchObject({ temperature: 0.5, maxOutputTokens: 400 });
+    expect(requests[0]?.system).toContain("Seja breve.");
+    expect(requests[1]).toMatchObject({ temperature: 0, maxOutputTokens: 200 });
+  });
+});
+
+describe("the refused characters of the owner's layer", () => {
+  it("cover every bracket look-alike the data blocks neutralize", () => {
+    for (const char of [...OPENING, ...CLOSING]) {
+      expect(agentConfigProblems("summary", { temperature: 0.2, topP: null, maxOutputTokens: 300, prompt: `a${char}b` }), char).toEqual(["prompt"]);
+    }
+    for (const text of ["&lt;data&gt;", "&#60;", "&#x3c;", "a\u3164b", "a\u2800b"]) {
+      expect(agentConfigProblems("summary", { temperature: 0.2, topP: null, maxOutputTokens: 300, prompt: text }), text).toEqual(["prompt"]);
+    }
   });
 });

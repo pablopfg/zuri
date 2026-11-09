@@ -62,6 +62,7 @@ import { SiteStates } from "../flows/monitor.ts";
 import { type FlowNotice, FlowService } from "../flows/service.ts";
 import { CrmEvents } from "../crm/events.ts";
 import { RemoteEvents } from "../remote/events.ts";
+import { AgentConfigs } from "../specialists/configs.ts";
 import { RemoteTokens } from "../remote/tokens.ts";
 import { type CrmNotice, CrmService } from "../crm/service.ts";
 import { McpCredentials } from "../mcp/credentials.ts";
@@ -138,6 +139,8 @@ interface Store {
   /** Remote access tokens and the events they send (step 20). */
   remoteTokens: RemoteTokens;
   remoteEvents: RemoteEvents;
+  /** Each agent's settings on the AI screen (guardrails, PR 2). */
+  agents: AgentConfigs;
 }
 
 /**
@@ -248,6 +251,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         },
       };
     },
+    agents: () => this.store.agents,
     google: () => ({
       google: this.store.google,
       contacts: this.store.contacts,
@@ -439,6 +443,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       onFailure: (failure) => this.store.diagnostics.record(failure),
       // A lockdown that starts mid-turn sends no numbers either (same gate as the session answers).
       versions: () => (this.store.auth.lockdown.active() ? {} : readAreaVersions(this.store.db, this.store.usage.version)),
+      agentSettings: (id) => this.store.agents.settings(id),
     });
   }
 
@@ -581,6 +586,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       // Any write may move an area's number: the live channel looks once the work is done (nova UI, PR 3).
       db.onWrite = () => this.#live.schedule();
       const settings = new SettingsRepository(db, { timeZone: this.env.DEFAULT_TIMEZONE });
+      // Each agent's settings: read once per wake, then from memory on every model call.
+      const agents = new AgentConfigs(db);
       const env = this.env;
       // Remote access tokens (step 20): the lockdown suspends them and a new password revokes them, through the auth.
       const remoteTokens = new RemoteTokens({ db, state: new InternalState(db), secret: () => env.SESSION_SECRET });
@@ -794,6 +801,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         db,
         google,
         ai: () => this.ai(),
+        agentSettings: (id) => agents.settings(id),
         timeZone: () => settings.field("timeZone"),
         lockdown: () => auth.lockdown.active(),
         notify: (notice) => reviewNotice(alerts, notice),
@@ -809,6 +817,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           development: () => this.development(),
           publicHost: () => this.publicUrl().hostname,
           ai: () => this.ai(),
+          agentSettings: () => agents.settings("flow_ai"),
           lockdown: () => auth.lockdown.active(),
           rearm: () => automations.rearm(),
           notify: (notice) => flowNotice(alerts, diagnostics, notice, this.locale()),
@@ -966,7 +975,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         // Local development never reaches Telegram (src/telegram/dev-telegram.ts).
         ...(this.development() ? { fetcher: developmentTelegramFetcher as typeof fetch } : {}),
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmEvents, remoteTokens, remoteEvents };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmEvents, remoteTokens, remoteEvents, agents };
     }
     return this.#store;
   }

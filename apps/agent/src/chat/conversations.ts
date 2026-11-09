@@ -219,6 +219,8 @@ export class ConversationRepository {
     fallback?: boolean;
     /** Someone else's text sent along (step 14). */
     quoted?: Quoted;
+    /** The prompt an answer was made with (PROMPT_VERSION). */
+    promptVersion?: string;
   }): ChatMessage {
     // A conversation deleted while its answer was being written takes no more messages (no orphan rows).
     this.row(input.conversationId);
@@ -227,8 +229,8 @@ export class ConversationRepository {
     const id = input.id ?? crypto.randomUUID();
     this.db.transaction(() => {
       this.db.run(
-        `INSERT INTO zur_messages (id, conversation_id, role, content, tools, status, error_code, error_key, source, fallback, quoted, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO zur_messages (id, conversation_id, role, content, tools, status, error_code, error_key, source, fallback, quoted, prompt_version, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         id,
         input.conversationId,
         input.role,
@@ -240,6 +242,7 @@ export class ConversationRepository {
         input.source ?? "app",
         input.fallback === true && input.role === "assistant" ? 1 : 0,
         input.quoted?.length ? JSON.stringify(decodeQuoted(JSON.stringify(input.quoted))) : null,
+        input.role === "assistant" ? (input.promptVersion ?? null) : null,
         at,
       );
       this.db.run(`UPDATE zur_conversations SET updated_at = ? WHERE id = ?`, at, input.conversationId);

@@ -130,6 +130,8 @@ export const ptBRServer = {
   "notice.security.remote_enabled.body": "O acesso por token foi ligado em Configurações › Segurança. Se não foi você, desligue lá e troque a senha.",
   "notice.security.remote_token_created.title": "Token de acesso remoto criado",
   "notice.security.remote_token_created.body": "Um novo token de acesso remoto foi criado. Se não foi você, revogue em Configurações › Segurança e troque a senha.",
+  "notice.security.agent_settings_changed.title": "Ajustes de um agente de IA mudados",
+  "notice.security.agent_settings_changed.body": "O estilo ou os parâmetros de um agente de IA mudaram em Configurações › IA › Agentes. Se não foi você, volte ao padrão lá e troque a senha.",
   "notice.security.telegram_token_revoked.title": "Token revogado pelo bot",
   "notice.security.telegram_token_revoked.body": "Um token de acesso remoto foi revogado pelo /tokens do Telegram. Se não foi você, alguém está com o seu Telegram: use /bloquear.",
   "error.noticeSecurityInsists": "Alertas de segurança não podem ser silenciados nem apagados enquanto insistem. Eles param sozinhos depois da última tentativa ou quando você confirma por outro canal.",
