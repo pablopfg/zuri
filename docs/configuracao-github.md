@@ -1,7 +1,8 @@
 # Configuração do GitHub
 
 O que o dono configura uma vez no GitHub, todo pelo navegador. Os caminhos
-partem da página do repositório. A etapa 24 acrescenta os segredos do deploy.
+partem da página do repositório. Os segredos e as variáveis do deploy estão em
+[instalacao-cloudflare.md](instalacao-cloudflare.md#parte-3--github-ambiente-production).
 
 ## 1. Branches
 
@@ -71,8 +72,12 @@ Em **Settings → Environments → New environment**, nome `production`:
   deployment branch or tag rule** → `main`.
 - **Required reviewers:** você mesmo (cada deploy espera o seu clique).
 - **Prevent self-review:** desligado (você é o único revisor).
-- Os segredos (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) e a variável
-  `ZURI_ALERT_EMAIL_TO` entram na etapa 24. Nunca no repositório.
+- **Environment secrets:** `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID`
+  (nunca em *Repository secrets*).
+- **Environment variables:** `ZURI_DOMAIN` (obrigatória), `ZURI_ALERT_EMAIL_TO`
+  e `ZURI_BACKUP_BUCKET` (opcionais). Nunca no repositório.
+- Como criar o token e o que cada variável faz:
+  [instalacao-cloudflare.md](instalacao-cloudflare.md#parte-2--token-do-deploy).
 
 ## 6. Rótulo do Dependabot
 

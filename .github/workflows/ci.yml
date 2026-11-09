@@ -7,10 +7,12 @@ name: CI
 # Each job name is a check required by the rulesets. A push by update-prs.yml (GITHUB_TOKEN) starts this
 # run held for approval, and that workflow approves it: the rulesets count only
 # the checks of pull_request runs, never of a workflow_dispatch run.
+# deploy.yml calls this same workflow on main before it deploys (step 24).
 on:
   pull_request:
   push:
     branches: [develop]
+  workflow_call:
 
 permissions:
   contents: read
@@ -95,6 +97,16 @@ jobs:
       - run: npm run build
       # Rule P11: the initial JavaScript stays under its budget.
       - run: npm run size
+      # The production deploy's config and bundle, with example values and no
+      # credential: a broken deploy fails here, not halfway through deploy.yml.
+      - name: Check the deploy config
+        env:
+          ZURI_DOMAIN: zuri.exemplo.com.br
+          ZURI_ALERT_EMAIL_TO: dono@exemplo.com.br
+          ZURI_BACKUP_BUCKET: zuri-backup
+        run: |
+          node scripts/deploy/gerar-config.ts
+          cd apps/agent && npx --no-install wrangler deploy --dry-run -c wrangler.deploy.json
 
   e2e:
     runs-on: ubuntu-26.04

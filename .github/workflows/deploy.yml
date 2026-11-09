@@ -1,0 +1,152 @@
+name: Deploy
+
+# Publishes the one Worker (interface and API) to the owner's Cloudflare account
+# after each push to main, which only takes merges from develop (rulesets and
+# branch-policy.yml). One-time setup, all in the browser:
+# docs/instalacao-cloudflare.md. Nothing here runs on a pull request.
+#
+# Security (the repository is public):
+# - The Cloudflare token and account id are secrets of the "production"
+#   environment, which accepts main alone and waits for the owner's approval.
+#   Only the deploy and check jobs name that environment.
+# - The jobs that install and run the project's code (the whole CI, and the
+#   interface build) have no secret. The deploy job installs with
+#   --ignore-scripts and without the npm cache, so no install script and no
+#   shared cache entry run next to the token.
+# - The domain, the alert address and the bucket are environment variables:
+#   masked before anything prints, never in the repository.
+# - The Worker's secrets never pass through GitHub: the owner sets them in the
+#   dashboard and every deploy keeps them.
+# - Every action is pinned to a full commit SHA; GITHUB_TOKEN is read-only,
+#   except in the release job, which only edits the version's release.
+on:
+  push:
+    branches: [main]
+  # A deploy again from main (after fixing a Worker secret, for example). It
+  # still runs the whole CI and waits for the environment's approval.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time; a newer push waits for the running one instead of cutting it short.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  WRANGLER_SEND_METRICS: "false"
+  FORCE_COLOR: "0"
+
+jobs:
+  # The same jobs as on every pull request (typecheck, lint, test, i18n, build,
+  # e2e, Lighthouse and npm audit blocking high), now on main's own commit.
+  ci:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  # The interface, built once without any secret and handed to the deploy job.
+  web:
+    needs: ci
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @zuri/web
+      - run: npm run size
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-dist
+          path: apps/web/dist
+          if-no-files-found: error
+          retention-days: 3
+
+  deploy:
+    needs: web
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    environment: production
+    steps:
+      # Before anything prints: the domain, the address and the bucket name of this installation.
+      - name: Mask the installation's values
+        env:
+          ZURI_DOMAIN: ${{ vars.ZURI_DOMAIN }}
+          ZURI_ALERT_EMAIL_TO: ${{ vars.ZURI_ALERT_EMAIL_TO }}
+          ZURI_BACKUP_BUCKET: ${{ vars.ZURI_BACKUP_BUCKET }}
+        run: |
+          for value in "$ZURI_DOMAIN" "$ZURI_ALERT_EMAIL_TO" "$ZURI_BACKUP_BUCKET"; do
+            [ -n "$value" ] && echo "::add-mask::$value"
+          done
+          true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # No npm cache here: a cache entry is shared state, and this job holds the token.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      # Wrangler and its bundler come from the lockfile; no install script runs in this job.
+      - run: npm ci --ignore-scripts --no-audit
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: web-dist
+          path: apps/web/dist
+      - name: Write the deploy config
+        env:
+          ZURI_DOMAIN: ${{ vars.ZURI_DOMAIN }}
+          ZURI_ALERT_EMAIL_TO: ${{ vars.ZURI_ALERT_EMAIL_TO }}
+          ZURI_BACKUP_BUCKET: ${{ vars.ZURI_BACKUP_BUCKET }}
+        run: node scripts/deploy/gerar-config.ts
+      - name: Deploy to Cloudflare
+        working-directory: apps/agent
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must be secrets of the production environment."
+            exit 1
+          fi
+          npx --no-install wrangler deploy -c wrangler.deploy.json --message "GitHub Actions ${GITHUB_SHA::7}"
+      # Fails the run when workers.dev or a preview URL is on (the spec's rule for a Custom Domain).
+      - name: Check workers.dev and the preview URLs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/deploy/conferir-producao.ts enderecos
+      # Fails the run when the new version is unhealthy (a Worker secret missing, for example).
+      - name: Check HTTPS and the health check
+        env:
+          ZURI_DOMAIN: ${{ vars.ZURI_DOMAIN }}
+        run: node scripts/deploy/conferir-producao.ts saude
+
+  # The version on main becomes the full release, with its notes in pt-BR.
+  release:
+    needs: deploy
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    # contents: edit the release of the version's tag; nothing else.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/deploy/publicar-release.ts
