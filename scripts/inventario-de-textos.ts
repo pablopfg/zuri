@@ -43,8 +43,8 @@ export function inventory(sources: Catalogs): string {
 export interface Change {
   key: string;
   kind: string;
-  before: { pt?: string; en?: string };
-  after: { pt?: string; en?: string };
+  before: { pt: string | undefined; en: string | undefined };
+  after: { pt: string | undefined; en: string | undefined };
 }
 
 /** Keys whose pt-BR or en text differs, plus keys added or removed. */
