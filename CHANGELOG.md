@@ -19,6 +19,21 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.37.2] - 2026-11-09
+
+Mesclada às 12:44 (UTC-3) · commit [`cc42835`](https://github.com/pablopfg/Zuri/commit/cc42835cc7df8e6466d6ffd3e3b0f4f4e89e6f07) · PR [#227](https://github.com/pablopfg/Zuri/pull/227) · X no canto de todo diálogo e confirmações no padrão (etapa 26b)
+
+### Alterado
+
+- Todo diálogo fecha por um X no canto superior direito, que continua à vista enquanto o conteúdo rola. Os botões "Fechar" em texto saíram do histórico da memória, dos projetos, do evento da agenda, do contato e da lista de conversas; o aviso da lixeira e a central de avisos também fecham pelo X.
+- As confirmações seguem um padrão: "Cancelar" vem antes do botão que repete o verbo e já começa com o foco, também nas que abrem no lugar, como revogar um token, remover uma passkey ou apagar um cliente.
+- No tempo máximo da sessão, o X do aviso só esconde o aviso; a sessão termina na hora marcada.
+- A faixa que lembra de ligar as duas etapas agora se dispensa pelo X, que diz por quanto tempo: "Dispensar por 3 dias".
+
+### Atualização
+
+- O teto do primeiro carregamento sobe de 139,7 kB para 139,9 kB, com o OK do Pablo, para caber o X padrão dos diálogos.
+
 ## [0.37.1] - 2026-11-09
 
 Mesclada às 10:59 (UTC-3) · commit [`af527b4`](https://github.com/pablopfg/Zuri/commit/af527b40e93d5d55deaf401e4b03cef3be634bab) · PR [#225](https://github.com/pablopfg/Zuri/pull/225) · Folga no JS inicial para a troca de versão caber no teto
@@ -2816,7 +2831,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.37.1...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.37.2...develop
+[0.37.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.2
 [0.37.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.1
 [0.37.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.0
 [0.36.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.36.1

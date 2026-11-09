@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { catalogProblems, IGNORE_FILE, lint, lintSource, SOURCE_DIRS, unusedCatalogKeys } from "../../scripts/lint-i18n.ts";
+import { catalogProblems, IGNORE_FILE, lint, lintSource, report, SOURCE_DIRS, unusedCatalogKeys } from "../../scripts/lint-i18n.ts";
 import { ROOT, readJson } from "./helpers.ts";
 
 const KEYS = new Set(["app.name", "error.forbidden", "FORBIDDEN", "NOT_FOUND"]);
@@ -114,7 +114,7 @@ describe("the repository", () => {
   });
 });
 
-describe("the command line, against a copy of the repository with a planted literal", () => {
+describe("a copy of the repository with a planted literal, through the command line and lint()", () => {
   let dir: string | undefined;
   afterEach(() => {
     if (dir) rmSync(dir, { recursive: true, force: true });
@@ -149,22 +149,31 @@ describe("the command line, against a copy of the repository with a planted lite
     expect(result.stderr).toContain('apps/agent/src/planted.ts:1 texto visível fora do catálogo (app-error): "Proibido aqui"');
   });
 
-  it("accepts a planted literal listed in the exceptions with a reason, and fails on a stale exception", () => {
+  // The scenarios below call lint() in this process: each spawned run costs a fresh Node start plus a full
+  // parse of the copy, and several of them in one test overran Vitest's 5 s on a loaded machine (#214).
+  // The two tests above already cover what only the command line does (exit code and stderr).
+  const problemsIn = (root: string) => report(lint(root));
+
+  function withExceptions(ignore: unknown[]): string {
     const root = copyOfRepository();
     writeFileSync(join(root, "apps/web/src/Brand.tsx"), `export const Brand = () => <span>Cloudflare Workers</span>;\n`);
-    const entry = { file: "apps/web/src/Brand.tsx", text: "Cloudflare Workers", reason: "Nome de produto, igual em todo idioma." };
     // The catalog's own microcopy exceptions stay; only the literal ones change here.
     const { microcopy } = readJson(IGNORE_FILE);
-    writeFileSync(join(root, IGNORE_FILE), JSON.stringify({ ignore: [entry], microcopy }));
-    expect(run(root).status).toBe(0);
+    writeFileSync(join(root, IGNORE_FILE), JSON.stringify({ ignore, microcopy }));
+    return root;
+  }
+  const entry = { file: "apps/web/src/Brand.tsx", text: "Cloudflare Workers", reason: "Nome de produto, igual em todo idioma." };
 
-    writeFileSync(join(root, IGNORE_FILE), JSON.stringify({ ignore: [{ ...entry, reason: "" }], microcopy }));
-    expect(run(root).stderr).toContain("precisa de");
+  it("accepts a planted literal listed in the exceptions with a reason", () => {
+    expect(problemsIn(withExceptions([entry]))).toEqual([]);
+  });
 
-    writeFileSync(join(root, IGNORE_FILE), JSON.stringify({ ignore: [entry, { ...entry, text: "Outro" }], microcopy }));
-    const stale = run(root);
-    expect(stale.status).toBe(1);
-    expect(stale.stderr).toContain("não corresponde a nada");
+  it("refuses an exception without a reason", () => {
+    expect(problemsIn(withExceptions([{ ...entry, reason: "" }])).join("\n")).toContain("precisa de");
+  });
+
+  it("fails on a stale exception", () => {
+    expect(problemsIn(withExceptions([entry, { ...entry, text: "Outro" }])).join("\n")).toContain("não corresponde a nada");
   });
 
   it("fails when a catalog key is no longer used in the code", () => {
@@ -173,8 +182,6 @@ describe("the command line, against a copy of the repository with a planted lite
     const errors = join(root, "packages/shared/src/errors.ts");
     const source = readFileSync(errors, "utf8");
     writeFileSync(errors, source.replace(/\s*VALIDATION_FAILED: "error\.validationFailed",/, ""));
-    const result = run(root);
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('chave do catálogo sem uso no código: "error.validationFailed"');
+    expect(problemsIn(root)).toContain('chave do catálogo sem uso no código: "error.validationFailed"');
   });
 });
