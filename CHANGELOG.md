@@ -19,6 +19,15 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.37.3] - 2026-11-09
+
+Mesclada às 13:48 (UTC-3) · commit [`7095a80`](https://github.com/pablopfg/Zuri/commit/7095a80aaff7defef53b4c80c7fc731b2e984b23) · PR [#228](https://github.com/pablopfg/Zuri/pull/228) · Corrige os testes instáveis das issues #214, #216 e #223
+
+### Corrigido
+
+- Na conversa, um plano de tarefas aberto para edição logo no fim da resposta não perde mais a edição: antes, o cartão era montado de novo quando a resposta terminava de ser guardada e voltava ao estado inicial.
+- Três testes que falhavam de vez em quando ficaram estáveis: o do lint de i18n (passava do tempo com a máquina carregada), o do título escondido do modelo externo (o número do título podia aparecer num id aleatório) e o do plano editado no celular.
+
 ## [0.37.2] - 2026-11-09
 
 Mesclada às 12:44 (UTC-3) · commit [`cc42835`](https://github.com/pablopfg/Zuri/commit/cc42835cc7df8e6466d6ffd3e3b0f4f4e89e6f07) · PR [#227](https://github.com/pablopfg/Zuri/pull/227) · X no canto de todo diálogo e confirmações no padrão (etapa 26b)
@@ -2831,7 +2840,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.37.2...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.37.3...develop
+[0.37.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.3
 [0.37.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.2
 [0.37.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.1
 [0.37.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.0
