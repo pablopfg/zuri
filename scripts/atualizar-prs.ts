@@ -351,19 +351,27 @@ export function approveHeldRuns(
   sha: string,
   { attempts = 12, waitMs = 10_000, sleep = sleepMs }: { attempts?: number; waitMs?: number; sleep?: (ms: number) => unknown } = {},
 ): Approval {
-  const required = Object.values(PR_WORKFLOWS);
   let runs: WorkflowRun[] = [];
   for (let i = 0; i < attempts; i++) {
     if (i > 0) sleep(waitMs);
     runs = pullRequestRuns(ctx, sha);
-    if (required.every((name) => runs.some((r) => r.name === name))) break;
+    if (missingWorkflows(runs).length === 0) break;
   }
-  const result: Approval = {
-    approved: [],
-    failed: [],
-    errors: [],
-    missing: required.filter((name) => !runs.some((r) => r.name === name)),
-  };
+  return approveFound(ctx, sha, runs, { waitMs, sleep });
+}
+
+/** Names of the required workflows with no run among `runs`. */
+const missingWorkflows = (runs: WorkflowRun[]) =>
+  Object.values(PR_WORKFLOWS).filter((name) => !runs.some((r) => r.name === name));
+
+/** Approves the held runs among `runs`, the runs read for `sha`. */
+function approveFound(
+  ctx: Pick<GitHub, "repository" | "exec">,
+  sha: string,
+  runs: WorkflowRun[],
+  { waitMs, sleep }: { waitMs: number; sleep: (ms: number) => unknown },
+): Approval {
+  const result: Approval = { approved: [], failed: [], errors: [], missing: missingWorkflows(runs) };
   for (const run of runs.filter(isHeldForBot)) {
     const done = approveRun(ctx, sha, run.id, { waitMs, sleep });
     if (done.ok) {
@@ -374,6 +382,59 @@ export function approveHeldRuns(
     }
   }
   return result;
+}
+
+/** A pushed commit whose runs GitHub had not created yet when its pull request was handled. */
+export interface LateCommit {
+  sha: string;
+  /** When the push went through (ms since the epoch). */
+  pushedAt: number;
+  /** What the first round already approved. */
+  approved: string[];
+}
+
+/** How long after a push GitHub may still create its runs: 9 minutes on #208 (issue #210). */
+export const LATE_RUNS_MS = 15 * 60_000;
+
+/**
+ * The second chance for the commits of `late`. GitHub sometimes creates the
+ * pull_request runs of a bot push many minutes after it (issue #210: 9 minutes,
+ * long after the 2 minutes of approveHeldRuns), and a run left held keeps the
+ * pull request from ever merging. So once every pull request had its turn, the
+ * commits still missing runs are read again, `waitMs` apart, all in the same
+ * loop, until each has every required run (and its held ones are approved) or
+ * `LATE_RUNS_MS` passed since its push, never past `deadline`, which keeps the
+ * job inside its timeout. Results come in the order of `late`.
+ */
+export function approveLateRuns(
+  ctx: Pick<GitHub, "repository" | "exec">,
+  late: LateCommit[],
+  {
+    deadline,
+    waitMs = 10_000,
+    lateMs = LATE_RUNS_MS,
+    now = Date.now,
+    sleep = sleepMs,
+  }: { deadline: number; waitMs?: number; lateMs?: number; now?: () => number; sleep?: (ms: number) => unknown },
+): Approval[] {
+  const results: (Approval | undefined)[] = late.map(() => undefined);
+  const lastRuns: WorkflowRun[][] = late.map(() => []);
+  for (;;) {
+    for (const [i, commit] of late.entries()) {
+      if (results[i]) continue;
+      const read = tryRun(() => JSON.stringify(pullRequestRuns(ctx, commit.sha)));
+      // A failed read leaves the last list in place: the next read may answer.
+      if (read.ok) lastRuns[i] = JSON.parse(read.out) as WorkflowRun[];
+      const runs = lastRuns[i] ?? [];
+      const complete = missingWorkflows(runs).length === 0;
+      if (complete || now() >= Math.min(commit.pushedAt + lateMs, deadline)) {
+        const approval = approveFound(ctx, commit.sha, runs, { waitMs, sleep });
+        results[i] = { ...approval, approved: [...commit.approved, ...approval.approved] };
+      }
+    }
+    if (results.every(Boolean)) return results as Approval[];
+    sleep(waitMs);
+  }
 }
 
 /** Approval calls per run before it counts as failed. */
@@ -423,7 +484,15 @@ export function authEnv(token: string): NodeJS.ProcessEnv {
   };
 }
 
+/**
+ * How long a round may keep waiting for late runs: the update job stops at
+ * 20 minutes (timeout-minutes in update-prs.yml), and checkout, setup and the
+ * merge-order refresh after this script need the rest.
+ */
+export const RUN_BUDGET_MS = 15 * 60_000;
+
 function updateAll(root: string): number {
+  const startedAt = Date.now();
   const repository = process.env.GITHUB_REPOSITORY;
   const token = process.env.GH_TOKEN;
   if (!repository || !token) throw new Error("GITHUB_REPOSITORY and GH_TOKEN are required");
@@ -436,6 +505,20 @@ function updateAll(root: string): number {
   const baseSha = git(["rev-parse", `origin/${BASE_BRANCH}`]).trim();
   const ctx: GitHub = { repository, baseSha, exec: run };
   let failures = 0;
+  const late: { number: number; label: string; resolved: string[]; commit: LateCommit }[] = [];
+
+  /** Comments on the pull request; false when its checks are stuck waiting for approval. */
+  const reportApproval = (label: string, number: number, approval: Approval, resolved: string[]) => {
+    // Without the pull_request runs the required checks never report: someone has to approve them.
+    const stuck = [...approval.failed, ...approval.missing];
+    if (stuck.length > 0) {
+      console.log(`${label}: checks waiting: ${stuck.join(", ")}${approval.errors.length ? ` (${approval.errors.join("; ")})` : ""}`);
+      notify(ctx, number, { kind: "approval", runs: stuck });
+      return false;
+    }
+    notify(ctx, number, resolved.length ? { kind: "resolved", files: resolved } : { kind: "clear" });
+    return true;
+  };
 
   for (const pr of openPullRequests(ctx)) {
     const label = `#${pr.number}`;
@@ -496,29 +579,41 @@ function updateAll(root: string): number {
         }
         continue;
       }
-      const approval = approveHeldRuns(ctx, git(["rev-parse", "HEAD"], dir).trim());
-      console.log(
-        `${label}: updated${outcome.resolved.length ? `, resolved ${outcome.resolved.join(", ")}` : ""}; approved ${approval.approved.join(", ") || "none"}`,
-      );
-      // Without the pull_request runs the required checks never report: someone has to approve them.
-      const stuck = [...approval.failed, ...approval.missing];
-      if (stuck.length > 0) {
-        console.log(`${label}: checks waiting: ${stuck.join(", ")}${approval.errors.length ? ` (${approval.errors.join("; ")})` : ""}`);
-        notify(ctx, pr.number, { kind: "approval", runs: stuck });
-        failures++;
+      const pushedAt = Date.now();
+      const sha = git(["rev-parse", "HEAD"], dir).trim();
+      const approval = approveHeldRuns(ctx, sha);
+      const updated = `${label}: updated${outcome.resolved.length ? `, resolved ${outcome.resolved.join(", ")}` : ""}`;
+      // Runs GitHub has not created yet get a second chance once every pull request had its turn.
+      if (approval.failed.length === 0 && approval.missing.length > 0) {
+        console.log(`${updated}; approved ${approval.approved.join(", ") || "none"}; not created yet: ${approval.missing.join(", ")}`);
+        late.push({ number: pr.number, label, resolved: outcome.resolved, commit: { sha, pushedAt, approved: approval.approved } });
         continue;
       }
-      notify(
-        ctx,
-        pr.number,
-        outcome.resolved.length ? { kind: "resolved", files: outcome.resolved } : { kind: "clear" },
-      );
+      console.log(`${updated}; approved ${approval.approved.join(", ") || "none"}`);
+      if (!reportApproval(label, pr.number, approval, outcome.resolved)) failures++;
     } catch (error) {
       failures++;
       console.log(`${label}: failed: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       tryRun(() => git(["worktree", "remove", "--force", dir]));
       rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  if (late.length > 0) {
+    const approvals = approveLateRuns(
+      ctx,
+      late.map((l) => l.commit),
+      { deadline: startedAt + RUN_BUDGET_MS },
+    );
+    for (const [i, l] of late.entries()) {
+      const approval = approvals[i] as Approval;
+      try {
+        console.log(`${l.label}: late runs; approved ${approval.approved.join(", ") || "none"}`);
+        if (!reportApproval(l.label, l.number, approval, l.resolved)) failures++;
+      } catch (error) {
+        failures++;
+        console.log(`${l.label}: failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
   }
   return failures > 0 ? 1 : 0;
