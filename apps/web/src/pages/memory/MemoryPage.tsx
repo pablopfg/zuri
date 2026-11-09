@@ -12,7 +12,7 @@ import {
   ptBRMemory,
   type Settings,
 } from "@zuri/shared";
-import { Archive, ArchiveRestore, BadgeCheck, Brain, CircleHelp, GitCompareArrows, History, Pencil, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, BadgeCheck, Brain, CircleHelp, GitCompareArrows, History, Pencil, RefreshCw, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, fieldClass, PageHeader, SelectField, Loading, TextAreaField } from "../../components/ui.tsx";
 import { MEMORIES_KEY, useMemories, useMemoryHistory, useMemoryReviews } from "../../hooks/memory.ts";
@@ -278,6 +278,20 @@ function MemoryRow({
     }
   }
 
+  // Step 21 (plan D3): a marked memory never goes to a paid model.
+  async function setLocalOnly(localOnly: boolean) {
+    setPending(true);
+    setError(null);
+    try {
+      await api(`/memories/${memory.id}/local-only`, { method: "POST", body: { localOnly } });
+      await qc.invalidateQueries({ queryKey: MEMORIES_KEY });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setPending(false);
+    }
+  }
+
   const action = "inline-flex h-11 w-11 items-center justify-center rounded-xl text-fg-muted transition-colors hover:bg-raised hover:text-fg disabled:opacity-60";
   return (
     <li className={cn("space-y-2 px-4 py-3", glow)}>
@@ -292,6 +306,12 @@ function MemoryRow({
               {t("web.memory.author.agent")}
             </span>
           )}
+          {memory.localOnly && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 font-medium text-accent-text" title={t("web.memory.localOnlyHint")}>
+              <ShieldCheck className="h-3 w-3" aria-hidden />
+              {t("web.memory.localOnlyBadge")}
+            </span>
+          )}
           {memory.validFrom && <span className="text-fg-muted">{t("web.memory.since", { date: memory.validFrom })}</span>}
           <span className="text-fg-muted">{t("web.memory.savedAt", { time: dateTime(memory.updatedAt) })}</span>
         </div>
@@ -303,6 +323,17 @@ function MemoryRow({
           )}
           <button type="button" className={action} onClick={onEdit} disabled={pending} aria-label={t("web.memory.edit")} title={t("web.memory.edit")}>
             <Pencil className="h-4 w-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            className={cn(action, memory.localOnly && "text-accent-text")}
+            onClick={() => void setLocalOnly(!memory.localOnly)}
+            disabled={pending}
+            aria-pressed={memory.localOnly}
+            aria-label={t("web.memory.localOnly")}
+            title={t("web.memory.localOnlyHint")}
+          >
+            <ShieldCheck className="h-4 w-4" aria-hidden />
           </button>
           <button type="button" className={action} onClick={onHistory} disabled={pending} aria-label={t("web.memory.history")} title={t("web.memory.history")}>
             <History className="h-4 w-4" aria-hidden />

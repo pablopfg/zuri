@@ -40,4 +40,7 @@ export type WorkerEnv = Env & {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   ALERT_EMAIL_FROM?: string;
+  /** The paid models (step 21, ⚠️): each company's key. Without it, its models can't be picked. */
+  ANTHROPIC_API_KEY?: string;
+  OPENAI_API_KEY?: string;
 };

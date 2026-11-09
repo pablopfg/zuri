@@ -1466,6 +1466,19 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS zur_remote_failures_network ON zur_remote_failures (network, at)`,
     ],
   },
+  {
+    version: 29,
+    name: "paid_models",
+    statements: [
+      // What the paid models cost each day, in US$ (step 21, ⚠️), apart from Workers AI's list price in cost_usd.
+      `ALTER TABLE zur_usage_daily ADD COLUMN paid_usd REAL NOT NULL DEFAULT 0`,
+      // How many calls the fallback model took over that day (the usage panel).
+      `ALTER TABLE zur_usage_daily ADD COLUMN ai_fallbacks INTEGER NOT NULL DEFAULT 0`,
+      // "Never send out" (plan D3): a marked memory or note only ever goes to the model on the owner's own account.
+      `ALTER TABLE zur_memories ADD COLUMN local_only INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE zur_notes ADD COLUMN local_only INTEGER NOT NULL DEFAULT 0`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

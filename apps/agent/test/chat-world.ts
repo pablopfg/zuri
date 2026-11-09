@@ -207,13 +207,16 @@ export class ScriptedProvider implements AIProvider {
   readonly id = "mock";
   readonly model: string;
   readonly billable = false;
+  /** Plays a paid company's model (step 21): MeteredAI then sends it the external profile. */
+  readonly external: boolean;
   readonly transcript: Transcript = { requests: [], generated: [], results: [] };
 
   constructor(
     private readonly steps: Step[],
-    options: { model?: string; summary?: string; check?: string } = {},
+    options: { model?: string; summary?: string; check?: string; external?: boolean } = {},
   ) {
     this.model = options.model ?? "mock";
+    this.external = options.external === true;
     this.summary = options.summary ?? "Resumo da conversa.";
     this.check = options.check ?? '{"ok":true,"issues":[]}';
   }

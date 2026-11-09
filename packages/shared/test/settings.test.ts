@@ -27,6 +27,8 @@ describe("default settings", () => {
       aiMaxIterations: 4,
       aiMaxContextTokens: 6_000,
       aiScheduledRunsPerDay: 6,
+      // Step 21: the paid models' US$ ceiling is off (0) until the owner picks a value.
+      aiUsdCentsPerDay: 0,
       ownerName: "",
       digestEnabled: true,
       digestTime: "07:30",

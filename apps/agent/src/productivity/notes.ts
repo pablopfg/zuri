@@ -1,4 +1,5 @@
 import {
+  localOnlySchema,
   NOTE_EXCERPT_LENGTH,
   type Note,
   type NoteCreate,
@@ -21,6 +22,8 @@ interface NoteRow {
   title: string;
   content: string;
   project_id: string | null;
+  /** 1 when marked "never send out" (step 21). */
+  local_only: number;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +35,7 @@ const toNote = (row: NoteRow): Note => ({
   title: row.title,
   content: row.content,
   projectId: row.project_id,
+  localOnly: row.local_only === 1,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -41,12 +45,13 @@ const toSummary = (row: SummaryRow): NoteSummary => ({
   title: row.title,
   excerpt: row.excerpt,
   projectId: row.project_id,
+  localOnly: row.local_only === 1,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
 
 /** The list never carries a note's whole text (up to 200,000 characters each): only its start. */
-const SUMMARY = `n.id, n.title, substr(n.content, 1, ${NOTE_EXCERPT_LENGTH}) AS excerpt, n.project_id, n.created_at, n.updated_at`;
+const SUMMARY = `n.id, n.title, substr(n.content, 1, ${NOTE_EXCERPT_LENGTH}) AS excerpt, n.project_id, n.local_only, n.created_at, n.updated_at`;
 
 /** The owner's notes, in Markdown, with full-text search (FTS5). */
 export class NoteRepository {
@@ -134,6 +139,7 @@ export class NoteRepository {
       title: data.title,
       content: data.content,
       project_id: data.projectId,
+      local_only: 0,
       created_at: at,
       updated_at: at,
     };
@@ -147,6 +153,14 @@ export class NoteRepository {
       row.updated_at,
     );
     return toNote(row);
+  }
+
+  /** "Never send out" on or off (step 21, plan D3). Not an edit of the text: the date of the last change stays. */
+  setLocalOnly(id: string, input: Untrusted): Note {
+    const { localOnly } = parse(localOnlySchema, input);
+    this.row(id);
+    this.db.run(`UPDATE zur_notes SET local_only = ? WHERE id = ?`, localOnly ? 1 : 0, id);
+    return toNote(this.row(id));
   }
 
   update(id: string, input: NoteUpdate | Untrusted): Note {

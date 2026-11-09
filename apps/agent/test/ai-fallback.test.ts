@@ -391,7 +391,7 @@ describe("the chain", () => {
     expect(new ProviderChain(glm, new MockAIProvider(undefined, { model: QWEN })).models).toEqual([GLM, QWEN]);
   });
 
-  it("builds the pair from the settings: none, the same model, or another one", () => {
+  it("builds the pair from the settings: none, the same model, or another one", async () => {
     const breaker = new CircuitBreaker();
     const base = { development: false, binding: {} as Ai, model: GLM, locale: () => "pt-BR" as const, breaker } as const;
     expect(chooseChain({ ...base, fallback: "none" }).fallback).toBeNull();
@@ -400,7 +400,10 @@ describe("the chain", () => {
     // Local development: two mocks, the chosen one fails "fail …".
     const dev = chooseChain({ ...base, development: true, fallback: QWEN });
     expect([dev.primary.id, dev.fallback?.id]).toEqual(["mock", "mock"]);
-    expect(() => chooseChain({ ...base, binding: undefined, fallback: QWEN })).toThrow(AppError);
+    // No binding: nothing to build, so every chat call says "not configured" (voice and search by meaning go on elsewhere).
+    const unbuilt = chooseChain({ ...base, binding: undefined, fallback: QWEN });
+    expect(unbuilt.fallback).toBeNull();
+    await expect(unbuilt.primary.generate({ system: "x", messages: [{ role: "user", content: "Oi" }], maxOutputTokens: 10 })).rejects.toMatchObject({ code: "NOT_CONFIGURED" });
   });
 
   it("in development, a message starting with `fail ` is answered by the fallback mock", async () => {
@@ -460,4 +463,15 @@ describe("secrets never reach a model (the last net of the prompt contract)", ()
       expect(prompts[0]?.toolResults).toEqual([{ title: `vazou ${SECRET_PLACEHOLDER} "x"`, n: 1 }]);
     });
   });
+
+  it("finds a secret pasted with a newline at its end the way it is used: trimmed", async () => {
+    await withAiWorld(async (world) => {
+      const prompts: RecordedPrompt[] = [];
+      const key = "sk-ant-api-canario-0123456789abcdef";
+      const ai = new MeteredAI(new MockAIProvider(undefined, { record: (p) => prompts.push(p) }), world.meter, () => LIMITS, undefined, null, [`${key}\n`]);
+      await collect(ai.stream({ system: `A chave é ${key}.`, messages: [{ role: "user", content: "Oi" }], maxOutputTokens: 64 }));
+      expect(JSON.stringify(prompts)).not.toContain(key);
+    });
+  });
 });
+

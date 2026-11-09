@@ -74,10 +74,13 @@ export function memoryPromptSection(selected: MemoryRow[], maxTokens: number, lo
     if (memory.valid_from) extra.since = memory.valid_from;
     // Saved by the assistant from a conversation, never confirmed by the owner (SEC-09-07).
     if (memory.author === "agent") extra.saved_by = "assistant";
+    // "Never send out" (plan D3): MeteredAI empties this line before it goes to a company outside the account.
+    if (memory.local_only === 1) extra.local = "1";
     if (memory.status === "historical") {
       if (memory.valid_until) extra.until = memory.valid_until;
       const successor = memory.superseded_by ? lookup(memory.superseded_by) : null;
-      if (successor) extra.replaced_by = [...successor.content].slice(0, 120).join("");
+      // A local-only text never rides along in another line's attribute, where the external profile would not empty it.
+      if (successor && memory.local_only !== 1 && successor.local_only !== 1) extra.replaced_by = [...successor.content].slice(0, 120).join("");
     }
     const line = dataLine(SOURCE, memory.id, memory.content, extra);
     const cost = estimateTokens(line);

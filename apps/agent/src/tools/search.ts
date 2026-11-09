@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { hybridSearch } from "../semantic/hybrid.ts";
 import { presentAutomation } from "./automations.ts";
-import { presentMemory } from "./memories.ts";
+import { LOCAL_ONLY_TEXT } from "../ai/external.ts";
+import { hidden, presentMemory } from "./memories.ts";
 import { defineTool } from "./registry.ts";
 import { presentTask } from "./tasks.ts";
 
@@ -26,8 +27,8 @@ export const searchTools = [
       const found = await hybridSearch(ctx, input.query, words, PER_KIND);
       return {
         tasks: (found ?? words).tasks.map((task) => presentTask(task, ctx)),
-        notes: (found ?? words).notes.map((n) => ({ id: n.id, title: n.title, excerpt: n.excerpt })),
-        memories: (found ?? words).memories.map(presentMemory),
+        notes: (found ?? words).notes.map((n) => ({ id: n.id, title: hidden(n, ctx) ? LOCAL_ONLY_TEXT : n.title, excerpt: hidden(n, ctx) ? LOCAL_ONLY_TEXT : n.excerpt })),
+        memories: (found ?? words).memories.map((m) => presentMemory(m, ctx)),
         conversations,
         ...(found ? { automations: found.automations.map((automation) => presentAutomation(automation, ctx)) } : {}),
       };

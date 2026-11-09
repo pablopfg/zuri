@@ -29,7 +29,8 @@ const RESTORE = {
   note: {
     table: "zur_notes",
     storage: "notes",
-    columns: ["id", "title", "content", "project_id", "created_at", "updated_at"],
+    // local_only: a "never send out" note comes back still marked (plan D3); a copy from before migration 29 has none and comes back unmarked.
+    columns: ["id", "title", "content", "project_id", "local_only", "created_at", "updated_at"],
     required: ["id", "title", "content", "created_at", "updated_at"],
   },
   project: {
@@ -162,6 +163,7 @@ export class Trash {
     this.storage.assertRoom(target.storage);
     const values = target.columns.map((column): SqlValue => {
       const value = payload.row[column];
+      if (column === "local_only") return value === 1 ? 1 : 0;
       return typeof value === "string" || typeof value === "number" ? value : null;
     });
     // Every copy the server kept has these; anything else was not written by Zuri.
