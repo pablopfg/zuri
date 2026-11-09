@@ -1,4 +1,5 @@
 import { CRM_TOOL_NAMES } from "../tools/crm.ts";
+import { type AgentCallSettings, type AgentId, defaultAgentSettings } from "@zuri/shared";
 import { type ApiErrorCode, type AreaVersions, type ChatEvent, type ChatMessage, type Conversation, type Locale, MCP_LIMITS, type MessageKey, type Settings, type ToolActivity } from "@zuri/shared";
 import { t } from "@zuri/shared";
 import { z } from "zod";
@@ -12,8 +13,16 @@ import { MAX_RELEVANT_MEMORIES, memoryPromptSection, memoryTokenBudget, selectRe
 import { ALL_TOOLS } from "../tools/index.ts";
 import { type Notice, type ToolContext, type ToolDefinition, ToolExecutor } from "../tools/registry.ts";
 import { contextBudget, contextWindow, SUMMARIZE_THRESHOLD, summaryRequest } from "./context.ts";
-import { buildSystemPrompt, scheduledInstructions, SUMMARY_SYSTEM } from "./prompt.ts";
+import { buildSystemPrompt, scheduledInstructions } from "./prompt.ts";
+import { dataLine } from "./data.ts";
 import { log } from "../log.ts";
+import { stableStringify } from "../tools/stable.ts";
+import { unverifiedClaim } from "../specialists/claims.ts";
+import { newContacts } from "../specialists/checker.ts";
+import { runSpecialist } from "../specialists/contract.ts";
+import { approved } from "../specialists/reviews.ts";
+import { ROUTINE_CHECK_SPECIALIST } from "../specialists/routine-check.ts";
+import { SUMMARY_SPECIALIST } from "../specialists/summary.ts";
 
 /** Messages whose external tools stay offered, so a follow-up ("e para sexta?") keeps them. */
 const RECENT_EXTERNAL_MESSAGES = 6;
@@ -28,8 +37,10 @@ export const ROUTINE_MCP_BUDGET = 12;
 
 /** Messages read for one prompt, newest first, before the token budget picks. */
 const HISTORY_ROWS = 200;
-/** Longest running summary the model writes. */
-const SUMMARY_TOKENS = 300;
+/** Most Neurons one second reading of a routine's external call may cost (about 7 to 19 is usual). */
+export const ROUTINE_CHECK_NEURONS = 60;
+/** How much of what a routine's tools returned the fixed check of its calls looks through. */
+const ROUTINE_SEEN_CHARS = 40_000;
 
 /** The settings' language as the prompt names it: the name and the code, so no model confuses it with European Portuguese. */
 const LANGUAGE: Record<Locale, string> = { "pt-BR": "Brazilian Portuguese (pt-BR)", en: "English (en)" };
@@ -60,6 +71,8 @@ export interface RunnerDeps {
   onFailure?: (failure: { source: "chat" | "ai"; code: string; errorName: string }) => void;
   /** The screen areas' numbers, sent after a tool that may have written, so the open screens refresh only what moved (nova UI, PR 2). */
   versions?: () => AreaVersions;
+  /** Each agent's call settings (temperature, top_p, output cap, the owner's layer); the code's defaults when absent. */
+  agentSettings?: (id: AgentId) => AgentCallSettings;
 }
 
 /** Tokens the tools' descriptions and schemas take in every prompt; computed once per process. */
@@ -97,6 +110,10 @@ function chainBudget(ai: MeteredAI, limitTokens: number, maxOutputTokens: number
  */
 export class AgentRunner {
   constructor(private readonly deps: RunnerDeps) {}
+
+  private agent(id: AgentId): AgentCallSettings {
+    return this.deps.agentSettings?.(id) ?? defaultAgentSettings(id);
+  }
 
   async *chat(input: TurnInput): AsyncGenerator<ChatEvent> {
     const { conversations } = this.deps;
@@ -168,8 +185,10 @@ export class AgentRunner {
       const row = conversations.row(conversation.id);
       let summary = row.summary;
       let summaryUpto = row.summary_upto;
+      const chatAgent = this.agent("chat");
       const system = () =>
         buildSystemPrompt({
+          agent: chatAgent,
           agentName: this.deps.agentName,
           language: LANGUAGE[locale],
           timeZone: settings.timeZone,
@@ -191,14 +210,11 @@ export class AgentRunner {
       // The running summary is one more model call: only when enough has overflowed, and never at the cost of the answer.
       if (window.overflow.length >= SUMMARIZE_THRESHOLD) {
         try {
-          const result = await ai.generate({
-            system: SUMMARY_SYSTEM,
-            messages: summaryRequest(summary, window.overflow),
-            maxOutputTokens: SUMMARY_TOKENS,
-            temperature: 0.2,
+          const result = await runSpecialist(ai, SUMMARY_SPECIALIST, summaryRequest(summary, window.overflow)[0]?.content ?? "", {
+            settings: this.agent("summary"),
             signal: input.signal,
           });
-          const next = result.text.trim();
+          const next = result.value ?? "";
           if (next) {
             summary = next;
             summaryUpto = window.overflow.at(-1)?.seq ?? summaryUpto;
@@ -227,6 +243,7 @@ export class AgentRunner {
         ...(activeTools ? { activeTools } : {}),
         maxIterations: settings.aiMaxIterations,
         maxOutputTokens: settings.aiMaxOutputTokens,
+        ...sampling(chatAgent),
         toolBudgetExhausted: () => turnTools.budgetExhausted(),
         signal: input.signal,
       })) {
@@ -267,6 +284,12 @@ export class AgentRunner {
       if (input.signal.aborted) {
         yield { type: "done", message: finish("cancelled", null) };
         return;
+      }
+      // The fixed check of the answer's claims (no AI): "done" with nothing written gets a notice, kept with it.
+      if (unverifiedClaim(input.message, text, turnWrites(tools, (name) => turnTools.find(name)?.permission))) {
+        const notice = `\n\n_${t(locale, "chat.claimUnverified")}_`;
+        text += notice;
+        yield { type: "text", delta: notice };
       }
       yield { type: "done", message: finish("complete", null) };
     } catch (error) {
@@ -379,6 +402,7 @@ export class AgentRunner {
       conversationId ??= this.routineConversation(input.id ?? "", input.name, locale);
       return conversationId;
     };
+    const seen: string[] = [];
     const ctx: ToolContext = {
       ...this.deps.tools,
       timeZone: settings.timeZone,
@@ -386,17 +410,17 @@ export class AgentRunner {
       conversationId: null,
       notices,
       routineName: input.name,
-      ...(mcp ? { mcp, routineConversation } : {}),
+      ...(mcp ? { mcp, routineConversation, routineCheck: this.routineCheck(input.prompt, seen, input.signal) } : {}),
     };
     try {
-      const text = await this.runScheduled(input, ctx, mcp, locale);
+      const text = await this.runScheduled(input, ctx, mcp, locale, seen);
       return { text, notices };
     } finally {
       await mcp?.close().catch(() => undefined);
     }
   }
 
-  private async runScheduled(input: { name: string; prompt: string; quiet: boolean; signal: AbortSignal }, ctx: ToolContext, mcp: McpTurnTools | null, locale: Locale): Promise<string> {
+  private async runScheduled(input: { name: string; prompt: string; quiet: boolean; signal: AbortSignal }, ctx: ToolContext, mcp: McpTurnTools | null, locale: Locale, seen: string[]): Promise<string> {
     const settings = this.deps.settings();
     const ai = this.deps.ai();
     const registry = this.deps.registry ?? ALL_TOOLS;
@@ -408,7 +432,9 @@ export class AgentRunner {
     const repo = this.deps.tools.memories.repo;
     const meaning = await this.meaning(input.prompt, input.signal);
     const memories = memoryPromptSection(selectRelevantMemories(repo, input.prompt, meaning), memoryTokenBudget(budget), (id) => repo.get(id));
+    const chatAgent = this.agent("chat");
     const system = buildSystemPrompt({
+      agent: chatAgent,
       agentName: this.deps.agentName,
       language: LANGUAGE[locale],
       timeZone: settings.timeZone,
@@ -424,7 +450,7 @@ export class AgentRunner {
     });
     let text = "";
     try {
-      text = await this.routineAnswer(executor, offered, system, input, settings);
+      text = await this.routineAnswer(executor, offered, system, input, settings, chatAgent, seen);
     } finally {
       // Even when the model fails after a call became a proposal, the owner gets its card and the notice.
       this.leaveProposals(input.name, executor, ctx, locale, notices);
@@ -432,9 +458,18 @@ export class AgentRunner {
     return text.trim();
   }
 
-  private async routineAnswer(executor: ToolExecutor, offered: ToolDefinition[], system: Parameters<MeteredAI["generateWithTools"]>[0]["system"], input: { prompt: string; signal: AbortSignal }, settings: Settings): Promise<string> {
+  private async routineAnswer(
+    executor: ToolExecutor,
+    offered: ToolDefinition[],
+    system: Parameters<MeteredAI["generateWithTools"]>[0]["system"],
+    input: { prompt: string; signal: AbortSignal },
+    settings: Settings,
+    agent: AgentCallSettings,
+    seen: string[],
+  ): Promise<string> {
     const ai = this.deps.ai();
     let text = "";
+    let seenChars = 0;
     for await (const event of ai.generateWithTools({
       system,
       messages: [{ role: "user", content: input.prompt }],
@@ -442,16 +477,50 @@ export class AgentRunner {
         name: tool.name,
         description: tool.description,
         inputSchema: tool.input,
-        execute: (toolInput, callId) => executor.execute(tool.name, toolInput, callId),
+        execute: async (toolInput, callId) => {
+          const output = await executor.execute(tool.name, toolInput, callId);
+          // What the run read: a contact in a later external call must come from here or from the instruction.
+          if (seenChars < ROUTINE_SEEN_CHARS) {
+            const read = typeof output === "string" ? output : stableStringify(output);
+            seen.push(read.slice(0, ROUTINE_SEEN_CHARS - seenChars));
+            seenChars += read.length;
+          }
+          return output;
+        },
       })),
       maxIterations: settings.aiMaxIterations,
       maxOutputTokens: settings.aiMaxOutputTokens,
+      ...sampling(agent),
       toolBudgetExhausted: () => executor.budgetExhausted(),
       signal: input.signal,
     })) {
       if (event.type === "text") text += event.delta;
     }
     return text;
+  }
+
+  /**
+   * The check of a routine's external call that would run on its own
+   * (decision of 04/11/2026). First without AI: every link, e-mail, @handle or
+   * long number in the arguments must be in the routine's instruction or in
+   * what its tools read. Then the second reading (ROUTINE_CHECK_SPECIALIST)
+   * of the instruction and the call, both as data, at most 60 Neurons. Any
+   * doubt (a refusal, an answer out of shape, no Neurons, a failure) is false.
+   */
+  private routineCheck(instruction: string, seen: readonly string[], signal: AbortSignal): NonNullable<ToolContext["routineCheck"]> {
+    return async ({ label, args }) => {
+      const call = stableStringify(args);
+      if (newContacts(call, [instruction, ...seen]).length > 0) return false;
+      try {
+        const content = `${dataLine("tool", "routine_instruction", instruction)}\n${dataLine("mcp", "call", `${label}: ${call}`)}`;
+        const { value } = await runSpecialist(this.deps.ai(), ROUTINE_CHECK_SPECIALIST, content, { settings: this.agent("routine_check"), maxNeurons: ROUTINE_CHECK_NEURONS, signal });
+        return approved(value);
+      } catch (error) {
+        if (signal.aborted) throw error;
+        log("warn", "routine_check_failed", { error });
+        return false;
+      }
+    };
   }
 
   /**
@@ -503,4 +572,23 @@ export class AgentRunner {
     automations.setConversation(automationId, created.id);
     return created.id;
   }
+}
+
+/** An agent's sampling settings for a request: `top_p` left out for the model's own default. */
+function sampling(agent: AgentCallSettings): { temperature: number; topP?: number } {
+  return { temperature: agent.temperature, ...(agent.topP === null ? {} : { topP: agent.topP }) };
+}
+
+/** What the turn's tools did, for the check of the answer's claims. */
+function turnWrites(tools: readonly ToolActivity[], permission: (name: string) => string | undefined): { wrote: boolean; proposed: boolean } {
+  let wrote = false;
+  let proposed = false;
+  for (const tool of tools) {
+    if (tool.status !== "success") continue;
+    const kind = permission(tool.name);
+    // An external call that ran wrote elsewhere; one that became a card did not run.
+    if (kind === "write" || (kind === "external" && !tool.actionId)) wrote = true;
+    if (kind === "destructive" || tool.actionId) proposed = true;
+  }
+  return { wrote, proposed };
 }

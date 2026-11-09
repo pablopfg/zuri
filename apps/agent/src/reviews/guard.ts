@@ -1,4 +1,5 @@
 import { REVIEW_LIMITS, type ReviewGuardCode } from "@zuri/shared";
+import { CONTACT, copied, hasHidden, MARKUP } from "../specialists/checker.ts";
 import { fold, HEALTH_WORDS, words } from "./triage.ts";
 
 /**
@@ -66,11 +67,7 @@ export function languageOf(text: string): "pt-BR" | "en" | null {
   return pt > en ? "pt-BR" : "en";
 }
 
-const CONTACT = /[\p{N}@#]|https?:|www\.|:\/\/|\b[\p{L}\p{N}-]+\.(?:com|br|net|org|io|me|app|link|ly|info|biz|xyz|site|online|store|shop)\b/iu;
-const MARKUP = /[<>{}[\]`]|\*\*|__|~~|^\s*[-*+]\s|^\s*\d+[.)]\s|\]\(/mu;
 const EMOJI = /\p{Extended_Pictographic}/gu;
-/** Controls (line breaks aside), invisible format characters, bidi marks and variation selectors past the emoji ones. */
-const HIDDEN = /[\p{Cc}\p{Cf}\u2028\u2029]|(?![\ufe0e\ufe0f])\p{Variation_Selector}/u;
 
 export interface GuardContext {
   /** The reviewer's first name ("" when anonymous): the only person a reply may name. */
@@ -118,7 +115,7 @@ export function guard(text: string, ctx: GuardContext): ReviewGuardCode[] {
   const chars = [...text.trim()].length;
   // 600 characters are at most 2,400 bytes: Google's 4,096-byte cap never comes into play.
   if (chars < REVIEW_LIMITS.replyMin || chars > REVIEW_LIMITS.replyMax) codes.add("size");
-  if (HIDDEN.test(text.replace(/\n/g, " "))) codes.add("hidden");
+  if (hasHidden(text)) codes.add("hidden");
   const language = languageOf(text);
   if (ctx.language && language && language !== ctx.language) codes.add("language");
   // Wide and styled look-alikes made plain first: "exemplo．com", "＠perfil" and "①" are a link, a handle and a digit.
@@ -139,15 +136,4 @@ export function guard(text: string, ctx: GuardContext): ReviewGuardCode[] {
   if (banned.some((word) => all.includes(` ${word} `))) codes.add("banned");
   if (!signed(text, ctx.signature)) codes.add("signature");
   return [...codes];
-}
-
-/** Five words in a row of the review in the reply. */
-function copied(text: string, comment: string): boolean {
-  const source = words(comment);
-  if (source.length < 5) return false;
-  const reply = ` ${words(text).join(" ")} `;
-  for (let i = 0; i + 5 <= source.length; i++) {
-    if (reply.includes(` ${source.slice(i, i + 5).join(" ")} `)) return true;
-  }
-  return false;
 }

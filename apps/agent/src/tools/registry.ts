@@ -59,6 +59,12 @@ export interface ToolContext {
    * external calls that need the owner (made the first time one does).
    */
   routineConversation?: () => string;
+  /**
+   * A routine's run (decision of 04/11/2026): an external call that would run
+   * on its own is checked first, without AI (no contact the routine didn't
+   * read or name) and by a second reading. False makes it a proposal.
+   */
+  routineCheck?: (call: { label: string; args: Record<string, unknown> }) => Promise<boolean>;
   /** The Google Calendar (step 19): its tools are offered only with a calendar open to Zuri. */
   calendar?: GoogleCalendar;
   /** The copy of the Google contacts (step 19b): its tools are offered only with the contacts on. */
@@ -334,6 +340,17 @@ export class ToolExecutor {
     }
   }
 
+  /** Outside a routine, or without a checker, nothing more to ask; a checker that fails counts as a refusal. */
+  private async passesRoutineCheck(tool: ExternalTool, args: Record<string, unknown>): Promise<boolean> {
+    if (this.ctx.mode !== "scheduled" || !this.ctx.routineCheck) return true;
+    try {
+      return await this.ctx.routineCheck({ label: tool.label, args });
+    } catch (error) {
+      log("warn", "routine_check_failed", { error });
+      return false;
+    }
+  }
+
   /**
    * An external call (step 18): "ask first" always becomes a card; "run
    * without asking" runs now unless this call carries a lot or another
@@ -345,7 +362,8 @@ export class ToolExecutor {
     const argsChars = stableStringify(args).length;
     // The card shows the whole call: arguments the owner can't read at a glance are refused, not cut.
     if (argsChars > MAX_EXTERNAL_ARGS_CHARS) throw new ToolError("These arguments are too long for an external call. Send only what the request needs.");
-    if (!mcp.mustAsk(tool, argsChars)) return presentResult(tool.name, await mcp.run(tool, args), "mcp");
+    // A routine's call that would run on its own is read again first (decision of 04/11/2026): refused, it becomes a proposal.
+    if (!mcp.mustAsk(tool, argsChars) && (await this.passesRoutineCheck(tool, args))) return presentResult(tool.name, await mcp.run(tool, args), "mcp");
     const service = this.ctx.mcpService;
     const scheduled = this.ctx.mode === "scheduled";
     if (scheduled && this.routineProposals.length >= MCP_LIMITS.routineProposals) {
