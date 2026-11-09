@@ -138,7 +138,8 @@ export class UsageMeter {
    * number, so the app looks again once after a restart.
    */
   get version(): number {
-    this.#base ??= (crypto.getRandomValues(new Uint32Array(1))[0] ?? 0) % 1_000_000_000;
+    // A shift, not a modulo: any 30-bit start is as likely as another, and far from the integer limit.
+    this.#base ??= (crypto.getRandomValues(new Uint32Array(1))[0] ?? 0) >>> 2;
     return this.#base + this.#writes;
   }
 

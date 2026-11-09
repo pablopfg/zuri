@@ -61,7 +61,7 @@ describe("a chat turn on an external model", () => {
       expect(seen).toContain(LOCAL_ONLY_TEXT);
       expect(seen).toContain("café do cofre");
       // The memory line is in the system prompt still, its text replaced.
-      expect(provider.transcript.requests[0]?.system).toMatch(new RegExp(`local="1"[^>]*>${LOCAL_ONLY_TEXT.replace(/[()]/g, "\\$&")}<`));
+      expect(provider.transcript.requests[0]?.system).toMatch(new RegExp(`local="1"[^>]*>${LOCAL_ONLY_TEXT.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&")}<`));
     });
   });
 

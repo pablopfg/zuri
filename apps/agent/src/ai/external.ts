@@ -26,8 +26,13 @@ export const EXTERNAL_NOTE_CHARS = 600;
 /** What a marked item's text becomes on its way out (D3). */
 export const LOCAL_ONLY_TEXT = "(kept on the owner's account: not shared with this model)";
 
-/** A `<data>` line of a marked item, as dataLine writes it (attributes quoted, no markup inside). */
-const LOCAL_LINE = /(<data(?: [a-z_]+="[^"<>]*")* local="1"(?: [a-z_]+="[^"<>]*")*>)[^<>]*(<\/data>)/g;
+/**
+ * A `<data>` line, as dataLine writes it (attributes quoted, no markup inside). One quantifier per part,
+ * so it runs in linear time on any text; whether it is marked is read from its attributes after.
+ */
+const DATA_LINE = /(<data(?: [^<>]*)?>)[^<>]*(<\/data>)/g;
+/** The mark among a line's attributes, as a whole attribute (not part of another's value). */
+const LOCAL_ATTRIBUTE = / local="1"(?= |>)/;
 
 const KINDS = ["KEY", "EMAIL", "IBAN", "CARD", "CPF", "PHONE"] as const;
 type Kind = (typeof KINDS)[number];
@@ -186,7 +191,7 @@ function mapStrings(value: unknown, fn: (text: string) => string, depth = 0): un
 
 /** D3: a marked item's text never leaves; the line stays, so the model knows something is there. */
 export function withoutLocalOnly(text: string): string {
-  return text.replace(LOCAL_LINE, (_line, open: string, close: string) => `${open}${LOCAL_ONLY_TEXT}${close}`);
+  return text.replace(DATA_LINE, (line, open: string, close: string) => (LOCAL_ATTRIBUTE.test(open) ? `${open}${LOCAL_ONLY_TEXT}${close}` : line));
 }
 
 /** D4: the last messages of the history, starting at one of the owner's (the companies want a user message first). */

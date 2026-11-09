@@ -106,6 +106,14 @@ describe("what leaves for an external model (D3 and D4)", () => {
     expect(out).toContain("Gosta de café");
   });
 
+  it("reads a long run of attributes in linear time, and leaves an unmarked line whole", () => {
+    const hostile = `<data local="1"${' local="1"'.repeat(50_000)}`;
+    const started = performance.now();
+    expect(withoutLocalOnly(hostile)).toBe(hostile);
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(withoutLocalOnly(`<data kind="note" id="n1" note="local">texto</data>`)).toBe(`<data kind="note" id="n1" note="local">texto</data>`);
+  });
+
   it("sends the last messages only, starting at one of the owner's", () => {
     const messages: ModelMessage[] = Array.from({ length: 13 }, (_, i) => ({ role: i % 2 === 0 ? "user" : "assistant", content: `m${i}` }));
     const short = shorterHistory(messages);
