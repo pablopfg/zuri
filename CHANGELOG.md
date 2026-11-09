@@ -19,6 +19,29 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.38.0] - 2026-11-09
+
+Mesclada às 15:25 (UTC-3) · commit [`2e4f09f`](https://github.com/pablopfg/Zuri/commit/2e4f09fd48ec5fe835768e52b0f5b30be49688fe) · PR [#232](https://github.com/pablopfg/Zuri/pull/232) · Reorganização das telas e menu Mais opções (etapa 26c)
+
+### Alterado
+
+- A aba IA das Configurações virou duas seções: "Uso da IA", com o uso de hoje e o consumo por período, e "Modelos e limites", com o modelo no topo, os modelos pagos, os agentes e a busca por significado. Os nove limites e o teto em US$ ficam recolhidos em "Limites avançados" e abrem sozinhos se algum valor estiver errado.
+- Memória: o campo fixo no topo virou o botão "Nova memória" no cabeçalho, que abre um diálogo. A lista fica no topo da página.
+- A lixeira aberta de Tarefas ou de Notas mostra só as tarefas ou só as notas, com "Voltar para Tarefas" (ou Notas) e "Ver tudo". "Esvaziar a lixeira" só aparece com tudo à vista.
+- Linhas com muitas ações ficaram mais limpas: em Automações, Fluxos, Memória e Integrações, a ação principal continua à vista e o resto foi para o menu "Mais opções" (⋯). O menu funciona com as setas e com Esc, Apagar ou Remover aparece por último, separado e em vermelho, e o botão gira enquanto a ação da linha roda.
+- Em Memória, "Nunca enviar para fora" virou um item marcável do menu, e o leitor de tela diz se está ligado.
+- Configurações no celular: dentro de uma seção, o título é o da seção, com "Todas as configurações" logo acima.
+- A aba Avisos segue a ordem em que se configura: canais primeiro, depois o que vai para cada canal, o resumo diário e o que a Zuri acompanha. Os últimos envios ficam no fim.
+- Conversa no computador: um só "Nova conversa", na lista ao lado.
+- Conta: o cartão "Sair deste aparelho" saiu, porque o menu da conta já tem "Sair". "Salvar nome" fica ao lado do campo também no celular.
+- Dados no celular: os cartões de uso do armazenamento ficam em duas colunas.
+- Tarefas no celular: as abas rolam para o lado em vez de apertar o texto, a busca e o filtro de projeto dividem a mesma linha, e Projetos e Lixeira viram ícones ao lado do título.
+- Notas ganhou a linha que explica a tela, "Nova nota" com texto e o mesmo caminho para a lixeira que Tarefas.
+- Estados vazios com um título curto e uma frase do que fazer, em Tarefas e Notas. "Hoje", no Início, ganhou subtítulo como "Próximos dias".
+- A aba Segurança perdeu o cartão "Em breve".
+- Diagnóstico sem falhas mostra um cartão só, em vez de dois dizendo a mesma coisa.
+- As confirmações que abrem dentro da linha (remover passkey, revogar token, apagar evento ou cliente, refazer o índice) agora leem a pergunta junto com os botões no leitor de tela.
+
 ## [0.37.3] - 2026-11-09
 
 Mesclada às 13:48 (UTC-3) · commit [`7095a80`](https://github.com/pablopfg/Zuri/commit/7095a80aaff7defef53b4c80c7fc731b2e984b23) · PR [#228](https://github.com/pablopfg/Zuri/pull/228) · Corrige os testes instáveis das issues #214, #216 e #223
@@ -2840,7 +2863,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.37.3...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.38.0...develop
+[0.38.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.38.0
 [0.37.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.3
 [0.37.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.2
 [0.37.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.1
