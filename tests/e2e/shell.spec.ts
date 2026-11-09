@@ -137,7 +137,7 @@ test("settings has the seven sections, each with its address and content: tabs o
     ["IA", "ia", "Uso de hoje"],
     ["Avisos", "avisos", "Resumo do dia"],
     ["Integrações", "integracoes", "Serviços externos (MCP)"],
-    ["Dados", "dados", "Backup e uso do armazenamento"],
+    ["Dados", "dados", "Exportar e importar"],
     ["Diagnóstico", "diagnostico", "Nada do que você escreveu entra neste registro."],
     ["Conta", "conta", "Nome, idioma e fuso horário"],
   ] as const) {
