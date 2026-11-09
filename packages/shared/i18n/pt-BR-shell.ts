@@ -11,5 +11,5 @@ export const ptBRShell = {
   "web.mfaReminder.body": "A verificação em duas etapas está desligada. Ligue para proteger a sua conta.",
   "web.mfaReminder.short": "Duas etapas desligadas",
   "web.mfaReminder.action": "Ligar agora",
-  "web.mfaReminder.later": "Lembrar depois",
+  "web.mfaReminder.later": "Dispensar por {days} dias",
 } as const;

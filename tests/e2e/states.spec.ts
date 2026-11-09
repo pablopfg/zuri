@@ -48,6 +48,14 @@ test("the maximum session time warns without a way to stay, then signs out with 
   await expect(dialog).toContainText(/chegou ao tempo máximo e termina em [01]:\d\d/);
   await expect(dialog.getByRole("button", { name: "Continuar conectado" })).toHaveCount(0);
   await expectAccessible(page, "aviso de tempo máximo");
+  // At the maximum the X only hides the warning: no heartbeat, the end stays the same (stage 26b).
+  let beats = 0;
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/auth/heartbeat")) beats++;
+  });
+  await dialog.getByRole("button", { name: "Fechar" }).click();
+  await expect(dialog).toBeHidden();
+  expect(beats).toBe(0);
 
   ahead = 210_000;
   const logout = page.waitForResponse((r) => r.url().endsWith("/api/auth/logout"));

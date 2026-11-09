@@ -403,7 +403,7 @@ function ClientForm({ client, stages, onClose }: { client: CrmClientDetail | nul
       <div className="space-y-4">
         <p className="text-sm leading-6 text-fg-muted">{t("web.crm.deleteBody", { name: client.name })}</p>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="ghost" onClick={() => setRemoving(false)}>
+          <Button variant="ghost" autoFocus onClick={() => setRemoving(false)}>
             {t("web.crm.cancel")}
           </Button>
           <Button variant="danger" onClick={() => void remove()}>

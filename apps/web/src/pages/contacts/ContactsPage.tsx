@@ -275,8 +275,8 @@ function ContactDialog({ id, locale, onClose }: { id: string; locale: string; on
           )}
         </dl>
       )}
-      <div className="flex flex-wrap justify-end gap-2">
-        {contact && (
+      {contact && (
+        <div className="flex flex-wrap justify-end gap-2">
           <a
             href={contact.googleUrl}
             target="_blank"
@@ -286,11 +286,8 @@ function ContactDialog({ id, locale, onClose }: { id: string; locale: string; on
             <ExternalLink className="h-4 w-4" aria-hidden />
             {t("web.contacts.openGoogle")}
           </a>
-        )}
-        <Button variant="secondary" onClick={onClose}>
-          {t("web.contacts.close")}
-        </Button>
-      </div>
+        </div>
+      )}
     </Dialog>
   );
 }

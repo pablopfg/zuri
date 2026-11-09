@@ -228,11 +228,6 @@ export function ChatPage() {
           <div className="max-h-[60dvh] overflow-y-auto">
             <ConversationList activeId={id} onPick={() => setListOpen(false)} />
           </div>
-          <div className="flex justify-end">
-            <Button variant="ghost" onClick={() => setListOpen(false)}>
-              {t("web.chat.listClose")}
-            </Button>
-          </div>
         </Dialog>
 
         {id && page.isPending ? (

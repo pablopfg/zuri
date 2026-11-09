@@ -119,11 +119,6 @@ export function ProjectsDialog({ open, onClose }: { open: boolean; onClose: () =
           )}
         </ul>
       )}
-      <div className="flex justify-end">
-        <Button variant="secondary" onClick={onClose}>
-          {t("web.close")}
-        </Button>
-      </div>
     </Dialog>
   );
 }

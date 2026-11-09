@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type MessageKey, type Project, ptBRProductivity, type TaskPriority, type TaskStatus, type TaskView, type TrashItem } from "@zuri/shared";
+import { X } from "lucide-react";
 import { useState } from "react";
 import { Button, Notice } from "../../components/ui.tsx";
 import { NOTES_KEY, PROJECTS_KEY, TASKS_KEY, TRASH_KEY } from "../../hooks/productivity.ts";
@@ -93,8 +94,8 @@ export function TrashedNotice({ item, message, onDone }: { item: TrashItem; mess
           <Button variant="secondary" onClick={() => void undo()} loading={pending}>
             {t("web.trash.undo")}
           </Button>
-          <Button variant="ghost" onClick={onDone}>
-            {t("web.close")}
+          <Button variant="ghost" className="h-11 w-11 px-0" aria-label={t("web.close")} onClick={onDone}>
+            <X className="h-5 w-5" aria-hidden />
           </Button>
         </span>
       </span>

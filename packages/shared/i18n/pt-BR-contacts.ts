@@ -27,6 +27,5 @@ export const ptBRContacts = {
   "web.contacts.fields": "Campos personalizados",
   "web.contacts.labels": "Etiquetas",
   "web.contacts.openGoogle": "Abrir no Google Contatos",
-  "web.contacts.close": "Fechar",
   "web.contacts.nickname": "Apelido",
 } as const;
