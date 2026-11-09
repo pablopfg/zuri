@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export const EMAIL = "dono@exemplo.com.br";
 /** The password whose hash is OWNER_PASSWORD_HASH in playwright.config.ts. */
@@ -55,6 +55,11 @@ export function settingsHasTabs(page: Page) {
   return (page.viewportSize()?.width ?? 0) >= 1024;
 }
 
+/** The page title inside a settings section: "Configurações" beside the tabs on a computer, the section's own name on a phone (stage 26c). */
+export function settingsTitle(page: Page, section: string) {
+  return page.getByRole("heading", { level: 1, name: settingsHasTabs(page) ? "Configurações" : section, exact: true });
+}
+
 /** Opens a settings section the way the owner does: the tab on a computer, the list on a phone. */
 export async function openSettingsSection(page: Page, name: string) {
   const sections = page.getByRole("navigation", { name: "Seções das configurações" });
@@ -87,4 +92,10 @@ export async function openAccountMenu(page: Page) {
 export async function signOutFromMenu(page: Page) {
   const sidebar = await openAccountMenu(page);
   await sidebar.getByRole("button", { name: "Sair", exact: true }).click();
+}
+
+/** Picks an action from a row's "⋯ Mais opções" menu (stage 26c). */
+export async function rowAction(row: Locator, page: Page, name: string) {
+  await row.getByRole("button", { name: /^Mais opções/ }).click();
+  await page.getByRole("menu").getByRole("menuitem", { name, exact: true }).click();
 }

@@ -25,6 +25,7 @@ import { AUTOMATIONS_KEY, useAutomationRuns, useAutomations } from "../../hooks/
 import { SETTINGS_KEY } from "../../hooks/session.tsx";
 import { api, errorMessage } from "../../lib/api.ts";
 import { automationAnchor, describeSchedule, draftOf, emptyDraft, type ScheduleDraft, scheduleOf } from "../../lib/automations.ts";
+import { ActionsMenu } from "../../components/ActionsMenu.tsx";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { FlashStatus, flashClass, useFlash } from "../../lib/lists.tsx";
 import { Badge, IconButton } from "./parts.tsx";
@@ -259,18 +260,6 @@ function AutomationRow({ automation, glow, onEdit, onDelete }: { automation: Aut
       </div>
       {/* biome-ignore lint/a11y/useSemanticElements: a row of buttons, not form fields: a fieldset would add a frame and a legend. */}
       <div role="group" aria-label={t("web.automations.actionsFor", { name: automation.name })} className="flex shrink-0 items-center pl-10 sm:pl-0">
-        <IconButton
-          label={t("web.automations.runNow")}
-          busy={busy === "run"}
-          onClick={() =>
-            void act("run", async () => {
-              const { run } = await api<{ run: AutomationRun }>(`/automations/${automation.id}/run`, { method: "POST" });
-              return runText(run);
-            })
-          }
-        >
-          <Zap />
-        </IconButton>
         {paused ? (
           <IconButton label={t("web.automations.resume")} busy={busy === "pause"} onClick={() => void setPaused(false)}>
             <Play />
@@ -280,12 +269,25 @@ function AutomationRow({ automation, glow, onEdit, onDelete }: { automation: Aut
             <Pause />
           </IconButton>
         )}
-        <IconButton label={t("web.automations.edit")} onClick={onEdit}>
-          <Pencil />
-        </IconButton>
-        <IconButton label={t("web.automations.delete")} onClick={onDelete} danger>
-          <Trash2 />
-        </IconButton>
+        {/* The main action stays in view; the rest waits in the menu (stage 26c). */}
+        <ActionsMenu
+          name={automation.name}
+          busy={busy === "run"}
+          actions={[
+            {
+              label: t("web.automations.runNow"),
+              icon: <Zap className="h-4 w-4" />,
+              disabled: busy !== null,
+              onSelect: () =>
+                void act("run", async () => {
+                  const { run } = await api<{ run: AutomationRun }>(`/automations/${automation.id}/run`, { method: "POST" });
+                  return runText(run);
+                }),
+            },
+            { label: t("web.automations.edit"), icon: <Pencil className="h-4 w-4" />, onSelect: onEdit },
+            { label: t("web.automations.delete"), icon: <Trash2 className="h-4 w-4" />, onSelect: onDelete, danger: true },
+          ]}
+        />
       </div>
     </li>
   );

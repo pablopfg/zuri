@@ -3,7 +3,6 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { ChangePasswordForm } from "../../components/ChangePasswordForm.tsx";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher.tsx";
 import { Button, Card, ErrorNotice, SelectField, Loading, TextField } from "../../components/ui.tsx";
-import { useSession } from "../../hooks/session.tsx";
 import { useSettings, useSettingsMutation } from "../../hooks/settings.ts";
 import { errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
@@ -28,7 +27,7 @@ function OwnerNameForm({ stored }: { stored: string }) {
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-start">
+    <form onSubmit={submit} className="flex items-start gap-3">
       <TextField
         className="min-w-0 flex-1"
         label={t("web.account.ownerName")}
@@ -42,7 +41,7 @@ function OwnerNameForm({ stored }: { stored: string }) {
         autoComplete="nickname"
         spellCheck={false}
       />
-      <Button type="submit" variant="secondary" className="sm:mt-7" loading={save.isPending} disabled={unchanged}>
+      <Button type="submit" variant="secondary" className="mt-7 shrink-0" loading={save.isPending} disabled={unchanged}>
         {t("web.account.ownerNameSave")}
       </Button>
     </form>
@@ -51,7 +50,6 @@ function OwnerNameForm({ stored }: { stored: string }) {
 
 export function AccountTab() {
   const { t } = useI18n();
-  const { signOut } = useSession();
   const settings = useSettings();
   const save = useSettingsMutation();
   const toast = useToast();
@@ -108,12 +106,6 @@ export function AccountTab() {
 
       <Card title={t("web.password.title")} description={t("web.password.hint")}>
         <ChangePasswordForm onChanged={() => toast(t("web.password.changed"))} />
-      </Card>
-
-      <Card title={t("web.account.signOutTitle")} description={t("web.account.signOutHint")}>
-        <Button variant="secondary" onClick={() => void signOut("manual")}>
-          {t("web.nav.signOut")}
-        </Button>
       </Card>
     </>
   );

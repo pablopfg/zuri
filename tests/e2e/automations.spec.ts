@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, openSidebar, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { expectAccessible, openSidebar, rowAction, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // Automations against the real Worker (step 10): create with the preview, run
 // now, pause, edit and delete; a routine Zuri proposes in the chat waits for the
@@ -56,7 +56,7 @@ test("a reminder: create with the preview, run now, pause, edit and delete @mobi
   expect(await tooSmallControls(page), "every control of the automations page is a 44 px target").toEqual([]);
 
   // Run now: the result lands in the history.
-  await row.getByRole("button", { name: "Rodar agora" }).click();
+  await rowAction(row, page, "Rodar agora");
   await expect(toast(page, "Pronto. O resultado está em Últimas execuções.")).toBeVisible();
   const history = page.getByRole("region", { name: "Últimas execuções" });
   const run = history.getByRole("listitem").filter({ hasText: name }).first();
@@ -73,7 +73,7 @@ test("a reminder: create with the preview, run now, pause, edit and delete @mobi
   await expect(row.getByText("Ativa", { exact: true })).toBeVisible();
 
   // Edit: the form opens with what is stored.
-  await row.getByRole("button", { name: "Editar" }).click();
+  await rowAction(row, page, "Editar");
   const edit = page.getByRole("dialog", { name: "Editar automação" });
   await expect(edit.getByLabel("Nome")).toHaveValue(name);
   await expect(edit.getByLabel("Quando")).toHaveValue("weekly");
@@ -86,7 +86,7 @@ test("a reminder: create with the preview, run now, pause, edit and delete @mobi
   await expect(row.getByText("Lembrete · Todo dia 31 às 08:15 (ou no último dia do mês)")).toBeVisible();
 
   // Delete, after a confirmation; the history stays.
-  await row.getByRole("button", { name: "Apagar" }).click();
+  await rowAction(row, page, "Apagar");
   const confirm = page.getByRole("dialog", { name: `Apagar “${name}”?` });
   await expectAccessible(page, "excluir automação");
   await confirm.getByRole("button", { name: "Apagar" }).click();
@@ -163,7 +163,7 @@ test("a routine Zuri proposes in the chat runs nothing until the owner approves 
   const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
   await expect(row.getByText("Ativa", { exact: true })).toBeVisible();
   await expect(row.getByText("Criada na conversa")).toBeVisible();
-  await row.getByRole("button", { name: "Apagar" }).click();
+  await rowAction(row, page, "Apagar");
   await page.getByRole("dialog", { name: `Apagar “${name}”?` }).getByRole("button", { name: "Apagar" }).click();
   await expect(row).toHaveCount(0);
 });

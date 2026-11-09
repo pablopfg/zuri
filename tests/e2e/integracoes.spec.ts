@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, rowAction, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // Remote MCP servers (step 18) against the real Worker. In local development
 // any https address on *.exemplo.com.br is a simulated server with two tools
@@ -94,7 +94,7 @@ test("adds a server, turns a tool on, approves its call in the chat and removes 
   // Removing asks first.
   await page.goto("/configuracoes/integracoes");
   const again = page.getByRole("article").filter({ has: page.getByRole("heading", { name }) });
-  await again.getByRole("button", { name: "Remover" }).click();
+  await rowAction(again, page, "Remover");
   const confirm = page.getByRole("dialog", { name: "Remover servidor?" });
   await expect(confirm).toContainText(name);
   await confirm.getByRole("button", { name: "Remover" }).click();
@@ -193,7 +193,7 @@ test("raises a tool that writes up to routines, with the warning, and sets the o
   try {
     await page.goto("/automacoes");
     const row = page.getByRole("listitem").filter({ hasText: routineName });
-    await row.getByRole("button", { name: "Editar" }).click();
+    await rowAction(row, page, "Editar");
     const edit = page.getByRole("dialog", { name: "Editar automação" });
     const group = edit.getByRole("group", { name: "Ferramentas externas" });
     const locked = group.getByRole("checkbox", { name: `Criar chamado · ${name}` });

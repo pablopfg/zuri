@@ -2,7 +2,7 @@ import { expect, type Page, test } from "./fixtures.ts";
 import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // The search by meaning (step 17) against the real Worker, with the simulated
-// embedding model of local development: the card in Settings > IA and the
+// embedding model of local development: the card in Settings > Modelos e limites and the
 // palette's "Pelo significado" group. The database is shared with the other
 // specs, so counts are read from the server, never assumed.
 
@@ -11,9 +11,9 @@ test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 const MEMORY = "Meu automóvel é azul-petróleo";
 
 async function openCard(page: Page) {
-  await page.goto("/configuracoes/ia");
+  await page.goto("/configuracoes/modelos");
   await signIn(page);
-  await expect(page).toHaveURL(/\/configuracoes\/ia$/);
+  await expect(page).toHaveURL(/\/configuracoes\/modelos$/);
   const card = page.getByRole("region", { name: "Busca por significado" });
   await expect(card.getByRole("switch", { name: "Buscar também pelo significado" })).toBeVisible();
   return card;

@@ -41,6 +41,7 @@ export {
   ptBRAgents,
   ptBRUsage,
   ptBRBackup,
+  ptBRMenu,
   t,
 } from "../i18n/index.ts";
 export { AGENT_INSTANCE_NAME } from "./constants.ts";

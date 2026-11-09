@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, rowAction, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // Memory and its history against the real Worker (step 7): save, duplicate,
 // review a conflict, update a fact, history, restore and delete. pt-BR.
@@ -13,12 +13,16 @@ async function openMemory(page: Page) {
   await expect(page.getByRole("heading", { level: 1, name: "Memória" })).toBeVisible();
 }
 
+/** "Nova memória" in the header opens a dialog (stage 26c); saving closes it. */
 async function save(page: Page, text: string) {
-  const form = page.getByRole("region", { name: "Guardar uma memória" });
+  await page.getByRole("button", { name: "Nova memória" }).click();
+  const form = page.getByRole("dialog", { name: "Nova memória" });
+  await expect(form.getByLabel("Memória")).toBeFocused();
   await form.getByLabel("Memória").fill(text);
   const saved = page.waitForResponse((r) => r.url().endsWith("/api/memories") && r.request().method() === "POST");
   await form.getByRole("button", { name: "Guardar" }).click();
   await saved;
+  await expect(form).toBeHidden();
 }
 
 test("memories: save, duplicate, review a conflict, history, restore, update and delete @mobile", async ({ page }) => {
@@ -26,6 +30,18 @@ test("memories: save, duplicate, review a conflict, history, restore, update and
   const tag = `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
   await openMemory(page);
   const list = page.getByRole("region", { name: "Suas memórias" });
+
+  // No form above the list: "Nova memória" opens a dialog, and Cancelar leaves without saving.
+  await expect(page.getByLabel("Memória", { exact: true })).toHaveCount(0);
+  const add = page.getByRole("button", { name: "Nova memória" });
+  await add.click();
+  const draft = page.getByRole("dialog", { name: "Nova memória" });
+  await draft.getByLabel("Memória").fill(`Rascunho ${tag}`);
+  await expectAccessible(page, "nova memória");
+  await draft.getByRole("button", { name: "Cancelar" }).click();
+  await expect(draft).toBeHidden();
+  await expect(add).toBeFocused();
+  await expect(list.getByText(`Rascunho ${tag}`)).toHaveCount(0);
 
   await save(page, `Eu dirijo um Volkswagen ${tag}`);
   await expect(page.getByRole("status").filter({ hasText: "Memória guardada" })).toBeVisible();
@@ -58,7 +74,7 @@ test("memories: save, duplicate, review a conflict, history, restore, update and
   await page.getByRole("button", { name: /^Passadas/ }).click();
   const past = list.getByRole("listitem").filter({ hasText: `Eu dirijo um Volkswagen ${tag}` });
   await expect(past.getByText("Passado", { exact: true })).toBeVisible();
-  await past.getByRole("button", { name: "Histórico" }).click();
+  await rowAction(past, page, "Histórico");
   const history = page.getByRole("dialog", { name: "Histórico da memória" });
   await expect(history.getByText("Depois")).toBeVisible();
   await expect(history.getByText(`Vendi meu Volkswagen ${tag} e comprei um Tesla`)).toBeVisible();
@@ -66,14 +82,14 @@ test("memories: save, duplicate, review a conflict, history, restore, update and
   await history.getByRole("button", { name: "Fechar" }).click();
 
   // Restore as current.
-  await past.getByRole("button", { name: "Restaurar como atual" }).click();
+  await rowAction(past, page, "Restaurar como atual");
   await expect(list.getByText(`Eu dirijo um Volkswagen ${tag}`)).toHaveCount(0);
   await page.getByRole("button", { name: /^Atuais/ }).click();
   const current = list.getByRole("listitem").filter({ hasText: `Eu dirijo um Volkswagen ${tag}` });
   await expect(current.getByText("Atual", { exact: true })).toBeVisible();
 
   // Update this fact: the old one becomes the past.
-  await current.getByRole("button", { name: "Atualizar este fato" }).click();
+  await rowAction(current, page, "Atualizar este fato");
   const dialog = page.getByRole("dialog", { name: "Atualizar este fato" });
   await dialog.getByLabel("Como é agora").fill(`Eu dirijo uma bicicleta ${tag}`);
   await dialog.getByRole("button", { name: "Guardar" }).click();
@@ -82,7 +98,7 @@ test("memories: save, duplicate, review a conflict, history, restore, update and
 
   // Delete for good, after a confirmation.
   const bike = list.getByRole("listitem").filter({ hasText: `Eu dirijo uma bicicleta ${tag}` });
-  await bike.getByRole("button", { name: "Apagar" }).click();
+  await rowAction(bike, page, "Apagar");
   const confirm = page.getByRole("dialog", { name: "Apagar esta memória?" });
   await expect(confirm.getByText("Não vai para a lixeira")).toBeVisible();
   await confirm.getByRole("button", { name: "Apagar de vez" }).click();
@@ -122,11 +138,15 @@ test("memory: search, empty filter, the conflict review switch and keyboard only
   await press(false);
   await press(true);
 
-  // A new memory from the keyboard alone.
-  await page.getByLabel("Memória", { exact: true }).focus();
+  // A new memory from the keyboard alone: the header button, the dialog's field, then Tipo, Cancelar and Guardar.
+  await page.getByRole("button", { name: "Nova memória" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: "Nova memória" }).getByLabel("Memória")).toBeFocused();
   await page.keyboard.type("Prefiro reuniões pela manhã");
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("dialog", { name: "Nova memória" }).getByRole("button", { name: "Guardar" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(list.getByText("Prefiro reuniões pela manhã")).toBeVisible();
 });
@@ -150,12 +170,14 @@ test("memory in English: a conflict, replacing the older and discarding the newe
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await page.getByRole("link", { name: "Memory" }).first().click();
     await expect(page.getByRole("heading", { level: 1, name: "Memory" })).toBeVisible();
-    const form = page.getByRole("region", { name: "Save a memory" });
+    const form = page.getByRole("dialog", { name: "New memory" });
     const saveEn = async (text: string) => {
+      await page.getByRole("button", { name: "New memory" }).click();
       await form.getByLabel("Memory").fill(text);
       const saved = page.waitForResponse((r) => r.url().endsWith("/api/memories") && r.request().method() === "POST");
       await form.getByRole("button", { name: "Save" }).click();
       await saved;
+      await expect(form).toBeHidden();
     };
     const reviews = page.getByRole("region", { name: "To review" });
     const list = page.getByRole("region", { name: "Your memories" });
@@ -197,12 +219,26 @@ test("never send out: a memory and a note marked stay on the account, and the ma
   await openMemory(page);
   await save(page, `O código do portão é ${tag}`);
   const row = page.getByRole("listitem").filter({ hasText: `O código do portão é ${tag}` });
-  const mark = row.getByRole("button", { name: "Nunca enviar para fora" });
-  await expect(mark).toHaveAttribute("aria-pressed", "false");
+  // The mark lives in the row's "Mais opções" menu, as an item that reads out its state.
+  const more = row.getByRole("button", { name: /^Mais opções/ });
+  await more.click();
+  const mark = page.getByRole("menu").getByRole("menuitemcheckbox", { name: "Nunca enviar para fora" });
+  // Opening focuses the first item; the arrow keys walk the rest.
+  await expect(page.getByRole("menu").getByRole("menuitem", { name: "Atualizar este fato" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(mark).toBeFocused();
+  await expect(mark).toHaveAttribute("aria-checked", "false");
+  await expectAccessible(page, "menu mais opções");
   const marked = page.waitForResponse((r) => r.url().endsWith("/local-only") && r.request().method() === "POST");
   await mark.click();
   expect((await marked).status()).toBe(200);
-  await expect(mark).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(more).toBeFocused();
+  await more.click();
+  await expect(page.getByRole("menu").getByRole("menuitemcheckbox", { name: "Nunca enviar para fora" })).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(more).toBeFocused();
   await expect(row.getByText("Só na sua conta")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("listitem").filter({ hasText: `O código do portão é ${tag}` }).getByText("Só na sua conta")).toBeVisible();

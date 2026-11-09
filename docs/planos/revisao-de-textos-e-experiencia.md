@@ -255,3 +255,27 @@ README:
 - Nas confirmações que abrem no lugar, a pergunta fica logo acima do
   "Cancelar" focado; ligar a pergunta ao grupo de botões para o leitor de
   tela fica para a 26c, junto com a revisão dessas linhas.
+
+## Notas da 26c (09/11/2026)
+
+- O inventário (`docs/qa/revisao-de-textos/26c-inventario.md`) saiu das
+  capturas de todas as telas, no computador e no celular. Das 14 mudanças, 11
+  eram pequenas e entraram direto; 3 mudam a navegação e foram ao Pablo com
+  recomendação (dividir a aba IA, "Nova memória" em diálogo, lixeira filtrada
+  pelo tipo).
+- O `ActionsMenu` é um menu ARIA simples (`menu`, `menuitem`,
+  `menuitemcheckbox`), sem biblioteca: só entra nas telas que já carregam sob
+  demanda, então não pesa no JS inicial.
+- O `PageHeader` deixa o bloco do título crescer a partir de 12rem: ações só
+  de ícone ficam ao lado do título no celular sem mudar as telas com botões
+  largos.
+- O cartão "Sair deste aparelho" saiu da Conta: o menu da conta já tem
+  "Sair", em toda tela.
+- Na lixeira vazia, o texto do cartão já diz o que vai para lá e por quanto
+  tempo; o estado vazio fica só com o título.
+- As três perguntas tiveram resposta do Pablo em 09/11, todas na
+  recomendação: a aba IA virou "Uso da IA" (`/configuracoes/ia`, onde os avisos
+  de limite já apontam) e "Modelos e limites" (`/configuracoes/modelos`); a
+  Memória abre "Nova memória" num diálogo; a lixeira vinda de Tarefas ou Notas
+  abre filtrada (`?tipo=`), sem "Esvaziar a lixeira" enquanto filtrada, porque
+  ele apaga todos os tipos.

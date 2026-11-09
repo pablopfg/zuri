@@ -53,7 +53,9 @@ test("turns remote access on, makes an events token shown once, sends an event w
   await page.getByRole("button", { name: "Revogar n8n" }).click();
   await expect(page.getByText("Revogar n8n? Ele para de funcionar na hora.")).toBeVisible();
   // The standard confirmation (stage 26b): Cancelar first and focused, then the verb.
-  await expect(page.getByRole("button", { name: "Cancelar" })).toBeFocused();
+  // The buttons are a group named by the question, so a screen reader says what Cancelar cancels (stage 26c).
+  const question = page.getByRole("group", { name: "Revogar n8n? Ele para de funcionar na hora." });
+  await expect(question.getByRole("button", { name: "Cancelar" })).toBeFocused();
   await page.getByRole("button", { name: "Revogar", exact: true }).click();
   await expect(page.getByText("Nenhum token ainda")).toBeVisible();
   expect((await request.post("/api/remote/events", { headers: { authorization: `Bearer ${secret}` }, data: { title: "Oi" } })).status()).toBe(401);

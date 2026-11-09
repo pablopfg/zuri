@@ -1,7 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { TRASH_RETENTION_DAYS, type TrashItem } from "@zuri/shared";
+import { type MessageKey, TRASH_RETENTION_DAYS, type TrashItem } from "@zuri/shared";
 import { Trash2 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { Button, Card, Dialog, EmptyState, ErrorNotice, Notice, Loading } from "../../components/ui.tsx";
 import { TRASH_KEY, useTrash } from "../../hooks/productivity.ts";
 import { api, errorMessage } from "../../lib/api.ts";
@@ -11,17 +12,27 @@ import { refreshAfterTrash, TRASH_KIND_LABEL } from "../productivity/shared.tsx"
 
 type TrashList = { items: TrashItem[]; total: number };
 
+/** "?tipo=" from the trash buttons of Tasks and Notes: the kind shown, its line, its empty state and the way back. */
+const ONLY: Record<string, { kind: TrashItem["kind"]; label: MessageKey; empty: MessageKey; back: string; backLabel: MessageKey }> = {
+  tarefas: { kind: "task", label: "web.trash.only.task", empty: "web.trash.emptyOnly.task", back: "/tarefas", backLabel: "web.trash.back.task" },
+  notas: { kind: "note", label: "web.trash.only.note", empty: "web.trash.emptyOnly.note", back: "/notas", backLabel: "web.trash.back.note" },
+};
+
 // Storage use, export and import (step 23): their own chunk, outside the first screen's JavaScript.
 const BackupCards = lazy(() => import("./BackupCards.tsx").then((m) => ({ default: m.BackupCards })));
 
 /** Settings › Data: storage use, export and import (step 23), then the trash. */
 export function DataTab() {
+  // Come from Tasks or Notes, the trash leads the page; the storage cards load after it without pushing it down.
+  const [params] = useSearchParams();
+  const filtered = ONLY[params.get("tipo") ?? ""] !== undefined;
   return (
     <>
+      {filtered && <TrashCard />}
       <Suspense fallback={<Loading />}>
         <BackupCards />
       </Suspense>
-      <TrashCard />
+      {!filtered && <TrashCard />}
     </>
   );
 }
@@ -34,6 +45,9 @@ function TrashCard() {
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
   const [confirm, setConfirm] = useState<{ kind: "purge"; item: TrashItem } | { kind: "empty" } | null>(null);
+  // From Tasks or Notes the trash opens filtered by that kind, with the way back (stage 26c).
+  const [params, setParams] = useSearchParams();
+  const only = ONLY[params.get("tipo") ?? ""];
 
   async function run(key: string, work: () => Promise<string>) {
     setBusy(key);
@@ -76,14 +90,16 @@ function TrashCard() {
       return plural("web.trash.emptied", deleted);
     });
 
-  const items = trash.data?.items ?? [];
+  const all = trash.data?.items ?? [];
+  const items = only ? all.filter((item) => item.kind === only.kind) : all;
 
   return (
     <Card
       title={t("web.trash.title")}
       description={t("web.trash.description", { days: TRASH_RETENTION_DAYS })}
       actions={
-        items.length > 0 && (
+        // Emptying takes every kind, so it shows only when every kind is in view.
+        !only && items.length > 0 && (
           <Button variant="danger" onClick={() => setConfirm({ kind: "empty" })} disabled={busy !== null}>
             {t("web.trash.empty")}
           </Button>
@@ -96,12 +112,25 @@ function TrashCard() {
             {error}
           </p>
         )}
+        {only && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-raised px-3 py-2 text-sm">
+            <span>{t(only.label)}</span>
+            <span className="flex flex-wrap gap-1">
+              <Link to={only.back} className="inline-flex min-h-11 items-center rounded-lg px-3 font-medium text-accent-text hover:bg-surface">
+                {t(only.backLabel)}
+              </Link>
+              <Button variant="ghost" onClick={() => setParams({}, { replace: true })}>
+                {t("web.trash.showAll")}
+              </Button>
+            </span>
+          </div>
+        )}
         {trash.isPending ? (
           <Loading />
         ) : trash.isError ? (
           <ErrorNotice error={trash.error} onRetry={() => void trash.refetch()} />
         ) : items.length === 0 ? (
-          <EmptyState icon={<Trash2 className="h-6 w-6" />} title={t("web.trash.emptyTitle")} />
+          <EmptyState icon={<Trash2 className="h-6 w-6" />} title={t(only ? only.empty : "web.trash.emptyTitle")} />
         ) : (
           <>
           {(trash.data?.total ?? 0) > items.length && (

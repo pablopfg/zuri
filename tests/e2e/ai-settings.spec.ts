@@ -1,16 +1,17 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, settingsTitle, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // Settings > IA against the real Worker (step 8): today's usage with the
 // simulated AI of local development, and the model and limits form. pt-BR.
 
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
-async function openAiTab(page: Page) {
-  await page.goto("/configuracoes/ia");
+/** Settings › Uso da IA ("ia") or › Modelos e limites ("modelos"): the old AI tab, split in two in stage 26c. */
+async function openAiTab(page: Page, tab: "ia" | "modelos" = "ia") {
+  await page.goto(`/configuracoes/${tab}`);
   await signIn(page);
-  await expect(page).toHaveURL(/\/configuracoes\/ia$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/configuracoes/${tab}$`));
+  await expect(settingsTitle(page, tab === "ia" ? "Uso da IA" : "Modelos e limites")).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
 }
 
@@ -44,8 +45,12 @@ test("the AI tab shows today's usage with the simulated AI, accessible and with 
 });
 
 test("the model and the limits: out-of-range values are refused on the spot, the rest is saved and kept", async ({ page }) => {
-  await openAiTab(page);
+  await openAiTab(page, "modelos");
   const form = page.getByRole("region", { name: "Modelo e limites" });
+  // The model comes first; the nine limits and the dollar cap wait folded under "Limites avançados".
+  const advanced = form.getByText("Limites avançados", { exact: true });
+  await expect(form.getByLabel("Pedidos por dia")).toBeHidden();
+  await advanced.click();
   const requests = form.getByLabel("Pedidos por dia");
   const neurons = form.getByLabel("Teto de Neurons por dia");
   const output = form.getByLabel("Tamanho máximo da resposta (tokens)");
@@ -70,12 +75,16 @@ test("the model and the limits: out-of-range values are refused on the spot, the
   await expect(neurons).toHaveAttribute("aria-invalid", "true");
   await expect(form.getByText("Use um número inteiro de 1.000 a 9.000.")).toBeVisible();
   await expect(form.getByText("Use um número inteiro de 1 a 2.000.")).toBeVisible();
+  // Folded again, a refused save unfolds the limits so the mistake shows.
+  await advanced.click();
+  await expect(requests).toBeHidden();
   let patched = false;
   page.on("request", (r) => {
     if (r.url().endsWith("/api/settings") && r.method() === "PATCH") patched = true;
   });
   await form.getByRole("button", { name: "Salvar limites" }).click();
   expect(patched).toBe(false);
+  await expect(requests).toBeVisible();
 
   // Exactly on the edges: accepted.
   await neurons.fill("1000");
@@ -92,11 +101,14 @@ test("the model and the limits: out-of-range values are refused on the spot, the
   expect((await saved).status()).toBe(200);
   // The confirmation is a toast, at the foot of the screen.
   await expect(page.getByRole("status").filter({ hasText: "Limites salvos" })).toBeVisible();
+  // The usage moved to its own section, with the new limits.
+  await page.goto("/configuracoes/ia");
   const usage = page.getByRole("region", { name: "Uso de hoje" });
   await expect(usage.getByText("0 de 1.000", { exact: true })).toBeVisible();
   await expect(usage.getByText("0 de 2.000", { exact: true })).toBeVisible();
 
-  await page.reload();
+  await page.goto("/configuracoes/modelos");
+  await advanced.click();
   await expect(neurons).toHaveValue("1000");
   await expect(form.getByLabel("Modelo de conversa")).toHaveValue("@cf/qwen/qwen3-30b-a3b-fp8");
   await expect(fallback).toHaveValue("@cf/meta/llama-4-scout-17b-16e-instruct");
@@ -165,14 +177,15 @@ test("the usage card warns near and at the limit, and a failed report shows an e
   await expect(usage.getByRole("meter", { name: "Pedidos à IA" })).toHaveAttribute("aria-valuetext", "170 de 200 · 85% usado");
   await expect(usage.getByText("2 com erro · 1 interrompidas")).toBeVisible();
   await expect(usage.getByText("US$\u00a00,00 hoje, sem teto de gastos")).toBeVisible();
-  // The paid companies: one out of credit, one with no key.
+  // The paid companies, in Modelos e limites: one out of credit, one with no key.
+  await page.goto("/configuracoes/modelos");
   const companies = page.getByRole("region", { name: "Modelos pagos" });
   await expect(companies.getByRole("listitem").filter({ hasText: "Anthropic" }).getByText("Sem crédito")).toBeVisible();
   await expect(companies.getByRole("listitem").filter({ hasText: "OpenAI" }).getByText("Sem chave")).toBeVisible();
   await expect(companies.getByRole("button", { name: "Já recarreguei" })).toBeVisible();
 
   mode = "at";
-  await page.reload();
+  await page.goto("/configuracoes/ia");
   await expect(usage.getByText("Limite do dia atingido. A IA volta às 21:00.")).toBeVisible();
   await expect(usage.getByText(/Perto do limite/)).toHaveCount(0);
   await expectAccessible(page, "ia-no-limite");
@@ -188,7 +201,7 @@ test("the usage card warns near and at the limit, and a failed report shows an e
 });
 
 test("a paid model: the warning on what leaves comes before the save, and the spending shows up today and by period @mobile", async ({ page }) => {
-  await openAiTab(page);
+  await openAiTab(page, "modelos");
   const form = page.getByRole("region", { name: "Modelo e limites" });
   const model = form.getByLabel("Modelo de conversa");
   // Local development has no keys and needs none: the paid models are simulated (src/ai/index.ts).
@@ -218,6 +231,7 @@ test("a paid model: the warning on what leaves comes before the save, and the sp
   await expect(page.getByRole("status").filter({ hasText: "Limites salvos" })).toBeVisible();
 
   // The ceiling: off by default, a value of the owner's, refused past the top.
+  await form.getByText("Limites avançados", { exact: true }).click();
   const cap = form.getByLabel("Teto de gastos por dia (US$)");
   await expect(cap).toHaveValue("0");
   await cap.fill("2,555");
@@ -226,6 +240,7 @@ test("a paid model: the warning on what leaves comes before the save, and the sp
   const capSaved = page.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PATCH");
   await form.getByRole("button", { name: "Salvar limites" }).click();
   expect((await capSaved).status()).toBe(200);
+  await page.goto("/configuracoes/ia");
   const usage = page.getByRole("region", { name: "Uso de hoje" });
   await expect(usage.getByRole("meter", { name: "Modelos pagos hoje" })).toHaveAttribute("max", "2.5");
 

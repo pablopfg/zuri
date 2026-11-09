@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type AgendaEvent, type AgendaPage as AgendaWindow, GOOGLE_LIMITS, type GoogleCalendarInfo, type GoogleStatus, ptBRAgenda } from "@zuri/shared";
 import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Pencil, Repeat, Trash2, Users } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useId, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
@@ -516,6 +516,7 @@ function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent 
   const qc = useQueryClient();
   const when = useWhen();
   const [confirming, setConfirming] = useState(false);
+  const confirmId = useId();
   const [busy, setBusy] = useState(false);
   const editable = !!calendar && calendar.mode === "write" && calendar.writable;
   const remove = async () => {
@@ -568,8 +569,10 @@ function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent 
           {!editable && <Notice>{t("web.agenda.event.readOnly")}</Notice>}
           {confirming ? (
             <div className="space-y-3 rounded-xl border border-danger/40 bg-danger-soft p-3">
-              <p className="text-sm">{t("web.agenda.deleteConfirm", { title: event.title || t("web.agenda.event.untitled") })}</p>
-              <div className="flex flex-wrap justify-end gap-2">
+              <p id={confirmId} className="text-sm">
+                {t("web.agenda.deleteConfirm", { title: event.title || t("web.agenda.event.untitled") })}
+              </p>
+              <fieldset aria-labelledby={confirmId} className="min-w-0 flex flex-wrap justify-end gap-2">
                 <Button variant="secondary" autoFocus onClick={() => setConfirming(false)}>
                   {t("web.cancel")}
                 </Button>
@@ -577,7 +580,7 @@ function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent 
                   <Trash2 className="h-4 w-4" aria-hidden />
                   {t("web.agenda.delete")}
                 </Button>
-              </div>
+              </fieldset>
             </div>
           ) : (
             editable && (
