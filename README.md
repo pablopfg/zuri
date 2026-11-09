@@ -13,7 +13,7 @@
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-0b0f19)](LICENSE)
 [![Roda na Cloudflare](https://img.shields.io/badge/roda%20na-Cloudflare-f38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
 [![Plano Free](https://img.shields.io/badge/plano%20Free-compat%C3%ADvel-22c55e)](#-plano-free-sem-surpresa-na-fatura)
-[![Etapas](https://img.shields.io/badge/etapas-31%20de%2035-22c55e)](#️-mapa-das-etapas)
+[![Etapas](https://img.shields.io/badge/etapas-33%20de%2035-22c55e)](#️-mapa-das-etapas)
 [![Sem telemetria](https://img.shields.io/badge/telemetria-nenhuma-0b0f19)](#-segurança-e-privacidade)
 [![Node.js 24+](https://img.shields.io/badge/node-24%2B-339933?logo=nodedotjs&logoColor=white)](.nvmrc)
 
@@ -26,7 +26,7 @@ de um Durable Object e conversa com você pelo navegador e pelo Telegram.
 
 > [!NOTE]
 > **Em construção.** A Zuri sai em 35 etapas, uma por PR, a partir da [especificação](docs/especificacao.md).
-> As etapas 0 a 22c estão na `develop`,
+> As etapas 0 a 24 estão na `develop`,
 > da conversa com o agente às automações, à central de avisos e ao bot do Telegram, que já manda avisos, conversa por texto e voz, responde a comandos rápidos sem IA, trava a leitura depois de horas sem uso, aprova as propostas da Zuri com passkey ou código por e-mail e liga o modo de bloqueio numa emergência; o n8n e outros programas falam com ela por tokens com escopo. O [mapa das etapas](#️-mapa-das-etapas) mostra o que já existe e o que vem a seguir; o estado detalhado fica em [`progresso.md`](.claude/memoria/progresso.md).
 
 ## Sumário
@@ -193,13 +193,15 @@ O que está na `develop` hoje, etapa por etapa. "extra" marca melhorias feitas f
 | 🔑 | **Acesso remoto e eventos** | Em Configurações › Segurança, **Acesso remoto** cria tokens para o n8n, o Home Assistant ou um script falarem com a Zuri de outro servidor: **Só ler**, **Ler e escrever** (tarefas, notas, memórias e lembretes) ou **Só eventos**, que manda avisos como "n8n: Backup falhou" para a central. O token aparece uma vez, vale 90 dias e só alcança uma lista fechada de rotas; nunca chega a login, Telegram, aprovações, fluxos, CRM nem a rotinas com IA. Ligar e criar pedem a senha e geram alerta de segurança; `/tokens` no bot revoga com um toque, e o modo de bloqueio suspende todos. Eventos: até 60 por hora e 100 por dia, usando no máximo metade do limite de cada canal. | 20 |
 | 💾 | **Exportar, importar e uso do armazenamento** | Em Configurações › Dados, **Baixar backup** gera um arquivo JSON com tarefas, notas, projetos, memórias, conversas, automações, clientes e configurações, legível fora da Cloudflare, sem senhas, chaves, sessões nem conexões. **Importar backup** aceita arquivos de até 10 MB: tudo entra como novo, automações chegam pausadas e rotinas com IA esperam a sua aprovação; um arquivo com algo estranho é recusado inteiro, sem gravar nada. Os dois pedem a senha e geram alerta de segurança. O cartão **Uso do armazenamento** mostra quanto de cada tipo você guardou contra o limite. | 23 |
 | 🔐 | **Backup automático cifrado** | Com o espaço de backups ligado (R2, opcional), sai uma cópia por dia, depois das 3 h, cifrada com uma chave que o seu navegador cria: a Zuri guarda só a metade que fecha, e o arquivo que abre fica com você. Ficam as 7 cópias mais novas; as antigas só saem depois que a nova chegou inteira. **Restaurar uma cópia** abre o arquivo no navegador e importa em partes quando passa de 10 MB. A primeira cópia de cada mês vai para o seu Telegram, o bot avisa quando o último backup baixado passa de 30 dias e `/backup` diz a idade dele. | 23 |
+| 🚀 | **Deploy pelo GitHub Actions** | Cada merge na `main` roda a CI inteira de novo, espera a sua aprovação e publica o Worker só no seu domínio. O deploy falha se o `workers.dev` ou as URLs de prévia estiverem ligados, se `http://` não levar a `https://` ou se a Zuri não responder; depois, a versão vira release com o changelog em pt-BR. O token da Cloudflare fica só no ambiente `production` e os segredos da Zuri nunca passam pelo GitHub. Guia de instalação só pelo navegador, do domínio ao primeiro login. | 24 |
 | 🎯 | **Prioridade que aprende** | O tipo de aviso que você quase sempre deixa de lado desce um nível, e o que você abre logo sobe, no máximo um nível por semana e sempre com "Desfazer". Lembretes e segurança nunca mudam, e cada automação tem a sua prioridade. | 11 |
 
 ## 🔭 O que vem a seguir
 
 | | Funcionalidade | O que faz | Etapa |
 | :---: | --- | --- | :---: |
-| 🧭 | **Instalação e auditoria final** | Guia de instalação só pelo navegador e auditoria final. | 24–25 |
+| ✍️ | **Revisão de textos e experiência** | Textos de botões, avisos e erros padronizados e mais humanos, e os ajustes de interface que o inventário apontar. | 26 |
+| 🧭 | **Auditoria final** | Auditoria completa do repositório e testes de ponta a ponta de todas as telas. | 25 |
 
 ## 🧭 Como funciona
 
@@ -262,6 +264,7 @@ Detalhes em [docs/seguranca.md](docs/seguranca.md). Para relatar uma vulnerabili
 | Turnstile, Email Routing, Cloudflare Access | ✅ | Turnstile no login; os outros são opcionais |
 | Modelos pagos (Anthropic, OpenAI) | ⚠️ | Desligados. Só com a sua aprovação e um teto diário em US$ |
 | R2 | ⚠️ | Opcional, só para o backup automático (aprovado pelo dono): umas 60 operações por mês e 7 cópias, dentro da faixa grátis. Sem ele, o backup automático fica desligado |
+| GitHub Actions (deploy) | ✅ | Grátis em repositório público; o token da Cloudflare só pode publicar o Worker e ligar o domínio |
 | KV, D1, Vectorize, Queues, Workers Paid | ⚠️ | Não usados. Qualquer recurso que gere cobrança exige aprovação explícita |
 
 O orçamento de cada cota está em [docs/arquitetura/orcamento-free-tier.md](docs/arquitetura/orcamento-free-tier.md). AI Gateway, Hyperdrive e Vectorize foram avaliados e ficaram de fora; os motivos estão em [docs/planos/ai-gateway-hyperdrive-vectorize.md](docs/planos/ai-gateway-hyperdrive-vectorize.md). A troca automática de provedor de IA e a proteção do que vai para os modelos estão planejadas em [docs/planos/troca-de-provedores-e-protecao-de-dados.md](docs/planos/troca-de-provedores-e-protecao-de-dados.md). O caminho para rodar o Zuri numa VPS, caso a Cloudflare deixe de servir, está em [docs/planos/portabilidade-vps.md](docs/planos/portabilidade-vps.md). A viabilidade de trazer os fluxos de CRM do n8n para a etapa 22 está em [docs/planos/workflows-n8n.md](docs/planos/workflows-n8n.md).
@@ -304,8 +307,8 @@ O orçamento de cada cota está em [docs/arquitetura/orcamento-free-tier.md](doc
 | | 22a | Motor de fluxos e monitor de sites | ✅ |
 | | 22b | CRM interno e eventos do n8n | ✅ |
 | | 22c | Passos da agenda e dos contatos | ✅ |
-| **E · Fechamento** | 23 | Backup, importação e retenção | 🚧 |
-| | 24 | Deploy e guia de instalação | ⬜ |
+| **E · Fechamento** | 23 | Backup, importação e retenção | ✅ |
+| | 24 | Deploy e guia de instalação | ✅ |
 | | 26 | Revisão de textos e experiência (antes da 25) | ⬜ |
 | | 25 | Auditoria final e testes de ponta a ponta | ⬜ |
 <!-- fim:etapas -->
@@ -332,7 +335,7 @@ Antes do primeiro `npm run dev`, crie o `apps/agent/.dev.vars` com valores locai
 | `npm run test:e2e` | Testes de interface com Playwright |
 | `npm run build` | Build da interface e do Worker |
 
-A instalação na sua conta Cloudflare será feita só pelo navegador (fork, segredos e GitHub Actions); o deploy automático chega na etapa 24. Os segredos, a verificação contra robôs, o primeiro acesso com o código de instalação e a recuperação do acesso já estão em [docs/configuracao-cloudflare.md](docs/configuracao-cloudflare.md).
+Para instalar na sua conta Cloudflare, só pelo navegador (domínio, segredos, token do deploy e GitHub Actions), siga [docs/instalacao-cloudflare.md](docs/instalacao-cloudflare.md). Se algo falhar: [docs/solucao-de-problemas.md](docs/solucao-de-problemas.md).
 
 ## 🧪 Qualidade
 
@@ -379,8 +382,10 @@ scripts/        Lint de i18n, ícones, tamanho do pacote e capturas do README
 | [Acesso remoto e eventos](docs/acesso-remoto.md) | Tokens por escopo, o que cada um alcança, eventos para a central, exemplos com `curl` e o n8n, limites e o Cloudflare Access |
 | [Backup](docs/backup.md) | O que o arquivo leva e o que fica de fora, como exportar e importar, as travas da importação, o backup automático cifrado e como abrir uma cópia fora da Cloudflare |
 | [Avisos e Diagnóstico](docs/avisos.md) | Central de avisos, insistência, resumo do dia, vigias e registro de falhas |
+| [Instalação na Cloudflare](docs/instalacao-cloudflare.md) | Passo a passo só pelo navegador: domínio, Worker, segredos, token do deploy, ambiente `production`, primeiro deploy, Access, bot do Telegram e o resto opcional |
+| [Solução de problemas](docs/solucao-de-problemas.md) | Achar no Workers Logs a linha de um erro do Diagnóstico, falhas do deploy e o que fazer, e como voltar para a versão anterior |
 | [Configurar a Cloudflare](docs/configuracao-cloudflare.md) | Segredos, Turnstile, primeiro acesso e recuperação |
-| [Configurar o GitHub](docs/configuracao-github.md) | Rulesets e proteção das branches |
+| [Configurar o GitHub](docs/configuracao-github.md) | Rulesets, proteção das branches e o ambiente `production` |
 
 ## 🤝 Como contribuir
 
@@ -395,7 +400,7 @@ Leia o [CONTRIBUTING.md](CONTRIBUTING.md) e o [AGENTS.md](AGENTS.md). Em resumo:
 ## 🌎 In English
 
 **Zuri** is a self-hosted, single-owner AI assistant that runs entirely in your own Cloudflare account: one Worker, one Durable Object with SQLite and Workers AI, designed to fit the Free plan. It has a web app (PWA) and a Telegram admin bot that sends notifications, chats, answers quick commands and approves the agent's proposals with a passkey or an e-mailed code. Sign-in uses Turnstile, TOTP 2FA and passkeys, and the agent has no shell, code execution or open HTTP.
-It's built in public in 35 steps; steps 0 to 22c are merged.
+It's built in public in 35 steps; steps 0 to 24 are merged.
 The docs and the UI default to Brazilian Portuguese, and the interface is also available in English.
 
 ## 🙌 Créditos e licença
