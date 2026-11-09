@@ -13,8 +13,8 @@ export type DataSource = (typeof DATA_SOURCES)[number];
  * and math forms): stored text can't forge a tag in any of them, nor one that
  * looks like an already neutralized tag from another block.
  */
-const OPENING = new Set(["<", "‹", "＜", "﹤", "〈", "⟨", "〈", "❮", "«", "˂", "ᐸ", "❬", "《", "⧼", "❰", "⟪", "≺", "⋖"]);
-const CLOSING = new Set([">", "›", "＞", "﹥", "〉", "⟩", "〉", "❯", "»", "˃", "ᐳ", "❭", "》", "⧽", "❱", "⟫", "≻", "⋗"]);
+export const OPENING = new Set(["<", "‹", "＜", "﹤", "〈", "⟨", "〈", "❮", "«", "˂", "ᐸ", "❬", "《", "⧼", "❰", "⟪", "≺", "⋖"]);
+export const CLOSING = new Set([">", "›", "＞", "﹥", "〉", "⟩", "〉", "❯", "»", "˃", "ᐳ", "❭", "》", "⧽", "❱", "⟫", "≻", "⋗"]);
 
 /** The brackets written as HTML entities (`&lt;`, `&#62;`, `&#x3C;`): a model may read them as the real thing (SEC-A6-01). */
 const ENTITY = /&(?:lt|gt|#0*6[02]|#x0*3[ce]);?/gi;

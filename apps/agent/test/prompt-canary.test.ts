@@ -181,7 +181,7 @@ describe("the AI breaker of the object", () => {
 
 describe("the prompt contract (D1)", () => {
   it("gives every origin one class, and no origin is a thing that must never enter", () => {
-    for (const origin of PROMPT_ORIGINS) expect(["instruction", "personal", "sensitive"]).toContain(ORIGIN_CLASS[origin]);
+    for (const origin of PROMPT_ORIGINS) expect(["instruction", "owner", "personal", "sensitive"]).toContain(ORIGIN_CLASS[origin]);
     for (const never of NEVER_IN_PROMPT) expect(PROMPT_ORIGINS as readonly string[]).not.toContain(never);
     expect(NEVER_IN_PROMPT).toEqual([
       "owner_email",

@@ -127,6 +127,7 @@ export {
 export * from "./productivity.ts";
 export * from "./memory.ts";
 export * from "./ai.ts";
+export * from "./agents.ts";
 export * from "./chat.ts";
 export * from "./automations.ts";
 export * from "./schedule.ts";

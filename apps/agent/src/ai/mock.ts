@@ -67,7 +67,7 @@ export class MockAIProvider implements AIProvider {
     req.signal?.throwIfAborted();
     this.record(req, []);
     this.failIfAsked(req);
-    const text = this.reply(lastMessage(req.messages));
+    const text = req.json ? checkAnswer(lastMessage(req.messages)) : this.reply(lastMessage(req.messages));
     req.onStepUsage?.(this.usage(req, text.length));
     return { text };
   }
@@ -155,6 +155,18 @@ export class MockAIProvider implements AIProvider {
       output: tokens(undefined, estimateTokens(outputChars)),
     };
   }
+}
+
+/** A marker a test or a local try writes into the checked text to get a checker's refusal. */
+export const MOCK_REJECT = "mock-reject";
+
+/**
+ * A specialist that reads JSON (a checker, step "guardrails") gets a checker's
+ * answer: approved, unless the text it reads carries MOCK_REJECT. A drafting
+ * specialist finds no fields of its own in it and fails as with any answer out of shape.
+ */
+function checkAnswer(input: string): string {
+  return input.includes(MOCK_REJECT) ? '{"ok":false,"issues":["mock"]}' : '{"ok":true,"issues":[]}';
 }
 
 function lastMessage(messages: ModelMessage[]): string {

@@ -40,7 +40,7 @@ passos, na ordem:
 | Montar campos | Cria ou ajusta campos de cada item |
 | Esperar | Pausa o fluxo por alguns minutos ou dias; ele continua sozinho |
 | Avisar você | Manda um aviso, um só ou um por item (até 10) |
-| Pedir à IA | Resume ou classifica os itens; a IA só lê os itens como dados |
+| Pedir à IA | Resume ou classifica os itens; a IA só lê os itens como dados, e a resposta com link, e-mail, @ ou telefone que não estava nos itens nem na instrução para o passo (`ai_check`) |
 | Olhar sites | O passo do monitor |
 | Ler a agenda | Lê os eventos de uma agenda aberta à Zuri (ou de todas), de tantos dias a partir de hoje; cada evento vira um item |
 | Criar evento | Cria um evento por item numa agenda em "ler e editar", sem convidados e sem e-mail a ninguém |
