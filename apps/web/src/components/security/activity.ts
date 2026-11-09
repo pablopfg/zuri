@@ -47,6 +47,7 @@ export const KIND_LABEL: Record<AuthEventKind, MessageKey> = {
   crm_events_key: "web.activity.kind.crm_events_key",
   backup_exported: "web.activity.kind.backup_exported",
   backup_imported: "web.activity.kind.backup_imported",
+  backup_key_set: "web.activity.kind.backup_key_set",
   mcp_server_changed: "web.activity.kind.mcp_server_changed",
   mcp_tool_autonomy: "web.activity.kind.mcp_tool_autonomy",
   google_connected: "web.activity.kind.google_connected",
