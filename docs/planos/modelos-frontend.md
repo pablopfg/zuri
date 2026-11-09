@@ -27,7 +27,7 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 
 - Protótipo: `docs/planos/modelos-frontend/prototipo-v5.html` (a barra do topo troca a tela e o tema).
 - Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, **Contatos**, Automações, Memória, Configurações, **Estados das telas** e Identidade visual.
-- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (140 imagens: as 12 telas e mais 23 vistas de dentro delas, entre elas o carregando, os painéis de perfil e de avisos, a nota nova, a memória por voz, o assistente de automação, os fluxos, a ficha de contato com WhatsApp, os pedidos de avaliação, as oito seções das configurações e o ajuste de um agente), e a comparação com a rodada 3 em `antes-depois-*.png`.
+- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (144 imagens: as 12 telas e mais 24 vistas de dentro delas, entre elas o carregando, os painéis de perfil e de avisos, a nota nova, a memória e a conversa por voz, o assistente de automação, os fluxos, a ficha de contato com WhatsApp, os pedidos de avaliação, as oito seções das configurações e o ajuste de um agente), e a comparação com a rodada 3 em `antes-depois-*.png`.
 - Acessibilidade: axe (WCAG 2.1 e 2.2 A/AA e boas práticas) sem nenhuma violação nas 136 combinações, e nenhum erro de script.
 
 O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a fonte Figtree, os neutros em zinco e o verde como cor de ação. O que mudou foi o acabamento, regra por regra.
@@ -80,6 +80,12 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 - **Modelos:** a lista de modelos da Cloudflare é conferida sozinha uma vez por dia (e em "Conferir agora"), avisando de modelo novo, modelo que vai sair e mudança de preço. Modelo novo só entra com um toque seu; se um modelo em uso sair, a Zuri volta ao padrão no dia e avisa.
 - **Agentes:** "Ajustar" abre o painel de cada agente: temperatura, top_p, tamanho da resposta, "Estilo e tarefa", as regras fixas para ler e as versões salvas.
 - **Perguntas de 19:15:** impressão digital do nome, origem do endereço e da foto (Google Contatos) em [sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md); envio pelo Chatwoot direto das automações da Zuri, sem n8n, em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md).
+
+### Ajustes pedidos pelo Pablo (09/11, 19:34)
+
+- **Pastas:** "Projetos" de tarefas e notas viraram "Pastas" no protótipo; a memória mantém a categoria "Projeto".
+- **Microfones:** a animação de gravação da memória vale para todos os microfones, inclusive o campo da conversa no Início e na Conversa.
+- **Chatwoot:** as três respostas do Pablo entraram em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md), que fica sem perguntas abertas.
 
 ### Recomendação
 

@@ -121,7 +121,7 @@ Estados de cada pessoa: Agendado, Para enviar hoje, Enviado sem resposta, Lembra
 
 ## 9. Envio automático pelo Chatwoot (futuro): viabilidade
 
-> Atualização de 09/11, 19:15: o Pablo prefere que a própria Zuri envie, numa automação, sem o n8n. O plano completo está em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md). O caminho pelo n8n abaixo fica só como alternativa.
+> Atualização de 09/11, 19:15: o Pablo prefere que a própria Zuri envie, numa automação, sem o n8n. O plano completo está em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md). O caminho pelo n8n abaixo fica só como alternativa. Em 19:34 o Pablo liberou a exceção à regra de 02/11 e informou que a caixa é do tipo API, com API não oficial (sem modelo nem custo da Meta), num Chatwoot self-hosted na versão mais recente.
 
 O primeiro desenho passava pelo n8n que você já usa, sem a Zuri falar direto com o Chatwoot.
 
@@ -161,6 +161,11 @@ Etapas: (1) o envio com um toque deste plano; (2) o fluxo do n8n em teste, manda
 - **Lista de modelos da Cloudflare:** dá para manter sozinha. O binding de IA que a Zuri já usa tem `env.AI.models()`, que devolve o catálogo do Workers AI sem chave nova e sem gastar Neurons. Uma vez por dia, no alarme, a Zuri confere o catálogo de geração de texto e compara com a lista dela. Modelo novo aparece como "Novo" e só entra na lista quando você toca em "Pôr na lista", depois que a Zuri confere se ele aceita ferramentas e tem contexto suficiente. Modelo que vai sair aparece com a data; se estiver em uso, a Zuri troca para o padrão no dia e avisa. Mudança de preço atualiza a estimativa de Neurons. A Zuri nunca troca sozinha para um modelo pago, nem para um modelo que você não escolheu. O que vem do catálogo é validado com Zod, como qualquer dado de fora.
 - **Agentes › Ajustar:** abre um painel com temperatura (0 a 1,5), top_p (ou "padrão do modelo"), tamanho máximo da resposta (com a faixa de cada agente), "Estilo e tarefa" (até 2.000 caracteres), as regras fixas só para ler, as versões (com "Em uso", "Voltar para esta" e "Voltar ao padrão") e "Salvar", que pede a senha se passou de 15 minutos. Os dois conferentes só deixam mudar o tamanho da resposta. É o que a develop já permite.
 
+## 9c. Ajustes de 09/11, 19:34
+
+- **Pastas no lugar de Projetos:** em tarefas e notas, "Projeto" só agrupa; não tem prazo, etapa nem dono. "Pasta" diz isso melhor. Muda só o texto: botão "Pastas", filtro "Todas as pastas", "Pôr numa pasta", lixeira, exportação e o que a Zuri diz na conversa e no Telegram (`/tarefas [pasta]`). O nome interno (`project`, rotas e tabelas) fica, então não há migration. A categoria "Projeto" da memória continua, porque lá é um projeto de vida ("está se mudando"), não um lugar para guardar coisas. Na develop são cerca de 30 textos em `pt-BR-productivity.ts`, `pt-BR-chat.ts`, `pt-BR-backup.ts`, `pt-BR-server.ts` e `pt-BR-security.ts`, mais a descrição das ferramentas `create_project` e `list_projects` para a IA.
+- **Microfone igual em todo lugar:** a gravação da memória (ponto vermelho, tempo, ondas e "Pronto") agora aparece também no campo da conversa, no Início e na Conversa. Ao terminar, mostra "Transcrevendo…" e põe o texto no campo para você conferir. Com "reduzir movimento" ligado no aparelho, o ponto e as ondas ficam parados.
+
 ## 10. Notas: Nova nota e salvamento automático
 
 É possível. "Nova nota" cria a nota e põe o cursor no título. O texto se salva sozinho cerca de 1 segundo depois que você para de digitar. Ao trocar de nota ou fechar a aba, salva na hora. O status mostra "Salvando…" e depois "Salva às HH:MM". Se a mesma nota mudou em outro aparelho, aparece "Esta nota mudou em outro aparelho", com "Ver a versão nova" e "Manter a minha". Essa conferência de versão já existe no código. Uma nota nova vazia não é guardada.
@@ -181,4 +186,4 @@ O nome no rodapé da lateral (no celular, a letra no topo) abre um painel com Co
 
 1. Endereço e foto no contato (muda a decisão anterior).
 2. Guardar a impressão digital do nome inteiro de quem avaliou, para ligar avaliação a contato.
-3. Para o envio pelo Chatwoot: rever a regra de 02/11, informar o tipo da caixa do WhatsApp e aceitar o custo da Meta (⚠️). Detalhes em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md).
+3. ~~Envio pelo Chatwoot~~: respondido em 09/11, 19:34 (exceção liberada, caixa de API sem custo da Meta, Chatwoot self-hosted). Detalhes em [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md).

@@ -6,10 +6,11 @@ Pedido do Pablo em 09/11/2026, 19:15: o link de avaliação sai pela própria Zu
 
 É viável e cabe no plano gratuito da Cloudflare. A Zuri já sabe chamar um serviço de fora com segurança: o passo "Chamar um serviço" dos fluxos usa uma conexão com endereço fixo, métodos e caminhos liberados, credencial cifrada e bloqueio de rede privada e de redirecionamento. O Chatwoot entra como uma integração própria, com só as 4 chamadas necessárias, e o pedido de avaliação vira um tipo novo de automação.
 
-Duas coisas dependem de você antes de ligar o envio:
+Respostas do Pablo (09/11, 19:34):
 
-1. **Mudar uma regra do projeto.** Desde 02/11, a Zuri nunca envia nada a contatos. Ligar este envio muda essa regra, e só para este caso.
-2. **Custo da Meta ⚠️.** Se a caixa do Chatwoot usa a API oficial do WhatsApp, cada mensagem que puxa a conversa sai como modelo aprovado e é cobrada pela Meta. O custo não passa pela Cloudflare.
+1. **Regra do projeto:** liberada a exceção. A Zuri continua sem enviar nada a contatos, menos o pedido de avaliação desta automação.
+2. **Caixa do WhatsApp:** é uma caixa do tipo **API** no Chatwoot, ligada a uma API não oficial do WhatsApp. Não há modelo aprovado nem cobrança da Meta; a mensagem sai como texto comum. O risco que fica é o bloqueio do número, tratado nos limites da seção 6.
+3. **Chatwoot:** instalado no servidor do Pablo (self-hosted), na versão mais recente. Precisa de endereço https público para a Zuri alcançar.
 
 ## 2. Contexto no sistema
 
@@ -48,13 +49,13 @@ Automações › Criar automação › **Pedido de avaliação**:
 
 1. **Quando:** todo dia útil, às 09:00. Pula sábado, domingo, feriados nacionais e os seus "dias sem expediente".
 2. **Quem:** consulta há 8 dias (o número pode mudar), nunca avaliou, não pediu para não receber.
-3. **Mensagem:** escolha o modelo. Na API oficial do WhatsApp, é o nome do modelo aprovado na Meta; nos outros casos, o texto com `{primeiro_nome}` e `{link}`. Aparece uma prévia.
-4. **Envio:** "Perguntar antes" (padrão) ou "Automático" (liberado depois de 10 aprovações). Limite por dia (padrão 20) e intervalo entre mensagens (padrão 1 minuto).
+3. **Mensagem:** o texto, com `{primeiro_nome}` e `{link}`. Aparece uma prévia. Como a caixa é de API, não há modelo da Meta para escolher.
+4. **Envio:** "Perguntar antes" (padrão) ou "Automático" (liberado depois de 10 aprovações). Limite por dia (padrão 20) e intervalo entre mensagens (padrão de 1 a 3 minutos, sorteado a cada envio, para não parecer disparo em massa).
 5. **Revisar.**
 
 ### Fluxo 3 · Dia a dia
 
-Às 09:00 chega um aviso: "3 pedidos de avaliação prontos". A lista mostra nome, data da consulta e telefone. Você tira quem quiser e toca em "Enviar 3". A Zuri envia um por minuto e marca cada um como enviado, com falha ou "Não quer receber". O mesmo vale pelo Telegram, com `/aprovar`.
+Às 09:00 chega um aviso: "3 pedidos de avaliação prontos". A lista mostra nome, data da consulta e telefone. Você tira quem quiser e toca em "Enviar 3". A Zuri envia um a cada 1 a 3 minutos e marca cada um como enviado, com falha ou "Não quer receber". O mesmo vale pelo Telegram, com `/aprovar`.
 
 ### Textos visíveis
 
@@ -68,10 +69,10 @@ Seguem o catálogo `pt-BR-reviews.ts` e `pt-BR-automations.ts`. Os novos são es
 | Dia útil | Segunda a sexta, menos os feriados nacionais (calculados no código, sem chamar API) e os dias sem expediente |
 | Horário | Das 09:00 às 18:00, no fuso da conta; o que sobrar fica para o próximo dia útil |
 | Mensagens por dia | Até 20 (de 1 a 50) |
-| Intervalo | 1 mensagem por minuto, no alarme único do objeto |
+| Intervalo | 1 mensagem a cada 1 a 3 minutos (sorteado), no alarme único do objeto |
 | Lembrete | Um só, 7 dias depois, também em dia útil |
 | Quem recebe | Só quem nunca avaliou, sem avaliação pendente de confirmação e sem "não quero receber" |
-| Disjuntor | Desliga o modo automático e pausa o envio com: 2 falhas seguidas do Chatwoot, recusa da chave (401/403), modelo rejeitado pela Meta, 3 respostas "não quero receber" no mesmo dia |
+| Disjuntor | Desliga o modo automático e pausa o envio com: 2 falhas seguidas do Chatwoot, recusa da chave (401/403), mensagem marcada como falha pela ponte do WhatsApp, 3 respostas "não quero receber" no mesmo dia |
 | Bloqueio | Nada sai durante o modo de bloqueio |
 
 ## 7. Desenho técnico
@@ -86,13 +87,16 @@ Só estas, com caminhos fixos no código (não configuráveis):
 | Achar o contato pelo telefone | `GET /api/v1/accounts/{conta}/contacts/search?q=<+55…>` |
 | Criar o contato, se não existir | `POST /api/v1/accounts/{conta}/contacts` (`inbox_id`, `name`, `phone_number` em E.164) |
 | Abrir a conversa | `POST /api/v1/accounts/{conta}/conversations` (`inbox_id`, `contact_id`, `source_id`) |
-| Enviar a mensagem | `POST /api/v1/accounts/{conta}/conversations/{id}/messages`: `content` ou, na API oficial, `template_params` com o nome do modelo, a categoria, o idioma e os parâmetros |
+| Achar a conversa que já existe | `GET /api/v1/accounts/{conta}/contacts/{id}/conversations` |
+| Enviar a mensagem | `POST /api/v1/accounts/{conta}/conversations/{id}/messages` com `content`, `message_type: outgoing` e `private: false` |
 
 Autenticação pelo cabeçalho `api_access_token`. Recomendação: criar no Chatwoot um agente "Zuri", com acesso só à caixa do WhatsApp, e usar a chave dele.
 
-São no máximo 4 chamadas por mensagem. Com 20 mensagens por dia, ficam 80 subrequisições por dia, uma mensagem por despertar do alarme, longe do teto de 50 por invocação do plano Free.
+Na caixa de API, quem entrega no WhatsApp é a ponte que o Chatwoot chama quando sai uma mensagem; a Zuri não fala com a ponte nem guarda nada dela. Para não duplicar contato nem conversa na ponte, a Zuri procura primeiro o contato pelo telefone e usa a conversa aberta que ele já tem nessa caixa. Só cria contato ou conversa quando não existe, e o "Enviar teste para mim" confere esse caminho de ponta a ponta antes de qualquer paciente.
 
-A forma exata de `template_params` varia com a versão do Chatwoot e o provedor do WhatsApp: a documentação oficial mostra `processed_params`, e há relatos de outro formato. A PR 3 confere com um envio de teste para o seu número antes de qualquer contato.
+São no máximo 4 chamadas por mensagem (procurar, achar a conversa ou criar, enviar). Com 20 mensagens por dia, ficam 80 subrequisições por dia, uma mensagem por despertar do alarme, longe do teto de 50 por invocação do plano Free.
+
+Modelos da Meta (`template_params`) ficam fora: a caixa é de API. Se um dia a caixa mudar para a API oficial, isso volta como PR à parte, com o custo ⚠️ para aprovar.
 
 ### Retorno do Chatwoot
 
@@ -120,10 +124,7 @@ Nenhuma ferramenta nova na conversa. A IA não envia, não escreve a mensagem e 
 
 Na Cloudflare: zero. Usa o Durable Object e o alarme que já existem, sem IA e sem recurso novo. São cerca de 80 subrequisições por dia.
 
-Fora da Cloudflare ⚠️:
-
-- **API oficial do WhatsApp:** a Meta cobra por mensagem de modelo, conforme a categoria que ela mesma dá ao modelo ao aprovar. Pedido de avaliação costuma cair em "marketing", que é a categoria mais cara. Confira o valor na tabela da Meta antes de ligar.
-- **API não oficial (por exemplo, a mesma que o consultório usa no Chatwoot):** sem custo por mensagem, mas com risco de bloqueio do número por envio a quem não conversou antes. O limite de 20 por dia e o intervalo reduzem esse risco, sem zerar.
+Fora da Cloudflare: sem custo por mensagem, porque a caixa é de API com uma API não oficial do WhatsApp (resposta do Pablo, 09/11 19:34). O preço é o risco de bloqueio do número quando muitas mensagens saem para quem não escreveu antes. O limite de 20 por dia, o intervalo variável e o envio só para quem já foi atendido reduzem esse risco, sem zerar.
 
 ## 9. Segurança e privacidade
 
@@ -146,14 +147,15 @@ Unidade: calendário de dias úteis (feriados móveis de 2026 a 2030), escolha d
 | --- | --- | --- |
 | 1 | Fila sem envio: ligar avaliações aos contatos (impressão digital do nome), data da consulta pela agenda ou pelo CRM, calendário de dias úteis, estados e envio com um toque pelo WhatsApp (opção A) | Nova interface aprovada |
 | 2 | Integração Chatwoot: cartão em Integrações, credencial cifrada, listar caixas, "Enviar teste para mim" | PR 1 |
-| 3 | Automação "Pedido de avaliação" com envio pela Zuri, "Perguntar antes", retorno do Chatwoot e aprovação pelo Telegram | PR 2, sua decisão sobre a regra de 02/11 e o custo |
+| 3 | Automação "Pedido de avaliação" com envio pela Zuri, "Perguntar antes", retorno do Chatwoot e aprovação pelo Telegram | PR 2 (regra de 02/11 liberada em 09/11) |
 | 4 | Modo automático depois de 10 aprovações, com disjuntor | PR 3 em uso |
 
 Cada PR segue o fluxo do projeto: plano detalhado, QA, auditoria e capturas.
 
 ## 12. Riscos
 
-- **Formato do modelo da Meta pelo Chatwoot:** muda entre versões. Mitigação: teste para o seu número antes de qualquer contato.
+- **Contato ou conversa duplicados na ponte do WhatsApp:** a Zuri cria o contato num formato diferente do que a ponte usa. Mitigação: procurar pelo telefone e reaproveitar a conversa antes de criar, e o teste para o seu número antes de qualquer paciente.
+- **Mudança da API numa versão nova do Chatwoot:** como o servidor segue a versão mais recente, uma chamada pode mudar. Mitigação: poucas chamadas, fixas no código, testes contra um Chatwoot falso e o disjuntor, que pausa e avisa na primeira resposta estranha.
 - **Bloqueio do número na API não oficial.** Mitigação: limite diário, intervalo e só quem já foi atendido.
 - **Avaliação ligada ao contato errado.** Mitigação: na dúvida, a pessoa fica fora da fila.
 - **Chatwoot fora do ar.** Mitigação: tenta de novo no próximo despertar, desliga depois de 2 falhas e avisa você.
@@ -161,13 +163,15 @@ Cada PR segue o fluxo do projeto: plano detalhado, QA, auditoria e capturas.
 ## 13. Suposições
 
 - O Chatwoot tem endereço https público. Se estiver só na rede interna, a Zuri não alcança, por regra de segurança.
-- A caixa do WhatsApp no Chatwoot é a mesma que o consultório já usa.
+- A caixa do WhatsApp no Chatwoot é a mesma caixa de API que o consultório já usa.
 - A data da consulta está na agenda Pessoal (com o telefone na descrição) ou chega pelos eventos do CRM.
 
 ## 14. Entrevista com o Pablo
 
-### Perguntas abertas
+### Respostas (09/11, 19:34)
 
-1. A regra "a Zuri nunca envia nada a contatos" pode ter esta exceção, só para o pedido de avaliação? Recomendação: sim, com "Perguntar antes" no começo.
-2. A caixa do WhatsApp no Chatwoot usa a API oficial da Meta ou outra API? Isso decide se precisa de modelo aprovado e se há custo por mensagem.
-3. O Chatwoot é o da nuvem (app.chatwoot.com) ou instalado num servidor seu, e em qual versão?
+1. Exceção à regra de 02/11: **sim**, liberada, só para o pedido de avaliação. Começa em "Perguntar antes".
+2. Caixa do WhatsApp: **caixa de API** no Chatwoot, com API não oficial. Sem modelo da Meta e sem custo por mensagem; fica o risco de bloqueio do número.
+3. Chatwoot: **self-hosted, versão mais recente.**
+
+Sem perguntas abertas. O plano detalhado de cada PR sai pela skill `planejar` quando a nova interface for aprovada.

@@ -1591,6 +1591,10 @@ body>#app{flex:1 1 auto;min-height:0;overflow:auto}
 .ag-vers li>span:first-child{flex:1;min-width:0;display:inline-flex;gap:8px;align-items:center}
 .ag-panel .row-actions{flex-wrap:wrap;align-items:center}
 
+/* ajustes de 09/11 19:34: gravação igual em todos os microfones */
+.composer .rec{border:0;box-shadow:none;background:transparent;padding-left:0;min-height:44px}
+.composer-lg .rec{flex-basis:100%}
+
 </style>
 </head>
 <body>
@@ -1703,14 +1707,14 @@ function tabbar() {
 }
 
 /* ---------- peças ---------- */
-const composer = (id, ph, big = false) => `<form class="composer${big ? " composer-lg" : ""}" aria-label="Escrever para a Zuri" onsubmit="return false">
+const composer = (id, ph, big = false) => `<form class="composer${big ? " composer-lg" : ""}" aria-label="Escrever para a Zuri" onsubmit="return false" data-mic-box data-mic-text="O que tenho amanhã de manhã?">${st.mv ? recUI() : `
   <label class="sr" for="${id}">Escreva para a Zuri</label>
   <textarea id="${id}" rows="1" placeholder="${ph}"></textarea>
   <div class="composer-acts">
     <button class="iconbtn" type="button" aria-label="Anexar um arquivo">${ic("paperclip")}</button>
-    <button class="iconbtn" type="button" aria-label="Falar em vez de escrever">${ic("mic")}</button>
+    <button class="iconbtn mic" type="button" data-mic aria-label="Falar em vez de escrever">${ic("mic")}</button>
     <button class="sendbtn" type="submit" aria-label="Enviar para a Zuri">${ic("arrow-up")}</button>
-  </div>
+  </div>`}
 </form>`;
 const chips = () => `<ul class="chips" aria-label="Ideias para começar">${["Organizar a semana", "O que tenho amanhã?", "Me lembre de pagar a luz"].map((c) => `<li><button class="chip" type="button">${c}</button></li>`).join("")}</ul>`;
 const check = (t) => `<button class="check" type="button" role="checkbox" aria-checked="false" aria-label="Concluir “${t}”"></button>`;
@@ -1785,7 +1789,7 @@ function conversa() {
         <p class="say">Pronto, apaguei. Se precisar dela de volta, está na lixeira até 9 de dezembro.</p>`, "08:12")}
       ${me("Agora me ajuda a organizar a mudança? As chaves saem no dia 20.", "08:13")}
       ${z(`<p class="tools"><span>${ic("check", "ic-sm")}Consultou as tarefas</span><span>${ic("check", "ic-sm")}Consultou a agenda</span></p>
-        <p class="say">Montei um plano com quatro tarefas no projeto Mudança de apartamento, contando para trás a partir do dia 20. Ajuste o que quiser e confirme; nada é criado antes disso.</p>
+        <p class="say">Montei um plano com quatro tarefas na pasta Mudança de apartamento, contando para trás a partir do dia 20. Ajuste o que quiser e confirme; nada é criado antes disso.</p>
         <section class="card plan" aria-labelledby="h-plan"><div class="ph"><span class="tile">${ic("clipboard-list")}</span><div><p class="kicker">Plano proposto · Mudança de apartamento</p><h2 id="h-plan">Organizar a mudança</h2></div></div>
           <ul>${plan.map(([t, p, d, hot, s]) => `<li><span class="t">${t}</span><span class="meta"><span>${ic("calendar-days", "ic-sm")}<span class="num">${d}</span>${s ? ' <span class="sugg">sugerido</span>' : ""}</span></span><span class="prio${hot ? " hot" : ""}">${ic("flag", "ic-sm")}${p}</span></li>`).join("")}</ul>
           <p class="status">${ic("info", "ic-sm")}Nada foi criado ainda. Revise e confirme.</p>
@@ -1809,10 +1813,10 @@ const TASKS = {
 function tarefas() {
   const tabs = [["Hoje", "4", true], ["Próximas", "6"], ["Atrasadas", "1"], ["Todas", ""]];
   const head = `<header class="pagehead"><div><h1>Tarefas</h1><p>O que vence hoje, o que vem depois e o que já foi feito.</p></div>
-    <div class="actions"><button class="btn btn-secondary btn-sm" type="button">${ic("folder", "ic-sm")}Projetos</button><button class="btn btn-quiet btn-sm" type="button">${ic("trash-2", "ic-sm")}Lixeira</button></div></header>`;
+    <div class="actions"><button class="btn btn-secondary btn-sm" type="button">${ic("folder", "ic-sm")}Pastas</button><button class="btn btn-quiet btn-sm" type="button">${ic("trash-2", "ic-sm")}Lixeira</button></div></header>`;
   const add = `<form class="addrow" onsubmit="return false"><div class="with-ic">${ic("plus", "ic-sm")}<label class="sr" for="nt">Adicionar tarefa para hoje</label><input id="nt" class="input" placeholder="Adicionar tarefa para hoje"></div><button class="btn btn-primary" type="submit" aria-label="Adicionar tarefa">${ic("plus", "ic-sm")}<span>Adicionar</span></button></form>`;
   const seg = `<div class="seg" role="group" aria-label="Mostrar">${tabs.map(([l, n, on]) => `<button type="button" aria-pressed="${on ? "true" : "false"}">${l}${n ? ` <span class="n">${n}</span>` : ""}</button>`).join("")}</div>`;
-  const filters = `<div class="filters"><div class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ts">Buscar tarefas</label><input id="ts" class="input" placeholder="Buscar tarefas"></div><label class="sr" for="tp">Filtrar por projeto</label><select id="tp" class="input"><option>Todos os projetos</option><option>Mudança de apartamento</option><option>Casa</option></select></div>`;
+  const filters = `<div class="filters"><div class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ts">Buscar tarefas</label><input id="ts" class="input" placeholder="Buscar tarefas"></div><label class="sr" for="tp">Filtrar por pasta</label><select id="tp" class="input"><option>Todas as pastas</option><option>Mudança de apartamento</option><option>Casa</option></select></div>`;
   const prio = (p, hot) => `<span class="prio${hot ? " hot" : ""}">${ic("flag", "ic-sm")}${p}</span>`;
   const due = (d, late) => (late ? `<span class="late">${ic("triangle-alert", "ic-sm")}${d}</span>` : `<span class="num">${d}</span>`);
   const item = ([t, pj, d, p, hot, stt], late) => `<li class="task">${check(t)}<div class="grow"><span class="t">${t}</span>
@@ -1858,7 +1862,7 @@ function notas() {
       <nav aria-label="Suas notas"><ul class="notelist">${NOTES.map((n) => `<li><button class="nitem" type="button" data-n="${n.id}"${n === cur ? ' aria-current="true"' : ""}><span class="t"><span data-nt="${n.id}">${n.t || "Nota sem título"}</span><time class="num">${n.d}</time></span><p>${n.p || "Ainda vazia"}</p></button></li>`).join("")}</ul></nav></div>
     <div class="pane" tabindex="-1" aria-label="Nota aberta"><article class="editor" aria-label="Editar a nota">
       <h1 class="ct-h1-m">Notas</h1><button class="btn btn-quiet btn-sm back-m" type="button" data-n="">${ic("arrow-left", "ic-sm")}Notas</button>
-      <div class="editor-bar"><span class="saved" data-save="${cur.id}" role="status" aria-live="polite">${status}</span>${cur.proj ? `<span class="tag">${ic("folder", "ic-sm")}${cur.proj}</span>` : `<button class="btn btn-quiet btn-sm" type="button">${ic("folder", "ic-sm")}Pôr num projeto</button>`}
+      <div class="editor-bar"><span class="saved" data-save="${cur.id}" role="status" aria-live="polite">${status}</span>${cur.proj ? `<span class="tag">${ic("folder", "ic-sm")}${cur.proj}</span>` : `<button class="btn btn-quiet btn-sm" type="button">${ic("folder", "ic-sm")}Pôr numa pasta</button>`}
         <div class="seg seg-xs" role="group" aria-label="Modo do editor"><button type="button" data-nmode="write" aria-pressed="true">Escrever</button><button type="button" data-nmode="prev" aria-pressed="false">Prévia</button></div>
         <span class="nlocal"><button class="switch switch-sm" type="button" role="switch" aria-checked="${cur.id === "contas"}" aria-labelledby="n-lo"></button><span id="n-lo">Nunca enviar para fora</span></span>
         <button class="iconbtn" type="button" aria-label="Mais ações da nota">${ic("ellipsis")}</button></div>
@@ -1888,29 +1892,33 @@ function weekLoading() {
   setTimeout(() => { delete w.dataset.loading; }, 700);
 }
 
-/* ---------- Memória: falar em vez de digitar ---------- */
+/* ---------- Microfone: o mesmo jeito de gravar em todo lugar (conversa e memória) ---------- */
 const recUI = () => `<div class="rec" role="status" aria-label="Gravando"><span class="rec-dot" aria-hidden="true"></span><span class="rec-t">Ouvindo… <span class="num" data-rec-t>0:03</span></span><span class="wave" aria-hidden="true">${"<i></i>".repeat(14)}</span><button class="btn btn-secondary btn-sm" type="button" data-mic-stop>${ic("check", "ic-sm")}Pronto</button></div>`;
-let recTimer;
-function micStart() {
-  const box = document.querySelector(".mem-in");
+let recTimer, recBox;
+function micStart(btn) {
+  const box = btn.closest("[data-mic-box]");
   if (!box) return;
+  if (recBox && recBox !== box) micStop();
+  recBox = box;
   box.dataset.prev = box.innerHTML;
   box.innerHTML = recUI();
   let s = 0;
   clearInterval(recTimer);
-  recTimer = setInterval(() => { s++; const t = document.querySelector("[data-rec-t]"); if (t) t.textContent = `0:${String(s).padStart(2, "0")}`; if (s >= 4) micStop(); }, 1000);
+  recTimer = setInterval(() => { s++; const t = box.querySelector("[data-rec-t]"); if (t) t.textContent = `0:${String(s).padStart(2, "0")}`; if (s >= 4) micStop(); }, 1000);
   const b = box.querySelector("[data-mic-stop]"); if (b) b.focus();
 }
 function micStop() {
   clearInterval(recTimer);
-  const box = document.querySelector(".mem-in");
+  const box = recBox;
+  recBox = null;
   if (!box || !box.dataset.prev) return;
   box.innerHTML = `<div class="rec" role="status">${ic("loader-circle", "ic-sm spin")}<span class="rec-t">Transcrevendo…</span></div>`;
   setTimeout(() => {
     box.innerHTML = box.dataset.prev;
-    const inp = box.querySelector("input");
-    if (inp) { inp.value = "Prefiro marcar reuniões de manhã, antes das 11h."; inp.focus(); }
-    const h = document.getElementById("mem-hint"); if (h) h.textContent = "Confira o texto antes de guardar. O áudio não fica guardado.";
+    delete box.dataset.prev;
+    const inp = box.querySelector("input, textarea");
+    if (inp) { inp.value = box.dataset.micText || ""; inp.focus(); }
+    const h = box.parentElement && box.parentElement.querySelector("[data-mic-hint]"); if (h) h.textContent = "Confira o texto antes de guardar. O áudio não fica guardado.";
   }, 900);
 }
 
@@ -2295,7 +2303,7 @@ function memoria() {
   return `<div class="page">
     <header class="pagehead"><div><h1>Memória</h1><p>O que a Zuri sabe sobre você. Corrija ou apague o que quiser; nada muda sem você saber.</p></div></header>
     <form class="card mem-add" onsubmit="return false" aria-label="Guardar uma memória">
-      <div class="field"><label class="label" for="mem-q">Guardar uma memória</label><span class="mem-in">${st.mv ? recUI() : `<input id="mem-q" class="input" placeholder="Ex.: Moro em Curitiba desde 2024" maxlength="500" aria-describedby="mem-hint"><button class="iconbtn mic" type="button" data-mic aria-label="Falar a memória">${ic("mic")}</button>`}</span><p class="hint" id="mem-hint">Escreva, ou toque no microfone e fale. Até 500 caracteres.</p></div>
+      <div class="field"><label class="label" for="mem-q">Guardar uma memória</label><span class="mem-in" data-mic-box data-mic-text="Prefiro marcar reuniões de manhã, antes das 11h.">${st.mv ? recUI() : `<input id="mem-q" class="input" placeholder="Ex.: Moro em Curitiba desde 2024" maxlength="500" aria-describedby="mem-hint"><button class="iconbtn mic" type="button" data-mic aria-label="Falar a memória">${ic("mic")}</button>`}</span><p class="hint" id="mem-hint" data-mic-hint>Escreva, ou toque no microfone e fale. Até 500 caracteres.</p></div>
       <label class="field"><span>Tipo</span><select class="input">${cats.map((c) => `<option>${c}</option>`).join("")}</select></label>
       <button class="btn btn-primary" type="submit">Guardar</button>
       <div class="mem-local"><button class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="mem-lo"></button><span><span class="t" id="mem-lo">Nunca enviar para fora</span><span class="hint">Fica só na sua conta: não vai para modelos pagos.</span></span></div>
@@ -2492,14 +2500,14 @@ function cfgDados() {
   const st2 = [["Tarefas", 128, 5000], ["Notas", 42, 2000], ["Memórias", 87, 1000], ["Conversas", 31, 500], ["Clientes", 3, 5000]];
   return sec("h-arm", "Uso do armazenamento", "Quanto de cada coisa você já guardou, perto dos limites.",
     `<div class="meters">${st2.map(([n, u, m]) => meter(n, u, m, `${u.toLocaleString("pt-BR")} de ${m.toLocaleString("pt-BR")}`)).join("")}</div>`)
-  + sec("h-exp", "Exportar e importar", "O arquivo leva tarefas, notas, projetos, memórias, conversas, automações e clientes.",
+  + sec("h-exp", "Exportar e importar", "O arquivo leva tarefas, notas, pastas, memórias, conversas, automações e clientes.",
     `<p class="hint">${ic("triangle-alert", "ic-sm")} O arquivo não é cifrado. Guarde num lugar seguro.</p>`,
     `<button class="btn btn-secondary" type="button">${ic("download", "ic-sm")}Baixar backup</button><button class="btn btn-quiet" type="button">${ic("upload", "ic-sm")}Importar backup</button>`)
   + sec("h-auto", "Backup automático", "Uma cópia por dia, depois das 3 h, cifrada com a sua chave. A Zuri guarda as 7 mais recentes.",
     `<div class="set-row"><div class="grow"><p class="t">Chave</p><p class="hint num">a1b2c3…, criada em 03/11</p></div><button class="btn btn-quiet btn-sm" type="button">Trocar a chave</button></div>
      <ul class="runs">${["hoje, 03:12", "ontem, 03:10", "07/11, 03:11"].map((d) => `<li><time class="num">${d}</time><span>Cópia cifrada</span><button class="btn btn-quiet btn-sm" type="button">${ic("download", "ic-sm")}Baixar</button></li>`).join("")}</ul>`,
     `<button class="btn btn-secondary" type="button">${ic("archive-restore", "ic-sm")}Restaurar uma cópia</button>`)
-  + sec("h-lix", "Lixeira", "Tarefas, notas e projetos apagados ficam 30 dias aqui.",
+  + sec("h-lix", "Lixeira", "Tarefas, notas e pastas apagadas ficam 30 dias aqui.",
     `<ul class="runs">${[["Nota", "Rascunho da mudança", "some em 09/12"], ["Tarefa", "Ligar para o banco", "some em 05/12"]].map(([k, n, w]) => `<li><span class="tag">${k}</span><span>${n} <span class="hint">· ${w}</span></span><button class="btn btn-quiet btn-sm" type="button">Restaurar</button></li>`).join("")}</ul>`,
     `<button class="btn btn-quiet" type="button">Esvaziar a lixeira</button>`);
 }
@@ -2739,7 +2747,7 @@ document.addEventListener("click", (e) => {
   if (t.matches("[data-new-note]")) { st.n = newNote(); render(); refocus("#n-title"); hint("Nota nova. Ela se salva sozinha enquanto você escreve."); return; }
   if (t.matches("[data-n]")) { st.n = t.dataset.n || ""; render(); refocus(st.n ? "#n-title" : ".nitem[aria-current]"); return; }
   if (t.matches("[data-wk]")) { weekLoading(); return; }
-  if (t.matches("[data-mic]")) { micStart(); return; }
+  if (t.matches("[data-mic]")) { micStart(t); return; }
   if (t.matches("[data-mic-stop]")) { micStop(); return; }
   if (t.matches("[data-au-open]")) { st.au = 1; render(); refocus(".au-type[aria-checked=true]"); return; }
   if (t.matches("[data-au-type]")) { st.auType = t.dataset.auType; render(); refocus(`[data-au-type="${st.auType}"]`); return; }
