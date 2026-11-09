@@ -196,12 +196,11 @@ O que está na `develop` hoje, etapa por etapa. "extra" marca melhorias feitas f
 | 🚀 | **Deploy pelo GitHub Actions** | Cada merge na `main` roda a CI inteira de novo, espera a sua aprovação e publica o Worker só no seu domínio. O deploy falha se o `workers.dev` ou as URLs de prévia estiverem ligados, se `http://` não levar a `https://` ou se a Zuri não responder; depois, a versão vira release com o changelog em pt-BR. O token da Cloudflare fica só no ambiente `production` e os segredos da Zuri nunca passam pelo GitHub. Guia de instalação só pelo navegador, do domínio ao primeiro login. | 24 |
 | 🎯 | **Prioridade que aprende** | O tipo de aviso que você quase sempre deixa de lado desce um nível, e o que você abre logo sobe, no máximo um nível por semana e sempre com "Desfazer". Lembretes e segurança nunca mudam, e cada automação tem a sua prioridade. | 11 |
 | ✍️ | **Revisão de textos e experiência** | Botões, avisos e erros com as mesmas palavras em todas as telas, e erros que dizem o que fazer. Todo diálogo fecha pelo X no canto, e toda confirmação põe "Cancelar" antes do verbo, já com o foco. Linhas cheias guardam as ações extras no menu "Mais opções" (⋯), e as telas do celular ficaram mais curtas. | 26 |
+| 🧭 | **Auditoria final** | Auditoria de segurança e de QA do repositório inteiro, com correção e teste para cada achado médio. Testes de ponta a ponta de todas as telas, o webhook do Telegram testado com atualizações no formato real e um teste que confere que nenhuma credencial chega a um modelo, de nenhuma origem. Todo critério de aceite tem o seu teste na [matriz final](docs/qa/matriz-final.md). | 25 |
 
 ## 🔭 O que vem a seguir
 
-| | Funcionalidade | O que faz | Etapa |
-| :---: | --- | --- | :---: |
-| 🧭 | **Auditoria final** | Auditoria completa do repositório e testes de ponta a ponta de todas as telas. | 25 |
+Todas as etapas da especificação estão feitas. O próximo passo é o primeiro deploy na sua conta da Cloudflare, quando você quiser, pelo [guia de instalação](docs/instalacao-cloudflare.md).
 
 ## 🧭 Como funciona
 
