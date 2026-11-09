@@ -1,3 +1,4 @@
+<!-- versao: minor -->
 ### Alterado
 
 - Textos revistos em todo o app, no bot e nos avisos, em português e em
