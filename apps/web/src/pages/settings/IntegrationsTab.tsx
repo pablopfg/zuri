@@ -1,9 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MCP_LIMITS, MCP_TOOL_KINDS, MCP_TOOL_POLICIES, type McpAuthType, type McpOverview, type McpServerInfo, type McpServerProblem, type McpToolInfo, type McpToolKind, type McpToolProblem } from "@zuri/shared";
-import { CircleAlert, CircleCheck, Plug, RefreshCw, Trash2 } from "lucide-react";
+import { CircleAlert, CircleCheck, Pencil, Plug, RefreshCw, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
+import { ActionsMenu } from "../../components/ActionsMenu.tsx";
 import { Button, buttonClass, Card, cn, Dialog, EmptyState, ErrorNotice, Notice, PasswordField, SelectField, Loading, TextField } from "../../components/ui.tsx";
 import { api, errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
@@ -376,34 +377,30 @@ function ServerCard({ server, credentials }: { server: McpServerInfo; credential
         <Button variant="secondary" aria-expanded={open} aria-controls={toolsId} onClick={() => setOpen((v) => !v)} disabled={server.toolCount === 0 && !open}>
           {open ? t("web.integrations.hideTools") : t("web.integrations.showTools")}
         </Button>
-        <Button
-          variant="secondary"
-          loading={busy === "connect"}
-          disabled={!server.enabled || busy !== null}
-          onClick={() =>
-            void run("connect", async () => {
-              const result = await api<{ server: McpServerInfo }>(`/mcp/servers/${server.id}/connect`, { method: "POST" });
-              update(result.server);
-              toast(
-                result.server.status === "connected"
-                  ? t("web.integrations.reconnected")
-                  : result.server.authorizeUrl
-                    ? t("web.integrations.signinReady")
-                    : t("web.integrations.reconnectFailed"),
-              );
-            })
-          }
-        >
-          <RefreshCw className="h-4 w-4" aria-hidden />
-          {t("web.integrations.reconnect")}
-        </Button>
-        <Button variant="secondary" onClick={() => setEditing(true)} disabled={busy !== null}>
-          {t("web.integrations.edit")}
-        </Button>
-        <Button variant="secondary" onClick={() => setRemoving(true)} disabled={busy !== null}>
-          <Trash2 className="h-4 w-4" aria-hidden />
-          {t("web.integrations.remove")}
-        </Button>
+        <ActionsMenu
+          name={server.name}
+          actions={[
+            {
+              label: t("web.integrations.reconnect"),
+              icon: <RefreshCw className="h-4 w-4" />,
+              disabled: !server.enabled || busy !== null,
+              onSelect: () =>
+                void run("connect", async () => {
+                  const result = await api<{ server: McpServerInfo }>(`/mcp/servers/${server.id}/connect`, { method: "POST" });
+                  update(result.server);
+                  toast(
+                    result.server.status === "connected"
+                      ? t("web.integrations.reconnected")
+                      : result.server.authorizeUrl
+                        ? t("web.integrations.signinReady")
+                        : t("web.integrations.reconnectFailed"),
+                  );
+                }),
+            },
+            { label: t("web.integrations.edit"), icon: <Pencil className="h-4 w-4" />, disabled: busy !== null, onSelect: () => setEditing(true) },
+            { label: t("web.integrations.remove"), icon: <Trash2 className="h-4 w-4" />, danger: true, disabled: busy !== null, onSelect: () => setRemoving(true) },
+          ]}
+        />
       </div>
       {error && (
         <p role="alert" className="text-sm text-danger">
