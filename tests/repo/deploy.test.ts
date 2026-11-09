@@ -100,10 +100,13 @@ describe("deploy config (scripts/deploy/gerar-config.ts)", () => {
   });
 
   it("never names a value in its errors", () => {
-    try {
-      renderDeployConfig(base(), { ZURI_DOMAIN: "https://segredo.exemplo.com.br" });
-    } catch (error) {
-      expect(String(error)).not.toContain("segredo");
+    for (const vars of [
+      { ZURI_DOMAIN: "https://segredo.exemplo.com.br" },
+      { ZURI_DOMAIN: DOMAIN, ZURI_ALERT_EMAIL_TO: "segredo@" },
+      { ZURI_DOMAIN: DOMAIN, ZURI_BACKUP_BUCKET: "Segredo" },
+    ]) {
+      expect(() => renderDeployConfig(base(), vars)).toThrow(ConfigError);
+      expect(() => renderDeployConfig(base(), vars)).not.toThrow(/segredo/i);
     }
   });
 });
@@ -289,6 +292,12 @@ describe("health and HTTPS check", () => {
     expect(io.waits).toEqual([5_000, 10_000]);
   });
 
+  it("tries six times by default, 5 s further apart each time", async () => {
+    const io = fakeIo({ [health]: () => new Response(null, { status: 525 }) });
+    expect((await checkHealth({ ZURI_DOMAIN: DOMAIN }, io)).ok).toBe(false);
+    expect(io.waits).toEqual([5_000, 10_000, 15_000, 20_000, 25_000]);
+  });
+
   it("names the missing secret's case on 503, after every try", async () => {
     const io = fakeIo({ [health]: () => new Response(null, { status: 503 }) });
     const result = await checkHealth({ ZURI_DOMAIN: DOMAIN }, io, 3);
@@ -344,7 +353,7 @@ describe("release of main (scripts/deploy/publicar-release.ts)", () => {
 
   it("publishes the newest version of main's changelog, with the published notes", () => {
     const real = readText("CHANGELOG.md");
-    const planned = planPublish(real, () => true);
+    const planned = planPublish(real, () => true, () => []);
     expect(planned.ok).toBe(true);
     if (!planned.ok) return;
     expect(planned.plan.tag).toMatch(/^v0\.\d+\.\d+$/);
@@ -355,16 +364,38 @@ describe("release of main (scripts/deploy/publicar-release.ts)", () => {
 
   it("stops when the tag is missing or not in main's history", () => {
     const seen: string[] = [];
-    const planned = planPublish(readText("CHANGELOG.md"), (tag) => {
-      seen.push(tag);
-      return false;
-    });
+    const planned = planPublish(
+      readText("CHANGELOG.md"),
+      (tag) => {
+        seen.push(tag);
+        return false;
+      },
+      () => [],
+    );
     expect(planned.ok).toBe(false);
     expect(seen).toHaveLength(1);
   });
 
   it("stops on a changelog without versions", () => {
-    expect(planPublish(changelog([]), () => true)).toEqual({ ok: false, error: "CHANGELOG.md has no version yet" });
+    expect(planPublish(changelog([]), () => true, () => [])).toEqual({ ok: false, error: "CHANGELOG.md has no version yet" });
+  });
+
+  it("picks the newest version and compares it with the one before", () => {
+    const real = readText("CHANGELOG.md");
+    const versions = [...real.matchAll(/^## \[(\d+\.\d+\.\d+)\]/gm)].map((m) => m[1]);
+    const planned = planPublish(real, () => true, () => []);
+    if (!planned.ok) throw new Error(planned.error);
+    expect(planned.plan.tag).toBe(`v${versions[0]}`);
+    expect(planned.plan.notes).toContain(`v${versions[1]}...v${versions[0]}`);
+  });
+
+  it("stops when develop reached main before its version was written, but not for the automatic merges", () => {
+    const real = readText("CHANGELOG.md");
+    const automatic = ["chore(release): versão 0.35.0", "docs(readme): atualiza o estado das etapas (automático)"];
+    expect(planPublish(real, () => true, () => automatic).ok).toBe(true);
+    const planned = planPublish(real, () => true, () => [...automatic, "feat(x): algo novo (#300)"]);
+    expect(planned.ok).toBe(false);
+    if (!planned.ok) expect(planned.error).toMatch(/is not written yet \(1 merge/);
   });
 });
 

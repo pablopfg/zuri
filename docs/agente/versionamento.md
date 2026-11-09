@@ -173,6 +173,9 @@ se o deploy e as conferências passarem, o job `release` roda
 - a versão é a seção mais nova do `CHANGELOG.md` da `main`;
 - a tag `vX.Y.Z` já existe (criada aqui, na `develop`) e precisa estar no
   histórico da `main`; sem ela, o job falha e não cria nem move tag nenhuma;
+- se a `main` tem merges depois da tag que não são `chore(release)` nem o do
+  README (a `develop` foi para a `main` antes de a PR `chore(release)`
+  mesclar), o job falha em vez de publicar uma versão antiga como *Latest*;
 - a pré-release vira release, marcada como *Latest*, com as mesmas notas em
   pt-BR e a última linha trocada para "Versão publicada pela `main`.". O
   `versao.yml` conhece as duas formas e não desfaz a troca.

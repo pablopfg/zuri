@@ -154,8 +154,8 @@ Tudo roda num **único Worker** que serve a interface e a API, com **um único D
 **Variáveis e configurações que completam a tabela:**
 
 - Host permitido = host de `PUBLIC_URL` (sem variável extra).
-- `ACCESS_TEAM_DOMAIN` e `ACCESS_AUD` (var, opcionais): ligam o portão 3 do Cloudflare Access.
-- `ALERT_EMAIL_FROM` (var): remetente, num domínio com Email Routing. `ZURI_ALERT_EMAIL_TO` (variável do ambiente `production` do GitHub, nunca no repositório): destino verificado, usado para gerar o binding `SEND_EMAIL` com `destination_address`.
+- `ACCESS_TEAM_DOMAIN` e `ACCESS_AUD` (gravados como segredo do Worker, opcionais): ligam o portão 3 do Cloudflare Access.
+- `ALERT_EMAIL_FROM` (gravado como segredo do Worker, para o domínio não ir ao repositório): remetente, num domínio com Email Routing. `ZURI_ALERT_EMAIL_TO` (segredo do ambiente `production` do GitHub, nunca *variable*, que sai em texto puro no log público, nem no repositório): destino verificado, usado para gerar o binding `SEND_EMAIL` com `destination_address`.
 - `wrangler.jsonc`: `workers_dev: false` com domínio próprio, `preview_urls: false`, `run_worker_first: true`, `migrations` com `new_sqlite_classes` (tag `v1`), classe do Workflow `ZuriWorkflow`, `observability` ligado sem registrar corpos. O Worker é publicado como Custom Domain.
 - `CLOUDFLARE_API_TOKEN` (permissões mínimas: Workers Scripts Edit, Workers Routes Edit, Account Settings Read; Email Routing Addresses Read e DNS Edit só se o primeiro deploy pedir, `docs/instalacao-cloudflare.md`) e `CLOUDFLARE_ACCOUNT_ID` só no ambiente `production` do GitHub.
 

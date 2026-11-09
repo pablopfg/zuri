@@ -196,8 +196,12 @@ conferências mostram só códigos HTTP.
 O deploy roda quando a `main` recebe a `develop`.
 
 1. Em **Pull requests > New pull request**, escolha **base: `main`** e
-   **compare: `develop`**. Título: `release: primeira versão` (o número 1.0.0
-   é decisão sua, veja [versionamento.md](agente/versionamento.md)).
+   **compare: `develop`**. Antes, confira que **não** há PR `chore(release)`
+   aberta para a `develop` (ela escreve a versão no changelog minutos depois de
+   cada merge). Título: `chore(release): publica a versão X.Y.Z`. O número
+   segue o da `develop` (0.x); a 1.0.0 é sua decisão e sai por uma PR na
+   `develop` antes, que você pede ao agente
+   ([versionamento.md](agente/versionamento.md)).
 2. Espere todos os checks ficarem verdes e clique em **Create a merge commit**
    (a `main` aceita só merge commit).
 3. Em **Actions > Deploy**, abra a execução. Depois da CI, o job `deploy`

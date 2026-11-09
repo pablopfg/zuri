@@ -108,7 +108,7 @@ function exact(raw: string | undefined, name: string, lower: boolean): string {
 /** The deploy config: the base plus the owner's domain and optional bindings, with every exposure off. */
 export function renderDeployConfig(base: Config, vars: DeployVars): Config {
   const domain = exact(vars.ZURI_DOMAIN, "ZURI_DOMAIN", true);
-  if (!domain) throw new ConfigError("ZURI_DOMAIN is required (variable of the production environment)");
+  if (!domain) throw new ConfigError("ZURI_DOMAIN is required (secret of the production environment)");
   if (!HOSTNAME.test(domain) || SHARED_HOST.test(domain)) {
     throw new ConfigError("ZURI_DOMAIN must be the host alone, on your own domain, without https:// or a path");
   }

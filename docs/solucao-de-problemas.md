@@ -12,7 +12,7 @@ vezes seguidos do data center, como `-GRU`). O servidor escreve cada linha de
 log com os mesmos campos, então dá para ir de um ao outro.
 
 1. Na Zuri, abra **Configurações > Diagnóstico** e anote, da falha que
-   interessa, o **código** (por exemplo `INTERNAL`) e a **referência**.
+   interessa, o **código** (por exemplo `INTERNAL_ERROR`) e a **referência**.
 2. No painel da Cloudflare, abra **Workers e Pages > zuri > Logs** (a aba de
    observabilidade do Worker).
 3. Escolha o período: o Workers Logs do plano Free guarda **3 dias**. Uma
@@ -29,9 +29,9 @@ log com os mesmos campos, então dá para ir de um ao outro.
    que faltam), `tool`, `kind` e `count`. Nada do que você escreveu, nem e-mail,
    IP, token ou senha, entra no log: isso é conferido por teste.
 
-A versão publicada aparece no Diagnóstico ("Versão da Zuri" e o código da
-implantação). Uma falha marcada como **nova nesta versão** começou no último
-deploy: veja [Voltar para a versão anterior](#voltar-para-a-versão-anterior).
+A versão publicada aparece no Diagnóstico ("Versão da Zuri" e o "Código da
+publicação"). Quando uma falha aparece pela primeira vez numa versão nova, a
+central de avisos avisa: ela começou no último deploy. Veja [Voltar para a versão anterior](#voltar-para-a-versão-anterior).
 
 Para relatar o problema, use **Relatar no GitHub** no próprio Diagnóstico: ele
 abre o formulário já preenchido, e você confere antes de enviar.
@@ -60,6 +60,8 @@ aparecem como `***`.
 | *Check workers.dev…*: `could not read the workers.dev setting` | O token não lê o Worker | Confira **Workers Scripts: Editar** na conta certa |
 | *Check workers.dev…*: `still answers` | O `workers.dev` ainda serve o Worker | Desligue em **Domínios e rotas** e rode de novo |
 | *Check HTTPS…*: `503: a Worker secret is missing` | Segredo faltando, curto ou mal formado | Veja [Erro 503](#erro-503-ou-falta-configurar) abaixo |
+| *Check HTTPS…*: `/api/health did not answer 200` com HTTP 403 | `PUBLIC_URL` com outro host que não o `ZURI_DOMAIN`, ou o Access sem as variáveis certas | Veja [Erro 403](#erro-403-em-toda-página) |
+| *Publish the release*: `version … is not written yet` | A `develop` foi para a `main` antes de a PR `chore(release)` mesclar | Espere a PR `chore(release)` mesclar na `develop`, mande para a `main` de novo e rode o Deploy |
 | *Check HTTPS…*: `HTTP no answer` ou `525`/`526` | Certificado do domínio novo ainda sendo emitido, ou SSL fora de *Full (strict)* | Espere alguns minutos e use **Re-run failed jobs** |
 | *Check HTTPS…*: `http:// must redirect to https://` | *Sempre usar HTTPS* desligado e algo na frente do Worker | Ligue **SSL/TLS > Certificados de borda > Sempre usar HTTPS** |
 | *Publish the release*: `tag … is missing` | A `develop` mandada para a `main` ainda não tinha a versão | Espere o workflow **Versão** na `develop` terminar, mescle a PR `chore(release)` e mande de novo |
