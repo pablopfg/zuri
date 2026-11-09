@@ -6,7 +6,7 @@ Dependências: 0 a 22c, 19b–19d, 20 e 21 mescladas (`develop` em 6a2ba55)
 
 ## 1. Resumo
 
-Hoje os dados do dono só saem do Zuri pelo próprio código: se a conta da
+Hoje os dados do dono só saem da Zuri pelo próprio código: se a conta da
 Cloudflare parar, ficam presos. A etapa 23 entrega, em duas PRs mescláveis
 sozinhas:
 
@@ -161,8 +161,8 @@ escuro e no celular. A aba Dados já está na paleta Ctrl/⌘ K.
 | `web.backup.import.confirm` | Os itens do arquivo entram como novos, ao lado dos que já existem. Automações chegam pausadas e rotinas com IA esperam a sua aprovação. | … | diálogo |
 | `web.backup.import.done` | Importados: {summary}. | Imported: {summary}. | toast |
 | `web.backup.import.tooLarge` | O arquivo passa de 10 MB. | The file is over 10 MB. | erro |
-| `error.backup.invalid` | Este arquivo não é um backup válido do Zuri. Nada foi gravado. | … | erro da API |
-| `error.backup.newer` | Este backup veio de uma versão mais nova do Zuri. Atualize antes de importar. | … | erro da API |
+| `error.backup.invalid` | Este arquivo não é um backup válido da Zuri. Nada foi gravado. | … | erro da API |
+| `error.backup.newer` | Este backup veio de uma versão mais nova da Zuri. Atualize antes de importar. | … | erro da API |
 | `notice.security.backup_exported.*` | Backup baixado / Alguém baixou um backup com todos os seus dados. Se não foi você, troque a senha e encerre as sessões. | … | alerta |
 | `notice.security.backup_imported.*` | Backup importado / Um backup foi importado. Automações chegaram pausadas. Se não foi você, troque a senha e confira os dados. | … | alerta |
 

@@ -25,7 +25,7 @@ export const ptBRBackup = {
   "web.backup.import.confirm": "Os itens do arquivo entram como novos, ao lado dos que já existem. Automações chegam pausadas e rotinas com IA esperam a sua aprovação.",
   "web.backup.import.submit": "Importar",
   "web.backup.import.tooLarge": "O arquivo passa de 10 MB e não pode ser importado.",
-  "web.backup.import.unreadable": "Não consegui ler este arquivo. Escolha um backup .json do Zuri.",
+  "web.backup.import.unreadable": "Não consegui ler este arquivo. Escolha um backup .json da Zuri.",
   "web.backup.import.done": "Backup importado: {summary}.",
   "web.backup.import.nothing": "Backup importado, mas ele não tinha itens.",
   "web.backup.import.routines.one": "{count} rotina com IA espera a sua aprovação em Automações.",

@@ -4,7 +4,7 @@ import { Download, Upload } from "lucide-react";
 import { type ChangeEvent, useRef, useState } from "react";
 import { useToast } from "../../components/Toaster.tsx";
 import { Button, Card, cn, Dialog, ErrorNotice, Loading, Notice } from "../../components/ui.tsx";
-import { api, download, errorMessage } from "../../lib/api.ts";
+import { api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 
 addMessages(ptBRBackup);
@@ -113,13 +113,13 @@ function ExportImportCard() {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<"export" | "import" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [file, setFile] = useState<{ name: string; text: string } | null>(null);
+  const [file, setFile] = useState<{ name: string; backup: unknown } | null>(null);
 
   async function exportNow() {
     setBusy("export");
     setError(null);
     try {
-      const blob = await download("/backup/export");
+      const blob = await (await api<Response>("/backup/export", { raw: true })).blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -144,8 +144,9 @@ function ExportImportCard() {
       setError(t("web.backup.import.tooLarge"));
       return;
     }
+    // Read and parsed here, so a file that isn't JSON never leaves the browser either; the server judges the rest.
     try {
-      setFile({ name: chosen.name, text: await chosen.text() });
+      setFile({ name: chosen.name, backup: JSON.parse(await chosen.text()) });
     } catch {
       setError(t("web.backup.import.unreadable"));
     }
@@ -156,7 +157,7 @@ function ExportImportCard() {
     setBusy("import");
     setError(null);
     try {
-      const { summary } = await api<{ summary: BackupImportSummary }>("/backup/import", { method: "POST", json: file.text });
+      const { summary } = await api<{ summary: BackupImportSummary }>("/backup/import", { method: "POST", body: file.backup });
       setFile(null);
       const parts = SUMMARY.filter(([key]) => summary[key] > 0).map(([key, base]) => plural(base, summary[key]));
       toast(parts.length > 0 ? t("web.backup.import.done", { summary: parts.join(", ") }) : t("web.backup.import.nothing"));

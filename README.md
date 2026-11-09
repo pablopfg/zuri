@@ -191,13 +191,14 @@ O que está na `develop` hoje, etapa por etapa. "extra" marca melhorias feitas f
 | 🤝 | **CRM interno e eventos do n8n** | Em Contatos, a aba **Clientes** guarda até 5.000 clientes com etapa do funil (que você edita), etiquetas, anotações, retorno e aniversário, e um histórico de cada um. A Zuri avisa dos retornos na hora, dos aniversários às 9 h e dos clientes novos que chegam do n8n. O n8n manda clientes, mensagens e agendamentos por eventos assinados com um segredo que aparece uma vez, até 300 por hora e 1.000 por dia. Na conversa, a Zuri busca, cadastra e muda etapa, etiquetas e retorno sem perguntar, mas só a tela apaga cliente; telefone e e-mail só aparecem quando você pede, e nada dos clientes vai para o log. Pedir um fluxo na conversa deixa uma sugestão na aba Fluxos, que só vira fluxo, desligado, quando você salva. | 22b |
 | 📅 | **Agenda e contatos nos fluxos** | Os fluxos ganham três passos: **Ler a agenda** (os eventos de uma agenda aberta à Zuri, de tantos dias a partir de hoje), **Criar evento** (um por item, até 10 por execução, sem convidados e sem e-mail a ninguém, com uma chave que impede repetir o mesmo evento) e **Buscar contatos** (na cópia dos seus contatos do Google, por nome, telefone, etiqueta ou aniversário, sem chamar o Google). Nenhum passo muda ou apaga evento. | 22c |
 | 🔑 | **Acesso remoto e eventos** | Em Configurações › Segurança, **Acesso remoto** cria tokens para o n8n, o Home Assistant ou um script falarem com a Zuri de outro servidor: **Só ler**, **Ler e escrever** (tarefas, notas, memórias e lembretes) ou **Só eventos**, que manda avisos como "n8n: Backup falhou" para a central. O token aparece uma vez, vale 90 dias e só alcança uma lista fechada de rotas; nunca chega a login, Telegram, aprovações, fluxos, CRM nem a rotinas com IA. Ligar e criar pedem a senha e geram alerta de segurança; `/tokens` no bot revoga com um toque, e o modo de bloqueio suspende todos. Eventos: até 60 por hora e 100 por dia, usando no máximo metade do limite de cada canal. | 20 |
+| 💾 | **Exportar, importar e uso do armazenamento** | Em Configurações › Dados, **Baixar backup** gera um arquivo JSON com tarefas, notas, projetos, memórias, conversas, automações, clientes e configurações, legível fora da Cloudflare, sem senhas, chaves, sessões nem conexões. **Importar backup** aceita arquivos de até 10 MB: tudo entra como novo, automações chegam pausadas e rotinas com IA esperam a sua aprovação; um arquivo com algo estranho é recusado inteiro, sem gravar nada. Os dois pedem a senha e geram alerta de segurança. O cartão **Uso do armazenamento** mostra quanto de cada tipo você guardou contra o limite. | 23 |
 | 🎯 | **Prioridade que aprende** | O tipo de aviso que você quase sempre deixa de lado desce um nível, e o que você abre logo sobe, no máximo um nível por semana e sempre com "Desfazer". Lembretes e segurança nunca mudam, e cada automação tem a sua prioridade. | 11 |
 
 ## 🔭 O que vem a seguir
 
 | | Funcionalidade | O que faz | Etapa |
 | :---: | --- | --- | :---: |
-| 💾 | **Backup e instalação** | Backup e importação, guia de instalação só pelo navegador e auditoria final. | 23–25 |
+| 💾 | **Backup automático e instalação** | Backup diário cifrado com a sua chave (7 cópias), cópia mensal pelo Telegram, guia de instalação só pelo navegador e auditoria final. | 23–25 |
 
 ## 🧭 Como funciona
 
@@ -372,6 +373,7 @@ scripts/        Lint de i18n, ícones, tamanho do pacote e capturas do README
 | [Fluxos e monitor de sites](docs/fluxos.md) | A aba Fluxos, os passos (inclusive agenda e contatos), as conexões e suas travas, o monitor de sites, limites e custo |
 | [CRM interno e eventos do n8n](docs/crm.md) | A aba Clientes, o funil, os avisos, o que a conversa pode fazer, como o n8n assina e manda eventos, respostas e limites |
 | [Acesso remoto e eventos](docs/acesso-remoto.md) | Tokens por escopo, o que cada um alcança, eventos para a central, exemplos com `curl` e o n8n, limites e o Cloudflare Access |
+| [Backup](docs/backup.md) | O que o arquivo leva e o que fica de fora, como exportar e importar, as travas da importação e como ler o arquivo fora da Cloudflare |
 | [Avisos e Diagnóstico](docs/avisos.md) | Central de avisos, insistência, resumo do dia, vigias e registro de falhas |
 | [Configurar a Cloudflare](docs/configuracao-cloudflare.md) | Segredos, Turnstile, primeiro acesso e recuperação |
 | [Configurar o GitHub](docs/configuracao-github.md) | Rulesets e proteção das branches |
