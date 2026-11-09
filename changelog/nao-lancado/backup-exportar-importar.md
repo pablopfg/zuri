@@ -22,3 +22,6 @@
   formato não conhece (um servidor MCP, uma automação ligada, um modelo de IA),
   um limite passado ou um texto com caractere de controle recusa tudo, sem
   gravar nada.
+- Antes de montar o arquivo na memória, a importação conta objetos, listas e
+  profundidade, e só lê os 10 MB de quem traz a sessão e o cabeçalho contra
+  CSRF. Um arquivo feito para inchar a memória é recusado sem ser montado.
