@@ -154,4 +154,5 @@ export * from "./crm-schemas.ts";
 export * from "./reviews.ts";
 export * from "./reviews-schemas.ts";
 export * from "./backup.ts";
+export * from "./backup-file.ts";
 export * from "./agents-schemas.ts";

@@ -444,7 +444,10 @@ describe("reading", () => {
       expect(flows).not.toContain("exemplo");
       expect(flows).not.toContain("Monitor");
     });
-    expect(await command("/backup")).toBe("O backup automático ainda não está ligado. Quando estiver, eu conto aqui a idade do último.");
+    // Step 23b: the age of the last backup taken out, and here, an installation without the bucket.
+    expect(await command("/backup")).toBe(
+      "Você ainda não baixou nenhum backup.\nO backup automático não foi configurado nesta instalação. Você ainda pode baixar um backup na tela Dados.",
+    );
     expect(buttons(lastSent())).toEqual([{ text: "Abrir no app", url: `${ORIGIN}/configuracoes/dados` }]);
     // None of these counted as use: reading stays locked.
     expect(await command("/hoje")).toBe(LOCKED);
