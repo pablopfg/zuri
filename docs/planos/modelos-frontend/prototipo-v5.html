@@ -1243,7 +1243,7 @@ kbd{font:500 12px/1 var(--f-ui);padding:3px 6px;border-radius:6px;border:1px sol
 .ld-done .num{font-size:var(--t-sm);color:var(--muted)}
 .ld-c{width:20px;height:20px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1.5px var(--control)}
 @media (prefers-reduced-motion:reduce){
-  .ld *,.ld *::before,.ld *::after{animation:none!important}
+  .ld .ld-bar i,.ld .ld-msg,.ld .ld-sig::before,.ld .ld-sig::after,.ld .sk-row,.ld .sk,.ld .ld-done li{animation:none}
   .ld-bar i{left:0;width:100%;opacity:.45}
   .ld-sig::before{opacity:.5;transform:scale(1.6)}
   .hours-bar .on{transition:none}
@@ -1612,7 +1612,11 @@ function contatos() {
   let list;
   if (tab === "pessoas") {
     const groups = {};
-    for (const p of PEOPLE) (groups[fold(p.n)[0].toUpperCase()] ||= []).push(p);
+    for (const p of PEOPLE) {
+      const k = fold(p.n)[0].toUpperCase();
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(p);
+    }
     list = Object.entries(groups).map(([g, ps]) => `<li class="grp" data-g="${g}" aria-hidden="true">${g}</li>${ps.map((p) => item(p)).join("")}`).join("");
   } else if (tab === "clientes") {
     list = CLIENTS.map((p) => item(p, `<span class="pr"><span class="stage s-${p.stage[0]}"><i></i>${p.stage[1]}</span><span class="num">${p.when}</span></span>`)).join("");
