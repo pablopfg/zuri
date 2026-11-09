@@ -19,6 +19,22 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.34.3] - 2026-11-09
+
+Mesclada às 05:00 (UTC-3) · commit [`daa035a`](https://github.com/pablopfg/Zuri/commit/daa035a5e002839da5ffc97d360c80656f361107) · PR [#203](https://github.com/pablopfg/Zuri/pull/203) · Aprovação das execuções da CI resiste a erro e demora do GitHub
+
+### Corrigido
+
+- **Automações do GitHub que terminavam vermelhas por engano.** O Update PRs,
+  o README e o Versão aprovam as execuções da CI que o próprio push cria. Às
+  vezes o GitHub levava mais de 40 s para criar uma delas, respondia erro para
+  uma aprovação que tinha aceitado ou recusava uma que passava segundos
+  depois. A automação terminava vermelha e abria uma issue de falha sem
+  motivo real. Agora ela espera até 2 minutos pelas execuções e tenta cada
+  aprovação até 3 vezes, relendo a execução antes de cada nova tentativa: se
+  já saiu da espera, conta como aprovada. Quando falha de verdade, o log
+  mostra a resposta do GitHub.
+
 ## [0.34.2] - 2026-11-09
 
 Mesclada às 04:19 (UTC-3) · commit [`c5982a7`](https://github.com/pablopfg/Zuri/commit/c5982a7cea3850cbd120b805e5017fcd48d40adc) · PR [#196](https://github.com/pablopfg/Zuri/pull/196) · Ajustes de cada agente na tela de IA, com versões e senha
@@ -2602,7 +2618,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.34.2...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.34.3...develop
+[0.34.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.3
 [0.34.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.2
 [0.34.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.1
 [0.34.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.34.0
