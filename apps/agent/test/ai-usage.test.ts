@@ -223,7 +223,7 @@ describe("the usage report", () => {
         "2026-10-30",
         "2026-10-31",
       ]);
-      expect(report.limits).toEqual({ requestsPerDay: 3, neuronsPerDay: 9_000, audioSecondsPerDay: AUDIO_SECONDS_PER_DAY, maxOutputTokens: 1_024 });
+      expect(report.limits).toEqual({ requestsPerDay: 3, neuronsPerDay: 9_000, audioSecondsPerDay: AUDIO_SECONDS_PER_DAY, maxOutputTokens: 1_024, usdCentsPerDay: 0 });
       expect(report.pricing.asOf).toBe("2026-10-31");
       // Today's row, its model rows and the 7 days: about a page, not the history.
       expect(db.usage.rowsRead).toBeLessThanOrEqual(10);

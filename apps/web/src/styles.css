@@ -33,6 +33,14 @@
   --color-brand-tile: #0b0f19;
   --color-brand-mark: #f8fafc;
   --color-brand-signal: #22c55e;
+  /*
+   * The usage charts' series (step 21): one per paid model, after the accent
+   * (Workers AI). Each keeps 3:1 or more against the surface in its theme.
+   */
+  --color-chart-1: #2563eb;
+  --color-chart-2: #9333ea;
+  --color-chart-3: #c2410c;
+  --color-chart-4: #0e7490;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   /* The sign-in card rising into place (motion-safe only, where used). */
   --animate-rise: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -75,6 +83,10 @@
   --color-success-soft: #10301d;
   --color-warning: #fcd34d;
   --color-warning-soft: #33270a;
+  --color-chart-1: #60a5fa;
+  --color-chart-2: #c084fc;
+  --color-chart-3: #fb923c;
+  --color-chart-4: #22d3ee;
   /* A step lighter than the page, so the tile still shows on it. */
   --color-brand-tile: #1a2233;
   color-scheme: dark;

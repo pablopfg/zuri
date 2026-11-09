@@ -109,6 +109,8 @@ describe("the migration list", () => {
       26: "68b48f4a81ab4bc174381a62492aca4b71b7d64d5441f1d111527c6b80654b68",
       27: "bd5cc460cb9a3c2eb73e6da9de0bf3184b287412936417abedd2b6d9f275bf68",
       28: "503a4ef7f977350bfa47edb7dcc6442ae6fb8e0519a7814c93784e48a3dbf2e7",
+      29: "84038c823c68cb872b48d2013fc29c108bacec70b3bd4e893a9eaab9cac67889",
+      30: "9438daaa32e658a73c3b370095cb63f27d70e4786ec82d9998650e78b77dd827",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -124,11 +126,12 @@ describe("migrate", () => {
       expect(zurObjects(db)).toEqual([]);
 
       expect(migrate(db)).toBe(LATEST_SCHEMA_VERSION);
-      expect(schemaVersion(db)).toBe(28);
+      expect(schemaVersion(db)).toBe(30);
       // FTS5 keeps shadow tables of its own (zur_notes_fts_data and others): only ours are listed.
       expect(zurObjects(db).filter((name) => !/^table:zur_(notes|memories)_fts_/.test(name))).toEqual([
         "table:zur_activity",
         "index:zur_activity_at",
+        "table:zur_agent_configs",
         "table:zur_alert_deliveries",
         "index:zur_alert_deliveries_at",
         "index:zur_alert_deliveries_channel",
@@ -1191,7 +1194,7 @@ describe("migrate", () => {
       expect(migrate(db, MIGRATIONS.slice(0, 27))).toBe(27);
       db.run(`INSERT INTO zur_settings (key, value, updated_at) VALUES ('timeZone', '"America/Sao_Paulo"', 'x') ON CONFLICT (key) DO NOTHING`);
       const settingsBefore = db.all(`SELECT key, value FROM zur_settings ORDER BY key`);
-      expect(migrate(db)).toBe(28);
+      expect(migrate(db, MIGRATIONS.slice(0, 28))).toBe(28);
       expect(db.all(`SELECT key, value FROM zur_settings ORDER BY key`)).toEqual(settingsBefore);
       expect(db.all(`SELECT * FROM zur_remote_tokens`)).toEqual([]);
       expect(db.all(`SELECT * FROM zur_remote_failures`)).toEqual([]);
@@ -1199,6 +1202,40 @@ describe("migrate", () => {
       expect(() => db.run(`INSERT INTO zur_remote_tokens (id, name, token_hash, hint, scope, created_at, expires_at) VALUES ('a', 'x', 'h', 'abcd', 'admin', 1, 2)`)).toThrow();
       db.run(`INSERT INTO zur_remote_tokens (id, name, token_hash, hint, scope, created_at, expires_at) VALUES ('a', 'x', 'h', 'abcd', 'read', 1, 2)`);
       expect(() => db.run(`INSERT INTO zur_remote_tokens (id, name, token_hash, hint, scope, created_at, expires_at) VALUES ('b', 'y', 'h', 'abcd', 'read', 1, 2)`)).toThrow();
+    });
+  });
+
+  it("upgrades a database at version 28 to 29: paid models off, nothing marked, the owner's data kept", async () => {
+    await withEmptyDatabase("from-28", (db) => {
+      expect(migrate(db, MIGRATIONS.slice(0, 28))).toBe(28);
+      db.run(`INSERT INTO zur_usage_daily (day, ai_requests, neurons, cost_usd) VALUES ('2026-11-03', 4, 120.5, 0.01)`);
+      db.run(`INSERT INTO zur_memories (id, content, category, origin, status, dedupe_key, created_at, updated_at) VALUES ('m1', 'Gosta de café', 'preference', 'app', 'active', 1, 'x', 'x')`);
+      db.run(`INSERT INTO zur_notes (id, title, content, created_at, updated_at) VALUES ('n1', 'Nota', 'Texto', 'x', 'x')`);
+      expect(migrate(db, MIGRATIONS.slice(0, 29))).toBe(29);
+      // The day's counters stay as they were; what the paid models cost starts at zero.
+      expect(db.one(`SELECT ai_requests, neurons, cost_usd, paid_usd, ai_fallbacks FROM zur_usage_daily WHERE day = '2026-11-03'`)).toEqual({ ai_requests: 4, neurons: 120.5, cost_usd: 0.01, paid_usd: 0, ai_fallbacks: 0 });
+      // Nothing is marked "never send out" until the owner marks it.
+      expect(db.one(`SELECT content, local_only FROM zur_memories WHERE id = 'm1'`)).toEqual({ content: "Gosta de café", local_only: 0 });
+      expect(db.one(`SELECT content, local_only FROM zur_notes WHERE id = 'n1'`)).toEqual({ content: "Texto", local_only: 0 });
+    });
+  });
+
+  it("upgrades a database at version 29 to 30: every agent on the code's defaults, older rows with no prompt version", async () => {
+    await withEmptyDatabase("from-29", (db) => {
+      expect(migrate(db, MIGRATIONS.slice(0, 29))).toBe(29);
+      db.run(`INSERT INTO zur_conversations (id, title, created_at, updated_at) VALUES ('c1', 'Oi', 'x', 'x')`);
+      db.run(`INSERT INTO zur_messages (id, conversation_id, role, content, created_at) VALUES ('m1', 'c1', 'assistant', 'Olá', 'x')`);
+      expect(migrate(db)).toBe(30);
+      expect(db.all(`SELECT * FROM zur_agent_configs`)).toEqual([]);
+      expect(db.one(`SELECT content, prompt_version FROM zur_messages WHERE id = 'm1'`)).toEqual({ content: "Olá", prompt_version: null });
+      // A version is 1 or more, and "Voltar ao padrão" is a flag.
+      expect(() => db.run(`INSERT INTO zur_agent_configs (agent, version, created_at) VALUES ('summary', 0, 1)`)).toThrow();
+      expect(() => db.run(`INSERT INTO zur_agent_configs (agent, version, is_default, created_at) VALUES ('summary', 1, 2, 1)`)).toThrow();
+      db.run(`INSERT INTO zur_agent_configs (agent, version, is_default, created_at) VALUES ('summary', 1, 1, 1)`);
+      expect(() => db.run(`INSERT INTO zur_agent_configs (agent, version, created_at) VALUES ('summary', 1, 1)`)).toThrow();
+      for (const table of ["zur_automation_runs", "zur_reviews"]) {
+        expect(db.all<{ name: string }>(`PRAGMA table_info(${table})`).map((c) => c.name)).toContain("prompt_version");
+      }
     });
   });
 });

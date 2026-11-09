@@ -1,3 +1,4 @@
+import type { PaidProviderId, ProviderState } from "@zuri/shared";
 import { AppError } from "../http/errors.ts";
 import type { AIProvider } from "./provider.ts";
 
@@ -13,6 +14,20 @@ export interface QuotaStore {
   load(): string | undefined;
   save(day: string | null): void;
 }
+
+/**
+ * The long states of the paid companies (step 21): out of credit or key
+ * refused, kept until the owner says to try again (plan, "Disjuntor por
+ * provedor"). Written only when a state changes (rule P4).
+ */
+export interface ProviderStateStore {
+  load(): Partial<Record<PaidProviderId, ProviderState>>;
+  save(provider: PaidProviderId, state: ProviderState): void;
+}
+
+const LONG_STATES: Readonly<Record<string, ProviderState>> = { "error.aiNoCredit": "no_credit", "error.aiKeyRefused": "bad_key" };
+
+const isPaid = (id: AIProvider["id"]): id is PaidProviderId => id === "anthropic" || id === "openai";
 
 interface Entry {
   failures: number[];
@@ -37,17 +52,42 @@ const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 export class CircuitBreaker {
   readonly #entries = new Map<string, Entry>();
   #quotaDay: string | undefined;
+  readonly #states: Partial<Record<PaidProviderId, ProviderState>>;
 
   constructor(
     private readonly clock: () => number = Date.now,
     private readonly store: QuotaStore | null = null,
+    private readonly states: ProviderStateStore | null = null,
   ) {
     this.#quotaDay = store?.load();
+    this.#states = { ...(states?.load() ?? {}) };
+  }
+
+  /** How a paid company answers now ("ok" for any other provider). */
+  state(provider: AIProvider["id"]): ProviderState {
+    return isPaid(provider) ? (this.#states[provider] ?? "ok") : "ok";
+  }
+
+  /** The owner topped up or fixed the key: the company is tried again on the next call. */
+  reset(provider: PaidProviderId): void {
+    if (this.state(provider) === "ok") return;
+    delete this.#states[provider];
+    this.states?.save(provider, "ok");
+    for (const key of [...this.#entries.keys()]) if (key.startsWith(`${provider}:`)) this.#entries.delete(key);
+  }
+
+  /** Not to be called today or until the owner acts: the account's allocation spent, no credit, key refused. */
+  blocked(provider: Pick<AIProvider, "id">): AppError | null {
+    if (this.quotaSpent(provider)) return new AppError("AI_LIMIT_REACHED", "error.aiQuotaExhausted", { limit: "account" });
+    const state = this.state(provider.id);
+    if (state === "no_credit") return new AppError("SERVICE_UNAVAILABLE", "error.aiNoCredit");
+    if (state === "bad_key") return new AppError("SERVICE_UNAVAILABLE", "error.aiKeyRefused");
+    return null;
   }
 
   /** True when the provider may be called now: closed, or open past its time (one try). */
   available(provider: Pick<AIProvider, "id" | "model">): boolean {
-    if (this.quotaSpent(provider)) return false;
+    if (this.blocked(provider)) return false;
     const entry = this.#entries.get(key(provider));
     return !entry || entry.openUntil <= this.clock();
   }
@@ -68,6 +108,13 @@ export class CircuitBreaker {
 
   /** A failure another model could cover (isSwitchable). */
   failed(provider: Pick<AIProvider, "id" | "model">, error: AppError): void {
+    const long = LONG_STATES[error.messageKey];
+    if (long) {
+      if (!isPaid(provider.id) || this.#states[provider.id] === long) return;
+      this.#states[provider.id] = long;
+      this.states?.save(provider.id, long);
+      return;
+    }
     if (error.messageKey === "error.aiQuotaExhausted") {
       if (provider.id !== "workers-ai") return;
       const today = utcDay(this.clock());
@@ -127,12 +174,14 @@ export class ProviderChain {
   /**
    * The providers to try now, in order. An open breaker skips its provider;
    * when every one is open, the chosen one is tried anyway (better a call
-   * than no answer). With the account's allocation spent nothing is called.
+   * than no answer). A provider with the account's allocation spent, no
+   * credit or its key refused is never called.
    */
   candidates(): AIProvider[] {
     const all = this.fallback ? [this.primary, this.fallback] : [this.primary];
-    const allowed = all.filter((provider) => !this.breaker.quotaSpent(provider));
-    if (allowed.length === 0) throw new AppError("AI_LIMIT_REACHED", "error.aiQuotaExhausted", { limit: "account" });
+    const allowed = all.filter((provider) => !this.breaker.blocked(provider));
+    // Nothing may be called: the chosen model's reason is the one the owner reads.
+    if (allowed.length === 0) throw this.breaker.blocked(this.primary) ?? new AppError("SERVICE_UNAVAILABLE", "error.aiUnavailable");
     const ready = allowed.filter((provider) => this.breaker.available(provider));
     return ready.length ? ready : [allowed[0] as AIProvider];
   }

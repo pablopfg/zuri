@@ -1002,6 +1002,44 @@ Etapa 20. Guia do dono e de quem integra em
 - **Nunca no log.** Token, corpo e query não vão para log, Atividade nem
   aviso; só o nome do token e o escopo.
 
+## Modelos pagos e dados que saem da conta
+
+Etapa 21 ⚠️. Os modelos da Anthropic e da OpenAI são as únicas chamadas de IA
+que saem da conta Cloudflare do dono. Por isso:
+
+- Nascem desligados. Ligar pede a chave como segredo do Worker e a senha
+  recente, e a tela mostra antes o que vai, o que fica, a retenção da empresa
+  (até 30 dias, sem treino com dados da API, conferido em 04/11/2026) e o link
+  das regras. Mudar o teto em US$ também pede a senha.
+- A chave fica em `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`, nunca no banco, no
+  navegador ou nos logs. O prompt é limpo dela pela lista de segredos do
+  `MeteredAI`.
+- Perfil de fora (`apps/agent/src/ai/external.ts`): nada marcado como "Nunca
+  enviar para fora", histórico de 8 mensagens, notas cortadas em 600
+  caracteres, convidados da agenda só como número, e dados pessoais trocados
+  por marcadores que só a tentativa conhece. Um modelo que inventa um marcador
+  não recebe valor nenhum.
+- O conteúdo guardado continua em blocos `<data>`; o perfil de fora só tira
+  coisas, nunca muda as regras fixas do prompt.
+- Sem AI Gateway e sem telemetria. A OpenAI recebe `store: false`.
+- Sem crédito ou chave recusada, a empresa sai da cadeia até o dono pedir de
+  novo, para não insistir com uma conta que recusa.
+- Testes: `apps/agent/test/ai-external.test.ts`, `ai-paid.test.ts` e
+  `chat-external.test.ts`.
+
+### O que isso não resolve
+
+- O mascaramento acha formatos conhecidos (e-mail, telefone, CPF, cartão, IBAN,
+  chaves). Nome, endereço, saúde ou senha escrita em texto livre saem como estão.
+  Para isso existe "Nunca enviar para fora".
+- O resumo da conversa e as respostas antigas da Zuri já são texto pronto: se
+  ela citou uma nota marcada numa resposta com o Workers AI, essa resposta pode
+  ir no histórico curto de uma vez seguinte com modelo pago.
+- O que sai fica até 30 dias na empresa, pelas regras dela; a Zuri não apaga
+  nada do lado de lá.
+- O teto em US$ é estimado antes e acertado depois pela conta da empresa. Uma
+  chamada longa pode passar um pouco do teto, nunca mais que uma resposta.
+
 ## Dados apagados
 
 Apagar uma memória (ou esvaziar a lixeira) tira o registro da tabela e do

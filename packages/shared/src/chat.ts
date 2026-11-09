@@ -127,6 +127,8 @@ export interface PendingAction {
   result?: string;
   /** External calls: the server said the call failed. */
   resultError?: boolean;
+  /** The target is marked "never send out": its label never goes to a model outside the owner's account. */
+  localOnly?: boolean;
   createdAt: string;
   expiresAt: string;
 }

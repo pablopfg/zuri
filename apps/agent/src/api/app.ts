@@ -25,6 +25,13 @@ import {
   type AreaVersions,
   type SetupTicket,
   type UsageReport,
+  isPaidModel,
+  type PaidProviderId,
+  PAID_PROVIDER_IDS,
+  paidProviderOf,
+  type UsageHistory,
+  type UsageHistoryDays,
+  USAGE_HISTORY_DAYS,
 } from "@zuri/shared";
 import { type Context, Hono } from "hono";
 import { type ClientInfo, clientInfo } from "../auth/client.ts";
@@ -88,6 +95,12 @@ export interface ApiDeps {
   automations(): AutomationDeps;
   /** Today's AI use against the limits (step 8). */
   aiUsage(): UsageReport;
+  /** The usage panel's period (step 21). Absent only in tests of other routes. */
+  aiHistory?(days: UsageHistoryDays): UsageHistory;
+  /** Whether a paid company's key is set (step 21); absent, none is. */
+  paidConfigured?(provider: PaidProviderId): boolean;
+  /** The owner says a paid company may be tried again (topped up, new key). Absent only in tests of other routes. */
+  retryPaidProvider?(provider: PaidProviderId): void;
   /** The chat, its proposals and voice input (step 9). */
   chat(): ChatDeps;
   /** The notice center and the failure log (step 11). Absent only in tests of other routes. */
@@ -434,6 +447,10 @@ export function createApi(deps: ApiDeps) {
     const patch = await readJson(c.req.raw, settingsUpdateSchema, 4 * 1024);
     // Longer sessions weaken a stolen one: the session limits ask for the password typed recently.
     if (SESSION_FIELDS.some((field) => field in patch)) deps.auth().requireRecentAuth(c.get("session"));
+    // A paid model (step 21, ⚠️) costs money and sends text out; its ceiling decides how much. Both ask for the password again.
+    const paid = [patch.aiModel, patch.aiFallbackModel].filter(isPaidModel);
+    for (const model of paid) if (!deps.paidConfigured?.(paidProviderOf(model))) throw new AppError("NOT_CONFIGURED");
+    if (paid.length > 0 || "aiUsdCentsPerDay" in patch) deps.auth().requireRecentAuth(c.get("session"));
     const before = patch.timeZone === undefined ? null : deps.settings().field("timeZone");
     const settings = deps.settings().update(patch);
     // A new zone moves every wall-clock time: each automation's next run is computed again.
@@ -528,6 +545,25 @@ export function createApi(deps: ApiDeps) {
   app.get("/usage", () => Response.json(deps.aiUsage()));
   const agents = deps.agents;
   if (agents) registerAgentRoutes(app, () => agents(), () => deps.auth(), client);
+
+  // Step 21: the usage panel, by period. Numbers only, never what was said.
+  const history = deps.aiHistory;
+  if (history) app.get("/usage/history", (c) => {
+    const days = Number(c.req.query("days") ?? "7");
+    const period = USAGE_HISTORY_DAYS.find((n) => n === days);
+    if (period === undefined) throw new AppError("VALIDATION_FAILED", undefined, { fields: ["days"] });
+    return Response.json(history(period));
+  });
+
+  // Step 21: "I topped up" / "new key": the paid company is tried again on the next call.
+  const retry = deps.retryPaidProvider;
+  if (retry) app.post("/usage/providers/:provider/retry", (c) => {
+    const provider = PAID_PROVIDER_IDS.find((id) => id === c.req.param("provider"));
+    if (!provider) throw new AppError("NOT_FOUND");
+    deps.auth().requireRecentAuth(c.get("session"));
+    retry(provider);
+    return Response.json(deps.aiUsage());
+  });
 
   return app;
 }

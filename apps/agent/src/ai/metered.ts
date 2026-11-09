@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AppError } from "../http/errors.ts";
 import { log } from "../log.ts";
 import { ProviderChain } from "./chain.ts";
+import { externalPrompt, Pseudonymizer } from "./external.ts";
 import type { AgentEvent, AIProvider, GenerateRequest, ModelMessage, ProviderTool, StepUsage, ToolRequest } from "./provider.ts";
 import { classifyAiError, estimateTokens, isAbort, isSwitchable } from "./provider.ts";
 import type { Embedder } from "../semantic/embedder.ts";
@@ -30,8 +31,19 @@ export type MeteredRequest = Omit<GenerateRequest, "onStepUsage" | "reserveNextS
   maxNeurons?: number;
   /** Told the Neurons of each model call once it is settled, so the caller can count its share. */
   onNeurons?: (neurons: number) => void;
+  /**
+   * Set before every try (step 21): `external` is true while the model is a
+   * company outside the owner's account, so the tools leave out what is
+   * marked "never send out" (plan D3) and send notes in part (D4).
+   */
+  exposure?: Exposure;
 };
-export type MeteredToolRequest = Omit<ToolRequest, "onStepUsage" | "reserveNextStep">;
+export type MeteredToolRequest = Omit<ToolRequest, "onStepUsage" | "reserveNextStep"> & Pick<MeteredRequest, "exposure">;
+
+/** Who reads the tools' results in the try under way (ToolContext.exposure reads the same object). */
+export interface Exposure {
+  external: boolean;
+}
 
 /**
  * Longest a turn may take: 4,096 tokens at Workers AI's slowest usual pace fit
@@ -88,7 +100,8 @@ export class MeteredAI {
     private readonly embedder: Embedder | null = null,
   ) {
     this.chain = providers instanceof ProviderChain ? providers : new ProviderChain(providers, null);
-    this.secrets = [...new Set(secrets.filter((value): value is string => typeof value === "string" && value.length >= MIN_SECRET_LENGTH))];
+    // Trimmed: a secret pasted with a trailing newline is used trimmed (paidKey), and must be found that way too.
+    this.secrets = [...new Set(secrets.map((value) => value?.trim()).filter((value): value is string => typeof value === "string" && value.length >= MIN_SECRET_LENGTH))];
   }
 
   /**
@@ -201,23 +214,26 @@ export class MeteredAI {
    */
   async generate(req: MeteredRequest): Promise<{ text: string }> {
     const clean = this.scrubRequest(req);
-    const providers = this.chain.candidates();
+    const providers = this.candidates(req);
     const deadline = Date.now() + this.deadlineMs;
     let previous: AppError | null = null;
     for (const [index, provider] of providers.entries()) {
       // The failure just now may have closed this one too (the same account's allocation).
       if (index > 0 && !this.chain.breaker.available(provider)) continue;
-      const turn = this.turn(clean, 0, provider);
+      const pseudonyms = provider.external ? new Pseudonymizer() : null;
+      const prompt = pseudonyms ? { ...clean, ...externalPrompt(clean, pseudonyms) } : clean;
+      if (clean.exposure) clean.exposure.external = provider.external === true;
+      const turn = this.turn(prompt, 0, provider);
       const call = this.callSignal(req.signal, deadline);
       let outcome: Outcome = "error";
       let failure: AppError | null = null;
       try {
-        const { maxNeurons: _max, onNeurons: _on, ...request } = clean;
-      const result = await provider.generate({ ...request, signal: call.signal, maxOutputTokens: turn.maxOutputTokens, onStepUsage: turn.onStepUsage });
+        const { maxNeurons: _max, onNeurons: _on, exposure: _exposure, ...request } = prompt;
+        const result = await provider.generate({ ...request, signal: call.signal, maxOutputTokens: turn.maxOutputTokens, onStepUsage: turn.onStepUsage });
         outcome = call.outcome();
         if (outcome === "error") throw timeout();
         this.chain.breaker.succeeded(provider);
-        return result;
+        return pseudonyms ? { text: pseudonyms.reveal(result.text) } : result;
       } catch (error) {
         outcome = call.outcome(error);
         failure = outcome === "error" && call.timedOut() ? timeout() : classifyAiError(error);
@@ -229,6 +245,20 @@ export class MeteredAI {
       }
     }
     throw previous ?? new AppError("SERVICE_UNAVAILABLE", "error.aiUnavailable");
+  }
+
+  /**
+   * The providers for this request. One with its own Neuron budget (a flow, a
+   * reply to a review: work no one watches, started by others) never goes to a
+   * paid company (step 21): its budget is in Neurons, and the US$ ceiling is off
+   * by default. Without a free model in the chain it is refused.
+   */
+  private candidates(req: { maxNeurons?: number | undefined }): AIProvider[] {
+    const providers = this.chain.candidates();
+    if (req.maxNeurons === undefined) return providers;
+    const free = providers.filter((provider) => provider.external !== true);
+    if (free.length === 0) throw new AppError("SERVICE_UNAVAILABLE", "error.aiPaidBackground");
+    return free;
   }
 
   /**
@@ -263,9 +293,15 @@ export class MeteredAI {
   async *generateWithTools(req: MeteredToolRequest): AsyncIterable<AgentEvent> {
     // A tool that starts ends any switch, even before its event reaches this loop (the SDK runs it first).
     let toolRan = false;
-    const clean = this.scrubTools(this.scrubRequest(req), () => {
-      toolRan = true;
-    });
+    // The try under way: an external one hides values on their way out and gets them back (D5).
+    const current: { pseudonyms: Pseudonymizer | null } = { pseudonyms: null };
+    const clean = this.scrubTools(
+      this.scrubRequest(req),
+      () => {
+        toolRan = true;
+      },
+      current,
+    );
     const toolChars = clean.tools.reduce((n, tool) => n + tool.name.length + tool.description.length + schemaChars(tool.inputSchema), 0);
     const providers = this.chain.candidates();
     const deadline = Date.now() + this.deadlineMs;
@@ -274,14 +310,20 @@ export class MeteredAI {
       const last = index === providers.length - 1;
       if (index > 0 && !this.chain.breaker.available(provider)) continue;
       const fallback = provider !== this.chain.primary;
-      const turn = this.turn(clean, toolChars, provider);
+      const pseudonyms = provider.external ? new Pseudonymizer() : null;
+      current.pseudonyms = pseudonyms;
+      if (clean.exposure) clean.exposure.external = provider.external === true;
+      const { exposure: _exposure, ...base } = clean;
+      const request = pseudonyms ? { ...base, ...externalPrompt(base, pseudonyms) } : base;
+      const shown = pseudonyms?.revealStream() ?? null;
+      const turn = this.turn(request, toolChars, provider);
       const call = this.callSignal(req.signal, deadline, last ? undefined : this.firstChunkMs);
       let outcome: Outcome = "aborted";
       let started = false;
       let failure: AppError | null = null;
       try {
         for await (const event of provider.generateWithTools({
-          ...clean,
+          ...request,
           signal: call.signal,
           maxOutputTokens: turn.maxOutputTokens,
           onStepUsage: turn.onStepUsage,
@@ -292,8 +334,24 @@ export class MeteredAI {
             call.started();
             if (fallback) yield { type: "fallback", model: provider.model };
           }
-          yield event;
+          if (!pseudonyms || !shown) {
+            yield event;
+            continue;
+          }
+          // What the owner sees and what the tools ran with carry the real values, never the markers.
+          if (event.type === "text") {
+            const delta = shown.push(event.delta);
+            if (delta) yield { type: "text", delta };
+            continue;
+          }
+          const rest = shown.flush();
+          if (rest) yield { type: "text", delta: rest };
+          if (event.type === "tool-start") yield { ...event, input: pseudonyms.revealDeep(event.input) };
+          else if (event.type === "tool-end") yield { ...event, output: pseudonyms.revealDeep(event.output) };
+          else yield event;
         }
+        const rest = shown?.flush();
+        if (rest) yield { type: "text", delta: rest };
         // The SDK ends an aborted stream quietly: the signals say why it stopped.
         outcome = call.outcome();
         if (outcome === "error") failure = call.timedOut() ? timeout() : busy();
@@ -329,17 +387,26 @@ export class MeteredAI {
     return { ...req, system: this.scrub(req.system), messages };
   }
 
-  /** Tool results reach the model inside the provider: they get the same check on their way. */
-  private scrubTools(req: MeteredToolRequest, onRun: () => void): MeteredToolRequest {
+  /**
+   * Tool results reach the model inside the provider: they get the same check
+   * on their way. With an external model (D5) the arguments get the real
+   * values back before the tool runs (and its Zod schema checks them), and the
+   * result goes out with the values hidden again.
+   */
+  private scrubTools(req: MeteredToolRequest, onRun: () => void, current: { pseudonyms: Pseudonymizer | null }): MeteredToolRequest {
     const tools: ProviderTool[] = req.tools.map((tool) => ({
       ...tool,
       execute: async (input, callId) => {
         onRun();
-        const output = await tool.execute(input, callId);
-        if (this.secrets.length === 0) return output;
-        const json = JSON.stringify(output ?? null);
-        const clean = this.scrub(json);
-        return clean === json ? output : (JSON.parse(clean) as unknown);
+        const pseudonyms = current.pseudonyms;
+        const raw = await tool.execute(pseudonyms ? pseudonyms.revealDeep(input) : input, callId);
+        let output = raw;
+        if (this.secrets.length > 0) {
+          const json = JSON.stringify(raw ?? null);
+          const clean = this.scrub(json);
+          output = clean === json ? raw : (JSON.parse(clean) as unknown);
+        }
+        return pseudonyms ? pseudonyms.hideDeep(output) : output;
       },
     }));
     return { ...req, tools };
@@ -431,7 +498,8 @@ export class MeteredAI {
       const estimate = stepNeurons({ model: call.model, billable: true, input: { reported: 0, estimated: call.inputTokens }, output: { reported: 0, estimated: maxOutputTokens } });
       if (estimate > req.maxNeurons) throw new AppError("AI_LIMIT_REACHED", "error.aiLimit.neurons", { limit: req.maxNeurons });
     }
-    const first = this.meter.reserveChat(call, limits);
+    // The first step of a try on the fallback model counts as one take-over (the usage panel).
+    const first = this.meter.reserveChat({ ...call, fallback: provider !== this.chain.primary }, limits);
     const reservations: Reservation[] = [first];
     const day = first.day;
     let settled = 0;

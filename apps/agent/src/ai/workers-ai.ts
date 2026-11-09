@@ -1,6 +1,7 @@
-import { generateText, streamText, type ToolSet } from "ai";
+import { generateText, type LanguageModel, streamText, type ToolSet } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import type { AgentEvent, AIProvider, GenerateRequest, ToolRequest } from "./provider.ts";
+import { AppError } from "../http/errors.ts";
 import { classifyAiError, estimateTokens } from "./provider.ts";
 import { meteredBinding, type StepMeter, stepUsage } from "./workers-ai-usage.ts";
 
@@ -16,25 +17,28 @@ import { meteredBinding, type StepMeter, stepUsage } from "./workers-ai-usage.ts
 const THINKING_MODELS: ReadonlySet<string> = new Set(["@cf/zai-org/glm-4.7-flash", "@cf/qwen/qwen3-30b-a3b-fp8"]);
 
 /**
- * Cloudflare Workers AI through the AI SDK and Cloudflare's own provider for it.
- * Reasoning ("thinking") is off: it would multiply the output Neurons. The SDK's
- * retries are off too: a retry is a model call the daily limits would not see.
+ * A model reached through the AI SDK (Workers AI here, the paid companies in
+ * paid.ts): the turn's loop, the tools and the metering of every call that
+ * started. A subclass gives the model, already wrapped so each call it makes
+ * pushes one StepMeter, and the call settings it accepts. The SDK's retries
+ * are off: a retry is a model call the daily limits would not see.
  */
-export class WorkersAIProvider implements AIProvider {
-  readonly id = "workers-ai";
-  readonly billable = true;
+export abstract class SdkProvider implements AIProvider {
+  abstract readonly id: AIProvider["id"];
+  abstract readonly model: string;
+  abstract readonly billable: boolean;
+  /** A company outside the owner's account (the paid models, step 21). */
+  readonly external: boolean = false;
 
-  constructor(
-    private readonly binding: Ai,
-    readonly model: string,
-  ) {}
+  protected abstract createModel(steps: StepMeter[], closed: () => boolean): LanguageModel;
 
-  private createModel(steps: StepMeter[], closed: () => boolean) {
-    const workersai = createWorkersAI({ binding: meteredBinding(this.binding, steps, closed) });
-    return workersai(
-      this.model as Parameters<typeof workersai>[0],
-      THINKING_MODELS.has(this.model) ? { chat_template_kwargs: { enable_thinking: false } } : {},
-    );
+  /** The settings of one call: Workers AI takes the temperature; the paid models get their own (paid.ts). */
+  protected settings(req: GenerateRequest): Record<string, unknown> {
+    return callOptions(req);
+  }
+
+  private usage(meter: StepMeter, outputChars: number) {
+    return { ...stepUsage(this.model, meter, outputChars), billable: this.billable };
   }
 
   /**
@@ -46,7 +50,7 @@ export class WorkersAIProvider implements AIProvider {
     for (const [index, meter] of steps.entries()) {
       if (meter.reported) continue;
       meter.reported = true;
-      req.onStepUsage?.(stepUsage(this.model, meter, index === steps.length - 1 ? lastOutputChars : 0));
+      req.onStepUsage?.(this.usage(meter, index === steps.length - 1 ? lastOutputChars : 0));
     }
   }
 
@@ -60,14 +64,15 @@ export class WorkersAIProvider implements AIProvider {
         instructions: req.system,
         messages: req.messages,
         maxOutputTokens: req.maxOutputTokens,
-        ...callOptions(req),
+        ...this.settings(req),
         maxRetries: 0,
         telemetry: { isEnabled: false },
       });
       outputChars = result.text.length + (result.reasoningText?.length ?? 0);
+      if (result.finishReason === "content-filter" && !result.text) throw refused();
       return { text: result.text };
     } catch (error) {
-      throw classifyAiError(error);
+      throw classifyAiError(error, this.external === true);
     } finally {
       // A call that reached the binding is metered, whether it answered, failed or was aborted.
       closed = true;
@@ -94,12 +99,15 @@ export class WorkersAIProvider implements AIProvider {
     let stepIndex = 0;
     let stepOutputChars = 0;
     let streamError: unknown = null;
+    // A model that declines (Anthropic's "refusal", OpenAI's content filter) ends with nothing said.
+    let said = false;
+    let declined = false;
     const result = streamText({
       model: this.createModel(steps, () => closed),
       instructions: req.system,
       messages: req.messages,
       maxOutputTokens: req.maxOutputTokens,
-      ...callOptions(req),
+      ...this.settings(req),
       maxRetries: 0,
       telemetry: { isEnabled: false },
       ...(hasTools
@@ -129,9 +137,13 @@ export class WorkersAIProvider implements AIProvider {
             break;
           case "text-delta":
             stepOutputChars += part.text.length;
-            if (part.text) yield { type: "text", delta: part.text };
+            if (part.text) {
+              said = true;
+              yield { type: "text", delta: part.text };
+            }
             break;
           case "tool-call":
+            said = true;
             stepOutputChars += JSON.stringify({ name: part.toolName, input: part.input }).length;
             yield { type: "tool-start", id: part.toolCallId, name: part.toolName, input: part.input };
             break;
@@ -148,10 +160,11 @@ export class WorkersAIProvider implements AIProvider {
             };
             break;
           case "finish-step": {
+            if (part.finishReason === "content-filter") declined = true;
             const meter = steps[stepIndex];
             if (meter && !meter.reported) {
               meter.reported = true;
-              req.onStepUsage?.(stepUsage(this.model, meter, stepOutputChars));
+              req.onStepUsage?.(this.usage(meter, stepOutputChars));
             }
             stepIndex++;
             stepOutputChars = 0;
@@ -172,7 +185,38 @@ export class WorkersAIProvider implements AIProvider {
       this.flush(req, steps, stepOutputChars);
     }
     failure ??= streamError;
-    if (failure) throw classifyAiError(failure);
+    if (failure) throw classifyAiError(failure, this.external === true);
+    // Another model would decline the same request: a refused request, never a switch.
+    if (declined && !said) throw refused();
+  }
+}
+
+/** The model declined to answer: like a refused request, the same for any model (no switch). */
+function refused(): AppError {
+  return new AppError("SERVICE_UNAVAILABLE", "error.aiRequestRejected");
+}
+
+/**
+ * Cloudflare Workers AI through the AI SDK and Cloudflare's own provider for it.
+ * Reasoning ("thinking") is off: it would multiply the output Neurons.
+ */
+export class WorkersAIProvider extends SdkProvider {
+  readonly id = "workers-ai";
+  readonly billable = true;
+
+  constructor(
+    private readonly binding: Ai,
+    readonly model: string,
+  ) {
+    super();
+  }
+
+  protected createModel(steps: StepMeter[], closed: () => boolean) {
+    const workersai = createWorkersAI({ binding: meteredBinding(this.binding, steps, closed) });
+    return workersai(
+      this.model as Parameters<typeof workersai>[0],
+      THINKING_MODELS.has(this.model) ? { chat_template_kwargs: { enable_thinking: false } } : {},
+    );
   }
 }
 

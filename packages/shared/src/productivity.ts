@@ -167,6 +167,8 @@ export interface Note {
   /** Markdown, written by the owner. Shown without raw HTML. */
   content: string;
   projectId: string | null;
+  /** "Never send out" (step 21, plan D3): only the model on the owner's own account reads it. */
+  localOnly: boolean;
   createdAt: string;
   updatedAt: string;
 }

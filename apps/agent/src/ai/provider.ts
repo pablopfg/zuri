@@ -80,15 +80,20 @@ export type AgentEvent =
   | { type: "fallback"; model: string };
 
 /**
- * A model behind one interface. Workers AI is the only real provider; the mock
- * answers in local development and in the tests. Paid providers are not
- * implemented (decision N7).
+ * A model behind one interface: Workers AI on the owner's own account, the paid
+ * companies (step 21, ⚠️, only with their key), and the mock that answers in
+ * local development and in the tests.
  */
 export interface AIProvider {
-  readonly id: "workers-ai" | "mock";
+  readonly id: "workers-ai" | "mock" | "anthropic" | "openai";
   readonly model: string;
-  /** False for the mock: its calls cost no Neurons, though they still count as requests. */
+  /** Whether the calls cost Neurons. False for the mock and the paid models (they cost US$, priced by the model id). */
   readonly billable: boolean;
+  /**
+   * True for a company outside the owner's account (step 21): MeteredAI then
+   * sends it the external profile (plan D3 to D5), never the whole context.
+   */
+  readonly external?: boolean;
   generate(req: GenerateRequest): Promise<{ text: string }>;
   stream(req: GenerateRequest): AsyncIterable<AgentEvent>;
   generateWithTools(req: ToolRequest): AsyncIterable<AgentEvent>;
@@ -114,7 +119,11 @@ export function tokens(reported: number | undefined, estimate: number): TokenCou
  * message (it may quote the prompt). 4006 is the account's daily allocation,
  * spent elsewhere or before this install counted it; 3040 and 429 are capacity.
  */
-export function classifyAiError(error: unknown): AppError {
+/**
+ * `external`: the error came from a paid company (step 21). Only theirs say
+ * "no credit" or "key refused"; on Workers AI a 401/403 stays a refused request.
+ */
+export function classifyAiError(error: unknown, external = false): AppError {
   if (error instanceof AppError) return error;
   const text = errorText(error).toLowerCase();
   // Cloudflare's own wording only: any error that merely mentions Neurons is not a spent allocation.
@@ -123,6 +132,11 @@ export function classifyAiError(error: unknown): AppError {
     return new AppError("AI_LIMIT_REACHED", "error.aiQuotaExhausted", { limit: "account" });
   }
   if (isAbort(error) || text.includes("abort")) return new AppError("SERVICE_UNAVAILABLE", "error.aiAborted");
+  const status = httpStatus(error);
+  // A paid company out of the owner's credit (step 21): OpenAI says it with a 429, so before "busy".
+  if (external && (status === 402 || NO_CREDIT.test(text))) return new AppError("SERVICE_UNAVAILABLE", "error.aiNoCredit");
+  // The key was refused (wrong, revoked, without access to the model): only the owner can fix it.
+  if (external && (status === 401 || status === 403 || KEY_REFUSED.test(text))) return new AppError("SERVICE_UNAVAILABLE", "error.aiKeyRefused");
   if (text.includes("3040") || text.includes("capacity") || httpStatus(error) === 429 || text.includes("rate limit") || text.includes("too many requests")) {
     return new AppError("SERVICE_UNAVAILABLE", "error.aiBusy");
   }
@@ -130,7 +144,6 @@ export function classifyAiError(error: unknown): AppError {
     return new AppError("SERVICE_UNAVAILABLE", "error.aiModelUnavailable");
   }
   // The request itself was refused (bad input, too long for the window): another model would refuse it too.
-  const status = httpStatus(error);
   // A timeout on the provider's side (3007/3008 come as 408) is a busy model, not a bad request.
   if (status === 408 || /(^|[^0-9])300[78]([^0-9]|$)/.test(text)) return new AppError("SERVICE_UNAVAILABLE", "error.aiBusy");
   if ((status !== undefined && status >= 400 && status < 500) || REJECTED.test(text)) {
@@ -141,6 +154,9 @@ export function classifyAiError(error: unknown): AppError {
   return new AppError("SERVICE_UNAVAILABLE", "error.aiUnavailable");
 }
 
+const NO_CREDIT = /insufficient_quota|credit balance is too low|billing_hard_limit|exceeded your current quota/;
+const KEY_REFUSED = /invalid x-api-key|invalid_api_key|incorrect api key|authentication_error|permission_error/;
+
 const REJECTED = /invalid (or incomplete )?input|context (window|length)|maximum context|too (long|large)|bad request/;
 
 /**
@@ -150,7 +166,15 @@ const REJECTED = /invalid (or incomplete )?input|context (window|length)|maximum
  * "Quando trocar"). The account's daily allocation (4006) counts too: a
  * provider on another account would still answer.
  */
-const SWITCHABLE: ReadonlySet<string> = new Set(["error.aiBusy", "error.aiModelUnavailable", "error.aiUnavailable", "error.aiQuotaExhausted"]);
+const SWITCHABLE: ReadonlySet<string> = new Set([
+  "error.aiBusy",
+  "error.aiModelUnavailable",
+  "error.aiUnavailable",
+  "error.aiQuotaExhausted",
+  // A paid company without credit or with its key refused: the fallback still answers (plan, "Quando trocar").
+  "error.aiNoCredit",
+  "error.aiKeyRefused",
+]);
 
 export function isSwitchable(error: AppError): boolean {
   return SWITCHABLE.has(error.messageKey);

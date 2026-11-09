@@ -181,7 +181,9 @@ export class AgentRunner {
       // The memories' vector of the message first: the external tools' triage by meaning reuses it (step 18b).
       const meaning = await this.meaning(input.message, input.signal);
       mcp = this.safeExternalTools(conversation.id, input);
-      const ctx: ToolContext = { ...this.deps.tools, timeZone: settings.timeZone, mode: "chat", conversationId: conversation.id, source, ...(mcp ? { mcp } : {}) };
+      // Who reads the tools' results in each try (step 21): MeteredAI flips it for a company outside the account.
+      const exposure = { external: false };
+      const ctx: ToolContext = { ...this.deps.tools, exposure, timeZone: settings.timeZone, mode: "chat", conversationId: conversation.id, source, ...(mcp ? { mcp } : {}) };
       executor = new ToolExecutor(mcp ? [...registry, ...mcp.tools] : registry, ctx, { maxToolCalls: settings.aiMaxIterations > 1 ? settings.aiMaxToolCalls : 0 });
       const offered = executor.available();
       // The external tools take a fixed share of the prompt (docs/planos/mcp.md): whatever the triage or find_tools offer fits in it.
@@ -257,6 +259,7 @@ export class AgentRunner {
         ...sampling(chatAgent),
         toolBudgetExhausted: () => turnTools.budgetExhausted(),
         signal: input.signal,
+        exposure,
       })) {
         if (event.type === "fallback") {
           // The chosen model failed before answering; the mark goes with the stored answer.
@@ -419,6 +422,7 @@ export class AgentRunner {
     const seen: string[] = [];
     const ctx: ToolContext = {
       ...this.deps.tools,
+      exposure: { external: false },
       timeZone: settings.timeZone,
       mode: "scheduled",
       conversationId: null,
@@ -464,7 +468,7 @@ export class AgentRunner {
     });
     let text = "";
     try {
-      text = await this.routineAnswer(executor, offered, system, input, settings, chatAgent, seen);
+      text = await this.routineAnswer(executor, offered, system, input, settings, chatAgent, seen, ctx.exposure);
     } finally {
       // Even when the model fails after a call became a proposal, the owner gets its card and the notice.
       this.leaveProposals(input.name, executor, ctx, locale, notices);
@@ -480,6 +484,7 @@ export class AgentRunner {
     settings: Settings,
     agent: AgentCallSettings,
     seen: string[],
+    exposure?: { external: boolean },
   ): Promise<string> {
     const ai = this.deps.ai();
     let text = "";
@@ -508,6 +513,7 @@ export class AgentRunner {
       ...sampling(agent),
       toolBudgetExhausted: () => executor.budgetExhausted(),
       signal: input.signal,
+      ...(exposure ? { exposure } : {}),
     })) {
       if (event.type === "text") text += event.delta;
     }

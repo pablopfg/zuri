@@ -1,9 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { NOTE_CONTENT_MAX, NOTE_TITLE_MAX, type Note, type TrashItem } from "@zuri/shared";
 import { ArrowLeft, NotebookPen, Plus, Search, Trash2 } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useId, useState } from "react";
 import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
 import { Markdown } from "../../components/Markdown.tsx";
+import { Switch } from "../../components/Switch.tsx";
+import { useToast } from "../../components/Toaster.tsx";
 import { Button, cn, Dialog, EmptyState, ErrorNotice, fieldClass, Notice, PageHeader, SelectField, Loading, TextField } from "../../components/ui.tsx";
 import { NOTES_KEY, PROJECTS_KEY, useNote, useNotes, useProjects } from "../../hooks/productivity.ts";
 import { api, errorMessage } from "../../lib/api.ts";
@@ -309,6 +311,7 @@ function NoteEditor({ note, onDirty }: { note?: Note; onDirty: (dirty: boolean) 
           <ProjectOptions projects={projects.data?.projects ?? []} none={t("web.tasks.noProject")} />
         </SelectField>
       </div>
+      {note && <LocalOnly note={note} />}
       <div className="rounded-2xl border border-border bg-surface">
         <div role="tablist" aria-label={t("web.notes.modeLabel")} className="flex gap-1 border-b border-border p-1">
           {(["write", "preview"] as const).map((item) => (
@@ -376,5 +379,44 @@ function NoteEditor({ note, onDirty }: { note?: Note; onDirty: (dirty: boolean) 
         )}
       </div>
     </form>
+  );
+}
+
+/** Step 21 (plan D3): "never send out" for one note, saved at once; the text being edited stays as it is. */
+function LocalOnly({ note }: { note: Note }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const hint = useId();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function change(localOnly: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api<{ note: Note }>(`/notes/${note.id}/local-only`, { method: "POST", body: { localOnly } });
+      qc.setQueryData([...NOTES_KEY, "one", note.id], result);
+      void qc.invalidateQueries({ queryKey: [...NOTES_KEY, "list"] });
+      toast(t(localOnly ? "web.notes.localOnlyOn" : "web.notes.localOnlyOff"));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface px-4 py-2">
+      <Switch label={t("web.notes.localOnly")} checked={note.localOnly} busy={busy} describedBy={hint} onChange={(on) => void change(on)} />
+      <p id={hint} className="pb-1 text-xs text-fg-muted">
+        {t("web.notes.localOnlyHint")}
+      </p>
+      {error && (
+        <p role="alert" className="pb-1 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

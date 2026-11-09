@@ -29,6 +29,9 @@ export type InternalKey =
   | "automation_alarm"
   // The UTC day Cloudflare said the account's free AI allocation was spent (the AI breaker).
   | "ai_quota_exhausted_day"
+  // Step 21: a paid company out of credit or with its key refused ("no_credit" | "bad_key"), until the owner says to try again.
+  | "ai_provider_state_anthropic"
+  | "ai_provider_state_openai"
   // Step 11: when the watchers run next, the local day of the last digest, and the interface errors of this hour.
   | "alert_watch_at"
   | "alert_digest_day"

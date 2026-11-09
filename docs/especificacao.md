@@ -62,7 +62,7 @@ Cada linha é um requisito. A coluna da direita aponta onde o agente estuda a re
 | Avaliações do Google | Leitura das avaliações do perfil da empresa (Business Profile), aviso das negativas à equipe pelo Telegram, rascunhos de resposta no padrão do dono com verificador e aprovação, resposta automática só das positivas (novo no Zuri, etapas 19c e 19d) | `docs/planos/google-business-profile.md` |
 | Acesso remoto | Tokens pessoais com escopo `read` ou `write`, 90 dias, só hash; eventos de entrada do n8n | `remote/`, `docs/remote-access.md` |
 | Fluxos | Motor de fluxos e monitor de sites no Durable Object, no alarme único (estado durável e novas tentativas entre despertares); sem Cloudflare Workflows (etapa 22a) | `flows/`, `docs/fluxos.md` |
-| Modelos de IA | Workers AI por padrão; Anthropic e OpenAI opcionais, com teto diário em US$ e fallback | `ai/`, `docs/modelos-de-ia.md` |
+| Modelos de IA | Workers AI por padrão; Anthropic e OpenAI opcionais, com teto diário em US$ opcional (desligado por padrão) e fallback | `ai/`, `docs/ia.md` |
 | Segurança de acesso | Senha forte (15+ caracteres, HIBP), e-mail do dono, 2FA TOTP, códigos de recuperação, passkeys, recuperação por e-mail, Turnstile em todo login, atividade de acesso, sessão com expiração por inatividade | `auth/`, `docs/security.md` |
 | Dados | Backup e importação (importação nunca liga nada sozinha), limites de armazenamento, limpeza automática | `services/backup.ts`, `services/retention.ts` |
 | Operação | Deploy pelo GitHub Actions só do navegador, guia de instalação passo a passo, Cloudflare Access opcional, domínio próprio | `docs/instalacao-cloudflare.md`, `.github/workflows/` |
@@ -282,7 +282,7 @@ Valores conferidos em `packages/shared/src/constants.ts` e `storage.ts` do Talor
 | Iterações do agente por turno | 4 | até 10 |
 | Tokens de contexto | 6.000 | até 32.000 |
 | Tokens de saída | 1.024 | até 4.096 |
-| IA paga por dia (US$) | 2 | até 50 |
+| IA paga por dia (US$) | 0 (sem teto; decisão do dono, 04/11/2026) | até 10.000 |
 | Voz no app | 60 s e 2 MB por clipe | — |
 | Voz no bot | 5 min e 5 MB por mensagem; acima disso a Zuri pergunta antes de processar | — |
 | Arquivo acima do limite no bot | Pergunta com validade de 10 min; teto rígido de 20 MB (download da Bot API), do áudio que sobra no dia e dos Neurons que sobram no dia | — |
@@ -762,4 +762,4 @@ Nenhum teste chama a Cloudflare, o Telegram ou provedores de IA de verdade. Um *
 
 ### Documentação (toda em pt-BR)
 
-`README.md`, `docs/instalacao-cloudflare.md` (passo a passo só pelo navegador), `docs/arquitetura.md`, `docs/seguranca.md`, `docs/telegram.md` (criação do bot, vínculo, comandos, aprovações, bloqueio), `docs/avisos.md`, `docs/mcp.md`, `docs/google-agenda.md`, `docs/acesso-remoto.md`, `docs/modelos-de-ia.md`, `docs/backup.md`, `docs/solucao-de-problemas.md`, `CHANGELOG.md`.
+`README.md`, `docs/instalacao-cloudflare.md` (passo a passo só pelo navegador), `docs/arquitetura.md`, `docs/seguranca.md`, `docs/telegram.md` (criação do bot, vínculo, comandos, aprovações, bloqueio), `docs/avisos.md`, `docs/mcp.md`, `docs/google-agenda.md`, `docs/acesso-remoto.md`, `docs/ia.md` (modelos de IA, inclusive os pagos), `docs/backup.md`, `docs/solucao-de-problemas.md`, `CHANGELOG.md`.

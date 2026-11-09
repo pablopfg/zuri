@@ -33,6 +33,8 @@ const AREA_KEYS: Record<Area, readonly { queryKey: QueryKey; exact?: boolean }[]
   crm: [{ queryKey: ["crm"] }],
   // The Reviews tab in Contacts and the reviews in Integrations (step 19c).
   reviews: [{ queryKey: ["reviews"] }],
+  // The AI usage and its panel (step 21): today's counters and the history by period.
+  usage: [{ queryKey: ["usage"] }],
 };
 
 const CHANNEL = "zuri-versions";
