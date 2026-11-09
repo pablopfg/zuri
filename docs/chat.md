@@ -142,7 +142,7 @@ política `Permissions-Policy` libera o microfone só para a própria Zuri
 | Tabela | Guarda |
 | --- | --- |
 | `zur_conversations` | Título, resumo e até onde o resumo vai |
-| `zur_messages` | Papel, texto, atividade das ferramentas, status, erro e origem (`app`, `telegram`, `import`) |
+| `zur_messages` | Papel, texto, atividade das ferramentas, status, erro, origem (`app`, `telegram`, `import`) e `local_only` (migration 31: a resposta viu um item "Nunca enviar para fora") |
 | `zur_pending_actions` | Propostas destrutivas, com alvo, hash e prazo |
 | `zur_task_plan_drafts` | Rascunhos de plano, revisão e resultado |
 

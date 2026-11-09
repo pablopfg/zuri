@@ -1,6 +1,6 @@
 import type { WebSocket as PlaywrightSocket } from "@playwright/test";
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn, signOutFromMenu } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, signIn, signOutFromMenu, uniqueTag } from "./ui-helpers.ts";
 
 // The new interface, part 3 (docs/planos/nova-ui.md): real time. One WebSocket
 // per browser, held by the server while it sleeps, says when an area's number
@@ -9,7 +9,7 @@ import { CSRF, expectAccessible, signIn, signOutFromMenu } from "./ui-helpers.ts
 
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
-const tag = () => `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+const tag = () => uniqueTag(test.info().project.name);
 
 /** Tonight at 23:00 in São Paulo (the owner's zone), so the task is on the list that opens: Hoje. */
 const tonight = () => new Date(`${new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date())}T23:00:00-03:00`).toISOString();
@@ -40,7 +40,8 @@ async function openTasks(page: Page) {
   await expect(page.getByRole("heading", { level: 1, name: "Tarefas" })).toBeVisible();
 }
 
-const rowOf = (page: Page, title: string) => page.getByRole("listitem").filter({ has: page.getByRole("button", { name: title }) });
+/** The row of exactly this title: a name match is a substring one by default, and the database keeps every test's tasks (#240). */
+const rowOf = (page: Page, title: string) => page.getByRole("listitem").filter({ has: page.getByRole("button", { name: title, exact: true }) });
 
 test("a task made elsewhere shows up at once, without waiting for the heartbeat or reloading", async ({ page }) => {
   const sockets = watchChannels(page);

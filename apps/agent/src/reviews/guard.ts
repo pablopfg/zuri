@@ -1,5 +1,5 @@
 import { REVIEW_LIMITS, type ReviewGuardCode } from "@zuri/shared";
-import { CONTACT, copied, hasHidden, MARKUP } from "../specialists/checker.ts";
+import { CONTACT, contactsIn, copied, hasHidden, MARKUP } from "../specialists/checker.ts";
 import { fold, HEALTH_WORDS, words } from "./triage.ts";
 
 /**
@@ -109,6 +109,9 @@ function namesIn(text: string): string[] {
   return out;
 }
 
+/** "golpe ponto com", "exemplo ponto com ponto br": a domain written out in words. */
+const SPELLED_DOMAIN = /\bponto\s+(?:com|br|net|org|io|me|app|pt|co)\b|\bdot\s+(?:com|net|org|io)\b/iu;
+
 /** What fails in a reply; empty when it may go out. */
 export function guard(text: string, ctx: GuardContext): ReviewGuardCode[] {
   const codes = new Set<ReviewGuardCode>();
@@ -122,7 +125,8 @@ export function guard(text: string, ctx: GuardContext): ReviewGuardCode[] {
   const plain = text.normalize("NFKC");
   // Letters of another alphabet are another language, and the way to dress one word up as another.
   if ([...plain].some((char) => /\p{L}/u.test(char) && !/\p{Script=Latin}/u.test(char))) codes.add("language");
-  if (CONTACT.test(plain)) codes.add("contact");
+  // Any ending is a domain ("golpe.pt", "golpe.club"), and so is one spelled out: the short list alone let them through (SEC-A6-05).
+  if (CONTACT.test(plain) || contactsIn(text).size > 0 || SPELLED_DOMAIN.test(plain)) codes.add("contact");
   if (MARKUP.test(plain) || (text.match(EMOJI)?.length ?? 0) > 1) codes.add("markup");
   const allowed = new Set([...words(ctx.signature), ...(ctx.ownWords ?? []).flatMap((value) => words(value)), ...(ctx.firstName ? [fold(ctx.firstName)] : [])]);
   if (namesIn(text).some((name) => !allowed.has(name))) codes.add("name");

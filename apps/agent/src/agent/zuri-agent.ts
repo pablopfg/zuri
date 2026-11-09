@@ -632,7 +632,10 @@ export class ZuriAgent extends Agent<WorkerEnv> {
             const outcome = await email.send({ subject: t(locale, "notice.email.recovery.subject"), text: t(locale, "notice.email.recovery.body", { link, minutes: RECOVERY_LIMITS.ttlMs / 60_000 }), security: true });
             return outcome === "sent";
           },
-          defer: (work) => this.ctx.waitUntil(work),
+          // Kept alive by the SDK's heartbeat, as the bot's work: ctx.waitUntil doesn't hold a Durable Object.
+          defer: (work) => {
+            void this.keepAliveWhile(() => work);
+          },
         },
       });
       const productivity = new Productivity(db, { timeZone: () => settings.get().timeZone });

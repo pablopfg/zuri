@@ -50,9 +50,16 @@ etapas ficam detalhadas; as mais antigas viram uma linha na tabela.
 | 24 | mesclada (09/11/2026) | #215 | Deploy pelo GitHub Actions na `main` (CI inteira de novo, aprovação no ambiente `production`, só o Custom Domain, conferência do `workers.dev` e das prévias pela API, saúde e HTTPS, release da versão) e guia de instalação só pelo navegador |
 | 26a | mesclada (09/11/2026) | #221 | Textos revistos pelo glossário (Apagar, Desconectar, Ligar/Desligar, Entrar, Rotina da Zuri), erros com o que fazer, toasts sem ponto, lint de microcopy na CI, inventário `scripts/inventario-de-textos.ts` |
 | 26b | mesclada (09/11/2026) | #227 | `Dialog` com X fixo no canto (último no DOM, foco segue no primeiro campo), fim dos "Fechar" em texto, confirmações com Cancelar antes e focado (também as que abrem no lugar), faixa das duas etapas com X "Dispensar por 3 dias" |
-| 26c | em revisão (09/11/2026) | — | Menu "Mais opções" (`ActionsMenu`) em Automações, Fluxos, Memória e Integrações; Configurações no celular com o título da seção; Avisos na ordem de configurar; Conta sem "Sair deste aparelho"; Dados em duas colunas e Tarefas com abas que rolam no celular; um só "Nova conversa" no computador; confirmações no lugar em `fieldset` com a pergunta |
+| 26c | mesclada (09/11/2026) | #232 | Menu "Mais opções" (`ActionsMenu`) em Automações, Fluxos, Memória e Integrações; Configurações no celular com o título da seção; Avisos na ordem de configurar; Conta sem "Sair deste aparelho"; Dados em duas colunas e Tarefas com abas que rolam no celular; um só "Nova conversa" no computador; confirmações no lugar em `fieldset` com a pergunta |
+| 25 | em revisão (09/11/2026) | — | Auditoria final do repositório inteiro (6 médios e 2 baixos corrigidos, nenhum alto), canário em todas as origens (D10), webhook do Telegram com 27 atualizações gravadas, e2e de todas as telas, matriz final em `docs/qa/matriz-final.md`, migration 31 (`zur_messages.local_only`) |
 
 ## Últimas etapas (detalhe)
+
+### Etapa 25 · Auditoria final e testes de ponta a ponta
+- Entregou: relatório `docs/qa/auditorias/2026-11-09-etapa-25.md`, matriz `docs/qa/matriz-final.md`, `apps/agent/test/telegram-replay.test.ts` (fixture `fixtures/telegram/gravadas.json`), `prompt-canary-origins.test.ts` (D10), CSP em toda rota de `App.tsx`, a11y de Agenda e Contatos.
+- Correções: SEC-A13-03 (automação ilegível pausa), SEC-A7-02 (agenda, contatos e Telegram travam ferramentas externas), SEC-A6-05 (trava de contato das avaliações), SEC-A6-06 (resposta e resumo com item local marcados), SEC-A3-02 (token remoto após redefinir a senha), lixeira filtrada no servidor, SEC-A2-06 (busca longa do CRM).
+- Migrations: 31 (`zur_messages.local_only`). A próxima livre é a 32.
+- Baixos abertos com recomendação no relatório: SEC-A13-04, SEC-A1-02, SEC-A13-05, SEC-A6-07 (backup não leva `local_only`), QA-11 a QA-13, DOC-01.
 
 ### Etapa 26a · Textos revistos e lint de microcopy
 - Entregou: `scripts/lint-microcopy.ts` (dentro do lint de i18n: glossário, "com sucesso", "Ops", "Por favor", travessão, "...", "!" fora de `web.greeting.*`, nomes de infraestrutura; exceções por chave e regra em `i18n-ignore.json` › `microcopy`, com motivo, e exceção velha falha), `scripts/inventario-de-textos.ts` (inventário completo ou `--mudancas <ref>`), 156 chaves reescritas em pt-BR e en (lista em `docs/qa/revisao-de-textos/26a-catalogo.md`), revisão das 173 chaves `error.*` em `docs/qa/revisao-de-textos/26a-erros.md`, `TELEGRAM_MENU_VERSION` 6 (descrição de `/pausar_rotinas` mudou).
@@ -66,12 +73,6 @@ etapas ficam detalhadas; as mais antigas viram uma linha na tabela.
 - Migrations: nenhuma. A próxima livre continua a 31.
 - Decisões técnicas: o Worker `zuri` é criado vazio no painel antes do 1º deploy (o wrangler recusa Worker novo sem os `secrets.required`); `PUBLIC_URL`, Access e Turnstile seguem como segredos do Worker; token sem R2 (o wrangler tolera a falta de permissão e não cria bucket); com o Access, exceções Bypass para `api/telegram/webhook`, `api/google/push` e `api/crm/events/*`, e a conferência aceita o redirecionamento ao login do Access.
 - Para as próximas: o Pablo cria o token, o ambiente e o Worker vazio, e abre a PR `develop → main` quando quiser o 1º deploy (a 1.0.0 é decisão dele).
-
-### Etapa 23b · Backup automático cifrado
-- Entregou: `packages/shared/src/backup-file.ts` (formato `.zuri`: gzip + ECDH P-256 efêmero + HKDF-SHA256 + AES-256-GCM em pedaços de 1 MiB, nonce por contador, cabeçalho e marca do último pedaço no dado associado; `createBackupKey`, `openBackup`, `backupImportParts`), `apps/agent/src/backup/automatic.ts` (`AutomaticBackup`: `tick`/`nextDue` no alarme único, upload em `put` ou partes de 8 MiB, limpeza só depois do upload, 3 tentativas por dia, cópia mensal e aviso de 30 dias pelo Telegram), `backup/dev-bucket.ts` (`MemoryBucket`, bucket do desenvolvimento local e dos testes), rotas `GET /api/backup/auto`, `PUT /api/backup/key`, `GET /api/backup/copies/:name`, alerta `backup_key_set`, `TelegramClient.sendDocument`, `TelegramService.ownerChat`, `/backup` com a idade, `pages/settings/AutoBackupCard.tsx`.
-- Migrations: nenhuma. O estado fica na chave interna `backup` (JSON em `zur_settings`).
-- Decisões técnicas: sem "fazer cópia agora" (com sete giros um invasor empurraria as cópias boas para fora); a cópia mais nova de cada chave anterior fica 30 dias (id da chave no `customMetadata` do objeto); chamadas ao R2 contadas à parte do `WakeBudget` (teto 200 por cópia), só o Telegram ocupa lugar no despertar; tentativa anotada antes do envio; cópia mensal na primeira cópia do mês que der certo, até 40 MB, e tenta de novo no dia seguinte; aviso no 31º dia; chave em dois passos (baixar com o clique do dono, depois confirmar); restauração em partes retomável (conversas, memórias, notas e tarefas saem da 1ª parte nessa ordem); baixar o JSON, uma cópia ou receber a do Telegram zera os 30 dias; sem o bot, o aviso espera e não acorda o alarme; nada ao Telegram no bloqueio. Estado em memória por objeto (`#cache`): orçamento do despertar sobe só 1 linha (55).
-- Para as próximas: o deploy da 24 gera o binding `BACKUP_BUCKET` (R2 ⚠️, opcional) a partir do segredo `ZURI_BACKUP_BUCKET` do ambiente `production` (feito na 24), como o `SEND_EMAIL`; nunca pelo painel. `docs/configuracao-cloudflare.md` › Backup automático.
 
 ## Exigências de QA (desde 31/10/2026)
 
@@ -91,7 +92,7 @@ etapas ficam detalhadas; as mais antigas viram uma linha na tabela.
 
 ## Próxima etapa
 
-- Número e nome: 23 · Backup (R2 aprovado ⚠️ pelo Pablo: diário, cifrado, 7 cópias).
-- Dependências mescladas: 21 (#194). Próxima migration livre: 30, reservada para a parte 2 dos guardrails; a 23 usa a seguinte livre na `develop`.
-- Precisa de algo do Pablo antes: conferir em `docs/agente/prompts-das-etapas.md` o "▶ Antes, você fornece" da 23 (cartão no R2).
+- Todas as etapas da especificação (0 a 26) estão feitas com a 25. Não há etapa seguinte.
+- O que falta é do Pablo: o primeiro deploy (abrir a PR `develop → main`; a 1.0.0 é decisão dele), os segredos e cartões listados na etapa 24, e as decisões abertas (resposta uniforme da rota de recuperação e do webhook, os baixos da auditoria).
+- Próxima migration livre: 32.
 - Depois do deploy, para usar um modelo pago: o Pablo cadastra `ANTHROPIC_API_KEY` ou `OPENAI_API_KEY` como segredo do Worker.

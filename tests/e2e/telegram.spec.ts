@@ -138,3 +138,41 @@ test("Settings > Avisos: the owner connects Telegram with a code, confirms the a
   await expect(toast(page, "Telegram desconectado")).toBeVisible();
   await expect(card.getByText("Nenhuma conta conectada.")).toBeVisible();
 });
+
+/** The card's status as the server would send it, for the states a real bot can't be put in here. */
+function status(fields: Record<string, unknown>) {
+  return {
+    state: "linked",
+    bot: "zuri_local_bot",
+    account: { name: "Dono", username: "dono_e2e", idTail: "4242", linkedAt: "2026-11-01T12:00:00.000Z", confirmedAt: "2026-11-01T12:01:00.000Z" },
+    codeExpiresAt: null,
+    codeInvalidated: false,
+    webhookError: null,
+    webhookMissing: false,
+    conversation: false,
+    readLockHours: 8,
+    group: null,
+    groupCodeExpiresAt: null,
+    ...fields,
+  };
+}
+
+// Stage 25: every state of the card has its text and passes the axe ("Telas e estados" of the spec).
+test("Settings > Avisos: the Telegram card says when the bot isn't set up, when the link is suspended and when updates don't arrive", async ({ page }) => {
+  let current: Record<string, unknown> = status({});
+  await page.route("**/api/telegram", (route) => (route.request().method() === "GET" ? route.fulfill({ json: current }) : route.continue()));
+  await page.goto("/configuracoes");
+  await signIn(page);
+  for (const [name, fields, text] of [
+    ["não configurado", { state: "not_configured", bot: null, account: null }, "O bot do Telegram ainda não foi configurado nesta instalação."],
+    ["suspenso", { state: "suspended" }, "O vínculo está suspenso. Confirme a conta de novo para voltar a usar o bot."],
+    ["erro de entrega", { webhookError: { message: "Wrong response from the webhook: 502 Bad Gateway", at: "2026-11-09T12:00:00.000Z" } }, "O Telegram avisou que não conseguiu entregar mensagens"],
+    ["sem webhook", { webhookMissing: true }, "O bot não está recebendo mensagens neste endereço. Toque em Reconectar."],
+  ] as const) {
+    current = status(fields);
+    await page.goto("/configuracoes/avisos");
+    const card = page.getByRole("region", { name: "Telegram", exact: true });
+    await expect(card.getByText(text, { exact: false }), name).toBeVisible();
+    await expectAccessible(page, `telegram ${name}`);
+  }
+});

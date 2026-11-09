@@ -110,7 +110,7 @@ export function registerProductivityRoutes(app: Hono<ApiEnv>, productivity: () =
   app.get("/trash", (c) => {
     const query = readQuery(c.req.url, trashListQuerySchema);
     const trash = productivity().trash;
-    return Response.json({ items: trash.list(query), total: trash.count() });
+    return Response.json({ items: trash.list(query), total: trash.count(query.kind) });
   });
 
   app.post("/trash/empty", () => Response.json({ deleted: productivity().trash.empty() }));

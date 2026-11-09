@@ -8,8 +8,8 @@
   // No usage data sent to Cloudflare by wrangler itself (no telemetry, rule 7).
   "send_metrics": false,
   "main": "src/index.ts",
-  // The newest date the pinned workerd (wrangler 4.153.0) supports. Moving it
-  // forward means reading the compatibility changes and running every test.
+  // Chosen as the newest date workerd supported with wrangler 4.153.0; the pin moved on since. Moving
+  // it forward means reading the compatibility changes and running every test.
   "compatibility_date": "2026-10-23",
   "compatibility_flags": ["nodejs_compat"],
   // Uploaded versions must never stay reachable on their own preview URLs.

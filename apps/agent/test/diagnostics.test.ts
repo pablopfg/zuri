@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { AlertService } from "../src/alerts/service.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { DiagnosticsService, fnv64, screenOf } from "../src/diagnostics/service.ts";
+import appSource from "../../web/src/App.tsx?raw";
+import settingsSource from "../../web/src/pages/SettingsPage.tsx?raw";
 import { AppError } from "../src/http/errors.ts";
 import { type ChatWorld, withChatWorld } from "./chat-world.ts";
 
@@ -190,6 +192,11 @@ describe("the failure log", () => {
     expect(screenOf("/configuracoes/diagnostico")).toBe("/configuracoes/diagnostico");
     expect(screenOf("/configuracoes/joao")).toBe("/configuracoes/id");
     expect(screenOf("/joao-silva-cpf")).toBe("/outra");
+    // Every page and settings tab of the interface keeps its name (the Agenda and Contacts of step 19 had become "/outra").
+    for (const [, page] of appSource.matchAll(/path="([a-z-]+)/g)) expect(screenOf(`/${page}`), page).toBe(`/${page}`);
+    const tabs = /SETTINGS_TABS = \[([^\]]+)\]/.exec(settingsSource)?.[1]?.match(/[a-z]+/g) ?? [];
+    expect(tabs.length).toBeGreaterThanOrEqual(8);
+    for (const tab of tabs) expect(screenOf(`/configuracoes/${tab}`), tab).toBe(`/configuracoes/${tab}`);
     expect(screenOf("/__proto__")).toBe("/outra");
   });
 

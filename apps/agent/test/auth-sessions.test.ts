@@ -1,7 +1,7 @@
 import { hashPassword, isPasswordHash } from "@zuri/shared";
 import { describe, expect, it, vi } from "vitest";
 import type { AppError } from "../src/http/errors.ts";
-import { client, HOUR, live, MINUTE, noCookies, outcome, pushCount, rebuild, remoteTokensSpy, right, seedPush, TEST_PASSWORD, withAuth } from "./auth-harness.ts";
+import { client, HOUR, live, MINUTE, noCookies, outcome, pushCount, rawRebuild, rebuild, remoteTokensSpy, right, seedPush, TEST_PASSWORD, withAuth } from "./auth-harness.ts";
 import { testEnv } from "./helpers.ts";
 
 const NET = "203.0.113.7";
@@ -426,6 +426,22 @@ describe("reset from the Cloudflare panel", () => {
       expect(h.events().find((e) => e.kind === "credentials_reset")).toMatchObject({ alert_pending: 1 });
       expect(tokens.revoked).toBe(2);
       expect(pushCount(h.db)).toBe(0);
+    }, { remoteTokens: tokens });
+  });
+
+  it("SEC-A3-02 the remote token's gate checks for a reset first: a token is revoked before any sign-in happens", async () => {
+    const tokens = remoteTokensSpy();
+    await withAuth("reset-token-first", async (h) => {
+      await h.auth.login(right(), client(NET), noCookies);
+      const revokedBefore = tokens.revoked;
+      const after = rawRebuild(h, { passwordHash: await hashPassword("outra senha do painel bem longa", testEnv.PASSWORD_PEPPER) });
+      // The first request on the new object is a remote token's: nothing else ran yet.
+      await after.ensureSynced();
+      expect(tokens.revoked).toBe(revokedBefore + 1);
+      expect(h.events().find((e) => e.kind === "credentials_reset")).toMatchObject({ alert_pending: 1 });
+      // Once per object.
+      await after.ensureSynced();
+      expect(tokens.revoked).toBe(revokedBefore + 1);
     }, { remoteTokens: tokens });
   });
 

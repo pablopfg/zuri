@@ -1503,6 +1503,15 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE zur_reviews ADD COLUMN prompt_version TEXT`,
     ],
   },
+  {
+    version: 31,
+    name: "message_local_only",
+    statements: [
+      // 1 when the answer was written with a "never send out" item in view (plan D3, SEC-A6-06): a paid
+      // company's model later gets a placeholder instead of its text, and a summary made from it is marked.
+      `ALTER TABLE zur_messages ADD COLUMN local_only INTEGER NOT NULL DEFAULT 0 CHECK (local_only IN (0, 1))`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

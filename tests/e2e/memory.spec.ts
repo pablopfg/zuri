@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, rowAction, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // Memory and its history against the real Worker (step 7): save, duplicate,
 // review a conflict, update a fact, history, restore and delete. pt-BR.
@@ -27,7 +27,7 @@ async function save(page: Page, text: string) {
 
 test("memories: save, duplicate, review a conflict, history, restore, update and delete @mobile", async ({ page }) => {
   // A word of its own per run: the database keeps what earlier runs and the other project saved.
-  const tag = `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+  const tag = uniqueTag(test.info().project.name);
   await openMemory(page);
   const list = page.getByRole("region", { name: "Suas memórias" });
 
@@ -162,7 +162,7 @@ test("memory: a failure shows an error with a retry", async ({ page }) => {
 });
 
 test("memory in English: a conflict, replacing the older and discarding the newer, each after a confirmation", async ({ page }) => {
-  const tag = `en${crypto.randomUUID().slice(0, 8).replace(/\d/g, "y")}`;
+  const tag = uniqueTag("en");
   await page.goto("/configuracoes/conta");
   await signIn(page);
   try {
@@ -215,7 +215,7 @@ test("memory in English: a conflict, replacing the older and discarding the newe
 });
 
 test("never send out: a memory and a note marked stay on the account, and the mark is kept @mobile", async ({ page }) => {
-  const tag = `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+  const tag = uniqueTag(test.info().project.name);
   await openMemory(page);
   await save(page, `O código do portão é ${tag}`);
   const row = page.getByRole("listitem").filter({ hasText: `O código do portão é ${tag}` });

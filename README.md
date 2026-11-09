@@ -28,7 +28,7 @@ de um Durable Object e conversa com você pelo navegador e pelo Telegram.
 > **Quase na versão 1.0.** A Zuri é feita em público, uma etapa por PR, a partir da [especificação](https://github.com/pablopfg/Zuri/blob/develop/docs/especificacao.md).
 > A Zuri sai em 37 etapas.
 > As etapas 0 a 26c estão na `develop`;
-> falta a auditoria final. O [mapa das etapas](#️-mapa-das-etapas) mostra o estado de cada uma.
+> Com a auditoria final, todas as etapas estão feitas; o próximo passo é o primeiro deploy, pelo [guia de instalação](docs/instalacao-cloudflare.md).
 
 ## 💡 Por que a Zuri
 
@@ -213,7 +213,7 @@ Antes do primeiro `npm run dev`, crie o `apps/agent/.dev.vars` como explica [doc
 
 ## 🛠️ Desenvolvimento
 
-O desenvolvimento acontece na branch [`develop`](https://github.com/pablopfg/Zuri/tree/develop); a `main` só recebe releases. Leia o [CONTRIBUTING.md](https://github.com/pablopfg/Zuri/blob/develop/CONTRIBUTING.md) e o [AGENTS.md](https://github.com/pablopfg/Zuri/blob/develop/AGENTS.md). Cada etapa passa por testes com matriz de rastreabilidade, revisão de QA e auditoria de segurança ([estratégia de testes](https://github.com/pablopfg/Zuri/blob/develop/docs/qa/estrategia-de-testes.md)), e cada merge na `develop` vira uma versão 0.x com pré-release ([versionamento](https://github.com/pablopfg/Zuri/blob/develop/docs/agente/versionamento.md)).
+O desenvolvimento acontece na branch [`develop`](https://github.com/pablopfg/Zuri/tree/develop); a `main` só recebe releases. Leia o [CONTRIBUTING.md](https://github.com/pablopfg/Zuri/blob/develop/CONTRIBUTING.md) e o [AGENTS.md](https://github.com/pablopfg/Zuri/blob/develop/AGENTS.md). Cada etapa passa por testes com matriz de rastreabilidade, revisão de QA e auditoria de segurança ([estratégia de testes](https://github.com/pablopfg/Zuri/blob/develop/docs/qa/estrategia-de-testes.md)); a auditoria final ligou cada critério de aceite ao seu teste na [matriz final](https://github.com/pablopfg/Zuri/blob/develop/docs/qa/matriz-final.md), e cada merge na `develop` vira uma versão 0.x com pré-release ([versionamento](https://github.com/pablopfg/Zuri/blob/develop/docs/agente/versionamento.md)).
 
 ### 🗺️ Mapa das etapas
 

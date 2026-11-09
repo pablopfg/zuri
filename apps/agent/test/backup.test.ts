@@ -171,6 +171,27 @@ describe("export", () => {
     }
   });
 
+  it("never carries a Google contact nor a review, whatever is stored (steps 19b and 19c)", async () => {
+    await seed();
+    await inOwner((agent) => {
+      const { db } = agent.store;
+      db.run(
+        `INSERT INTO zur_contacts (id, resource_name, etag, display_name, search_name, data, synced_at) VALUES ('contato-backup', 'people/backup-1', 'e', 'Contato Fora do Backup', 'contato fora do backup', '{"emails":["contato.fora@exemplo.com.br"]}', 1)`,
+      );
+      db.run(
+        `INSERT INTO zur_reviews (id, location, google_name, rating, first_name, comment, created_at, updated_at, state, seen_at) VALUES ('avaliacao-backup', 'accounts/1/locations/2', 'accounts/1/locations/2/reviews/backup', 5, 'Avaliadora', 'Avaliação fora do backup', 'x', 'x', 'new', 1)`,
+      );
+    });
+    const text = await exported();
+    for (const value of ["Contato Fora do Backup", "contato.fora@exemplo.com.br", "people/backup-1", "Avaliação fora do backup", "reviews/backup", "Avaliadora"]) {
+      expect(text, value).not.toContain(value);
+    }
+    await inOwner((agent) => {
+      agent.store.db.run(`DELETE FROM zur_contacts WHERE id = 'contato-backup'`);
+      agent.store.db.run(`DELETE FROM zur_reviews WHERE id = 'avaliacao-backup'`);
+    });
+  });
+
   it("leaves out a stored row that no longer passes the schema, so the file always reads back", async () => {
     await inOwner((agent) => {
       agent.store.db.run(`INSERT INTO zur_projects (id, name, description, status, created_at, updated_at) VALUES (?, 'Bom', '', 'active', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`, crypto.randomUUID());

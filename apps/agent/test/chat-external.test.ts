@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { EXTERNAL_NOTE_CHARS, LOCAL_ONLY_TEXT } from "../src/ai/external.ts";
+import { EXTERNAL_NOTE_CHARS, LOCAL_ONLY_TEXT, withoutLocalOnly } from "../src/ai/external.ts";
+import { summaryRequest } from "../src/agent/context.ts";
+import { buildSystemPrompt } from "../src/agent/prompt.ts";
 import { AgentRunner } from "../src/agent/runner.ts";
 import { memoryPromptSection } from "../src/memory/recall.ts";
 import type { AIProvider } from "../src/ai/provider.ts";
@@ -112,6 +114,41 @@ describe("a chat turn on an external model", () => {
       expect(seen).toContain("Proposal forget_memory");
       expect(seen).not.toContain("QZW");
     });
+  });
+
+  it("SEC-A6-06 never sends an earlier answer that quoted a marked item, nor a summary made from one, to an external model", async () => {
+    await withChatWorld(async (world) => {
+      const { marked } = seed(world);
+      // Turn 1 on Workers AI: it reads the marked note and quotes it back.
+      const local = new ScriptedProvider([callTools({ name: "read_note", input: { id: marked.id } }), say("A combinação do cofre é 12-34-56.")]);
+      const events = await turn(world, local, "Qual é a combinação do cofre?");
+      const conversationId = (events.find((event) => event.type === "start") as { conversation: { id: string } }).conversation.id;
+      // Turn 2 on Workers AI with the marked memory in the prompt: its answer is marked too.
+      await turn(world, new ScriptedProvider([say("O código é KQW-4417.")]), "E o código?", conversationId);
+      // Turn 3 on a paid company's model, in the same conversation.
+      const later = new ScriptedProvider([say("Certo.")], { external: true, model: "anthropic/claude-haiku-5-5" });
+      await turn(world, later, "Obrigado", conversationId);
+      const seen = JSON.stringify(later.transcript);
+      for (const leak of ["12-34-56", "KQW"]) expect(seen, leak).not.toContain(leak);
+      expect(seen).toContain(LOCAL_ONLY_TEXT);
+      // The owner's own words still go.
+      expect(seen).toContain("Qual é a combinação do cofre?");
+    });
+  });
+
+  it("SEC-A6-06 marks a summary line made from a marked answer, and the running summary made from one", () => {
+    const row = (seq: number, role: "user" | "assistant", content: string, localOnly = 0) =>
+      ({ seq, id: `m${seq}`, conversation_id: "c", role, content, tools: "[]", status: "complete", error_code: null, error_key: null, source: "app", fallback: 0, quoted: null, local_only: localOnly, created_at: "" }) as const;
+    const request = summaryRequest(null, [row(1, "user", "Qual a combinação?"), row(2, "assistant", "É 12-34-56.", 1)])[0]?.content ?? "";
+    expect(withoutLocalOnly(request)).not.toContain("12-34-56");
+    expect(withoutLocalOnly(request)).toContain("Qual a combinação?");
+    const system = buildSystemPrompt({ agentName: undefined, language: "Portuguese", timeZone: "America/Sao_Paulo", now: new Date(), ownerName: "", message: "Oi", locale: "pt-BR", memories: "", summary: "Combinação 12-34-56", summaryLocal: true });
+    expect(withoutLocalOnly(system)).not.toContain("12-34-56");
+    // The next summary call carries the earlier summary: marked when it covers a marked message, so a fallback to another company never reads it.
+    const next = summaryRequest("Combinação 12-34-56", [row(3, "user", "E a do portão?")], true)[0]?.content ?? "";
+    expect(withoutLocalOnly(next)).not.toContain("12-34-56");
+    expect(withoutLocalOnly(next)).toContain("E a do portão?");
+    expect(summaryRequest("Resumo comum", [row(3, "user", "Oi")])[0]?.content).toContain("Resumo comum");
   });
 
   it("keeps the mark on a corrected memory and on a note back from the trash, and never puts a marked text in another line", async () => {
