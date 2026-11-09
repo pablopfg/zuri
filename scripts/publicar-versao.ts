@@ -282,6 +282,7 @@ function main(root: string): number {
   }
   const approval = approveHeldRuns({ repository, exec: run }, head);
   console.log(`#${number}: approved ${approval.approved.join(", ") || "none"}${approval.missing.length ? `; missing ${approval.missing.join(", ")}` : ""}`);
+  for (const error of approval.errors) console.log(`::error::#${number}: approval failed for ${error}`);
   const merge = tryRun(() => gh(["pr", "merge", String(number), "--repo", repository, "--auto", "--squash"]));
   console.log(merge.ok ? `#${number}: auto-merge on` : `#${number}: auto-merge not enabled: ${merge.out.trim()}`);
   return releaseFailures + approval.failed.length;

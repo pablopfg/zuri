@@ -328,6 +328,8 @@ export const isHeldForBot = (run: WorkflowRun) => run.conclusion === "action_req
 export interface Approval {
   approved: string[];
   failed: string[];
+  /** What GitHub answered for each run left in `failed`, so the run log says why. */
+  errors: string[];
   /** Required workflows with no run on the commit after waiting. */
   missing: string[];
 }
@@ -340,13 +342,14 @@ export const sleepMs = (ms: number) => Atomics.wait(new Int32Array(new SharedArr
  * runs need approval. The ruleset counts only the checks of those runs (a
  * workflow_dispatch run on the branch left the merge "expected" on #60), so
  * the workflow approves the runs its own push started, on its own branch,
- * never a fork's. GitHub creates the runs a few seconds after the push:
- * `attempts` reads, `waitMs` apart, until every required workflow has one.
+ * never a fork's. GitHub creates the runs a few seconds after the push, and
+ * sometimes takes more than 40 s (issue #201): `attempts` reads, `waitMs`
+ * apart (2 minutes in all), until every required workflow has one.
  */
 export function approveHeldRuns(
   ctx: Pick<GitHub, "repository" | "exec">,
   sha: string,
-  { attempts = 8, waitMs = 5000, sleep = sleepMs }: { attempts?: number; waitMs?: number; sleep?: (ms: number) => unknown } = {},
+  { attempts = 12, waitMs = 10_000, sleep = sleepMs }: { attempts?: number; waitMs?: number; sleep?: (ms: number) => unknown } = {},
 ): Approval {
   const required = Object.values(PR_WORKFLOWS);
   let runs: WorkflowRun[] = [];
@@ -355,12 +358,58 @@ export function approveHeldRuns(
     runs = pullRequestRuns(ctx, sha);
     if (required.every((name) => runs.some((r) => r.name === name))) break;
   }
-  const result: Approval = { approved: [], failed: [], missing: required.filter((name) => !runs.some((r) => r.name === name)) };
+  const result: Approval = {
+    approved: [],
+    failed: [],
+    errors: [],
+    missing: required.filter((name) => !runs.some((r) => r.name === name)),
+  };
   for (const run of runs.filter(isHeldForBot)) {
-    const done = tryRun(() => ctx.exec("gh", ["api", "-X", "POST", `repos/${ctx.repository}/actions/runs/${run.id}/approve`]));
-    (done.ok ? result.approved : result.failed).push(run.name);
+    const done = approveRun(ctx, sha, run.id, { waitMs, sleep });
+    if (done.ok) {
+      result.approved.push(run.name);
+    } else {
+      result.failed.push(run.name);
+      result.errors.push(`${run.name}: ${done.out.trim().split("\n").at(-1) || "no answer"}`);
+    }
   }
   return result;
+}
+
+/** Approval calls per run before it counts as failed. */
+export const APPROVE_ATTEMPTS = 3;
+
+/**
+ * One approval, retried. GitHub sometimes answers an error for an approval it
+ * took (issues #166 and #190: the run started anyway) or refuses one that goes
+ * through a moment later (issue #201), so before each retry and after the last
+ * error the run is read again: once it left "action_required", it was approved.
+ */
+function approveRun(
+  ctx: Pick<GitHub, "repository" | "exec">,
+  sha: string,
+  id: number,
+  { waitMs, sleep }: { waitMs: number; sleep: (ms: number) => unknown },
+): { ok: boolean; out: string } {
+  const held = () => {
+    const now = tryRun(() => JSON.stringify(pullRequestRuns(ctx, sha).find((r) => r.id === id) ?? null));
+    // A failed read proves nothing: the run still counts as held.
+    if (!now.ok) return true;
+    const found = JSON.parse(now.out) as WorkflowRun | null;
+    return found !== null && found.conclusion === "action_required";
+  };
+  let out = "";
+  for (let i = 0; i < APPROVE_ATTEMPTS; i++) {
+    if (i > 0) {
+      sleep(waitMs);
+      if (!held()) return { ok: true, out: "" };
+    }
+    const done = tryRun(() => ctx.exec("gh", ["api", "-X", "POST", `repos/${ctx.repository}/actions/runs/${id}/approve`]));
+    if (done.ok) return done;
+    out = done.out;
+  }
+  sleep(waitMs);
+  return held() ? { ok: false, out } : { ok: true, out: "" };
 }
 
 /** Git config for one authenticated command, through the environment so the token never shows in argv. */
@@ -412,7 +461,7 @@ function updateAll(root: string): number {
         if (git(["log", "-1", "--format=%s", before]).startsWith(MERGE_MESSAGE)) {
           const approval = approveHeldRuns(ctx, before, { attempts: 1 });
           if (approval.failed.length > 0) {
-            console.log(`${label}: up to date, approval failed for ${approval.failed.join(", ")}`);
+            console.log(`${label}: up to date, approval failed for ${approval.errors.join("; ")}`);
             notify(ctx, pr.number, { kind: "approval", runs: approval.failed });
             failures++;
             continue;
@@ -454,7 +503,7 @@ function updateAll(root: string): number {
       // Without the pull_request runs the required checks never report: someone has to approve them.
       const stuck = [...approval.failed, ...approval.missing];
       if (stuck.length > 0) {
-        console.log(`${label}: checks waiting: ${stuck.join(", ")}`);
+        console.log(`${label}: checks waiting: ${stuck.join(", ")}${approval.errors.length ? ` (${approval.errors.join("; ")})` : ""}`);
         notify(ctx, pr.number, { kind: "approval", runs: stuck });
         failures++;
         continue;
