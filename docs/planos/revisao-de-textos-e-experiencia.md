@@ -203,8 +203,8 @@ README:
 | Parte | O que entra | Estado |
 | --- | --- | --- |
 | 26a | Lint de microcopy na CI, inventário (`scripts/inventario-de-textos.ts`), reescrita do catálogo pelo glossário, erros com o que fazer, toasts sem ponto | PR desta parte; mudanças em `docs/qa/revisao-de-textos/26a-catalogo.md` e `26a-erros.md` |
-| 26b | `Dialog` com X padrão, confirmação padrão, menu ⋯, faixa dispensável; tirar os "Fechar" em texto | a seguir |
-| 26c | Reorganização de UI/UX que o inventário e as capturas apontarem; mudança grande de navegação vira pergunta ao Pablo | depois da 26b |
+| 26b | `Dialog` com X padrão, confirmação padrão, faixa dispensável; tirar os "Fechar" em texto | em revisão |
+| 26c | Reorganização de UI/UX que o inventário e as capturas apontarem, com o menu ⋯ onde uma linha tiver ações demais; mudança grande de navegação vira pergunta ao Pablo | depois da 26b |
 
 ## Critérios de aceite
 
@@ -237,3 +237,16 @@ README:
 - [ ] Capturas antes e depois
 - [ ] e2e, axe, Lighthouse e teto do JS inicial
 - [ ] README (capturas) e changelog
+
+## Notas da 26b (09/11/2026)
+
+- O X do `Dialog` vem por último no DOM e a grade o mostra no canto: abrir
+  continua focando o primeiro campo ou o "Cancelar", sem código de foco a
+  mais no primeiro carregamento. Ele custa uns 100 B no JS inicial.
+- O menu ⋯ passou para a 26c: hoje nenhuma linha tem ações demais, e ele só
+  entra junto com a reorganização que o pedir.
+- Ficam sem confirmação, de propósito: "Não fui eu: desconectar o Telegram"
+  no bloqueio (é a saída de emergência), remover um aparelho do push (basta
+  ligar de novo) e mover para a lixeira (dá para desfazer).
+- "Continuar editando" fica no lugar de "Cancelar" ao sair de uma nota sem
+  salvar: diz melhor o que acontece.

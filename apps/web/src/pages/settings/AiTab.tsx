@@ -783,12 +783,12 @@ function SemanticBody({ status }: { status: SemanticStatus }) {
           {confirming ? (
             <div className="space-y-3 rounded-xl border border-warning/40 bg-warning-soft p-3">
               <p className="text-sm">{plural("web.ai.semantic.redoConfirm", status.total)}</p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="secondary" autoFocus onClick={() => setConfirming(false)}>
+                  {t("web.ai.semantic.cancel")}
+                </Button>
                 <Button loading={busy} onClick={() => void send("/semantic/reindex", { method: "POST" }, t("web.ai.semantic.redone"))}>
                   {t("web.ai.semantic.redoYes")}
-                </Button>
-                <Button variant="secondary" onClick={() => setConfirming(false)}>
-                  {t("web.ai.semantic.cancel")}
                 </Button>
               </div>
             </div>

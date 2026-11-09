@@ -7,7 +7,7 @@ import { addMessages, useI18n } from "../lib/i18n.tsx";
 
 addMessages(ptBRShell);
 
-/** "Remind me later" hides the reminder this long, on this browser only. */
+/** The X hides the reminder this long, on this browser only; its name says so. */
 const SNOOZE_MS = 3 * 24 * 3600_000;
 const SNOOZE_KEY = "zuri.mfaReminderSnoozedUntil";
 
@@ -45,7 +45,7 @@ export function MfaReminder() {
         </Link>
         <button
           type="button"
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-fg-muted hover:text-fg sm:px-3"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl text-fg-muted hover:bg-raised hover:text-fg sm:px-3"
           onClick={() => {
             try {
               localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
@@ -55,7 +55,7 @@ export function MfaReminder() {
             setSnoozed(true);
           }}
         >
-          <X className="h-4 w-4 sm:hidden" aria-hidden />
+          <X className="h-4 w-4" aria-hidden />
           <span className="sr-only sm:not-sr-only">{t("web.mfaReminder.later")}</span>
         </button>
       </span>

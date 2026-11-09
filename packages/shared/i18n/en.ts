@@ -276,7 +276,7 @@ export const en: Messages = {
   "web.mfaReminder.body": "Two-step sign-in is off. Turn it on to protect your account.",
   "web.mfaReminder.short": "Two-step sign-in is off",
   "web.mfaReminder.action": "Turn on",
-  "web.mfaReminder.later": "Remind me later",
+  "web.mfaReminder.later": "Dismiss for 3 days",
   "web.settings.sections": "Settings sections",
   "web.settings.tab.account": "Account",
   "web.settings.tab.security": "Security",

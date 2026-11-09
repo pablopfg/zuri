@@ -93,12 +93,12 @@ export function TwoStepCard({ onCodesKept }: { onCodesKept?: () => void } = {}) 
         error={error}
         {...(hint ? { hint } : {})}
       />
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant={danger ? "danger" : "primary"} loading={pending} disabled={!code.trim()}>
-          {submitLabel}
-        </Button>
+      <div className="flex flex-wrap justify-end gap-2">
         <Button variant="ghost" onClick={() => reset()}>
           {t("web.cancel")}
+        </Button>
+        <Button type="submit" variant={danger ? "danger" : "primary"} loading={pending} disabled={!code.trim()}>
+          {submitLabel}
         </Button>
       </div>
     </form>

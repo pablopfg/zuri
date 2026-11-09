@@ -570,7 +570,7 @@ function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent 
             <div className="space-y-3 rounded-xl border border-danger/40 bg-danger-soft p-3">
               <p className="text-sm">{t("web.agenda.deleteConfirm", { title: event.title || t("web.agenda.event.untitled") })}</p>
               <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="secondary" onClick={() => setConfirming(false)}>
+                <Button variant="secondary" autoFocus onClick={() => setConfirming(false)}>
                   {t("web.cancel")}
                 </Button>
                 <Button variant="danger" loading={busy} onClick={() => void remove()}>

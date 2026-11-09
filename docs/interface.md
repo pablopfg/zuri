@@ -102,8 +102,16 @@ Pablo, 03/11/2026; plano em `docs/planos/nova-ui.md`):
 - **Páginas:** começam com `PageHeader` (título, uma linha de contexto e ações
   à direita), numa coluna de até 5xl.
 - **Lembrete de 2FA:** enquanto a verificação em duas etapas estiver
-  desligada, uma faixa acima do conteúdo chama para ligar. "Lembrar depois"
-  esconde por 3 dias, só neste navegador; nas Configurações ela não aparece.
+  desligada, uma faixa acima do conteúdo chama para ligar. O X ("Dispensar
+  por 3 dias") esconde por 3 dias, só neste navegador; nas Configurações ela
+  não aparece.
+- **Diálogos:** o `Dialog` da casa traz o título à esquerda e o X ("Fechar",
+  44 px) no canto superior direito, fixos no topo enquanto o diálogo rola.
+  Nenhum diálogo tem "Fechar" em texto no pé. O X vem por último no DOM: abrir
+  foca o primeiro campo ou o "Cancelar". Esc fecha.
+- **Confirmações:** título em pergunta, a frase do efeito, "Cancelar" antes do
+  botão que repete o verbo (perigoso em vermelho), e o foco começa no
+  "Cancelar", também nas confirmações que abrem no lugar, sem diálogo.
 - **Início:** abaixo do cumprimento, um campo "Escreva para a Zuri" (abre
   uma conversa nova com o texto, que vai uma vez só pelo `state` da
   navegação), três ideias para começar e dois cartões: Hoje (com as
