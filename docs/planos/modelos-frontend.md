@@ -1,12 +1,13 @@
-# Plano · Cinco modelos de interface
+# Plano · Modelos de interface
 
-Situação: esperando o Pablo escolher
-Origem: pedido do Pablo em 09/11/2026 ("use a skill taste para criar 5 novos modelos de frontend para eu aprovar")
+Situação: rodada 2 entregue, esperando o Pablo aprovar
+Origem: pedido do Pablo em 09/11/2026 ("use a skill taste para criar 5 novos modelos de frontend para eu aprovar") e, na rodada 2, "Aperfeiçoe o modelo 4 - menta… inclua também a tela de login… avalie a skill ui-skills, se for segura, crie 3 novos modelos"
+
 Dependências: nenhuma para escolher. A implementação, se houver, vira PR própria.
 
 ## 1. Resumo
 
-Cinco direções visuais para a Zuri, todas com a mesma organização aprovada em 03/11 (barra lateral com Nova conversa, Buscar, seções, Recentes e a conta no rodapé; gaveta no celular). O que muda entre elas é a cara: fonte, cores no claro e no escuro, espaçamento, cantos e o jeito de montar o Início e a Conversa.
+Na rodada 2 o Pablo ficou com o Menta, que foi refinado e ganhou todas as telas do sistema e a de entrar, e chegaram três modelos novos feitos com a skill `ui-skills` (seção 2). A rodada 1, abaixo, trouxe cinco direções visuais para a Zuri, todas com a mesma organização aprovada em 03/11 (barra lateral com Nova conversa, Buscar, seções, Recentes e a conta no rodapé; gaveta no celular). O que muda entre elas é a cara: fonte, cores no claro e no escuro, espaçamento, cantos e o jeito de montar o Início e a Conversa.
 
 Paletas e pares de fontes saíram do sorteio da skill `taste-skill` para "produto de IA, software, fintech e ferramenta" (avaliação de segurança em `docs/planos/skill-taste.md`). As cores foram ajustadas para os dois temas passarem no contraste.
 
@@ -16,7 +17,65 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 - Capturas: `docs/capturas/pr/modelos-frontend/`, nome `<modelo>-<inicio|conversa>-<computador|celular>-<claro|escuro>.png` (40 imagens).
 - Acessibilidade: axe (WCAG 2.1 A/AA e boas práticas) sem nenhuma violação nas 40 combinações.
 
-## 2. Os cinco modelos
+## 2. Rodada 2 · Menta refinado e três modelos da `ui-skills`
+
+O Pablo escolheu seguir com o **Menta** e pediu para melhorar, com todas as telas e a de entrar. Pediu também três modelos novos pela skill `ui-skills`, que foi avaliada como segura para usar como texto (`docs/planos/skill-ui-skills.md`, commit `97dea9e7`).
+
+- Protótipo: `docs/planos/modelos-frontend/prototipo-v2.html` (a barra do topo troca modelo, tela e tema).
+- Telas: Início, Entrar, Conversa, Tarefas, Notas, Agenda, Automações, Memória e Configurações.
+- Capturas: `docs/capturas/pr/modelos-frontend-v2/`, nome `<modelo>-<tela>-<computador|celular>-<claro|escuro>.png` (144 imagens).
+- Acessibilidade: axe (WCAG 2.1 A/AA e boas práticas) sem nenhuma violação nas 144 combinações.
+
+### Menta refinado
+
+O que mudou em relação à rodada 1:
+
+- **Cantos concêntricos.** Cartão de 24 px, campo de 16 px, botões e menu em pílula. O raio de dentro sempre menor que o de fora, para não parecer encaixado à força.
+- **Menta só como preenchimento.** Texto verde-menta sobre branco não passa no contraste; agora a menta é fundo (botão principal, item ativo, ícones dos atalhos) e os links usam o verde escuro `#0a7041` no claro.
+- **Início.** Saudação e resumo do dia num bloco cinza, campo para falar com a Zuri e três sugestões; logo abaixo, três atalhos (Nova tarefa, Nova nota, Agenda de hoje); Hoje e Próximos dias em cartões sem borda.
+- **Menu.** Contagem de tarefas e compromissos ao lado de cada seção, em números de largura fixa.
+- **"Atrasada"** com ícone e texto em laranja escuro, nunca só pela cor.
+- **Conversa.** Balões redondos com o canto do lado de quem fala mais fechado; cartões de ação (lembrete criado, nota criada) dentro da resposta.
+- **Entrar.** Painel menta à esquerda com a frase da marca e o formulário à direita: senha, Entrar, Entrar com passkey e Recuperar o acesso. No celular o painel vira só o logo no topo.
+- **Outras telas.** Tarefas com abas em pílula, Notas com lista e editor lado a lado, Agenda por dia com faixa de cor, Automações em cartões com chave liga/desliga e "Rodar agora", Memória com busca e categoria em etiqueta, Configurações com menu de seções e Aparência (tema e "reduzir movimento").
+- Fonte: Outfit e DM Mono, como na rodada 1.
+
+### Os três modelos da `ui-skills`
+
+Os três seguem a `baseline-ui` à risca: cores e sombras padrão do Tailwind, fonte do sistema, um só destaque por tela, sem gradiente, sem roxo e sem brilho, títulos com `text-balance`, números com `tabular-nums`, animação só de `transform`/`opacity` em 150 ms e desligada com "reduzir movimento", `100dvh` e margens de área segura no celular, escala fixa de `z-index`, botões só com ícone com nome para leitor de tela.
+
+#### Zinco
+
+- **Ideia:** neutro e denso, cara de ferramenta de trabalho. Linhas finas, cartões só com borda.
+- **Cores:** claro `zinc-50` `#fafafa`, texto `zinc-900`, destaque `emerald-700` `#047857`. Escuro `zinc-950` `#09090b`, destaque `emerald-400` `#34d399`.
+- **Cantos:** 12 px nos cartões, 8 px nos campos e botões.
+- **Entrar:** painel cinza com borda à esquerda, formulário à direita.
+
+#### Pedra
+
+- **Ideia:** quente e calmo. Menu no mesmo fundo da página, cartões brancos com sombra pequena (`shadow-sm`), laranja só no botão principal e nos links.
+- **Cores:** claro `stone-100` `#f5f5f4`, cartões brancos, destaque `orange-700` `#c2410c`. Escuro `stone-950` `#0c0a09`, destaque `orange-400` `#fb923c`.
+- **Cantos:** 16 px nos cartões, 10 px nos campos e botões.
+- **Entrar:** painel escuro (claro no tema escuro) com a frase da marca.
+
+#### Ardósia
+
+- **Ideia:** menu lateral sempre escuro, conteúdo claro, mais largo (1.120 px). O mais "painel de controle" dos três.
+- **Cores:** claro `slate-50` `#f8fafc`, menu `slate-900` `#0f172a`, destaque `sky-700` `#0369a1`. Escuro `slate-950` `#020617`, destaque `sky-400` `#38bdf8`.
+- **Cantos:** 8 px nos cartões, 6 px nos campos e botões.
+- **Entrar:** painel `slate-900` à esquerda.
+
+### Custo de implementar (rodada 2)
+
+- **Menta:** fontes Outfit e DM Mono como `woff2` servidas pelo Worker, fora do JS inicial (uns 60 a 90 KB). Dá para ficar com a fonte do sistema e manter o resto.
+- **Zinco, Pedra e Ardósia:** custo zero de fonte e de biblioteca. As cores já existem no Tailwind do app; a troca é de tokens em `apps/web/src/styles.css` e da montagem do Início, da Conversa e da tela de entrar.
+- Nenhum pede biblioteca nova nem recurso da Cloudflare.
+
+### Recomendação (rodada 2)
+
+**Menta refinado**, que é a direção que o Pablo escolheu e agora cobre o sistema todo com contraste em dia. Se ele preferir algo mais sóbrio e sem fonte extra, a segunda opção é o **Pedra**, o mais confortável para usar o dia todo dos três novos.
+
+## 3. Rodada 1 · Os cinco modelos
 
 ### 1 · Lima
 
@@ -63,24 +122,24 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 - **Início:** três números grandes (tarefas hoje, atrasada, compromissos amanhã), listas abaixo e a conversa rápida numa coluna à direita (no celular ela some e fica no menu).
 - **Conversa:** lista de conversas à esquerda e a conversa à direita, como um e-mail.
 
-## 3. O que vale para todos
+## 4. O que vale para todos
 
 - Mesmos textos e dados de exemplo (a dona "Ana", nada real), em pt-BR, "a Zuri" no feminino, sem citar infraestrutura.
 - Alvos de toque de 44 px, foco visível na cor do destaque, texto de leitura com 16 px ou mais, "Pular para o conteúdo", pontos que piscam param com "reduzir movimento".
 - Claro e escuro em todos.
 - Ícones no traço do lucide, que o app já usa.
 
-## 4. Custo de implementar
+## 5. Custo de implementar (rodada 1)
 
 - **JS inicial:** nenhum dos modelos pede biblioteca nova. A troca é de CSS (tokens em `apps/web/src/styles.css`) e de montagem das telas Início e Conversa, que já são carregadas à parte.
 - **Fontes:** hoje o app usa a fonte do sistema. Cada modelo traz arquivos `woff2` da sua família e da mono (o Lima tem uma família a mais, a Red Hat Display para títulos), uns 60 a 120 KB, servidos pelo próprio Worker e fora do JS inicial. Nada é buscado no Google na hora de abrir. Dá para ficar com a fonte do sistema e levar só cores e montagem.
 - **Floresta** é o que mais mexe na estrutura (conversa fixa ao lado e lista de conversas própria). **Lima** e **Cobalto** são os que menos mexem.
 - Sem custo na Cloudflare.
 
-## 5. Recomendação
+## 6. Recomendação (rodada 1)
 
 **Lima.** É o que mais conversa com a marca atual (verde, escuro forte), muda pouco a estrutura e traz a faixa de estado do dia, que é útil. Se a ideia for algo mais leve para usar o dia todo no claro, a segunda opção é **Petróleo**.
 
-## 6. Próximo passo
+## 7. Próximo passo
 
-O Pablo escolhe um modelo (ou mistura, por exemplo "cores do Lima com o Início do Petróleo"). Aí sai um plano de implementação pela skill `planejar`, com testes, axe, capturas antes e depois e o teto de JS conferido.
+O Pablo aprova o Menta refinado ou escolhe outro da rodada 2 (ou uma mistura, por exemplo "Menta com o menu escuro do Ardósia"). Aí sai um plano de implementação pela skill `planejar`, com testes, axe, capturas antes e depois e o teto de JS conferido.
