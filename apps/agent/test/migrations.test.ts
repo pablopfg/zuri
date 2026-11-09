@@ -109,7 +109,7 @@ describe("the migration list", () => {
       26: "68b48f4a81ab4bc174381a62492aca4b71b7d64d5441f1d111527c6b80654b68",
       27: "bd5cc460cb9a3c2eb73e6da9de0bf3184b287412936417abedd2b6d9f275bf68",
       28: "503a4ef7f977350bfa47edb7dcc6442ae6fb8e0519a7814c93784e48a3dbf2e7",
-      29: "607e519aeba56b09b52d52263f9d1fe1d791269fd829bd26e2cd9c7301efc3ee",
+      29: "84038c823c68cb872b48d2013fc29c108bacec70b3bd4e893a9eaab9cac67889",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -1211,7 +1211,7 @@ describe("migrate", () => {
       db.run(`INSERT INTO zur_notes (id, title, content, created_at, updated_at) VALUES ('n1', 'Nota', 'Texto', 'x', 'x')`);
       expect(migrate(db)).toBe(29);
       // The day's counters stay as they were; what the paid models cost starts at zero.
-      expect(db.one(`SELECT ai_requests, neurons, cost_usd, paid_usd FROM zur_usage_daily WHERE day = '2026-11-03'`)).toEqual({ ai_requests: 4, neurons: 120.5, cost_usd: 0.01, paid_usd: 0 });
+      expect(db.one(`SELECT ai_requests, neurons, cost_usd, paid_usd, ai_fallbacks FROM zur_usage_daily WHERE day = '2026-11-03'`)).toEqual({ ai_requests: 4, neurons: 120.5, cost_usd: 0.01, paid_usd: 0, ai_fallbacks: 0 });
       // Nothing is marked "never send out" until the owner marks it.
       expect(db.one(`SELECT content, local_only FROM zur_memories WHERE id = 'm1'`)).toEqual({ content: "Gosta de café", local_only: 0 });
       expect(db.one(`SELECT content, local_only FROM zur_notes WHERE id = 'n1'`)).toEqual({ content: "Texto", local_only: 0 });

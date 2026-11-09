@@ -174,7 +174,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
   readonly #live = new LiveChannel({
     ctx: this.ctx,
     auth: () => this.store.auth,
-    versions: () => readAreaVersions(this.store.db),
+    versions: () => readAreaVersions(this.store.db, this.store.usage.version),
     origin: () => this.publicUrl().origin,
     locale: () => this.locale(),
   });
@@ -195,7 +195,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     aiHistory: (days) => this.store.usage.history(days),
     paidConfigured: (provider) => this.paidConfigured(provider),
     retryPaidProvider: (provider) => this.breaker().reset(provider),
-    versions: () => readAreaVersions(this.store.db),
+    versions: () => readAreaVersions(this.store.db, this.store.usage.version),
     passwordSecretSet: () => this.passwordSecretSet(),
     setupCodeSet: () => isUsableSetupCode(this.env.SETUP_CODE),
     origin: () => this.publicUrl().origin,
@@ -413,7 +413,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       agentName: this.env.AGENT_NAME,
       onFailure: (failure) => this.store.diagnostics.record(failure),
       // A lockdown that starts mid-turn sends no numbers either (same gate as the session answers).
-      versions: () => (this.store.auth.lockdown.active() ? {} : readAreaVersions(this.store.db)),
+      versions: () => (this.store.auth.lockdown.active() ? {} : readAreaVersions(this.store.db, this.store.usage.version)),
     });
   }
 

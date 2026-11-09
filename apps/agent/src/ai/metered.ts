@@ -483,7 +483,8 @@ export class MeteredAI {
       const estimate = stepNeurons({ model: call.model, billable: true, input: { reported: 0, estimated: call.inputTokens }, output: { reported: 0, estimated: maxOutputTokens } });
       if (estimate > req.maxNeurons) throw new AppError("AI_LIMIT_REACHED", "error.aiLimit.neurons", { limit: req.maxNeurons });
     }
-    const first = this.meter.reserveChat(call, limits);
+    // The first step of a try on the fallback model counts as one take-over (the usage panel).
+    const first = this.meter.reserveChat({ ...call, fallback: provider !== this.chain.primary }, limits);
     const reservations: Reservation[] = [first];
     const day = first.day;
     let settled = 0;

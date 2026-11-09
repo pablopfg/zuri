@@ -238,7 +238,8 @@ export class MemoryRepository {
   /** "Never send out" on or off (plan D3). Not an edit of the fact: no history, the author stays. */
   setLocalOnly(id: string, on: boolean): MemoryRow {
     this.require(id);
-    this.db.run(`UPDATE zur_memories SET local_only = ?, updated_at = ? WHERE id = ?`, on ? 1 : 0, this.now(), id);
+    // Not an edit of the fact: the date of its last change stays, as with notes.
+    this.db.run(`UPDATE zur_memories SET local_only = ? WHERE id = ?`, on ? 1 : 0, id);
     return this.require(id);
   }
 

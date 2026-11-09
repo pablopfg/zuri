@@ -20,7 +20,7 @@ import {
   type PaidProviderId,
   WORKERS_AI_PRICING,
 } from "@zuri/shared";
-import type { Database } from "../db/database.ts";
+import type { Database, SqlValue } from "../db/database.ts";
 import { AppError } from "../http/errors.ts";
 import type { StepUsage } from "./provider.ts";
 
@@ -101,6 +101,7 @@ const recordModelSql = `INSERT INTO zur_model_usage_daily
 
 interface DayRow {
   paid_usd: number;
+  ai_fallbacks: number;
   ai_requests: number;
   ai_errors: number;
   ai_aborted: number;
@@ -125,6 +126,25 @@ export class UsageMeter {
     private readonly clock: () => number = Date.now,
   ) {}
 
+  #writes = 0;
+  #base: number | null = null;
+
+  /**
+   * The "usage" area's number (step 21): it moves with every write of the
+   * counters, kept in memory so the heartbeat reads no row and the AI call
+   * writes none more (rules P4 and P5). A new wake starts from a random
+   * number, so the app looks again once after a restart.
+   */
+  get version(): number {
+    this.#base ??= (crypto.getRandomValues(new Uint32Array(1))[0] ?? 0) % 1_000_000_000;
+    return this.#base + this.#writes;
+  }
+
+  private write(query: string, ...params: SqlValue[]): void {
+    this.db.run(query, ...params);
+    this.#writes++;
+  }
+
   static day(ms: number): string {
     return new Date(ms).toISOString().slice(0, 10);
   }
@@ -144,7 +164,7 @@ export class UsageMeter {
    * provider made one more than was reserved) without checking anything.
    */
   reserveChat(
-    call: { model: string; billable: boolean; inputTokens: number; maxOutputTokens: number },
+    call: { model: string; billable: boolean; inputTokens: number; maxOutputTokens: number; fallback?: boolean },
     limits: AiLimits,
     force = false,
   ): Reservation {
@@ -165,12 +185,15 @@ export class UsageMeter {
       if (usd > 0 && cents > 0 && Math.round(((row?.paid_usd ?? 0) + usd) * 1_000_000) > cents * 10_000) throw this.limitReached("usd", cents / 100);
     }
     if (!row) this.startDay(day);
-    this.db.run(
-      `INSERT INTO zur_usage_daily (day, ai_requests, neurons, paid_usd) VALUES (?, 1, ?, ?)
-       ON CONFLICT (day) DO UPDATE SET ai_requests = ai_requests + 1, neurons = neurons + excluded.neurons, paid_usd = paid_usd + excluded.paid_usd`,
+    this.write(
+      // A try the fallback took over is counted in the same write (rule P4).
+      `INSERT INTO zur_usage_daily (day, ai_requests, neurons, paid_usd, ai_fallbacks) VALUES (?, 1, ?, ?, ?)
+       ON CONFLICT (day) DO UPDATE SET ai_requests = ai_requests + 1, neurons = neurons + excluded.neurons, paid_usd = paid_usd + excluded.paid_usd,
+         ai_fallbacks = ai_fallbacks + excluded.ai_fallbacks`,
       day,
       estimate,
       usd,
+      call.fallback ? 1 : 0,
     );
     return { day, kind: "chat", model: call.model, billable: call.billable, neurons: estimate, audioSeconds: 0, usd, done: false };
   }
@@ -186,7 +209,7 @@ export class UsageMeter {
     if ((row?.audio_seconds ?? 0) + seconds > AUDIO_SECONDS_PER_DAY) throw this.limitReached("audio", AUDIO_SECONDS_PER_DAY);
     if ((row?.neurons ?? 0) + estimate > limits.neuronsPerDay) throw this.limitReached("neurons", limits.neuronsPerDay);
     if (!row) this.startDay(day);
-    this.db.run(
+    this.write(
       `INSERT INTO zur_usage_daily (day, audio_seconds, neurons) VALUES (?, ?, ?)
        ON CONFLICT (day) DO UPDATE SET audio_seconds = audio_seconds + excluded.audio_seconds, neurons = neurons + excluded.neurons`,
       day,
@@ -209,7 +232,7 @@ export class UsageMeter {
     const cap = Math.min(ceiling, limits.neuronsPerDay);
     if ((row?.neurons ?? 0) + estimate > cap) throw this.limitReached("neurons", limits.neuronsPerDay);
     if (!row) this.startDay(day);
-    this.db.run(
+    this.write(
       `INSERT INTO zur_usage_daily (day, neurons) VALUES (?, ?)
        ON CONFLICT (day) DO UPDATE SET neurons = neurons + excluded.neurons`,
       day,
@@ -226,7 +249,7 @@ export class UsageMeter {
     const cost = neuronsToUsd(neurons);
     this.db.transaction(() => {
       this.adjust(reservation.day, neurons - reservation.neurons, cost);
-      this.db.run(recordModelSql, reservation.day, reservation.model, reservation.kind, reservation.billable ? 1 : 0, 0, tokens, 0, 0, 0, neurons, cost);
+      this.write(recordModelSql, reservation.day, reservation.model, reservation.kind, reservation.billable ? 1 : 0, 0, tokens, 0, 0, 0, neurons, cost);
     });
   }
 
@@ -240,7 +263,7 @@ export class UsageMeter {
     const cost = usd > 0 ? usd : neuronsToUsd(neurons);
     this.db.transaction(() => {
       this.adjust(reservation.day, neurons - reservation.neurons, usd > 0 ? 0 : cost, usd - reservation.usd);
-      this.db.run(
+      this.write(
         recordModelSql,
         reservation.day,
         usage.model,
@@ -266,13 +289,13 @@ export class UsageMeter {
     const neurons = reservation.billable ? audioNeurons(used) : 0;
     const cost = neuronsToUsd(neurons);
     this.db.transaction(() => {
-      this.db.run(
+      this.write(
         `UPDATE zur_usage_daily SET audio_seconds = max(0, audio_seconds - ?) WHERE day = ?`,
         reservation.audioSeconds - used,
         reservation.day,
       );
       this.adjust(reservation.day, neurons - reservation.neurons, cost);
-      this.db.run(recordModelSql, reservation.day, reservation.model, reservation.kind, reservation.billable ? 1 : 0, 0, 0, 0, 0, used, neurons, cost);
+      this.write(recordModelSql, reservation.day, reservation.model, reservation.kind, reservation.billable ? 1 : 0, 0, 0, 0, 0, used, neurons, cost);
     });
   }
 
@@ -289,7 +312,7 @@ export class UsageMeter {
   release(reservation: Reservation): void {
     if (reservation.done) return;
     reservation.done = true;
-    this.db.run(
+    this.write(
       `UPDATE zur_usage_daily SET
          ai_requests = max(0, ai_requests - ?),
          audio_seconds = max(0, audio_seconds - ?),
@@ -306,7 +329,7 @@ export class UsageMeter {
 
   /** One turn that ended in an error, or that was stopped before its end. */
   failed(day: string, aborted: boolean): void {
-    this.db.run(
+    this.write(
       aborted
         ? `INSERT INTO zur_usage_daily (day, ai_aborted) VALUES (?, 1) ON CONFLICT (day) DO UPDATE SET ai_aborted = ai_aborted + 1`
         : `INSERT INTO zur_usage_daily (day, ai_errors) VALUES (?, 1) ON CONFLICT (day) DO UPDATE SET ai_errors = ai_errors + 1`,
@@ -369,6 +392,7 @@ export class UsageMeter {
         neurons: row?.neurons ?? 0,
         costUsd: row?.cost_usd ?? 0,
         paidUsd: row?.paid_usd ?? 0,
+        fallbacks: row?.ai_fallbacks ?? 0,
         audioSeconds: row?.audio_seconds ?? 0,
         models,
       },
@@ -392,8 +416,17 @@ export class UsageMeter {
   history(days: UsageHistoryDays): UsageHistory {
     const to = this.today();
     const from = UsageMeter.day(this.clock() - (days - 1) * DAY_MS);
-    const dayRows = this.db.all<{ day: string; requests: number; errors: number; aborted: number; neurons: number; paid_usd: number; audio_seconds: number }>(
-      `SELECT day, ai_requests AS requests, ai_errors AS errors, ai_aborted AS aborted, neurons, paid_usd, audio_seconds
+    const dayRows = this.db.all<{
+      day: string;
+      requests: number;
+      errors: number;
+      aborted: number;
+      fallbacks: number;
+      neurons: number;
+      paid_usd: number;
+      audio_seconds: number;
+    }>(
+      `SELECT day, ai_requests AS requests, ai_errors AS errors, ai_aborted AS aborted, ai_fallbacks AS fallbacks, neurons, paid_usd, audio_seconds
        FROM zur_usage_daily WHERE day >= ? AND day <= ? ORDER BY day`,
       from,
       to,
@@ -419,6 +452,7 @@ export class UsageMeter {
         requests: r.requests,
         errors: r.errors,
         aborted: r.aborted,
+        fallbacks: r.fallbacks,
         neurons: r.neurons,
         paidUsd: r.paid_usd,
         audioSeconds: r.audio_seconds,
@@ -439,7 +473,7 @@ export class UsageMeter {
 
   private row(day: string): DayRow | null {
     return this.db.one<DayRow>(
-      `SELECT ai_requests, ai_errors, ai_aborted, audio_seconds, neurons, cost_usd, paid_usd FROM zur_usage_daily WHERE day = ?`,
+      `SELECT ai_requests, ai_errors, ai_aborted, ai_fallbacks, audio_seconds, neurons, cost_usd, paid_usd FROM zur_usage_daily WHERE day = ?`,
       day,
     );
   }
@@ -447,14 +481,14 @@ export class UsageMeter {
   /** A day's first call also removes the history past the retention: 90 days, today included (rule P13). */
   private startDay(day: string): void {
     const cutoff = UsageMeter.day(Date.parse(`${day}T00:00:00Z`) - USAGE_RETENTION_DAYS * DAY_MS);
-    this.db.run(`DELETE FROM zur_usage_daily WHERE day <= ?`, cutoff);
-    this.db.run(`DELETE FROM zur_model_usage_daily WHERE day <= ?`, cutoff);
+    this.write(`DELETE FROM zur_usage_daily WHERE day <= ?`, cutoff);
+    this.write(`DELETE FROM zur_model_usage_daily WHERE day <= ?`, cutoff);
   }
 
   /** `cost` is Workers AI's list price of the call; `usd` the change of what the paid models cost (step 21). */
   private adjust(day: string, neurons: number, cost: number, usd = 0): void {
     // An absent row (it was purged, or the day was never reserved) is created, so nothing is lost.
-    this.db.run(
+    this.write(
       `INSERT INTO zur_usage_daily (day, neurons, cost_usd, paid_usd) VALUES (?, max(0, ?), ?, max(0, ?))
        ON CONFLICT (day) DO UPDATE SET neurons = max(0, neurons + ?), cost_usd = cost_usd + excluded.cost_usd, paid_usd = max(0, paid_usd + ?)`,
       day,

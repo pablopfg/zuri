@@ -1,8 +1,9 @@
-import { AGENT_INSTANCE_NAME, AI_LIMIT_RANGES, apiErrorSchema, DEFAULT_CHAT_MODEL, settingsSchema, usageReportSchema } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, AI_LIMIT_RANGES, apiErrorSchema, DEFAULT_CHAT_MODEL, settingsSchema, usageHistorySchema, usageReportSchema } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { Database } from "../src/db/database.ts";
+import { AppError } from "../src/http/errors.ts";
 import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
 
 // The AI settings and the usage report, through the Worker as the interface calls them.
@@ -122,5 +123,68 @@ describe("the AI settings", () => {
       // Outside local development the provider is Workers AI with the stored (here: default) model.
       expect([agent.ai().id, agent.ai().model]).toEqual(["workers-ai", DEFAULT_CHAT_MODEL]);
     });
+  });
+});
+
+describe("the paid models through the routes (step 21)", () => {
+  it("refuses a paid model without its company's key, as not configured, and leaves the setting as it was", async () => {
+    const ip = "192.0.2.94";
+    const cookie = await signIn(ip);
+    for (const field of ["aiModel", "aiFallbackModel"]) {
+      const res = await patch(ip, cookie, { [field]: "anthropic/claude-haiku-5-5" });
+      expect(res.status, field).toBe(503);
+      expect(apiErrorSchema.parse(await res.json()).code).toBe("NOT_CONFIGURED");
+    }
+    const report = usageReportSchema.parse(await (await usage(ip, cookie)).json());
+    expect(report.model).toBe(DEFAULT_CHAT_MODEL);
+    expect(report.providers).toEqual([
+      { id: "anthropic", configured: false, state: "ok" },
+      { id: "openai", configured: false, state: "ok" },
+    ]);
+  });
+
+  it("keeps the US$ ceiling off by default and takes the owner's value right after the password", async () => {
+    const ip = "192.0.2.95";
+    const cookie = await signIn(ip);
+    expect(usageReportSchema.parse(await (await usage(ip, cookie)).json()).limits.usdCentsPerDay).toBe(0);
+    for (const [value, status] of [
+      [-1, 400],
+      [0, 200],
+      [250, 200],
+      [AI_LIMIT_RANGES.aiUsdCentsPerDay.max, 200],
+      [AI_LIMIT_RANGES.aiUsdCentsPerDay.max + 1, 400],
+      [1.5, 400],
+    ] as const) {
+      expect((await patch(ip, cookie, { aiUsdCentsPerDay: value })).status, String(value)).toBe(status);
+    }
+    expect(usageReportSchema.parse(await (await usage(ip, cookie)).json()).limits.usdCentsPerDay).toBe(AI_LIMIT_RANGES.aiUsdCentsPerDay.max);
+  });
+
+  it("gives the usage history for 7, 30 or 90 days only", async () => {
+    const ip = "192.0.2.96";
+    const cookie = await signIn(ip);
+    for (const days of [7, 30, 90]) {
+      const res = await call(`${ORIGIN}/api/usage/history?days=${days}`, { headers: headers(ip, cookie) });
+      expect(res.status, String(days)).toBe(200);
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(usageHistorySchema.parse(await res.json())).toMatchObject({ days: [], models: [], paidByDay: [] });
+    }
+    for (const days of ["8", "0", "abc", "7.0x"]) {
+      const res = await call(`${ORIGIN}/api/usage/history?days=${days}`, { headers: headers(ip, cookie) });
+      expect(res.status, days).toBe(400);
+    }
+    expect((await call(`${ORIGIN}/api/usage/history`, { headers: headers(ip) })).status).toBe(401);
+  });
+
+  it("tries a company again on the owner's word, and only the two companies it knows", async () => {
+    const ip = "192.0.2.97";
+    const cookie = await signIn(ip);
+    await runOwner((_db, agent) => agent.breaker().failed({ id: "anthropic", model: "anthropic/claude-haiku-5-5" }, new AppError("SERVICE_UNAVAILABLE", "error.aiNoCredit")));
+    await runOwner((_db, agent) => expect(agent.breaker().state("anthropic")).toBe("no_credit"));
+    const res = await call(`${ORIGIN}/api/usage/providers/anthropic/retry`, { method: "POST", headers: headers(ip, cookie) });
+    expect(res.status).toBe(200);
+    expect(usageReportSchema.parse(await res.json()).providers.find((p) => p.id === "anthropic")?.state).toBe("ok");
+    expect((await call(`${ORIGIN}/api/usage/providers/google/retry`, { method: "POST", headers: headers(ip, cookie) })).status).toBe(404);
+    expect((await call(`${ORIGIN}/api/usage/providers/openai/retry`, { method: "POST", headers: headers(ip) })).status).toBe(401);
   });
 });

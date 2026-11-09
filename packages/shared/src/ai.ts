@@ -186,6 +186,8 @@ export const usageReportSchema = /* @__PURE__ */ mini.strictObject({
     costUsd: amount,
     /** What the paid models cost today, in US$ (step 21). */
     paidUsd: amount,
+    /** Calls the fallback model took over today. */
+    fallbacks: count,
     audioSeconds: count,
     models: mini.array(modelUsageSchema),
   }),
@@ -230,6 +232,7 @@ export const usageHistorySchema = /* @__PURE__ */ mini.strictObject({
       requests: count,
       errors: count,
       aborted: count,
+      fallbacks: count,
       neurons: amount,
       paidUsd: amount,
       audioSeconds: count,
