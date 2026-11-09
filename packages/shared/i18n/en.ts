@@ -233,7 +233,7 @@ export const en: Messages = {
   "web.notFound.body": "This address doesn't exist in Zuri.",
   "web.notFound.home": "Back to home",
   "web.crash.title": "This screen stopped",
-  "web.crash.body": "This screen stopped because of an error. Reload to try again; what was already saved is still in Zuri.",
+  "web.crash.body": "Reload to try again. What was already saved is still in Zuri.",
   "web.crash.reload": "Reload",
   "web.passwordRequired.title": "Change your password",
   "web.passwordRequired.body": "Your current password doesn't meet the security rules. Choose a new one to continue; the rest of Zuri stays locked until then.",
