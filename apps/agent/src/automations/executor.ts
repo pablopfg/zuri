@@ -1,5 +1,6 @@
 import { type Automation, isQuietAnswer, type Locale, type Settings, t, type Task } from "@zuri/shared";
 import { type AgentRunner, ROUTINE_MCP_BUDGET } from "../agent/runner.ts";
+import { chatPromptVersion } from "../agent/prompt.ts";
 import { SubrequestMeter } from "../mcp/session.ts";
 import type { Notice } from "../tools/registry.ts";
 import { instantToLocal } from "../chat/local-due.ts";
@@ -52,13 +53,17 @@ async function routine(automation: Automation, runId: string, deps: ExecutorDeps
   if (deps.lockdown?.()) return { status: "skipped", result: null, problem: "lockdown" };
   const cap = deps.settings().aiScheduledRunsPerDay;
   if (deps.automations.aiRunsToday() >= cap) return { status: "skipped", result: null, problem: "ai_budget" };
-  deps.automations.markAi(runId);
+  const runner = deps.runner();
+  // The settings read once: the run's prompt and the PROMPT_VERSION it keeps match.
+  const chat = runner.chatSettings();
+  deps.automations.markAi(runId, chatPromptVersion(chat));
   const left: Notice[] = [];
   // A run that failed after a call became a proposal still tells the owner where it waits.
   const leftOver = () => (left.length ? left.map((notice) => `${notice.title}\n${notice.body}`).join("\n\n") : null);
   try {
-    const { text, notices } = await deps.runner().scheduled({
+    const { text, notices } = await runner.scheduled({
       id: automation.id,
+      chat,
       meter,
       notices: left,
       name: automation.name,

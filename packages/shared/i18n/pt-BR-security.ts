@@ -94,6 +94,7 @@ export const ptBRSecurity = {
   "web.activity.kind.remote_enabled": "Acesso remoto ligado",
   "web.activity.kind.remote_disabled": "Acesso remoto desligado",
   "web.activity.kind.remote_token_created": "Token de acesso remoto criado",
+  "web.activity.kind.agent_settings_changed": "Ajustes de um agente de IA mudados",
   "web.activity.kind.remote_token_revoked": "Token de acesso remoto revogado",
   "web.activity.kind.remote_token_rejected": "Token de acesso remoto recusado",
   "web.activity.kind.remote_write": "Mudança feita por token de acesso remoto",

@@ -1,5 +1,6 @@
 import { AUTOMATION_LIMITS, type AutomationCreate, type Settings } from "@zuri/shared";
 import { describe, expect, it, vi } from "vitest";
+import { chatPromptVersion } from "../src/agent/prompt.ts";
 import { AgentRunner } from "../src/agent/runner.ts";
 import { automationExecutor } from "../src/automations/executor.ts";
 import { AutomationService, type Executor, type RunOutcome } from "../src/automations/service.ts";
@@ -629,6 +630,8 @@ describe("running each kind", () => {
       expect(system).toContain("scheduled run of a routine the owner approved");
       expect(provider.transcript.requests[0]?.messages).toEqual([{ role: "user", content: "O que está atrasado?" }]);
       expect(world.automations.aiRunsToday()).toBe(1);
+      // The run keeps the prompt it was made with (PROMPT_VERSION, CA13).
+      expect(world.db.one<{ v: string | null }>(`SELECT prompt_version AS v FROM zur_automation_runs WHERE id = ?`, run.id)?.v).toBe(chatPromptVersion());
     });
   });
 

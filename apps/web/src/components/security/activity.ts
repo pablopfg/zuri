@@ -60,6 +60,7 @@ export const KIND_LABEL: Record<AuthEventKind, MessageKey> = {
   remote_enabled: "web.activity.kind.remote_enabled",
   remote_disabled: "web.activity.kind.remote_disabled",
   remote_token_created: "web.activity.kind.remote_token_created",
+  agent_settings_changed: "web.activity.kind.agent_settings_changed",
   remote_token_revoked: "web.activity.kind.remote_token_revoked",
   remote_token_rejected: "web.activity.kind.remote_token_rejected",
   remote_write: "web.activity.kind.remote_write",

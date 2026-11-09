@@ -835,6 +835,7 @@ const SECURITY_TEXT: Record<SecurityAlertEvent, Text> = {
   password_recovered: { title: "notice.security.password_recovered.title", body: "notice.security.password_recovered.body" },
   remote_enabled: { title: "notice.security.remote_enabled.title", body: "notice.security.remote_enabled.body" },
   remote_token_created: { title: "notice.security.remote_token_created.title", body: "notice.security.remote_token_created.body" },
+  agent_settings_changed: { title: "notice.security.agent_settings_changed.title", body: "notice.security.agent_settings_changed.body" },
   telegram_token_revoked: { title: "notice.security.telegram_token_revoked.title", body: "notice.security.telegram_token_revoked.body" },
 };
 

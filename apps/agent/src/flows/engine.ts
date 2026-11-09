@@ -1,4 +1,4 @@
-import { FLOW_LIMITS, type FlowDefinition, type FlowNode, type FlowPriority, type FlowRunProblem } from "@zuri/shared";
+import { type AgentCallSettings, FLOW_LIMITS, type FlowDefinition, type FlowNode, type FlowPriority, type FlowRunProblem } from "@zuri/shared";
 import { dataLine } from "../agent/data.ts";
 import type { MeteredAI } from "../ai/metered.ts";
 import { AppError } from "../http/errors.ts";
@@ -43,6 +43,8 @@ export interface EngineDeps {
   network: () => FlowNetwork;
   development: () => boolean;
   ai: () => MeteredAI;
+  /** The AI step's settings on the AI screen; the code's defaults when absent. */
+  agentSettings?: () => AgentCallSettings;
   /** A notice step: the owner's own words, filled with the item's values. */
   notify: (notice: { title: string; body: string; priority: FlowPriority }) => void;
   /** A site went up or down. */
@@ -301,6 +303,7 @@ async function ai(node: Extract<FlowNode, { type: "ai" }>, state: RunState, deps
   // Through the specialists' contract: fixed rules, the owner's layer, then this step's instruction; the items as data.
   const { value } = await runSpecialist(deps.ai(), FLOW_AI_SPECIALIST, content, {
     instruction: node.instruction,
+    ...(deps.agentSettings ? { settings: deps.agentSettings() } : {}),
     maxNeurons: left,
     onNeurons: (n) => {
       neurons += n;

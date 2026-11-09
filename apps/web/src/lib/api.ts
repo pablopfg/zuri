@@ -47,7 +47,7 @@ export function onRecentAuthRequired(fn: ConfirmHandler): () => void {
 const SIGN_IN_PATHS = new Set(["/auth/login", "/auth/mfa", "/auth/mfa/passkey/options", "/auth/mfa/passkey", "/auth/session"]);
 
 export interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   signal?: AbortSignal;
 }

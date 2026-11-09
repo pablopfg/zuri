@@ -38,6 +38,7 @@ export {
   ptBRFlows,
   ptBRCrm,
   ptBRReviews,
+  ptBRAgents,
   ptBRUsage,
   t,
 } from "../i18n/index.ts";
@@ -151,3 +152,4 @@ export * from "./crm.ts";
 export * from "./crm-schemas.ts";
 export * from "./reviews.ts";
 export * from "./reviews-schemas.ts";
+export * from "./agents-schemas.ts";

@@ -63,7 +63,7 @@ prompt de cada agente, com senha, versões e "voltar". São duas PRs.
 - `response_format` (JSON mode) → não faremos agora; só o Llama 3.3 confirma suporte.
 - Teste do cache de prefixo (`x-session-affinity`) → precisa de IA real; entra como caso opcional do `avaliar-prompts` e da medição na conta do Pablo.
 - Botão "Testar" na tela antes de salvar → depois da PR 2, se o Pablo quiser; o `avaliar-prompts` cobre o teste com IA real.
-- Editar o prompt dos verificadores (segunda leitura das avaliações e das rotinas) → fica só leitura: a camada inteira deles é de segurança; dá para ajustar só a temperatura e os tokens (suposição S3).
+- Editar o prompt dos verificadores (segunda leitura das avaliações e das rotinas) → fica só leitura: a camada inteira deles é de segurança; a temperatura (0) e o top_p (do modelo) também ficam fixos, porque quem confere precisa responder sempre do mesmo jeito; dá para ajustar só os tokens (suposição S3).
 
 ## 5. Como funciona para o Pablo
 
@@ -94,7 +94,7 @@ prompt de cada agente, com senha, versões e "voltar". São duas PRs.
 
 ### Textos visíveis
 
-PR 1 (os da PR 2 ficam no plano da tela, seção 5 desta mesma página, ao implementar):
+PR 1 abaixo. Os da PR 2 (chaves `web.agents.*` e o evento `agent_settings_changed`) estão em `packages/shared/i18n/pt-BR-agents.ts`, `pt-BR-security.ts` e `pt-BR-server.ts`, com o en em `en.ts`.
 
 | Chave | pt-BR | en | Onde aparece |
 | --- | --- | --- | --- |
@@ -143,7 +143,7 @@ PR 1: nenhuma rota nova. PR 2: `GET /api/ai/agents` (perfis, padrão, versão em
 
 ### Banco
 
-PR 1: nenhum. PR 2: migration 30, `zur_agent_configs (agent TEXT, version INTEGER, temperature REAL, top_p REAL, max_tokens INTEGER, prompt TEXT, created_at INTEGER, PRIMARY KEY (agent, version))` e colunas `prompt_version TEXT` em `zur_messages`, na tabela de execuções das rotinas e em `zur_reviews` (acréscimo). Volume: ≤20 versões × 6 agentes.
+PR 1: nenhum. PR 2: migration 30, `zur_agent_configs (agent TEXT, version INTEGER, temperature REAL, top_p REAL, max_tokens INTEGER, prompt TEXT, is_default INTEGER, created_at INTEGER, PRIMARY KEY (agent, version))` (`is_default`: "Voltar ao padrão", com os valores nulos para seguir o código) e colunas `prompt_version TEXT` em `zur_messages`, na tabela de execuções das rotinas e em `zur_reviews` (acréscimo). Volume: ≤20 versões × 6 agentes.
 
 ### Ferramentas do agente
 
@@ -191,7 +191,10 @@ Nível da auditoria: orientação (não toca autenticação nem segredos na PR 1
 | CA8 | versão muda quando o texto muda | unitário | `apps/agent/test/guardrails.test.ts` |
 | CA9 | corpus contra cada defesa; instantâneo | segurança | `apps/agent/test/guardrails.test.ts`, `prompt-snapshot.test.ts` |
 | CA10 | casos do `avaliar-prompts` distinguem certo de errado; teto; `--seco` rodado à mão | unitário | `apps/agent/test/guardrails.test.ts` |
-| CA11–14 | rotas, faixas n−1/n/n+1, senha, bloqueio, versões; e2e + axe da tela | contrato/e2e/a11y | PR 2 |
+| CA11 | lista dos agentes com padrão, regras fixas e versão; cartão com estados, teclado e axe | contrato/e2e/a11y | `apps/agent/test/agents-routes.test.ts`, `tests/e2e/agentes.spec.ts` |
+| CA12 | senha recente, bloqueio (423), fora dos tokens remotos | contrato/segurança | `agents-routes.test.ts`, `remote-routes.test.ts` |
+| CA13 | versões (20), voltar para esta, voltar ao padrão; `prompt_version` em resposta, rotina e rascunho | contrato/integração/e2e | `agents-routes.test.ts`, `chat-runner.test.ts`, `automations.test.ts`, `reviews-autonomy.test.ts`, `agentes.spec.ts` |
+| CA14 | faixas n−1/n/n+1, 2.000 caracteres, `<>`/invisíveis; corpus plantado como camada do dono | unitário/segurança | `packages/shared/test/agents.test.ts`, `agents-routes.test.ts`, `guardrails.test.ts` |
 
 ## 11. Entrega
 
@@ -216,7 +219,7 @@ Nível da auditoria: orientação (não toca autenticação nem segredos na PR 1
 
 - S1. Temperaturas padrão: conversa 0,4; resumo 0,2; nó de IA 0,2; rascunho de avaliação 0,2; segundas leituras 0. `top_p` vazio (padrão do modelo) em todos.
 - S2. A persona da conversa (parágrafo "Personality") vira a camada do dono padrão; as regras, datas e idioma ficam fixos.
-- S3. Os verificadores (segundas leituras) têm o prompt só para leitura: tudo neles é segurança. O Pablo pode derrubar no PR.
+- S3. Os verificadores (segundas leituras) têm o prompt só para leitura, e a temperatura e o top_p fixos: tudo neles é segurança. Só o tamanho da resposta muda. O Pablo pode derrubar no PR.
 - S4. "Pede a senha de novo" segue o padrão já usado em MCP, fluxos e Telegram: senha digitada nos últimos 15 minutos (`requireRecentAuth`).
 - S5. O aviso da conferência de afirmações fica no texto guardado (sem coluna nova na PR 1); a PR 2 grava a versão do prompt.
 

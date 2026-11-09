@@ -144,6 +144,8 @@ describe("publishing by itself", () => {
       praise(world, "p1");
       await later(world);
       expect(row(world, "p1")).toMatchObject({ state: "replied", reply: SIGNED, auto: 1, draft_source: "ai" });
+      // The draft keeps the prompt that made it (PROMPT_VERSION, CA13); a template has none.
+      expect(row(world, "p1")).toMatchObject({ prompt_version: expect.stringMatching(/^review_draft\.[0-9a-z]+$/) });
       const calls = world.sim.seen.filter((s) => s.url.includes("/reviews/p1")).map((s) => s.method);
       expect(calls.slice(-2)).toEqual(["GET", "PUT"]);
       expect(world.notices.filter((n) => n.kind === "reviews.auto")).toEqual([{ kind: "reviews.auto", count: 1 }]);
@@ -164,7 +166,7 @@ describe("publishing by itself", () => {
       await autoOn(world);
       add(world, "s1", 4);
       await later(world);
-      expect(row(world, "s1")).toMatchObject({ state: "replied", auto: 1, draft_source: "template" });
+      expect(row(world, "s1")).toMatchObject({ state: "replied", auto: 1, draft_source: "template", prompt_version: null });
       expect(world.requests).toEqual([]);
     }));
 

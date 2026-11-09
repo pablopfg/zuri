@@ -20,6 +20,7 @@ import {
   type ReviewTone,
   sha256Hex,
   zonedParts,
+  type AgentCallSettings,
 } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
 import { cleanBlock, cleanText } from "../google/events.ts";
@@ -83,6 +84,8 @@ export interface ReviewsDeps {
   db: Database;
   google: GoogleCalendar;
   ai: () => ReviewAi;
+  /** The reviews' agents' settings on the AI screen; the code's defaults when absent. */
+  agentSettings?: ((id: "review_draft" | "review_check") => AgentCallSettings) | undefined;
   timeZone: () => string;
   lockdown: () => boolean;
   /** A notice to the center (the Telegram group's "Avaliações" topic, step 13). */
@@ -189,7 +192,7 @@ export class ReviewService {
 
   constructor(private readonly deps: ReviewsDeps) {
     this.clock = deps.clock ?? Date.now;
-    this.responder = new ReviewResponder(deps.ai);
+    this.responder = new ReviewResponder(deps.ai, deps.agentSettings);
   }
 
   private get db(): Database {
@@ -854,13 +857,16 @@ export class ReviewService {
     // (the check reads it meanwhile) keeps waiting for a draft of its new text.
     const same = `AND updated_at = ? AND rating = ? AND comment = ?`;
     const version = [row.updated_at, row.rating, row.comment] as const;
+    // The prompt of the AI's draft (PROMPT_VERSION); a template or the owner's text has none.
+    let promptVersion: string | null = null;
     const propose = (text: string, source: ReviewDraftSource, fallback: ReviewGuardCode[]) => {
       this.db.run(
-        `UPDATE zur_reviews SET draft = ?, draft_source = ?, fallback = ?, needs_draft = 0, proposed_at = ?, state = CASE WHEN state = 'new' THEN 'proposed' ELSE state END
+        `UPDATE zur_reviews SET draft = ?, draft_source = ?, fallback = ?, prompt_version = ?, needs_draft = 0, proposed_at = ?, state = CASE WHEN state = 'new' THEN 'proposed' ELSE state END
          WHERE id = ? AND needs_draft = 1 ${same}`,
         text,
         source,
         JSON.stringify(fallback),
+        source === "ai" ? promptVersion : null,
         this.clock(),
         row.id,
         ...version,
@@ -893,11 +899,12 @@ export class ReviewService {
       this.spend(n);
     };
     try {
-      const answer = await this.responder.draft(
+      const { answer, version: made } = await this.responder.draft(
         { id: row.id, rating: row.rating, firstName: row.first_name, comment: row.comment, signature: pattern.signature, tone: pattern.tone, mode: positive ? "positive" : "careful" },
         left,
         onNeurons,
       );
+      promptVersion = made;
       if (!answer) return fallback(["invalid"]);
       if (positive) {
         // The AI can only make it more cautious: anything but plain praise goes to the team.

@@ -24,6 +24,7 @@ import { ptBRContacts } from "./pt-BR-contacts.ts";
 import { ptBRFlows } from "./pt-BR-flows.ts";
 import { ptBRCrm } from "./pt-BR-crm.ts";
 import { ptBRReviews } from "./pt-BR-reviews.ts";
+import { ptBRAgents } from "./pt-BR-agents.ts";
 import { ptBRUsage } from "./pt-BR-usage.ts";
 
 export type MessageKey = keyof typeof ptBR;
@@ -68,6 +69,7 @@ export {
   ptBRFlows,
   ptBRCrm,
   ptBRReviews,
+  ptBRAgents,
   ptBRUsage,
 };
 
