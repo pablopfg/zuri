@@ -1,8 +1,8 @@
 # Backup
 
-Como tirar os seus dados da Zuri e trazer de volta. A etapa 23 chega em duas
-partes: esta (exportar, importar e uso do armazenamento) e o backup automático
-diário, cifrado, que vem na próxima PR. O plano completo está em
+Como tirar os seus dados da Zuri e trazer de volta. A etapa 23 chegou em duas
+partes: a 23a (exportar, importar e uso do armazenamento) e a 23b (o backup
+automático diário, cifrado). O plano completo está em
 [planos/etapa-23-backup.md](planos/etapa-23-backup.md).
 
 ## Para o dono
@@ -21,7 +21,80 @@ Em **Configurações › Dados**:
   alerta.
 
 O arquivo não é cifrado: guarde num lugar seguro. A cópia cifrada é a do backup
-automático.
+automático, abaixo.
+
+## Backup automático (23b) ⚠ R2
+
+Precisa do espaço de backups da instalação, o binding `BACKUP_BUCKET` (R2,
+dentro da faixa grátis; veja
+[configuracao-cloudflare.md](configuracao-cloudflare.md#backup-automático-opcional)).
+Sem ele, o cartão **Backup automático** diz que está desligado e nada roda.
+
+1. **Criar chave do backup** (pede a senha dos últimos 15 minutos). O
+   navegador gera um par de chaves P-256 e mostra **Baixar o arquivo da
+   chave**: você baixa `zuri-chave-do-backup.json` com o seu próprio clique e
+   só depois confirma em **Já guardei, usar esta chave**, quando a parte
+   pública vai ao servidor. A chave privada nunca
+   vai ao servidor nem ao R2. Sem esse arquivo nenhuma cópia abre, nem para
+   você: guarde fora da Zuri. Criar ou trocar a chave gera alerta de segurança.
+2. Todo dia, a partir das 3 h no seu fuso, sai uma cópia de tudo o que o
+   backup manual leva. Ficam as 7 mais novas; as mais antigas só são apagadas
+   depois que a nova chegou inteira. A cópia mais nova de cada chave anterior
+   fica 30 dias, mesmo fora das 7: quem trocar a chave com uma sessão roubada
+   não apaga, em uma semana, as cópias que o seu arquivo abre. Se o envio
+   falhar, nada é apagado, a tela mostra a falha e a Zuri tenta de novo em uma
+   hora (até três vezes no dia).
+3. O cartão lista as cópias (data e tamanho) com **Baixar**. Baixar também
+   pede a senha recente.
+4. **Restaurar uma cópia** pede a cópia `.zuri` e o arquivo da chave. O
+   navegador abre a cópia, mostra o que ela tem e importa com as mesmas
+   travas da importação manual. Uma cópia acima de 10 MB vai em partes: a
+   primeira leva o que couber, tirando nesta ordem as conversas, as memórias,
+   as notas e as tarefas, que vão depois em lotes; cada parte é tudo ou nada.
+   Projetos, configurações, automações e clientes ficam sempre na primeira.
+   Uma tarefa ou nota que vai num lote posterior chega sem o projeto, porque o
+   vínculo só vale dentro de uma importação. Se uma parte falhar, **Continuar**
+   recomeça dela, sem repetir as que já entraram. O navegador para de abrir
+   uma cópia que passe de 200 MB descompactada.
+5. A primeira cópia de cada mês também vai como documento para o seu chat
+   privado com o bot, só se ele estiver ligado ao `TELEGRAM_ADMIN_ID`. Se o
+   Telegram falhar, a cópia do dia seguinte tenta de novo. Acima de 40 MB
+   (folga abaixo dos 50 MB do Telegram), vai só o aviso com o botão para a
+   tela. No modo de bloqueio nada vai ao Telegram.
+6. Quando o último backup que você baixou (o JSON, uma cópia ou a do
+   Telegram) passa de 30 dias, o bot avisa no 31º dia e depois a cada 30 dias. Se você
+   nunca baixou, os 30 dias contam do primeiro acesso. `/backup` no bot diz a
+   idade do último backup baixado e a data da última cópia.
+
+### O arquivo `.zuri`
+
+```
+ZURI-BACKUP 1
+{"key":"<id da chave>","epk":"<chave pública efêmera>","salt":"<16 bytes>"}
+<pedaços: 4 bytes de tamanho + texto cifrado>
+```
+
+O conteúdo é o mesmo JSON do backup manual, compactado com gzip e cifrado em
+pedaços de 1 MiB com AES-256-GCM. A chave de cada arquivo sai de HKDF-SHA256
+sobre o segredo ECDH entre uma chave efêmera e a sua. Cada pedaço usa o número
+dele como nonce e leva o cabeçalho e a marca de "último pedaço" como dado
+associado: um arquivo trocado, cortado ou com bytes a mais não abre. O nome no
+R2 é `zuri/AAAA-MM-DD-<8 hex aleatórios>.zuri`, sem nada sobre você.
+
+Tudo usa Web Crypto padrão, então a cópia abre fora da Zuri. Em Node 24+, na pasta do repositório:
+
+```js
+// node abrir.mjs zuri-backup-2026-11-09-0a1b2c3d.zuri zuri-chave-do-backup.json > backup.json
+import { readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
+import { openBackup, parseBackupKeyFile } from "./packages/shared/src/backup-file.ts";
+
+const [copy, key] = process.argv.slice(2);
+const gzip = await openBackup(readFileSync(copy), parseBackupKeyFile(readFileSync(key, "utf8")));
+process.stdout.write(gunzipSync(gzip));
+```
+
+O código do formato está em `packages/shared/src/backup-file.ts`.
 
 ## O que o arquivo leva
 
@@ -103,4 +176,18 @@ Exportar lê uma linha por registro, em páginas de 500, sem montar o arquivo
 inteiro na memória. Importar grava uma linha por registro, mais índices e
 contadores: um arquivo enorme pode gastar boa parte das 100.000 escritas do
 dia, uma vez. `GET /api/storage` lê só os contadores (uma linha por tipo).
-Nada disso usa IA, R2 nem serviço de fora.
+Nada disso usa IA.
+
+O backup automático roda no alarme único das automações. As chamadas ao R2
+são serviço interno da Cloudflare (1.000 por invocação no plano Free) e não
+entram nas 50 subrequisições externas do despertar; a Zuri ainda assim para
+uma cópia em 200 chamadas. Só o envio ao Telegram ocupa lugar no despertar e,
+sem lugar, fica para a cópia do dia seguinte. A tentativa é anotada antes do
+envio: uma cópia interrompida volta uma hora depois, no máximo três vezes por
+dia. Por dia: uma leitura do banco igual à do backup manual, um `put` (ou,
+acima de 8 MiB, um envio em partes de 8 MiB) e uma listagem, todas operações
+Classe A do R2; apagar é grátis. São até umas 500 por mês contra 1 milhão
+grátis, e 7 cópias
+de até ~100 MB cabem nos 10 GB grátis. Abrir o cartão lista o bucket uma vez;
+baixar uma cópia é uma operação Classe B. A memória fica numa parte de 8 MiB
+e um pedaço de 1 MiB por vez, longe dos 128 MB.

@@ -103,7 +103,7 @@ export class TelegramClient {
     return Math.max(0, this.#budget - this.calls);
   }
 
-  async call<T>(method: string, params: Extra = {}): Promise<T> {
+  async call<T>(method: string, params: Extra | FormData = {}): Promise<T> {
     try {
       return await this.#once<T>(method, params);
     } catch (error) {
@@ -115,15 +115,15 @@ export class TelegramClient {
     }
   }
 
-  async #once<T>(method: string, params: Extra): Promise<T> {
+  async #once<T>(method: string, params: Extra | FormData): Promise<T> {
     if (this.calls >= this.#budget) throw new TelegramBudgetError();
     this.calls += 1;
     let response: Response;
     try {
       response = await this.#fetch(`${API_ORIGIN}/bot${this.#token}/${method}`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(params),
+        // A file goes as multipart (sendDocument); the runtime sets its boundary.
+        ...(params instanceof FormData ? { body: params } : { headers: { "content-type": "application/json" }, body: JSON.stringify(params) }),
         // A redirect would take the token's URL somewhere else: never followed.
         redirect: "manual",
         signal: AbortSignal.timeout(this.#timeoutMs),
@@ -180,6 +180,15 @@ export class TelegramClient {
       if (isNotModified(error)) return null;
       throw error;
     }
+  }
+
+  /** A file to a chat (the monthly backup, step 23b): multipart, as the Bot API takes uploads. */
+  sendDocument(chatId: number, file: Blob, filename: string, caption: string) {
+    const form = new FormData();
+    form.set("chat_id", String(chatId));
+    form.set("caption", caption);
+    form.set("document", file, filename);
+    return this.call<{ message_id: number }>("sendDocument", form);
   }
 
   answerCallbackQuery(callbackQueryId: string, text?: string) {

@@ -45,6 +45,9 @@ export const LOG_EVENTS = [
   "flow_failed",
   "crm_alarm_failed",
   "backup_export_skipped",
+  "backup_auto_done",
+  "backup_auto_failed",
+  "backup_telegram_failed",
   "flow_interrupted",
   "automation_reconcile_failed",
   "ai_fallback",
@@ -124,6 +127,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "remote", "search", "semantic", "servers", "session", "settings", "setup", "status", "storage", "sync", "tasks", "telegram", "test", "tokens", "tools", "transcribe", "trash", "usage", "verify", "webhook",
   // The AI screen's agents (guardrails, PR 2).
   "agents", "versions",
+  // The automatic backup (step 23b).
+  "auto", "key", "copies",
 ]);
 const MAX_SEGMENTS = 8;
 

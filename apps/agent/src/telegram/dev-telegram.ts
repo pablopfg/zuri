@@ -11,14 +11,15 @@ export async function developmentTelegramFetcher(input: RequestInfo | URL, init?
   // A file's download (step 14): a few seconds of silence's worth of bytes, which the mock transcriber hears.
   if (String(input).includes("/file/bot")) return new Response(new Uint8Array(8_000));
   const method = String(input).split("/").at(-1) ?? "";
-  const body = init?.body ? (JSON.parse(await new Response(init.body).text()) as Record<string, unknown>) : {};
+  // A file (sendDocument, step 23b) comes as multipart: nothing in it is read here.
+  const body = init?.body && !(init.body instanceof FormData) ? (JSON.parse(await new Response(init.body).text()) as Record<string, unknown>) : {};
   if (method === "setWebhook" && typeof body.url === "string") webhookUrl = body.url;
   const result =
     method === "getMe"
       ? { id: 100000001, is_bot: true, first_name: "Zuri", username: "zuri_local_bot" }
       : method === "getWebhookInfo"
         ? { url: webhookUrl, pending_update_count: 0 }
-        : method === "sendMessage"
+        : method === "sendMessage" || method === "sendDocument"
           ? { message_id: 1 }
           : method === "getFile"
             ? { file_id: body.file_id, file_size: 8_000, file_path: "voice/file_1.oga" }

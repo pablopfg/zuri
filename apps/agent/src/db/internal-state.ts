@@ -94,7 +94,11 @@ export type InternalKey =
   | "remote_event_profiles"
   | "remote_requests_day"
   // Issue #152: the notices' tries an alarm wake had no room for, sent at the next wake (JSON list).
-  | "alert_deferred";
+  | "alert_deferred"
+  // Step 23b, the automatic backup: one JSON object (the owner's public key and its id, the next run,
+  // the tries of the day, the last copy and the last failure, the last download, the 30-day warning
+  // and the month the copy last went to Telegram). The private key is never here.
+  | "backup";
 
 export class InternalState {
   constructor(private readonly db: Database) {}

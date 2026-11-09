@@ -43,4 +43,6 @@ export type WorkerEnv = Env & {
   /** The paid models (step 21, ⚠️): each company's key. Without it, its models can't be picked. */
   ANTHROPIC_API_KEY?: string;
   OPENAI_API_KEY?: string;
+  /** The automatic backup's bucket (step 23b, R2 ⚠, optional): without it the automatic backup stays off. */
+  BACKUP_BUCKET?: R2Bucket;
 };

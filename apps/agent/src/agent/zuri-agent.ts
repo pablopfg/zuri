@@ -24,6 +24,9 @@ import { PushDevices } from "../push/devices.ts";
 import { PushService } from "../push/service.ts";
 import { usableVapidKeys, type VapidKeys } from "../push/webpush.ts";
 import { developmentTelegramFetcher } from "../telegram/dev-telegram.ts";
+import { AutomaticBackup } from "../backup/automatic.ts";
+import { developmentBucket } from "../backup/dev-bucket.ts";
+import { exportBackup } from "../backup/export.ts";
 import { TelegramApprovals } from "../telegram/approvals.ts";
 import { CommandButtons, TelegramCallbacks } from "../telegram/callbacks.ts";
 import { TelegramCommands } from "../telegram/commands.ts";
@@ -141,6 +144,8 @@ interface Store {
   remoteEvents: RemoteEvents;
   /** Each agent's settings on the AI screen (guardrails, PR 2). */
   agents: AgentConfigs;
+  /** The automatic backup to BACKUP_BUCKET (step 23b). */
+  backupAuto: AutomaticBackup;
 }
 
 /**
@@ -243,6 +248,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
             return Object.keys(patch).length;
           },
         },
+        auto: this.store.backupAuto,
+        rearm: () => automations.rearm(),
         afterImport: async () => {
           crm.planReminder();
           // A new zone moves every wall-clock time, as in PATCH /settings.
@@ -400,6 +407,12 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       if (this.store.crm.tick()) await automations.rearm();
     } catch (error) {
       log("error", "crm_alarm_failed", { error });
+    }
+    // The automatic backup (step 23b): the day's copy, then the 30-day warning; last, with what room is left.
+    try {
+      if (await this.store.backupAuto.tick()) await automations.rearm();
+    } catch (error) {
+      log("error", "backup_auto_failed", { error });
     }
     await alerts.settled();
     // Some work found no room in this wake: the alarm comes back for it, a minute out (otherDue's floor, and the
@@ -726,7 +739,15 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
-          const due = [tries, watch, indexing, tools, channels, people, reviewsDue, flowsDue, crmDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
+          // The automatic backup's day and the 30-day warning (step 23b), made further down.
+          const backupDue = (() => {
+            try {
+              return backupAuto.nextDue();
+            } catch {
+              return null;
+            }
+          })();
+          const due = [tries, watch, indexing, tools, channels, people, reviewsDue, flowsDue, crmDue, backupDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
           // Work already past due is only left there when its step failed on the last
           // alarm (a full disk, say): wait a minute before trying again, never at once,
           // so a step that keeps failing can't spin the alarm through the day's quota.
@@ -926,6 +947,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         mcpSignIn: () => mcp.needingSignIn(),
         flows: () => flows.summary(),
         reviews: () => reviews.summary(),
+        backup: () => backupAuto.age(),
         calendar: google,
         buttons: commandButtons,
         state,
@@ -975,7 +997,23 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         // Local development never reaches Telegram (src/telegram/dev-telegram.ts).
         ...(this.development() ? { fetcher: developmentTelegramFetcher as typeof fetch } : {}),
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmEvents, remoteTokens, remoteEvents, agents };
+      // The automatic backup (step 23b, ⚠ R2): optional; local development keeps its copies in memory.
+      const backupAuto = new AutomaticBackup({
+        state,
+        bucket: () => env.BACKUP_BUCKET ?? (this.development() ? developmentBucket : null),
+        source: () => exportBackup({ db, settings: () => settings.get() }),
+        timeZone: () => settings.field("timeZone"),
+        locale: () => this.locale(),
+        origin: () => this.publicUrl().origin,
+        lockdown: () => auth.lockdown.active(),
+        firstSignIn: () => {
+          const at = state.get<string | number>("auth_first_sign_in_at");
+          const ms = typeof at === "number" ? at : typeof at === "string" ? Date.parse(at) : Number.NaN;
+          return Number.isFinite(ms) ? ms : null;
+        },
+        telegram: { chat: () => telegram.ownerChat(), client: (options) => telegram.client(options) },
+      });
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmEvents, remoteTokens, remoteEvents, agents, backupAuto };
     }
     return this.#store;
   }

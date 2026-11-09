@@ -254,6 +254,27 @@ Os avisos de mudança do Google chegam em `/api/google/push`; se você usa o
 Cloudflare Access, nada a fazer: a rota só passa sem login com o token certo
 do canal.
 
+## Backup automático (opcional)
+
+⚠ Usa o R2, recurso que o dono aprovou para o backup (decisão de 02/11/2026).
+O uso fica dentro da faixa grátis (10 GB e 1 milhão de operações Classe A por
+mês; a Zuri faz até umas 500), mas ligar o R2 na conta pede um cartão
+cadastrado.
+
+1. Em **R2 Object Storage**, ligue o R2 e crie um bucket privado, por exemplo
+   `zuri-backup`. Não ligue o acesso público nem um domínio para ele.
+2. O binding `BACKUP_BUCKET` é gerado pelo deploy a partir da variável
+   `ZURI_BACKUP_BUCKET` (o nome do bucket) do ambiente `production` do GitHub
+   (etapa 24), como o `SEND_EMAIL`. Não crie o binding pelo painel: o deploy
+   seguinte, que parte do `wrangler.jsonc`, o tiraria.
+3. Na Zuri, em **Configurações > Dados**, toque em **Criar chave do backup** e
+   guarde o arquivo `zuri-chave-do-backup.json` fora da Zuri (num pendrive ou
+   no gerenciador de senhas). A primeira cópia sai na madrugada seguinte.
+
+Sem o binding, o cartão diz que o backup automático está desligado e o resto
+da Zuri funciona igual. Como funciona e como abrir uma cópia:
+[backup.md](backup.md).
+
 ## IP certo no registro de acessos
 
 O registro usa o cabeçalho `CF-Connecting-IP`, que a Cloudflare define na
