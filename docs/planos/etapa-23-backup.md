@@ -69,7 +69,7 @@ Lixeira de 30 dias, limites por tipo e teto de 900 MB já existem (etapa 6,
 | CA10 | Configurações › Dados mostra o uso por tipo contra o limite e o tamanho do banco contra 900 MB | etapa ("limites de armazenamento") |
 | CA11 (23b) | Backup diário pelo alarme, gzip + cifra com a chave pública do dono, upload em partes ao R2, 7 cópias, apaga as antigas só depois do upload confirmado; 8º apaga o 1º; falha no upload não apaga nada; nome do objeto sem dado pessoal; operações do R2 dentro do grátis | prompt da etapa |
 | CA12 (23b) | Sem `BACKUP_BUCKET` o automático fica desligado e a tela diz isso | especificação |
-| CA13 (23b) | Uma vez por mês a cópia cifrada vai como documento só ao chat de `TELEGRAM_ADMIN_ID` (até 50 MB); acima, só o aviso com o link | decisão 02/11/2026 |
+| CA13 (23b) | A primeira cópia cifrada de cada mês vai como documento só ao chat de `TELEGRAM_ADMIN_ID` (até 40 MB); acima, só o aviso com o link | decisão 02/11/2026 |
 | CA14 (23b) | O bot avisa quando o último backup baixado tem mais de 30 dias e `/backup` diz a idade do último | especificação |
 | CA15 (23b) | Restaurar abre o arquivo no navegador com a chave privada, que nunca vai ao servidor nem ao R2 | especificação |
 
@@ -142,8 +142,9 @@ escuro e no celular. A aba Dados já está na paleta Ctrl/⌘ K.
    7 cópias (data e tamanho) com **Baixar** e mostra a última falha.
 4. **Restaurar** pede o arquivo `.zuri` e a chave; o navegador abre, mostra o
    resumo e importa (em partes quando passa de 10 MB).
-5. Dia 1 de cada mês a cópia vai como documento ao privado do bot (até
-   50 MB); acima disso, só o aviso com o link da tela.
+5. A primeira cópia de cada mês vai como documento ao privado do bot (até
+   40 MB); acima disso, só o aviso com o link da tela. Se o Telegram falhar,
+   a cópia do dia seguinte tenta de novo.
 6. Último backup baixado (tela ou Telegram) há mais de 30 dias: aviso no bot.
 
 ### Textos visíveis (23a)
@@ -248,8 +249,8 @@ ao R2 pelo binding contam nos 50 por invocação do plano Free).
 - **Nome do objeto:** `zuri/AAAA-MM-DD-<8 hex aleatórios>.zuri`, sem dado
   pessoal; lista pelo prefixo e mantém as 7 mais novas.
 - **Telegram:** `sendDocument` multipart com o objeto lido do R2, só no chat
-  privado vinculado e igual a `TELEGRAM_ADMIN_ID`; acima de 50 MB (limite de
-  envio da Bot API), só o aviso.
+  privado vinculado e igual a `TELEGRAM_ADMIN_ID`; acima de 40 MB (folga
+  abaixo dos 50 MB da Bot API e da memória do alarme), só o aviso.
 
 ## 8. Custo e cotas do plano Free
 

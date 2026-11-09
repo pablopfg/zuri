@@ -535,7 +535,9 @@ describe("the Free plan budget of each route", () => {
     // 49: the flows (step 22a) look for due and waiting runs, and the planning for their next time: four indexed looks.
     // 54: the CRM (step 22b): its settings row and the due follow-ups in the wake, then its settings, the next
     // follow-up and whether any client has a birthday in the planning; five indexed looks.
-    expect(wake.read).toBeLessThanOrEqual(54);
+    // 55: the automatic backup (step 23b) asks whether the bot is linked before counting its 30-day warning
+    // (its own state is read once per object and kept in memory).
+    expect(wake.read).toBeLessThanOrEqual(55);
     expect(wake.written).toBeLessThanOrEqual(30);
   });
 

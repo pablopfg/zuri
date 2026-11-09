@@ -71,6 +71,7 @@ export const AUTH_EVENT_KINDS = [
   "telegram_token_revoked",
   "backup_exported",
   "backup_imported",
+  "backup_key_set",
   "agent_settings_changed",
 ] as const;
 export type AuthEventKind = (typeof AUTH_EVENT_KINDS)[number];

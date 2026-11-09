@@ -6,6 +6,7 @@ import { useToast } from "../../components/Toaster.tsx";
 import { Button, Card, cn, Dialog, ErrorNotice, Loading, Notice } from "../../components/ui.tsx";
 import { api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
+import { AutoBackupCard, useBytes } from "./AutoBackupCard.tsx";
 
 addMessages(ptBRBackup);
 
@@ -24,11 +25,12 @@ const KIND_LABEL: Record<StorageUseKind, MessageKey> = {
   crm_clients: "web.backup.storage.kind.crm_clients",
 };
 
-/** Settings › Data (step 23): storage use, then export and import. Loaded with its own chunk. */
+/** Settings › Data (step 23): storage use, the automatic backup (23b), then export and import. Loaded with its own chunk. */
 export function BackupCards() {
   return (
     <>
       <StorageCard />
+      <AutoBackupCard />
       <ExportImportCard />
     </>
   );
@@ -37,20 +39,6 @@ export function BackupCards() {
 function useNumber() {
   const { locale } = useI18n();
   return (value: number) => new Intl.NumberFormat(locale).format(value);
-}
-
-function useBytes() {
-  const { locale } = useI18n();
-  return (value: number) => {
-    const units = ["byte", "kilobyte", "megabyte", "gigabyte"] as const;
-    let unit = 0;
-    let size = value;
-    while (size >= 1024 && unit < units.length - 1) {
-      size /= 1024;
-      unit++;
-    }
-    return new Intl.NumberFormat(locale, { style: "unit", unit: units[unit], unitDisplay: "short", maximumFractionDigits: unit === 0 ? 0 : 1 }).format(size);
-  };
 }
 
 function StorageCard() {

@@ -7,6 +7,7 @@ import {
   localDayBounds,
   type MessageKey,
   NOTE_TITLE_MAX,
+  plural,
   SEARCH_MAX,
   type Notice,
   t,
@@ -118,6 +119,8 @@ export interface CommandDeps {
   flows?: () => { sites: { host: string; state: "up" | "down" | "unknown" }[]; failing: string[] };
   /** The Google Calendar (step 19): /hoje lists today's events of the calendars open to Zuri. */
   calendar?: GoogleCalendar;
+  /** The automatic backup (step 23b), for /backup: the age of the last one taken out and the last copy. */
+  backup?: () => { days: number | null; last: { at: string; size: number } | null; available: boolean; keySet: boolean };
   buttons: CommandButtons;
   state: InternalState;
   locale(): Locale;
@@ -434,12 +437,21 @@ export class TelegramCommands {
     return { text: lines.join("\n") };
   }
 
-  /** /backup: no automatic backup before step 23; the button opens the app's Data tab. */
+  /** /backup (step 23b): how old the last backup taken out is, and the last automatic copy; the button opens the Data tab. */
   #backup(): Out {
-    return {
-      text: this.#t("telegram.cmd.backup"),
-      keyboard: [[{ text: this.#t("telegram.chat.openInApp"), url: `${this.deps.origin()}/configuracoes/dados` }]],
-    };
+    const keyboard = [[{ text: this.#t("telegram.chat.openInApp"), url: `${this.deps.origin()}/configuracoes/dados` }]];
+    const backup = this.deps.backup?.() ?? { days: null, last: null, available: false, keySet: false };
+    const lines = [
+      backup.days === null
+        ? this.#t("telegram.cmd.backup.never")
+        : backup.days === 0
+          ? this.#t("telegram.cmd.backup.today")
+          : plural(this.deps.locale(), "telegram.cmd.backup.days", backup.days, { n: backup.days }),
+    ];
+    if (!backup.available) lines.push(this.#t("telegram.cmd.backup.off"));
+    else if (!backup.keySet) lines.push(this.#t("telegram.cmd.backup.noKey"));
+    else lines.push(backup.last ? this.#t("telegram.cmd.backup.last", { when: this.#when(backup.last.at) }) : this.#t("telegram.cmd.backup.noCopy"));
+    return { text: lines.join("\n"), keyboard };
   }
 
   // --- Quick actions --------------------------------------------------------------
