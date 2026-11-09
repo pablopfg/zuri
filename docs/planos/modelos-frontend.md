@@ -1,11 +1,13 @@
 # Plano · Modelos de interface
 
-Situação: rodada 2 entregue, esperando o Pablo aprovar
+Situação: rodada 3 entregue, esperando o Pablo aprovar
 Origem: pedido do Pablo em 09/11/2026 ("use a skill taste para criar 5 novos modelos de frontend para eu aprovar") e, na rodada 2, "Aperfeiçoe o modelo 4 - menta… inclua também a tela de login… avalie a skill ui-skills, se for segura, crie 3 novos modelos"
 
 Dependências: nenhuma para escolher. A implementação, se houver, vira PR própria.
 
 ## 1. Resumo
+
+Na rodada 3 o Pablo achou as interfaces anteriores feias e fora da função do sistema. Os três exemplos novos (Sinal, Painel e Caderno) foram refeitos do zero a partir das telas reais do app, conciliando a `taste-skill` e a `ui-skills` (seção 2). As rodadas 1 e 2 ficam abaixo como histórico.
 
 Na rodada 2 o Pablo ficou com o Menta, que foi refinado e ganhou todas as telas do sistema e a de entrar, e chegaram três modelos novos feitos com a skill `ui-skills` (seção 2). A rodada 1, abaixo, trouxe cinco direções visuais para a Zuri, todas com a mesma organização aprovada em 03/11 (barra lateral com Nova conversa, Buscar, seções, Recentes e a conta no rodapé; gaveta no celular). O que muda entre elas é a cara: fonte, cores no claro e no escuro, espaçamento, cantos e o jeito de montar o Início e a Conversa.
 
@@ -17,7 +19,84 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 - Capturas: `docs/capturas/pr/modelos-frontend/`, nome `<modelo>-<inicio|conversa>-<computador|celular>-<claro|escuro>.png` (40 imagens).
 - Acessibilidade: axe (WCAG 2.1 A/AA e boas práticas) sem nenhuma violação nas 40 combinações.
 
-## 2. Rodada 2 · Menta refinado e três modelos da `ui-skills`
+## 2. Rodada 3 · Sinal, Painel e Caderno
+
+- Protótipo: `docs/planos/modelos-frontend/prototipo-v3.html` (a barra do topo troca modelo, tela e tema).
+- Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, Automações, Memória e Configurações.
+- Capturas: `docs/capturas/pr/modelos-frontend-v3/`, nome `<modelo>-<tela>-<computador|celular>-<claro|escuro>.png` (108 imagens).
+- Acessibilidade: axe (WCAG 2.1 A/AA e boas práticas) sem nenhuma violação nas 108 combinações.
+
+### O que mudou no jeito de fazer
+
+As rodadas anteriores partiram de paletas e montaram telas genéricas de painel. Esta partiu do que a Zuri faz de verdade, lido no código e nas telas atuais:
+
+- **A Zuri age, mas pede licença.** O plano proposto ("Nada foi criado ainda. Revise e confirme"), a aprovação de ação destrutiva e a rotina que espera aprovação aparecem nos três modelos, e o Início tem "Precisa de você" com essas pendências.
+- **O dia junta tudo.** Tarefas, eventos do Google Agenda e automações aparecem numa linha do tempo só, porque é assim que a dona vive o dia.
+- **Conteúdo real do app:** E-mail, senha e verificação de segurança no Entrar (a passkey vem no segundo passo), as abas reais de Tarefas (Hoje, Próximas, Atrasadas, Concluídas, Todas), prioridades Urgente/Alta/Média/Baixa, tipos e estados da memória, os tipos de automação (Lembrete, Resumo das tarefas, Rotina da Zuri), as abas de Configurações e o menu com Agenda e Contatos.
+- **A logomarca atual (o "i" com o sinal verde)** em todos, sem redesenhar.
+- **Ícones do lucide de verdade** (os mesmos do app), não desenhados à mão.
+
+### Como as duas skills foram conciliadas
+
+| Regra | De onde vem | Como ficou |
+| --- | --- | --- |
+| Um sistema só: um botão principal por tela, um estilo de cartão, uma escala de cantos, um jeito de link | taste | Cada modelo tem um botão cheio, um secundário com borda e um discreto; um cartão; três raios |
+| Interface 90 a 95% neutra, uma cor de destaque | taste e ui-skills | A cor só aparece no botão principal, no foco, nos links e no que a Zuri fez |
+| Cores e sombras do Tailwind | ui-skills | Neutros zinc, slate e stone; destaques green-700, cyan-700 e blue-800; `shadow-sm` |
+| Texto de leitura com 16 px ou mais, rótulos de 13 px sem caixa alta | taste | Corpo 16 a 20 px; nada abaixo de 13 px; sem rótulo em maiúsculas |
+| Títulos com `text-balance`, texto com `text-pretty`, números com `tabular-nums` | ui-skills | Aplicado em todos |
+| Sem gradiente, sem roxo, sem brilho | as duas | Nenhum |
+| Animação só de `transform`/`opacity`, até 200 ms, parada com "reduzir movimento" | ui-skills | Botões sobem 1 px e afundam no clique em 150 ms |
+| Alvos de 44 px, foco visível, `100dvh` e margem de área segura | as duas | Aplicado |
+| Estado vazio com uma ação, confirmação antes de apagar | ui-skills | Mantidos do app atual |
+| Sem caixa dentro de caixa dentro de caixa | taste | No máximo dois níveis |
+
+Também foram evitados os vícios de página gerada apontados pelo `frontend-design`: fonte mono em rótulos pequenos, separador "·" entre dados, rótulos em maiúsculas acima de títulos e tudo cortado em cartões iguais.
+
+### 1 · Sinal (recomendado)
+
+- **Ideia:** a marca atual levada a sério. Conversa primeiro; o verde só aparece onde a Zuri age.
+- **Fonte:** Figtree (títulos 600, corpo 400).
+- **Cores:** claro branco com neutros zinc, destaque `green-700` `#15803d`. Escuro `zinc-900` `#18181b`, destaque `green-400` `#4ade80`.
+- **Cantos:** 10, 12 e 16 px; o campo da conversa com 22 px.
+- **Início:** saudação com o resumo do dia numa frase, campo grande para falar com a Zuri e três ideias, "Precisa de você" (plano e rotina esperando) e "Seu dia" numa linha do tempo com tarefas, eventos e automações.
+- **Conversa:** a Zuri fala sem balão, com o sinal ao lado; as suas mensagens em balão cinza; ferramentas usadas aparecem como "Consultou a agenda"; plano e aprovação em cartão.
+- **Entrar:** painel escuro com a frase da marca e os três pontos de segurança, formulário ao lado.
+
+### 2 · Painel
+
+- **Ideia:** a Zuri como secretária do dia. Menu escuro e uma coluna "Agora" à direita em todas as telas, com o próximo compromisso, o que precisa de você e as automações de hoje.
+- **Fonte:** IBM Plex Sans (técnica, números bem alinhados).
+- **Cores:** claro `slate-50` com cartões brancos, menu `slate-900`, destaque `cyan-700` `#0e7490`. Escuro `slate-900`, destaque `cyan-400` `#22d3ee`.
+- **Cantos:** 6 e 8 px, cartões com `shadow-sm`.
+- **Início:** barra de pedido à Zuri, agenda de hoje em grade de horas (eventos em bloco, tarefas marcadas no horário, linha do agora) ao lado das tarefas de hoje e dos próximos dias.
+- **Conversa:** lista de conversas ao lado, mensagens com nome e hora, como um registro.
+- **Tarefas:** tabela com Tarefa, Projeto, Prazo e Prioridade.
+- **Entrar:** painel escuro com uma prévia real do dia ("Hoje, segunda") e uma pergunta da Zuri.
+- No celular a coluna "Agora" some e o "Precisa de você" entra no Início.
+
+### 3 · Caderno
+
+- **Ideia:** a Zuri escreve, você lê. O texto da Zuri, as notas e as memórias em serifa de leitura; o resto da interface em sem serifa.
+- **Fontes:** Literata (leitura e títulos) e Source Sans 3 (interface).
+- **Cores:** claro branco com neutros quentes, destaque azul tinta de caneta `blue-800` `#1e40af`. Escuro `#1c1b19`, destaque `blue-300` `#93c5fd`.
+- **Cantos:** 6, 8 e 10 px; quase sem caixas.
+- **Início:** a data como título e um bilhete da Zuri com o resumo do dia e links para a nota e o plano; campo "Responder à Zuri"; Tarefas de hoje e Na agenda lado a lado.
+- **Conversa:** como documento: suas mensagens com uma linha à esquerda, a resposta da Zuri em serifa.
+- **Entrar:** uma coluna só, sem painel, com "Que bom te ver de novo. Deixei o resumo do dia pronto."
+
+### Custo de implementar (rodada 3)
+
+- **JS inicial:** nenhum pede biblioteca nova. O Painel pede a coluna "Agora" (componente novo, mas leve e com dados que o Início já busca).
+- **Fontes:** cada modelo traz `woff2` servidas pelo Worker, fora do JS inicial: Sinal uma família (Figtree), Painel uma (IBM Plex Sans), Caderno duas (Literata e Source Sans 3). Dá para usar a fonte do sistema em qualquer um e manter o resto.
+- **Estrutura:** Sinal é o que menos mexe (mesma organização, Início reescrito). Painel muda a moldura (terceira coluna). Caderno muda mais a tipografia que a estrutura.
+- Nenhum recurso novo da Cloudflare.
+
+### Recomendação (rodada 3)
+
+**Sinal.** É o que mais conversa com a marca e com o app de hoje, deixa a conversa no centro, que é o que a Zuri é, e mostra logo no Início o que precisa da dona. Se a ideia for ter o dia sempre à vista enquanto conversa, a segunda opção é o **Painel**.
+
+## 3. Rodada 2 · Menta refinado e três modelos da `ui-skills`
 
 O Pablo escolheu seguir com o **Menta** e pediu para melhorar, com todas as telas e a de entrar. Pediu também três modelos novos pela skill `ui-skills`, que foi avaliada como segura para usar como texto (`docs/planos/skill-ui-skills.md`, commit `97dea9e7`).
 
@@ -75,7 +154,7 @@ Os três seguem a `baseline-ui` à risca: cores e sombras padrão do Tailwind, f
 
 **Menta refinado**, que é a direção que o Pablo escolheu e agora cobre o sistema todo com contraste em dia. Se ele preferir algo mais sóbrio e sem fonte extra, a segunda opção é o **Pedra**, o mais confortável para usar o dia todo dos três novos.
 
-## 3. Rodada 1 · Os cinco modelos
+## 4. Rodada 1 · Os cinco modelos
 
 ### 1 · Lima
 
@@ -122,24 +201,24 @@ Os três seguem a `baseline-ui` à risca: cores e sombras padrão do Tailwind, f
 - **Início:** três números grandes (tarefas hoje, atrasada, compromissos amanhã), listas abaixo e a conversa rápida numa coluna à direita (no celular ela some e fica no menu).
 - **Conversa:** lista de conversas à esquerda e a conversa à direita, como um e-mail.
 
-## 4. O que vale para todos
+## 5. O que vale para todos
 
 - Mesmos textos e dados de exemplo (a dona "Ana", nada real), em pt-BR, "a Zuri" no feminino, sem citar infraestrutura.
 - Alvos de toque de 44 px, foco visível na cor do destaque, texto de leitura com 16 px ou mais, "Pular para o conteúdo", pontos que piscam param com "reduzir movimento".
 - Claro e escuro em todos.
 - Ícones no traço do lucide, que o app já usa.
 
-## 5. Custo de implementar (rodada 1)
+## 6. Custo de implementar (rodada 1)
 
 - **JS inicial:** nenhum dos modelos pede biblioteca nova. A troca é de CSS (tokens em `apps/web/src/styles.css`) e de montagem das telas Início e Conversa, que já são carregadas à parte.
 - **Fontes:** hoje o app usa a fonte do sistema. Cada modelo traz arquivos `woff2` da sua família e da mono (o Lima tem uma família a mais, a Red Hat Display para títulos), uns 60 a 120 KB, servidos pelo próprio Worker e fora do JS inicial. Nada é buscado no Google na hora de abrir. Dá para ficar com a fonte do sistema e levar só cores e montagem.
 - **Floresta** é o que mais mexe na estrutura (conversa fixa ao lado e lista de conversas própria). **Lima** e **Cobalto** são os que menos mexem.
 - Sem custo na Cloudflare.
 
-## 6. Recomendação (rodada 1)
+## 7. Recomendação (rodada 1)
 
 **Lima.** É o que mais conversa com a marca atual (verde, escuro forte), muda pouco a estrutura e traz a faixa de estado do dia, que é útil. Se a ideia for algo mais leve para usar o dia todo no claro, a segunda opção é **Petróleo**.
 
-## 7. Próximo passo
+## 8. Próximo passo
 
-O Pablo aprova o Menta refinado ou escolhe outro da rodada 2 (ou uma mistura, por exemplo "Menta com o menu escuro do Ardósia"). Aí sai um plano de implementação pela skill `planejar`, com testes, axe, capturas antes e depois e o teto de JS conferido.
+O Pablo aprova um dos modelos da rodada 3 (ou uma mistura, por exemplo "Sinal com a coluna Agora do Painel"). Aí sai um plano de implementação pela skill `planejar`, com testes, axe, capturas antes e depois e o teto de JS conferido.
