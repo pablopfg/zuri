@@ -238,6 +238,8 @@ const crm = /* @__PURE__ */ z
 /** Each record's schema: the export runs every row through it, so what it writes always reads back. */
 export const backupItemSchemas = { project, task, note, memory, conversation, automation, alertLearning, crmStage, crmClient };
 
+const unique = (items: readonly { id: string }[]) => new Set(items.map((item) => item.id)).size === items.length;
+
 const list = <T extends z.ZodType>(item: T, max: number) => z.array(item).max(max).default([]);
 
 export const backupSchema = /* @__PURE__ */ z
@@ -264,7 +266,13 @@ export const backupSchema = /* @__PURE__ */ z
       .refine((data) => data.conversations.reduce((sum, item) => sum + item.messages.length, 0) <= STORAGE_LIMITS.messages, {
         message: "too many messages",
         path: ["conversations"],
-      }),
+      })
+      // Links inside the file follow these ids: two records with one id would share a new id (and a link).
+      .refine((data) => unique(data.projects), { message: "repeated id", path: ["projects"] })
+      .refine((data) => unique(data.tasks), { message: "repeated id", path: ["tasks"] })
+      .refine((data) => unique(data.notes), { message: "repeated id", path: ["notes"] })
+      .refine((data) => unique(data.memories), { message: "repeated id", path: ["memories"] })
+      .refine((data) => !data.crm || unique(data.crm.stages), { message: "repeated id", path: ["crm", "stages"] }),
   })
   .strict();
 

@@ -45,8 +45,15 @@ etapas ficam detalhadas; as mais antigas viram uma linha na tabela.
 | 22b | mesclada (03/11/2026) | #161 | CRM interno na aba **Clientes** de Contatos (funil editável, etiquetas, retorno, aniversário, histórico), avisos do CRM, eventos do n8n assinados com HMAC, 5 ferramentas do CRM, sugestões de fluxo da conversa na aba Fluxos |
 | 22c | mesclada (04/11/2026) | #180 | Passos **Ler a agenda**, **Criar evento** (sem convidados, até 10 por execução, chave contra repetição) e **Buscar contatos** (cópia local) nos fluxos; Google simulado segue o dia de São Paulo (#178) |
 | 20 | em revisão (04/11/2026) | — | Acesso remoto: tokens `zur_pat_` com escopo (só ler, ler e escrever, só eventos), 90 dias, só HMAC no banco, lista fechada de rotas com teste que percorre todas, `POST /api/remote/events` para a central (60/h, 100/dia, metade do canal), cartão em Configurações › Segurança, **Revogar** em `/tokens` |
+| 23a | em revisão (09/11/2026) | — | Backup manual: **Baixar backup** (JSON aberto, senha recente, alerta), **Importar backup** (até 10 MB, esquema estrito, ids novos, automações pausadas, tudo ou nada), uso do armazenamento por tipo em Configurações › Dados |
 
 ## Últimas etapas (detalhe)
+
+### Etapa 23a · Exportar, importar e uso do armazenamento
+- Entregou: `packages/shared/src/backup.ts` (formato `zuri-backup` v1, esquema estrito com a lista fechada do que vai), `apps/agent/src/backup/export.ts` (gerador em páginas de 500 por `rowid`, `ReadableStream`), `backup/import.ts` (`parseBackup`, `importBackup` numa transação), `CrmService.restore`, rotas `api/backup.ts` (`GET /api/storage`, `GET /api/backup/export`, `POST /api/backup/import`), alertas `backup_exported`/`backup_imported`, `pages/settings/BackupCards.tsx` (sob demanda, textos em `pt-BR-backup.ts`), opção `raw` em `api()`. Doc: `docs/backup.md`. Plano: `docs/planos/etapa-23-backup.md`.
+- Migrations: nenhuma. A 29 é da 21b e a 30 dos guardrails (parte 2).
+- Decisões técnicas: fluxos, conexões e MCP fora do formato v1; importar o mesmo arquivo duas vezes duplica (cliente do CRM com o mesmo `ref` não); rotas de backup fora dos tokens remotos; JS inicial 139.571 B (teto 139.600).
+- Para a 23b: backup diário cifrado (ECDH P-256 + HKDF + AES-GCM sobre gzip) no R2 `BACKUP_BUCKET` ⚠️ opcional, 7 cópias, restauração no navegador, cópia mensal no Telegram, aviso de 30 dias, `/backup` com a idade.
 
 ### Etapa 20 · Acesso remoto e eventos
 - Entregou: `apps/agent/src/remote/` (`tokens.ts` `RemoteTokens` implementa `RemoteTokenHook` com `revokeAll`; `events.ts` `RemoteEvents`; `allowlist.ts` `remoteAllowed` puro), `api/remote.ts` (porteiro Bearer registrado primeiro em `createApi`, rotas `/api/remote*`), `packages/shared/src/remote.ts`, aviso `remote.event` (categoria `events`, metade do limite do canal, 3 insistindo), `/tokens` com **Revogar**, cartão `components/security/RemoteAccessCard.tsx`. Doc: `docs/acesso-remoto.md`. Plano: `docs/planos/etapa-20-acesso-remoto.md`.

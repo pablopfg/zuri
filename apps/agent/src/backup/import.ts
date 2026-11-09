@@ -4,6 +4,8 @@ import {
   type Backup,
   type BackupImportSummary,
   backupSchema,
+  CRM_LIMITS,
+  STORAGE_LIMITS,
   type StorageKind,
 } from "@zuri/shared";
 import type { CrmService } from "../crm/service.ts";
@@ -19,6 +21,50 @@ export interface ImportDeps {
   crm: CrmService;
   /** The owner's settings, changed after the data is in (its own transaction). */
   applySettings(patch: Backup["data"]["settings"]): number;
+}
+
+/**
+ * The most objects and arrays a valid file can hold: one per record, a few per
+ * conversation, automation and CRM client (tags, history), and room for the rest.
+ */
+export const BACKUP_CONTAINERS_MAX =
+  2 * (STORAGE_LIMITS.projects + STORAGE_LIMITS.tasks + STORAGE_LIMITS.notes + STORAGE_LIMITS.memories + STORAGE_LIMITS.conversations) +
+  STORAGE_LIMITS.messages +
+  4 * STORAGE_LIMITS.automations +
+  CRM_LIMITS.clients * (3 + CRM_LIMITS.historyPerClient) +
+  2_000;
+/** The deepest a valid file nests (a CRM client's history entry is at 7), with room. */
+export const BACKUP_DEPTH_MAX = 10;
+
+/**
+ * Parses the file's text only when its shape could be a backup. JSON.parse on
+ * 10 MB of `[{},{},…]` makes millions of objects, more than the object's 128 MB
+ * holds, before the schema's limits could refuse it (SEC-A13-01). One pass
+ * counts objects, arrays and nesting outside strings, without building anything.
+ */
+export function parseBackupText(text: string): unknown {
+  let containers = 0;
+  let depth = 0;
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (inString) {
+      if (c === 0x5c) i++;
+      else if (c === 0x22) inString = false;
+    } else if (c === 0x22) inString = true;
+    else if (c === 0x7b || c === 0x5b) {
+      if (++containers > BACKUP_CONTAINERS_MAX || ++depth > BACKUP_DEPTH_MAX) throw invalid();
+    } else if (c === 0x7d || c === 0x5d) depth--;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw invalid();
+  }
+}
+
+function invalid(): AppError {
+  return new AppError("VALIDATION_FAILED", "error.backup.invalid", { fields: ["_body"] });
 }
 
 /**

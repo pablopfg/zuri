@@ -1,4 +1,4 @@
-import { BACKUP_FORMAT, BACKUP_SETTINGS, BACKUP_VERSION, backupItemSchemas, type Settings } from "@zuri/shared";
+import { BACKUP_FORMAT, BACKUP_MESSAGE_MAX, BACKUP_SETTINGS, BACKUP_VERSION, backupItemSchemas, type Settings } from "@zuri/shared";
 import type { z } from "zod";
 import type { Database, SqlValue } from "../db/database.ts";
 import { LATEST_SCHEMA_VERSION } from "../db/migrations.ts";
@@ -12,6 +12,17 @@ export interface ExportDeps {
   settings(): Settings;
   /** The export's clock, replaceable in tests. */
   now?(): Date;
+}
+
+/**
+ * A stored message as the import takes it. The assistant's text is stored as
+ * the model wrote it, and may carry a terminal code or run past the limit; one
+ * such message must not leave its whole conversation out of the file.
+ */
+export function portable(content: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: removing them is the point.
+  const clean = content.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "");
+  return (clean.length > BACKUP_MESSAGE_MAX ? clean.slice(0, BACKUP_MESSAGE_MAX) : clean).toWellFormed();
 }
 
 /**
@@ -123,7 +134,7 @@ export function* exportBackup(deps: ExportDeps): Generator<string> {
           `SELECT role, content, status, fallback, created_at FROM zur_messages WHERE conversation_id = ? ORDER BY seq`,
           r.id as string,
         )
-        .map((m) => ({ role: m.role, content: m.content, status: m.status, fallback: m.fallback === 1, createdAt: m.created_at })),
+        .map((m) => ({ role: m.role, content: portable(m.content), status: m.status, fallback: m.fallback === 1, createdAt: m.created_at })),
     })),
   );
   yield* section(

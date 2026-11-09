@@ -2,7 +2,8 @@ import { AGENT_INSTANCE_NAME, BACKUP_FORMAT, BACKUP_IMPORT_MAX_BYTES, BACKUP_VER
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
-import { exportBackup } from "../src/backup/export.ts";
+import { exportBackup, portable } from "../src/backup/export.ts";
+import { BACKUP_CONTAINERS_MAX, BACKUP_DEPTH_MAX } from "../src/backup/import.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { LATEST_SCHEMA_VERSION } from "../src/db/migrations.ts";
 import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
@@ -69,6 +70,8 @@ afterEach(async () => {
     await agent.store.alerts.settled();
     agent.store.db.run(`DELETE FROM zur_auth_events`);
     agent.store.db.run(`DELETE FROM zur_notices`);
+    // The event ids start again after the delete: an alert key left here would hide the next alert.
+    agent.store.db.run(`DELETE FROM zur_alert_keys`);
     const state = new InternalState(agent.store.db);
     for (const key of ["lockdown_until", "lockdown_source"] as const) state.delete(key);
   });
@@ -424,6 +427,12 @@ describe("routes", () => {
     await ok(session("POST", "/backup/import", file));
     const events = await inOwner((agent) => agent.store.db.all<{ kind: string; alert_pending: number }>(`SELECT kind, alert_pending FROM zur_auth_events WHERE kind LIKE 'backup_%' ORDER BY id`));
     expect(events.map((e) => e.kind)).toEqual(["backup_exported", "backup_imported"]);
+    // Both become a security alert on every channel.
+    const alerts = await inOwner(async (agent) => {
+      await agent.store.alerts.settled();
+      return agent.store.db.all<{ params: string }>(`SELECT params FROM zur_notices WHERE kind = 'security'`).map((n) => JSON.parse(n.params).event);
+    });
+    expect(alerts).toEqual(expect.arrayContaining(["backup_exported", "backup_imported"]));
   });
 
   it("answers 423 during a lockdown", async () => {
@@ -441,5 +450,81 @@ describe("routes", () => {
     expect(use.kinds.find((k) => k.kind === "tasks")).toEqual({ kind: "tasks", count: 2, limit: 20_000 });
     expect(use.kinds.find((k) => k.kind === "crm_clients")).toEqual({ kind: "crm_clients", count: 1, limit: 5_000 });
     expect(use.kinds.map((k) => k.kind)).toEqual(["tasks", "notes", "projects", "memories", "conversations", "messages", "automations", "crm_clients"]);
+  });
+});
+
+describe("review fixes", () => {
+  it("SEC-A13-01: refuses a file shaped to swell in memory before parsing it", async () => {
+    const before = await tableCounts();
+    const many = `{"x":[${"{},".repeat(BACKUP_CONTAINERS_MAX)}{}]}`;
+    const deep = `${"[".repeat(BACKUP_DEPTH_MAX + 1)}${"]".repeat(BACKUP_DEPTH_MAX + 1)}`;
+    for (const body of [many, deep]) {
+      const res = await session("POST", "/backup/import", undefined, body);
+      expect(res.status).toBe(400);
+      expect((await errorBody(res)).message).toMatch(/não é um backup válido/);
+    }
+    // Brackets inside strings don't count: a note full of them still imports.
+    const note = { id: crypto.randomUUID(), title: "Colchetes", content: `${"[{".repeat(50)} \\" ]`, projectId: null, localOnly: false, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" };
+    expect(await tableCounts()).toEqual(before);
+    await ok(session("POST", "/backup/import", backup({ notes: [note] })));
+  });
+
+  it("refuses a file that repeats an id inside a section, writing nothing", async () => {
+    const before = await tableCounts();
+    const res = await session("POST", "/backup/import", backup({ tasks: [TASK, TASK] }));
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { details: { fields: string[] } }).details.fields).toEqual(["data.tasks"]);
+    expect(await tableCounts()).toEqual(before);
+  });
+
+  it("keeps a conversation whose assistant text has a terminal code or runs past the limit, cleaned", async () => {
+    expect(portable("a\u001b[31mb\fc\n\td")).toBe("a[31mbc\n\td");
+    expect(portable("x".repeat(64_001))).toHaveLength(64_000);
+    expect(portable(`${"x".repeat(63_999)}\u{1F600}`)).toBe(`${"x".repeat(63_999)}\uFFFD`);
+    await inOwner((agent) => {
+      const { db } = agent.store;
+      const id = crypto.randomUUID();
+      db.run(`INSERT INTO zur_conversations (id, title, created_at, updated_at) VALUES (?, 'Cores', '2026-11-01T10:00:00.000Z', '2026-11-01T10:00:00.000Z')`, id);
+      db.run(`INSERT INTO zur_messages (id, conversation_id, role, content, created_at) VALUES (?, ?, 'assistant', ?, '2026-11-01T10:00:05.000Z')`, crypto.randomUUID(), id, "verde\u001b[0m");
+    });
+    const file = JSON.parse(await exported()) as { data: { conversations: { title: string; messages: { content: string }[] }[] } };
+    expect(file.data.conversations).toEqual([expect.objectContaining({ title: "Cores", messages: [expect.objectContaining({ content: "verde[0m" })] })]);
+  });
+
+  it("undoes everything when the CRM's distinct tags pass 200", async () => {
+    const stage = { id: crypto.randomUUID(), name: "Contato" };
+    const client = (i: number) => ({
+      ref: null,
+      name: `Cliente ${i}`,
+      phone: null,
+      email: null,
+      birthday: null,
+      stageId: stage.id,
+      notes: "",
+      followUpAt: null,
+      followUpNote: "",
+      source: "app",
+      lastActivityAt: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      tags: Array.from({ length: 20 }, (_, t) => `t${i}x${t}`),
+      history: [],
+    });
+    const before = await tableCounts();
+    const res = await session("POST", "/backup/import", backup({ tasks: [TASK], crm: { stages: [stage], clients: Array.from({ length: 11 }, (_, i) => client(i)), settings: null } }));
+    expect(res.status).toBe(507);
+    expect((await errorBody(res)).code).toBe("STORAGE_LIMIT_REACHED");
+    expect(await tableCounts()).toEqual(before);
+  });
+
+  it("applies an imported time zone", async () => {
+    const zone = await inOwner((agent) => agent.store.settings.get().timeZone);
+    try {
+      const { summary } = await ok<{ summary: BackupImportSummary }>(session("POST", "/backup/import", backup({ settings: { timeZone: "Europe/Lisbon" } })));
+      expect(summary.settings).toBe(1);
+      expect(await inOwner((agent) => agent.store.settings.get().timeZone)).toBe("Europe/Lisbon");
+    } finally {
+      await inOwner((agent) => agent.store.settings.update({ timeZone: zone }));
+    }
   });
 });

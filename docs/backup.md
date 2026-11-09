@@ -30,7 +30,7 @@ automático.
 | `settings` | idioma, fuso, revisão de conflitos da memória, como você quer ser chamado, resumo do dia e hora, vigias, canais e limites dos avisos, prioridade que aprende | modelo de IA, limites de IA, teto em US$, limites da sessão e "Texto completo" do Telegram ficam de fora |
 | `projects`, `tasks`, `notes` | tudo, com `localOnly` das notas | itens da lixeira não vão |
 | `memories` | texto, categoria, estado, substituição, datas citadas, autor e `localOnly` | |
-| `conversations` | título e mensagens (papel, texto, estado e a marca do modelo reserva) | sem o resumo interno, as ferramentas e os trechos citados do Telegram |
+| `conversations` | título e mensagens (papel, texto, estado e a marca do modelo reserva) | sem o resumo interno, as ferramentas e os trechos citados do Telegram; caracteres de controle saem do texto e uma mensagem acima de 64.000 caracteres é cortada |
 | `automations` | nome, tipo, instrução, horário, vigia e prioridade, sempre com `paused: true` | sem histórico de execuções |
 | `alertLearning` | o que a prioridade dos avisos aprendeu | |
 | `crm` | etapas do funil, clientes com etiquetas e histórico, e os interruptores dos avisos | nunca a chave dos eventos do n8n |
@@ -69,7 +69,12 @@ Zuri nova.
 Um arquivo de backup é entrada não confiável (regra 8 de
 [seguranca.md](seguranca.md)):
 
-- Até 10 MB, conferido no Worker antes de chegar ao banco.
+- Até 10 MB, conferido no Worker antes de chegar ao banco. O Worker só lê
+  esse tamanho de quem traz o cookie da sessão e o cabeçalho contra CSRF; os
+  outros pedidos ficam no teto comum.
+- Antes de montar o JSON, uma passada conta objetos, listas e profundidade:
+  um arquivo feito para inchar na memória (milhões de `{}`) é recusado sem
+  ser montado.
 - O arquivo inteiro passa pelo esquema estrito antes de qualquer gravação.
   Campo desconhecido (um servidor MCP, `enabled`, `aiModel`), automação com
   `paused: false`, texto com caractere de controle, data inválida, versão nova
@@ -79,6 +84,7 @@ Um arquivo de backup é entrada não confiável (regra 8 de
   projetos, 5.000 conversas, 200.000 mensagens, 500 automações e 5.000
   clientes. Somando o que já existe com o que chega, passou de um limite ou do
   teto do banco, nada fica gravado (507 `STORAGE_LIMIT_REACHED`).
+- Dois registros com o mesmo id na mesma seção recusam o arquivo.
 - Tudo entra com id novo, ao lado do que já existe. Importar o mesmo arquivo
   duas vezes duplica os itens; um cliente do CRM com o mesmo `ref` do n8n é o
   mesmo cliente e não se repete.

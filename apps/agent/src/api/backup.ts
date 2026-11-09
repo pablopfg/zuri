@@ -3,7 +3,7 @@ import type { Context, Hono } from "hono";
 import type { ClientInfo } from "../auth/client.ts";
 import type { AuthService } from "../auth/service.ts";
 import { exportStream, type ExportDeps } from "../backup/export.ts";
-import { importBackup, type ImportDeps, parseBackup } from "../backup/import.ts";
+import { importBackup, type ImportDeps, parseBackup, parseBackupText } from "../backup/import.ts";
 import { AppError } from "../http/errors.ts";
 import type { StorageGuard } from "../productivity/storage.ts";
 import type { ApiEnv } from "./app.ts";
@@ -58,12 +58,13 @@ export function registerBackupRoutes(app: Hono<ApiEnv>, deps: () => BackupRouteD
       throw new AppError("VALIDATION_FAILED", undefined, { fields: ["_body"] });
     }
     const raw = await readBodyLimited(c.req.raw, BACKUP_IMPORT_MAX_BYTES);
-    let parsed: unknown;
+    let text: string;
     try {
-      parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(raw));
+      text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(raw);
     } catch {
       throw new AppError("VALIDATION_FAILED", "error.backup.invalid", { fields: ["_body"] });
     }
+    const parsed = parseBackupText(text);
     const summary = importBackup(importer, parseBackup(parsed));
     auth.events.record("backup_imported", client(c), { session: c.get("session").id.slice(0, 16), alert: true });
     await afterImport();
