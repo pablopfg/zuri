@@ -30,7 +30,7 @@ const callTools = (...calls: { name: string; input: unknown }[]): Step => () => 
 const say = (text: string): Step => () => ({ text });
 
 function seed(world: ChatWorld) {
-  const secret = world.memories.create({ content: "O código do cofre é 4417 e fica com a Ana", category: "fact" }).memory;
+  const secret = world.memories.create({ content: "O código do cofre é KQW-4417 e fica com a Ana", category: "fact" }).memory;
   world.memories.setLocalOnly(secret.id, { localOnly: true });
   world.memories.create({ content: "Prefere café do cofre sem açúcar", category: "preference" });
   const marked = world.productivity.notes.create({ title: "Cofre", content: "Combinação do cofre: 12-34-56" });
@@ -57,7 +57,7 @@ describe("a chat turn on an external model", () => {
       );
       await turn(world, provider, "O que você sabe do cofre?");
       const seen = JSON.stringify(provider.transcript);
-      for (const leak of ["4417", "12-34-56", "FIM-DO-TEXTO"]) expect(seen, leak).not.toContain(leak);
+      for (const leak of ["KQW", "12-34-56", "FIM-DO-TEXTO"]) expect(seen, leak).not.toContain(leak);
       expect(seen).toContain(LOCAL_ONLY_TEXT);
       expect(seen).toContain("café do cofre");
       // The memory line is in the system prompt still, its text replaced.
@@ -72,7 +72,7 @@ describe("a chat turn on an external model", () => {
       await turn(world, provider, "O que você sabe do cofre?");
       const seen = JSON.stringify(provider.transcript);
       expect(seen).toContain("12-34-56");
-      expect(seen).toContain("4417");
+      expect(seen).toContain("KQW-4417");
     });
   });
 
@@ -92,7 +92,10 @@ describe("a chat turn on an external model", () => {
         { external: true, model: "anthropic/claude-haiku-5-5" },
       );
       await turn(world, provider, "O que tem sobre o alarme?");
-      expect(JSON.stringify(provider.transcript)).not.toContain("ZQX"); // "ZQX" is not hex, so no random UUID can contain it (#216)
+      const seen = JSON.stringify(provider.transcript);
+      // The tools did find the note (its id went out), only its title stayed home.
+      expect(seen).toContain(marked.id);
+      expect(seen).not.toContain("ZQX"); // "ZQX" is not hex, so no random UUID can contain it (#216)
     });
   });
 
