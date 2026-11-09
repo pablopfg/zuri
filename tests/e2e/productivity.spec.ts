@@ -104,8 +104,9 @@ test("a note: write Markdown, preview it safely, search, delete and restore @mob
   const title = `Receita ${test.info().repeatEachIndex} de bolo ${test.info().project.name}`;
   await openSignedIn(page, "/notas");
   await expect(page.getByRole("heading", { level: 1, name: "Notas" })).toBeVisible();
-  // The header's "+" (the empty list may offer a second "Nova nota" below it).
-  await page.getByRole("link", { name: "Nova nota" }).first().click();
+  // One "Nova nota", in the header (stage 26c: one main action per screen).
+  await expect(page.getByRole("link", { name: "Nova nota" })).toHaveCount(1);
+  await page.getByRole("link", { name: "Nova nota" }).click();
   await page.getByLabel("Título").fill(title);
   await page
     .getByLabel("Texto da nota")

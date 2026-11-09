@@ -156,7 +156,6 @@ test("settings has the seven sections, each with its address and content: tabs o
   await expect(page.getByRole("main")).toContainText("Sua conta, a segurança e o que a Zuri pode usar.");
   await openSettingsSection(page, "Segurança");
   await expect(page.getByRole("main")).toContainText("Saída automática");
-  await expect(page.getByRole("main")).toContainText("Em breve nesta aba");
   await expect(page.getByRole("main")).not.toContainText("web.");
   if (!settingsHasTabs(page)) {
     await page.getByRole("link", { name: "Todas as configurações" }).click();

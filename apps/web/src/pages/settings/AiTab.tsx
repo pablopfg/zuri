@@ -720,6 +720,7 @@ function SemanticBody({ status }: { status: SemanticStatus }) {
   const qc = useQueryClient();
   const toast = useToast();
   const hint = useId();
+  const confirmId = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [confirming, setConfirming] = useState(false);
@@ -782,15 +783,17 @@ function SemanticBody({ status }: { status: SemanticStatus }) {
           <p className="text-xs text-fg-muted tabular-nums">{t("web.ai.semantic.today", { today: number(status.today), limit: number(status.limitPerDay) })}</p>
           {confirming ? (
             <div className="space-y-3 rounded-xl border border-warning/40 bg-warning-soft p-3">
-              <p className="text-sm">{plural("web.ai.semantic.redoConfirm", status.total)}</p>
-              <div className="flex flex-wrap justify-end gap-2">
+              <p id={confirmId} className="text-sm">
+                {plural("web.ai.semantic.redoConfirm", status.total)}
+              </p>
+              <fieldset aria-labelledby={confirmId} className="min-w-0 flex flex-wrap justify-end gap-2">
                 <Button variant="secondary" autoFocus onClick={() => setConfirming(false)}>
                   {t("web.ai.semantic.cancel")}
                 </Button>
                 <Button loading={busy} onClick={() => void send("/semantic/reindex", { method: "POST" }, t("web.ai.semantic.redone"))}>
                   {t("web.ai.semantic.redoYes")}
                 </Button>
-              </div>
+              </fieldset>
             </div>
           ) : (
             <Button variant="secondary" onClick={() => setConfirming(true)}>

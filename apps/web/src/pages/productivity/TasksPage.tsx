@@ -133,7 +133,9 @@ export function TasksPage() {
           ) : tasks.isError ? (
             <ErrorNotice error={tasks.error} onRetry={() => void tasks.refetch()} />
           ) : tasks.data.tasks.length === 0 ? (
-            <EmptyState icon={<CheckCircle2 className="h-6 w-6" />} title={q ? t("web.tasks.empty.search") : t(VIEW_EMPTY[view])} />
+            <EmptyState icon={<CheckCircle2 className="h-6 w-6" />} title={q ? t("web.tasks.empty.search") : t(VIEW_EMPTY[view])}>
+              {!q && (view === "today" || view === "all") && t(`web.tasks.emptyBody.${view}`)}
+            </EmptyState>
           ) : (
             <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
               {tasks.data.tasks.map((task) => (

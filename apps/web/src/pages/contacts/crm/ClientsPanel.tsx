@@ -16,7 +16,7 @@ import {
   zonedTimeToUtc,
 } from "@zuri/shared";
 import { Filter, ListOrdered, Search, Tag, UserPlus, Users, Webhook } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
 import { Switch } from "../../../components/Switch.tsx";
 import { useToast } from "../../../components/Toaster.tsx";
 import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, Loading, Notice, SelectField, TextAreaField, TextField } from "../../../components/ui.tsx";
@@ -317,6 +317,7 @@ function ClientForm({ client, stages, onClose }: { client: CrmClientDetail | nul
   const { t, timeZone, dateTime } = useI18n();
   const toast = useToast();
   const save = useCrmSave();
+  const confirmId = useId();
   // What the form opened with: a save sends only what the owner changed, so it never undoes what n8n wrote meanwhile.
   const [initial] = useState<Draft>(() => draftOf(client, stages, timeZone));
   const [draft, setDraft] = useState<Draft>(initial);
@@ -401,15 +402,17 @@ function ClientForm({ client, stages, onClose }: { client: CrmClientDetail | nul
   if (removing && client) {
     return (
       <div className="space-y-4">
-        <p className="text-sm leading-6 text-fg-muted">{t("web.crm.deleteBody", { name: client.name })}</p>
-        <div className="flex flex-wrap justify-end gap-2">
+        <p id={confirmId} className="text-sm leading-6 text-fg-muted">
+          {t("web.crm.deleteBody", { name: client.name })}
+        </p>
+        <fieldset aria-labelledby={confirmId} className="min-w-0 flex flex-wrap justify-end gap-2">
           <Button variant="ghost" autoFocus onClick={() => setRemoving(false)}>
             {t("web.crm.cancel")}
           </Button>
           <Button variant="danger" onClick={() => void remove()}>
             {t("web.crm.delete")}
           </Button>
-        </div>
+        </fieldset>
       </div>
     );
   }

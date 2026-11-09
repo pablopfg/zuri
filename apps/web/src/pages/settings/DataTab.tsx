@@ -101,7 +101,9 @@ function TrashCard() {
         ) : trash.isError ? (
           <ErrorNotice error={trash.error} onRetry={() => void trash.refetch()} />
         ) : items.length === 0 ? (
-          <EmptyState icon={<Trash2 className="h-6 w-6" />} title={t("web.trash.emptyTitle")} />
+          <EmptyState icon={<Trash2 className="h-6 w-6" />} title={t("web.trash.emptyTitle")}>
+            {t("web.trash.emptyBody")}
+          </EmptyState>
         ) : (
           <>
           {(trash.data?.total ?? 0) > items.length && (

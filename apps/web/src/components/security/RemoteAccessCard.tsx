@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ptBRSecurity, REMOTE_LIMITS, REMOTE_SCOPES, type RemoteOverview, type RemoteScope, type RemoteTokenCreated, type RemoteTokenInfo } from "@zuri/shared";
 import { KeySquare, Plus } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import type { MessageKey } from "@zuri/shared";
@@ -35,6 +35,8 @@ export function RemoteAccessCard() {
   const toast = useToast();
   const overview = useQuery({ queryKey: REMOTE_KEY, queryFn: () => api<RemoteOverview>("/remote") });
   const [mode, setMode] = useState<Mode>({ kind: "idle" });
+  // Names the in-place confirmation's buttons with its question, for screen readers.
+  const confirmId = useId();
   const [name, setName] = useState("");
   const [scope, setScope] = useState<RemoteScope>("read");
   const [error, setError] = useState<string | null>(null);
@@ -131,20 +133,22 @@ export function RemoteAccessCard() {
           )}
           {mode.kind === "revokeAll" && (
             <div className="space-y-3 rounded-xl border border-border p-4">
-              <p className="text-sm">{t("web.remote.revokeAllConfirm", { n: tokens.length })}</p>
+              <p id={confirmId} className="text-sm">
+                {t("web.remote.revokeAllConfirm", { n: tokens.length })}
+              </p>
               {error && (
                 <p role="alert" className="text-sm text-danger">
                   {error}
                 </p>
               )}
-              <div className="flex flex-wrap justify-end gap-2">
+              <fieldset aria-labelledby={confirmId} className="min-w-0 flex flex-wrap justify-end gap-2">
                 <Button variant="ghost" autoFocus onClick={() => reset()}>
                   {t("web.cancel")}
                 </Button>
                 <Button variant="danger" loading={pending} onClick={() => void run(() => api("/remote/tokens", { method: "DELETE" }), t("web.remote.revokedAll"))}>
                   {t("web.remote.revokeAll")}
                 </Button>
-              </div>
+              </fieldset>
             </div>
           )}
           {mode.kind === "add" && (
@@ -239,6 +243,7 @@ function TokenRow({
   onRevoke: () => void;
 }) {
   const { t } = useI18n();
+  const confirmId = useId();
   const expired = Date.parse(token.expiresAt) <= Date.now();
   return (
     <li className="space-y-3 p-4">
@@ -264,20 +269,22 @@ function TokenRow({
       </div>
       {confirming && (
         <div className="space-y-3">
-          <p className="text-sm">{t("web.remote.revokeConfirm", { name: token.name })}</p>
+          <p id={confirmId} className="text-sm">
+            {t("web.remote.revokeConfirm", { name: token.name })}
+          </p>
           {error && (
             <p role="alert" className="text-sm text-danger">
               {error}
             </p>
           )}
-          <div className="flex flex-wrap justify-end gap-2">
+          <fieldset aria-labelledby={confirmId} className="min-w-0 flex flex-wrap justify-end gap-2">
             <Button variant="ghost" autoFocus onClick={onCancel}>
               {t("web.cancel")}
             </Button>
             <Button variant="danger" loading={pending} onClick={onRevoke}>
               {t("web.remote.revoke")}
             </Button>
-          </div>
+          </fieldset>
         </div>
       )}
     </li>

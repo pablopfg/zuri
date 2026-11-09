@@ -71,8 +71,6 @@ export const ptBRSettings = {
   "web.unit.minutes.other": "{count} minutos",
   "web.unit.hours.one": "{count} hora",
   "web.unit.hours.other": "{count} horas",
-  "web.security.laterTitle": "Em breve nesta aba",
-  "web.security.laterBody": "Lista de sessões abertas e modo de bloqueio.",
   "web.settings.description": "Sua conta, a segurança e o que a Zuri pode usar.",
   "web.passwordNow.mfaTitle": "Antes de ligar, confirme que é você",
   "web.passwordNow.mfaBody": "Digite a sua senha para continuar. Mesmo que você tenha entrado agora há pouco, ela é pedida de novo, para que só você consiga ligar a verificação.",
