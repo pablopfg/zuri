@@ -19,6 +19,14 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.33.1] - 2026-11-08
+
+Mesclada às 22:09 (UTC-3) · commit [`70b0f32`](https://github.com/pablopfg/Zuri/commit/70b0f32cc43fa090ca4a5e723b7304a9f06aab60) · PR [#170](https://github.com/pablopfg/Zuri/pull/170) · Estudo de guardrails, multiagentes, verificador, parâmetros e prompts da IA
+
+### Alterado
+
+- Sem mudança visível: estudo de guardrails, multiagentes, verificador, parâmetros e prompts da IA.
+
 ## [0.33.0] - 2026-11-04
 
 Mesclada às 05:16 (UTC-3) · commit [`505dd12`](https://github.com/pablopfg/Zuri/commit/505dd127d42abc25f796460e9dcb94802b1ca5d9) · PR [#184](https://github.com/pablopfg/Zuri/pull/184) · Adiciona tokens de acesso remoto e eventos de entrada (etapa 20)
@@ -2460,7 +2468,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.33.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.33.1...develop
+[0.33.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.33.1
 [0.33.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.33.0
 [0.32.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.32.0
 [0.31.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.31.1
