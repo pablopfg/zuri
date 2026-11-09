@@ -130,7 +130,7 @@ export function quotedSection(row: Pick<MessageRow, "role" | "quoted">): string 
 }
 
 /** The request for an updated running summary: the earlier summary and the overflowing messages, as data. */
-export function summaryRequest(previous: string | null, overflow: MessageRow[]): ModelMessage[] {
+export function summaryRequest(previous: string | null, overflow: MessageRow[], previousLocal = false): ModelMessage[] {
   const lines = overflow.map((row) => {
     const who = row.source === "import" ? "restored" : row.role === "user" ? "owner" : "assistant";
     const quoted = decodeQuoted(row.quoted).map((item) => item.text).join(" / ");
@@ -141,7 +141,7 @@ export function summaryRequest(previous: string | null, overflow: MessageRow[]):
     {
       role: "user",
       // Only data and plain labels: the task is the summary specialist's (specialists/summary.ts).
-      content: `Earlier summary:\n${previous ? dataLine("summary", "previous", previous) : "(none)"}\n\nNew messages, in order:\n${lines.join("\n")}`,
+      content: `Earlier summary:\n${previous ? dataLine("summary", "previous", previous, previousLocal ? { local: "1" } : {}) : "(none)"}\n\nNew messages, in order:\n${lines.join("\n")}`,
     },
   ];
 }

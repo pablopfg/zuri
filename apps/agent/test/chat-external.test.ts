@@ -144,6 +144,11 @@ describe("a chat turn on an external model", () => {
     expect(withoutLocalOnly(request)).toContain("Qual a combinação?");
     const system = buildSystemPrompt({ agentName: undefined, language: "Portuguese", timeZone: "America/Sao_Paulo", now: new Date(), ownerName: "", message: "Oi", locale: "pt-BR", memories: "", summary: "Combinação 12-34-56", summaryLocal: true });
     expect(withoutLocalOnly(system)).not.toContain("12-34-56");
+    // The next summary call carries the earlier summary: marked when it covers a marked message, so a fallback to another company never reads it.
+    const next = summaryRequest("Combinação 12-34-56", [row(3, "user", "E a do portão?")], true)[0]?.content ?? "";
+    expect(withoutLocalOnly(next)).not.toContain("12-34-56");
+    expect(withoutLocalOnly(next)).toContain("E a do portão?");
+    expect(summaryRequest("Resumo comum", [row(3, "user", "Oi")])[0]?.content).toContain("Resumo comum");
   });
 
   it("keeps the mark on a corrected memory and on a note back from the trash, and never puts a marked text in another line", async () => {

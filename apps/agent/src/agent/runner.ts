@@ -229,7 +229,7 @@ export class AgentRunner {
       // The running summary is one more model call: only when enough has overflowed, and never at the cost of the answer.
       if (window.overflow.length >= SUMMARIZE_THRESHOLD) {
         try {
-          const result = await runSpecialist(ai, SUMMARY_SPECIALIST, summaryRequest(summary, window.overflow)[0]?.content ?? "", {
+          const result = await runSpecialist(ai, SUMMARY_SPECIALIST, summaryRequest(summary, window.overflow, summary ? conversations.summaryLocal(conversation.id, summaryUpto) : false)[0]?.content ?? "", {
             settings: this.agent("summary"),
             signal: input.signal,
           });
