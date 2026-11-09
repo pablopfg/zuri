@@ -91,6 +91,22 @@ for (const scheme of ["light", "dark"] as const) {
       expect(await tooSmallControls(page)).toEqual([]);
     });
 
+    // The screens of steps 19, 19b and 22b, in both themes (stage 25).
+    test(`the Agenda and Contacts screens have no serious violation (${scheme}) @mobile`, async ({ page }) => {
+      await page.goto("/agenda");
+      await signIn(page);
+      for (const [path, heading] of [
+        ["/agenda", "Agenda"],
+        ["/contatos", "Contatos"],
+        ["/contatos/clientes", "Contatos"],
+      ] as const) {
+        await page.goto(path);
+        await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+        await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
+        await expectAccessible(page, path);
+      }
+    });
+
     test(`the Reviews tab, off, has no serious violation (${scheme}) @mobile`, async ({ page }) => {
       await page.goto("/contatos/avaliacoes");
       await signIn(page);

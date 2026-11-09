@@ -429,6 +429,20 @@ describe("publishing", () => {
       expect(row(world, "p1")?.state).toBe("replied");
     }));
 
+  it("two approvals at the same time (the screen and the bot) publish once: one is replied, the other a conflict", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      const item = await proposed(world);
+      const both = await Promise.allSettled([
+        world.reviews.approve(item.id, { text: SIGNED, version: item.version }, "app"),
+        world.reviews.approve(item.id, { text: SIGNED, version: item.version }, "bot"),
+      ]);
+      expect(both.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      const failed = both.find((r): r is PromiseRejectedResult => r.status === "rejected");
+      expect((failed?.reason as AppError).code).toBe("CONFLICT");
+      expect(world.sim.seen.filter((s) => s.url.includes("/reviews/p1") && s.method === "PUT")).toHaveLength(1);
+    }));
+
   it("marks a reply the owner edited as theirs", () =>
     withReviewsWorld(async (world) => {
       await turnOn(world);
