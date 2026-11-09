@@ -2291,7 +2291,6 @@ export const en: Messages = {
   "web.contacts.fields": "Custom fields",
   "web.contacts.labels": "Labels",
   "web.contacts.openGoogle": "Open in Google Contacts",
-  "web.contacts.close": "Close",
   "web.contacts.nickname": "Nickname",
   "web.automations.tabs": "Kinds of automation",
   "web.automations.tab.routines": "Routines",

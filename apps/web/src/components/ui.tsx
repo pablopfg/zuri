@@ -1,4 +1,4 @@
-import { Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle, X } from "lucide-react";
 import {
   type ButtonHTMLAttributes,
   type ComponentProps,
@@ -345,6 +345,7 @@ export function EmptyState({ icon, title, children }: { icon: ReactNode; title: 
  * hides the rest of the page from screen readers.
  */
 export function Dialog({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   // A layout effect, not a plain one: the content below comes and goes in the same
@@ -369,11 +370,17 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
       className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-border bg-surface p-0 text-fg shadow-xl"
     >
       {open && (
-        <div className="space-y-4 p-5">
-          <h2 id={id} className="text-lg font-semibold">
+        // The close button comes last in the DOM, so opening focuses the first field or
+        // "Cancelar", and the grid shows it in the corner; sticky keeps the title and
+        // the button in view while a long dialog scrolls.
+        <div className="grid grid-cols-[1fr_auto] gap-x-2 pb-5 pr-2">
+          <h2 id={id} className="sticky top-0 bg-surface pb-2 pl-5 pt-4 text-lg font-semibold">
             {title}
           </h2>
-          {children}
+          <div className="col-span-2 space-y-4 pl-5 pr-3">{children}</div>
+          <button type="button" onClick={onClose} aria-label={t("web.close")} className="sticky top-0 col-start-2 row-start-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg hover:bg-raised">
+            <X className="h-5 w-5" aria-hidden />
+          </button>
         </div>
       )}
     </dialog>

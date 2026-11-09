@@ -1,0 +1,60 @@
+import { expect, test } from "./fixtures.ts";
+import { expectAccessible, signIn } from "./ui-helpers.ts";
+
+// The house dialog (stage 26b): the X in the top right corner, named "Fechar",
+// in every dialog; no "Fechar" button in text at the foot; Esc closes; opening
+// focuses the first field, not the X; and the X stays in view while a long
+// dialog scrolls.
+
+test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
+
+test("a dialog closes from the X in the corner or with Esc, and opens on its first field @mobile", async ({ page }) => {
+  await page.goto("/tarefas");
+  await signIn(page);
+  await expect(page.getByRole("heading", { level: 1, name: "Tarefas" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Projetos" }).click();
+  const dialog = page.getByRole("dialog", { name: "Projetos" });
+  await expect(dialog.getByLabel("Nome do projeto")).toBeFocused();
+
+  // One close button, an icon with its name, in the top right corner.
+  const close = dialog.getByRole("button", { name: "Fechar" });
+  await expect(close).toHaveCount(1);
+  await expect(close).toHaveText("");
+  const box = await dialog.boundingBox();
+  const corner = await close.boundingBox();
+  if (!box || !corner) throw new Error("dialog not laid out");
+  expect(corner.y - box.y).toBeLessThan(24);
+  expect(box.x + box.width - (corner.x + corner.width)).toBeLessThan(24);
+  expect(corner.width).toBeGreaterThanOrEqual(44);
+  expect(corner.height).toBeGreaterThanOrEqual(44);
+  await expectAccessible(page, "diálogo com X");
+
+  await close.click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: "Projetos" })).toBeFocused();
+
+  await page.getByRole("button", { name: "Projetos" }).click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+});
+
+test("the X stays in view while a long dialog scrolls", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 360 });
+  await page.goto("/tarefas");
+  await signIn(page);
+  await page.getByRole("button", { name: "Projetos" }).click();
+  const dialog = page.getByRole("dialog", { name: "Projetos" });
+  // Enough projects that the list runs past the short screen.
+  const name = dialog.getByLabel("Nome do projeto");
+  for (let i = 1; i <= 6; i++) {
+    await name.fill(`Rolagem ${test.info().project.name} ${i}`);
+    await dialog.getByRole("button", { name: "Criar" }).click();
+    await expect(dialog.getByText(`Rolagem ${test.info().project.name} ${i}`)).toBeVisible();
+  }
+  await dialog.evaluate((element) => element.scrollTo(0, element.scrollHeight));
+  expect(await dialog.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect(dialog.getByRole("button", { name: "Fechar" })).toBeInViewport();
+  await expect(dialog.getByRole("heading", { name: "Projetos" })).toBeInViewport();
+});

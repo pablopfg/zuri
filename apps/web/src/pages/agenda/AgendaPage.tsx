@@ -580,21 +580,18 @@ function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent 
               </div>
             </div>
           ) : (
-            <div className="flex flex-wrap justify-end gap-2">
-              {editable && (
-                <>
-                  <Button variant="danger" onClick={() => setConfirming(true)}>
-                    <Trash2 className="h-4 w-4" aria-hidden />
-                    {t("web.agenda.delete")}
-                  </Button>
-                  <Button variant="secondary" onClick={() => onEdit(event)}>
-                    <Pencil className="h-4 w-4" aria-hidden />
-                    {t("web.agenda.edit")}
-                  </Button>
-                </>
-              )}
-              <Button onClick={onClose}>{t("web.close")}</Button>
-            </div>
+            editable && (
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="danger" onClick={() => setConfirming(true)}>
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  {t("web.agenda.delete")}
+                </Button>
+                <Button variant="secondary" onClick={() => onEdit(event)}>
+                  <Pencil className="h-4 w-4" aria-hidden />
+                  {t("web.agenda.edit")}
+                </Button>
+              </div>
+            )
           )}
         </div>
       )}
