@@ -272,6 +272,7 @@ function AutomationRow({ automation, glow, onEdit, onDelete }: { automation: Aut
         {/* The main action stays in view; the rest waits in the menu (stage 26c). */}
         <ActionsMenu
           name={automation.name}
+          busy={busy === "run"}
           actions={[
             {
               label: t("web.automations.runNow"),

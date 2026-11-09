@@ -107,8 +107,12 @@ Pablo, 03/11/2026; plano em `docs/planos/nova-ui.md`):
 - **Menu "Mais opções" (⋯):** numa linha com ações demais, só a principal fica
   à vista (pausar, editar, ver ferramentas); o resto vai para o
   `ActionsMenu` (`components/ActionsMenu.tsx`). O botão se chama "Mais opções
-  para “nome”"; abrir foca o primeiro item, as setas, Home e End andam, Esc e
-  um toque fora fecham e devolvem o foco ao botão. Apagar e Remover vêm por
+  para “nome”" (nomes longos cortados em 60 caracteres); abrir foca o
+  primeiro item, as setas, Home e End andam, Esc fecha e devolve o foco ao
+  botão, e um toque fora ou Tab só fecham. A lista flutua sobre a página (não
+  é cortada por listas com `overflow-hidden`), abre para cima quando falta
+  espaço embaixo e fica acima dos toasts. Enquanto a ação da linha roda, o
+  botão gira e diz que está ocupado (`aria-busy`). Apagar e Remover vêm por
   último, depois de uma linha, em vermelho. Uma marca liga/desliga (como
   "Nunca enviar para fora") é um item marcável, com o estado lido em voz alta.
 - **Lembrete de 2FA:** enquanto a verificação em duas etapas estiver

@@ -20,24 +20,23 @@ export function DiagnosticsTab() {
   const { status, release, entries } = report.data;
   return (
     <>
-      <StatusCard status={status} release={release} />
-      <Card>
-        {entries.length === 0 ? (
-          <p className="text-sm text-fg-muted">{t("web.diagnostics.empty")}</p>
-        ) : (
+      {/* Nothing in 30 days: one card says so, instead of a second card repeating "no failure". */}
+      <StatusCard status={status} release={release} empty={entries.length === 0} />
+      {entries.length > 0 && (
+        <Card>
           <ul aria-label={t("web.diagnostics.listLabel")} className="divide-y divide-border">
             {entries.map((entry) => (
               <Entry key={entry.id} entry={entry} />
             ))}
           </ul>
-        )}
-        {entries.some((entry) => !entry.resolvedAt) && <p className="mt-3 text-xs leading-5 text-fg-muted">{t("web.diagnostics.reportHint")}</p>}
-      </Card>
+          {entries.some((entry) => !entry.resolvedAt) && <p className="mt-3 text-xs leading-5 text-fg-muted">{t("web.diagnostics.reportHint")}</p>}
+        </Card>
+      )}
     </>
   );
 }
 
-function StatusCard({ status, release }: { status: DiagnosticsStatus; release: string | null }) {
+function StatusCard({ status, release, empty }: { status: DiagnosticsStatus; release: string | null; empty: boolean }) {
   const { t } = useI18n();
   const { Icon, tone, title, body } = STATUS[status];
   return (
@@ -48,6 +47,7 @@ function StatusCard({ status, release }: { status: DiagnosticsStatus; release: s
           {t(title)}
         </h3>
         <p>{t(body)}</p>
+        {empty && <p>{t("web.diagnostics.empty")}</p>}
         <p className="text-fg-muted">{t("web.diagnostics.privacy")}</p>
         {/* The version of the build (CHANGELOG.md); the deployment code tells two deploys of the same version apart. */}
         <p className="text-xs text-fg-muted">

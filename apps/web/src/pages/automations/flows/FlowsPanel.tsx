@@ -263,6 +263,7 @@ function FlowRow({ flow, glow, onEdit, onDelete }: { flow: Flow; glow: string; o
           {/* The main action stays in view; the rest waits in the menu (stage 26c). */}
           <ActionsMenu
             name={flow.name}
+            busy={busy === "run"}
             actions={[
               {
                 label: t("web.flows.runNow"),

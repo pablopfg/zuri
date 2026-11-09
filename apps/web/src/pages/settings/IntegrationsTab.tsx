@@ -379,6 +379,7 @@ function ServerCard({ server, credentials }: { server: McpServerInfo; credential
         </Button>
         <ActionsMenu
           name={server.name}
+          busy={busy === "connect"}
           actions={[
             {
               label: t("web.integrations.reconnect"),

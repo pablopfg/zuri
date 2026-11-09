@@ -34,3 +34,25 @@ ganha `role="group"` com `aria-labelledby` na pergunta:
 - `pages/settings/AiTab.tsx`: refazer o índice da busca.
 - `pages/memory/MemoryPage.tsx`: conflito de memória (o "Cancelar" também
   ganha o foco).
+
+## Como ficou (09/11/2026)
+
+| # | Situação |
+| --- | --- |
+| 1 | Feito: `ActionsMenu` em Automações, Fluxos, Memória e Integrações. A lista flutua (não é cortada pela linha nem pela lista), fica acima dos toasts e o botão gira enquanto a ação roda. Teste próprio em `tests/e2e/actions-menu.spec.ts`. |
+| 2 | Feito. |
+| 3 | Feito. |
+| 4 | Feito em Tarefas, Notas e Diagnóstico (um cartão só quando não há falha). Lixeira: o texto do cartão já diz o que vai para lá, então o vazio fica só com o título. Conversas, Automações e IA já tinham título e frase; não mudaram. |
+| 5 | Pergunta ao Pablo (recomendação: dividir). |
+| 6 | Feito: canais, push, Telegram, o que vai para cada canal, resumo, Zuri de olho, prioridades e, no fim, os últimos envios. |
+| 7 | Feito. |
+| 8 | Feito: no computador, só o da lista ao lado. O histórico já estava nas ações do cabeçalho; com o `PageHeader` novo ele fica ao lado do título no celular. |
+| 9 | Pergunta ao Pablo (recomendação: botão com diálogo). |
+| 10 | Pergunta ao Pablo (recomendação: abrir filtrada). Tarefas e Notas já usam o mesmo botão. |
+| 11 | Feito. |
+| 12 | Feito. |
+| 13 | Feito. |
+| 14 | Feito. |
+
+O conflito de memória não é uma confirmação no lugar: os botões abrem um
+diálogo de confirmação, que já põe o foco em "Cancelar". Ficou como está.

@@ -322,6 +322,7 @@ function MemoryRow({
           </button>
           <ActionsMenu
             name={memory.content}
+            busy={pending}
             actions={[
               ...(past ? [] : [{ label: t("web.memory.correct"), icon: <RefreshCw className="h-4 w-4" />, onSelect: onCorrect, disabled: pending }]),
               {
