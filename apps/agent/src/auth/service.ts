@@ -231,6 +231,14 @@ export class AuthService {
     return source;
   }
 
+  /**
+   * Checks for a reset from the panel before anything that trusts what the old password opened. The remote
+   * tokens' gate calls it first (SEC-A3-02): otherwise a token kept working on a new object until a sign-in.
+   */
+  ensureSynced(): Promise<void> {
+    return this.sync();
+  }
+
   /** Once per object: secrets only change with a new deploy, which starts a new object. A failure retries. */
   private sync(): Promise<void> {
     this.#synced ??= this.syncFingerprint().catch((error) => {

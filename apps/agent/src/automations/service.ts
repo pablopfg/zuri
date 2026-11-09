@@ -478,7 +478,17 @@ export class AutomationService {
           continue;
         }
         if (row.kind === "agent_prompt") ai++;
-        const claim = this.claim(row);
+        let claim: ReturnType<AutomationService["claim"]>;
+        try {
+          claim = this.claim(row);
+        } catch (error) {
+          // A row this version can't read (a stricter schema, an odd import) stays due forever and would bring
+          // the alarm back at once, wake after wake (SEC-A13-03): it is paused and left for the owner instead.
+          log("error", "automation_unreadable", { kind: row.kind, error });
+          this.db.run(`UPDATE zur_automations SET status = 'paused', next_run = NULL, updated_at = ? WHERE id = ? AND status = 'active'`, new Date(this.now()).toISOString(), row.id);
+          recordActivity(this.db, "automation.failed", { kind: row.kind, problem: "failed" });
+          continue;
+        }
         if (!claim) continue;
         if (claim.missed) continue;
         ran++;

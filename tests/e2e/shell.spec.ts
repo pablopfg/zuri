@@ -145,6 +145,15 @@ test("settings has the eight sections, each with its address and content: tabs o
     await openSettingsSection(page, name);
     await expect(page).toHaveURL(new RegExp(`/configuracoes/${path}$`));
     await expect(page.getByRole("main")).toContainText(text);
+    // The AI tab became two (stage 26c): each one holds only its own part.
+    if (path === "ia") {
+      await expect(page.getByRole("heading", { name: "Uso de hoje" })).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Modelo de conversa" })).toHaveCount(0);
+    }
+    if (path === "modelos") {
+      await expect(page.getByRole("combobox", { name: "Modelo de conversa" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Uso de hoje" })).toHaveCount(0);
+    }
     if (settingsHasTabs(page)) {
       await expect(sections.getByRole("link", { name, exact: true })).toHaveAttribute("aria-current", "page");
     } else {

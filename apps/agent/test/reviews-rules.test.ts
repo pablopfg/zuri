@@ -92,6 +92,14 @@ describe("the fixed checker", () => {
     expect(guard(ok, { ...ctx, language: null })).toEqual([]);
   });
 
+  it("SEC-A6-05 refuses a domain of any ending, and one spelled out, never only the usual ones", () => {
+    for (const link of ["veja golpe.pt", "veja golpe.co", "veja golpe.club", "veja golpe.top", "veja golpe ponto com", "acesse golpe ponto com ponto br"]) {
+      expect(guard(`Obrigada, Ana! Ficamos muito felizes, ${link} e volte sempre.\n\n${SIGN}`, ctx), link).toContain("contact");
+    }
+    // A sentence that merely ends before a capital is not a domain.
+    expect(guard(ok, ctx)).not.toContain("contact");
+  });
+
   it("knows the signature at the end and adds it once", () => {
     expect(signed("Obrigado!\nEquipe exemplo.", SIGN)).toBe(true);
     expect(signed("Obrigado!", SIGN)).toBe(false);

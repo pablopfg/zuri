@@ -94,7 +94,12 @@ export function contextWindow(history: MessageRow[], maxTokens: number, actions:
   while (kept.length > 1 && kept[0]?.row.role !== "user") kept.shift();
   const keptRows = new Set(kept.map((k) => k.row));
   return {
-    messages: kept.map(({ row, content }) => ({ role: row.role, content })),
+    // An answer written with a "never send out" item in view carries the mark: a paid company's model gets a placeholder (SEC-A6-06).
+    // Only the model's own words go: what it proposed or ran (the outcome notes) still reaches the other model.
+    messages: kept.map(({ row, content }) => {
+      if (row.local_only !== 1 || row.role !== "assistant") return { role: row.role, content };
+      return { role: row.role, content, localOnly: true, localKept: outcomes(row, actionMap, planMap).join("\n") };
+    }),
     overflow: eligible.filter((row) => !keptRows.has(row)),
   };
 }
@@ -125,17 +130,18 @@ export function quotedSection(row: Pick<MessageRow, "role" | "quoted">): string 
 }
 
 /** The request for an updated running summary: the earlier summary and the overflowing messages, as data. */
-export function summaryRequest(previous: string | null, overflow: MessageRow[]): ModelMessage[] {
+export function summaryRequest(previous: string | null, overflow: MessageRow[], previousLocal = false): ModelMessage[] {
   const lines = overflow.map((row) => {
     const who = row.source === "import" ? "restored" : row.role === "user" ? "owner" : "assistant";
     const quoted = decodeQuoted(row.quoted).map((item) => item.text).join(" / ");
-    return dataLine("summary", who, [...(quoted ? `${row.content} [shared: ${quoted}]` : row.content)].slice(0, 1_500).join(""));
+    const text = [...(quoted ? `${row.content} [shared: ${quoted}]` : row.content)].slice(0, 1_500).join("");
+    return dataLine("summary", who, text, row.local_only === 1 ? { local: "1" } : {});
   });
   return [
     {
       role: "user",
       // Only data and plain labels: the task is the summary specialist's (specialists/summary.ts).
-      content: `Earlier summary:\n${previous ? dataLine("summary", "previous", previous) : "(none)"}\n\nNew messages, in order:\n${lines.join("\n")}`,
+      content: `Earlier summary:\n${previous ? dataLine("summary", "previous", previous, previousLocal ? { local: "1" } : {}) : "(none)"}\n\nNew messages, in order:\n${lines.join("\n")}`,
     },
   ];
 }

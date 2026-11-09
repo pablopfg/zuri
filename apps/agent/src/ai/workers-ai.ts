@@ -2,7 +2,7 @@ import { generateText, type LanguageModel, streamText, type ToolSet } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import type { AgentEvent, AIProvider, GenerateRequest, ToolRequest } from "./provider.ts";
 import { AppError } from "../http/errors.ts";
-import { classifyAiError, estimateTokens } from "./provider.ts";
+import { classifyAiError, estimateTokens, plainMessages } from "./provider.ts";
 import { meteredBinding, type StepMeter, stepUsage } from "./workers-ai-usage.ts";
 
 // The SDK would log every provider warning (an unsupported setting, say) with
@@ -62,7 +62,7 @@ export abstract class SdkProvider implements AIProvider {
       const result = await generateText({
         model: this.createModel(steps, () => closed),
         instructions: req.system,
-        messages: req.messages,
+        messages: plainMessages(req.messages),
         maxOutputTokens: req.maxOutputTokens,
         ...this.settings(req),
         maxRetries: 0,
@@ -105,7 +105,7 @@ export abstract class SdkProvider implements AIProvider {
     const result = streamText({
       model: this.createModel(steps, () => closed),
       instructions: req.system,
-      messages: req.messages,
+      messages: plainMessages(req.messages),
       maxOutputTokens: req.maxOutputTokens,
       ...this.settings(req),
       maxRetries: 0,
