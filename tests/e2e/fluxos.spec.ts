@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, rowAction, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { expectAccessible, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // The Flows tab of Automations (step 22a) against the real Worker: the site
 // monitor from its model, a connection with a credential that never comes back,
@@ -10,7 +10,7 @@ import { expectAccessible, rowAction, signIn, tooSmallControls } from "./ui-help
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
 /** A word of its own per run: the database keeps what the other project saved. */
-const tag = () => `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+const tag = () => uniqueTag(test.info().project.name);
 
 async function openFlows(page: Page) {
   await page.goto("/automacoes/fluxos");

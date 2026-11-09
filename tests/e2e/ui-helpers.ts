@@ -6,6 +6,21 @@ export const EMAIL = "dono@exemplo.com.br";
 export const PASSWORD = "e2e girafa trombone neblina";
 export const CSRF = { "x-zuri-request": "1" };
 
+/**
+ * A word no other test of the run will repeat: `prefix` and 12 random letters.
+ * The database lives through the whole run (one server, one worker), so a title
+ * made by two tests must never come out the same (#240). Each hex digit turns
+ * into a letter (0-9 into g-p), keeping all its randomness without a digit,
+ * which would read as a number in the screens' counts.
+ */
+export function uniqueTag(prefix: string): string {
+  return `${prefix}${crypto
+    .randomUUID()
+    .replace(/-/g, "")
+    .slice(0, 12)
+    .replace(/\d/g, (d) => String.fromCharCode(103 + Number(d)))}`;
+}
+
 /** The sign-in form, as the owner fills it (pt-BR, the default). */
 export async function signIn(page: Page, password = PASSWORD) {
   await page.getByLabel("E-mail").fill(EMAIL);

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, rowAction, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // The Google steps of the flows (step 22c) against the real Worker: over
 // loopback the Worker answers Google itself (apps/agent/src/google/dev-google.ts),
@@ -16,7 +16,7 @@ test.afterEach(async ({ page }) => {
   await page.request.delete("/api/google", { headers: CSRF });
 });
 
-const tag = () => `${test.info().project.name}${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+const tag = () => uniqueTag(test.info().project.name);
 const toast = (page: Page, text: string | RegExp) => page.getByRole("status").filter({ hasText: text });
 
 async function openFlows(page: Page) {

@@ -10,7 +10,8 @@ for (const scheme of ["light", "dark"] as const) {
   test.describe(`${scheme} theme`, () => {
     test.use({ colorScheme: scheme });
 
-    test(`sign-in, home, settings and dialogs have no serious violation (${scheme}) @mobile`, async ({ page }) => {
+    // One test per group of screens (#241): together they ran about 28 s of a 30 s budget, with an axe pass on each of 24 screens.
+    test(`sign-in, first access and approval have no serious violation (${scheme}) @mobile`, async ({ page }) => {
       await page.goto("/entrar");
       await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
       await expect(page.locator("html")).toHaveClass(scheme === "dark" ? /dark/ : /^(?!.*dark).*$/);
@@ -26,10 +27,13 @@ for (const scheme of ["light", "dark"] as const) {
       await expect(page.getByRole("heading", { name: "Este link não serve mais" })).toBeVisible();
       await expectAccessible(page, "aprovar");
       expect(await tooSmallControls(page)).toEqual([]);
-      await page.goto("/entrar");
+    });
 
+    test(`home and the notices panel have no serious violation (${scheme}) @mobile`, async ({ page }) => {
+      await page.goto("/entrar");
       await signIn(page);
       await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
+      await expect(page.locator("html")).toHaveClass(scheme === "dark" ? /dark/ : /^(?!.*dark).*$/);
       await expectAccessible(page, "inicio");
 
       await page.getByRole("button", { name: "Abrir avisos" }).click();
@@ -37,7 +41,11 @@ for (const scheme of ["light", "dark"] as const) {
       await expect(page.getByRole("dialog", { name: "Avisos" }).getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
       await expectAccessible(page, "avisos");
       await page.keyboard.press("Escape");
+    });
 
+    test(`every settings section has no serious violation (${scheme}) @mobile`, async ({ page }) => {
+      await page.goto("/configuracoes/conta");
+      await signIn(page);
       for (const [tab, title] of [
         ["conta", "Conta"],
         ["seguranca", "Segurança"],
@@ -53,7 +61,11 @@ for (const scheme of ["light", "dark"] as const) {
         await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
         await expectAccessible(page, tab);
       }
+    });
 
+    test(`the main screens, their dialogs and the 404 have no serious violation (${scheme}) @mobile`, async ({ page }) => {
+      await page.goto("/conversa");
+      await signIn(page);
       for (const [path, heading] of [
         ["/conversa", "Conversa"],
         ["/tarefas", "Tarefas"],
@@ -81,7 +93,7 @@ for (const scheme of ["light", "dark"] as const) {
       await expectAccessible(page, "404");
     });
 
-    // A test of its own, so the long one above keeps its time on a phone.
+    // A test of its own, so each group above keeps its time on a phone.
     test(`the Flows tab has no serious violation (${scheme}) @mobile`, async ({ page }) => {
       await page.goto("/automacoes/fluxos");
       await signIn(page);

@@ -372,3 +372,10 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
 - A API do Perfil da Empresa responde 429 com `quota_limit_value: "0"`
   enquanto o "Basic API Access" não sai. Não é limite de taxa: tratar como
   sem acesso e tentar de novo em horas, não em segundos (03/11/2026).
+- O banco do e2e vale para a execução inteira (um servidor, um worker). Dois
+  testes que criam o mesmo título com um rótulo curto colidem (#240: oito
+  caracteres com os dígitos trocados por `x` sobravam poucas variações, e
+  duas tarefas iguais quebraram o modo estrito). Use `uniqueTag()` de
+  `tests/e2e/ui-helpers.ts` e `exact: true` no nome. Um teste e2e com
+  muitas telas e axe em cada uma passa perto dos 30 s: divida por grupo de
+  telas em vez de subir o timeout (#241) (09/11/2026).
