@@ -47,7 +47,7 @@ etapas ficam detalhadas; as mais antigas viram uma linha na tabela.
 | 20 | mesclada (04/11/2026) | #184 | Acesso remoto: tokens `zur_pat_` com escopo (só ler, ler e escrever, só eventos), 90 dias, só HMAC no banco, lista fechada de rotas com teste que percorre todas, `POST /api/remote/events` para a central (60/h, 100/dia, metade do canal), cartão em Configurações › Segurança, **Revogar** em `/tokens` |
 | 21 | mesclada (09/11/2026) | #194 | ⚠️ Modelos pagos opcionais (Claude e GPT), tudo desligado, teto em US$ opcional e desligado, perfil externo D3–D7 ("Nunca enviar para fora", histórico curto, marcadores), estado das empresas, consumo por período ao vivo |
 | 23 | mesclada (09/11/2026) | #200, #211 | Backup manual (**Baixar backup**, **Importar backup**, uso do armazenamento) e ⚠️ backup automático no R2 opcional: cópia diária cifrada com a chave do dono (só a pública no servidor), 7 cópias, restauração no navegador, cópia mensal no Telegram, aviso de 30 dias, `/backup` com a idade |
-| 24 | em revisão (09/11/2026) | — | Deploy pelo GitHub Actions na `main` (CI inteira de novo, aprovação no ambiente `production`, só o Custom Domain, conferência do `workers.dev` e das prévias pela API, saúde e HTTPS, release da versão) e guia de instalação só pelo navegador |
+| 24 | em revisão (09/11/2026) | #215 | Deploy pelo GitHub Actions na `main` (CI inteira de novo, aprovação no ambiente `production`, só o Custom Domain, conferência do `workers.dev` e das prévias pela API, saúde e HTTPS, release da versão) e guia de instalação só pelo navegador |
 
 ## Últimas etapas (detalhe)
 
