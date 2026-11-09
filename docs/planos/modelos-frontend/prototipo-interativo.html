@@ -3053,7 +3053,7 @@ document.addEventListener("click", (e) => {
     return;
   }
   if (t.matches("[data-agx]")) { const k = t.dataset.agx; st.agx = st.agx === k ? "" : k; render(); refocus(st.agx ? `#ag-${k}-${AGENTS.find((a) => a.k === k).sampling ? "t" : "s"}, [data-agx="${k}"]` : `[data-agx="${k}"]`); return; }
-  if (t.matches("[data-ag-save]")) { const a = AGENTS.find((x) => x.k === t.dataset.agSave); a.v += 1; const s0 = document.getElementById(`ag-${a.k}-s`); if (s0) a.prompt = s0.value; const tr = document.getElementById(`ag-${a.k}-t`); if (tr) a.temp = Number(tr.value); st.agx = ""; render(); refocus(`[data-agx="${a.k}"]`); hint(`Salvo como versão ${a.v}.`); return; }
+  if (t.matches("[data-ag-save]")) { const a = AGENTS.find((x) => x.k === t.dataset.agSave); a.v += 1; const s0 = document.getElementById(`ag-${a.k}-s`); if (s0) a.prompt = esc(s0.value); const tr = document.getElementById(`ag-${a.k}-t`); if (tr) a.temp = Number(tr.value); st.agx = ""; render(); refocus(`[data-agx="${a.k}"]`); hint(`Salvo como versão ${a.v}.`); return; }
   if (t.matches("[data-ag-restore]")) { hint(/padrão/.test(t.textContent) ? "Voltou ao padrão. A versão anterior fica guardada." : "Pronto, esta versão voltou a valer."); return; }
   if (t.matches("[data-cat-sync]")) { t.setAttribute("aria-busy", "true"); setTimeout(() => { t.removeAttribute("aria-busy"); const w = document.querySelector("[data-cat-when]"); if (w) w.textContent = `Atualizada sozinha uma vez por dia. Última conferência: hoje, ${hm(nowMin())}.`; hint("Lista conferida. Nada novo desde as 03:00."); }, 900); return; }
   if (t.matches("[data-cat-add]")) { t.closest("li").remove(); hint("Gemma 3 12B entrou na lista de modelos grátis."); return; }
@@ -3067,7 +3067,7 @@ document.addEventListener("click", (e) => {
   if (t.matches("[data-pk-watch]")) { const k = t.dataset.pkWatch; if (st.pkWatch.has(k)) st.pkWatch.delete(k); else st.pkWatch.add(k); render(); refocus(`[data-pk-watch="${k}"]`); return; }
   if (t.matches("[data-af]")) { st.af = t.dataset.af; render(); refocus(`[data-af="${st.af}"]`); return; }
   if (t.matches("[data-sug]")) { const ok = t.dataset.sug === "ok"; t.closest(".sugg-card").remove(); hint(ok ? "Rotina aprovada. A primeira vez é sexta, às 17:00." : "Sugestão recusada. Nada foi agendado."); return; }
-  if (t.matches("[data-rev]")) { t.closest(".rev-card").remove(); hint(`Feito: ${t.textContent.trim().toLowerCase()}.`); return; }
+  if (t.matches("[data-rev]")) { t.closest(".rev-card").remove(); hint(`Feito: ${esc(t.textContent.trim().toLowerCase())}.`); return; }
   if (t.matches("[data-cfg-save]")) { hint("Salvo."); return; }
   if (t.matches("[data-nmode]")) { const pv = t.dataset.nmode === "prev"; for (const b of document.querySelectorAll("[data-nmode]")) b.setAttribute("aria-pressed", String(b === t)); const body = document.getElementById("n-body"); body.contentEditable = String(!pv); body.classList.toggle("is-prev", pv); return; }
   if (t.matches("[data-new-note]")) { st.n = newNote(); render(); refocus("#n-title"); hint("Nota nova. Ela se salva sozinha enquanto você escreve."); return; }
@@ -3651,7 +3651,7 @@ document.addEventListener("click", (e) => {
   if (t.matches("[data-copy]") || /Copiar telefone/.test(t.textContent)) {
     const num = t.dataset.copy || "(41) 99999-0101";
     const ok = () => toast("Telefone copiado");
-    const fail = () => toast(`Não deu para copiar. O número é ${num}.`);
+    const fail = () => toast(`Não deu para copiar. O número é ${esc(num)}.`);
     try { navigator.clipboard.writeText(num).then(ok, fail); } catch { fail(); }
     return;
   }
