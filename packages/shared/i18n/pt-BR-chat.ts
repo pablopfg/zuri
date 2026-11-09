@@ -24,7 +24,6 @@ export const ptBRChat = {
   "web.chat.new": "Nova conversa",
   "web.chat.list": "Conversas",
   "web.chat.listOpen": "Ver conversas",
-  "web.chat.listClose": "Fechar a lista",
   "web.chat.listEmpty": "Nenhuma conversa ainda.",
   "web.chat.loadMore": "Carregar mais",
   "web.chat.search": "Buscar conversas",

@@ -8,7 +8,8 @@ import { addMessages, useI18n } from "../lib/i18n.tsx";
 addMessages(ptBRShell);
 
 /** The X hides the reminder this long, on this browser only; its name says so. */
-const SNOOZE_MS = 3 * 24 * 3600_000;
+const SNOOZE_DAYS = 3;
+const SNOOZE_MS = SNOOZE_DAYS * 24 * 3600_000;
 const SNOOZE_KEY = "zuri.mfaReminderSnoozedUntil";
 
 function snoozedUntil(): number {
@@ -56,7 +57,7 @@ export function MfaReminder() {
           }}
         >
           <X className="h-4 w-4" aria-hidden />
-          <span className="sr-only sm:not-sr-only">{t("web.mfaReminder.later")}</span>
+          <span className="sr-only sm:not-sr-only">{t("web.mfaReminder.later", { days: SNOOZE_DAYS })}</span>
         </button>
       </span>
     </div>

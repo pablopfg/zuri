@@ -250,3 +250,8 @@ README:
   ligar de novo) e mover para a lixeira (dá para desfazer).
 - "Continuar editando" fica no lugar de "Cancelar" ao sair de uma nota sem
   salvar: diz melhor o que acontece.
+- "Fechar" e "Ajustar" no cartão de agentes ficam: é um botão que abre e
+  fecha um painel na própria página (`aria-expanded`), não um diálogo.
+- Nas confirmações que abrem no lugar, a pergunta fica logo acima do
+  "Cancelar" focado; ligar a pergunta ao grupo de botões para o leitor de
+  tela fica para a 26c, junto com a revisão dessas linhas.

@@ -57,4 +57,13 @@ test("the X stays in view while a long dialog scrolls", async ({ page }) => {
   expect(await dialog.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   await expect(dialog.getByRole("button", { name: "Fechar" })).toBeInViewport();
   await expect(dialog.getByRole("heading", { name: "Projetos" })).toBeInViewport();
+  // In view is not enough: nothing that scrolled under them may paint on top.
+  for (const target of [dialog.getByRole("heading", { name: "Projetos" }), dialog.getByRole("button", { name: "Fechar" })]) {
+    const covered = await target.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+      return !(top && (top === element || element.contains(top)));
+    });
+    expect(covered).toBe(false);
+  }
 });

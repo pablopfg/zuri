@@ -373,12 +373,12 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
         // The close button comes last in the DOM, so opening focuses the first field or
         // "Cancelar", and the grid shows it in the corner; sticky keeps the title and
         // the button in view while a long dialog scrolls.
-        <div className="grid grid-cols-[1fr_auto] gap-x-2 pb-5 pr-2">
-          <h2 id={id} className="sticky top-0 bg-surface pb-2 pl-5 pt-4 text-lg font-semibold">
+        <div className="grid grid-cols-[1fr_auto] pb-5">
+          <h2 id={id} className="sticky top-0 z-10 bg-surface pb-2 pl-5 pr-2 pt-4 text-lg font-semibold">
             {title}
           </h2>
-          <div className="col-span-2 space-y-4 pl-5 pr-3">{children}</div>
-          <button type="button" onClick={onClose} aria-label={t("web.close")} className="sticky top-0 col-start-2 row-start-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg hover:bg-raised">
+          <div className="col-span-2 space-y-4 px-5">{children}</div>
+          <button type="button" onClick={onClose} aria-label={t("web.close")} className="sticky top-0 z-10 col-start-2 row-start-1 inline-flex h-11 w-11 items-center justify-center self-start border-r-8 border-t-8 border-surface bg-surface text-fg-muted hover:text-fg">
             <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
