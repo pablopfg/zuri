@@ -304,7 +304,7 @@ O orçamento de cada cota está em [docs/arquitetura/orcamento-free-tier.md](doc
 | | 22a | Motor de fluxos e monitor de sites | ✅ |
 | | 22b | CRM interno e eventos do n8n | ✅ |
 | | 22c | Passos da agenda e dos contatos | ✅ |
-| **E · Fechamento** | 23 | Backup, importação e retenção | ⬜ |
+| **E · Fechamento** | 23 | Backup, importação e retenção | 🚧 |
 | | 24 | Deploy e guia de instalação | ⬜ |
 | | 26 | Revisão de textos e experiência (antes da 25) | ⬜ |
 | | 25 | Auditoria final e testes de ponta a ponta | ⬜ |
