@@ -3,7 +3,7 @@ import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { inWake, WakeBudget } from "../src/agent/wake-budget.ts";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
-import { AutomaticBackup, type AutomaticBackupDeps } from "../src/backup/automatic.ts";
+import { AutomaticBackup, type AutomaticBackupDeps, BACKUP_R2_CALLS_PER_RUN } from "../src/backup/automatic.ts";
 import { MemoryBucket } from "../src/backup/dev-bucket.ts";
 import { exportBackup } from "../src/backup/export.ts";
 import { InternalState } from "../src/db/internal-state.ts";
@@ -52,14 +52,18 @@ function harness(agent: ZuriAgent, overrides: Partial<AutomaticBackupDeps> = {})
   let now = new Date("2026-11-10T05:59:00Z"); // 02:59 in São Paulo
   const bucket = new MemoryBucket(() => now, 1024);
   const sent: Sent[] = [];
-  let chat: number | null = 4242;
+  // No bot unless a test links one: most tests are about the bucket alone.
+  let chat: number | null = null;
   let lockdown = false;
+  let telegramDown = false;
   const client = {
     sendMessage: async (id: number, text: string) => {
+      if (telegramDown) throw new Error("Telegram is down");
       sent.push({ method: "sendMessage", chat: id, text });
       return { message_id: 1 };
     },
     sendDocument: async (id: number, file: Blob, filename: string, caption: string) => {
+      if (telegramDown) throw new Error("Telegram is down");
       sent.push({ method: "sendDocument", chat: id, text: caption, size: file.size, filename });
       return { message_id: 2 };
     },
@@ -87,8 +91,14 @@ function harness(agent: ZuriAgent, overrides: Partial<AutomaticBackupDeps> = {})
     at: (iso: string) => {
       now = new Date(iso);
     },
+    withChat: () => {
+      chat = 4242;
+    },
     noChat: () => {
       chat = null;
+    },
+    telegramDown: (down: boolean) => {
+      telegramDown = down;
     },
     lock: (on: boolean) => {
       lockdown = on;
@@ -126,8 +136,13 @@ describe("the day's copy", () => {
     inOwner(async (agent) => {
       const none = harness(agent, { bucket: () => null });
       await withKey(none.backup);
-      // Without the bucket only the 30-day warning has a time.
-      expect(none.backup.nextDue()).toBe("2026-12-01T12:00:00.000Z");
+      // Without the bucket or the bot nothing has a time: the alarm isn't woken for a warning no one gets.
+      expect(none.backup.nextDue()).toBeNull();
+      none.withChat();
+      // With the bot, the warning's: more than 30 days after the first sign-in.
+      expect(none.backup.nextDue()).toBe("2026-12-02T12:00:00.000Z");
+      none.lock(true);
+      expect(none.backup.nextDue()).toBeNull();
       expect(await none.backup.tick()).toBe(false);
       expect((await none.backup.status()).available).toBe(false);
       none.state.delete("backup");
@@ -254,22 +269,103 @@ describe("the day's copy", () => {
       expect(h.bucket.calls.AbortMultipartUpload).toBe(1);
       expect(h.bucket.objects.size).toBe(0);
       expect((await h.backup.status()).failure).not.toBeNull();
+      // A part refused half way is aborted the same way, before the rest is sent.
+      h.bucket.failOn.clear();
+      h.bucket.failOn.add("UploadPart");
+      h.at("2026-11-10T07:00:00Z");
+      await h.backup.tick();
+      expect(h.bucket.calls.AbortMultipartUpload).toBe(2);
+      expect(h.bucket.calls.CompleteMultipartUpload).toBe(1);
+      expect(h.bucket.objects.size).toBe(0);
     }));
 
-  it("waits for a wake with room: no call is made in one that is out of places", () =>
+  it("writes the try down before uploading, so a run cut short comes back in an hour and not in a loop", () =>
+    inOwner(async (agent) => {
+      let seen: unknown = null;
+      const h = harness(agent, {
+        source: function* () {
+          // The middle of the run: what the alarm would find if the object died here.
+          seen = JSON.parse(new InternalState(agent.store.db).get<string>("backup") ?? "{}");
+          yield '{"format":"zuri-backup"}';
+        },
+      });
+      await withKey(h.backup);
+      h.at("2026-11-10T06:00:00Z");
+      await h.backup.tick();
+      expect(seen).toMatchObject({ nextAt: "2026-11-10T07:00:00.000Z", tries: "2026-11-10|1" });
+      // The copy worked: the next is tomorrow's, and the day's tries start over.
+      expect((await h.backup.status()).nextAt).toBe("2026-11-11T06:00:00.000Z");
+    }));
+
+  it(`stops a run past ${BACKUP_R2_CALLS_PER_RUN} R2 calls as a failure, aborting the upload`, () =>
+    inOwner(async (agent) => {
+      const noise = [...crypto.getRandomValues(new Uint8Array(6000))].map((b) => b.toString(36)).join("");
+      agent.store.productivity.notes.create({ title: "Ruído", content: noise });
+      // Parts of 16 bytes: a few hundred of them, far past the cap.
+      const h = harness(agent, { partBytes: 16 });
+      await withKey(h.backup);
+      h.at("2026-11-10T06:00:00Z");
+      await h.backup.tick();
+      const calls = Object.values(h.bucket.calls).reduce((sum, n) => sum + n, 0);
+      expect(calls).toBeLessThanOrEqual(BACKUP_R2_CALLS_PER_RUN + 1);
+      expect(h.bucket.calls.AbortMultipartUpload).toBe(1);
+      expect(h.bucket.objects.size).toBe(0);
+      expect((await h.backup.status()).failure).not.toBeNull();
+    }));
+
+  it("keeps the newest copy of an earlier key for 30 days, so a key changed by someone else can't wipe the owner's copies in a week", () =>
+    inOwner(async (agent) => {
+      const h = harness(agent);
+      await withKey(h.backup);
+      for (let day = 10; day < 17; day++) {
+        h.at(`2026-11-${day}T06:00:00Z`);
+        await h.backup.tick();
+      }
+      const oldNewest = [...h.bucket.objects.entries()].sort((a, b) => b[1].uploaded.getTime() - a[1].uploaded.getTime())[0]?.[0] ?? "";
+      // Another key, then a week and more of copies with it.
+      await withKey(h.backup);
+      for (let day = 17; day < 26; day++) {
+        h.at(`2026-11-${day}T06:00:00Z`);
+        await h.backup.tick();
+      }
+      expect(h.bucket.objects.size).toBe(BACKUP_COPIES_KEPT + 1);
+      expect(h.bucket.objects.has(oldNewest)).toBe(true);
+      // Past its 30 days it goes like any other.
+      h.at("2026-12-17T06:00:00Z");
+      await h.backup.tick();
+      expect(h.bucket.objects.has(oldNewest)).toBe(false);
+      expect(h.bucket.objects.size).toBe(BACKUP_COPIES_KEPT);
+    }));
+
+  it("says when the list of copies couldn't be read, instead of showing none", () =>
     inOwner(async (agent) => {
       const h = harness(agent);
       await withKey(h.backup);
       h.at("2026-11-10T06:00:00Z");
-      const budget = new WakeBudget(12, 10);
-      await inWake(budget, () => h.backup.tick());
-      expect(budget.short).toBe(true);
-      expect(h.bucket.calls).toEqual({});
-      expect((await h.backup.status()).failure).toBeNull();
+      await h.backup.tick();
+      expect((await h.backup.status()).listFailed).toBe(false);
+      h.bucket.failOn.add("ListObjects");
+      expect(await h.backup.status()).toMatchObject({ listFailed: true, copies: [] });
+    }));
+
+  it("uploads even in a wake out of places (R2 isn't an external call), and leaves the month's Telegram send for the next copy", () =>
+    inOwner(async (agent) => {
+      const h = harness(agent);
+      h.withChat();
+      await withKey(h.backup);
+      h.at("2026-11-10T06:00:00Z");
+      const full = new WakeBudget(12, 10);
+      full.take(2);
+      await inWake(full, () => h.backup.tick());
+      expect(h.bucket.objects.size).toBe(1);
+      expect(full.used).toBe(2);
+      expect(h.sent).toEqual([]);
+      h.at("2026-11-11T06:00:00Z");
       const roomy = new WakeBudget();
       await inWake(roomy, () => h.backup.tick());
-      expect(h.bucket.objects.size).toBe(1);
-      expect(roomy.used).toBe(2);
+      // Only Telegram's send took a place.
+      expect(roomy.used).toBe(1);
+      expect(h.sent.map((s) => s.method)).toEqual(["sendDocument"]);
     }));
 
   it("refuses a public key that isn't P-256 or doesn't match its id", () =>
@@ -284,38 +380,57 @@ describe("the day's copy", () => {
 });
 
 describe("Telegram: the month's copy and the 30-day warning", () => {
-  it("sends the copy on the 1st, once a month, only to the owner's chat, and counts it as taken out", () =>
+  it("sends the month's first copy that works, once a month, only to the owner's chat, and counts it as taken out", () =>
     inOwner(async (agent) => {
       const h = harness(agent);
+      h.withChat();
       await withKey(h.backup);
+      h.at("2026-11-10T06:00:00Z");
+      await h.backup.tick();
+      expect(h.sent).toHaveLength(1);
+      expect(h.sent[0]).toMatchObject({ method: "sendDocument", chat: 4242, filename: expect.stringMatching(/^2026-11-10-[0-9a-f]{8}\.zuri$/) });
+      expect(h.sent[0]?.text).toContain("cifrado");
+      expect((await h.backup.status()).downloadedAt).toBe("2026-11-10T06:00:00.000Z");
+      // The rest of the month, nothing more.
       h.at("2026-11-30T06:00:00Z");
       await h.backup.tick();
-      expect(h.sent).toEqual([]);
+      expect(h.sent).toHaveLength(1);
       h.at("2026-12-01T06:00:00Z");
       await h.backup.tick();
-      expect(h.sent).toHaveLength(1);
-      expect(h.sent[0]).toMatchObject({ method: "sendDocument", chat: 4242, filename: expect.stringMatching(/^2026-12-01-[0-9a-f]{8}\.zuri$/) });
-      expect(h.sent[0]?.text).toContain("cifrado");
-      expect((await h.backup.status()).downloadedAt).toBe("2026-12-01T06:00:00.000Z");
-      // A second copy the same day (a new key, say) doesn't go again.
+      expect(h.sent).toHaveLength(2);
+      expect(h.sent[1]?.filename).toMatch(/^2026-12-01-/);
+    }));
+
+  it("tries the month's send again with the next day's copy when Telegram fails", () =>
+    inOwner(async (agent) => {
+      const h = harness(agent);
+      h.withChat();
       await withKey(h.backup);
-      h.at("2026-12-01T07:00:00Z");
-      h.state.set("backup", JSON.stringify({ ...JSON.parse(h.state.get<string>("backup") ?? "{}"), nextAt: "2026-12-01T07:00:00.000Z" }));
+      h.telegramDown(true);
+      h.at("2026-12-01T06:00:00Z");
       await h.backup.tick();
-      expect(h.sent).toHaveLength(1);
+      expect(h.bucket.objects.size).toBe(1);
+      expect(h.sent).toEqual([]);
+      expect((await h.backup.status()).downloadedAt).toBeNull();
+      h.telegramDown(false);
+      h.at("2026-12-02T06:00:00Z");
+      await h.backup.tick();
+      expect(h.sent.map((s) => s.filename)).toEqual([expect.stringMatching(/^2026-12-02-/)]);
     }));
 
   it("sends only a message when the copy is too big, nothing without the linked bot or during a lockdown", () =>
     inOwner(async (agent) => {
       const big = harness(agent, { telegramMaxBytes: 10 });
+      big.withChat();
       await withKey(big.backup);
       big.at("2026-12-01T06:00:00Z");
       await big.backup.tick();
       expect(big.sent.map((s) => s.method)).toEqual(["sendMessage"]);
-      expect(big.sent[0]?.text).toContain("50 MB");
+      expect(big.sent[0]?.text).toContain("40 MB");
       big.state.delete("backup");
 
       const locked = harness(agent);
+      locked.withChat();
       await withKey(locked.backup);
       locked.lock(true);
       locked.at("2026-12-01T06:00:00Z");
@@ -332,26 +447,27 @@ describe("Telegram: the month's copy and the 30-day warning", () => {
       expect(alone.bucket.objects.size).toBe(1);
     }));
 
-  it("warns when the last backup taken out is over 30 days old, once each 30 days", () =>
+  it("warns once the last backup taken out is more than 30 days old (the 31st day), then each 30 days", () =>
     inOwner(async (agent) => {
       const h = harness(agent, { bucket: () => null });
-      // Never downloaded: 30 days from the first sign-in.
-      h.at("2026-12-01T11:59:00Z");
-      expect(await h.backup.tick()).toBe(false);
+      h.withChat();
+      // Never downloaded: from the first sign-in. Exactly 30 days isn't more than 30.
       h.at("2026-12-01T12:00:00Z");
+      expect(await h.backup.tick()).toBe(false);
+      h.at("2026-12-02T12:00:00Z");
       expect(await h.backup.tick()).toBe(true);
       expect(h.sent).toHaveLength(1);
-      expect(h.sent[0]?.text).toMatch(/30 dias que você usa a Zuri/);
+      expect(h.sent[0]?.text).toMatch(/31 dias que você usa a Zuri/);
       expect(await h.backup.tick()).toBe(false);
-      expect(h.backup.nextDue()).toBe("2026-12-31T12:00:00.000Z");
-      // A download starts the 30 days again.
+      expect(h.backup.nextDue()).toBe("2027-01-01T12:00:00.000Z");
+      // A download starts the count again.
       h.at("2026-12-05T12:00:00Z");
       h.backup.downloaded();
-      expect(h.backup.nextDue()).toBe("2027-01-04T12:00:00.000Z");
-      h.at("2027-01-04T12:00:00Z");
+      expect(h.backup.nextDue()).toBe("2027-01-05T12:00:00.000Z");
+      h.at("2027-01-05T12:00:00Z");
       await h.backup.tick();
-      expect(h.sent[1]?.text).toMatch(/Faz 30 dias que você não baixa/);
-      expect(h.backup.age().days).toBe(30);
+      expect(h.sent[1]?.text).toMatch(/Faz 31 dias que você não baixa/);
+      expect(h.backup.age().days).toBe(31);
     }));
 });
 
@@ -414,6 +530,34 @@ describe("the screen's routes and /backup", () => {
       h.at("2026-11-12T06:00:00Z");
       expect(text()).toMatchObject({ days: 2, keySet: true, last: { at: "2026-11-10T06:00:00.000Z" } });
     }));
+
+  it("answers 401 without a session and 423 during a lockdown, on every route of the automatic backup", async () => {
+    const { publicKey, file } = await createBackupKey();
+    const routes = [
+      ["GET", "/backup/auto"],
+      ["PUT", "/backup/key", { key: file.key, publicKey }],
+      ["GET", "/backup/copies/2026-11-10-0a1b2c3d"],
+    ] as const;
+    for (const [method, path, body] of routes) {
+      const res = await call(`${ORIGIN}/api${path}`, { method, headers: { ...CSRF, "content-type": "application/json", "cf-connecting-ip": IP }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      expect(res.status, `${method} ${path}`).toBe(401);
+    }
+    await inOwner((agent) => {
+      install(agent);
+      return agent.store.auth.lockdown.mark("telegram:test");
+    });
+    try {
+      for (const [method, path, body] of routes) {
+        expect((await errorBody(await session(method, path, body))).code, `${method} ${path}`).toBe("LOCKDOWN_ACTIVE");
+      }
+      expect(await inOwner((agent) => agent.store.backupAuto.status().then((status) => status.key))).toBeNull();
+    } finally {
+      await inOwner((agent) => {
+        const state = new InternalState(agent.store.db);
+        for (const key of ["lockdown_until", "lockdown_source"] as const) state.delete(key);
+      });
+    }
+  });
 
   it("the JSON download counts as a backup taken out", async () => {
     await inOwner((agent) => {

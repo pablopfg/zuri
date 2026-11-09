@@ -312,8 +312,8 @@ export const BACKUP_HOUR = 3;
 export const BACKUP_TRIES_PER_DAY = 3;
 /** The last download (screen, copy or Telegram) older than this: the bot says so. */
 export const BACKUP_STALE_DAYS = 30;
-/** The Bot API's limit for a file a bot sends; above it the month's message goes without the file. */
-export const BACKUP_TELEGRAM_MAX_BYTES = 50 * 1000 * 1000;
+/** Below the Bot API's 50 MB for a file a bot sends, leaving room for the request and the memory of the alarm; above it the month's message goes without the file. */
+export const BACKUP_TELEGRAM_MAX_BYTES = 40 * 1000 * 1000;
 /** A copy's name in the API: its local day and 8 random hex digits, nothing about the owner. */
 export const BACKUP_COPY_NAME = /^\d{4}-\d{2}-\d{2}-[0-9a-f]{8}$/;
 
@@ -333,6 +333,8 @@ export interface BackupAutoStatus {
   key: { id: string; createdAt: string } | null;
   /** The copies in the bucket, newest first; empty when it couldn't be read. */
   copies: { name: string; size: number; at: string }[];
+  /** The bucket couldn't be listed this time: an empty `copies` says nothing. */
+  listFailed: boolean;
   last: { at: string; size: number } | null;
   /** The last failed try, while no copy has worked since. */
   failure: { at: string } | null;

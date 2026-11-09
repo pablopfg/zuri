@@ -12,8 +12,8 @@
 - Lista das cópias com **Baixar** e **Restaurar uma cópia**, que abre o
   arquivo no navegador, mostra o que ele tem e importa em partes quando passa
   de 10 MB.
-- No dia 1 de cada mês a cópia vai como documento para o seu chat com o bot
-  (acima de 50 MB, só o aviso). O bot avisa quando o último backup que você
+- A primeira cópia de cada mês vai como documento para o seu chat com o bot
+  (acima de 40 MB, só o aviso; se falhar, tenta de novo no dia seguinte). O bot avisa quando o último backup que você
   baixou passa de 30 dias.
 
 ### Alterado
@@ -29,3 +29,13 @@
 - Criar ou trocar a chave e baixar uma cópia pedem a senha digitada nos
   últimos 15 minutos; a chave nova gera alerta de segurança. Nada vai ao
   Telegram no modo de bloqueio, e só para a conta do `TELEGRAM_ADMIN_ID`.
+- Quem trocar a chave com uma sessão roubada não apaga as suas cópias numa
+  semana: a cópia mais nova de cada chave anterior fica 30 dias.
+
+### Atualização
+
+- ⚠️ Opcional: para ligar o backup automático, crie um bucket privado no R2
+  (dentro da faixa grátis, mas ligar o R2 pede cartão) e ponha o nome dele na
+  variável `ZURI_BACKUP_BUCKET` do ambiente `production`; o deploy cria o
+  binding `BACKUP_BUCKET`. Passo a passo em
+  `docs/configuracao-cloudflare.md` › Backup automático. Nenhuma migration.

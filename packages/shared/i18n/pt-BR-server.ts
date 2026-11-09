@@ -468,7 +468,7 @@ export const ptBRServer = {
   "telegram.cmd.backup.last": "Última cópia automática: {when}.",
   "telegram.cmd.backup.noCopy": "Nenhuma cópia automática ainda.",
   "telegram.backup.monthly": "Backup do mês, cifrado. Só abre com o arquivo da chave do backup, na tela Dados › Restaurar.",
-  "telegram.backup.tooBig": "O backup do mês passou de 50 MB, o limite do Telegram, e não veio por aqui. Baixe a cópia na tela Dados.",
+  "telegram.backup.tooBig": "O backup do mês passou de 40 MB, mais do que o Telegram recebe da Zuri, e não veio por aqui. Baixe a cópia na tela Dados.",
   "telegram.backup.stale": "Faz {days} dias que você não baixa um backup. Baixe uma cópia na tela Dados e guarde fora da Zuri.",
   "telegram.backup.never": "Faz {days} dias que você usa a Zuri e ainda não baixou um backup. Baixe uma cópia na tela Dados e guarde fora da Zuri.",
   "telegram.date.mesmoDia": "Hoje já é {dia}. É para hoje ou para a semana que vem? Mande de novo com a hora ou com “que vem”.",

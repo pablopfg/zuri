@@ -127,6 +127,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "remote", "search", "semantic", "servers", "session", "settings", "setup", "status", "storage", "sync", "tasks", "telegram", "test", "tokens", "tools", "transcribe", "trash", "usage", "verify", "webhook",
   // The AI screen's agents (guardrails, PR 2).
   "agents", "versions",
+  // The automatic backup (step 23b).
+  "auto", "key", "copies",
 ]);
 const MAX_SEGMENTS = 8;
 

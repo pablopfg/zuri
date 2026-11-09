@@ -87,9 +87,14 @@ test("creates the backup key once and restores a sealed copy in the browser; acc
   const dialog = page.getByRole("dialog", { name: /chave do backup\?$/ });
   await expect(dialog.getByRole("button", { name: "Cancelar" })).toBeFocused();
   await expectAccessible(page, "chave do backup");
+  await dialog.getByRole("button", { name: "Criar a chave" }).click();
+  // Two steps: the file is saved by the owner's own click, and the key only counts once confirmed.
+  const use = dialog.getByRole("button", { name: "Já guardei, usar esta chave" });
+  await expect(use).toBeDisabled();
   const downloading = page.waitForEvent("download");
-  await dialog.getByRole("button", { name: "Criar e baixar a chave" }).click();
+  await dialog.getByRole("button", { name: "Baixar o arquivo da chave" }).click();
   const download = await downloading;
+  await use.click();
   expect(download.suggestedFilename()).toBe("zuri-chave-do-backup.json");
   const key = parseBackupKeyFile(await readFile((await download.path()) ?? "", "utf8"));
   await expect(page.getByRole("status").filter({ hasText: "Chave criada. Guarde o arquivo baixado num lugar seguro." })).toBeVisible();

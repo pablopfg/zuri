@@ -3,6 +3,7 @@ import type { BackupBucket } from "./automatic.ts";
 interface Stored {
   bytes: Uint8Array;
   uploaded: Date;
+  customMetadata: Record<string, string>;
 }
 
 /**
@@ -38,17 +39,19 @@ export class MemoryBucket implements BackupBucket {
       key,
       size: bytes.length,
       uploaded: stored.uploaded,
+      customMetadata: { ...stored.customMetadata },
       get body() {
         return new Response(bytes).body as ReadableStream;
       },
       arrayBuffer: async () => bytes.slice().buffer,
+      blob: async () => new Blob([bytes.slice()]),
     } as unknown as R2ObjectBody;
   }
 
-  async put(key: string, value: unknown): Promise<R2Object> {
+  async put(key: string, value: unknown, options?: R2PutOptions): Promise<R2Object> {
     this.#count("PutObject");
     const bytes = new Uint8Array(await new Response(value as BodyInit).arrayBuffer());
-    const stored = { bytes, uploaded: this.#clock() };
+    const stored = { bytes, uploaded: this.#clock(), customMetadata: { ...(options?.customMetadata as Record<string, string> | undefined) } };
     this.objects.set(key, stored);
     return this.#object(key, stored);
   }
@@ -70,7 +73,8 @@ export class MemoryBucket implements BackupBucket {
     for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key);
   }
 
-  async createMultipartUpload(key: string): Promise<R2MultipartUpload> {
+  async createMultipartUpload(key: string, options?: R2MultipartOptions): Promise<R2MultipartUpload> {
+    const customMetadata = { ...(options?.customMetadata as Record<string, string> | undefined) };
     this.#count("CreateMultipartUpload");
     const uploadId = `upload-${++this.#uploads}`;
     const parts = new Map<number, Uint8Array>();
@@ -99,7 +103,7 @@ export class MemoryBucket implements BackupBucket {
           bytes.set(chunk, at);
           at += chunk.length;
         }
-        const stored = { bytes, uploaded: bucket.#clock() };
+        const stored = { bytes, uploaded: bucket.#clock(), customMetadata };
         bucket.objects.set(key, stored);
         return bucket.#object(key, stored);
       },

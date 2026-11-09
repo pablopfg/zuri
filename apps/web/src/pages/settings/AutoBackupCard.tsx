@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BACKUP_KEY_FILE_NAME,
+  BACKUP_RESTORE_MAX_BYTES,
   backupImportParts,
   type BackupAutoStatus,
   BackupFileError,
@@ -8,6 +9,7 @@ import {
   type BackupKeyFile,
   type BackupParts,
   createBackupKey,
+  isBackupEnvelope,
   type MessageKey,
   openBackup,
   parseBackupKeyFile,
@@ -48,8 +50,6 @@ const OPENED_COUNTS = [
   ["conversations", "web.backup.summary.conversations"],
   ["automations", "web.backup.summary.automations"],
 ] as const;
-
-const SUMMARY_KEYS = ["projects", "tasks", "notes", "memories", "conversations", "messages", "automations", "routinesToApprove", "clients", "clientsSkipped", "settings"] as const;
 
 /** Settings › Data › Automatic backup (step 23b): the key, the copies, and restoring one in the browser. */
 export function AutoBackupCard() {
@@ -119,7 +119,9 @@ export function AutoBackupCard() {
                 )}
               </dl>
               {data.failure && <Notice tone="warning">{t("web.backup.auto.failed", { date: dateTime(data.failure.at) })}</Notice>}
-              {data.copies.length === 0 ? (
+              {data.listFailed ? (
+                <Notice tone="warning">{t("web.backup.auto.listFailed")}</Notice>
+              ) : data.copies.length === 0 ? (
                 <p className="text-sm text-fg-muted">{t("web.backup.auto.noCopies")}</p>
               ) : (
                 <ul aria-label={t("web.backup.auto.copies")} className="divide-y divide-border rounded-xl border border-border">
@@ -157,7 +159,7 @@ export function AutoBackupCard() {
         </div>
       )}
       <KeyDialog open={keyDialog} replacing={Boolean(data?.key)} onClose={() => setKeyDialog(false)} />
-      <RestoreDialog open={restoring} onClose={() => setRestoring(false)} summaryKeys={SUMMARY_KEYS} />
+      <RestoreDialog open={restoring} onClose={() => setRestoring(false)} />
     </Card>
   );
 }
@@ -176,25 +178,55 @@ export function useBytes() {
   };
 }
 
-/** Makes the key pair here: the key file is saved once, only the public half goes to the server. */
+/**
+ * Makes the key pair here, in two steps: the key file is saved by the owner's
+ * own click (a download started after a network call can be blocked), and
+ * only then does the public half go to the server. A key not confirmed is
+ * dropped with the dialog, and the copies go on with the key in use.
+ */
 function KeyDialog({ open, replacing, onClose }: { open: boolean; replacing: boolean; onClose: () => void }) {
   const { t } = useI18n();
   const toast = useToast();
   const qc = useQueryClient();
+  const [made, setMade] = useState<{ publicKey: string; file: BackupKeyFile } | null>(null);
+  const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const close = () => {
+    setMade(null);
+    setSaved(false);
+    setError(null);
+    onClose();
+  };
 
   async function create() {
     setBusy(true);
     setError(null);
     try {
-      const { publicKey, file } = await createBackupKey();
-      await api("/backup/key", { method: "PUT", body: { key: file.key, publicKey } });
-      // Saved only after the server took the public half: a key file always matches the key in use.
-      save(new Blob([JSON.stringify(file, null, 2)], { type: "application/json" }), BACKUP_KEY_FILE_NAME);
+      setMade(await createBackupKey());
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function download() {
+    if (!made) return;
+    save(new Blob([JSON.stringify(made.file, null, 2)], { type: "application/json" }), BACKUP_KEY_FILE_NAME);
+    setSaved(true);
+  }
+
+  async function confirm() {
+    if (!made) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/backup/key", { method: "PUT", body: { key: made.file.key, publicKey: made.publicKey } });
       toast(t("web.backup.key.created"));
       await qc.invalidateQueries({ queryKey: AUTO_BACKUP_KEY });
-      onClose();
+      close();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -203,34 +235,74 @@ function KeyDialog({ open, replacing, onClose }: { open: boolean; replacing: boo
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title={t(replacing ? "web.backup.key.replaceTitle" : "web.backup.key.title")}>
-      <p className="text-sm leading-6">{t("web.backup.key.body")}</p>
+    <Dialog open={open} onClose={close} title={t(replacing ? "web.backup.key.replaceTitle" : "web.backup.key.title")}>
+      <p className="text-sm leading-6">{t(made ? "web.backup.key.saveFirst" : "web.backup.key.body")}</p>
       {replacing && <Notice tone="warning">{t("web.backup.key.replaceWarning")}</Notice>}
       {error && (
         <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
-      <div className="flex justify-end gap-2">
-        <Button variant="secondary" onClick={onClose} autoFocus>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="secondary" onClick={close} autoFocus>
           {t("web.cancel")}
         </Button>
-        <Button onClick={() => void create()} loading={busy}>
-          {t("web.backup.key.submit")}
-        </Button>
+        {!made ? (
+          <Button onClick={() => void create()} loading={busy}>
+            {t("web.backup.key.submit")}
+          </Button>
+        ) : (
+          <>
+            <Button variant={saved ? "secondary" : "primary"} onClick={download}>
+              <Download className="h-4 w-4" aria-hidden />
+              {t("web.backup.key.download")}
+            </Button>
+            <Button onClick={() => void confirm()} loading={busy} disabled={!saved}>
+              {t("web.backup.key.confirm")}
+            </Button>
+          </>
+        )}
       </div>
     </Dialog>
   );
 }
 
-/** Opens a copy with the key file, all in the browser, then imports what it holds. */
-function RestoreDialog({ open, onClose, summaryKeys }: { open: boolean; onClose: () => void; summaryKeys: readonly (keyof BackupImportSummary)[] }) {
+class TooLarge extends Error {}
+
+/** gzip opened as text, stopping past `max` bytes: a forged copy can't fill the tab's memory. */
+async function gunzip(bytes: Uint8Array, max: number): Promise<string> {
+  const body = new Response(bytes as Uint8Array<ArrayBuffer>).body;
+  if (!body) throw new BackupFileError("damaged");
+  const reader = body.pipeThrough(new DecompressionStream("gzip")).getReader();
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > max) {
+      await reader.cancel().catch(() => undefined);
+      throw new TooLarge();
+    }
+    chunks.push(value);
+  }
+  return new Blob(chunks).text();
+}
+
+/**
+ * Opens a copy with the key file, all in the browser, then imports what it
+ * holds, part by part. A part that fails stops there: "continue" picks up at
+ * that part, so the ones already in aren't imported twice.
+ */
+function RestoreDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t, plural, dateTime } = useI18n();
   const toast = useToast();
   const qc = useQueryClient();
   const [copy, setCopy] = useState<File | null>(null);
   const [key, setKey] = useState<File | null>(null);
-  const [opened, setOpened] = useState<Backup | null>(null);
+  const [opened, setOpened] = useState<{ backup: Backup; parts: BackupParts } | null>(null);
+  const [done, setDone] = useState(0);
+  const [routines, setRoutines] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -238,6 +310,8 @@ function RestoreDialog({ open, onClose, summaryKeys }: { open: boolean; onClose:
     setCopy(null);
     setKey(null);
     setOpened(null);
+    setDone(0);
+    setRoutines(0);
     setError(null);
     onClose();
   };
@@ -247,6 +321,7 @@ function RestoreDialog({ open, onClose, summaryKeys }: { open: boolean; onClose:
     setBusy(true);
     setError(null);
     try {
+      if (copy.size > BACKUP_RESTORE_MAX_BYTES) throw new TooLarge();
       let keyFile: BackupKeyFile;
       try {
         keyFile = parseBackupKeyFile(await key.text());
@@ -254,10 +329,14 @@ function RestoreDialog({ open, onClose, summaryKeys }: { open: boolean; onClose:
         throw new BackupFileError("key");
       }
       const gzip = await openBackup(new Uint8Array(await copy.arrayBuffer()), keyFile);
-      const text = await new Response(new Response(gzip as Uint8Array<ArrayBuffer>).body?.pipeThrough(new DecompressionStream("gzip"))).text();
-      setOpened(JSON.parse(text) as Backup);
+      const backup = JSON.parse(await gunzip(gzip, BACKUP_RESTORE_MAX_BYTES)) as unknown;
+      // Only the envelope here; every item is judged by the server, as in the manual import.
+      if (!isBackupEnvelope(backup)) throw new BackupFileError("format");
+      setOpened({ backup, parts: backupImportParts(backup) });
+      setDone(0);
+      setRoutines(0);
     } catch (err) {
-      setError(err instanceof BackupFileError ? t(OPEN_ERROR[err.reason]) : t("web.backup.restore.damaged"));
+      setError(err instanceof TooLarge ? t("web.backup.restore.tooLarge") : err instanceof BackupFileError ? t(OPEN_ERROR[err.reason]) : t("web.backup.restore.damaged"));
     } finally {
       setBusy(false);
     }
@@ -267,27 +346,33 @@ function RestoreDialog({ open, onClose, summaryKeys }: { open: boolean; onClose:
     if (!opened) return;
     setBusy(true);
     setError(null);
-    const total = Object.fromEntries(summaryKeys.map((name) => [name, 0])) as Record<keyof BackupImportSummary, number>;
+    let index = done;
+    let waiting = routines;
     try {
-      for (const part of backupImportParts(opened)) {
-        const { summary } = await api<{ summary: BackupImportSummary }>("/backup/import", { method: "POST", body: part });
-        for (const name of summaryKeys) total[name] += summary[name];
+      for (; index < opened.parts.length; index++) {
+        const { summary } = await api<{ summary: BackupImportSummary }>("/backup/import", { method: "POST", body: opened.parts[index] });
+        waiting += summary.routinesToApprove;
+        setDone(index + 1);
+        setRoutines(waiting);
       }
       toast(t("web.backup.restore.done"));
-      if (total.routinesToApprove > 0) toast(plural("web.backup.import.routines", total.routinesToApprove));
+      if (waiting > 0) toast(plural("web.backup.import.routines", waiting));
       await qc.invalidateQueries();
       close();
     } catch (err) {
       setError(errorMessage(err));
+      // Something may have gone in already: the screens read again.
+      if (index > 0) await qc.invalidateQueries();
     } finally {
       setBusy(false);
     }
   }
 
   const count = (name: string) => {
-    const items = opened?.data[name];
+    const items = opened?.backup.data[name];
     return Array.isArray(items) ? items.length : 0;
   };
+  const total = opened?.parts.length ?? 0;
   return (
     <Dialog open={open} onClose={close} title={t("web.backup.restore.title")}>
       {!opened ? (
@@ -304,13 +389,18 @@ function RestoreDialog({ open, onClose, summaryKeys }: { open: boolean; onClose:
         </>
       ) : (
         <>
-          <p className="text-sm leading-6">{t("web.backup.restore.opened", { date: dateTime(opened.exportedAt) })}</p>
+          <p className="text-sm leading-6">{t("web.backup.restore.opened", { date: dateTime(opened.backup.exportedAt) })}</p>
           <ul className="text-sm text-fg-muted">
             {OPENED_COUNTS.map(([name, base]) => (
               <li key={name}>{plural(base, count(name))}</li>
             ))}
           </ul>
           <p className="text-sm leading-6">{t("web.backup.import.confirm")}</p>
+          {total > 1 && (
+            <p className="text-sm text-fg-muted" aria-live="polite">
+              {busy ? t("web.backup.restore.progress", { current: Math.min(done + 1, total), total }) : done > 0 ? t("web.backup.restore.partial", { done, total }) : t("web.backup.restore.parts", { total })}
+            </p>
+          )}
         </>
       )}
       {error && (
@@ -328,7 +418,7 @@ function RestoreDialog({ open, onClose, summaryKeys }: { open: boolean; onClose:
           </Button>
         ) : (
           <Button onClick={() => void restore()} loading={busy}>
-            {t("web.backup.restore.submit")}
+            {done > 0 ? t("web.backup.restore.resume", { current: done + 1, total }) : t("web.backup.restore.submit")}
           </Button>
         )}
       </div>

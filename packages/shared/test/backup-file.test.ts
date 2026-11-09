@@ -8,6 +8,7 @@ import {
   backupKeyId,
   createBackupKey,
   importBackupPublicKey,
+  isBackupEnvelope,
   openBackup,
   parseBackupKeyFile,
   sealBackup,
@@ -133,5 +134,33 @@ describe("restoring a big backup in parts", () => {
       expect(part).toMatchObject(head);
     }
     expect(parts.slice(1).flatMap((part) => part.data.conversations)).toEqual(conversations);
+  });
+});
+
+describe("backupImportParts when the rest alone is too big", () => {
+  const head = { format: "zuri-backup", version: 1, schema: 1, exportedAt: "2026-11-09T06:00:00.000Z" };
+  const item = (prefix: string, i: number) => ({ id: `${prefix}${i}`, text: "x".repeat(120) });
+
+  it("takes out memories, notes and tasks in that order only as far as needed, keeping projects in the first part", () => {
+    const memories = Array.from({ length: 20 }, (_, i) => item("m", i));
+    const notes = Array.from({ length: 20 }, (_, i) => item("n", i));
+    const tasks = Array.from({ length: 3 }, (_, i) => item("t", i));
+    const backup = { ...head, data: { projects: [{ id: "p1" }], tasks, notes, memories, conversations: [] } };
+    const parts = backupImportParts(backup, 2_000);
+    // Memories and notes leave; the few tasks stay with their project.
+    expect(parts[0]?.data).toEqual({ projects: [{ id: "p1" }], tasks, notes: [], memories: [], conversations: [] });
+    expect(parts.slice(1).flatMap((part) => (part.data.memories as unknown[] | undefined) ?? [])).toEqual(memories);
+    expect(parts.slice(1).flatMap((part) => (part.data.notes as unknown[] | undefined) ?? [])).toEqual(notes);
+    for (const part of parts) expect(new TextEncoder().encode(JSON.stringify(part)).length).toBeLessThanOrEqual(2_000);
+  });
+});
+
+describe("isBackupEnvelope", () => {
+  it("takes the manual backup's envelope and nothing else", () => {
+    const ok = { format: "zuri-backup", version: 1, schema: 1, exportedAt: "2026-11-09T06:00:00.000Z", data: {} };
+    expect(isBackupEnvelope(ok)).toBe(true);
+    for (const bad of [null, "x", [], { ...ok, format: "other" }, { ...ok, version: 2 }, { ...ok, exportedAt: 1 }, { ...ok, data: [] }, { ...ok, data: null }, { ...ok, schema: "1" }]) {
+      expect(isBackupEnvelope(bad)).toBe(false);
+    }
   });
 });

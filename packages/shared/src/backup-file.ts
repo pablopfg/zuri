@@ -1,4 +1,4 @@
-import { BACKUP_IMPORT_MAX_BYTES } from "./backup.ts";
+import { BACKUP_FORMAT, BACKUP_IMPORT_MAX_BYTES, BACKUP_VERSION } from "./backup.ts";
 import { fromBase64Url, toBase64Url } from "./crypto.ts";
 
 /**
@@ -300,35 +300,64 @@ export async function openBackup(file: Uint8Array, keyFile: BackupKeyFile): Prom
   return concat(out);
 }
 
-type Opened = { format: string; version: number; schema: number; exportedAt: string; data: Record<string, unknown> & { conversations?: unknown[] } };
+type Opened = { format: string; version: number; schema: number; exportedAt: string; data: Record<string, unknown> };
 export type BackupParts = Opened[];
+
+/** The bytes an opened copy may reach once decompressed: 20 imports' worth, so a forged file can't fill the tab's memory. */
+export const BACKUP_RESTORE_MAX_BYTES = 20 * BACKUP_IMPORT_MAX_BYTES;
+
+/** What a copy holds before the server judges it: the envelope of the manual backup, nothing more. */
+export function isBackupEnvelope(value: unknown): value is Opened {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return v.format === BACKUP_FORMAT && v.version === BACKUP_VERSION && typeof v.schema === "number" && typeof v.exportedAt === "string" && Boolean(v.data) && typeof v.data === "object" && !Array.isArray(v.data);
+}
+
+/**
+ * The lists taken out of the first part, in this order, until it fits: the
+ * conversations, then memories, notes and tasks. Projects, settings,
+ * automations and the CRM always stay in the first part; a task or note sent
+ * in a later part arrives without its project, since links only hold within
+ * one import.
+ */
+const SPLIT_ORDER = ["conversations", "memories", "notes", "tasks"] as const;
 
 /**
  * An opened backup as imports of at most `max` bytes each (the import's 10
- * MB): everything but the conversations first, then the conversations in
- * batches. Each part is all or nothing on the server; one that alone passes
- * the limit is left as it is, and the server refuses it.
+ * MB): the first part with what fits, then the lists taken out in batches.
+ * Each part is all or nothing on the server; one that alone passes the limit
+ * is left as it is, and the server refuses it.
  */
 export function backupImportParts(backup: Opened, max: number = BACKUP_IMPORT_MAX_BYTES): BackupParts {
   const size = (value: unknown) => encoder.encode(JSON.stringify(value)).length;
   if (size(backup) <= max) return [backup];
   const head = { format: backup.format, version: backup.version, schema: backup.schema, exportedAt: backup.exportedAt };
-  const conversations = backup.data.conversations ?? [];
-  const out: BackupParts = [{ ...head, data: { ...backup.data, conversations: [] } }];
-  // Room for the envelope around each batch.
-  const room = max - size({ ...head, data: { conversations: [] } }) - 16;
-  let batch: unknown[] = [];
-  let used = 0;
-  for (const conversation of conversations) {
-    const bytes = size(conversation) + 1;
-    if (batch.length > 0 && used + bytes > room) {
-      out.push({ ...head, data: { conversations: batch } });
-      batch = [];
-      used = 0;
-    }
-    batch.push(conversation);
-    used += bytes;
+  const first: Record<string, unknown> = { ...backup.data };
+  const taken: (typeof SPLIT_ORDER)[number][] = [];
+  for (const name of SPLIT_ORDER) {
+    if (size({ ...head, data: first }) <= max) break;
+    if (!Array.isArray(first[name]) || (first[name] as unknown[]).length === 0) continue;
+    first[name] = [];
+    taken.push(name);
   }
-  if (batch.length > 0) out.push({ ...head, data: { conversations: batch } });
+  const out: BackupParts = [{ ...head, data: first }];
+  for (const name of taken) {
+    const items = backup.data[name] as unknown[];
+    // Room for the envelope around each batch.
+    const room = max - size({ ...head, data: { [name]: [] } }) - 16;
+    let batch: unknown[] = [];
+    let used = 0;
+    for (const item of items) {
+      const bytes = size(item) + 1;
+      if (batch.length > 0 && used + bytes > room) {
+        out.push({ ...head, data: { [name]: batch } });
+        batch = [];
+        used = 0;
+      }
+      batch.push(item);
+      used += bytes;
+    }
+    if (batch.length > 0) out.push({ ...head, data: { [name]: batch } });
+  }
   return out;
 }
