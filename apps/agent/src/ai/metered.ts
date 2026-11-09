@@ -43,6 +43,8 @@ export type MeteredToolRequest = Omit<ToolRequest, "onStepUsage" | "reserveNextS
 /** Who reads the tools' results in the try under way (ToolContext.exposure reads the same object). */
 export interface Exposure {
   external: boolean;
+  /** A tool showed a "never send out" item to the account's model this turn (SEC-A6-06). */
+  sawLocalOnly?: boolean;
 }
 
 /**

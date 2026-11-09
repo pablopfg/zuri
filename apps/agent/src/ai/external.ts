@@ -209,6 +209,11 @@ export function externalPrompt(
 ): { system: string; messages: ModelMessage[] } {
   return {
     system: pseudonyms.hide(withoutLocalOnly(req.system)),
-    messages: shorterHistory(req.messages).map((message) => ({ ...message, content: pseudonyms.hide(withoutLocalOnly(message.content)) })),
+    messages: shorterHistory(req.messages).map((message) => ({
+      role: message.role,
+      content: message.localOnly
+        ? pseudonyms.hide(withoutLocalOnly(message.localKept ? `${LOCAL_ONLY_TEXT}\n\n${message.localKept}` : LOCAL_ONLY_TEXT))
+        : pseudonyms.hide(withoutLocalOnly(message.content)),
+    })),
   };
 }

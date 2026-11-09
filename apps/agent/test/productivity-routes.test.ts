@@ -116,6 +116,23 @@ describe("tasks", () => {
     expect((await json<{ task: Task }>(await api("GET", `/tasks/${task.id}`), 200)).task).toEqual(done.task);
   });
 
+  it("counts the trash of one kind when asked by kind: the filtered trash of Tasks and Notes says nothing about the other (stage 26c)", async () => {
+    const before = await json<{ items: TrashItem[]; total: number }>(await api("GET", "/trash"), 200);
+    const { task } = await json<{ task: Task }>(await api("POST", "/tasks", { title: "Tarefa da lixeira" }), 201);
+    const { note } = await json<{ note: { id: string } }>(await api("POST", "/notes", { title: "Nota 1", content: "a" }), 201);
+    const { note: other } = await json<{ note: { id: string } }>(await api("POST", "/notes", { title: "Nota 2", content: "b" }), 201);
+    await json(await api("DELETE", `/tasks/${task.id}`), 200);
+    await json(await api("DELETE", `/notes/${note.id}`), 200);
+    await json(await api("DELETE", `/notes/${other.id}`), 200);
+    const tasks = await json<{ items: TrashItem[]; total: number }>(await api("GET", "/trash?kind=task"), 200);
+    const notes = await json<{ items: TrashItem[]; total: number }>(await api("GET", "/trash?kind=note"), 200);
+    expect(tasks.items.every((i) => i.kind === "task")).toBe(true);
+    expect(notes.items.every((i) => i.kind === "note")).toBe(true);
+    expect(tasks.total).toBe(tasks.items.length);
+    expect(notes.total).toBe(notes.items.length);
+    expect((await json<{ total: number }>(await api("GET", "/trash"), 200)).total).toBe(before.total + 3);
+  });
+
   it("refuses impossible dates, explicit zones included, in the owner's language", async () => {
     for (const dueAt of ["2026-02-29T10:00:00-03:00", "2026-04-31T10:00:00+09:00", "2026-11-05T25:00:00Z", "2026-11-05T10:00:00+15:00"]) {
       const error = await refusal(await api("POST", "/tasks", { title: "x", dueAt }), 400);

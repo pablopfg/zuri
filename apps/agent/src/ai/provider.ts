@@ -5,7 +5,15 @@ import { log } from "../log.ts";
 export interface ModelMessage {
   role: "user" | "assistant";
   content: string;
+  /** Written with a "never send out" item in view (SEC-A6-06): a paid company's model gets a placeholder. Never sent to a model. */
+  localOnly?: boolean;
+  /** With localOnly: the outcome notes of the answer (what it proposed or ran), which still go. */
+  localKept?: string;
 }
+
+/** The messages as a model gets them: role and text, nothing of ours. */
+export const plainMessages = (messages: readonly ModelMessage[]): { role: "user" | "assistant"; content: string }[] =>
+  messages.map(({ role, content }) => ({ role, content }));
 
 /** Tokens of one side of a call: what Cloudflare reported, or our estimate when it reported nothing. */
 export interface TokenCount {

@@ -1,4 +1,3 @@
-import { CRM_TOOL_NAMES } from "../tools/crm.ts";
 import { type AgentCallSettings, type AgentId, defaultAgentSettings } from "@zuri/shared";
 import { type ApiErrorCode, type AreaVersions, type ChatEvent, type ChatMessage, type Conversation, type Locale, MCP_LIMITS, type MessageKey, type Settings, type ToolActivity } from "@zuri/shared";
 import { t } from "@zuri/shared";
@@ -23,6 +22,9 @@ import { runSpecialist } from "../specialists/contract.ts";
 import { approved } from "../specialists/reviews.ts";
 import { ROUTINE_CHECK_SPECIALIST } from "../specialists/routine-check.ts";
 import { SUMMARY_SPECIALIST } from "../specialists/summary.ts";
+
+/** The tools whose results carry strangers' words (their `source`): reading one makes the turn ask before any external call. */
+const THIRD_PARTY_TOOLS: ReadonlySet<string> = new Set(ALL_TOOLS.filter((tool) => "source" in tool && tool.source !== undefined).map((tool) => tool.name));
 
 /** Messages whose external tools stay offered, so a follow-up ("e para sexta?") keeps them. */
 const RECENT_EXTERNAL_MESSAGES = 6;
@@ -147,6 +149,10 @@ export class AgentRunner {
 
     let text = "";
     let fallback = false;
+    // Who reads the tools' results in each try (step 21): MeteredAI flips it for a company outside the account.
+    const exposure: { external: boolean; sawLocalOnly?: boolean } = { external: false };
+    // A "never send out" item was in the prompt (a memory, the summary, an earlier marked answer): the answer is marked (SEC-A6-06).
+    let promptLocal = false;
     const tools: ToolActivity[] = [];
     // Each call's permission, as the executor named it when the call started (no second lookup).
     const permissions = new Map<string, string>();
@@ -157,7 +163,8 @@ export class AgentRunner {
       if (status === "cancelled" && executor) this.deps.tools.plans.discard(executor.proposedPlans());
       for (const tool of tools) if (tool.status === "running") tool.status = "error";
       try {
-        return conversations.addMessage({ id: assistantMessageId, conversationId: conversation.id, role: "assistant", content: text, tools, status, error, fallback, source, promptVersion });
+        const localOnly = promptLocal || exposure.sawLocalOnly === true;
+        return conversations.addMessage({ id: assistantMessageId, conversationId: conversation.id, role: "assistant", content: text, tools, status, error, fallback, source, promptVersion, localOnly });
       } catch (failure) {
         if (!(failure instanceof AppError && failure.code === "NOT_FOUND")) throw failure;
         // The owner deleted the conversation meanwhile: nothing is stored, the tab only learns how it ended.
@@ -181,8 +188,6 @@ export class AgentRunner {
       // The memories' vector of the message first: the external tools' triage by meaning reuses it (step 18b).
       const meaning = await this.meaning(input.message, input.signal);
       mcp = this.safeExternalTools(conversation.id, input);
-      // Who reads the tools' results in each try (step 21): MeteredAI flips it for a company outside the account.
-      const exposure = { external: false };
       const ctx: ToolContext = { ...this.deps.tools, exposure, timeZone: settings.timeZone, mode: "chat", conversationId: conversation.id, source, ...(mcp ? { mcp } : {}) };
       executor = new ToolExecutor(mcp ? [...registry, ...mcp.tools] : registry, ctx, { maxToolCalls: settings.aiMaxIterations > 1 ? settings.aiMaxToolCalls : 0 });
       const offered = executor.available();
@@ -213,6 +218,7 @@ export class AgentRunner {
           previousMessageAt: history.filter((item) => item.id !== userMessage.id).at(-1)?.created_at ?? null,
           memories,
           summary,
+          summaryLocal: summary ? conversations.summaryLocal(conversation.id, summaryUpto) : false,
         });
       const actions = this.deps.tools.actions.forConversation(conversation.id);
       const plans = this.deps.tools.plans.forConversation(conversation.id);
@@ -241,6 +247,7 @@ export class AgentRunner {
         }
       }
 
+      promptLocal = / local="1"(?= |>)/.test(system()) || window.messages.some((message) => message.localOnly === true);
       const turnTools = executor;
       const providerTools: ProviderTool[] = offered.map((tool) => ({
         name: tool.name,
@@ -344,8 +351,8 @@ export class AgentRunner {
     if (!service) return null;
     const available = service.turnTools();
     if (available.length === 0) return null;
-    const used = this.deps.conversations
-      .recent(conversationId, 0, RECENT_EXTERNAL_MESSAGES)
+    const recentRows = this.deps.conversations.recent(conversationId, 0, RECENT_EXTERNAL_MESSAGES);
+    const used = recentRows
       .filter((row) => row.role === "assistant")
       .map((row) => decodeTools(row.tools));
     const recent = recentExternal(used);
@@ -354,8 +361,12 @@ export class AgentRunner {
     const serverOf = new Map(available.map((t) => [t.tool.exposed_name, t.server.id]));
     const answered = new Set(this.deps.tools.actions.externalAnswered(conversationId));
     for (const list of used) for (const tool of list) if (tool.status === "success" && !tool.actionId && serverOf.has(tool.name)) answered.add(serverOf.get(tool.name) ?? "");
-    // The CRM read in a recent message (step 22b): its strangers' text may still steer the model.
-    const thirdParty = used.some((list) => list.some((tool) => tool.status === "success" && CRM_TOOL_NAMES.has(tool.name)));
+    // Strangers' text in this turn or a recent message (the CRM, the calendar, the contacts, a Telegram
+    // forward or quote) may still steer the model: no external call runs unasked (step 22b, SEC-A7-02).
+    const thirdParty =
+      Boolean(input.quoted?.length) ||
+      recentRows.some((row) => row.role === "user" && row.quoted !== null) ||
+      used.some((list) => list.some((tool) => tool.status === "success" && THIRD_PARTY_TOOLS.has(tool.name)));
     // Nothing is embedded here: only the vector the memory recall made of this message, if any.
     let meaning: ReadonlyMap<string, number> | undefined;
     try {

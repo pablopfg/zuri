@@ -51,6 +51,12 @@ export function useProjects() {
   return useQuery({ queryKey: PROJECTS_KEY, queryFn: ({ signal }) => api<{ projects: Project[] }>("/projects", { signal }) });
 }
 
-export function useTrash() {
-  return useQuery({ queryKey: TRASH_KEY, queryFn: ({ signal }) => api<{ items: TrashItem[]; total: number }>("/trash", { signal }) });
+/** The trash, or only its tasks or notes: the server filters, so the count and the 200 newest are that kind's. */
+export const trashKey = (kind?: TrashItem["kind"]) => (kind ? ([...TRASH_KEY, kind] as const) : TRASH_KEY);
+
+export function useTrash(kind?: TrashItem["kind"]) {
+  return useQuery({
+    queryKey: trashKey(kind),
+    queryFn: ({ signal }) => api<{ items: TrashItem[]; total: number }>(kind ? `/trash?kind=${kind}` : "/trash", { signal }),
+  });
 }
