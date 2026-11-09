@@ -283,10 +283,15 @@ const I = {
 const ic = (n, c = "") => `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
 
 const params = new URLSearchParams(location.search);
+// Only known values reach the markup: anything else in the URL falls back to the default.
+const pick = (v, allowed) => (allowed.includes(v) ? v : allowed[0]);
+const MODELS = ["lima", "cobalto", "petroleo", "menta", "floresta"];
+const SCREENS = ["inicio", "conversa"];
+const THEMES = ["claro", "escuro"];
 const st = {
-  m: params.get("m") || "lima",
-  s: params.get("s") || "inicio",
-  t: params.get("t") || "claro"
+  m: pick(params.get("m"), MODELS),
+  s: pick(params.get("s"), SCREENS),
+  t: pick(params.get("t"), THEMES)
 };
 if (params.get("captura")) document.documentElement.dataset.captura = "1";
 
@@ -438,7 +443,7 @@ function render() {
 }
 for (const [id, k] of [["pm", "m"], ["ps", "s"], ["pt", "t"]]) {
   document.getElementById(id).addEventListener("change", (e) => {
-    st[k] = e.target.value;
+    st[k] = pick(e.target.value, { m: MODELS, s: SCREENS, t: THEMES }[k]);
     history.replaceState(null, "", `?m=${st.m}&s=${st.s}&t=${st.t}`);
     render();
   });
