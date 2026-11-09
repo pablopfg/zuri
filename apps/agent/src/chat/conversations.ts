@@ -46,10 +46,12 @@ export interface MessageRow {
   fallback: number;
   /** Someone else's text sent along from Telegram, JSON (migration 16); null for most messages. */
   quoted: string | null;
+  /** 1 when the answer was written with a "never send out" item in view (migration 31, SEC-A6-06). */
+  local_only: number;
   created_at: string;
 }
 
-const MESSAGE_COLUMNS = `rowid AS seq, id, conversation_id, role, content, tools, status, error_code, error_key, source, fallback, quoted, created_at`;
+const MESSAGE_COLUMNS = `rowid AS seq, id, conversation_id, role, content, tools, status, error_code, error_key, source, fallback, quoted, local_only, created_at`;
 
 export type Quoted = NonNullable<ChatMessage["quoted"]>;
 
@@ -221,6 +223,8 @@ export class ConversationRepository {
     quoted?: Quoted;
     /** The prompt an answer was made with (PROMPT_VERSION). */
     promptVersion?: string;
+    /** The answer was written with a "never send out" item in view (SEC-A6-06). */
+    localOnly?: boolean;
   }): ChatMessage {
     // A conversation deleted while its answer was being written takes no more messages (no orphan rows).
     this.row(input.conversationId);
@@ -229,8 +233,8 @@ export class ConversationRepository {
     const id = input.id ?? crypto.randomUUID();
     this.db.transaction(() => {
       this.db.run(
-        `INSERT INTO zur_messages (id, conversation_id, role, content, tools, status, error_code, error_key, source, fallback, quoted, prompt_version, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO zur_messages (id, conversation_id, role, content, tools, status, error_code, error_key, source, fallback, quoted, prompt_version, local_only, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         id,
         input.conversationId,
         input.role,
@@ -243,6 +247,7 @@ export class ConversationRepository {
         input.fallback === true && input.role === "assistant" ? 1 : 0,
         input.quoted?.length ? JSON.stringify(decodeQuoted(JSON.stringify(input.quoted))) : null,
         input.role === "assistant" ? (input.promptVersion ?? null) : null,
+        input.localOnly === true && input.role === "assistant" ? 1 : 0,
         at,
       );
       this.db.run(`UPDATE zur_conversations SET updated_at = ? WHERE id = ?`, at, input.conversationId);
@@ -280,6 +285,12 @@ export class ConversationRepository {
         limit,
       )
       .reverse();
+  }
+
+  /** Whether the running summary, made of the messages up to `upto`, saw an answer written with a marked item (SEC-A6-06). */
+  summaryLocal(conversationId: string, upto: number): boolean {
+    if (upto <= 0) return false;
+    return this.db.one(`SELECT 1 AS hit FROM zur_messages WHERE conversation_id = ? AND rowid <= ? AND local_only = 1 LIMIT 1`, conversationId, upto) !== null;
   }
 
   setSummary(conversationId: string, summary: string, upto: number): void {

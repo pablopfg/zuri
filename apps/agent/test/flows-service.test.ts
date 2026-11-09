@@ -1,4 +1,4 @@
-import { FLOW_LIMITS, type FlowDefinition, type FlowNode } from "@zuri/shared";
+import { CRM_LIMITS, FLOW_LIMITS, type FlowDefinition, type FlowNode } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
 import { AppError } from "../src/http/errors.ts";
 import { addConnection, FlowModel, type FlowWorld, NOON, withFlowWorld } from "./flow-world.ts";
@@ -568,3 +568,24 @@ describe("the schedule", () => {
     });
   });
 });
+
+describe("the chat's suggestions (step 22b)", () => {
+  it("keeps the 5 newest (n, n+1: the oldest goes) and each one for 7 days to the millisecond", async () => {
+    await withFlowWorld(async (world) => {
+      const ids: string[] = [];
+      for (let n = 1; n <= 6; n++) {
+        world.clock.now += 1_000;
+        ids.push(world.flows.saveDraft({ name: `Sugestão ${n}`, definition: manual([{ type: "notify", title: "Oi", body: "", priority: "normal", each: false }]) }).id);
+        expect(world.flows.drafts()).toHaveLength(Math.min(n, CRM_LIMITS.drafts));
+      }
+      expect(world.flows.drafts().map((d) => d.id)).toEqual(ids.slice(1).reverse());
+      const newest = world.clock.now;
+      world.clock.now = newest + CRM_LIMITS.draftMs - 1;
+      expect(world.flows.drafts().map((d) => d.id)).toContain(ids[5]);
+      world.clock.now = newest + CRM_LIMITS.draftMs;
+      expect(world.flows.drafts().map((d) => d.id)).not.toContain(ids[5]);
+      expect(world.flows.drafts()).toEqual([]);
+    });
+  });
+});
+

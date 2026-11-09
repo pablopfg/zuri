@@ -173,6 +173,23 @@ describe("the alarm", () => {
     });
   });
 
+  it("SEC-A13-03 an automation whose schedule can't be read is paused, and the alarm never comes back at once for it", async () => {
+    await withChatWorld(async (world) => {
+      const broken = await world.automations.create(reminder({ name: "Quebrada" }), "app");
+      const fine = await world.automations.create(reminder({ name: "Boa", schedule: { type: "daily", time: "10:00" } }), "app");
+      // A row this version can't read (an older import, a stricter schema): it must not turn the one alarm into a loop.
+      world.db.run(`UPDATE zur_automations SET schedule = '{"type":"nunca"}' WHERE id = ?`, broken.id);
+      const { runs, execute } = recorder();
+      world.clock.now = Date.parse("2026-10-31T13:00:00Z");
+      expect(await fire(world, execute)).toBe(1);
+      expect(runs.map((r) => r.name)).toEqual(["Boa"]);
+      expect(row(world, broken.id)).toMatchObject({ status: "paused", next_run: null });
+      expect(row(world, fine.id)?.status).toBe("active");
+      // The alarm goes to the next real run, not back to now.
+      expect(world.alarm.only()?.at.toISOString()).toBe("2026-11-01T13:00:00.000Z");
+    });
+  });
+
   it("a one-time reminder runs once and is completed; with nothing else active, no alarm is left", async () => {
     await withChatWorld(async (world) => {
       const a = await world.automations.create(reminder({ schedule: { type: "once", at: "2026-10-31T10:00" } }), "app");

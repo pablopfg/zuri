@@ -14,7 +14,13 @@ function memory(id: string, ctx: ToolContext): Memory {
 }
 
 /** True when the model reading this turn is outside the owner's account and the item may not go to it (plan D3). */
-export const hidden = (item: { localOnly: boolean }, ctx: Pick<ToolContext, "exposure">) => item.localOnly && ctx.exposure?.external === true;
+export const hidden = (item: { localOnly: boolean }, ctx: Pick<ToolContext, "exposure">) => {
+  if (!item.localOnly) return false;
+  if (ctx.exposure?.external === true) return true;
+  // Shown to the account's model: its answer may quote it, so the answer is marked (SEC-A6-06).
+  if (ctx.exposure) ctx.exposure.sawLocalOnly = true;
+  return false;
+};
 
 export const presentMemory = (m: Memory, ctx: Pick<ToolContext, "exposure"> = {}) => ({
   id: m.id,

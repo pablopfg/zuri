@@ -1,5 +1,5 @@
 import { MCP_LIMITS } from "@zuri/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CATALOG_LIMITS, checkTool, clip, inert, parseHints, plainText, resultText, toZod, withoutPatterns } from "../src/mcp/catalog.ts";
 import { McpCredentials } from "../src/mcp/credentials.ts";
 import { classifyMcpError, FETCH_LIMITS, guardedFetch, limitBody, McpConnectionError } from "../src/mcp/guarded-fetch.ts";
@@ -201,6 +201,20 @@ describe("limitBody", () => {
       },
     });
     await expect(limitBody(new Response(stream), 1024, 20).text()).rejects.toMatchObject({ problem: "timeout" });
+  });
+});
+
+describe("the protected fetch's limits (step 18a)", () => {
+  it("keeps a body to 35 s as the spec says (a call to 30 s), and the default deadline is that one", async () => {
+    expect(FETCH_LIMITS.callTimeoutMs).toBe(30_000);
+    expect(FETCH_LIMITS.maxResponseMs).toBe(35_000);
+    const timers = vi.spyOn(globalThis, "setTimeout");
+    try {
+      await limitBody(new Response("ok")).text();
+      expect(timers.mock.calls.some(([, ms]) => ms === FETCH_LIMITS.maxResponseMs)).toBe(true);
+    } finally {
+      timers.mockRestore();
+    }
   });
 });
 

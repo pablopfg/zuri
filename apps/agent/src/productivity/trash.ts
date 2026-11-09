@@ -141,8 +141,10 @@ export class Trash {
     return rows.map(toItem);
   }
 
-  count(): number {
-    return this.storage.count("trash");
+  /** Items in the trash, or only those of one kind (the filtered trash of Tasks and Notes, stage 26c). */
+  count(kind?: TrashKind): number {
+    if (!kind) return this.storage.count("trash");
+    return this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_trash WHERE kind = ?`, kind)?.n ?? 0;
   }
 
   /**

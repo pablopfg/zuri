@@ -1,6 +1,6 @@
-import { AGENT_INSTANCE_NAME, AI_LIMIT_RANGES, apiErrorSchema, DEFAULT_CHAT_MODEL, settingsSchema, usageHistorySchema, usageReportSchema } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, AI_LIMIT_RANGES, apiErrorSchema, DEFAULT_CHAT_MODEL, DEFAULT_FALLBACK_MODEL, settingsSchema, usageHistorySchema, usageReportSchema } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { Database } from "../src/db/database.ts";
 import { AppError } from "../src/http/errors.ts";
@@ -169,6 +169,30 @@ describe("the paid models through the routes (step 21)", () => {
     expect(apiErrorSchema.parse(await res.json()).code).toBe("RECENT_AUTH_REQUIRED");
     expect(usageReportSchema.parse(await (await usage(ip, cookie)).json()).limits.usdCentsPerDay).toBe(0);
     expect((await patch(ip, cookie, { aiModel: DEFAULT_CHAT_MODEL })).status).toBe(200);
+  });
+
+  it("asks for the password again before a paid model is picked, as the main or the reserve one, and saves nothing then (n-1, n)", async () => {
+    const ip = "192.0.2.95";
+    const cookie = await signIn(ip);
+    // The company's key is set (a Worker secret in production).
+    await runOwner((_db, agent) => {
+      vi.spyOn(agent, "paidConfigured").mockReturnValue(true);
+    });
+    try {
+      for (const field of ["aiModel", "aiFallbackModel"] as const) {
+        await runOwner((db) => db.run(`UPDATE zur_sessions SET confirmed_at = ?`, Date.now() - 15 * 60_000 - 1_000));
+        const refused = await patch(ip, cookie, { [field]: "anthropic/claude-haiku-5-5" });
+        expect(refused.status, field).toBe(403);
+        expect(apiErrorSchema.parse(await refused.json()).code).toBe("RECENT_AUTH_REQUIRED");
+        const settings = await (await call(`${ORIGIN}/api/settings`, { headers: headers(ip, cookie) })).json();
+        expect((settings as Record<string, unknown>)[field], field).not.toBe("anthropic/claude-haiku-5-5");
+        await runOwner((db) => db.run(`UPDATE zur_sessions SET confirmed_at = ?`, Date.now() - 14 * 60_000));
+        expect((await patch(ip, cookie, { [field]: "anthropic/claude-haiku-5-5" })).status, field).toBe(200);
+      }
+    } finally {
+      await runOwner(() => vi.restoreAllMocks());
+      await patch(ip, cookie, { aiModel: DEFAULT_CHAT_MODEL, aiFallbackModel: DEFAULT_FALLBACK_MODEL });
+    }
   });
 
   it("gives the usage history for 7, 30 or 90 days only", async () => {

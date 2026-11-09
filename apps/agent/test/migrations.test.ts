@@ -111,6 +111,7 @@ describe("the migration list", () => {
       28: "503a4ef7f977350bfa47edb7dcc6442ae6fb8e0519a7814c93784e48a3dbf2e7",
       29: "84038c823c68cb872b48d2013fc29c108bacec70b3bd4e893a9eaab9cac67889",
       30: "9438daaa32e658a73c3b370095cb63f27d70e4786ec82d9998650e78b77dd827",
+      31: "7dab5e6e1796d31319943db97241b717fb87bdfd1abb91687b0c6a6a6b6fe320",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -126,7 +127,7 @@ describe("migrate", () => {
       expect(zurObjects(db)).toEqual([]);
 
       expect(migrate(db)).toBe(LATEST_SCHEMA_VERSION);
-      expect(schemaVersion(db)).toBe(30);
+      expect(schemaVersion(db)).toBe(31);
       // FTS5 keeps shadow tables of its own (zur_notes_fts_data and others): only ours are listed.
       expect(zurObjects(db).filter((name) => !/^table:zur_(notes|memories)_fts_/.test(name))).toEqual([
         "table:zur_activity",
@@ -1225,7 +1226,7 @@ describe("migrate", () => {
       expect(migrate(db, MIGRATIONS.slice(0, 29))).toBe(29);
       db.run(`INSERT INTO zur_conversations (id, title, created_at, updated_at) VALUES ('c1', 'Oi', 'x', 'x')`);
       db.run(`INSERT INTO zur_messages (id, conversation_id, role, content, created_at) VALUES ('m1', 'c1', 'assistant', 'Olá', 'x')`);
-      expect(migrate(db)).toBe(30);
+      expect(migrate(db, MIGRATIONS.slice(0, 30))).toBe(30);
       expect(db.all(`SELECT * FROM zur_agent_configs`)).toEqual([]);
       expect(db.one(`SELECT content, prompt_version FROM zur_messages WHERE id = 'm1'`)).toEqual({ content: "Olá", prompt_version: null });
       // A version is 1 or more, and "Voltar ao padrão" is a flag.
@@ -1236,6 +1237,17 @@ describe("migrate", () => {
       for (const table of ["zur_automation_runs", "zur_reviews"]) {
         expect(db.all<{ name: string }>(`PRAGMA table_info(${table})`).map((c) => c.name)).toContain("prompt_version");
       }
+    });
+  });
+
+  it("upgrades a database at version 30 to 31: every earlier answer unmarked, and the mark is 0 or 1 (SEC-A6-06)", async () => {
+    await withEmptyDatabase("from-30", (db) => {
+      expect(migrate(db, MIGRATIONS.slice(0, 30))).toBe(30);
+      db.run(`INSERT INTO zur_conversations (id, title, created_at, updated_at) VALUES ('c1', 'Oi', 'x', 'x')`);
+      db.run(`INSERT INTO zur_messages (id, conversation_id, role, content, created_at) VALUES ('m1', 'c1', 'assistant', 'Olá', 'x')`);
+      expect(migrate(db)).toBe(31);
+      expect(db.one(`SELECT content, local_only FROM zur_messages WHERE id = 'm1'`)).toEqual({ content: "Olá", local_only: 0 });
+      expect(() => db.run(`UPDATE zur_messages SET local_only = 2 WHERE id = 'm1'`)).toThrow();
     });
   });
 });

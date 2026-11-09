@@ -99,8 +99,6 @@ const DEFAULT_STAGES = ["crm.stage.new", "crm.stage.talking", "crm.stage.schedul
 const REMINDER_TIME = "09:00";
 const DAY_MS = 86_400_000;
 
-const like = (value: string) => value.replace(/[\\%_]/g, (char) => `\\${char}`);
-
 export class CrmService {
   private readonly clock: () => number;
   /** The stages exist (made once, in the owner's language, on first use). */
@@ -504,11 +502,12 @@ export class CrmService {
     if (q) {
       const words = searchText(q);
       const digits = phoneDigits(q);
-      const parts = [`search_name LIKE ? ESCAPE '\\'`, `email LIKE ? ESCAPE '\\'`];
-      params.push(`%${like(words)}%`, `%${like(q.toLowerCase())}%`);
+      // instr, not LIKE: SQLite refuses a LIKE pattern over 50 bytes, and % and _ stay plain characters.
+      const parts = [`instr(search_name, ?) > 0`, `instr(lower(email), ?) > 0`];
+      params.push(words, q.toLowerCase());
       if (digits.length >= 3) {
-        parts.push(`phone_digits LIKE ? ESCAPE '\\'`);
-        params.push(`%${digits}%`);
+        parts.push(`instr(phone_digits, ?) > 0`);
+        params.push(digits);
       }
       where.push(`(${parts.join(" OR ")})`);
     }

@@ -4,7 +4,7 @@ import { Trash2 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Button, Card, Dialog, EmptyState, ErrorNotice, Notice, Loading } from "../../components/ui.tsx";
-import { TRASH_KEY, useTrash } from "../../hooks/productivity.ts";
+import { trashKey, useTrash } from "../../hooks/productivity.ts";
 import { api, errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
 import { useToast } from "../../components/Toaster.tsx";
@@ -40,15 +40,15 @@ export function DataTab() {
 function TrashCard() {
   const { t, dateTime, plural } = useI18n();
   const qc = useQueryClient();
-  const trash = useTrash();
+  // From Tasks or Notes the trash opens filtered by that kind, with the way back (stage 26c).
+  const [params, setParams] = useSearchParams();
+  const only = ONLY[params.get("tipo") ?? ""];
+  const key = trashKey(only?.kind);
+  const trash = useTrash(only?.kind);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
   const [confirm, setConfirm] = useState<{ kind: "purge"; item: TrashItem } | { kind: "empty" } | null>(null);
-  // From Tasks or Notes the trash opens filtered by that kind, with the way back (stage 26c).
-  const [params, setParams] = useSearchParams();
-  const only = ONLY[params.get("tipo") ?? ""];
-
   async function run(key: string, work: () => Promise<string>) {
     setBusy(key);
     setError(null);
@@ -66,13 +66,13 @@ function TrashCard() {
   // The item leaves the trash at once; a refusal puts it back as it was.
   const restore = (item: TrashItem) =>
     void run(item.id, async () => {
-      await qc.cancelQueries({ queryKey: TRASH_KEY });
-      const before = qc.getQueryData<TrashList>(TRASH_KEY);
-      qc.setQueryData<TrashList>(TRASH_KEY, (list) => (list ? { items: list.items.filter((other) => other.id !== item.id), total: Math.max(0, list.total - 1) } : list));
+      await qc.cancelQueries({ queryKey: key });
+      const before = qc.getQueryData<TrashList>(key);
+      qc.setQueryData<TrashList>(key, (list) => (list ? { items: list.items.filter((other) => other.id !== item.id), total: Math.max(0, list.total - 1) } : list));
       try {
         await api(`/trash/${item.id}/restore`, { method: "POST" });
       } catch (err) {
-        qc.setQueryData(TRASH_KEY, before);
+        qc.setQueryData(key, before);
         throw err;
       }
       return t("web.trash.restored", { title: item.title });
@@ -90,8 +90,7 @@ function TrashCard() {
       return plural("web.trash.emptied", deleted);
     });
 
-  const all = trash.data?.items ?? [];
-  const items = only ? all.filter((item) => item.kind === only.kind) : all;
+  const items = trash.data?.items ?? [];
 
   return (
     <Card

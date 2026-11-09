@@ -50,6 +50,7 @@ export const LOG_EVENTS = [
   "backup_telegram_failed",
   "flow_interrupted",
   "automation_reconcile_failed",
+  "automation_unreadable",
   "ai_fallback",
   "prompt_secret_removed",
   "alert_delivery_failed",

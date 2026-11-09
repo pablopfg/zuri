@@ -96,10 +96,25 @@ test("a task: create with a deadline and a project, edit, complete, delete and r
   await expect(page.getByRole("button", { name: "Esvaziar a lixeira" })).toHaveCount(0);
   const trashKinds = await page.getByRole("button", { name: /^Restaurar / }).count();
   await expect(page.getByText(/^Nota · /)).toHaveCount(0);
+  // The count is the tasks' own: notes in the trash never make it say there are more to see (stage 25).
+  await expect(page.getByText(/^Mostrando os /)).toHaveCount(0);
   await expectAccessible(page, "lixeira filtrada");
+  // Notes' trash: the other kind, its way back.
+  await page.goto("/configuracoes/dados?tipo=notas");
+  await expect(page.getByText("Só as notas apagadas.")).toBeVisible();
+  await expect(page.getByText(/^Tarefa · /)).toHaveCount(0);
+  await expect(page.getByText(/^Mostrando os /)).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Voltar para Notas" })).toHaveAttribute("href", "/notas");
+  // An unknown kind shows the whole trash.
+  await page.goto("/configuracoes/dados?tipo=outra");
+  await expect(page.getByText(/^Só as /)).toHaveCount(0);
+  await page.goto("/configuracoes/dados?tipo=tarefas");
   await page.getByRole("button", { name: "Ver tudo" }).click();
   await expect(page).toHaveURL(/\/configuracoes\/dados$/);
   await expect(page.getByText("Só as tarefas apagadas.")).toHaveCount(0);
+  // The whole trash is its own list: it loads after the filtered one.
+  await expect(page.getByRole("button", { name: `Restaurar ${title} de dezembro` })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
   expect(await page.getByRole("button", { name: /^Restaurar / }).count()).toBeGreaterThanOrEqual(trashKinds);
   await page.getByRole("button", { name: `Restaurar ${title} de dezembro` }).click();
   // The confirmation is a toast: spoken once by the status region, shown at the foot of the screen.

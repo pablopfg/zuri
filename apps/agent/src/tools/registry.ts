@@ -30,7 +30,7 @@ export interface ToolContext {
    * With a company outside the owner's account, items marked "never send out"
    * are left out (plan D3) and notes go in part (D4).
    */
-  exposure?: { external: boolean };
+  exposure?: { external: boolean; sawLocalOnly?: boolean };
   productivity: Productivity;
   memories: MemoryService;
   conversations: ConversationRepository;
@@ -330,8 +330,9 @@ export class ToolExecutor {
       if (tool.permission === "destructive") return presentResult(tool.name, await this.propose(tool, parsed.data, callId));
       if (tool.permission === "external") return await this.external(tool, parsed.data as Record<string, unknown>, callId);
       const result = await tool.execute(parsed.data, this.ctx);
-      // The CRM carries strangers' words (step 22b): no external call runs unasked after it.
-      if (tool.source === "crm") this.ctx.mcp?.sawThirdPartyText();
+      // The calendar, the contacts and the CRM carry strangers' words (an invitation, a contact's note, the
+      // CRM's history): no external call runs unasked after any of them (step 22b, SEC-A7-02).
+      if (tool.source) this.ctx.mcp?.sawThirdPartyText();
       if (tool.source) return presentResult(tool.name, result, tool.source);
       if (result && typeof result === "object" && "planId" in result && typeof result.planId === "string") this.plansByCall.set(callId, result.planId);
       if (result && typeof result === "object" && "routineId" in result && typeof result.routineId === "string") this.automationsByCall.set(callId, result.routineId);

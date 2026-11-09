@@ -43,6 +43,8 @@ export function registerRemoteGate(app: Hono<ApiEnv>, deps: ApiDeps, client: (c:
     }
     remote.tokens.assertNetworkAllowed(who.network);
     const raw = BEARER.exec(header)?.[1];
+    // A reset from the panel revokes every token: it is noticed before a token is trusted (SEC-A3-02).
+    if (raw) await deps.auth().ensureSynced();
     const caller = raw ? await remote.tokens.validate(raw) : null;
     if (!caller) {
       // Folded by network: a flood of bad tokens is one row of the access log, not a thousand; past the
