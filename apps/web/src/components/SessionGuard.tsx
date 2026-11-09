@@ -100,6 +100,7 @@ export function SessionGuard({ session }: { session: SessionState }) {
     return () => clearInterval(timer);
   }, []);
 
+  const [maxSeen, setMaxSeen] = useState(false);
   const end = sessionEnd(deadlines, lastReportedAt());
   const remaining = end.at - now;
   // Use the server hasn't heard of yet renews the session before any warning shows.
@@ -122,10 +123,11 @@ export function SessionGuard({ session }: { session: SessionState }) {
     void signOut(end.reason);
   }, [remaining, end.reason, signOut, lock]);
 
-  if (!warn) return null;
   const maxReached = end.reason === "ended";
+  // At the maximum, using the app no longer renews anything: the X only hides the warning.
+  if (!warn || (maxReached && maxSeen)) return null;
   return (
-    <Dialog open onClose={() => void beat(true)} title={t("web.guard.title")}>
+    <Dialog open onClose={maxReached ? () => setMaxSeen(true) : () => void beat(true)} title={t("web.guard.title")}>
       <p className="text-sm leading-6 text-fg-muted" aria-live="polite" aria-atomic="true">
         {maxReached ? t("web.guard.max", { time: formatCountdown(remaining) }) : t("web.guard.idle", { time: formatCountdown(remaining) })}
       </p>
