@@ -236,7 +236,7 @@ soma uns 3 minutos por PR. Nada muda na Cloudflare.
 - Ensaio feito para este plano (09/11/2026, Node 26, árvore podada da
   `develop` em `d1819ba`, com `docs/assets/` inteira): `npm ci`, `npm run typecheck`, `npm run i18n`,
   `npm run build` e `npm run size` passaram; os testes de `shared` e `web`
-  passaram depois de manter o `erro.yml`; `npm run lint` falhou só pela pasta
+  passaram depois de manter o `erro.yml`, e os do agente também (114 arquivos, 2.435 testes); `npm run lint` falhou só pela pasta
   `changelog/nao-lancado/` ausente (passou com a pasta vazia); o projeto `repo`
   do Vitest falhou por não ter teste. O e2e e o Lighthouse não rodaram no
   ensaio e vão rodar na própria PR da release.
