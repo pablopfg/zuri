@@ -589,11 +589,6 @@ function HistoryDialog({ memory, onClose }: { memory: Memory; onClose: () => voi
           </ol>
         </div>
       )}
-      <div className="flex justify-end">
-        <Button variant="secondary" onClick={onClose}>
-          {t("web.close")}
-        </Button>
-      </div>
     </Dialog>
   );
 }

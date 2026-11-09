@@ -570,7 +570,7 @@ function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent 
             <div className="space-y-3 rounded-xl border border-danger/40 bg-danger-soft p-3">
               <p className="text-sm">{t("web.agenda.deleteConfirm", { title: event.title || t("web.agenda.event.untitled") })}</p>
               <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="secondary" onClick={() => setConfirming(false)}>
+                <Button variant="secondary" autoFocus onClick={() => setConfirming(false)}>
                   {t("web.cancel")}
                 </Button>
                 <Button variant="danger" loading={busy} onClick={() => void remove()}>
@@ -580,21 +580,18 @@ function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent 
               </div>
             </div>
           ) : (
-            <div className="flex flex-wrap justify-end gap-2">
-              {editable && (
-                <>
-                  <Button variant="danger" onClick={() => setConfirming(true)}>
-                    <Trash2 className="h-4 w-4" aria-hidden />
-                    {t("web.agenda.delete")}
-                  </Button>
-                  <Button variant="secondary" onClick={() => onEdit(event)}>
-                    <Pencil className="h-4 w-4" aria-hidden />
-                    {t("web.agenda.edit")}
-                  </Button>
-                </>
-              )}
-              <Button onClick={onClose}>{t("web.close")}</Button>
-            </div>
+            editable && (
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="danger" onClick={() => setConfirming(true)}>
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  {t("web.agenda.delete")}
+                </Button>
+                <Button variant="secondary" onClick={() => onEdit(event)}>
+                  <Pencil className="h-4 w-4" aria-hidden />
+                  {t("web.agenda.edit")}
+                </Button>
+              </div>
+            )
           )}
         </div>
       )}

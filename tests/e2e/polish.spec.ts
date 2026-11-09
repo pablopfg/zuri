@@ -127,7 +127,7 @@ test.describe("on a phone-wide screen", () => {
     const box = await reminder.boundingBox();
     expect(box?.height ?? 0).toBeLessThanOrEqual(50);
     await expect(reminder.getByRole("link", { name: "Ligar agora" })).toBeVisible();
-    await expect(reminder.getByRole("button", { name: "Lembrar depois" })).toBeVisible();
+    await expect(reminder.getByRole("button", { name: "Dispensar por 3 dias" })).toBeVisible();
   });
 
   test("the three theme options share one row", async ({ page }) => {

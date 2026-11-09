@@ -137,12 +137,12 @@ export function RemoteAccessCard() {
                   {error}
                 </p>
               )}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="ghost" autoFocus onClick={() => reset()}>
+                  {t("web.cancel")}
+                </Button>
                 <Button variant="danger" loading={pending} onClick={() => void run(() => api("/remote/tokens", { method: "DELETE" }), t("web.remote.revokedAll"))}>
                   {t("web.remote.revokeAll")}
-                </Button>
-                <Button variant="ghost" onClick={() => reset()}>
-                  {t("web.cancel")}
                 </Button>
               </div>
             </div>
@@ -270,12 +270,12 @@ function TokenRow({
               {error}
             </p>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="ghost" autoFocus onClick={onCancel}>
+              {t("web.cancel")}
+            </Button>
             <Button variant="danger" loading={pending} onClick={onRevoke}>
               {t("web.remote.revoke")}
-            </Button>
-            <Button variant="ghost" onClick={onCancel}>
-              {t("web.cancel")}
             </Button>
           </div>
         </div>
