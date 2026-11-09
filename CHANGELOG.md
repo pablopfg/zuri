@@ -19,6 +19,50 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.33.3] - 2026-11-08
+
+Mesclada às 23:29 (UTC-3) · commit [`2ab2975`](https://github.com/pablopfg/Zuri/commit/2ab297547e410094142f8c683a2862b54094ab76) · PR [#188](https://github.com/pablopfg/Zuri/pull/188) · Mantém a ordem dos tokens criados no mesmo milissegundo
+
+### Corrigido
+
+- A lista de tokens de acesso remoto (no app e no `/tokens` do bot) mantém a ordem em que eles foram criados, mesmo quando dois nascem no mesmo instante. Antes a ordem desses podia mudar de uma consulta para outra.
+
+## [0.33.2] - 2026-11-08
+
+Mesclada às 23:12 (UTC-3) · commit [`22439cf`](https://github.com/pablopfg/Zuri/commit/22439cfa7fccd7f937bc62d8aa7ef51a90f1f22f) · PR [#192](https://github.com/pablopfg/Zuri/pull/192) · Padroniza os especialistas e acrescenta conferências fixas à IA
+
+### Adicionado
+
+- **Agentes padronizados.** O resumo da conversa, o passo de IA dos fluxos, o
+  rascunho e a segunda leitura das avaliações e a nova conferência das rotinas
+  seguem o mesmo contrato: regras fixas de segurança primeiro, depois o estilo
+  e a tarefa, dados sempre em blocos `<data>`, resposta conferida e uma versão
+  do prompt para saber com qual texto cada resposta foi feita.
+- Cada agente tem temperatura e máximo de tokens próprios. A conversa passa a
+  usar temperatura 0,4 em qualquer modelo, em vez do padrão de cada um (que ia
+  de 0,15 a 0,6).
+- `node scripts/avaliar-prompts.ts`: testa os prompts com a IA de verdade na
+  sua conta (datas, idioma, ordem escondida em dado, avaliações, rotinas),
+  com teto de 300 Neurons por rodada. `--seco` mostra os casos e o custo sem
+  chamar nada.
+
+### Segurança
+
+- Quando você pede uma ação e a Zuri responde que fez, mas nenhuma ferramenta
+  de escrita deu certo, a resposta ganha o aviso "Não consegui confirmar que
+  isso foi feito". É uma conferência fixa, sem IA.
+- Uma rotina que chamaria um serviço externo sozinha agora confere a chamada
+  antes: nenhum link, e-mail, @ ou número longo que a rotina não citou nem leu,
+  e uma segunda leitura pela IA (cerca de 7 a 19 Neurons). Reprovou ou deu
+  dúvida, vira proposta para você aprovar.
+- O passo de IA dos fluxos para com "a resposta da IA trouxe um link ou
+  contato que não estava nos dados" antes de o passo seguinte enviar o texto,
+  e caracteres escondidos saem da resposta.
+- Um conjunto fixo de frases de ataque (pt-BR e inglês, letras parecidas,
+  texto invisível, ordens dentro de avaliação, CRM, agenda e MCP) roda na CI
+  contra as defesas, e os prompts montados ficam num instantâneo que aparece
+  no diff de toda mudança.
+
 ## [0.33.1] - 2026-11-08
 
 Mesclada às 22:09 (UTC-3) · commit [`70b0f32`](https://github.com/pablopfg/Zuri/commit/70b0f32cc43fa090ca4a5e723b7304a9f06aab60) · PR [#170](https://github.com/pablopfg/Zuri/pull/170) · Estudo de guardrails, multiagentes, verificador, parâmetros e prompts da IA
@@ -2468,7 +2512,9 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.33.1...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.33.3...develop
+[0.33.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.33.3
+[0.33.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.33.2
 [0.33.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.33.1
 [0.33.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.33.0
 [0.32.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.32.0
