@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export const EMAIL = "dono@exemplo.com.br";
 /** The password whose hash is OWNER_PASSWORD_HASH in playwright.config.ts. */
@@ -87,4 +87,10 @@ export async function openAccountMenu(page: Page) {
 export async function signOutFromMenu(page: Page) {
   const sidebar = await openAccountMenu(page);
   await sidebar.getByRole("button", { name: "Sair", exact: true }).click();
+}
+
+/** Picks an action from a row's "⋯ Mais opções" menu (stage 26c). */
+export async function rowAction(row: Locator, page: Page, name: string) {
+  await row.getByRole("button", { name: /^Mais opções/ }).click();
+  await page.getByRole("menu").getByRole("menuitem", { name, exact: true }).click();
 }

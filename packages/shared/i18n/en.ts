@@ -553,6 +553,8 @@ export const en: Messages = {
   "web.projects.delete": "Delete",
   "web.projects.deleteNamed": "Delete the project {name}",
   "web.projects.trashed": "Project moved to the trash. Its tasks and notes are now without a project.",
+  "web.menu.more": "More options",
+  "web.menu.moreNamed": "More options for “{name}”",
   "web.notes.title": "Notes",
   "web.notes.description": "Ideas, lists and Markdown texts, with search.",
   "web.notes.new": "New note",
