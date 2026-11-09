@@ -350,7 +350,12 @@ export function compareLink(v: Pick<Version, "version">, previous: Pick<Version,
  * groups of the section and, at the end, the comparison with the previous
  * version. The workflow rewrites the notes of a release that differ from this.
  */
-export function releaseNotes(v: Version, previous: Pick<Version, "version" | "commit"> | null): string {
+/**
+ * The notes of a version's GitHub release. `published` is set once the deploy of the
+ * main branch made it a full release (scripts/deploy/publicar-release.ts): only the
+ * last line changes, so this workflow and the deploy agree on the same text.
+ */
+export function releaseNotes(v: Version, previous: Pick<Version, "version" | "commit"> | null, published = false): string {
   const [year, month, day] = v.date.split("-");
   const pr = v.pr === null ? "sem PR" : `[#${v.pr}](${REPO_URL}/pull/${v.pr})`;
   const body = v.body
@@ -370,7 +375,9 @@ export function releaseNotes(v: Version, previous: Pick<Version, "version" | "co
       "",
       `**Histórico completo:** ${compareLink(v, previous)}`,
       "",
-      `Pré-release de desenvolvimento da \`${BASE_BRANCH}\`, não é deploy. Todas as versões estão no [CHANGELOG.md](${REPO_URL}/blob/${BASE_BRANCH}/CHANGELOG.md).`,
+      published
+        ? `Versão publicada pela \`main\`. Todas as versões estão no [CHANGELOG.md](${REPO_URL}/blob/${BASE_BRANCH}/CHANGELOG.md).`
+        : `Pré-release de desenvolvimento da \`${BASE_BRANCH}\`, não é deploy. Todas as versões estão no [CHANGELOG.md](${REPO_URL}/blob/${BASE_BRANCH}/CHANGELOG.md).`,
       "",
     ].join("\n"),
   );

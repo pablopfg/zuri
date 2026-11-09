@@ -154,10 +154,10 @@ Tudo roda num **único Worker** que serve a interface e a API, com **um único D
 **Variáveis e configurações que completam a tabela:**
 
 - Host permitido = host de `PUBLIC_URL` (sem variável extra).
-- `ACCESS_TEAM_DOMAIN` e `ACCESS_AUD` (var, opcionais): ligam o portão 3 do Cloudflare Access.
-- `ALERT_EMAIL_FROM` (var): remetente, num domínio com Email Routing. `ZURI_ALERT_EMAIL_TO` (variável do ambiente `production` do GitHub, nunca no repositório): destino verificado, usado para gerar o binding `SEND_EMAIL` com `destination_address`.
+- `ACCESS_TEAM_DOMAIN` e `ACCESS_AUD` (gravados como segredo do Worker, opcionais): ligam o portão 3 do Cloudflare Access.
+- `ALERT_EMAIL_FROM` (gravado como segredo do Worker, para o domínio não ir ao repositório): remetente, num domínio com Email Routing. `ZURI_ALERT_EMAIL_TO` (segredo do ambiente `production` do GitHub, nunca *variable*, que sai em texto puro no log público, nem no repositório): destino verificado, usado para gerar o binding `SEND_EMAIL` com `destination_address`.
 - `wrangler.jsonc`: `workers_dev: false` com domínio próprio, `preview_urls: false`, `run_worker_first: true`, `migrations` com `new_sqlite_classes` (tag `v1`), classe do Workflow `ZuriWorkflow`, `observability` ligado sem registrar corpos. O Worker é publicado como Custom Domain.
-- `CLOUDFLARE_API_TOKEN` (permissões mínimas: Workers Scripts Edit, Workers Routes Edit, Account Settings Read, Email Routing Addresses Read) e `CLOUDFLARE_ACCOUNT_ID` só no ambiente `production` do GitHub.
+- `CLOUDFLARE_API_TOKEN` (permissões mínimas: Workers Scripts Edit, Workers Routes Edit, Account Settings Read; Email Routing Addresses Read e DNS Edit só se o primeiro deploy pedir, `docs/instalacao-cloudflare.md`) e `CLOUDFLARE_ACCOUNT_ID` só no ambiente `production` do GitHub.
 
 &#91;embedded content: arquitetura · 3 entradas, 6 portões, 1 Durable Object\]
 
@@ -756,7 +756,7 @@ Nenhum teste chama a Cloudflare, o Telegram ou provedores de IA de verdade. Um *
 ### CI/CD
 
 - `ci.yml` em `pull_request`: instalar com `npm ci`, typecheck, lint, testes, i18n, build, e2e, `npm audit`.
-- `deploy.yml` em push para `main`: mesmos testes, depois `wrangler deploy` do Worker único com o ambiente `production` (só `main`, com aprovação) e geração do binding `SEND_EMAIL` com `destination_address` a partir da variável `ZURI_ALERT_EMAIL_TO` do ambiente. O webhook e o menu do bot são registrados pelo próprio Worker (etapa 12), nunca pelo Actions. O deploy falha se `workers_dev` ou `preview_urls` estiverem ligados com domínio próprio.
+- `deploy.yml` em push para `main`: mesmos testes, depois `wrangler deploy` do Worker único com o ambiente `production` (só `main`, com aprovação) e geração do binding `SEND_EMAIL` com `destination_address` a partir de `ZURI_ALERT_EMAIL_TO`, do binding opcional `BACKUP_BUCKET` (R2 ⚠) a partir de `ZURI_BACKUP_BUCKET` e do Custom Domain a partir de `ZURI_DOMAIN` (`scripts/deploy/gerar-config.ts`), os três guardados como segredos do ambiente `production` (não como variáveis, que sairiam em texto puro no log público). Os mesmos testes são o próprio `ci.yml`, chamado pelo deploy; o job do deploy instala com `--ignore-scripts` e recebe a interface pronta; depois do deploy, o job `release` transforma a pré-release da versão em release (`scripts/deploy/publicar-release.ts`). O webhook e o menu do bot são registrados pelo próprio Worker (etapa 12), nunca pelo Actions. O deploy falha se `workers_dev` ou `preview_urls` estiverem ligados com domínio próprio.
 - `versao.yml` a cada merge na `develop` (SemVer 0.x; decisão de 02/11/2026): cada PR escreve o changelog à mão em `changelog/nao-lancado/<assunto>.md` (`<!-- versao: minor -->` quando conclui etapa); o workflow numera a versão, cria a tag `vX.Y.Z` e a pré-release no commit do merge e abre a PR `chore(release):` que escreve a seção no `CHANGELOG.md` (data, hora UTC-3, commit e PR). A 1.0.0 sai com o primeiro release para a `main`. Detalhes em `docs/agente/versionamento.md`.
 - Segredos do Worker são gravados pelo dono no painel da Cloudflare, nunca no GitHub.
 
