@@ -303,3 +303,40 @@ export interface StorageUse {
   bytes: number;
   maxBytes: number;
 }
+
+/** The automatic backup (step 23b): copies kept in the bucket, newest first. */
+export const BACKUP_COPIES_KEPT = 7;
+/** The day's copy starts at this local hour or later. */
+export const BACKUP_HOUR = 3;
+/** Tries in one day; after them, the next day's copy. */
+export const BACKUP_TRIES_PER_DAY = 3;
+/** The last download (screen, copy or Telegram) older than this: the bot says so. */
+export const BACKUP_STALE_DAYS = 30;
+/** The Bot API's limit for a file a bot sends; above it the month's message goes without the file. */
+export const BACKUP_TELEGRAM_MAX_BYTES = 50 * 1000 * 1000;
+/** A copy's name in the API: its local day and 8 random hex digits, nothing about the owner. */
+export const BACKUP_COPY_NAME = /^\d{4}-\d{2}-\d{2}-[0-9a-f]{8}$/;
+
+/** The public key the browser made (raw P-256, base64url) and its short id. */
+export const backupKeyInputSchema = /* @__PURE__ */ z
+  .object({
+    key: z.string().regex(/^[A-Za-z0-9_-]{16}$/),
+    publicKey: z.string().regex(/^[A-Za-z0-9_-]{87}$/),
+  })
+  .strict();
+export type BackupKeyInput = z.infer<typeof backupKeyInputSchema>;
+
+/** Settings › Data › Automatic backup. */
+export interface BackupAutoStatus {
+  /** The installation has the bucket (BACKUP_BUCKET); without it nothing runs. */
+  available: boolean;
+  key: { id: string; createdAt: string } | null;
+  /** The copies in the bucket, newest first; empty when it couldn't be read. */
+  copies: { name: string; size: number; at: string }[];
+  last: { at: string; size: number } | null;
+  /** The last failed try, while no copy has worked since. */
+  failure: { at: string } | null;
+  nextAt: string | null;
+  /** The last backup the owner took out (the file, a copy or Telegram's). */
+  downloadedAt: string | null;
+}

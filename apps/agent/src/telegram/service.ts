@@ -199,11 +199,27 @@ export class TelegramService {
     return this.deps.token() !== null;
   }
 
-  /** A client for one unit of work: its budget of outbound requests is that work's. */
-  client(): TelegramClient {
+  /** A client for one unit of work: its budget of outbound requests is that work's. A file's upload waits longer than a message. */
+  client(options: { timeoutMs?: number } = {}): TelegramClient {
     const token = this.deps.token();
     if (!token) throw new AppError("NOT_CONFIGURED", "error.telegramNotConfigured");
-    return new TelegramClient({ token, ...(this.deps.fetcher ? { fetcher: this.deps.fetcher } : {}), ...(this.deps.sleep ? { sleep: this.deps.sleep } : {}) });
+    return new TelegramClient({
+      token,
+      ...(options.timeoutMs ? { timeoutMs: options.timeoutMs } : {}),
+      ...(this.deps.fetcher ? { fetcher: this.deps.fetcher } : {}),
+      ...(this.deps.sleep ? { sleep: this.deps.sleep } : {}),
+    });
+  }
+
+  /**
+   * The private chat for a message the server starts on its own (the backup's,
+   * step 23b): only an active link whose account is TELEGRAM_ADMIN_ID, or null.
+   */
+  ownerChat(): number | null {
+    const link = this.deps.links.private();
+    const admin = this.deps.adminId();
+    if (!this.configured() || link?.status !== "active" || admin === null || link.userId !== admin) return null;
+    return link.chatId;
   }
 
   /**

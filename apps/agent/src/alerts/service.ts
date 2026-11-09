@@ -827,6 +827,7 @@ const SECURITY_TEXT: Record<SecurityAlertEvent, Text> = {
   crm_events_key: { title: "notice.security.crm_events_key.title", body: "notice.security.crm_events_key.body" },
   backup_exported: { title: "notice.security.backup_exported.title", body: "notice.security.backup_exported.body" },
   backup_imported: { title: "notice.security.backup_imported.title", body: "notice.security.backup_imported.body" },
+  backup_key_set: { title: "notice.security.backup_key_set.title", body: "notice.security.backup_key_set.body" },
   google_connected: { title: "notice.security.google_connected.title", body: "notice.security.google_connected.body" },
   google_calendar_write: { title: "notice.security.google_calendar_write.title", body: "notice.security.google_calendar_write.body" },
   reviews_autonomy: { title: "notice.security.reviews_autonomy.title", body: "notice.security.reviews_autonomy.body" },
