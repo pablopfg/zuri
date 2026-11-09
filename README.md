@@ -310,7 +310,7 @@ O orçamento de cada cota está em [docs/arquitetura/orcamento-free-tier.md](doc
 | **E · Fechamento** | 23 | Backup, importação e retenção | ✅ |
 | | 24 | Deploy e guia de instalação | ✅ |
 | | 26a | Textos revistos e lint de microcopy (antes da 25) | ✅ |
-| | 26b | Componentes padrão: fechar, confirmar e dispensar | ⬜ |
+| | 26b | Componentes padrão: fechar, confirmar e dispensar | 🚧 |
 | | 26c | Reorganização da interface | ⬜ |
 | | 25 | Auditoria final e testes de ponta a ponta | ⬜ |
 <!-- fim:etapas -->
