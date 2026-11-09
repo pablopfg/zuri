@@ -270,7 +270,7 @@ export const en: Messages = {
   "web.settings.hint.account": "Name, language, time zone, theme and password",
   "web.settings.hint.security": "Two-step verification, passkeys and automatic sign-out",
   "web.settings.hint.ai": "Today's usage, limits and search by meaning",
-  "web.settings.hint.data": "Trash: restore or delete for good",
+  "web.settings.hint.data": "Backup, storage use and trash",
   "web.settings.hint.notifications": "Daily summary, channels and what reaches each one",
   "web.settings.hint.diagnostics": "Recent failures and version",
   "web.mfaReminder.body": "Two-step sign-in is off. Turn it on to protect your account.",

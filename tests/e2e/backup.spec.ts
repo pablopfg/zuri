@@ -28,7 +28,7 @@ test("shows the storage use, downloads a backup and imports one with a confirmat
   expect(file.suggestedFilename()).toMatch(/^zuri-backup-\d{4}-\d{2}-\d{2}\.json$/);
   const exported = JSON.parse(await readFile((await file.path()) ?? "", "utf8"));
   expect(exported).toMatchObject({ format: "zuri-backup", version: 1 });
-  await expect(page.getByText("Backup baixado.")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Backup baixado." })).toBeVisible();
 
   // A small file of its own, so the shared database gains one task, removed at the end.
   const title = `Tarefa do backup ${crypto.randomUUID().slice(0, 8)}`;
@@ -47,7 +47,7 @@ test("shows the storage use, downloads a backup and imports one with a confirmat
   await expect(dialog.getByRole("button", { name: "Cancelar" })).toBeFocused();
   await expectAccessible(page, "importar");
   await dialog.getByRole("button", { name: "Importar" }).click();
-  await expect(page.getByText("Backup importado: 1 tarefa.")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Backup importado: 1 tarefa." })).toBeVisible();
 
   const tasks = await (await page.request.get(`/api/tasks?q=${encodeURIComponent(title)}`, { headers: CSRF })).json();
   expect(tasks.tasks).toHaveLength(1);

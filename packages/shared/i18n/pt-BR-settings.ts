@@ -6,7 +6,7 @@ export const ptBRSettings = {
   "web.settings.hint.account": "Nome, idioma, fuso, tema e senha",
   "web.settings.hint.security": "Verificação em duas etapas, passkeys e saída automática",
   "web.settings.hint.ai": "Uso do dia, limites e busca por significado",
-  "web.settings.hint.data": "Lixeira: restaurar ou apagar de vez",
+  "web.settings.hint.data": "Backup, uso do armazenamento e lixeira",
   "web.settings.hint.notifications": "Resumo do dia, canais e o que chega em cada um",
   "web.settings.hint.diagnostics": "Falhas recentes e versão",
   "web.theme.label": "Tema",
