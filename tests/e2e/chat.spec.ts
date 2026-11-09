@@ -23,9 +23,15 @@ async function send(page: Page, text: string) {
   const done = page.waitForResponse((r) => r.url().endsWith("/api/chat") && r.request().method() === "POST");
   await box.press("Enter");
   expect((await done).status()).toBe(200);
-  // The answer streams in; the turn is over when Stop gives way to Send again.
-  await expect(page.getByRole("button", { name: "Parar" })).toHaveCount(0);
-  await expect(page.getByRole("log").locator("[aria-busy=true]")).toHaveCount(0);
+  // The answer streams in; the turn is over when Stop gives way to Send again. Checked in one
+  // go, in the page: while a new conversation gets its address and loads, Stop and the log can
+  // be gone for a moment, and separate checks could all pass mid-turn (#223). The log back on
+  // screen with nothing busy and no Stop only happens once the stored turn has taken over.
+  await page.waitForFunction(() => {
+    const log = document.querySelector('[role="log"]');
+    const stop = [...document.querySelectorAll("button")].some((button) => button.textContent?.trim() === "Parar");
+    return log !== null && log.querySelector('[aria-busy="true"]') === null && !stop;
+  });
 }
 
 const log = (page: Page) => page.getByRole("log");
@@ -165,6 +171,43 @@ test("a plan creates nothing until confirmed; the owner edits it first @mobile",
 
   const after = (await (await page.request.get(`/api/tasks?view=all&q=${word}`, { headers: CSRF })).json()) as { tasks: { title: string }[] };
   expect(after.tasks.map((t) => t.title).sort()).toEqual([`Contratar frete ${word}`, `Empacotar a cozinha ${word}`]);
+});
+
+test("a plan opened for editing while the turn ends keeps its edits when the stored turn takes over @mobile", async ({ page }) => {
+  // Issue #223: the card drawn during the turn and the stored one that replaces it were different
+  // React items, so the card mounted again and the edit in progress was lost. The read the end of
+  // the turn waits for is held here until the owner has edited, so the swap comes mid-edit every run.
+  const word = tag();
+  await openChat(page);
+  await send(page, `Começo ${word}`);
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\/api\/conversations\/[0-9a-f-]{36}$/, async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const response = await route.fetch();
+    await held;
+    await route.fulfill({ response }).catch(() => undefined);
+  });
+  const plan = { title: `Feira ${word}`, tasks: [{ title: `Frutas ${word}` }, { title: `Pão ${word}` }] };
+  const box = page.getByRole("textbox", { name: "Mensagem" });
+  await box.fill(`call propose_task_plan ${JSON.stringify(plan)}`);
+  await box.press("Enter");
+  const card = page.getByRole("region", { name: `Feira ${word}` });
+  await card.getByRole("button", { name: "Editar" }).click();
+  await card.getByRole("button", { name: `Tirar “Pão ${word}” do plano` }).click();
+  await card.getByLabel("Título da tarefa 1").fill(`Frutas da estação ${word}`);
+  // Still the live turn: Stop shows until the held read answers.
+  await expect(page.getByRole("button", { name: "Parar" })).toBeVisible();
+
+  release();
+  await expect(page.getByRole("button", { name: "Parar" })).toHaveCount(0);
+  await expect(log(page).locator("[aria-busy=true]")).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "Concluir edição" })).toHaveAttribute("aria-pressed", "true");
+  await expect(card.getByLabel("Título da tarefa 1")).toHaveValue(`Frutas da estação ${word}`);
+  await expect(card.getByRole("button", { name: "Criar 1 tarefa" })).toBeVisible();
+  await page.unrouteAll({ behavior: "ignoreErrors" });
 });
 
 test("rename and delete a conversation", async ({ page }) => {
