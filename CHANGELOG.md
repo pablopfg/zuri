@@ -19,6 +19,32 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.42.1] - 2026-11-10
+
+Mesclada às 20:55 (UTC-3) · commit [`bbe026b`](https://github.com/pablopfg/Zuri/commit/bbe026bbad2f6ada53d60cb427e66634eeecdf83) · PR [#268](https://github.com/pablopfg/Zuri/pull/268) · "Sincronizar agora" espera as etiquetas salvarem; Update PRs acha a CI que a lista do commit não traz
+
+### Corrigido
+
+- Em Configurações > Integrações, "Sincronizar agora" espera as etiquetas terminarem de salvar. Antes, quem clicava logo depois de "Salvar etiquetas" podia ver "Contatos sincronizados" sem nenhum contato da etiqueta nova. Se a escolha de etiquetas mudar no meio de uma sincronização pedida pelo botão, a Zuri sincroniza de novo com a escolha nova (#264).
+- A atualização automática das PRs acha a execução da CI que o GitHub deixa de fora da lista do commit e a aprova, em vez de deixar a PR parada à espera de um clique (#253).
+
+## [0.42.0] - 2026-11-10
+
+Mesclada às 20:26 (UTC-3) · commit [`45307a9`](https://github.com/pablopfg/Zuri/commit/45307a9bc2dde5dc6e6116841f328515680c714c) · PR [#267](https://github.com/pablopfg/Zuri/pull/267) · Telas de entrada do Sinal com a verificação em seis estados (S03)
+
+### Alterado
+
+- Tela de entrar com o desenho novo: a marca e uma frase de um lado, e do outro só "Entrar", e-mail, senha e o botão verde. O campo de e-mail não traz mais exemplo dentro e avisa quando falta uma parte do endereço. "Esqueci minha senha" fica na linha da senha.
+- A verificação de segurança ganhou uma linha própria acima do botão, que diz o que está acontecendo: conferindo, concluída, pedindo um clique, não carregou, não passou ou em espera. Quando não carrega ou não passa, "Recarregar a verificação" refaz só ela, sem apagar o que você digitou.
+- Depois de muitas tentativas, a tela mostra quanto falta em minutos e segundos ("Espere 14:52"), com as horas quando a pausa passa de uma hora. O leitor de tela fala a pausa uma vez, sem repetir a contagem a cada segundo.
+- Os avisos de verificação fora do ar ou ainda não configurada dizem "verificação de segurança", como o resto da tela.
+- "Esqueci minha senha" abre a tela "Criar uma senha nova". Depois do pedido, ela mostra "Confira o seu e-mail", com "Voltar para entrar" e "Pedir um link novo".
+- Primeiro acesso, segundo passo, troca de senha obrigatória, bloqueio, a confirmação pedida pelo bot e "Esta tela parou" seguem o mesmo desenho da tela de entrar.
+
+### Corrigido
+
+- A contagem da pausa na tela de entrar começava com um número maior que o certo quando a tela estava aberta havia algum tempo.
+
 ## [0.41.1] - 2026-11-10
 
 Mesclada às 18:54 (UTC-3) · commit [`08e85fb`](https://github.com/pablopfg/Zuri/commit/08e85fb93b11803527afeda49dc0f0f118e66bf2) · PR [#247](https://github.com/pablopfg/Zuri/pull/247) · Planeja os módulos do CRM a partir dos fluxos do n8n
@@ -2999,7 +3025,9 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.41.1...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.42.1...develop
+[0.42.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.42.1
+[0.42.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.42.0
 [0.41.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.41.1
 [0.41.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.41.0
 [0.40.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.40.1
