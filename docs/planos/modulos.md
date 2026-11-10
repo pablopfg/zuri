@@ -2,6 +2,9 @@
 
 Situação: plano. Nada aqui foi implementado. Pedido do Pablo em 09/11/2026, 20:19; nome e conexões compartilhadas revistos a pedido dele às 21:51.
 
+> **Atualização de 10/11/2026 (00:51):** Módulos e Conexões saem de Automações e ganham um item próprio no menu lateral, **CRM**, com as partes **Módulos** e **Credenciais** (o novo nome de Conexões). Automações fica com Rotinas e Fluxos. Onde este plano diz "Automações › Módulos" e "Automações › Conexões", leia "CRM › Módulos" e "CRM › Credenciais"; "conexão" vira "credencial" nos textos da tela. Quais fluxos do n8n viram módulo, a ordem e as credenciais de cada um estão em [modulos-crm.md](modulos-crm.md) (PR #247).
+
+
 ## 1. Resumo
 
 O Pablo quer uma aba em Automações para os fluxos que hoje rodam no n8n e estão sendo validados em produção. A ideia é que eles passem a existir no código da Zuri e precisem só de ser ligados, com as chaves, tokens e endereços de cada um.

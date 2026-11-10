@@ -119,6 +119,22 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 - **Consumo por período:** Dia, Semana, Mês e Ano, com teto diário tracejado, total, média, pico e tabela.
 - **Cronograma:** [novo-frontend-sinal.md](novo-frontend-sinal.md), seção 11, com as 19 PRs na ordem.
 
+### Ajustes pedidos pelo Pablo (10/11, 00:51 e 00:54)
+
+- **Verificação de segurança:** tela própria no protótipo ("Entrar · verificação") com os seis estados: conferindo, concluída, pedir clique, não carregou (com "Recarregar a verificação"), não passou e espera. Cada exemplo abre a tela de entrar naquele estado.
+- **Menu CRM:** Módulos e Conexões saíram de Automações para o item novo **CRM** no menu lateral; Conexões virou **Credenciais**. A lista dos fluxos do n8n e a ordem ficam em [modulos-crm.md](modulos-crm.md) (PR #247).
+- **Tela de entrar:** "Sua agenda, suas tarefas e seus lembretes, em ordem." e "Entre para continuar de onde parou."; recuperação com o título "Criar uma senha nova". Favicon e título conferidos no código: todas as telas têm "Nome · Zuri", menos a página de erro, que entra na PR I.
+- **Agenda:** Configurações › Agenda com horário e dias de trabalho, esconder eventos de dia inteiro e fora do horário; na Agenda, botões "Dia inteiro" e "Fora do horário" e uma linha que avisa quantos ficaram escondidos.
+- **Contatos:** a faixa de etiquetas virou o botão "Etiqueta: Todas ▾" com uma lista que tem busca e contagem.
+- **Avaliações:** aba **Como responder**, com dados do consultório, instruções (até 2.000 caracteres), o que fazer em cada nota, exemplos, palavras proibidas e um teste que gera o rascunho sem publicar.
+- **Memória:** filtros à esquerda, lista agrupada por tipo, painel com "Ligada a", "Aparece em" e "Memórias próximas", e a visão **Mapa**, parecida com o grafo do Obsidian, sem IA nova.
+- **Versão:** Configurações › **Sobre a Zuri** mostra a versão, a data e se a tela e o servidor estão na mesma versão; o menu do perfil perdeu "Agenda" e ganhou "Zuri 0.39.2 · Novidades" no pé.
+- **Relatar no GitHub:** prévia de todos os campos que vão preenchidos na issue.
+- **Nada escondido:** a varredura das 53 vistas nos dois tamanhos tirou toda faixa que rolava de lado (seções das Configurações no celular viraram uma lista, botões de Tarefas mostram o texto).
+- **Frases descritivas** de todas as telas e seções revistas; tabela em [novo-frontend-sinal.md](novo-frontend-sinal.md), seção 7.
+- **Cronograma:** capturas do README refeitas em cada PR de tela, e a etapa final de **pentest autônomo**, que só começa com tudo concluído e com a autorização do Pablo.
+- **Respostas:** 2 (teto de 141 kB), 3 (preferência da Agenda), 5 (IA só escolhe as sugestões) e 7 (índice pelas estrelas) aprovadas; 6 (Clientes em segundo plano) fica para depois; 11 (fluxos do n8n) foi para o plano dos módulos do CRM.
+
 ### Recomendação
 
 Se o Pablo aprovar, o Sinal refinado vira o plano de [novo-frontend-sinal.md](novo-frontend-sinal.md): os tokens deste protótipo passam para o Tailwind do app, a Figtree entra como arquivo servido pelo Worker e a tela "Estados das telas" vira o padrão de carregando, vazio e erro de todas as telas.

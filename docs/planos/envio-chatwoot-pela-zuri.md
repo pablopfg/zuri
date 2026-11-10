@@ -100,7 +100,7 @@ Modelos da Meta (`template_params`) ficam fora: a caixa é de API. Se um dia a c
 
 ### Retorno do Chatwoot
 
-Endereço próprio, `/api/chatwoot/events/:key`, com uma chave aleatória no caminho (como os eventos do CRM), fora das sessões e dos tokens de API. Não achei na documentação do Chatwoot uma assinatura dos webhooks. Por isso, a Zuri não confia no que chega: usa o aviso só como sinal e confere a mensagem pela API antes de mudar qualquer estado. Eventos usados:
+Endereço próprio, `/api/chatwoot/events/:key`, com uma chave aleatória no caminho (como os eventos do CRM), fora das sessões e dos tokens de API. A versão do Chatwoot que o Pablo usa assina os webhooks: `X-Chatwoot-Signature` é `sha256=` mais o HMAC-SHA256 de `timestamp + "." + corpo cru`, com `X-Chatwoot-Timestamp` e `X-Chatwoot-Delivery` (correção de 10/11, vinda do plano [modulos-crm.md](modulos-crm.md)). A Zuri confere a assinatura com o segredo guardado na credencial (comparação em tempo constante, janela de 5 minutos no timestamp, `X-Chatwoot-Delivery` visto uma vez só) e recusa o que não bater. Mesmo assinado, o aviso é só sinal: a Zuri confere a mensagem pela API antes de mudar qualquer estado. Eventos usados:
 
 - `message_updated`: situação da mensagem (enviada, entregue ou falhou).
 - `message_created` vindo do contato, numa conversa aberta pela Zuri: se o texto for "não quero", "parar" ou "sair", a pessoa vira "Não quer receber". Qualquer outra resposta só gera um aviso para você. A Zuri não responde nada.

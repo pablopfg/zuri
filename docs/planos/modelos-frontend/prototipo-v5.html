@@ -1713,8 +1713,6 @@ details.adv{margin-top:var(--s4);border:1px solid var(--line);border-radius:var(
 details.adv>summary{display:flex;align-items:center;min-height:48px;padding:0 var(--s4);font-weight:600;cursor:pointer}
 details.adv>.form-grid,details.adv>.hint{padding:0 var(--s4) var(--s4)}
 @media (max-width:820px){
-  .pagehead .actions .lbl-d{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-  .pagehead .actions .btn:has(.lbl-d){min-width:44px;padding:0 10px}
   .tabs-row .seg{overflow-x:auto;scrollbar-width:none}
   .tabs-row .seg button{flex:0 0 auto}
 }
@@ -1818,7 +1816,7 @@ details.adv>.form-grid,details.adv>.hint{padding:0 var(--s4) var(--s4)}
 /* ---------- 22:08: tela de entrar, sugestões, consumo ---------- */
 .hv{display:flex;align-items:center;gap:8px;margin:0;font-size:var(--t-sm);color:var(--muted);min-height:24px;flex-wrap:wrap}
 .hv.ok .ic{color:var(--ok-ink)}
-.hv.err{color:var(--danger)}
+.hv.err{color:var(--danger-ink)}
 .hv.err .linkbtn{font-size:inherit}
 .label-row{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s2)}
 .label-row .linkbtn{font-size:var(--t-sm);min-height:32px}
@@ -1836,6 +1834,155 @@ details.adv>.form-grid,details.adv>.hint{padding:0 var(--s4) var(--s4)}
 .cap-line{position:absolute;left:0;right:0;border-top:1.5px dashed var(--line-strong);pointer-events:none}
 @media (max-width:820px){.cons-bar .seg{width:100%}.cons-bar .seg button{flex:1;justify-content:center}}
 
+/* ---------- 10/11 00:51: nada escondido, CRM, verificação, memória em mapa, Como responder, Sobre ---------- */
+/* Sugestões e partes das telas quebram linha no celular em vez de correr escondidas para o lado. */
+@media (max-width:820px){
+  .chips{flex-wrap:wrap;overflow:visible;margin-left:0;margin-right:0;padding:0}
+  .tabs-row .seg{overflow:visible;flex-wrap:wrap;height:auto}
+  .tabs-row .seg button{flex:1 1 auto}
+}
+.ct-filter{display:flex;align-items:center;gap:6px;margin:0 0 var(--s3)}
+.tagf-btn{max-width:100%;min-height:40px}
+.tagf-btn>span:first-of-type{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tagf-btn b{font-weight:600}
+.tagf-btn .n{color:var(--muted);font-weight:500}
+.tagf-list{max-height:min(52vh,420px);overflow-y:auto;margin-top:var(--s3)}
+.tagf-list button .num{margin-left:auto}
+.tagf-list button .on-mark{margin-left:8px}
+.lbl-list{max-height:min(46vh,380px);overflow-y:auto}
+#dlg-host .with-ic{margin-bottom:var(--s3)}
+/* Verificação de segurança */
+.hv-box{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line-strong);border-radius:var(--r-md);background:var(--surface);font-size:var(--t-sm);color:var(--ink)}
+.hv-check{display:grid;place-items:center;width:28px;height:28px;border:2px solid var(--control);border-radius:6px;background:var(--surface);color:transparent;cursor:pointer;flex:none}
+.hv-check:hover{border-color:var(--accent)}
+.hv-check .ic{width:16px;height:16px}
+.hv-page{max-width:1080px;margin:0 auto;padding:var(--s6) var(--s4) var(--s7);min-height:100dvh;background:var(--bg)}
+.hv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--s4);margin:var(--s5) 0}
+.hv-card{display:grid;gap:var(--s3);padding:var(--s4);align-content:start}
+.hv-card>.t{font-weight:600;margin:0}
+.hv-demo{display:grid;gap:var(--s3);padding:var(--s4);border-radius:var(--r-lg);background:var(--sunken)}
+.hv-card .linkbtn{justify-self:start;display:inline-flex;align-items:center;gap:4px}
+/* Menu da conta: a versão, discreta, no pé */
+.pop-ver{margin:4px 0 0;padding:8px 12px 2px;border-top:1px solid var(--line-soft);font-size:var(--t-xs)}
+.pop-ver a{display:inline-flex;gap:6px;align-items:center;min-height:32px;color:var(--muted);text-decoration:none}
+.pop-ver a:hover{color:var(--ink)}
+/* Memória */
+.mem-page .pagehead .actions{flex-wrap:wrap}
+.mem-search{margin:var(--s5) 0 var(--s4)}
+.mem-layout{display:grid;grid-template-columns:220px minmax(0,1fr) minmax(260px,320px);gap:var(--s4);align-items:start}
+.mem-side{padding:var(--s3);display:grid;gap:4px;position:sticky;top:var(--s4)}
+.mem-side .label{margin:var(--s2) 8px 2px;font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.mem-nav{display:grid;gap:2px}
+.mem-nav button{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:0 10px;border:0;border-radius:var(--r-md);background:transparent;color:var(--ink-2);font:inherit;text-align:left;cursor:pointer}
+.mem-nav button:hover{background:var(--hover)}
+.mem-nav button[aria-pressed="true"]{background:var(--sunken);color:var(--ink);font-weight:600}
+.mem-nav .num{margin-left:auto}
+.mdot{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none;background:var(--control)}
+.mdot.c1{background:#64748b}.mdot.c2{background:#0e7490}.mdot.c3{background:#b45309}.mdot.c4{background:#15803d}.mdot.c5{background:#7c3aed}.mdot.c6{background:#be185d}
+[data-theme="escuro"] .mdot.c1{background:#94a3b8}[data-theme="escuro"] .mdot.c2{background:#22d3ee}[data-theme="escuro"] .mdot.c3{background:#fbbf24}[data-theme="escuro"] .mdot.c4{background:#4ade80}[data-theme="escuro"] .mdot.c5{background:#a78bfa}[data-theme="escuro"] .mdot.c6{background:#f472b6}
+.mem-grp+.mem-grp{margin-top:var(--s5)}
+.mem-grp h2{display:flex;align-items:center;gap:8px;font-size:var(--t-sm);font-weight:600;margin:0 0 var(--s2)}
+.mem-item{display:block;width:100%;padding:12px var(--s4);border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:var(--r-md)}
+.mem-item:hover{background:var(--hover)}
+.mem li.on .mem-item{background:var(--sunken)}
+.mem-item .fact{margin:0 0 4px}
+.mem-detail{padding:var(--s4);display:grid;gap:var(--s2);position:sticky;top:var(--s4)}
+.mem-detail .label{display:flex;align-items:center;gap:8px;margin:var(--s2) 0 0;font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.fact-lg{font-size:var(--t-lg);line-height:1.4;font-weight:600;margin:0}
+.mem-links,.mem-uses{display:grid;gap:8px}
+.mem-links li{display:flex;gap:10px;align-items:center}
+.mem-links li>span:last-child{display:grid}
+.mem-uses li{display:flex;gap:8px;align-items:flex-start;font-size:var(--t-sm);color:var(--ink-2)}
+.mem-uses .linkbtn{text-align:left}
+.mem-map{padding:var(--s3)}
+.mm-canvas{position:relative;height:440px;border-radius:var(--r-lg);background:radial-gradient(circle at 50% 46%,var(--sunken),transparent 70%)}
+.mm-lines{position:absolute;inset:0;width:100%;height:100%}
+.mm-lines line{stroke:var(--line-strong);stroke-width:.35;vector-effect:non-scaling-stroke;stroke-width:1.2}
+.mm-lines line.hub{stroke-dasharray:4 4}
+.mm-lines line.sel{stroke:var(--accent);stroke-width:2}
+.mm-hub{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r-pill);background:var(--surface);border:1px solid var(--line-strong);font-size:var(--t-xs);font-weight:600;color:var(--ink);white-space:nowrap;box-shadow:var(--shadow-xs)}
+.mm-node{position:absolute;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;border:3px solid var(--surface);background:var(--control);cursor:pointer;box-shadow:var(--shadow-sm);padding:0}
+.mm-node::after{content:"";position:absolute;inset:-11px}
+.mm-node.c1{background:#64748b}.mm-node.c2{background:#0e7490}.mm-node.c3{background:#b45309}.mm-node.c4{background:#15803d}.mm-node.c5{background:#7c3aed}.mm-node.c6{background:#be185d}
+[data-theme="escuro"] .mm-node.c1{background:#94a3b8}[data-theme="escuro"] .mm-node.c2{background:#22d3ee}[data-theme="escuro"] .mm-node.c3{background:#fbbf24}[data-theme="escuro"] .mm-node.c4{background:#4ade80}[data-theme="escuro"] .mm-node.c5{background:#a78bfa}[data-theme="escuro"] .mm-node.c6{background:#f472b6}
+.mm-node.sel{outline:3px solid var(--accent);outline-offset:2px;width:28px;height:28px}
+.mm-tip{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:220px;padding:6px 10px;border-radius:var(--r-md);background:var(--ink);color:var(--bg);font-size:var(--t-xs);line-height:1.35;text-align:left;opacity:0;pointer-events:none;transition:opacity var(--dur-1) var(--ease-out);z-index:2}
+.mm-node:hover .mm-tip,.mm-node:focus-visible .mm-tip{opacity:1}
+.mm-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:var(--s3) 4px 0}
+.mm-legend span{display:inline-flex;align-items:center;gap:6px}
+.mm-hubk{display:inline-block;width:16px;height:10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--surface)}
+@media (max-width:1180px){.mem-layout{grid-template-columns:200px minmax(0,1fr)}.mem-detail{grid-column:1/-1;position:static}}
+@media (max-width:820px){
+  .mem-layout{grid-template-columns:1fr}
+  .mem-side{position:static;grid-template-columns:1fr;padding:var(--s2)}
+  .mem-nav{display:flex;flex-wrap:wrap;gap:6px}
+  .mem-nav button{width:auto;min-height:36px;border:1px solid var(--line);border-radius:var(--r-pill)}
+  .mem-nav .num{margin-left:4px}
+  .mm-canvas{height:380px}
+  .mm-hub{font-size:11px;padding:3px 8px}
+  .mm-hub .ic{display:none}
+}
+/* Avaliações › Como responder */
+.rv-cfg{display:grid;gap:var(--s4);max-width:820px}
+.rv-cfg textarea.input{min-height:auto;padding:10px 12px;line-height:1.5;resize:vertical}
+.rv-draft{margin-top:var(--s3);padding:var(--s4);border-radius:var(--r-lg);background:var(--sunken);display:grid;gap:var(--s2)}
+.rv-draft>p{margin:0}
+.rv-checks{display:grid;gap:4px;font-size:var(--t-sm);color:var(--ink-2)}
+.rv-checks li{display:flex;gap:6px;align-items:center}
+.rv-checks .ic{color:var(--ok-ink)}
+.rv-ex{display:grid;gap:var(--s2);margin-bottom:var(--s3)}
+.rv-ex li{position:relative;padding:var(--s3) 48px var(--s3) var(--s4)}
+.rv-ex li p{margin:0}
+.rv-ex li .t{display:flex;gap:8px;align-items:center;font-weight:600;margin-bottom:4px}
+.rv-ex li .iconbtn{position:absolute;top:6px;right:6px}
+.rv-save{display:flex;align-items:center;gap:var(--s3);justify-content:space-between;flex-wrap:wrap;border:0;margin:0;padding:0}
+.rv-save .hint{display:inline-flex;gap:6px;align-items:center;margin:0}
+/* Sobre a Zuri */
+.ver-box{display:flex;align-items:center;gap:var(--s3);margin:var(--s3) 0}
+.ver-box .tile{width:48px;height:48px}
+.ver-box .logo{width:36px;height:36px}
+.ver-n{font-size:var(--t-xl);font-weight:600;margin:0}
+.tile-ok{color:var(--ok-ink)}
+/* Relatar no GitHub */
+.rep-list{display:grid;gap:10px;margin:0}
+.rep-list div{display:grid;gap:2px}
+.rep-list dt{font-size:var(--t-xs);font-weight:600;color:var(--muted)}
+.rep-list dd{margin:0;font-size:var(--t-sm);color:var(--ink);overflow-wrap:anywhere}
+.runs li .btn{margin-left:auto}
+/* Agenda: dia inteiro e fora do horário escondidos, com a contagem */
+.out-min{grid-column:2/-1;display:flex;align-items:center;padding:6px 8px;border-left:1px solid var(--line)}
+.out-min .linkbtn{font-size:var(--t-xs)}
+.week .allday-min{grid-template-columns:56px 1fr}
+.outrow.outrow-min{grid-template-columns:60px 1fr}
+.ag-tog{display:flex;gap:6px;flex-wrap:wrap}
+.ag-tog .chip{min-height:32px;padding:0 10px;font-size:var(--t-sm);display:inline-flex;align-items:center;gap:6px}
+.ag-tog .chip[aria-pressed="false"]{color:var(--muted);border-style:dashed}
+.seg-days button{min-width:40px}
+/* "Como responder": breathing room between the fields of each section */
+.rv-cfg .set-sec>*+*{margin-top:var(--s4)}
+.rv-cfg .set-sec>h2+p{margin-top:var(--s1)}
+.rv-cfg .set-sec>.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--s4)}
+.rv-cfg .field{display:grid;gap:6px}
+/* Settings sections on phones: a list that opens, so no section hides off-screen */
+.cfg-m{display:none}
+@media (max-width: 820px){
+  .settings>.cfg-d{display:none}
+  .cfg-m{display:block;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)}
+  .cfg-m>summary{display:flex;align-items:center;gap:var(--s2);min-height:48px;padding:0 var(--s4);cursor:pointer;list-style:none}
+  .cfg-m>summary::-webkit-details-marker{display:none}
+  .cfg-m>summary .cfg-m-l{color:var(--muted);font-size:var(--t-sm)}
+  .cfg-m>summary b{flex:1}
+  .cfg-m[open]>summary .ic{transform:rotate(180deg)}
+  .cfg-m ul{border-top:1px solid var(--line);padding:var(--s2)}
+  .cfg-m a{display:flex;gap:var(--s3);align-items:flex-start;min-height:44px;padding:8px 12px;border-radius:var(--r-md);color:var(--ink-2)}
+  .cfg-m a .ic{margin-top:3px}
+  .cfg-m a[aria-current="page"]{background:var(--sunken, var(--raised));color:var(--ink);font-weight:600}
+  .cfg-m .cfg-h{display:block;font-size:var(--t-xs);color:var(--muted);font-weight:400}
+}
+/* Map labels: only exist while hovered or focused, so they never widen the page */
+.mm-tip{display:none}
+.mm-node:hover .mm-tip,.mm-node:focus-visible .mm-tip{display:block}
+
 </style>
 </head>
 <body>
@@ -1844,9 +1991,9 @@ details.adv>.form-grid,details.adv>.hint{padding:0 var(--s4) var(--s4)}
   <span>Sinal refinado</span>
   <label>Tela
     <select id="ps">
-      <option value="entrar">Entrar</option><option value="inicio">Início</option><option value="conversa">Conversa</option>
+      <option value="entrar">Entrar</option><option value="verificacao">Entrar · verificação</option><option value="inicio">Início</option><option value="conversa">Conversa</option>
       <option value="tarefas">Tarefas</option><option value="notas">Notas</option><option value="agenda">Agenda</option><option value="contatos">Contatos</option><option value="avaliacoes">Avaliações</option>
-      <option value="automacoes">Automações</option><option value="memoria">Memória</option><option value="configuracoes">Configurações</option>
+      <option value="automacoes">Automações</option><option value="crm">CRM</option><option value="memoria">Memória</option><option value="configuracoes">Configurações</option>
       <option value="estados">Estados das telas</option><option value="identidade">Identidade visual</option>
     </select>
   </label>
@@ -1856,7 +2003,7 @@ details.adv>.form-grid,details.adv>.hint{padding:0 var(--s4) var(--s4)}
 </fieldset></aside>
 <div id="app"></div>
 <script>
-const ICONS = {"lucide": {"house": "<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /> <path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />", "message-circle": "<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />", "list-todo": "<path d=\"M13 5h8\" /> <path d=\"M13 12h8\" /> <path d=\"M13 19h8\" /> <path d=\"m3 17 2 2 4-4\" /> <rect x=\"3\" y=\"4\" width=\"6\" height=\"6\" rx=\"1\" />", "calendar-days": "<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"M8 13h.01\" /> <path d=\"M12 13h.01\" /> <path d=\"M16 13h.01\" /> <path d=\"M8 17h.01\" /> <path d=\"M12 17h.01\" /> <path d=\"M16 17h.01\" />", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" />", "notebook-pen": "<path d=\"M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4\" /> <path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <path d=\"M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z\" />", "brain": "<path d=\"M12 18V5\" /> <path d=\"M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4\" /> <path d=\"M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294\" /> <path d=\"M17.996 5.125a4 4 0 012.526 5.77\" /> <path d=\"M18 18a4 4 0 002-7.465\" /> <path d=\"M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517\" /> <path d=\"M6 18a4 4 0 01-2-7.465\" /> <path d=\"M6.004 5.125a4 4 0 00-2.526 5.77\" />", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 6v6l4 2\" />", "arrow-up": "<path d=\"m5 12 7-7 7 7\" /> <path d=\"M12 19V5\" />", "bell": "<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /> <path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />", "calendar-plus": "<path d=\"M16 18h6\" /> <path d=\"M16 2v3\" /> <path d=\"M19 15v6\" /> <path d=\"M21 11.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h8.3\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" />", "check": "<path d=\"M20 6 9 17l-5-5\" />", "chevron-left": "<path d=\"m15 18-6-6 6-6\" />", "chevron-right": "<path d=\"m9 18 6-6-6-6\" />", "chevron-down": "<path d=\"m6 9 6 6 6-6\" />", "circle-dot": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"12\" cy=\"12\" r=\"10\" />", "circle-help": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" /> <path d=\"M12 17h.01\" />", "clipboard-list": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"M12 11h4\" /> <path d=\"M12 16h4\" /> <path d=\"M8 11h.01\" /> <path d=\"M8 16h.01\" />", "ellipsis": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"19\" cy=\"12\" r=\"1\" /> <circle cx=\"5\" cy=\"12\" r=\"1\" />", "eye": "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "flag": "<path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\" />", "folder": "<path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\" />", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" /> <path d=\"M12 7v5l4 2\" />", "lock": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", "mail": "<path d=\"m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7\" /> <rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\" />", "map-pin": "<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\" /> <circle cx=\"12\" cy=\"10\" r=\"3\" />", "menu": "<path d=\"M4 5h16\" /> <path d=\"M4 12h16\" /> <path d=\"M4 19h16\" />", "mic": "<path d=\"M12 19v3\" /> <path d=\"M19 10v2a7 7 0 0 1-14 0v-2\" /> <rect x=\"9\" y=\"2\" width=\"6\" height=\"13\" rx=\"3\" />", "monitor": "<rect width=\"20\" height=\"14\" x=\"2\" y=\"3\" rx=\"2\" /> <line x1=\"8\" x2=\"16\" y1=\"21\" y2=\"21\" /> <line x1=\"12\" x2=\"12\" y1=\"17\" y2=\"21\" />", "moon": "<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />", "panel-left": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M9 3v18\" />", "pencil": "<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />", "play": "<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\" />", "plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />", "search": "<path d=\"m21 21-4.34-4.34\" /> <circle cx=\"11\" cy=\"11\" r=\"8\" />", "send-horizontal": "<path d=\"M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z\" /> <path d=\"M6 12h16\" />", "shield-check": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"m9 12 2 2 4-4\" />", "sparkles": "<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /> <path d=\"M20 2v4\" /> <path d=\"M22 4h-4\" /> <circle cx=\"4\" cy=\"20\" r=\"2\" />", "square-pen": "<path d=\"M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\" /> <path d=\"M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z\" />", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\" /> <path d=\"M12 2v2\" /> <path d=\"M12 20v2\" /> <path d=\"m4.93 4.93 1.41 1.41\" /> <path d=\"m17.66 17.66 1.41 1.41\" /> <path d=\"M2 12h2\" /> <path d=\"M20 12h2\" /> <path d=\"m6.34 17.66-1.41 1.41\" /> <path d=\"m19.07 4.93-1.41 1.41\" />", "trash-2": "<path d=\"M10 11v6\" /> <path d=\"M14 11v6\" /> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /> <path d=\"M3 6h18\" /> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />", "triangle-alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />", "sunrise": "<path d=\"M12 2v8\" /> <path d=\"m4.93 10.93 1.41 1.41\" /> <path d=\"M2 18h2\" /> <path d=\"M20 18h2\" /> <path d=\"m19.07 10.93-1.41 1.41\" /> <path d=\"M22 22H2\" /> <path d=\"m8 6 4-4 4 4\" /> <path d=\"M16 18a4 4 0 0 0-8 0\" />", "repeat": "<path d=\"m17 2 4 4-4 4\" /> <path d=\"M3 11v-1a4 4 0 0 1 4-4h14\" /> <path d=\"m7 22-4-4 4-4\" /> <path d=\"M21 13v1a4 4 0 0 1-4 4H3\" />", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\" /> <path d=\"M3 5V19A9 3 0 0 0 21 19V5\" /> <path d=\"M3 12A9 3 0 0 0 21 12\" />", "globe": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\" /> <path d=\"M2 12h20\" />", "plug": "<path d=\"M12 22v-5\" /> <path d=\"M15 8V2\" /> <path d=\"M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z\" /> <path d=\"M9 8V2\" />", "user": "<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" /> <circle cx=\"12\" cy=\"7\" r=\"4\" />", "x": "<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />", "circle": "<circle cx=\"12\" cy=\"12\" r=\"10\" />", "log-out": "<path d=\"m16 17 5-5-5-5\" /> <path d=\"M21 12H9\" /> <path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />", "arrow-left": "<path d=\"m12 19-7-7 7-7\" /> <path d=\"M19 12H5\" />", "wifi-off": "<path d=\"M12 20h.01\" /> <path d=\"M8.5 16.429a5 5 0 0 1 7 0\" /> <path d=\"M5 12.859a10 10 0 0 1 5.17-2.69\" /> <path d=\"M19 12.859a10 10 0 0 0-2.007-1.523\" /> <path d=\"M2 8.82a15 15 0 0 1 4.177-2.643\" /> <path d=\"M22 8.82a15 15 0 0 0-11.288-3.764\" /> <path d=\"m2 2 20 20\" />", "refresh-cw": "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\" /> <path d=\"M21 3v5h-5\" /> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\" /> <path d=\"M8 16H3v5\" />", "undo-2": "<path d=\"M9 14 4 9l5-5\" /> <path d=\"M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11\" />", "inbox": "<polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\" /> <path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" />", "loader-circle": "<path d=\"M21 12a9 9 0 1 1-6.219-8.56\" />", "circle-alert": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\" /> <line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\" />", "info": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 16v-4\" /> <path d=\"M12 8h.01\" />", "paperclip": "<path d=\"m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551\" />", "settings": "<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "notebook": "<path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\" /> <path d=\"M16 2v20\" />", "circle-check": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m16 9-5.5 5.5L8 12\" />", "layout-grid": "<rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\" />", "copy": "<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /> <path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />", "eye-off": "<path d=\"M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49\" /> <path d=\"M14.084 14.158a3 3 0 0 1-4.242-4.242\" /> <path d=\"M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143\" /> <path d=\"m2 2 20 20\" />", "smartphone": "<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /> <path d=\"M12 18h.01\" />", "phone": "<path d=\"M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384\" />", "gift": "<path d=\"M12 7v14\" /> <path d=\"M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8\" /> <path d=\"M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5\" /> <rect x=\"3\" y=\"7\" width=\"18\" height=\"4\" rx=\"1\" />", "cake": "<path d=\"M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8\" /> <path d=\"M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1\" /> <path d=\"M2 21h20\" /> <path d=\"M7 8v3\" /> <path d=\"M12 8v3\" /> <path d=\"M17 8v3\" /> <path d=\"M7 4h.01\" /> <path d=\"M12 4h.01\" /> <path d=\"M17 4h.01\" />", "star": "<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\" />", "building-2": "<path d=\"M10 12h4\" /> <path d=\"M10 8h4\" /> <path d=\"M14 21v-3a2 2 0 0 0-4 0v3\" /> <path d=\"M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2\" /> <path d=\"M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16\" />", "message-square": "<path d=\"M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z\" />", "calendar-clock": "<path d=\"M16 14v2.2l1.6 1\" /> <path d=\"M16 2v3\" /> <path d=\"M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338\" /> <path d=\"M3 9h5.859\" /> <path d=\"M8 2v3\" /> <circle cx=\"16\" cy=\"16\" r=\"6\" />", "calendar-cog": "<path d=\"m15.228 16.852-.923-.383\" /> <path d=\"m15.228 19.148-.923.383\" /> <path d=\"M16 2v3\" /> <path d=\"m16.47 14.305.382.923\" /> <path d=\"m16.852 20.772-.383.924\" /> <path d=\"m19.148 15.228.383-.923\" /> <path d=\"m19.53 21.696-.382-.924\" /> <path d=\"m20.773 16.852.924-.383\" /> <path d=\"m20.773 19.148.924.383\" /> <path d=\"M21 10.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h5.5\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" /> <circle cx=\"18\" cy=\"18\" r=\"3\" />", "briefcase": "<path d=\"M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16\" /> <rect width=\"20\" height=\"14\" x=\"2\" y=\"6\" rx=\"2\" />", "reply": "<path d=\"M20 18v-2a4 4 0 0 0-4-4H4\" /> <path d=\"m9 17-5-5 5-5\" />", "key-round": "<path d=\"M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z\" /> <circle cx=\"16.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\" />", "fingerprint": "<path d=\"M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4\" /> <path d=\"M14 13.12c0 2.38 0 6.38-1 8.88\" /> <path d=\"M17.29 21.02c.12-.6.43-2.3.5-3.02\" /> <path d=\"M2 12a10 10 0 0 1 18-6\" /> <path d=\"M2 16h.01\" /> <path d=\"M21.8 16c.2-2 .131-5.354 0-6\" /> <path d=\"M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2\" /> <path d=\"M8.65 22c.21-.66.45-1.32.57-2\" /> <path d=\"M9 6.8a6 6 0 0 1 9 5.2v2\" />", "download": "<path d=\"M12 15V3\" /> <path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /> <path d=\"m7 10 5 5 5-5\" />", "upload": "<path d=\"M12 3v12\" /> <path d=\"m17 8-5-5-5 5\" /> <path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />", "activity": "<path d=\"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2\" />", "gauge": "<path d=\"m12 14 4-4\" /> <path d=\"M3.34 19a10 10 0 1 1 17.32 0\" />", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\" /> <path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\" />", "hard-drive": "<path d=\"M10 16h.01\" /> <path d=\"M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" /> <path d=\"M21.946 12.013H2.054\" /> <path d=\"M6 16h.01\" />", "bug": "<path d=\"M12 20v-9\" /> <path d=\"M14 7a4 4 0 0 1 4 4v3a6 6 0 0 1-12 0v-3a4 4 0 0 1 4-4z\" /> <path d=\"M14.12 3.88 16 2\" /> <path d=\"M21 21a4 4 0 0 0-3.81-4\" /> <path d=\"M21 5a4 4 0 0 1-3.55 3.97\" /> <path d=\"M22 13h-4\" /> <path d=\"M3 21a4 4 0 0 1 3.81-4\" /> <path d=\"M3 5a4 4 0 0 0 3.55 3.97\" /> <path d=\"M6 13H2\" /> <path d=\"m8 2 1.88 1.88\" /> <path d=\"M9 7.13V6a3 3 0 1 1 6 0v1.13\" />", "timer": "<line x1=\"10\" x2=\"14\" y1=\"2\" y2=\"2\" /> <line x1=\"12\" x2=\"15\" y1=\"14\" y2=\"11\" /> <circle cx=\"12\" cy=\"14\" r=\"8\" />", "shield-alert": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"M12 8v4\" /> <path d=\"M12 16h.01\" />", "archive-restore": "<rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\" /> <path d=\"M4 8v11a2 2 0 0 0 2 2h2\" /> <path d=\"M20 8v11a2 2 0 0 1-2 2h-2\" /> <path d=\"m9 15 3-3 3 3\" /> <path d=\"M12 12v9\" />", "workflow": "<rect width=\"8\" height=\"8\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M7 11v4a2 2 0 0 0 2 2h4\" /> <rect width=\"8\" height=\"8\" x=\"13\" y=\"13\" rx=\"2\" />", "power": "<path d=\"M12 2v10\" /> <path d=\"M18.4 6.6a9 9 0 1 1-12.77.04\" />", "plug-zap": "<path d=\"M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z\" /> <path d=\"m2 22 3-3\" /> <path d=\"M7.5 13.5 10 11\" /> <path d=\"M10.5 16.5 13 14\" /> <path d=\"m18 3-4 4h6l-4 4\" />", "flask-conical": "<path d=\"M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2\" /> <path d=\"M6.453 15h11.094\" /> <path d=\"M8.5 2h7\" />", "calendar-check": "<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"m9 15 2 2 4-4\" />", "user-plus": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" /> <line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /> <line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />", "settings-2": "<path d=\"M14 17H5\" /> <path d=\"M19 7h-9\" /> <circle cx=\"17\" cy=\"17\" r=\"3\" /> <circle cx=\"7\" cy=\"7\" r=\"3\" />", "lock-open": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 9.9-1\" />", "shield-off": "<path d=\"m2 2 20 20\" /> <path d=\"M5 5a1 1 0 0 0-1 1v7c0 5 3.5 7.5 7.67 8.94a1 1 0 0 0 .67.01c2.35-.82 4.48-1.97 5.9-3.71\" /> <path d=\"M9.309 3.652A12.252 12.252 0 0 0 11.24 2.28a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1v7a9.784 9.784 0 0 1-.08 1.264\" />", "blocks": "<path d=\"M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2\" /> <rect x=\"14\" y=\"2\" width=\"8\" height=\"8\" rx=\"1\" />", "cable": "<path d=\"M17 19a1 1 0 0 1-1-1v-2a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a1 1 0 0 1-1 1z\" /> <path d=\"M17 21v-2\" /> <path d=\"M19 14V6.5a1 1 0 0 0-7 0v11a1 1 0 0 1-7 0V10\" /> <path d=\"M21 21v-2\" /> <path d=\"M3 5V3\" /> <path d=\"M4 10a2 2 0 0 1-2-2V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a2 2 0 0 1-2 2z\" /> <path d=\"M7 5V3\" />", "tag": "<path d=\"M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z\" /> <circle cx=\"7.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\" />", "tags": "<path d=\"M13.172 2a2 2 0 0 1 1.414.586l6.71 6.71a2.4 2.4 0 0 1 0 3.408l-4.592 4.592a2.4 2.4 0 0 1-3.408 0l-6.71-6.71A2 2 0 0 1 6 9.172V3a1 1 0 0 1 1-1z\" /> <path d=\"M2 7v6.172a2 2 0 0 0 .586 1.414l6.71 6.71a2.4 2.4 0 0 0 3.191.193\" /> <circle cx=\"10.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\" />", "trending-up": "<path d=\"M16 7h6v6\" /> <path d=\"m22 7-8.5 8.5-5-5L2 17\" />", "list-filter": "<path d=\"M2 5h20\" /> <path d=\"M6 12h12\" /> <path d=\"M9 19h6\" />", "message-square-heart": "<path d=\"M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z\" /> <path d=\"M7.5 9.5c0 .687.265 1.383.697 1.844l3.009 3.264a1.14 1.14 0 0 0 .407.314 1 1 0 0 0 .783-.004 1.14 1.14 0 0 0 .398-.31l3.008-3.264A2.77 2.77 0 0 0 16.5 9.5 2.5 2.5 0 0 0 12 8a2.5 2.5 0 0 0-4.5 1.5\" />", "chart-column": "<path d=\"M3 3v16a2 2 0 0 0 2 2h16\" /> <path d=\"M18 17V9\" /> <path d=\"M13 17V5\" /> <path d=\"M8 17v-3\" />", "at-sign": "<circle cx=\"12\" cy=\"12\" r=\"4\" /> <path d=\"M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8\" />"}};
+const ICONS = {"lucide": {"house": "<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /> <path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />", "message-circle": "<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />", "list-todo": "<path d=\"M13 5h8\" /> <path d=\"M13 12h8\" /> <path d=\"M13 19h8\" /> <path d=\"m3 17 2 2 4-4\" /> <rect x=\"3\" y=\"4\" width=\"6\" height=\"6\" rx=\"1\" />", "calendar-days": "<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"M8 13h.01\" /> <path d=\"M12 13h.01\" /> <path d=\"M16 13h.01\" /> <path d=\"M8 17h.01\" /> <path d=\"M12 17h.01\" /> <path d=\"M16 17h.01\" />", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" />", "notebook-pen": "<path d=\"M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4\" /> <path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <path d=\"M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z\" />", "brain": "<path d=\"M12 18V5\" /> <path d=\"M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4\" /> <path d=\"M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294\" /> <path d=\"M17.996 5.125a4 4 0 012.526 5.77\" /> <path d=\"M18 18a4 4 0 002-7.465\" /> <path d=\"M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517\" /> <path d=\"M6 18a4 4 0 01-2-7.465\" /> <path d=\"M6.004 5.125a4 4 0 00-2.526 5.77\" />", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 6v6l4 2\" />", "arrow-up": "<path d=\"m5 12 7-7 7 7\" /> <path d=\"M12 19V5\" />", "bell": "<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /> <path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />", "calendar-plus": "<path d=\"M16 18h6\" /> <path d=\"M16 2v3\" /> <path d=\"M19 15v6\" /> <path d=\"M21 11.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h8.3\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" />", "check": "<path d=\"M20 6 9 17l-5-5\" />", "chevron-left": "<path d=\"m15 18-6-6 6-6\" />", "chevron-right": "<path d=\"m9 18 6-6-6-6\" />", "chevron-down": "<path d=\"m6 9 6 6 6-6\" />", "circle-dot": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"12\" cy=\"12\" r=\"10\" />", "circle-help": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" /> <path d=\"M12 17h.01\" />", "clipboard-list": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"M12 11h4\" /> <path d=\"M12 16h4\" /> <path d=\"M8 11h.01\" /> <path d=\"M8 16h.01\" />", "ellipsis": "<circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"19\" cy=\"12\" r=\"1\" /> <circle cx=\"5\" cy=\"12\" r=\"1\" />", "eye": "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "flag": "<path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\" />", "folder": "<path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\" />", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" /> <path d=\"M12 7v5l4 2\" />", "lock": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", "mail": "<path d=\"m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7\" /> <rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\" />", "map-pin": "<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\" /> <circle cx=\"12\" cy=\"10\" r=\"3\" />", "menu": "<path d=\"M4 5h16\" /> <path d=\"M4 12h16\" /> <path d=\"M4 19h16\" />", "mic": "<path d=\"M12 19v3\" /> <path d=\"M19 10v2a7 7 0 0 1-14 0v-2\" /> <rect x=\"9\" y=\"2\" width=\"6\" height=\"13\" rx=\"3\" />", "monitor": "<rect width=\"20\" height=\"14\" x=\"2\" y=\"3\" rx=\"2\" /> <line x1=\"8\" x2=\"16\" y1=\"21\" y2=\"21\" /> <line x1=\"12\" x2=\"12\" y1=\"17\" y2=\"21\" />", "moon": "<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />", "panel-left": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M9 3v18\" />", "pencil": "<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />", "play": "<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\" />", "plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />", "search": "<path d=\"m21 21-4.34-4.34\" /> <circle cx=\"11\" cy=\"11\" r=\"8\" />", "send-horizontal": "<path d=\"M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z\" /> <path d=\"M6 12h16\" />", "shield-check": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"m9 12 2 2 4-4\" />", "sparkles": "<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /> <path d=\"M20 2v4\" /> <path d=\"M22 4h-4\" /> <circle cx=\"4\" cy=\"20\" r=\"2\" />", "square-pen": "<path d=\"M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\" /> <path d=\"M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z\" />", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\" /> <path d=\"M12 2v2\" /> <path d=\"M12 20v2\" /> <path d=\"m4.93 4.93 1.41 1.41\" /> <path d=\"m17.66 17.66 1.41 1.41\" /> <path d=\"M2 12h2\" /> <path d=\"M20 12h2\" /> <path d=\"m6.34 17.66-1.41 1.41\" /> <path d=\"m19.07 4.93-1.41 1.41\" />", "trash-2": "<path d=\"M10 11v6\" /> <path d=\"M14 11v6\" /> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /> <path d=\"M3 6h18\" /> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />", "triangle-alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />", "sunrise": "<path d=\"M12 2v8\" /> <path d=\"m4.93 10.93 1.41 1.41\" /> <path d=\"M2 18h2\" /> <path d=\"M20 18h2\" /> <path d=\"m19.07 10.93-1.41 1.41\" /> <path d=\"M22 22H2\" /> <path d=\"m8 6 4-4 4 4\" /> <path d=\"M16 18a4 4 0 0 0-8 0\" />", "repeat": "<path d=\"m17 2 4 4-4 4\" /> <path d=\"M3 11v-1a4 4 0 0 1 4-4h14\" /> <path d=\"m7 22-4-4 4-4\" /> <path d=\"M21 13v1a4 4 0 0 1-4 4H3\" />", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\" /> <path d=\"M3 5V19A9 3 0 0 0 21 19V5\" /> <path d=\"M3 12A9 3 0 0 0 21 12\" />", "globe": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\" /> <path d=\"M2 12h20\" />", "plug": "<path d=\"M12 22v-5\" /> <path d=\"M15 8V2\" /> <path d=\"M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z\" /> <path d=\"M9 8V2\" />", "user": "<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" /> <circle cx=\"12\" cy=\"7\" r=\"4\" />", "x": "<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />", "circle": "<circle cx=\"12\" cy=\"12\" r=\"10\" />", "log-out": "<path d=\"m16 17 5-5-5-5\" /> <path d=\"M21 12H9\" /> <path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />", "arrow-left": "<path d=\"m12 19-7-7 7-7\" /> <path d=\"M19 12H5\" />", "wifi-off": "<path d=\"M12 20h.01\" /> <path d=\"M8.5 16.429a5 5 0 0 1 7 0\" /> <path d=\"M5 12.859a10 10 0 0 1 5.17-2.69\" /> <path d=\"M19 12.859a10 10 0 0 0-2.007-1.523\" /> <path d=\"M2 8.82a15 15 0 0 1 4.177-2.643\" /> <path d=\"M22 8.82a15 15 0 0 0-11.288-3.764\" /> <path d=\"m2 2 20 20\" />", "refresh-cw": "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\" /> <path d=\"M21 3v5h-5\" /> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\" /> <path d=\"M8 16H3v5\" />", "undo-2": "<path d=\"M9 14 4 9l5-5\" /> <path d=\"M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11\" />", "inbox": "<polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\" /> <path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" />", "loader-circle": "<path d=\"M21 12a9 9 0 1 1-6.219-8.56\" />", "circle-alert": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\" /> <line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\" />", "info": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 16v-4\" /> <path d=\"M12 8h.01\" />", "paperclip": "<path d=\"m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551\" />", "settings": "<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />", "notebook": "<path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\" /> <path d=\"M16 2v20\" />", "circle-check": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m16 9-5.5 5.5L8 12\" />", "layout-grid": "<rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\" /> <rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\" />", "copy": "<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /> <path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />", "eye-off": "<path d=\"M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49\" /> <path d=\"M14.084 14.158a3 3 0 0 1-4.242-4.242\" /> <path d=\"M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143\" /> <path d=\"m2 2 20 20\" />", "smartphone": "<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /> <path d=\"M12 18h.01\" />", "phone": "<path d=\"M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384\" />", "gift": "<path d=\"M12 7v14\" /> <path d=\"M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8\" /> <path d=\"M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5\" /> <rect x=\"3\" y=\"7\" width=\"18\" height=\"4\" rx=\"1\" />", "cake": "<path d=\"M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8\" /> <path d=\"M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1\" /> <path d=\"M2 21h20\" /> <path d=\"M7 8v3\" /> <path d=\"M12 8v3\" /> <path d=\"M17 8v3\" /> <path d=\"M7 4h.01\" /> <path d=\"M12 4h.01\" /> <path d=\"M17 4h.01\" />", "star": "<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\" />", "building-2": "<path d=\"M10 12h4\" /> <path d=\"M10 8h4\" /> <path d=\"M14 21v-3a2 2 0 0 0-4 0v3\" /> <path d=\"M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2\" /> <path d=\"M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16\" />", "message-square": "<path d=\"M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z\" />", "calendar-clock": "<path d=\"M16 14v2.2l1.6 1\" /> <path d=\"M16 2v3\" /> <path d=\"M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338\" /> <path d=\"M3 9h5.859\" /> <path d=\"M8 2v3\" /> <circle cx=\"16\" cy=\"16\" r=\"6\" />", "calendar-cog": "<path d=\"m15.228 16.852-.923-.383\" /> <path d=\"m15.228 19.148-.923.383\" /> <path d=\"M16 2v3\" /> <path d=\"m16.47 14.305.382.923\" /> <path d=\"m16.852 20.772-.383.924\" /> <path d=\"m19.148 15.228.383-.923\" /> <path d=\"m19.53 21.696-.382-.924\" /> <path d=\"m20.773 16.852.924-.383\" /> <path d=\"m20.773 19.148.924.383\" /> <path d=\"M21 10.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h5.5\" /> <path d=\"M3 9h18\" /> <path d=\"M8 2v3\" /> <circle cx=\"18\" cy=\"18\" r=\"3\" />", "briefcase": "<path d=\"M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16\" /> <rect width=\"20\" height=\"14\" x=\"2\" y=\"6\" rx=\"2\" />", "reply": "<path d=\"M20 18v-2a4 4 0 0 0-4-4H4\" /> <path d=\"m9 17-5-5 5-5\" />", "key-round": "<path d=\"M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z\" /> <circle cx=\"16.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\" />", "fingerprint": "<path d=\"M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4\" /> <path d=\"M14 13.12c0 2.38 0 6.38-1 8.88\" /> <path d=\"M17.29 21.02c.12-.6.43-2.3.5-3.02\" /> <path d=\"M2 12a10 10 0 0 1 18-6\" /> <path d=\"M2 16h.01\" /> <path d=\"M21.8 16c.2-2 .131-5.354 0-6\" /> <path d=\"M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2\" /> <path d=\"M8.65 22c.21-.66.45-1.32.57-2\" /> <path d=\"M9 6.8a6 6 0 0 1 9 5.2v2\" />", "download": "<path d=\"M12 15V3\" /> <path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /> <path d=\"m7 10 5 5 5-5\" />", "upload": "<path d=\"M12 3v12\" /> <path d=\"m17 8-5-5-5 5\" /> <path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />", "activity": "<path d=\"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2\" />", "gauge": "<path d=\"m12 14 4-4\" /> <path d=\"M3.34 19a10 10 0 1 1 17.32 0\" />", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\" /> <path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\" />", "hard-drive": "<path d=\"M10 16h.01\" /> <path d=\"M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" /> <path d=\"M21.946 12.013H2.054\" /> <path d=\"M6 16h.01\" />", "bug": "<path d=\"M12 20v-9\" /> <path d=\"M14 7a4 4 0 0 1 4 4v3a6 6 0 0 1-12 0v-3a4 4 0 0 1 4-4z\" /> <path d=\"M14.12 3.88 16 2\" /> <path d=\"M21 21a4 4 0 0 0-3.81-4\" /> <path d=\"M21 5a4 4 0 0 1-3.55 3.97\" /> <path d=\"M22 13h-4\" /> <path d=\"M3 21a4 4 0 0 1 3.81-4\" /> <path d=\"M3 5a4 4 0 0 0 3.55 3.97\" /> <path d=\"M6 13H2\" /> <path d=\"m8 2 1.88 1.88\" /> <path d=\"M9 7.13V6a3 3 0 1 1 6 0v1.13\" />", "timer": "<line x1=\"10\" x2=\"14\" y1=\"2\" y2=\"2\" /> <line x1=\"12\" x2=\"15\" y1=\"14\" y2=\"11\" /> <circle cx=\"12\" cy=\"14\" r=\"8\" />", "shield-alert": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"M12 8v4\" /> <path d=\"M12 16h.01\" />", "archive-restore": "<rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\" /> <path d=\"M4 8v11a2 2 0 0 0 2 2h2\" /> <path d=\"M20 8v11a2 2 0 0 1-2 2h-2\" /> <path d=\"m9 15 3-3 3 3\" /> <path d=\"M12 12v9\" />", "workflow": "<rect width=\"8\" height=\"8\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M7 11v4a2 2 0 0 0 2 2h4\" /> <rect width=\"8\" height=\"8\" x=\"13\" y=\"13\" rx=\"2\" />", "power": "<path d=\"M12 2v10\" /> <path d=\"M18.4 6.6a9 9 0 1 1-12.77.04\" />", "plug-zap": "<path d=\"M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z\" /> <path d=\"m2 22 3-3\" /> <path d=\"M7.5 13.5 10 11\" /> <path d=\"M10.5 16.5 13 14\" /> <path d=\"m18 3-4 4h6l-4 4\" />", "flask-conical": "<path d=\"M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2\" /> <path d=\"M6.453 15h11.094\" /> <path d=\"M8.5 2h7\" />", "calendar-check": "<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"m9 15 2 2 4-4\" />", "user-plus": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" /> <line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /> <line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />", "settings-2": "<path d=\"M14 17H5\" /> <path d=\"M19 7h-9\" /> <circle cx=\"17\" cy=\"17\" r=\"3\" /> <circle cx=\"7\" cy=\"7\" r=\"3\" />", "lock-open": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 9.9-1\" />", "shield-off": "<path d=\"m2 2 20 20\" /> <path d=\"M5 5a1 1 0 0 0-1 1v7c0 5 3.5 7.5 7.67 8.94a1 1 0 0 0 .67.01c2.35-.82 4.48-1.97 5.9-3.71\" /> <path d=\"M9.309 3.652A12.252 12.252 0 0 0 11.24 2.28a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1v7a9.784 9.784 0 0 1-.08 1.264\" />", "blocks": "<path d=\"M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2\" /> <rect x=\"14\" y=\"2\" width=\"8\" height=\"8\" rx=\"1\" />", "cable": "<path d=\"M17 19a1 1 0 0 1-1-1v-2a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a1 1 0 0 1-1 1z\" /> <path d=\"M17 21v-2\" /> <path d=\"M19 14V6.5a1 1 0 0 0-7 0v11a1 1 0 0 1-7 0V10\" /> <path d=\"M21 21v-2\" /> <path d=\"M3 5V3\" /> <path d=\"M4 10a2 2 0 0 1-2-2V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a2 2 0 0 1-2 2z\" /> <path d=\"M7 5V3\" />", "tag": "<path d=\"M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z\" /> <circle cx=\"7.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\" />", "tags": "<path d=\"M13.172 2a2 2 0 0 1 1.414.586l6.71 6.71a2.4 2.4 0 0 1 0 3.408l-4.592 4.592a2.4 2.4 0 0 1-3.408 0l-6.71-6.71A2 2 0 0 1 6 9.172V3a1 1 0 0 1 1-1z\" /> <path d=\"M2 7v6.172a2 2 0 0 0 .586 1.414l6.71 6.71a2.4 2.4 0 0 0 3.191.193\" /> <circle cx=\"10.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\" />", "trending-up": "<path d=\"M16 7h6v6\" /> <path d=\"m22 7-8.5 8.5-5-5L2 17\" />", "list-filter": "<path d=\"M2 5h20\" /> <path d=\"M6 12h12\" /> <path d=\"M9 19h6\" />", "message-square-heart": "<path d=\"M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z\" /> <path d=\"M7.5 9.5c0 .687.265 1.383.697 1.844l3.009 3.264a1.14 1.14 0 0 0 .407.314 1 1 0 0 0 .783-.004 1.14 1.14 0 0 0 .398-.31l3.008-3.264A2.77 2.77 0 0 0 16.5 9.5 2.5 2.5 0 0 0 12 8a2.5 2.5 0 0 0-4.5 1.5\" />", "chart-column": "<path d=\"M3 3v16a2 2 0 0 0 2 2h16\" /> <path d=\"M18 17V9\" /> <path d=\"M13 17V5\" /> <path d=\"M8 17v-3\" />", "at-sign": "<circle cx=\"12\" cy=\"12\" r=\"4\" /> <path d=\"M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8\" />", "mouse-pointer-click": "<path d=\"M14 4.1 12 6\" /> <path d=\"m5.1 8-2.9-.8\" /> <path d=\"m6 12-1.9 2\" /> <path d=\"M7.2 2.2 8 5.1\" /> <path d=\"M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z\" />", "shield-x": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"m14.5 9.5-5 5\" /> <path d=\"m9.5 9.5 5 5\" />", "bot": "<path d=\"M12 8V4H8\" /> <rect width=\"16\" height=\"12\" x=\"4\" y=\"8\" rx=\"2\" /> <path d=\"M2 14h2\" /> <path d=\"M20 14h2\" /> <path d=\"M15 13v2\" /> <path d=\"M9 13v2\" />", "heart-pulse": "<path d=\"M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5\" /> <path d=\"M3.22 13H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27\" />", "waypoints": "<path d=\"m10.586 5.414-5.172 5.172\" /> <path d=\"m18.586 13.414-5.172 5.172\" /> <path d=\"M6 12h12\" /> <circle cx=\"12\" cy=\"20\" r=\"2\" /> <circle cx=\"12\" cy=\"4\" r=\"2\" /> <circle cx=\"20\" cy=\"12\" r=\"2\" /> <circle cx=\"4\" cy=\"12\" r=\"2\" />", "list": "<path d=\"M3 5h.01\" /> <path d=\"M3 12h.01\" /> <path d=\"M3 19h.01\" /> <path d=\"M8 5h13\" /> <path d=\"M8 12h13\" /> <path d=\"M8 19h13\" />", "corner-down-right": "<path d=\"m15 10 5 5-5 5\" /> <path d=\"M4 4v7a4 4 0 0 0 4 4h12\" />", "wrench": "<path d=\"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z\" />", "code": "<path d=\"m16 18 6-6-6-6\" /> <path d=\"m8 6-6 6 6 6\" />", "external-link": "<path d=\"M15 3h6v6\" /> <path d=\"M10 14 21 3\" /> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\" />", "log-in": "<path d=\"m10 17 5-5-5-5\" /> <path d=\"M15 12H3\" /> <path d=\"M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4\" />", "briefcase-business": "<path d=\"M12 12h.01\" /> <path d=\"M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2\" /> <path d=\"M22 13a18.15 18.15 0 0 1-20 0\" /> <rect width=\"20\" height=\"14\" x=\"2\" y=\"6\" rx=\"2\" />", "calendar-off": "<path d=\"M16 2v3\" /> <path d=\"m2 2 20 20\" /> <path d=\"M21 9h-5.5\" /> <path d=\"M3 9h6\" /> <path d=\"M3.586 3.586A2 2 0 003 5v14a2 2 0 002 2h14a2 2 0 001.414-.586\" /> <path d=\"M8.656 3H19a2 2 0 012 2v10.344\" />"}};
 
 /* Sinal refinado: um modelo só, ícones Lucide, telas do sistema em claro e escuro. */
 const ic = (n, c = "") => `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${ICONS.lucide[n]}</svg>`;
@@ -1866,16 +2013,17 @@ const logo = (c = "") => `<svg class="logo ${c}" viewBox="0 0 64 64" aria-hidden
 
 // Only known values reach the markup: anything else in the URL falls back to the default.
 const pick = (v, allowed) => (allowed.includes(v) ? v : allowed[0]);
-const SCREENS = ["inicio", "entrar", "conversa", "tarefas", "notas", "agenda", "contatos", "avaliacoes", "automacoes", "memoria", "configuracoes", "estados", "identidade"];
+const SCREENS = ["inicio", "entrar", "verificacao", "conversa", "tarefas", "notas", "agenda", "contatos", "avaliacoes", "automacoes", "crm", "memoria", "configuracoes", "estados", "identidade"];
 const THEMES = ["claro", "escuro"];
 const params = new URLSearchParams(location.search);
 const CAP_Q = !!params.get("captura");
 const st = { s: pick(params.get("s"), SCREENS), t: pick(params.get("t"), THEMES), ag: { de: 8, ate: 18 } };
 /* partes de dentro das telas; a captura escolhe pelo endereço (&cfg=agenda, &rvv=pedidos, &p=bia) */
 st.agDef = { de: 8, ate: 18 };
-st.cfg = pick(params.get("cfg"), ["conta", "agenda", "seg", "ia", "modelos", "avisos", "integ", "dados", "diag"]); st.af = pick(params.get("af"), ["rotinas", "fluxos", "modulos", "conexoes"]); st.pk = pick(params.get("pk"), ["", "avaliacao"]); st.pks = { avaliacao: params.get("pks") === "ensaio" ? "ensaio" : "off", confirma: "soon", boasvindas: "soon" }; st.pkConn = { avaliacao: "cw", confirma: "cw", boasvindas: "cw" }; st.pkTest = ""; st.pkRun = false; st.pkWatch = new Set(); st.agx = pick(params.get("agx"), ["", "chat", "summary", "flow_ai", "review_draft", "review_check", "routine_check"]);
+st.cfg = pick(params.get("cfg"), ["conta", "agenda", "seg", "ia", "modelos", "avisos", "integ", "dados", "diag", "sobre"]); st.af = pick(params.get("af"), ["rotinas", "fluxos", "modulos", "conexoes"]); st.pk = pick(params.get("pk"), ["", "avaliacao"]); st.pks = { avaliacao: params.get("pks") === "ensaio" ? "ensaio" : "off", confirma: "soon", boasvindas: "soon" }; st.pkConn = { avaliacao: "cw", confirma: "cw", boasvindas: "cw" }; st.pkTest = ""; st.pkRun = false; st.pkWatch = new Set(); st.agx = pick(params.get("agx"), ["", "chat", "summary", "flow_ai", "review_draft", "review_check", "routine_check"]);
 st.tagf = "";
-st.hv = pick(params.get("hv"), ["ok", "checking", "broken"]); if (!CAP_Q && !params.get("hv")) st.hv = "checking";
+st.agAD = params.get("agad") !== "0"; st.agOut = params.get("agout") === "1"; st.mview = pick(params.get("mview"), ["lista", "mapa"]);
+st.hv = pick(params.get("hv"), ["ok", "checking", "broken", "ask", "fail", "wait"]); if (!CAP_Q && !params.get("hv")) st.hv = "checking";
 st.rec = pick(params.get("rec"), ["", "pedir", "enviado"]);
 st.cons = pick(params.get("cons"), ["semana", "dia", "mes", "ano"]);
 st.rvper = pick(params.get("per"), ["6m", "30d", "12m"]);
@@ -1883,7 +2031,7 @@ st.av = pick(params.get("av"), ["semana", "dia", "mes"]);
 st.dayDone = new Set();
 st.dayOpen = false;
 st.p = params.get("p") || "";
-st.rvv = pick(params.get("rvv"), ["visao", "avaliacoes", "pedidos"]);
+st.rvv = pick(params.get("rvv"), ["visao", "avaliacoes", "pedidos", "responder"]);
 st.n = params.get("n") || "";
 st.mv = params.get("mv") === "1";
 st.memNew = st.mv;
@@ -1899,7 +2047,7 @@ const href = (s) => `?s=${s}&t=${st.t}`;
 const NAV = [
   ["inicio", "house", "Início"], ["conversa", "message-circle", "Conversa"], ["tarefas", "list-todo", "Tarefas", "4", "para hoje"],
   ["agenda", "calendar-days", "Agenda"], ["contatos", "users", "Contatos"], ["avaliacoes", "star", "Avaliações", "3", "para revisar"], ["notas", "notebook-pen", "Notas"],
-  ["memoria", "brain", "Memória"], ["automacoes", "clock", "Automações", "1", "esperando aprovação", true]
+  ["memoria", "brain", "Memória"], ["automacoes", "clock", "Automações", "1", "esperando aprovação", true], ["crm", "briefcase-business", "CRM"]
 ];
 const TABS = [["inicio", "house", "Início"], ["conversa", "message-circle", "Conversa"], ["tarefas", "list-todo", "Tarefas"], ["agenda", "calendar-days", "Agenda"], ["mais", "layout-grid", "Mais"]];
 const RECENT = ["Organizar a mudança", "O que tenho amanhã?", "Presente da Bia", "Resumo da semana", "Contas de novembro"];
@@ -1928,7 +2076,7 @@ function side() {
     const count = n ? `<span class="count${alert ? " alert" : ""}">${n}<span class="sr"> ${why}</span></span>` : "";
     const target = SCREENS.includes(s) ? href(s) : "#";
     /* Automações mostra as suas partes logo abaixo, quando está aberta. */
-    const sub = s === "automacoes" && s === st.s ? `<ul class="nav-sub" aria-label="Partes de Automações">${AF.map(([k, si, sl]) => `<li><button type="button" data-af="${k}" aria-pressed="${st.af === k}">${ic(si, "ic-sm")}<span>${sl}</span></button></li>`).join("")}</ul>` : "";
+    const sub = (s === "automacoes" || s === "crm") && s === st.s ? `<ul class="nav-sub" aria-label="Partes de ${l}">${(s === "crm" ? CF : AF).map(([k, si, sl]) => `<li><button type="button" data-af="${k}" aria-pressed="${st.af === k}">${ic(si, "ic-sm")}<span>${sl}</span></button></li>`).join("")}</ul>` : "";
     return `<li><a href="${target}"${cur}>${ic(i)}<span>${l}</span>${count}</a>${sub}</li>`;
   }).join("");
   return `<aside class="side" aria-label="Menu da Zuri">
@@ -2145,7 +2293,7 @@ function notas() {
   const status = cur.fresh && !cur.saved ? `${ic("pencil", "ic-sm")}Rascunho: salva sozinha enquanto você escreve` : `${ic("check", "ic-sm")}Salva ${/:/.test(cur.saved) && !/,/.test(cur.saved) ? "às " : ""}${cur.saved}`;
   return `<div class="split fill split-notes${found ? " has-sel" : ""}">
     <div class="pane"><div class="pane-head"><h1>Notas</h1><button class="iconbtn" type="button" data-x="lixeira" data-from="notas" aria-label="Lixeira das notas">${ic("trash-2", "ic-sm")}</button><button class="btn btn-primary btn-sm" type="button" data-new-note>${ic("plus", "ic-sm")}Nova nota</button></div>
-      <p class="pane-lede">Ideias, listas e o que a Zuri guardou das conversas. Tudo se salva sozinho.</p>
+      <p class="pane-lede">Ideias, listas e o que veio das conversas. Tudo se salva sozinho.</p>
       <form onsubmit="return false" class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ns">Buscar notas</label><input id="ns" class="input" placeholder="Buscar notas"></form>
       <nav aria-label="Suas notas"><ul class="notelist">${NOTES.map((n) => `<li><button class="nitem" type="button" data-n="${n.id}"${n === cur ? ' aria-current="true"' : ""}><span class="t"><span data-nt="${n.id}">${n.t || "Nota sem título"}</span><time class="num">${n.d}</time></span><p>${n.p || "Ainda vazia"}</p></button></li>`).join("")}</ul></nav></div>
     <div class="pane" tabindex="-1" aria-label="Nota aberta"><article class="editor" aria-label="Editar a nota">
@@ -2232,7 +2380,7 @@ function auBody() {
         <li class="set-row"><div class="grow"><p class="t" id="au-x1">Casa · desligar tudo</p><p class="hint">Sempre pergunta: apaga ou sobrescreve. Nunca roda sozinha.</p></div><button class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="au-x1" disabled></button></li></ul>
       <p class="au-cost">${ic("sparkles", "ic-sm")}Cada execução gasta IA e conta no limite do dia: cerca de 40 Neurons por vez, de 9.000.</p>
       ${quiet("au-q3")}`;
-    if (t === "fluxo") return `<p class="wz-q">Fluxos têm vários passos</p><p class="hint">Eles abrem no editor de fluxos, com quando roda, os passos e as conexões. Quer começar por uma sugestão?</p><ul class="au-perm">${["Olhar o preço de um site e avisar quando baixar", "Aniversariantes do dia no grupo de avisos"].map((m) => `<li><button class="pitem" type="button" data-x="suggest">${ic("workflow", "ic-sm")}<span class="pt"><span class="t">${m}</span></span></button></li>`).join("")}</ul>`;
+    if (t === "fluxo") return `<p class="wz-q">Fluxos têm vários passos</p><p class="hint">Eles abrem no editor de fluxos, com quando roda, os passos e as credenciais. Quer começar por uma sugestão?</p><ul class="au-perm">${["Olhar o preço de um site e avisar quando baixar", "Aniversariantes do dia no grupo de avisos"].map((m) => `<li><button class="pitem" type="button" data-x="suggest">${ic("workflow", "ic-sm")}<span class="pt"><span class="t">${m}</span></span></button></li>`).join("")}</ul>`;
     return `<p class="wz-q">O que entra no resumo?</p><p class="hint">As tarefas atrasadas e as de hoje, em ordem de prazo.</p>
       <label class="field"><span>Recado no começo (opcional)</span><input class="input" placeholder="Ex.: Bom dia! Foco na mudança."></label>${quiet("au-q3")}`;
   }
@@ -2265,11 +2413,11 @@ function pops() {
       <div class="pop-head"><span class="avatar avatar-lg" aria-hidden="true">A</span><div><p class="t">Ana</p><p class="d">ana@exemplo.com.br</p></div><button class="iconbtn pop-x" type="button" data-close-pop aria-label="Fechar">${ic("x", "ic-sm")}</button></div>
       <ul class="pop-list">
         <li><a href="${href("configuracoes")}" data-cfg-go="conta">${ic("user", "ic-sm")}Conta e perfil</a></li>
-        <li><a href="${href("configuracoes")}" data-cfg-go="agenda">${ic("calendar-days", "ic-sm")}Agenda</a></li>
         <li><a href="${href("configuracoes")}" data-cfg-go="seg">${ic("shield-check", "ic-sm")}Segurança</a></li>
         <li><a href="${href("configuracoes")}" data-cfg-go="avisos">${ic("bell", "ic-sm")}Avisos</a></li></ul>
       <div class="pop-sec"><p class="label" id="pop-tema">Tema</p>${temaSeg()}</div>
-      <ul class="pop-list"><li><a href="${href("entrar")}" data-logout>${ic("log-out", "ic-sm")}Sair</a></li></ul></div></div>`;
+      <ul class="pop-list"><li><a href="${href("entrar")}" data-logout>${ic("log-out", "ic-sm")}Sair</a></li></ul>
+      <p class="pop-ver"><a href="${href("configuracoes")}" data-cfg-go="sobre"><span class="num">Zuri ${APP_VER}</span><span aria-hidden="true">·</span><span>Novidades</span></a></p></div></div>`;
   if (st.menu === "avisos") {
     const n = AVISOS.filter((a) => a.unread).length;
     return `<div class="pop-wrap" data-scrim="menu"><div class="pop pop-avisos" role="dialog" aria-modal="true" aria-labelledby="h-av">
@@ -2288,7 +2436,7 @@ function pageLoading(s) {
     <div class="ld-bar ld-top" aria-hidden="true"><i></i></div>
     <h1 class="sr">Carregando</h1>
     <div class="pl-head">${sk("38%", 28)}${sk("62%", 14)}</div>
-    <p class="ld-msg"><span class="ld-sig" aria-hidden="true"><i></i></span>${{ inicio: "Preparando o seu dia", tarefas: "Buscando suas tarefas", agenda: "Lendo a sua agenda", contatos: "Buscando seus contatos", avaliacoes: "Lendo as avaliações", notas: "Abrindo suas notas", memoria: "Lendo o que a Zuri sabe", automacoes: "Buscando suas automações" }[s] || "Carregando"}</p>
+    <p class="ld-msg"><span class="ld-sig" aria-hidden="true"><i></i></span>${{ inicio: "Preparando o seu dia", tarefas: "Buscando suas tarefas", agenda: "Lendo a sua agenda", contatos: "Buscando seus contatos", avaliacoes: "Lendo as avaliações", notas: "Abrindo suas notas", memoria: "Lendo o que a Zuri sabe", automacoes: "Buscando suas automações", crm: "Buscando os módulos" }[s] || "Carregando"}</p>
     <div class="card pl-card">${rows(s === "inicio" ? 3 : 5)}</div></div>`;
 }
 
@@ -2321,10 +2469,11 @@ function agenda() {
       <label class="sr" for="ag-ate">Até</label><select id="ag-ate" class="input input-sm">${opts(de + 1, 24, ate)}</select>
       ${de !== st.agDef.de || ate !== st.agDef.ate ? `<button class="btn btn-quiet btn-sm" type="button" data-ag-reset>Voltar para ${hh(st.agDef.de)} até ${hh(st.agDef.ate)}</button>` : ""}
       <a class="ag-cfg" href="${href("configuracoes")}" data-cfg-open>${ic("settings", "ic-sm")}Mudar o padrão</a></div>`;
-  const head = `<header class="pagehead"><div><h1>Agenda</h1><p>Seus eventos do Google Agenda. Quando algo muda lá, muda aqui também.</p></div>
+  const head = `<header class="pagehead"><div><h1>Agenda</h1><p>Seus eventos do Google Agenda, sempre atualizados. O que você cria aqui ou pela Zuri vai direto para lá.</p></div>
     <div class="actions"><button class="btn btn-primary btn-sm" type="button" data-x="evento">${ic("calendar-plus", "ic-sm")}Novo evento</button></div></header>`;
   const bar = `<div class="agenda-bar"><h2>${av === "mes" ? "Novembro de 2026" : av === "dia" ? `${["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][ad]}, ${days[ad][1]} de novembro` : "9 a 15 de novembro"}</h2>
     <div class="navgrp"><button class="iconbtn" type="button" aria-label="Semana anterior" data-wk>${ic("chevron-left")}</button><button class="btn btn-secondary btn-sm" type="button" data-wk>Hoje</button><button class="iconbtn" type="button" aria-label="Próxima semana" data-wk>${ic("chevron-right")}</button></div>
+    ${av === "mes" ? "" : `<div class="ag-tog" role="group" aria-label="Mostrar na agenda"><button class="chip" type="button" data-ag-ad aria-pressed="${st.agAD}">${ic(st.agAD ? "calendar-days" : "calendar-off", "ic-sm")}Dia inteiro</button><button class="chip" type="button" data-ag-out aria-pressed="${!st.agOut}">${ic(st.agOut ? "eye-off" : "eye", "ic-sm")}Fora do horário</button></div>`}
     <div class="seg" role="group" aria-label="Visualização">${[["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"]].map(([k, l]) => `<button type="button" data-av="${k}" aria-pressed="${k === av}">${l}</button>`).join("")}</div></div>`;
   const n = ate - de;
   const hours = Array.from({ length: n }, (_, k) => `<span>${hh(de + k)}</span>`).join("");
@@ -2340,11 +2489,12 @@ function agenda() {
   const outRow = (which) => {
     const lists = days.map((_, i) => E[i].filter((e) => !inside(e) && (which === "antes" ? e[0] + e[1] / 60 < de : e[0] + e[1] / 60 >= ate)));
     if (!lists.some((l) => l.length)) return "";
+    if (st.agOut) { const n = lists.reduce((a, l) => a + l.length, 0); return `<div class="outrow outrow-min" role="row"><span class="lbl" role="rowheader">${which === "antes" ? "Antes" : "Depois"}</span><div role="cell" class="out-min"><button class="linkbtn" type="button" data-ag-out>${n} ${n === 1 ? "evento escondido" : "eventos escondidos"} ${which === "antes" ? `antes das ${hh(de)}` : `depois das ${hh(ate)}`} · Mostrar</button></div></div>`; }
     return `<div class="outrow" role="row"><span class="lbl" role="rowheader">${which === "antes" ? `Antes<span class="sr"> das ${hh(de)}</span>` : `Depois<span class="sr"> das ${hh(ate)}</span>`}</span>${lists.map((l) => `<div role="cell">${l.map((e) => `<span class="ev-out ${e[5] === "b" ? "b" : ""}" title="${e[3]}, ${e[4]}"><b>${e[3]}</b><span class="num">${e[4].slice(0, 5)}</span></span>`).join("")}</div>`).join("")}</div>`;
   };
   const week = `<div class="ld-bar wk-ld" aria-hidden="true"><i></i></div><div class="week" role="table" aria-label="Semana de 9 a 15 de novembro, das ${hh(de)} até ${hh(ate)}">
     <div role="row" style="display:contents"><div class="corner" role="columnheader"><span class="sr">Hora</span></div>${days.map(([d, nn], i) => `<div class="dh${i === 0 ? " today" : ""}" role="columnheader">${d}<b>${i === 0 ? `<span>${nn}</span>` : nn}</b></div>`).join("")}</div>
-    <div class="allday" role="row"><span class="lbl" role="rowheader">Dia todo</span>${days.map((_, i) => `<div role="cell">${i === 5 ? '<div class="ev ad"><b>Mudança</b></div>' : ""}</div>`).join("")}</div>
+    ${st.agAD ? `<div class="allday" role="row"><span class="lbl" role="rowheader">Dia todo</span>${days.map((_, i) => `<div role="cell">${i === 5 ? '<div class="ev ad"><b>Mudança</b></div>' : ""}</div>`).join("")}</div>` : `<div class="allday allday-min" role="row"><span class="lbl" role="rowheader">Dia todo</span><div role="cell" class="out-min"><button class="linkbtn" type="button" data-ag-ad>1 evento de dia inteiro escondido · Mostrar</button></div></div>`}
     ${outRow("antes")}
     <div role="row" style="display:contents"><div class="hours" role="rowheader" aria-hidden="true" style="grid-template-rows:repeat(${n},${HR}px)">${hours}</div>${days.map((_, i) => col(i)).join("")}</div>
     ${outRow("depois")}
@@ -2355,7 +2505,7 @@ function agenda() {
   const dayOut = sorted(E[ad].filter((e) => !inside(e)));
   const strip = `<div class="daystrip" role="group" aria-label="Dia">${days.map(([d, nn], i) => `<button type="button" data-ad="${i}" aria-pressed="${i === ad}"><span>${d}</span><b>${nn}</b></button>`).join("")}</div>
     <ul class="card day daylist">${dayVis.map(([h, m, dur, t, sub, c]) => dayRow({ when: sub.slice(0, 5), kind: c, t, note: "", sub: sub.length > 5 ? sub.slice(7) : "" })).join("") || `<li class="empty-li">${ic("calendar-days", "ic-sm")}Nada marcado neste dia${dayOut.length ? " dentro do horário visível" : ""}.</li>`}</ul>
-    ${dayOut.length ? `<p class="daylist-out">${ic("clock", "ic-sm")}Fora do horário: ${dayOut.map((e) => `${e[3]}, ${e[4]}`).join("; ")}</p>` : ""}`;
+    ${dayOut.length ? (st.agOut ? `<p class="daylist-out">${ic("eye-off", "ic-sm")}<button class="linkbtn" type="button" data-ag-out>${dayOut.length} ${dayOut.length === 1 ? "evento escondido" : "eventos escondidos"} fora do horário · Mostrar</button></p>` : `<p class="daylist-out">${ic("clock", "ic-sm")}Fora do horário: ${dayOut.map((e) => `${e[3]}, ${e[4]}`).join("; ")}</p>`) : ""}`;
   /* Mês: novembro de 2026 começa num domingo; semana de segunda a domingo. */
   const cells = [];
   for (let k = 0; k < 6; k++) cells.push(0);
@@ -2484,10 +2634,9 @@ function contatos() {
     groups[k].push(p);
   }
   const list = Object.keys(groups).sort((a, b) => (a === "#" ? 1 : b === "#" ? -1 : a.localeCompare(b))).map((g) => `<li class="grp" data-g="${g}" aria-hidden="true">${g}</li>${groups[g].map(item).join("")}`).join("");
-  const tags = s.size > 1 ? `<div class="chips ct-tags" role="group" aria-label="Mostrar só uma etiqueta">${[["", "Todas", all.length], ...[...s].map((t) => [t, t, all.filter((p) => p.tags.includes(t)).length])].map(([k, l, n]) => `<button class="chip" type="button" data-tagf="${k}" aria-pressed="${(st.tagf || "") === k}">${l} <span class="n num">${n}</span></button>`).join("")}</div>` : "";
   const left = `<div class="pane ct-list"><div class="pane-head"><h1>Contatos</h1><div class="pane-acts"><button class="iconbtn" type="button" data-x="ct-labels" aria-haspopup="dialog" aria-label="Escolher as etiquetas sincronizadas">${ic("tags", "ic-sm")}</button><button class="iconbtn" type="button" data-sync="contatos" aria-label="Sincronizar agora">${ic("refresh-cw", "ic-sm")}</button></div></div>
       ${syncLine("contatos", `Google Contatos · <button class="linkbtn" type="button" data-x="ct-labels" aria-haspopup="dialog">${s.size} ${s.size === 1 ? "etiqueta" : "etiquetas"}</button> · <span class="num">${all.length}</span> contatos`)}
-      ${tags}<form class="with-ic ct-search" role="search" onsubmit="return false">${ic("search", "ic-sm")}<label class="sr" for="cts">Buscar contatos</label><input id="cts" class="input" placeholder="Buscar por nome" autocomplete="off"></form>
+      ${tagFilter(all)}<form class="with-ic ct-search" role="search" onsubmit="return false">${ic("search", "ic-sm")}<label class="sr" for="cts">Buscar contatos</label><input id="cts" class="input" placeholder="Buscar por nome" autocomplete="off"></form>
       <nav aria-label="Seus contatos">${all.length ? `<ul class="plist">${list}</ul>` : ""}<p class="p-empty ct-none" hidden>Ninguém com esse nome nas etiquetas escolhidas.</p></nav></div>`;
   const pane = cur ? person(cur) : `<div class="empty-st"><span class="tile">${ic("tags")}</span><h2>Nenhuma etiqueta escolhida</h2><p class="hint">A Zuri só copia os contatos das etiquetas que você marcar. Nada muda no Google.</p><button class="btn btn-primary btn-sm" type="button" data-x="ct-labels" aria-haspopup="dialog">Escolher etiquetas</button></div>`;
   return `<div class="split fill split-contacts${found ? " has-sel" : ""}">${left}
@@ -2517,7 +2666,7 @@ function rvOverview() {
   const cols = d.serie.map(([k, v], i) => `<li class="col${i === d.serie.length - 1 ? " last" : ""}" style="--v:${Math.max(0, v)}"><span class="tip num">${k}: ${v}</span><span class="bar"></span>${i === d.serie.length - 1 ? `<span class="lbl num">${v}</span>` : ""}<span class="x">${k}</span></li>`).join("");
   const dist = d.dist.map((n, k) => `<li><span class="k num">${5 - k} ${ic("star", "ic-sm")}</span><span class="track"><span class="fill" style="width:${max ? (n / max) * 100 : 0}%"></span></span><span class="v num">${n} <span class="muted">· ${pct(n, c.n)}%</span></span></li>`).join("");
   const [env, abr, ava] = d.ped;
-  const fun = [["Receberam o link", env, ""], ["Abriram", abr, `${pct(abr, env)}%`], ["Avaliaram", ava, `${pct(ava, env)}%`]].map(([k, n, p]) => `<li><span class="k">${k}</span><span class="track"><span class="fill" style="width:${pct(n, env)}%"></span></span><span class="v num">${n}${p ? ` <span class="muted">· ${p}</span>` : ""}</span></li>`).join("");
+  const fun = [["Receberam o link", env, ""], ["Abriram o link", abr, `${pct(abr, env)}%`], ["Avaliaram", ava, `${pct(ava, env)}%`]].map(([k, n, p]) => `<li><span class="k">${k}</span><span class="track"><span class="fill" style="width:${pct(n, env)}%"></span></span><span class="v num">${n}${p ? ` <span class="muted">· ${p}</span>` : ""}</span></li>`).join("");
   const waiting = REVIEWS.filter((r) => r.st === "wait" || r.st === "low");
   return `<div class="rv-filter"><label class="field field-inline"><span class="label">Período</span><select class="input input-sm" data-rvper>${Object.entries(RVD).map(([k, v]) => `<option value="${k}"${k === st.rvper ? " selected" : ""}>${v.l}</option>`).join("")}</select></label></div>
     <ul class="kpis" aria-label="Resumo de ${d.l.toLowerCase()}">
@@ -2534,7 +2683,7 @@ function rvOverview() {
         <ul class="hbars" aria-label="Avaliações por nota">${dist}</ul></section>
       <section class="card p-sec chart-card" aria-labelledby="h-fun"><div class="p-sec-h"><h2 id="h-fun">Pedidos de avaliação</h2><button class="linkbtn" type="button" data-rvv="pedidos">Ver pedidos${ic("chevron-right", "ic-sm")}</button></div>
         <ul class="hbars" aria-label="Do link à avaliação">${fun}</ul>
-        <p class="hint">Quem já avaliou nunca recebe o link de novo.</p></section>
+        <p class="hint">Cada pessoa recebe um link só dela. Quando ela abre, a Zuri anota a hora e segue para o Google. A prévia que o WhatsApp monta não conta como abertura. Quem já avaliou nunca recebe o link de novo.</p></section>
       <section class="card p-sec" aria-labelledby="h-rvw"><div class="p-sec-h"><h2 id="h-rvw">Precisa de você</h2><span class="pill wait num">${waiting.length}</span></div>
         ${waiting.length ? `<ul class="rv-wait">${waiting.map((r) => `<li>${pav(r)}<div><p class="t">${r.n} ${stars(r.stars)}</p><p class="d">${r.text}</p></div><button class="btn btn-secondary btn-sm" type="button" data-rv-open="${r.id}" aria-label="Revisar a avaliação de ${r.n}">Revisar</button></li>`).join("")}</ul>` : `<p class="p-empty">Nada esperando você.</p>`}</section>
     </div>
@@ -2543,10 +2692,11 @@ function rvOverview() {
 function avaliacoes() {
   const v = st.rvv;
   const waiting = REVIEWS.filter((r) => r.st === "wait" || r.st === "low").length;
-  const tabs = `<div class="seg" role="group" aria-label="Ver">${[["visao", "Visão geral", ""], ["avaliacoes", "Avaliações", waiting], ["pedidos", "Pedidos", ""]].map(([k, l, n]) => `<button type="button" data-rvv="${k}" aria-pressed="${k === v}">${l}${n ? ` <span class="n">${n}</span>` : ""}</button>`).join("")}</div>`;
+  const tabs = `<div class="seg" role="group" aria-label="Ver">${[["visao", "Visão geral", ""], ["avaliacoes", "Avaliações", waiting], ["pedidos", "Pedidos", ""], ["responder", "Como responder", ""]].map(([k, l, n]) => `<button type="button" data-rvv="${k}" aria-pressed="${k === v}">${l}${n ? ` <span class="n">${n}</span>` : ""}</button>`).join("")}</div>`;
   const head = `<header class="pagehead"><div><h1>Avaliações</h1>${syncLine("avaliacoes", "Perfil da Empresa no Google · Consultório, Curitiba")}</div>
       <div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-sync="avaliacoes">${ic("refresh-cw", "ic-sm")}Conferir agora</button><button class="btn btn-quiet btn-sm" type="button" data-rv-pause>Pausar respostas</button></div></header>`;
   if (v === "visao") return `<div class="page page-wide rv-page">${head}<div class="tabs-row">${tabs}</div>${rvOverview()}</div>`;
+  if (v === "responder") return `<div class="page rv-page">${head}<div class="tabs-row">${tabs}</div>${rvResponder()}</div>`;
   const pedidos = v === "pedidos";
   const set = pedidos ? PEOPLE.filter((p) => p.nps) : REVIEWS;
   const found = set.find((p) => p.id === st.p);
@@ -2683,8 +2833,10 @@ const ROTS = [
     ["bell", "Pagar o aluguel", "Lembrete · Todo dia 5 às 09:00", "Pausada desde 01/11", "off", "Pausada", ""]
 ];
 /* Partes de Automações. Os módulos são fluxos já validados no n8n e reescritos no código da Zuri:
-   você só liga, escolhe a conexão e acompanha o ensaio. As conexões ficam num lugar só e servem a todos. */
-const AF = [["rotinas", "repeat", "Rotinas"], ["fluxos", "workflow", "Fluxos"], ["modulos", "blocks", "Módulos"], ["conexoes", "cable", "Conexões"]];
+   você só liga, escolhe a credencial e acompanha o ensaio. As credenciais ficam num lugar só e servem a todos. */
+/* 10/11: Módulos e Credenciais saem de Automações e ganham o menu CRM. */
+const AF = [["rotinas", "repeat", "Rotinas"], ["fluxos", "workflow", "Fluxos"]];
+const CF = [["modulos", "blocks", "Módulos"], ["conexoes", "key-round", "Credenciais"]];
 const PK = [
   { id: "avaliacao", i: "star", n: "Pedido de avaliação", d: "8 dias depois da consulta, em dia útil, pela caixa do WhatsApp no Chatwoot.", uses: "chatwoot" },
   { id: "confirma", i: "calendar-check", n: "Confirmação de consulta", d: "Um dia antes, pede a confirmação e marca a resposta na agenda.", uses: "chatwoot" },
@@ -2693,10 +2845,13 @@ const PK = [
 const connsOf = (kind) => CONNS.filter((c) => c.kind === kind);
 const connUsers = (c) => [...PK.filter((x) => x.uses === c.kind && st.pks[x.id] !== "off" && st.pks[x.id] !== "soon" && st.pkConn[x.id] === c.id).map((x) => `${x.n} · módulo`), ...c.extra];
 function automacoes() {
+  const crm = st.s === "crm";
+  if (crm && !["modulos", "conexoes"].includes(st.af)) st.af = "modulos";
+  if (!crm && !["rotinas", "fluxos"].includes(st.af)) st.af = "rotinas";
   const A = ROTS;
   const ctl = (s, n) => `<button class="btn btn-secondary btn-sm" type="button" data-x="run"${s === "off" ? " disabled" : ""}>${ic("play", "ic-sm")}Rodar agora</button><button class="switch" type="button" role="switch" aria-checked="${s === "on"}" aria-label="${s === "on" ? "Pausar" : "Retomar"} “${n}”"></button><button class="iconbtn" type="button" data-x="auto-menu" aria-label="Mais opções de “${n}”">${ic("ellipsis")}</button>`;
   const count = { rotinas: ROTS.length, fluxos: FLOWS.length, modulos: PK.length, conexoes: CONNS.length };
-  const tabs = `<div class="seg" role="group" aria-label="Partes de Automações">${AF.map(([k, , l]) => `<button type="button" data-af="${k}" aria-pressed="${st.af === k}">${l} <span class="n">${count[k]}</span></button>`).join("")}</div>`;
+  const tabs = `<div class="seg" role="group" aria-label="Partes de ${crm ? "CRM" : "Automações"}">${(crm ? CF : AF).map(([k, , l]) => `<button type="button" data-af="${k}" aria-pressed="${st.af === k}">${l} <span class="n">${count[k]}</span></button>`).join("")}</div>`;
   const rotinas = `<section class="card sugg-card" aria-labelledby="h-sug"><div class="p-sec-h"><h2 id="h-sug">${ic("sparkles", "ic-sm")}A Zuri sugeriu 1 rotina</h2><span class="pill wait"><i></i>Esperando aprovação</span></div>
       <p class="t">Revisão de sexta · Toda sexta às 17:00</p><p class="hint">O que a Zuri vai fazer a cada vez: “Veja o que ficou atrasado na semana e me sugira um plano para a próxima.” Usa IA a cada vez.</p>
       <div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-sug="ok">${ic("check", "ic-sm")}Aprovar</button><button class="btn btn-quiet btn-sm" type="button" data-sug="no">Recusar</button></div></section>
@@ -2714,49 +2869,47 @@ function automacoes() {
       <div class="ctl"><button class="btn btn-secondary btn-sm" type="button" data-x="run" aria-label="Executar “${n}”">${ic("play", "ic-sm")}Executar</button><button class="iconbtn" type="button" data-x="flow-menu" aria-label="Mais opções de “${n}”">${ic("ellipsis")}</button></div></li>`).join("")}</ul>
     <section class="block" aria-labelledby="h-fsug"><div class="block-head"><h2 id="h-fsug">Sugestões da Zuri</h2></div>
       <ul class="card"><li class="auto"><span class="tile">${ic("sparkles")}</span><div><p class="t">Avisar do pedido de avaliação</p><p class="meta"><span>Todo dia útil às 09:00 · Buscar contatos → Avisar você</span></p></div><div class="ctl"><button class="btn btn-secondary btn-sm" type="button" data-x="flow-new" data-name="Avisar do pedido de avaliação" aria-label="Revisar “Avisar do pedido de avaliação”">Revisar</button></div></li></ul></section>
-    <p class="ro">${ic("info", "ic-sm")}<span>Os passos que existem hoje: chamar um serviço, filtrar itens, montar campos, esperar, avisar você, pedir à IA, olhar sites, ler a agenda, criar evento e buscar contatos. “Chamar um serviço” usa uma das <button class="linkbtn" type="button" data-af="conexoes">conexões</button>.</span></p>`;
+    <p class="ro">${ic("info", "ic-sm")}<span>Os passos que existem hoje: chamar um serviço, filtrar itens, montar campos, esperar, avisar você, pedir à IA, olhar sites, ler a agenda, criar evento e buscar contatos. “Chamar um serviço” usa uma das <button class="linkbtn" type="button" data-af="conexoes">credenciais</button>.</span></p>`;
   const pkState = { off: ["off", "Desligado"], ensaio: ["wait", "Em ensaio"], on: ["on", "Ligado"], soon: ["off", "Em validação no n8n"] };
   const pkPanel = (x) => {
     const stt = st.pks[x.id];
     const cw = CONNS.find((c) => c.id === st.pkConn[x.id]);
     if (stt === "ensaio" || stt === "on") return `<div class="ag-panel pk-panel" id="pk-${x.id}">
-      <p class="hint">${stt === "ensaio" ? "Em ensaio desde hoje, 09:00. A Zuri roda tudo, mas não envia nada: só anota o que faria." : "Ligado desde agora. Envia de verdade, dentro dos limites."} Usa a conexão <b>${cw ? cw.n : "do Chatwoot"}</b>.</p>
+      <p class="hint">${stt === "ensaio" ? "Em ensaio desde hoje, 09:00. A Zuri roda tudo, mas não envia nada: só anota o que faria." : "Ligado desde agora. Envia de verdade, dentro dos limites."} Usa a credencial <b>${cw ? cw.n : "do Chatwoot"}</b>.</p>
       <ul class="card runs pk-runs"><li><time class="num">Hoje, 09:00</time><span>Thiago Moura · consulta em 30/10</span><span class="state ${stt === "on" ? "on" : "off"}">${stt === "on" ? "Enviado" : "Enviaria"}</span></li><li><time class="num">Hoje, 09:02</time><span>Bruno Alves · consulta em 30/10</span><span class="state ${stt === "on" ? "on" : "off"}">${stt === "on" ? "Enviado" : "Enviaria"}</span></li><li><time class="num">Hoje, 09:02</time><span>Ana Souza · nome igual a outro contato</span><span class="state off">Esperando você</span></li></ul>
       <div class="row-actions">${stt === "ensaio" ? `<button class="btn btn-primary btn-sm" type="button" data-pk-set="on">${ic("power", "ic-sm")}Ligar de verdade</button>` : ""}<button class="btn btn-secondary btn-sm" type="button" data-pk-set="off">Desligar</button></div>
       <p class="ro">${ic("lock", "ic-sm")}<span>Ligar de verdade pede a sua senha. O botão “Pausar envios” e o modo de bloqueio param tudo na hora.</span></p></div>`;
     const opts = connsOf(x.uses);
     return `<form class="ag-panel pk-panel" id="pk-${x.id}" onsubmit="return false" aria-label="Ligar “${x.n}”">
-      <p class="wz-q">1. Conexão com o Chatwoot</p>
-      ${opts.length ? `<div class="field"><label class="label" for="pk-c-${x.id}">Usar a conexão</label><select id="pk-c-${x.id}" class="input" data-pk-conn="${x.id}">${opts.map((c) => `<option value="${c.id}"${c.id === st.pkConn[x.id] ? " selected" : ""}>${c.n}</option>`).join("")}</select>
-        <span class="hint">${cw ? `${cw.info}. O endereço e a chave ficam na conexão: nada para digitar aqui.` : ""} <button class="linkbtn" type="button" data-af="conexoes">Ver conexões</button></span></div>
-      <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-pk-test>${ic(st.pkTest === "..." ? "loader-circle" : "plug-zap", st.pkTest === "..." ? "ic-sm spin" : "ic-sm")}Testar conexão</button>${st.pkTest === "ok" ? `<span class="ok-status" role="status">${ic("circle-check", "ic-sm")}Conectou. Caixa: WhatsApp do consultório (API).</span>` : ""}</div>`
-      : `<p class="hint">Nenhuma conexão com o Chatwoot ainda. Crie uma vez e ela serve a todos os módulos.</p><div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-x="conn-cw">${ic("plus", "ic-sm")}Nova conexão com o Chatwoot</button></div>`}
+      <p class="wz-q">1. Credencial do Chatwoot</p>
+      ${opts.length ? `<div class="field"><label class="label" for="pk-c-${x.id}">Usar a credencial</label><select id="pk-c-${x.id}" class="input" data-pk-conn="${x.id}">${opts.map((c) => `<option value="${c.id}"${c.id === st.pkConn[x.id] ? " selected" : ""}>${c.n}</option>`).join("")}</select>
+        <span class="hint">${cw ? `${cw.info}. O endereço e a chave ficam na credencial: nada para digitar aqui.` : ""} <button class="linkbtn" type="button" data-af="conexoes">Ver credenciais</button></span></div>
+      <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-pk-test>${ic(st.pkTest === "..." ? "loader-circle" : "plug-zap", st.pkTest === "..." ? "ic-sm spin" : "ic-sm")}Testar credencial</button>${st.pkTest === "ok" ? `<span class="ok-status" role="status">${ic("circle-check", "ic-sm")}Conectou. Caixa: WhatsApp do consultório (API).</span>` : ""}</div>`
+      : `<p class="hint">Nenhuma credencial do Chatwoot ainda. Crie uma vez e ela serve a todos os módulos.</p><div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-x="conn-cw">${ic("plus", "ic-sm")}Nova credencial do Chatwoot</button></div>`}
       <p class="wz-q">2. Limites</p>
       <div class="grid-2"><label class="field"><span class="label">Mensagens por dia</span><input class="input num" type="number" min="1" max="50" value="20"></label><label class="field"><span class="label">Horário</span><select class="input"><option>09:00 às 18:00</option><option>08:00 às 12:00</option></select></label></div>
       <p class="wz-q">3. Como começa</p>
       <p class="hint">Começa sempre em ensaio: por alguns dias, a Zuri roda junto com o n8n, mostra o que faria e não envia nada. Você liga de verdade quando os dois baterem.</p>
       <div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-pk-set="ensaio"${st.pkTest === "ok" && opts.length ? "" : " disabled"}>${ic("flask-conical", "ic-sm")}Salvar e começar o ensaio</button><button class="btn btn-quiet btn-sm" type="button" data-pk="${x.id}">Cancelar</button></div>
-      ${st.pkTest === "ok" ? "" : `<p class="hint">Teste a conexão antes de salvar.</p>`}</form>`;
+      ${st.pkTest === "ok" ? "" : `<p class="hint">Teste a credencial antes de salvar.</p>`}</form>`;
   };
-  const modulos = `<p class="hint pk-intro">Fluxos que já rodam no n8n e agora vêm dentro da Zuri. Você liga, escolhe a conexão e acompanha o ensaio.</p>
-    <ul class="card ag-list pk-list" aria-label="Módulos">${PK.map((x) => { const stt = st.pks[x.id]; const [c, l] = pkState[stt]; const open = st.pk === x.id;
-      return `<li class="auto"><span class="tile">${ic(x.i)}</span><div><p class="t">${x.n}</p><p class="meta"><span>${x.d}</span></p><p class="meta"><span class="pill ${c}"><i></i>${l}</span><span>Usa: conexão do Chatwoot</span></p></div>
+  const modulos = `<ul class="card ag-list pk-list" aria-label="Módulos">${PK.map((x) => { const stt = st.pks[x.id]; const [c, l] = pkState[stt]; const open = st.pk === x.id;
+      return `<li class="auto"><span class="tile">${ic(x.i)}</span><div><p class="t">${x.n}</p><p class="meta"><span>${x.d}</span></p><p class="meta"><span class="pill ${c}"><i></i>${l}</span><span>Usa: credencial do Chatwoot</span></p></div>
       <div class="ctl">${stt === "soon" ? `<button class="btn btn-secondary btn-sm" type="button" data-pk-watch="${x.id}" aria-pressed="${st.pkWatch.has(x.id)}">${st.pkWatch.has(x.id) ? `${ic("check", "ic-sm")}Vou avisar` : `${ic("bell", "ic-sm")}Avisar quando chegar`}</button>` : `<button class="btn btn-secondary btn-sm" type="button" data-pk="${x.id}" aria-expanded="${open}" aria-controls="pk-${x.id}">${stt === "off" ? `${ic("power", "ic-sm")}Ligar` : `${ic("settings-2", "ic-sm")}Acompanhar`}</button>`}</div>
       ${open ? pkPanel(x) : ""}</li>`; }).join("")}</ul>
     <p class="ro">${ic("info", "ic-sm")}<span>Cada módulo vem desligado, com caminhos e limites fixos no código. Não roda código de fora nem importa arquivo do n8n.</span></p>`;
-  const conexoes = `<p class="hint pk-intro">Configure cada serviço uma vez. Módulos, fluxos e rotinas escolhem a conexão pelo nome; trocar a chave aqui vale para todos.</p>
-    <ul class="card conn-list" aria-label="Conexões">${CONNS.map((c) => { const u = connUsers(c);
+  const conexoes = `<ul class="card conn-list" aria-label="Credenciais">${CONNS.map((c) => { const u = connUsers(c);
       return `<li class="auto"><span class="tile">${ic(c.kind === "chatwoot" ? "message-circle" : "cable")}</span><div><p class="t">${c.n} <span class="tag">${c.kind === "chatwoot" ? "Chatwoot" : "Serviço"}</span></p><p class="meta"><span>${c.url}</span><span>${c.info}</span></p><p class="meta"><span class="pill on"><i></i>Pronta</span><span>${c.key}</span><span>${u.length ? `Usada por ${u.length}: ${u.join(", ")}` : "Nenhuma automação usa ainda"}</span></p></div>
       <div class="ctl"><button class="btn btn-secondary btn-sm" type="button" data-conn-test="${c.id}" aria-label="Testar “${c.n}”">${ic("plug-zap", "ic-sm")}Testar</button><button class="iconbtn" type="button" data-x="conn-menu" data-id="${c.id}" aria-label="Mais opções de “${c.n}”">${ic("ellipsis")}</button></div></li>`; }).join("")}</ul>
     <ul class="card ro-list">
       <li>${ic("lock", "ic-sm")}<span>A chave fica cifrada no servidor e nunca volta para a tela: aparece só o final.</span></li>
-      <li>${ic("globe", "ic-sm")}<span>Cada conexão fala só com o endereço dela, por https. Mudar o endereço pede a chave de novo, para ela nunca seguir para outro lugar.</span></li>
-      <li>${ic("shield-check", "ic-sm")}<span>Criar, editar ou remover pede a sua senha. Uma conexão em uso não sai antes de você trocar a conexão nas automações.</span></li></ul>`;
+      <li>${ic("globe", "ic-sm")}<span>Cada credencial fala só com o endereço dela, por https. Mudar o endereço pede a chave de novo, para ela nunca seguir para outro lugar.</span></li>
+      <li>${ic("shield-check", "ic-sm")}<span>Criar, editar ou remover pede a sua senha. Uma credencial em uso não sai antes de você trocar a credencial nas automações.</span></li></ul>`;
   const body = { rotinas, fluxos, modulos, conexoes }[st.af];
-  const newBtn = st.af === "conexoes" ? `<button class="btn btn-primary btn-sm" type="button" data-x="conn-add" aria-haspopup="dialog">${ic("plus", "ic-sm")}Nova conexão</button>` : st.af === "modulos" ? "" : `<button class="btn btn-primary btn-sm" type="button" data-au-open aria-haspopup="dialog">${ic("plus", "ic-sm")}${st.af === "fluxos" ? "Novo fluxo" : "Criar automação"}</button>`;
-  const lede = { rotinas: `Lembretes, resumos e rotinas que rodam sozinhos, sempre no seu fuso. <span class="num">${ROTS.filter((r) => r[4] === "on").length} de 20</span> ativas.`, fluxos: "Passo a passo que você monta, com gatilho, passos e limites.", modulos: "Fluxos validados no n8n, agora dentro da Zuri. Só ligar e escolher a conexão.", conexoes: "Os serviços de fora que as automações podem usar, num lugar só." }[st.af];
+  const newBtn = st.af === "conexoes" ? `<button class="btn btn-primary btn-sm" type="button" data-x="conn-add" aria-haspopup="dialog">${ic("plus", "ic-sm")}Nova credencial</button>` : st.af === "modulos" ? "" : `<button class="btn btn-primary btn-sm" type="button" data-au-open aria-haspopup="dialog">${ic("plus", "ic-sm")}${st.af === "fluxos" ? "Novo fluxo" : "Criar automação"}</button>`;
+  const lede = { rotinas: `Lembretes, resumos e rotinas que rodam sozinhos, no seu fuso. <span class="num">${ROTS.filter((r) => r[4] === "on").length} de 20</span> ativas.`, fluxos: "Sequências de passos que você monta, com hora para rodar e limites.", modulos: "Rotinas do consultório já testadas no n8n. Você liga, escolhe a credencial e acompanha o ensaio.", conexoes: "Endereços e chaves dos serviços de fora, guardados uma vez e usados por todos os módulos." }[st.af];
   return `<div class="page">
-    <header class="pagehead"><div><h1>Automações</h1><p>${lede}</p></div>
+    <header class="pagehead"><div><h1>${crm ? "CRM" : "Automações"}</h1><p>${lede}</p></div>
       <div class="actions">${newBtn}</div></header>
     <div class="tabs-row">${tabs}</div>
     ${body}
@@ -2773,16 +2926,9 @@ const MEMS = [
     ["Talvez troque de plano de internet em dezembro.", "Objetivo", "Incerta", "Anotada pela Zuri numa conversa", "15/10", ""],
     ["Mora no Batel.", "Fato", "Passado", "Guardada por você", "desde 2022", ""]
 ];
-function memoria() {
-  const M = MEMS;
-  const mf = st.mf || "todas";
-  const MF = { todas: () => true, atuais: (m) => m[2] === "Atual", incertas: (m) => m[2] === "Incerta", passadas: (m) => m[2] === "Passado" };
-  const vis = M.filter(MF[mf]).filter((m) => !st.mt || m[1] === st.mt);
+const memNewDlg = () => {
   const cats = ["Fato", "Preferência", "Objetivo", "Projeto", "Hábito", "Pessoa", "Outro"];
-  return `<div class="page">
-    <header class="pagehead"><div><h1>Memória</h1><p>O que a Zuri sabe sobre você. Corrija ou apague o que quiser; nada muda sem você saber.</p></div>
-      <div class="actions"><button class="btn btn-primary btn-sm" type="button" data-mem-new aria-haspopup="dialog">${ic("plus", "ic-sm")}Nova memória</button></div></header>
-    ${st.memNew ? `<div class="wiz-wrap dlg-wrap" data-scrim><div class="wiz dlg-box" role="dialog" aria-modal="true" aria-labelledby="mem-h"><form class="mem-add mem-dlg" onsubmit="return false">
+  return st.memNew ? `<div class="wiz-wrap dlg-wrap" data-scrim><div class="wiz dlg-box" role="dialog" aria-modal="true" aria-labelledby="mem-h"><form class="mem-add mem-dlg" onsubmit="return false">
       <div class="wz-head"><div><h2 id="mem-h">Nova memória</h2><p class="hint">Algo que a Zuri deve lembrar sobre você.</p></div><button class="iconbtn" type="button" data-mem-close aria-label="Fechar">${ic("x")}</button></div>
       <div class="wz-body">
       <div class="field"><label class="label" for="mem-q">O que a Zuri deve guardar</label><span class="mem-in" data-mic-box data-mic-text="Prefiro marcar reuniões de manhã, antes das 11h.">${st.mv ? recUI() : `<input id="mem-q" class="input" placeholder="Ex.: Moro em Curitiba desde 2024" maxlength="500" aria-describedby="mem-hint"><button class="iconbtn mic" type="button" data-mic aria-label="Falar a memória">${ic("mic")}</button>`}</span><p class="hint" id="mem-hint" data-mic-hint>Escreva, ou toque no microfone e fale. Até 500 caracteres.</p></div>
@@ -2790,22 +2936,11 @@ function memoria() {
       <div class="mem-local"><button class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="mem-lo" data-mem-lo></button><span><span class="t" id="mem-lo">Nunca enviar para fora</span><span class="hint">Fica só na sua conta: não vai para modelos pagos.</span></span></div>
       </div>
       <div class="wz-foot"><span class="grow"></span><button class="btn btn-quiet" type="button" data-mem-close>Cancelar</button><button class="btn btn-primary" type="submit">Guardar</button></div>
-    </form></div></div>` : ""}
-    <section class="card rev-card" aria-labelledby="h-rev"><div class="p-sec-h"><h2 id="h-rev">Para revisar</h2><span class="pill wait"><i></i>Possível atualização</span></div>
-      <p class="hint">A mais recente diz que mudou onde você mora.</p>
-      <div class="rev-pair"><div><p class="k">Mais antiga</p><p>Mora no Batel.</p></div><div><p class="k">Mais recente</p><p>Está se mudando para um apartamento no Água Verde.</p></div></div>
-      <div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-rev>Marcar a antiga como passado</button><button class="btn btn-secondary btn-sm" type="button" data-rev>Manter as duas</button><button class="btn btn-quiet btn-sm" type="button" data-rev>Substituir a antiga</button><button class="btn btn-quiet btn-sm" type="button" data-rev>Descartar a recente</button></div></section>
-    <div class="filters" style="margin-top:var(--s6)"><div class="seg" role="group" aria-label="Mostrar">${[["todas", "Todas"], ["atuais", "Atuais"], ["incertas", "Incertas"], ["passadas", "Passadas"]].map(([k, l]) => `<button type="button" data-mf="${k}" aria-pressed="${k === mf}">${l} <span class="n">${M.filter(MF[k]).length}</span></button>`).join("")}</div>
-      <div class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ms">Buscar nas memórias</label><input id="ms" class="input" placeholder="Buscar nas memórias"></div>
-      <label class="sr" for="mt">Filtrar por tipo</label><select id="mt" class="input" data-mt><option value="">Todos os tipos</option>${cats.map((c) => `<option${st.mt === c ? " selected" : ""}>${c}</option>`).join("")}</select></div>
-    <ul class="card mem" style="margin-top:var(--s4)" aria-label="Memórias">${vis.length ? "" : `<li class="empty-li">${ic("search", "ic-sm")}Nenhuma memória com esse filtro.</li>`}${vis.map(([f, k, s, o, d, lo]) => `<li><div><p class="fact">${f}</p><p class="meta"><span class="tag">${k}</span>${s === "Incerta" ? `<span class="prio hot">${ic("circle-help", "ic-sm")}Incerta</span>` : s === "Passado" ? `<span class="tag">${ic("history", "ic-sm")}Passado</span>` : ""}${lo ? `<span class="tag">${ic("lock", "ic-sm")}Só na sua conta</span>` : ""}<span>${o}</span><span class="num">${d}</span></p></div>
-      <div class="acts"><button class="iconbtn" type="button" data-x="mem-edit" aria-label="Atualizar “${f}”">${ic("pencil", "ic-sm")}</button><button class="iconbtn" type="button" data-x="mem-menu" aria-label="Mais opções de “${f}”">${ic("ellipsis", "ic-sm")}</button></div></li>`).join("")}</ul>
-  </div>`;
-}
-
+    </form></div></div>` : "";
+};
 /* ---------- Configurações: todas as seções que já existem na develop (09/11 18:23) ---------- */
-const CFG = [["conta", "user", "Conta"], ["agenda", "calendar-days", "Agenda"], ["seg", "shield-check", "Segurança"], ["ia", "gauge", "Uso da IA"], ["modelos", "sparkles", "Modelos e limites"], ["avisos", "bell", "Avisos"], ["integ", "plug", "Integrações"], ["dados", "database", "Dados"], ["diag", "activity", "Diagnóstico"]];
-const CFG_HINT = { conta: "Nome, idioma, fuso, tema e senha", agenda: "Horário, visualização e lembretes", seg: "Duas etapas, passkeys, saída automática e acesso pela API", ia: "Uso de hoje e consumo por período", modelos: "Modelo, modelos pagos, agentes e limites", avisos: "Resumo do dia, canais e o que chega em cada um", integ: "Google, avaliações e serviços externos", dados: "Backup, armazenamento e lixeira", diag: "Falhas recentes e versão" };
+const CFG = [["conta", "user", "Conta"], ["agenda", "calendar-days", "Agenda"], ["seg", "shield-check", "Segurança"], ["ia", "gauge", "Uso da IA"], ["modelos", "sparkles", "Modelos e limites"], ["avisos", "bell", "Avisos"], ["integ", "plug", "Integrações"], ["dados", "database", "Dados"], ["diag", "activity", "Diagnóstico"], ["sobre", "info", "Sobre a Zuri"]];
+const CFG_HINT = { conta: "Nome, idioma, fuso, tema e senha", agenda: "Horário de trabalho, visualização e lembretes", seg: "Duas etapas, passkeys, sessões e acesso pela API", ia: "Quanto a IA usou hoje e em cada período", modelos: "Modelo de IA, agentes e limites", avisos: "O que chega, quando e por qual canal", integ: "Google, Telegram e outros serviços", dados: "Cópias de segurança, espaço e lixeira", diag: "Falhas recentes e como relatar", sobre: "Versão instalada e novidades" };
 const hh2 = (h) => `${String(h).padStart(2, "0")}:00`;
 const swRow = (id, t, h, on, dis) => `<div class="set-row"><div class="grow"><p class="t" id="${id}">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div><button class="switch" type="button" role="switch" aria-checked="${on}" aria-labelledby="${id}"${dis ? " disabled" : ""}></button></div>`;
 const ctlRow = (t, h, ctl) => `<div class="set-row"><div class="grow"><p class="t">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div>${ctl}</div>`;
@@ -2835,7 +2970,7 @@ function cfgAgenda() {
   const isDefault = de === 8 && ate === 18;
   const cal = [["var(--cal-a)", "Pessoal", "principal", 2], ["var(--cal-b)", "Curso e esporte", "O Google só deixa ler esta agenda.", 1], ["var(--control)", "Feriados no Brasil", "Também usada para pular feriados nos pedidos de avaliação.", 1], ["var(--line-strong)", "Trabalho antigo", "", 0]];
   return sec("h-ag", "Agenda", "Como a agenda aparece quando você abre.",
-    `<div class="set-row set-col"><div class="grow"><p class="t" id="cfg-h">Horário que aparece</p><p class="hint">O que fica fora desse horário continua lá, nas linhas “Antes” e “Depois”.</p></div>
+    `<div class="set-row set-col"><div class="grow"><p class="t" id="cfg-h">Horário de trabalho</p><p class="hint">É o horário que a semana e o dia mostram. Os eventos fora dele aparecem nas linhas “Antes” e “Depois”, ou somem com a opção abaixo.</p></div>
         <div class="ctl-pair" role="group" aria-labelledby="cfg-h">
           <label for="cfg-de">Começa às<select id="cfg-de" class="input input-sm">${opts(0, ate - 1, de)}</select></label>
           <label for="cfg-ate">Termina às<select id="cfg-ate" class="input input-sm">${opts(de + 1, 24, ate)}</select></label>
@@ -2844,7 +2979,10 @@ function cfgAgenda() {
         <div class="hours-scale num" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
       ${ctlRow("Ao abrir, mostrar", "No celular, a agenda abre sempre no dia.", segc("Ao abrir, mostrar", ["Dia", "Semana", "Mês"], 1))}
       ${ctlRow("A semana começa", "", segc("A semana começa", ["Domingo", "Segunda"], 1))}
+      ${ctlRow("Dias de trabalho", "", `<div class="seg seg-xs seg-days" role="group" aria-label="Dias de trabalho">${["seg", "ter", "qua", "qui", "sex", "sáb", "dom"].map((x, k) => `<button type="button" aria-pressed="${k < 5}">${x}</button>`).join("")}</div>`)}
       ${swRow("cfg-fds", "Mostrar sábado e domingo", "", true)}
+      ${ctlRow("Eventos de dia inteiro", "Feriados, aniversários e lembretes do dia todo. Escondidos, ficam numa linha que abre com um toque.", segc("Eventos de dia inteiro", ["Mostrar", "Esconder"], st.agAD ? 0 : 1))}
+      ${ctlRow("Eventos fora do horário", "Escondidos, a Zuri mostra só quantos são, para nada sumir sem você saber.", segc("Eventos fora do horário", ["Mostrar", "Esconder"], st.agOut ? 1 : 0))}
       ${ctlRow("Lembrete dos eventos novos", "Vale para o que você ou a Zuri criar daqui para frente.", `<label class="sr" for="cfg-lb">Lembrete dos eventos novos</label><select id="cfg-lb" class="input input-sm"><option>Sem lembrete</option><option>5 min antes</option><option selected>15 min antes</option><option>1 hora antes</option><option>1 dia antes</option></select>`)}`, save())
   + sec("h-cals", "Agendas da conta", "O que a Zuri pode fazer em cada agenda do Google. É a mesma escolha de Integrações › Google.",
     `<ul class="cal-list">${cal.map(([c, n, d, mode], k) => `<li class="set-row"><span class="cal-dot" style="background:${c}" aria-hidden="true"></span><div class="grow"><p class="t" id="cal-${k}">${n}${d === "principal" ? ' <span class="tag">principal</span>' : ""}</p>${d && d !== "principal" ? `<p class="hint">${d}</p>` : ""}</div>
@@ -3005,18 +3143,18 @@ function cfgDados() {
 function cfgDiag() {
   return sec("h-diag", "Situação", "Aqui ficam só o tipo da falha, onde ela aconteceu e quando. Nunca o conteúdo.",
     `<div class="set-row"><span class="tile tile-sm">${ic("circle-check", "ic-sm")}</span><div class="grow"><p class="t">Tudo funcionando</p><p class="hint">Nenhuma falha nas últimas 24 horas.</p></div></div>
-     <p class="hint num">Versão da Zuri: 0.38.0 · Código da publicação: 4f2a9c1</p>`)
+     <p class="hint num">Versão da Zuri: ${APP_VER} · <button class="linkbtn" type="button" data-cfg="sobre">Sobre a Zuri</button></p>`)
   + sec("h-fal", "Falhas registradas", "Dos últimos 30 dias.",
-    `<ul class="runs"><li><time class="num">07/11, 14:02</time><span><b>Automações</b> · Tempo esgotado ao chamar um serviço · <span class="num">1 hoje · 3 no total</span></span><span class="pill off"><i></i>Resolvida</span></li></ul>`,
-    `<a class="btn btn-quiet" href="https://github.com/pablopfg/zuri/issues/new?template=erro.yml" target="_blank" rel="noopener noreferrer">${ic("bug", "ic-sm")}Relatar no GitHub<span class="sr"> (abre em outra aba)</span></a>`);
+    `<ul class="runs"><li><time class="num">07/11, 14:02</time><span><b>Automações</b> · Tempo esgotado ao chamar um serviço · <span class="num">1 hoje · 3 no total</span></span><span class="pill off"><i></i>Resolvida</span><button class="btn btn-secondary btn-sm" type="button" data-x="report" aria-haspopup="dialog">${ic("bug", "ic-sm")}Relatar no GitHub</button></li></ul>`,
+    `<p class="hint">Relatar abre o formulário do GitHub já preenchido com os dados da falha. Você confere antes de enviar.</p>`);
 }
 
-const CFG_VIEW = { conta: cfgConta, agenda: cfgAgenda, seg: cfgSeg, ia: cfgIa, modelos: cfgModelos, avisos: cfgAvisos, integ: cfgInteg, dados: cfgDados, diag: cfgDiag };
+const CFG_VIEW = { conta: cfgConta, agenda: cfgAgenda, seg: cfgSeg, ia: cfgIa, modelos: cfgModelos, avisos: cfgAvisos, integ: cfgInteg, dados: cfgDados, diag: cfgDiag, sobre: (...a) => cfgSobre(...a) };
 function configuracoes() {
   const cur = CFG.find((x) => x[0] === st.cfg);
   return `<div class="page">
-    <header class="pagehead"><div><h1>Configurações</h1><p>Sua conta, a segurança e o que a Zuri pode usar.</p></div></header>
-    <div class="settings"><nav aria-label="Seções das configurações"><ul>${CFG.map(([k, i, l]) => `<li><a href="${href("configuracoes")}" data-cfg="${k}"${k === st.cfg ? ' aria-current="page"' : ""}>${ic(i, "ic-sm")}<span class="cfg-l"><span>${l}</span><span class="cfg-h">${CFG_HINT[k]}</span></span></a></li>`).join("")}</ul></nav>
+    <header class="pagehead"><div><h1>Configurações</h1><p>Conta, segurança, integrações e o jeito como a Zuri trabalha para você.</p></div></header>
+    <div class="settings"><details class="cfg-m"><summary><span class="cfg-m-l">Seção</span><b>${cur[2]}</b>${ic("chevron-down", "ic-sm")}</summary><ul>${CFG.map(([k, i, l]) => `<li><a href="${href("configuracoes")}" data-cfg="${k}"${k === st.cfg ? ' aria-current="page"' : ""}>${ic(i, "ic-sm")}<span class="cfg-l"><span>${l}</span><span class="cfg-h">${CFG_HINT[k]}</span></span></a></li>`).join("")}</ul></details><nav class="cfg-d" aria-label="Seções das configurações"><ul>${CFG.map(([k, i, l]) => `<li><a href="${href("configuracoes")}" data-cfg="${k}"${k === st.cfg ? ' aria-current="page"' : ""}>${ic(i, "ic-sm")}<span class="cfg-l"><span>${l}</span><span class="cfg-h">${CFG_HINT[k]}</span></span></a></li>`).join("")}</ul></nav>
       <div class="cfg-body"><h2 class="sr">${cur[2]}</h2>${CFG_VIEW[st.cfg]()}</div></div>
   </div>`;
 }
@@ -3097,30 +3235,30 @@ function entrar() {
   const brandM = `<span class="brand login-mob">${logo()}<span class="wm">Zuri</span></span>`;
   let card;
   if (st.rec === "pedir") card = `<form class="login-card" data-rec onsubmit="return false" aria-labelledby="h-in" novalidate>${brandM}
-      <div><h1 id="h-in">Esqueci minha senha</h1><p class="sub">Digite o e-mail da sua conta. Se for o cadastrado, a Zuri manda um link para você criar uma senha nova.</p></div>
+      <div><h1 id="h-in">Criar uma senha nova</h1><p class="sub">Informe o e-mail da conta. Se ele estiver cadastrado, você recebe um link para criar a senha nova.</p></div>
       <div class="field"><label class="label" for="rec-e">E-mail</label><span class="with-ic">${ic("mail", "ic-sm")}<input id="rec-e" class="input" type="email" autocomplete="username" inputmode="email" spellcheck="false" autocapitalize="none"></span></div>
       ${hvLine()}
       <button class="btn btn-primary btn-block btn-lg" type="submit">Enviar o link</button>
       <p class="login-foot"><button class="linkbtn" type="button" data-rec="">Voltar para entrar</button></p></form>`;
   else if (st.rec === "enviado") card = `<div class="login-card" role="region" aria-labelledby="h-in">${brandM}
       <span class="tile tile-ok">${ic("mail")}</span>
-      <div><h1 id="h-in" tabindex="-1">Confira o seu e-mail</h1><p class="sub">Se o e-mail for o da conta, o link chega em alguns minutos. Ele vale por 30 minutos e funciona uma vez só. Não chegou? Olhe a caixa de spam ou peça de novo daqui a pouco.</p></div>
+      <div><h1 id="h-in" tabindex="-1">Confira o seu e-mail</h1><p class="sub">Se o e-mail estiver cadastrado, o link chega em alguns minutos. Ele vale por 30 minutos e funciona uma vez. Se não chegar, olhe o spam ou peça outro.</p></div>
       <button class="btn btn-secondary btn-block btn-lg" type="button" data-rec="">Voltar para entrar</button>
       <p class="login-foot"><button class="linkbtn" type="button" data-rec="pedir">Pedir um link novo</button></p></div>`;
   else card = `<form class="login-card${st.lg ? " is-busy" : ""}" onsubmit="return false" aria-labelledby="h-in" novalidate>${st.lg ? '<div class="ld-bar ld-card" aria-hidden="true"><i></i></div>' : ""}${brandM}
-      <div><h1 id="h-in" tabindex="-1">Entrar</h1><p class="sub">Continue de onde parou.</p></div>
+      <div><h1 id="h-in" tabindex="-1">Entrar</h1><p class="sub">Entre para continuar de onde parou.</p></div>
       <div class="field"><label class="label" for="li-e">E-mail</label><span class="with-ic">${ic("mail", "ic-sm")}<input id="li-e" class="input" type="email" autocomplete="username" inputmode="email" spellcheck="false" autocapitalize="none"${st.lg ? ' value="ana@exemplo.com.br" readonly' : ""}></span></div>
       <div class="field"><div class="label-row"><label for="pw" class="label">Senha</label><button class="linkbtn" type="button" data-rec="pedir">Esqueci minha senha</button></div><span class="pw with-ic">${ic("lock", "ic-sm")}<input id="pw" class="input" type="password" autocomplete="current-password"${st.lg ? ' value="senhaexemplo" readonly' : ""}><button class="iconbtn" type="button" aria-label="Mostrar a senha" aria-pressed="false">${ic("eye", "ic-sm")}</button></span></div>
       ${hvLine()}
-      ${st.lg ? `<button class="btn btn-primary btn-block btn-lg" type="submit" disabled aria-busy="true">${ic("loader-circle", "ic-sm spin")}Entrando…</button>` : `<button class="btn btn-primary btn-block btn-lg" type="submit">Entrar</button>`}
+      ${st.lg ? `<button class="btn btn-primary btn-block btn-lg" type="submit" disabled aria-busy="true">${ic("loader-circle", "ic-sm spin")}Entrando…</button>` : st.hv === "wait" ? `<button class="btn btn-primary btn-block btn-lg" type="submit" disabled>Espere 14:52</button>` : `<button class="btn btn-primary btn-block btn-lg" type="submit">Entrar</button>`}
     </form>`;
   return `<main id="conteudo" class="login">
     <div class="login-art"><span class="brand">${logo()}<span class="wm">Zuri</span></span>
-      <p class="art-head">Seu dia em ordem, sem esforço.</p><svg class="art-waves" viewBox="0 0 400 400" aria-hidden="true"><circle cx="200" cy="200" r="20"/><circle cx="200" cy="200" r="78"/><circle cx="200" cy="200" r="128"/><circle cx="200" cy="200" r="184"/></svg></div>
+      <p class="art-head">Sua agenda, suas tarefas e seus lembretes, em ordem.</p><svg class="art-waves" viewBox="0 0 400 400" aria-hidden="true"><circle cx="200" cy="200" r="20"/><circle cx="200" cy="200" r="78"/><circle cx="200" cy="200" r="128"/><circle cx="200" cy="200" r="184"/></svg></div>
     <div class="login-form">${card}</div></main>`;
 }
 
-const SCREEN = { inicio, conversa, tarefas, notas, agenda, contatos, avaliacoes, automacoes, memoria, configuracoes, estados, identidade };
+const SCREEN = { inicio, conversa, tarefas, notas, agenda, contatos, avaliacoes, automacoes, crm: automacoes, memoria, configuracoes, estados, identidade };
 function render() {
   const html = document.documentElement;
   html.dataset.theme = st.t;
@@ -3129,6 +3267,7 @@ function render() {
   document.getElementById("pt").value = st.t;
   const app = document.getElementById("app");
   if (st.s === "entrar") { app.className = ""; app.innerHTML = entrar(); hvStart(); return; }
+  if (st.s === "verificacao") { app.className = ""; app.innerHTML = verificacao(); return; }
   app.className = "app";
   app.innerHTML = `${side()}<div class="main">${topbar()}<main id="conteudo">${st.ld ? pageLoading(st.s) : SCREEN[st.s]()}</main>${st.s === "conversa" ? "" : tabbar()}</div>${pops()}${st.s === "automacoes" && st.au ? wizard() : ""}`;
   if (st.s === "estados" && !params.get("captura")) runLoading();
@@ -3243,7 +3382,7 @@ document.addEventListener("click", (e) => {
   if (t.matches("[data-pk-test]")) { st.pkTest = "..."; render(); refocus("[data-pk-test]"); setTimeout(() => { st.pkTest = "ok"; render(); refocus("[data-pk-test]"); }, 700); return; }
   if (t.matches("[data-pk-set]")) { const v = t.dataset.pkSet; st.pks.avaliacao = v; if (v === "off") st.pk = ""; render(); refocus(v === "off" ? '[data-pk="avaliacao"]' : "#pk-avaliacao button"); hint(v === "ensaio" ? "Ensaio começou. Nada é enviado até você ligar de verdade." : v === "on" ? "Ligado. A Zuri envia dentro dos limites." : "Desligado. Nada mais sai."); return; }
   if (t.matches("[data-pk-watch]")) { const k = t.dataset.pkWatch; if (st.pkWatch.has(k)) st.pkWatch.delete(k); else st.pkWatch.add(k); render(); refocus(`[data-pk-watch="${k}"]`); return; }
-  if (t.matches("[data-af]")) { st.af = t.dataset.af; render(); refocus(`[data-af="${st.af}"]`); return; }
+  if (t.matches("[data-af]")) { st.af = t.dataset.af; const want = ["modulos", "conexoes"].includes(st.af) ? "crm" : "automacoes"; if (st.s !== want) goTo(want); else render(); refocus(`[data-af="${st.af}"]`); return; }
   if (t.matches("[data-sug]")) { const ok = t.dataset.sug === "ok"; t.closest(".sugg-card").remove(); hint(ok ? "Rotina aprovada. A primeira vez é sexta, às 17:00." : "Sugestão recusada. Nada foi agendado."); return; }
   if (t.matches("[data-rev]")) { t.closest(".rev-card").remove(); hint(`Feito: ${esc(t.textContent.trim().toLowerCase())}.`); return; }
   if (t.matches("[data-cfg-save]")) { hint("Salvo."); return; }
@@ -3390,15 +3529,15 @@ function flowDlg(nome, opener, novo) {
     ok: () => { const n = dlgVal("[data-fl-name]") || nome; FLOW_STEPS[n] = DLG.def.steps; if (novo && typeof FLOWS !== "undefined" && !FLOWS.some((f) => f[0] === n)) FLOWS.push([n, `Todo dia · ${DLG.def.steps.join(" → ")}`, `${DLG.def.steps.length} passos`, "Ainda não rodou", "on", "Ativo"]); render(); say(novo ? `Fluxo “${n}” criado e ligado.` : "Fluxo salvo."); } }, opener);
 }
 function connDlg(opener) {
-  dlgShow({ t: "Nova conexão", sub: "Um serviço que os fluxos podem chamar. Só https, sem rede interna.", kind: "conn",
+  dlgShow({ t: "Nova credencial", sub: "Um serviço que os fluxos podem chamar. Só https, sem rede interna.", kind: "conn",
     body: `<label class="field"><span class="label">Nome</span><input class="input" data-cn-name value="CRM do consultório"></label>
       <label class="field"><span class="label">Endereço</span><input class="input" data-cn-url value="https://crm.exemplo.com.br" inputmode="url"></label>
       <label class="field"><span class="label">Chave</span><select class="input" data-cn-k><option>Sem chave</option><option selected>Chave de API</option><option>Cabeçalho próprio</option></select></label>
       <label class="field"><span class="label">Valor da chave</span><input class="input" type="password" value="xxxxxxxxxxxx" autocomplete="off"><span class="hint">Fica cifrada e nunca volta para a tela.</span></label>
       <fieldset class="field"><legend class="label">O que os fluxos podem fazer</legend><div class="chk-row">${["GET", "POST", "PUT", "PATCH"].map((m) => `<label><input type="checkbox"${m === "GET" ? " checked" : ""}> ${m}</label>`).join("")}</div><span class="hint">Apagar (DELETE) nunca é permitido.</span></fieldset>
       <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-cn-test>${ic("plug-zap", "ic-sm")}Testar</button><span data-cn-st role="status"></span></div>`,
-    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar conexão</button>`,
-    ok: () => { const url = dlgVal("[data-cn-url]"); if (!/^https:\/\/[^/\s]+\.[^/\s]+/.test(url)) { const s = document.querySelector("[data-cn-st]"); s.textContent = "Use um endereço que comece com https://"; s.className = "err"; return false; } const n = dlgVal("[data-cn-name]") || "Conexão"; const k = dlgVal("[data-cn-k]"); const m = [...document.querySelectorAll("#dlg-host .chk-row input")].filter((x) => x.checked).map((x) => x.parentElement.textContent.trim()); senhaDlg("Conexões guardam chaves. Confirme para salvar.", () => { CONNS.push({ id: `http${CONNS.length}`, kind: "http", n, url, info: `${k} · ${m.length ? `só ${m.join(", ")}` : "nenhum método marcado"}`, key: "Chave terminada em 3d9a", extra: [] }); render(); say("Conexão salva."); }); return false; } }, opener);
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar credencial</button>`,
+    ok: () => { const url = dlgVal("[data-cn-url]"); if (!/^https:\/\/[^/\s]+\.[^/\s]+/.test(url)) { const s = document.querySelector("[data-cn-st]"); s.textContent = "Use um endereço que comece com https://"; s.className = "err"; return false; } const n = dlgVal("[data-cn-name]") || "Credencial"; const k = dlgVal("[data-cn-k]"); const m = [...document.querySelectorAll("#dlg-host .chk-row input")].filter((x) => x.checked).map((x) => x.parentElement.textContent.trim()); senhaDlg("Credenciais guardam chaves. Confirme para salvar.", () => { CONNS.push({ id: `http${CONNS.length}`, kind: "http", n, url, info: `${k} · ${m.length ? `só ${m.join(", ")}` : "nenhum método marcado"}`, key: "Chave terminada em 3d9a", extra: [] }); render(); say("Credencial salva."); }); return false; } }, opener);
 }
 function eventoDlg(opener) {
   const dias = ["Seg, 9", "Ter, 10", "Qua, 11", "Qui, 12", "Sex, 13", "Sáb, 14", "Dom, 15"];
@@ -3609,14 +3748,14 @@ const CONNS = [
 ];
 function cwDlg(opener, c) {
   const edit = !!c;
-  dlgShow({ t: edit ? `Editar “${c.n}”` : "Nova conexão com o Chatwoot", sub: "Configure uma vez. Todo módulo que fala com o Chatwoot usa esta conexão.", kind: "conn",
+  dlgShow({ t: edit ? `Editar “${c.n}”` : "Nova credencial do Chatwoot", sub: "Configure uma vez. Todo módulo que fala com o Chatwoot usa esta credencial.", kind: "conn",
     body: `<label class="field"><span class="label">Nome</span><input class="input" data-cn-name value="${edit ? c.n : "Chatwoot do consultório"}"></label>
       <div class="grid-2"><label class="field"><span class="label">Endereço do Chatwoot</span><input class="input" data-cn-url value="${edit ? c.url : "https://chat.exemplo.com.br"}" inputmode="url" data-was="${edit ? c.url : ""}"></label>
       <label class="field"><span class="label">Número da conta</span><input class="input num" data-cn-acc value="1" inputmode="numeric"></label></div>
       <label class="field"><span class="label">Chave de acesso</span><input class="input" type="password" data-cn-key value="${edit ? "" : "xxxxxxxxxxxxxxxx"}" placeholder="${edit ? `${c.key}. Deixe em branco para manter` : ""}" autocomplete="off"><span class="hint">Fica cifrada e nunca volta para a tela. Crie no Chatwoot um agente “Zuri” só com a caixa do WhatsApp e use a chave dele.</span></label>
       <label class="field"><span class="label">Caixa de entrada</span><select class="input" data-cn-box><option>WhatsApp do consultório (API)</option></select><span class="hint">A Zuri lista as caixas que essa chave enxerga.</span></label>
       <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-cn-test>${ic("plug-zap", "ic-sm")}Testar</button><span data-cn-st role="status"></span></div>`,
-    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>${edit ? "Salvar" : "Salvar conexão"}</button>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>${edit ? "Salvar" : "Salvar credencial"}</button>`,
     ok: () => {
       const s = document.querySelector("[data-cn-st]");
       const url = dlgVal("[data-cn-url]");
@@ -3627,19 +3766,19 @@ function cwDlg(opener, c) {
       const acc = (dlgRaw("[data-cn-acc]").replace(/\D/g, "") || "1").slice(0, 6);
       const box = dlgVal("[data-cn-box]");
       const newKey = !!dlgRaw("[data-cn-key]");
-      senhaDlg("Conexões guardam chaves. Confirme para salvar.", () => {
+      senhaDlg("Credenciais guardam chaves. Confirme para salvar.", () => {
         const info = `Conta ${acc} · caixa “${box.replace(" (API)", "")}” (API)`;
         if (edit) { c.n = n; c.url = url; c.info = info; if (newKey) c.key = "Chave nova, terminada em 7b1e"; }
         else CONNS.push({ id: `cw${CONNS.length}`, kind: "chatwoot", n, url, info, key: "Chave terminada em 7b1e", extra: [] });
-        render(); say(edit ? "Conexão salva. Vale para todas as automações que a usam." : "Conexão salva. Os módulos do Chatwoot já podem usar.");
+        render(); say(edit ? "Credencial salva. Vale para todas as automações que a usam." : "Credencial salva. Os módulos do Chatwoot já podem usar.");
       });
       return false;
     } }, opener);
 }
 function labelsDlg(opener) {
   dlgShow({ t: "Etiquetas sincronizadas", sub: "A Zuri copia, só para ler, os contatos das etiquetas marcadas. Nada muda no Google.",
-    body: `<fieldset class="field"><legend class="sr">Etiquetas do Google Contatos</legend><ul class="lbl-list">${LABELS.map(([n, c, on], k) => `<li><label><input type="checkbox" data-lbl="${k}"${on ? " checked" : ""}><span>${n}</span><span class="num muted">${labelCount(n, c)}</span></label></li>`).join("")}</ul></fieldset>
-      <p class="hint">Quem sai das etiquetas marcadas some da Zuri na próxima sincronização. Marcar uma etiqueta nova lê de novo só os contatos dela. Até 5.000 contatos.</p>`,
+    body: `<div class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="lbl-q">Buscar etiqueta</label><input id="lbl-q" class="input" placeholder="Buscar etiqueta" autocomplete="off" data-lbl-q></div><fieldset class="field"><legend class="sr">Etiquetas do Google Contatos</legend><ul class="lbl-list">${LABELS.map(([n, c, on], k) => `<li data-q="${fold(n)}"><label><input type="checkbox" data-lbl="${k}"${on ? " checked" : ""}><span>${n}</span><span class="num muted">${labelCount(n, c)}</span></label></li>`).join("")}</ul></fieldset>
+      <p class="p-empty tagf-none" hidden>Nenhuma etiqueta com esse nome.</p><p class="hint">Quem sai das etiquetas marcadas some da Zuri na próxima sincronização. Marcar uma etiqueta nova lê de novo só os contatos dela. Até 5.000 contatos.</p>`,
     foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar etiquetas</button>`,
     ok: () => {
       const marks = [...document.querySelectorAll("#dlg-host [data-lbl]")];
@@ -3659,13 +3798,13 @@ const ACT6 = [
   [(t) => t.matches("[data-x=ct-labels]"), (t) => labelsDlg(t)],
   [(t) => t.matches("[data-go-ped]"), (t) => { st.rvv = "pedidos"; st.p = t.dataset.goPed; goTo("avaliacoes"); }],
   [(t) => t.matches("[data-rv-open]"), (t) => { st.rvv = "avaliacoes"; st.p = t.dataset.rvOpen; render(); refocus("#h-p"); }],
-  [(t) => t.matches("[data-x=conn-add]"), (t) => menuDlg("Nova conexão", [["message-circle", "Chatwoot", (op) => cwDlg(op)], ["cable", "Outro serviço (https)", (op) => connDlg(op)]], t)],
+  [(t) => t.matches("[data-x=conn-add]"), (t) => menuDlg("Nova credencial", [["message-circle", "Chatwoot", (op) => cwDlg(op)], ["cable", "Outro serviço (https)", (op) => connDlg(op)]], t)],
   [(t) => t.matches("[data-x=conn-cw]"), (t) => cwDlg(t)],
   [(t) => t.matches("[data-conn-test]"), (t) => { const c = CONNS.find((x) => x.id === t.dataset.connTest); busy(t, 700, () => say(c.kind === "chatwoot" ? "Conectou. A chave enxerga a caixa “WhatsApp do consultório”." : "Respondeu em 180 ms.")); }],
   [(t) => t.matches("[data-x=conn-menu]"), (t) => { const c = CONNS.find((x) => x.id === t.dataset.id); const u = connUsers(c);
-    menuDlg(c.n, [["pencil", "Editar", (op) => (c.kind === "chatwoot" ? cwDlg(op, c) : senhaDlg("Conexões guardam chaves. Confirme para editar.", () => say("Conexão salva.")))],
-      ["key-round", "Trocar a chave", () => senhaDlg("A chave nova vale na hora para todas as automações que usam esta conexão.", () => { c.key = "Chave nova, terminada em 7b1e"; render(); say("Chave trocada. A antiga foi apagada."); })],
-      ["trash-2", "Remover", (op) => (u.length ? dlgShow({ t: "Esta conexão está em uso", sub: `Usada por: ${u.join(", ")}. Troque a conexão ou desligue essas automações antes de remover.` }, op) : confirmDlg(`Remover “${c.n}”?`, "A chave é apagada do servidor. Nada muda no serviço.", "Remover", () => { CONNS.splice(CONNS.indexOf(c), 1); DLG.opener = null; render(); refocus('[data-af="conexoes"]'); say("Conexão removida."); }, op)), true]], t); }]
+    menuDlg(c.n, [["pencil", "Editar", (op) => (c.kind === "chatwoot" ? cwDlg(op, c) : senhaDlg("Credenciais guardam chaves. Confirme para editar.", () => say("Credencial salva.")))],
+      ["key-round", "Trocar a chave", () => senhaDlg("A chave nova vale na hora para todas as automações que usam esta credencial.", () => { c.key = "Chave nova, terminada em 7b1e"; render(); say("Chave trocada. A antiga foi apagada."); })],
+      ["trash-2", "Remover", (op) => (u.length ? dlgShow({ t: "Esta credencial está em uso", sub: `Usada por: ${u.join(", ")}. Troque a credencial ou desligue essas automações antes de remover.` }, op) : confirmDlg(`Remover “${c.n}”?`, "A chave é apagada do servidor. Nada muda no serviço.", "Remover", () => { CONNS.splice(CONNS.indexOf(c), 1); DLG.opener = null; render(); refocus('[data-af="conexoes"]'); say("Credencial removida."); }, op)), true]], t); }]
 ];
 ACT.unshift(...ACT6);
 document.addEventListener("change", (e) => {
@@ -3690,13 +3829,9 @@ function sugestoes() {
 }
 /* Verificação de robô: no sistema, a caixa só aparece quando o serviço de verificação pede um clique;
    na maioria das vezes passa sozinha. Aqui o protótipo simula os três estados. */
-const hvLine = () => st.hv === "ok"
-  ? `<p class="hv ok" data-hv role="status">${ic("shield-check", "ic-sm")}<span>Conexão conferida</span></p>`
-  : st.hv === "broken"
-    ? `<div class="hv err" data-hv role="alert">${ic("circle-alert", "ic-sm")}<span>A verificação de segurança não carregou.</span><button class="linkbtn" type="button" data-hv-retry>Recarregar a verificação</button></div>`
-    : `<p class="hv" data-hv role="status">${ic("loader-circle", "ic-sm spin")}<span>Conferindo a conexão…</span></p>`;
+const hvLine = () => hvBox(st.hv);
 function hvStart() {
-  if (CAP || st.hv === "ok" || st.hv === "broken") return;
+  if (CAP || st.hv !== "checking") return;
   clearTimeout(hvStart.t);
   hvStart.t = setTimeout(() => { st.hv = "ok"; const el = document.querySelector("[data-hv]"); if (el) el.outerHTML = hvLine(); }, 1200);
 }
@@ -3710,7 +3845,7 @@ document.addEventListener("submit", (e) => {
   if (!v || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { e.preventDefault(); e.stopImmediatePropagation(); fieldErr(em.id, v ? "Confira o e-mail: falta alguma parte." : "Digite o seu e-mail."); return; }
   fieldErr(em.id, "");
   if (!rec && !document.getElementById("pw").readOnly && !document.getElementById("pw").value) { e.preventDefault(); e.stopImmediatePropagation(); fieldErr("pw", "Digite a sua senha."); return; }
-  if (st.hv !== "ok") { e.preventDefault(); e.stopImmediatePropagation(); const h = document.querySelector("[data-hv]"); if (h && st.hv === "checking") h.querySelector("span").textContent = "Preparando a verificação de segurança… Mais um instante."; return; }
+  if (st.hv !== "ok") { e.preventDefault(); e.stopImmediatePropagation(); const h = document.querySelector("[data-hv]"); if (h && st.hv === "checking") h.querySelector("span").textContent = "Fazendo a verificação de segurança… Mais um instante."; if (h && st.hv === "ask") h.querySelector("span").textContent = "Marque a caixa da verificação para continuar."; return; }
   if (rec) { e.preventDefault(); e.stopImmediatePropagation(); st.rec = "enviado"; render(); refocus("#h-in"); }
 });
 /* Consumo da IA por período: dia (por hora), semana e mês (por dia), ano (por mês). */
@@ -3742,6 +3877,230 @@ const ACT22 = [
   [(t) => t.matches("[data-cons]"), (t) => { st.cons = pick(t.dataset.cons, ["semana", "dia", "mes", "ano"]); render(); refocus(`[data-cons="${st.cons}"]`); }]
 ];
 ACT.unshift(...ACT22);
+
+
+/* ---------- 10/11 00:51: CRM, verificação, etiquetas em lista, memória em mapa, Avaliações › Como responder, Sobre a Zuri ---------- */
+const APP_VER = "0.39.2";
+const escH = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+/* Mais etiquetas, como no Google Contatos de um consultório: muitas, e só algumas sincronizadas. */
+const EXTRA_TAGS = { carla: ["Pacientes 2026", "Retorno"], luciana: ["Pacientes 2025"], marina: ["Pacientes 2026"], pedro: ["Pacientes 2026", "Retorno"], thiago: ["Pacientes 2025"], renata: ["Pacientes 2026"], bruno: ["Pacientes 2026", "Primeira consulta"], semnome: ["Primeira consulta"], prisma: ["Parceiros"], helena: ["Parceiros"], sofia: ["Academia"], rafael: ["Academia"], julia: ["Vizinhos"], marcos: ["Condomínio"], imob: ["Condomínio"], carlos: ["Fornecedores"] };
+for (const p of PEOPLE) if (EXTRA_TAGS[p.id]) p.tags = [...(p.tags || []), ...EXTRA_TAGS[p.id]];
+LABELS.splice(0, LABELS.length,
+  ["Consultório", 9, true], ["Pacientes 2026", 6, true], ["Pacientes 2025", 2, true], ["Retorno", 2, true], ["Primeira consulta", 2, true], ["Parceiros", 2, true],
+  ["Família", 2, true], ["Mudança", 4, true], ["Condomínio", 2, true], ["Vizinhos", 1, true], ["Amigos", 1, true], ["Academia", 2, true], ["Curso", 1, true], ["Saúde", 1, true], ["Fornecedores", 18, true],
+  ["Trabalho antigo", 37, false], ["Clientes antigos", 54, false], ["Escola das crianças", 12, false], ["Futebol de quinta", 9, false], ["Igreja", 6, false], ["Imprensa", 3, false], ["Viagem 2024", 11, false]);
+
+/* Filtro de etiqueta: um botão que abre a lista com busca. Nada fica escondido numa fileira que corre para o lado. */
+function tagFilter(all) {
+  const s = synced();
+  if (s.size < 2) return "";
+  const n = st.tagf ? all.filter((p) => p.tags.includes(st.tagf)).length : all.length;
+  return `<div class="ct-filter"><button class="btn btn-secondary btn-sm tagf-btn" type="button" data-x="ct-filter" aria-haspopup="dialog">${ic("list-filter", "ic-sm")}<span>Etiqueta: <b>${st.tagf || "Todas"}</b></span><span class="n num">${n}</span>${ic("chevron-down", "ic-sm")}</button>${st.tagf ? `<button class="iconbtn" type="button" data-tagf="" aria-label="Mostrar todas as etiquetas">${ic("x", "ic-sm")}</button>` : ""}</div>`;
+}
+function tagFilterDlg(opener) {
+  const all = inSync();
+  const s = [...synced()].sort((a, b) => a.localeCompare(b));
+  const row = (k, l, n) => `<li data-q="${fold(l)}"><button type="button" data-tagf="${k}" aria-pressed="${(st.tagf || "") === k}"><span>${l}</span><span class="num muted">${n}</span>${(st.tagf || "") === k ? `<span class="on-mark">${ic("check", "ic-sm")}</span>` : ""}</button></li>`;
+  dlgShow({ t: "Filtrar por etiqueta", sub: `Mostra só os contatos de uma etiqueta. ${s.length} etiquetas sincronizadas.`,
+    body: `<div class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="tagf-q">Buscar etiqueta</label><input id="tagf-q" class="input" placeholder="Buscar etiqueta" autocomplete="off" data-tagf-q data-autofocus></div>
+      <ul class="dlg-menu tagf-list">${row("", "Todas as etiquetas", all.length)}${s.map((t) => row(t, t, all.filter((p) => p.tags.includes(t)).length)).join("")}</ul>
+      <p class="p-empty tagf-none" hidden>Nenhuma etiqueta com esse nome.</p>
+      <p class="hint">Falta alguma? <button class="linkbtn" type="button" data-x="ct-labels">Escolher as etiquetas sincronizadas</button></p>`, foot: "" }, opener);
+}
+document.addEventListener("input", (e) => {
+  const q = e.target.matches && e.target.matches("[data-tagf-q], [data-lbl-q]") ? fold(e.target.value.trim()) : null;
+  if (q === null) return;
+  const box = e.target.closest(".wz-body");
+  let shown = 0;
+  box.querySelectorAll("li[data-q]").forEach((li) => { const ok = !q || li.dataset.q.includes(q); li.hidden = !ok; if (ok) shown += 1; });
+  const none = box.querySelector(".tagf-none");
+  if (none) none.hidden = shown > 0;
+});
+
+/* ---------- Verificação de segurança: todos os estados, numa tela só ---------- */
+const HV = {
+  checking: ["status", "loader-circle", "Fazendo a verificação de segurança…", "", "ic-sm spin"],
+  ok: ["status", "shield-check", "Verificação de segurança concluída", "", "ic-sm"],
+  ask: ["status", "mouse-pointer-click", "Confirme que é você para continuar.", "box", "ic-sm"],
+  broken: ["alert", "circle-alert", "A verificação de segurança não carregou.", "retry", "ic-sm"],
+  fail: ["alert", "shield-x", "A verificação de segurança não passou. Tente de novo.", "retry", "ic-sm"],
+  wait: ["alert", "timer", "Muitas tentativas seguidas. Tente de novo em 14:52.", "", "ic-sm"]
+};
+function hvBox(s) {
+  const [role, i, txt, extra, cls] = HV[s] || HV.checking;
+  const err = role === "alert";
+  const box = extra === "box" ? `<div class="hv-box"><button class="hv-check" type="button" role="checkbox" aria-checked="false" aria-label="Confirme que você é humano" data-hv-ok>${ic("check", "ic-sm")}</button><span aria-hidden="true">Confirme que você é humano</span></div>` : "";
+  const retry = extra === "retry" ? `<button class="linkbtn" type="button" data-hv-retry>Recarregar a verificação</button>` : "";
+  return `<div class="hv${s === "ok" ? " ok" : ""}${err ? " err" : ""}" data-hv role="${role}">${ic(i, cls)}<span>${txt}</span>${retry}</div>${box}`;
+}
+const HV_STATES = [
+  ["checking", "Conferindo", "Assim que a tela abre. Leva um ou dois segundos e não pede nada."],
+  ["ok", "Concluída", "A verificação passou. O botão Entrar já funciona."],
+  ["ask", "Pede um toque", "Quando a verificação fica em dúvida (rede nova, VPN, navegador muito restrito), aparece uma caixinha para marcar."],
+  ["broken", "Não carregou", "O bloqueador de anúncios ou a rede impediu a verificação. O botão recarrega só ela, sem apagar o que você digitou."],
+  ["fail", "Não passou", "O servidor recusou a verificação. É o que um robô vê: a senha nem chega a ser conferida."],
+  ["wait", "Espera", "Depois de 10 recusas seguidas da mesma rede, a entrada espera 15 minutos, com a contagem na tela."]
+];
+function verificacao() {
+  return `<main id="conteudo" class="page hv-page">
+    <header class="pagehead"><div><h1>Verificação de segurança na entrada</h1><p>Os seis jeitos como a linha da verificação aparece em Entrar e em Esqueci minha senha. Toque num exemplo para vê-lo na tela de verdade.</p></div>
+      <div class="actions"><a class="btn btn-secondary btn-sm" href="${href("entrar")}" data-hv-see="ok">${ic("log-in", "ic-sm")}Abrir a tela de entrar</a></div></header>
+    <ul class="hv-grid">${HV_STATES.map(([k, t, d]) => `<li class="card hv-card"><p class="t">${t}</p><div class="hv-demo">${hvBox(k)}<button class="btn btn-primary btn-block" type="button" tabindex="-1" aria-hidden="true"${k === "ok" ? "" : " disabled"}>${k === "wait" ? "Espere 14:52" : "Entrar"}</button></div><p class="hint">${d}</p><button class="linkbtn" type="button" data-hv-see="${k}">Ver na tela de entrar${ic("chevron-right", "ic-sm")}</button></li>`).join("")}</ul>
+    <section class="card set-sec" aria-labelledby="h-hvh"><h2 id="h-hvh">Como funciona</h2>
+      <ul class="ro-list">
+        <li>${ic("shield-check", "ic-sm")}<span>Usa o Turnstile, a verificação gratuita da Cloudflare, que já está no sistema. Ela roda sozinha: na maior parte das vezes ninguém precisa clicar em nada.</span></li>
+        <li>${ic("bot", "ic-sm")}<span>Robô não recebe o comprovante da verificação. Sem ele, o servidor recusa a entrada antes de olhar o e-mail e a senha, e conta a recusa.</span></li>
+        <li>${ic("timer", "ic-sm")}<span>Dez recusas seguidas da mesma rede fazem a entrada esperar. As tentativas aparecem em Configurações › Segurança › Atividade de acesso.</span></li>
+        <li>${ic("refresh-cw", "ic-sm")}<span>O comprovante vale para uma tentativa só. Se você demorar, ele vence e a Zuri pede um novo sozinha.</span></li></ul>
+      <p class="hint">Nas telas, a Zuri fala só em "verificação de segurança", sem citar o serviço.</p></section>
+  </main>`;
+}
+
+/* ---------- Memória: lista organizada por tipo e um mapa das ligações, como as notas ligadas do Obsidian ---------- */
+MEMS.push(
+  ["Prefere marcar reuniões de manhã, antes das 11h.", "Preferência", "Atual", "Anotada pela Zuri numa conversa", "05/11", ""],
+  ["A mãe mora em Ponta Grossa.", "Pessoa", "Atual", "Guardada por você", "01/10", ""],
+  ["Quer terminar a mudança até 20/11.", "Objetivo", "Atual", "Anotada pela Zuri numa conversa", "09/11", ""]
+);
+/* Ligações: o que cada memória toca. Saem do que já existe (pastas, contatos, notas, tarefas), sem IA. */
+const MNODES = {
+  mudanca: { l: "Mudança de apartamento", k: "Pasta", i: "folder", x: 50, y: 46 },
+  bia: { l: "Bia Martins", k: "Contato", i: "user", x: 82, y: 22 },
+  mae: { l: "Mãe", k: "Contato", i: "user", x: 84, y: 74 },
+  saude: { l: "Saúde", k: "Assunto", i: "heart-pulse", x: 16, y: 80 },
+  foto: { l: "Aula de fotografia", k: "Evento", i: "calendar-days", x: 18, y: 18 },
+  lista: { l: "Lista da mudança", k: "Nota", i: "notebook-pen", x: 64, y: 82 },
+  rotina: { l: "Rotina da manhã", k: "Assunto", i: "sunrise", x: 34, y: 8 }
+};
+const MLINKS = [["mudanca", "bia"], ["mudanca", "lista"], ["mae", "bia"], ["foto", "rotina"]];
+/* Cada memória: posição no mapa e os nós a que se liga. */
+const MPOS = [[30, 30, ["rotina"]], [56, 28, ["mudanca"]], [70, 12, ["bia"]], [10, 40, ["foto"]], [28, 64, ["saude"]], [40, 86, ["mudanca"]], [74, 50, ["mudanca"]], [44, 18, ["rotina"]], [90, 50, ["mae"]], [56, 64, ["mudanca", "lista"]]];
+const MCOLOR = { Fato: "c1", Preferência: "c2", Objetivo: "c3", Projeto: "c4", Hábito: "c5", Pessoa: "c6", Outro: "c1" };
+const MUSES = { 1: ["Conversa “Organizar a mudança”", "Tarefa “Encaixotar livros e louças”", "Nota “Lista da mudança”"], 2: ["Contato Bia Martins", "Lembrete “Aniversário da Bia”"], 3: ["Evento “Aula de fotografia” na Agenda"], 9: ["Pasta “Mudança de apartamento”", "Tarefa “Vistoria final”"] };
+/* Posição e usos ficam na própria memória: uma memória nova entra no fim do mapa, sem ligações. */
+MEMS.forEach((m, k) => { m.pos = MPOS[k]; m.uses = MUSES[k] || []; });
+const mp = (m) => m.pos || [10 + ((MEMS.indexOf(m) * 17) % 80), 94, []];
+function memoria() {
+  const M = MEMS;
+  const view = st.mview || "lista";
+  const mf = st.mf || "todas";
+  const MF = { todas: () => true, atuais: (m) => m[2] === "Atual", incertas: (m) => m[2] === "Incerta", passadas: (m) => m[2] === "Passado" };
+  const cats = ["Fato", "Preferência", "Objetivo", "Projeto", "Hábito", "Pessoa", "Outro"];
+  const idx = M.map((m, k) => k).filter((k) => MF[mf](M[k]) && (!st.mt || M[k][1] === st.mt));
+  const sel = Number.isInteger(st.msel) && st.msel < M.length ? st.msel : 1;
+  const side = `<nav class="card mem-side" aria-label="Organizar as memórias">
+      <p class="label">Mostrar</p><ul class="mem-nav">${[["todas", "Todas"], ["atuais", "Atuais"], ["incertas", "Incertas"], ["passadas", "Passadas"]].map(([k, l]) => `<li><button type="button" data-mf="${k}" aria-pressed="${k === mf}"><span>${l}</span><span class="num muted">${M.filter(MF[k]).length}</span></button></li>`).join("")}</ul>
+      <p class="label">Tipos</p><ul class="mem-nav">${[["", "Todos os tipos"], ...cats.map((c) => [c, c])].map(([k, l]) => { const n = k ? M.filter((m) => m[1] === k).length : M.length; return n || !k ? `<li><button type="button" data-mt-b="${k}" aria-pressed="${(st.mt || "") === k}">${k ? `<i class="mdot ${MCOLOR[k]}" aria-hidden="true"></i>` : ""}<span>${l}</span><span class="num muted">${n}</span></button></li>` : ""; }).join("")}</ul></nav>`;
+  const row = (k) => { const [f, , s, o, d, lo] = M[k]; return `<li${k === sel ? ' class="on"' : ""}><button class="mem-item" type="button" data-msel="${k}" aria-current="${k === sel}"><p class="fact">${f}</p><p class="meta">${s === "Incerta" ? `<span class="prio hot">${ic("circle-help", "ic-sm")}Incerta</span>` : s === "Passado" ? `<span class="tag">${ic("history", "ic-sm")}Passado</span>` : ""}${lo ? `<span class="tag">${ic("lock", "ic-sm")}Só na sua conta</span>` : ""}<span>${o}</span><span class="num">${d}</span></p></button></li>`; };
+  const groups = cats.map((c) => [c, idx.filter((k) => M[k][1] === c)]).filter(([, l]) => l.length);
+  const list = idx.length ? groups.map(([c, l]) => `<section class="mem-grp" aria-labelledby="mg-${fold(c)}"><h2 id="mg-${fold(c)}"><i class="mdot ${MCOLOR[c]}" aria-hidden="true"></i>${c} <span class="num muted">${l.length}</span></h2><ul class="card mem">${l.map(row).join("")}</ul></section>`).join("") : `<p class="p-empty">${ic("search", "ic-sm")}Nenhuma memória com esse filtro.</p>`;
+  const shown = new Set(idx);
+  const used = new Set(idx.flatMap((k) => mp(M[k])[2]));
+  const lines = [...MLINKS.filter(([a, b]) => used.has(a) && used.has(b)).map(([a, b]) => [MNODES[a], MNODES[b], "hub"]), ...idx.flatMap((k) => mp(M[k])[2].map((n) => [{ x: mp(M[k])[0], y: mp(M[k])[1] }, MNODES[n], k === sel ? "sel" : ""]))];
+  const map = `<div class="card mem-map"><div class="mm-canvas"><svg class="mm-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines.map(([a, b, c]) => `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"${c ? ` class="${c}"` : ""}/>`).join("")}</svg>
+      ${Object.entries(MNODES).filter(([k]) => used.has(k)).map(([k, n]) => `<span class="mm-hub" style="left:${n.x}%;top:${n.y}%">${ic(n.i, "ic-sm")}<span>${n.l}</span></span>`).join("")}
+      ${idx.map((k) => `<button class="mm-node ${MCOLOR[M[k][1]]}${k === sel ? " sel" : ""}" type="button" style="left:${mp(M[k])[0]}%;top:${mp(M[k])[1]}%" data-msel="${k}" aria-label="${M[k][0]}" aria-pressed="${k === sel}"><span class="mm-tip">${M[k][0]}</span></button>`).join("")}</div>
+      <p class="hint mm-legend">${cats.filter((c) => idx.some((k) => M[k][1] === c)).map((c) => `<span><i class="mdot ${MCOLOR[c]}" aria-hidden="true"></i>${c}</span>`).join("")}<span><i class="mm-hubk" aria-hidden="true"></i>Pasta, contato, nota ou evento</span></p></div>`;
+  const cur = M[sel];
+  const links = mp(cur)[2].map((n) => MNODES[n]);
+  const uses = cur.uses || [];
+  const near = M.map((m, k) => k).filter((k) => k !== sel && mp(M[k])[2].some((n) => mp(cur)[2].includes(n)));
+  const detail = shown.has(sel) || view === "lista" ? `<article class="card mem-detail" aria-labelledby="h-md"><p class="label"><i class="mdot ${MCOLOR[cur[1]]}" aria-hidden="true"></i>${cur[1]} · ${cur[2]}</p><h2 id="h-md" class="fact-lg">${cur[0]}</h2><p class="hint">${cur[3]} · <span class="num">${cur[4]}</span></p>
+      <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-x="mem-edit" aria-label="Atualizar “${cur[0]}”">${ic("pencil", "ic-sm")}Atualizar</button><button class="btn btn-quiet btn-sm" type="button" data-x="mem-menu" aria-label="Mais opções de “${cur[0]}”">${ic("ellipsis", "ic-sm")}Mais opções</button></div>
+      <h3 class="label">Ligada a</h3>${links.length ? `<ul class="mem-links">${links.map((n) => `<li><span class="tile tile-sm">${ic(n.i, "ic-sm")}</span><span><b>${n.l}</b><span class="hint">${n.k}</span></span></li>`).join("")}</ul>` : `<p class="p-empty">Sem ligações ainda.</p>`}
+      <h3 class="label">Aparece em</h3>${uses.length ? `<ul class="mem-uses">${uses.map((u) => `<li>${ic("corner-down-right", "ic-sm")}${u}</li>`).join("")}</ul>` : `<p class="p-empty">Nenhuma conversa, nota ou tarefa cita esta memória.</p>`}
+      ${near.length ? `<h3 class="label">Memórias próximas</h3><ul class="mem-uses">${near.map((k) => `<li><button class="linkbtn" type="button" data-msel="${k}">${M[k][0]}</button></li>`).join("")}</ul>` : ""}</article>` : "";
+  return `<div class="page page-wide mem-page">
+    <header class="pagehead"><div><h1>Memória</h1><p>O que a Zuri lembra sobre você e como cada coisa se liga. Você corrige ou apaga quando quiser.</p></div>
+      <div class="actions"><div class="seg" role="group" aria-label="Ver as memórias">${[["lista", "list", "Lista"], ["mapa", "waypoints", "Mapa"]].map(([k, i, l]) => `<button type="button" data-mview="${k}" aria-pressed="${k === view}">${ic(i, "ic-sm")}${l}</button>`).join("")}</div><button class="btn btn-primary btn-sm" type="button" data-mem-new aria-haspopup="dialog">${ic("plus", "ic-sm")}Nova memória</button></div></header>
+    ${memNewDlg()}
+    <section class="card rev-card" aria-labelledby="h-rev"><div class="p-sec-h"><h2 id="h-rev">Para revisar</h2><span class="pill wait"><i></i>Possível atualização</span></div>
+      <p class="hint">A mais recente diz que mudou onde você mora.</p>
+      <div class="rev-pair"><div><p class="k">Mais antiga</p><p>Mora no Batel.</p></div><div><p class="k">Mais recente</p><p>Está se mudando para um apartamento no Água Verde.</p></div></div>
+      <div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-rev>Marcar a antiga como passado</button><button class="btn btn-secondary btn-sm" type="button" data-rev>Manter as duas</button><button class="btn btn-quiet btn-sm" type="button" data-rev>Substituir a antiga</button><button class="btn btn-quiet btn-sm" type="button" data-rev>Descartar a recente</button></div></section>
+    <div class="mem-search with-ic">${ic("search", "ic-sm")}<label class="sr" for="ms">Buscar nas memórias</label><input id="ms" class="input" placeholder="Buscar nas memórias"></div>
+    <div class="mem-layout mem-${view}">${side}<div class="mem-main">${view === "mapa" ? map : list}</div>${detail}</div>
+  </div>`;
+}
+
+/* ---------- Avaliações › Como responder: as instruções do agente que escreve os rascunhos ---------- */
+st.rvTest = "";
+function rvResponder() {
+  const n = (st.rvPrompt || "").length;
+  const prompt = st.rvPrompt ?? "Agradeça pelo nome, cite algo que a pessoa contou e convide para voltar. Em nota 4, agradeça e diga que a equipe vai olhar o ponto citado. Nunca fale de diagnóstico, remédio ou preço.";
+  const test = st.rvTest === "..." ? `<p class="hint" role="status">${ic("loader-circle", "ic-sm spin")}Escrevendo o rascunho de teste…</p>`
+    : st.rvTest === "ok" ? `<div class="rv-draft" role="status"><p class="label">Rascunho de teste · nada é publicado</p><p>Obrigada, Marina! Que bom saber que o plano ficou fácil de seguir no dia a dia. Esperamos você no retorno. Equipe Exemplo</p><ul class="rv-checks"><li>${ic("circle-check", "ic-sm")}Sem números, links nem promessas</li><li>${ic("circle-check", "ic-sm")}Sem assunto de saúde</li><li>${ic("circle-check", "ic-sm")}Segunda leitura aprovou</li></ul><p class="hint num">Gastou cerca de 30 Neurons.</p></div>` : "";
+  return `<div class="rv-cfg">
+    <section class="card set-sec" aria-labelledby="h-rc1"><h2 id="h-rc1">Sobre o consultório</h2><p>O que a Zuri pode dizer com segurança. Entra no rascunho como informação, nunca como ordem.</p>
+      <div class="form-grid"><label class="field"><span class="label">Nome que aparece</span><input class="input" value="Consultório Exemplo" maxlength="60"></label>
+        <label class="field"><span class="label">Como chamar quem é atendido</span><select class="input"><option selected>Paciente</option><option>Cliente</option><option>Pelo primeiro nome, sem rótulo</option></select></label></div>
+      <label class="field"><span class="label">O que vale a pena lembrar nas respostas</span><textarea class="input" rows="3" maxlength="600">Atendimento com hora marcada, plano alimentar feito junto com a pessoa, retorno em 30 dias.</textarea><span class="hint">Até 600 caracteres. Sem telefone, endereço, preço ou link: o verificador barra.</span></label></section>
+    <section class="card set-sec" aria-labelledby="h-rc2"><h2 id="h-rc2">Instruções para a Zuri</h2><p>O jeito de responder, com as suas palavras. As regras de segurança ficam por baixo e não mudam.</p>
+      <label class="field"><span class="label">Instruções</span><textarea class="input" rows="5" maxlength="2000" data-rv-prompt>${escH(prompt)}</textarea><span class="hint num" data-rv-count>${(n || prompt.length)} de 2.000 caracteres</span></label>
+      <div class="form-grid"><label class="field"><span class="label">Tom</span><select class="input"><option selected>Próximo e caloroso</option><option>Educado e formal</option></select></label><label class="field"><span class="label">Assinatura</span><input class="input" value="Equipe Exemplo" maxlength="40"></label></div>
+      <p class="hint">${ic("history", "ic-sm")}Versão 3, salva em 08/11. <button class="linkbtn" type="button" data-x="rv-versions">Ver versões</button> · <button class="linkbtn" type="button" data-x="rv-default">Voltar ao padrão</button></p></section>
+    <section class="card set-sec" aria-labelledby="h-rc3"><h2 id="h-rc3">O que fazer em cada nota</h2><p>A nota decide primeiro. A IA só pode deixar a resposta mais cuidadosa, nunca menos.</p>
+      <ul class="cal-list">${[["5 estrelas", "Rascunho de agradecimento", ["Rascunho para aprovar", "Publicar sozinha"], 0], ["4 estrelas", "Rascunho que agradece e acolhe o ponto citado", ["Rascunho para aprovar", "Publicar sozinha"], 0], ["1 a 3 estrelas", "Aviso para a equipe, sem resposta pronta", ["Só avisar", "Rascunho para aprovar"], 0]].map(([t, d, o, on], k) => `<li class="set-row"><div class="grow"><p class="t" id="rn-${k}">${t}</p><p class="hint">${d}</p></div><div class="seg seg-xs" role="group" aria-labelledby="rn-${k}">${o.map((x, j) => `<button type="button" aria-pressed="${j === on}"${k < 2 && j === 1 ? " disabled" : ""}>${x}</button>`).join("")}</div></li>`).join("")}</ul>
+      <p class="hint">Publicar sozinha libera depois de 10 rascunhos aprovados sem mudança. Hoje: 4 de 10.</p></section>
+    <section class="card set-sec" aria-labelledby="h-rc4"><h2 id="h-rc4">Exemplos que a Zuri segue</h2><p>Até 3 respostas suas já publicadas. A Zuri imita o jeito, não copia o texto.</p>
+      <ul class="rv-ex">${[["Carla Mendes", 5, "Obrigada, Carla! Ficamos felizes com o seu progresso. Até o retorno!"], ["Thiago Nunes", 4, "Obrigada pelo retorno, Thiago. Vamos olhar o tempo de espera com carinho."]].map(([who, s, t]) => `<li class="card"><p class="t">${who} ${stars(s)}</p><p>${t}</p><button class="iconbtn" type="button" data-x="rv-ex-del" aria-label="Tirar o exemplo de ${who}">${ic("x", "ic-sm")}</button></li>`).join("")}</ul>
+      <button class="btn btn-secondary btn-sm" type="button" data-x="rv-ex-add">${ic("plus", "ic-sm")}Escolher outra resposta</button></section>
+    <section class="card set-sec" aria-labelledby="h-rc5"><h2 id="h-rc5">Nunca dizer</h2><p>Palavras e assuntos que barram o rascunho. Os de saúde, preço, promessa e jurídico já vêm marcados.</p>
+      <label class="field"><span class="label">Palavras proibidas</span><input class="input" value="desconto, garantia, cura" maxlength="300"><span class="hint">Separe por vírgula.</span></label></section>
+    <section class="card set-sec" aria-labelledby="h-rc6"><h2 id="h-rc6">Testar antes de salvar</h2><p>Escolha uma avaliação e veja o rascunho que sairia. Nada é publicado.</p>
+      <div class="row-actions"><label class="sr" for="rv-t">Avaliação para testar</label><select id="rv-t" class="input input-sm"><option>Marina Costa · 5 estrelas</option><option>Thiago Nunes · 4 estrelas</option><option>Pedro Henrique · 2 estrelas</option></select><button class="btn btn-secondary btn-sm" type="button" data-rv-test>${ic("flask-conical", "ic-sm")}Gerar rascunho de teste</button></div>${test}</section>
+    <div class="set-foot rv-save"><span class="hint">${ic("lock", "ic-sm")}Salvar pede a sua senha e guarda uma versão nova.</span><button class="btn btn-primary" type="button" data-x="rv-save">Salvar instruções</button></div>
+  </div>`;
+}
+
+/* ---------- Configurações › Sobre a Zuri ---------- */
+function cfgSobre() {
+  return sec("h-ver", "Versão", "Confira aqui depois de cada atualização.",
+    `<div class="ver-box"><span class="tile">${logo()}</span><div><p class="ver-n num">Zuri ${APP_VER}</p><p class="hint num">Instalada em 09/11/2026, 21:55</p></div></div>
+     <div class="set-row"><span class="tile tile-sm tile-ok">${ic("circle-check", "ic-sm")}</span><div class="grow"><p class="t">Tudo na mesma versão</p><p class="hint">A tela e o servidor estão na <span class="num">${APP_VER}</span>. Quando sair uma versão nova, a Zuri avisa e pede para recarregar a página.</p></div><button class="btn btn-secondary btn-sm" type="button" data-ver-check>${ic("refresh-cw", "ic-sm")}Conferir de novo</button></div>`)
+  + sec("h-nov", "Novidades desta versão", "",
+    `<ul class="ro-list"><li>${ic("sparkles", "ic-sm")}<span>Telas reorganizadas e menu Mais opções.</span></li><li>${ic("shield-check", "ic-sm")}<span>Auditoria final de segurança e testes de ponta a ponta.</span></li><li>${ic("wrench", "ic-sm")}<span>Correções nos títulos das telas e nos testes de acessibilidade.</span></li></ul>`,
+    `<a class="btn btn-quiet" href="https://github.com/pablopfg/zuri/releases" target="_blank" rel="noopener noreferrer">${ic("history", "ic-sm")}Ver todas as versões<span class="sr"> (abre em outra aba)</span></a>`)
+  + sec("h-lic", "Código e licença", "A Zuri é de código aberto e roda na sua própria conta.",
+    `<a class="btn btn-quiet btn-sm" href="https://github.com/pablopfg/zuri" target="_blank" rel="noopener noreferrer">${ic("code", "ic-sm")}Ver o código<span class="sr"> (abre em outra aba)</span></a>`);
+}
+
+/* ---------- Relatar no GitHub: mostra antes o que vai no relato ---------- */
+function reportDlg(opener) {
+  const fields = [["Título", "[erro] TIMEOUT (automações)"], ["Contexto", `Falha registrada no Diagnóstico (origem: automações). Rota: /api/flows/:id/run. Primeira vez: 2026-11-07 14:02 UTC. Última vez: 2026-11-07 14:02 UTC. Versão da Zuri: ${APP_VER}`], ["Passos para reproduzir", "Rodar o fluxo pela tela Automações › Fluxos › Executar."], ["Esperado", "O fluxo termina sem erro."], ["Obtido", "TIMEOUT: 1 hoje, 3 nos últimos 30 dias."], ["Código do erro", "TIMEOUT · cf-ray 8e1f2a3b4c5d6e7f · id 42"], ["Impacto", "Baixo: aconteceu 3 vezes em 30 dias."]];
+  dlgShow({ t: "Relatar no GitHub", sub: "O formulário do GitHub abre já preenchido. Você confere e envia por lá.",
+    body: `<dl class="rep-list">${fields.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
+      <p class="ro">${ic("lock", "ic-sm")}<span>Vai só o que o Diagnóstico guarda: tipo da falha, onde, quando, versão e o código da requisição. Nada do que você escreveu, nem e-mail ou endereço. O GitHub é público.</span></p>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><a class="btn btn-primary" href="https://github.com/pablopfg/zuri/issues/new?template=erro.yml" target="_blank" rel="noopener noreferrer" data-dlg-x>${ic("external-link", "ic-sm")}Abrir no GitHub<span class="sr"> (abre em outra aba)</span></a>` }, opener);
+}
+
+const ACT23 = [
+  [(t) => t.matches("[data-x=ct-filter]"), (t) => tagFilterDlg(t)],
+  [(t) => t.matches("#dlg-host [data-tagf]"), (t) => { st.tagf = t.dataset.tagf; st.p = ""; dlgClose(); render(); refocus(".tagf-btn"); }],
+  [(t) => t.matches("#dlg-host [data-x=ct-labels]"), (t) => { dlgClose(); labelsDlg(document.querySelector(".tagf-btn")); }],
+  [(t) => t.matches("[data-hv-see]"), (t) => { st.hv = pick(t.dataset.hvSee, ["checking", "ok", "ask", "broken", "fail", "wait"]); st.rec = ""; goTo("entrar"); }],
+  [(t) => t.matches("[data-hv-ok]"), () => { st.hv = "ok"; const el = document.querySelector("[data-hv]"); const box = document.querySelector(".hv-box"); if (box) box.remove(); if (el) el.outerHTML = hvLine(); }],
+  [(t) => t.matches("[data-mview]"), (t) => { st.mview = t.dataset.mview; render(); refocus(`[data-mview="${st.mview}"]`); }],
+  [(t) => t.matches("[data-msel]"), (t) => { st.msel = Number(t.dataset.msel); render(); refocus(`.mem-main [data-msel="${st.msel}"]`); if (window.innerWidth <= 820) { const d = document.querySelector(".mem-detail"); if (d) d.scrollIntoView({ block: "start" }); } }],
+  [(t) => t.matches("[data-mt-b]"), (t) => { st.mt = t.dataset.mtB; render(); refocus(`[data-mt-b="${st.mt}"]`); }],
+  [(t) => t.matches("[data-rv-test]"), () => { st.rvTest = "..."; render(); refocus("[data-rv-test]"); setTimeout(() => { st.rvTest = "ok"; render(); refocus("[data-rv-test]"); }, 900); }],
+  [(t) => t.matches("[data-x=rv-save]"), (t) => senhaDlg("As instruções novas valem para os próximos rascunhos.", () => say("Instruções salvas. Versão 4."), t)],
+  [(t) => t.matches("[data-x=rv-versions]"), (t) => menuDlg("Versões das instruções", [["history", "Versão 3 · 08/11 · em uso", () => say("Essa já é a versão em uso.")], ["history", "Versão 2 · 05/11", () => say("Versão 2 restaurada como rascunho. Salve para usar.")], ["history", "Versão 1 · 04/11", () => say("Versão 1 restaurada como rascunho. Salve para usar.")]], t)],
+  [(t) => t.matches("[data-x=rv-default]"), (t) => confirmDlg("Voltar às instruções padrão?", "As suas ficam guardadas nas versões.", "Voltar ao padrão", () => { st.rvPrompt = ""; render(); say("Instruções padrão de volta. Salve para usar."); }, t, false)],
+  [(t) => t.matches("[data-x=rv-ex-add]"), (t) => menuDlg("Escolher uma resposta publicada", [["star", "Marina Costa · 5 estrelas", () => say("Exemplo adicionado.")], ["star", "Bruno Teixeira · 5 estrelas", () => say("Exemplo adicionado.")]], t)],
+  [(t) => t.matches("[data-x=rv-ex-del]"), (t) => { const li = t.closest("li"); if (li) li.remove(); say("Exemplo tirado."); }],
+  [(t) => t.matches("[data-ver-check]"), (t) => busy(t, 700, () => say(`Tudo na versão ${APP_VER}.`))],
+  [(t) => t.matches("[data-x=report]"), (t) => reportDlg(t)],
+  [(t) => t.matches("[data-ag-ad]"), () => { st.agAD = !st.agAD; render(); refocus("[data-ag-ad]"); }],
+  [(t) => t.matches("[data-ag-out]"), () => { st.agOut = !st.agOut; render(); refocus("[data-ag-out]"); }]
+];
+ACT.unshift(...ACT23);
+document.addEventListener("input", (e) => {
+  if (!e.target.matches || !e.target.matches("[data-rv-prompt]")) return;
+  st.rvPrompt = e.target.value;
+  const c = document.querySelector("[data-rv-count]");
+  if (c) c.textContent = `${e.target.value.length.toLocaleString("pt-BR")} de 2.000 caracteres`;
+});
 
 render();
 </script>

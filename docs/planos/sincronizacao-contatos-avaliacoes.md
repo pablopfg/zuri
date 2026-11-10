@@ -176,5 +176,11 @@ Nenhum recurso pago, nenhum custo fora da Cloudflare.
 
 ## 14. Entrevista com o Pablo
 
-1. A aba Clientes sai e o CRM continua recebendo os eventos em segundo plano? Recomendação: sim; os dados aparecem na ficha do contato quando a ligação CRM ↔ contato entrar.
-2. O índice de recomendação estimado pelas estrelas (5 recomenda, 4 neutro, 1 a 3 não) serve como o "NPS" do consultório? Recomendação: sim, com o texto explicando a conta. Um NPS de verdade (nota de 0 a 10) pediria uma pergunta própria no pedido de avaliação.
+1. A aba Clientes sai e o CRM continua recebendo os eventos em segundo plano? **Resposta do Pablo (10/11, 00:51): não, isso fica para depois.** A aba Clientes sai de Contatos; a parte de clientes será desenhada mais tarde, dentro do menu novo **CRM**. Nada é apagado (regra 5). O recebimento de eventos que já existe na develop fica como está até esse plano; quem decide desligar é o Pablo, pela chave dos eventos em Integrações.
+2. O índice de recomendação estimado pelas estrelas (5 recomenda, 4 neutro, 1 a 3 não) serve como o "NPS" do consultório? Recomendação: sim, com o texto explicando a conta. Um NPS de verdade (nota de 0 a 10) pediria uma pergunta própria no pedido de avaliação. **Resposta do Pablo (10/11): sim.** Ele perguntou como saber quem abriu o link. Resposta registrada:
+
+   - **Link pessoal.** Cada pedido leva um endereço curto da própria Zuri com um código aleatório só daquele pedido (`/a/<código>`, tabela `zur_review_links` do [plano do Chatwoot](envio-chatwoot-pela-zuri.md)). Quem toca é levado para a página de avaliação do Google. Nesse caminho, a Zuri anota "abriu" com data e hora. O código não diz nada sobre a pessoa e vale por 30 dias.
+   - **Pré-visualização do WhatsApp não conta.** O WhatsApp abre o link sozinho para montar a prévia. A Zuri ignora esse acesso pelo agente de usuário do robô de prévia e só conta a abertura que segue até o Google.
+   - **Entregue e lido.** O Chatwoot avisa a situação da mensagem (`message_updated`: enviada, entregue, falhou). "Lido" depende do WhatsApp não oficial repassar o recibo; quando não vem, a Zuri não inventa.
+   - **Onde aparece.** Em Avaliações › Pedidos, cada linha mostra Enviado, Entregue, Abriu o link e Avaliou, com a hora. A Visão geral mostra o funil (receberam → abriram → avaliaram). Na ficha do contato, a linha do tempo do pedido.
+   - **Limite honesto.** Quem copia o endereço do Google e avalia por outro caminho aparece como "não abriu"; a ligação com a avaliação continua pelas regras da seção 8.1b do desenho das funcionalidades.

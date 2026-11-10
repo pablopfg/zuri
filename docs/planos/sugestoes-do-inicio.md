@@ -93,4 +93,4 @@ Uma PR de servidor e interface juntas, depois da PR C (Início) do [novo fronten
 
 ## 12. Entrevista com o Pablo
 
-1. A IA só escolhe e ordena, sem escrever o texto? Recomendação: sim, pelo motivo da seção 7.
+1. A IA só escolhe e ordena, sem escrever o texto? Recomendação: sim, pelo motivo da seção 7. **Resposta do Pablo (10/11, 00:51): sim.**

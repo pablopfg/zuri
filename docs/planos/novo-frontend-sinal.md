@@ -1,6 +1,6 @@
 # Plano · Levar o Sinal refinado para o app
 
-Situação: plano. Pedido do Pablo em 09/11/2026, 20:19; revisto com os pedidos das 21:51 e 22:08 (seção 11, cronograma). Base: o protótipo da rodada 5 (`docs/planos/modelos-frontend/prototipo-v5.html`), o desenho das funcionalidades ([sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md)) e a develop de 09/11.
+Situação: plano. Pedido do Pablo em 09/11/2026, 20:19; revisto com os pedidos das 21:51 e 22:08 (seção 11, cronograma) e com os de 10/11, 00:51 e 00:54 (menu CRM, Credenciais, verificação de segurança, versão, memória em mapa, "Como responder" das avaliações, agenda só no horário de trabalho, nada escondido no celular, pentest final). Base: o protótipo da rodada 5 (`docs/planos/modelos-frontend/prototipo-v5.html`), o desenho das funcionalidades ([sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md)) e a develop de 09/11.
 
 ## 1. Resumo
 
@@ -42,20 +42,22 @@ A varredura de 09/11 comparou as rotas, os cartões de Configurações e os comp
 | Tarefas (abas, pastas, prioridade, lixeira) | Sim; abas filtram, o diálogo de Pastas cria, renomeia e apaga, e a lixeira abre só com as tarefas | E |
 | Notas (lista, editor, Escrever e Prévia, pastas) | Sim, com "Nova nota", salvamento automático, "Pôr numa pasta", menu da nota e lixeira só com as notas | E |
 | Agenda (dia, semana, mês, criar e editar evento) | Sim: as três visões funcionam, "Novo evento" cria na semana, com a linha de agora; o atalho do rodapé diz só "Configurações" | F |
-| Contatos (pessoas, clientes do CRM, avaliações) | Pessoas, com todos os campos do Google, etiquetas no topo e contagem regressiva. Clientes sai da tela (o CRM continua guardando). Avaliações vira item próprio do menu | G e G2 |
-| Automações (rotinas, sugestão da Zuri, fluxos, conexões, editor de fluxo, menu ⋯) | Sim, em quatro partes no menu lateral: Rotinas, Fluxos, Módulos e Conexões | H |
-| Memória ("Nova memória" em diálogo, tipos, filtros, conflitos, "nunca enviar para fora" marcável no menu ⋯) | Sim, com o microfone dentro do diálogo | D |
+| Contatos (pessoas, clientes do CRM, avaliações) | Pessoas, com todos os campos do Google e contagem regressiva. As etiquetas saem da faixa que rolava de lado: um botão "Etiqueta: Todas ▾" abre a lista com busca e contagem, e um X limpa o filtro. Clientes sai da tela e fica para depois (resposta 6 de 10/11: nada roda em segundo plano por enquanto). Avaliações vira item próprio do menu | G e G2 |
+| Automações (rotinas, sugestão da Zuri, fluxos, conexões, editor de fluxo, menu ⋯) | Automações fica com Rotinas e Fluxos. Módulos e Conexões saem para um item próprio do menu lateral, **CRM**, com as partes Módulos e **Credenciais** (o novo nome de Conexões; decisão de 10/11, 00:51) | H |
+| Memória ("Nova memória" em diálogo, tipos, filtros, conflitos, "nunca enviar para fora" marcável no menu ⋯) | Sim, com o microfone dentro do diálogo. Novo desenho: filtros à esquerda (Mostrar e Tipos, com contagem), lista agrupada por tipo, painel da memória escolhida ("Ligada a", "Aparece em", "Memórias próximas") e a visão **Mapa** (seção 7, "Memória em mapa") | D |
 | Configurações › Conta (preferências, senha, tema; sem o cartão "Sair deste aparelho") | Sim, tema só com ícones | H |
 | Configurações › Segurança (duas etapas, passkeys, limites de sessão, atividade, acesso pela API) | Sim; limites de sessão em "Saída automática". Encerrar as sessões abertas continua só no Telegram (`/sessoes`, `/encerrar_sessoes`), como na develop | H |
 | Configurações › Uso da IA (uso de hoje, consumo por período por dia, semana, mês e ano) e › Modelos e limites (modelo, catálogo, "Limites avançados" recolhidos, agentes, modelos pagos, busca por significado) | Sim, nas duas seções, com o painel "Ajustar" | H |
 | Configurações › Avisos (canais, o que vai para cada canal, Telegram, resumo do dia, a Zuri de olho, prioridades aprendidas e últimos envios no fim) | Sim, na ordem da develop | H |
 | Configurações › Integrações (Google, servidores MCP) | Sim | H |
 | Configurações › Dados (backup, importar, backup automático, restaurar, lixeira com "Voltar" e "Ver tudo") | Sim; "Baixar backup" baixa um arquivo de exemplo | H |
-| Configurações › Diagnóstico | Sim | H |
+| Configurações › Diagnóstico | Sim, com "Relatar no GitHub" em cada falha e a prévia do que vai na issue (seção 7, "Relatar no GitHub") | H |
+| Versão (hoje no menu da conta, na lista das Configurações do celular e no Diagnóstico) | Seção nova **Configurações › Sobre a Zuri** e uma linha discreta "Zuri 0.39.2 · Novidades" no pé do menu do perfil, que deixa de ter "Agenda" | H (B para o menu) |
 | Acessos (`/acessos`) | "Ver todos os acessos" em Segurança abre a lista com filtro | H |
 | Paleta ⌘K | Sim | B |
 | Lembrete de duas etapas, aviso de sessão perto do fim, senha de novo, confirmação | Estados das telas | A |
-| Entrar, primeiro acesso, segundo passo, recuperação, troca de senha, bloqueio, `/aprovar`, 404 | Entrar e "Esqueci minha senha" no protótipo, com a verificação de robô; o resto segue o mesmo desenho | I |
+| Entrar, primeiro acesso, segundo passo, recuperação, troca de senha, bloqueio, `/aprovar`, 404 | Entrar e "Esqueci minha senha" no protótipo, com os seis estados da verificação de segurança (tela "Entrar · verificação" do protótipo); o resto segue o mesmo desenho | I |
+| Avaliações › respostas (agente `review_draft`: camada do dono em Configurações › Modelos e limites; assinatura, tom, modelos e palavras proibidas no cartão de Avaliações) | Aba **Como responder** dentro de Avaliações, com tudo num lugar só (seção 7) | G2 |
 
 ### O que precisa de servidor (PRs à parte, cada uma com plano)
 
@@ -69,7 +71,10 @@ A varredura de 09/11 comparou as rotas, os cartões de Configurações e os comp
 | Consumo da IA por hora (hoje) e por mês (ano) | seção 7, "Consumo por período" |
 | Catálogo de modelos da Cloudflare conferido sozinho | seção 9b do desenho das funcionalidades |
 | Foto dos contatos | seção 6 do desenho das funcionalidades |
-| Configurações › Agenda (horário visível) | nova preferência; hoje a semana mostra o dia todo |
+| Configurações › Agenda (horário de trabalho, dias de trabalho, eventos de dia inteiro e fora do horário) | preferência nova aprovada (resposta 3 de 10/11); seção 7, "Agenda no horário de trabalho" |
+| Versão do servidor para conferir a atualização | `GET /api/version`; seção 7, "Versão" |
+| "Como responder" das avaliações (dados do consultório, exemplos, teste) | seção 7, "Como responder" |
+| Módulos do CRM e credenciais (servidor) | [modulos-crm.md](modulos-crm.md) (PR #247), que decide quais fluxos do n8n viram módulo, a ordem e as credenciais; este plano cuida só da interface do menu CRM |
 
 Até a PR de servidor chegar, a interface daquela parte **não aparece**. Nada de botão que não faz nada.
 
@@ -107,10 +112,109 @@ Os textos do protótipo entram no catálogo pelas chaves existentes sempre que o
 
 ### Tela de entrar (PR I)
 
-- **Textos:** "Seu dia em ordem, sem esforço." no lado da marca e "Continue de onde parou." embaixo de "Entrar". Só a marca e uma frase, como decidido às 13:37.
+- **Textos (revistos em 10/11):** "Sua agenda, suas tarefas e seus lembretes, em ordem." no lado da marca e "Entre para continuar de onde parou." embaixo de "Entrar". Só a marca e uma frase, como decidido às 13:37. O título da aba continua "Entrar · Zuri", e o favicon, o ícone do iPhone e o manifesto já estão em `apps/web/index.html`; só a página de erro de rota (`RouteErrorPage`) ganha título próprio ("Algo deu errado · Zuri").
 - **Campo de e-mail sem exemplo dentro.** O texto de exemplo some quando a pessoa digita, tem pouco contraste e confunde com campo já preenchido. Fica o rótulo "E-mail" sempre visível em cima, `type="email"`, `autocomplete="username"`, `inputmode="email"`, `autocapitalize="none"` e `spellcheck="false"`, para o gerenciador de senhas preencher. Erro embaixo do campo, ligado por `aria-describedby`: "Digite o seu e-mail." ou "Confira o e-mail: falta alguma parte.".
-- **Verificação de robô.** Já existe na develop (`components/TurnstileWidget.tsx`, `auth/turnstile.ts`): é o Turnstile da Cloudflare, grátis, no modo "só quando precisa" (`appearance: interaction-only`). Na maioria das vezes passa sozinho, sem clique; só quando a Cloudflare desconfia da conexão aparece a caixa para marcar. O servidor confere cada token com a chave secreta, e o token vale uma vez. O cartão "Verificação concluída" do protótipo antigo sai: no lugar, uma linha discreta com três estados, "Conferindo a conexão…", "Conexão conferida" e, se o script não carregar, "A verificação de segurança não carregou." com "Recarregar a verificação". Entrar antes do fim mostra "Preparando a verificação de segurança…".
+- **Verificação de segurança.** Já existe na develop (`components/TurnstileWidget.tsx`, `auth/turnstile.ts`): é o Turnstile da Cloudflare, grátis, no modo "só quando precisa" (`appearance: interaction-only`). Na maioria das vezes passa sozinho, sem clique. O servidor confere cada token com a chave secreta, e o token vale uma vez. A tela nunca diz "Turnstile" nem "Cloudflare": diz "verificação de segurança". Uma linha discreta acima de "Entrar" tem seis estados, todos na tela "Entrar · verificação" do protótipo:
+
+  | Estado | Quando | O que aparece | Entrar |
+  | --- | --- | --- | --- |
+  | Conferindo | Logo que a tela abre (1 ou 2 s) | "Fazendo a verificação de segurança…" com o círculo girando | Desligado |
+  | Concluída | O widget devolveu o token | "Verificação de segurança concluída" com o escudo verde | Ligado |
+  | Pedir clique | A Cloudflare desconfiou da conexão (`before-interactive-callback`) | "Confirme que é você para continuar." e a caixa para marcar | Desligado até marcar |
+  | Não carregou | O script não carregou (`error-callback`, bloqueador, rede) | "A verificação de segurança não carregou." e o botão **Recarregar a verificação** | Desligado |
+  | Não passou | O servidor recusou o token (`turnstileFailed`) ou ele venceu (`expired-callback`) | "Não deu para confirmar. Tente de novo." e "Recarregar a verificação" | Desligado |
+  | Espera | Muitas falhas na mesma rede (`MAX_TURNSTILE_FAILURES_PER_NETWORK`, hoje 10) | "Muitas tentativas desta rede. Tente de novo em 15 minutos." e a contagem | "Espere 14:52" |
+
+  Um robô de verdade fica preso em "Pedir clique" ou "Não passou": o servidor recusa o login sem token válido, e a contagem por rede leva à espera. A pessoa nunca vê código de erro.
 - **"Esqueci minha senha"** fica ao lado do rótulo da senha e abre a recuperação que já existe (`/recuperar-senha`, etapa 11): e-mail, verificação, "Enviar o link" e a mesma resposta para qualquer e-mail ("Se o e-mail for o da conta, o link chega em alguns minutos. Ele vale por 30 minutos e funciona uma vez só."). O link pede o código de duas etapas quando ele está ligado. A tela deixa de dizer quando o envio de e-mail não está configurado; isso fica para o achado de auditoria já registrado (resposta uniforme), que precisa da decisão do Pablo.
+
+### Menu CRM (PR B e PR H)
+
+- Item novo **CRM** no menu lateral (ícone `briefcase-business`), depois de Automações, com duas partes: **Módulos** e **Credenciais**. No celular fica na folha "Mais".
+- "Conexões" vira "Credenciais" em todo texto do CRM (títulos, botões, diálogos, avisos de uso: "Usa: credencial do Chatwoot"). As chaves do catálogo mudam junto, pt-BR e en.
+- Automações fica com Rotinas e Fluxos. Um fluxo que usa uma credencial abre a escolha pelo nome, como hoje.
+- A parte de servidor (quais fluxos do n8n viram módulo, ordem, credenciais por tipo) está em [modulos-crm.md](modulos-crm.md).
+
+### Versão (PR H e servidor pequeno)
+
+- `APP_VERSION` (`packages/shared/src/version.ts`) já vai no bundle da tela. O servidor ganha `GET /api/version` (sessão exigida, resposta `{ version }`, sem cache), que lê a mesma constante do bundle do Worker.
+- **Configurações › Sobre a Zuri:** "Zuri 0.39.2", data da instalação, e uma das duas linhas: "Tudo na mesma versão" ou "A tela está em X e o servidor em Y. Recarregue a página." com o botão "Recarregar". "Conferir de novo" chama a rota. Embaixo, "Novidades desta versão" (do `CHANGELOG.md`, gerado no build, só os itens da versão) e "Ver todas as versões" (abre as releases em outra aba).
+- No pé do menu do perfil, em texto pequeno: "Zuri 0.39.2 · Novidades", que leva a Sobre. "Agenda" sai desse menu.
+- Assim, depois de cada atualização, o Pablo abre Sobre e vê a versão nova e "Tudo na mesma versão".
+
+### Relatar no GitHub (PR H)
+
+O link já sai preenchido hoje (`apps/web/src/lib/issue-report.ts`, modelo `erro.yml`): título, contexto (rota, datas, versão), obtido e código. Melhorias:
+
+- Preencher também **Passos para reproduzir** (a partir da origem da falha, sem conteúdo do dono), **Esperado** e **Impacto** (pela contagem de 30 dias).
+- Antes de abrir o GitHub, um diálogo mostra cada campo como vai chegar, com "Abrir no GitHub" e "Cancelar". O campo "Onde aconteceu" (lista suspensa) o GitHub não deixa preencher pelo link; a prévia avisa para escolher lá.
+- Nada de conteúdo de conversa, nota ou contato vai no link; o teste confere.
+
+### Agenda no horário de trabalho (PR F e servidor pequeno)
+
+- **Configurações › Agenda:** "Horário de trabalho" (começa e termina, com a barra de 24 h), "Dias de trabalho", "Eventos de dia inteiro" (Mostrar ou Esconder) e "Eventos fora do horário" (Mostrar nas linhas "Antes" e "Depois" ou Esconder).
+- Na Agenda, dois botões de alternar ficam na barra ("Dia inteiro" e "Fora do horário") para mudar só naquela visita. O que fica escondido nunca some sem aviso: uma linha diz "1 evento de dia inteiro escondido · Mostrar" ou "2 eventos escondidos fora do horário · Mostrar".
+- A visão Mês mostra tudo (é um resumo). A conversa e as rotinas continuam vendo todos os eventos; a preferência é só da tela.
+- Servidor: a preferência entra em `zur_settings` (sem migration nova se couber nas chaves existentes; senão, a próxima livre).
+
+### Como responder, em Avaliações (PR G2 e servidor)
+
+Uma aba nova dentro de Avaliações junta o que hoje está espalhado, em seis blocos:
+
+1. **Sobre o consultório:** nome que aparece, como chamar quem é atendido e até 600 caracteres do que vale lembrar. Entra no prompt como dado (`<data>`), nunca como ordem; o verificador barra telefone, endereço, preço e link.
+2. **Instruções para a Zuri:** a camada do dono do agente `review_draft` (hoje em Modelos e limites), até 2.000 caracteres, com contador, as 20 versões guardadas e "Voltar ao padrão". Tom e assinatura ficam aqui.
+3. **O que fazer em cada nota:** 5 e 4 estrelas viram rascunho para aprovar (publicar sozinha só depois de 10 aprovações, regra que já vale); 1 a 3 estrelas só avisam a equipe. A IA pode deixar a resposta mais cuidadosa, nunca menos.
+4. **Exemplos:** até 3 respostas já publicadas pelo Pablo, para imitar o jeito.
+5. **Nunca dizer:** palavras proibidas (as de saúde, preço, promessa e jurídico já vêm marcadas).
+6. **Testar antes de salvar:** escolhe uma avaliação e gera um rascunho sem publicar, com a segunda leitura e o custo (cerca de 30 Neurons). Salvar pede a senha.
+
+As regras fixas e a segunda leitura (`docs/planos/guardrails-multiagentes-ia.md`) continuam por baixo e não mudam. Servidor: campos novos na configuração do agente, rota de teste com o limite diário de IA.
+
+### Memória em mapa (PR D)
+
+É viável sem custo novo. A visão Mapa desenha a memória escolhida no centro, as memórias ligadas em volta e os "centros" (pastas, pessoas, conversas) como nós maiores. As ligações saem do que já existe: memória criada numa conversa, citada numa tarefa ou nota, mesma pasta, mesma pessoa. Nada de IA nova nem de busca por significado (que segue desligada).
+
+- Tela sob demanda (lazy), sem biblioteca de grafo: SVG simples com posições calculadas, teto de 200 nós; acima disso, só os vizinhos da memória escolhida.
+- A Lista continua sendo o padrão e o caminho acessível; o Mapa é extra, e cada nó é botão com nome.
+- No celular, o Mapa ocupa a largura toda e os rótulos só aparecem ao tocar.
+
+### Nada escondido (todas as PRs de interface)
+
+A varredura de 10/11 procurou em cada tela, nos dois tamanhos, elementos que rolam de lado ou cortam conteúdo. Ficou assim, e vale para o app:
+
+- Nenhuma faixa de botões rola de lado. Filtros com muitas opções viram uma lista que abre (etiquetas dos contatos, seções das Configurações no celular: "Seção: Agenda ▾"). Abas e grupos de botões quebram linha.
+- Botão com ícone mostra o texto também no celular quando cabe (Pastas e Lixeira em Tarefas).
+- O teste de cada PR roda a mesma varredura no e2e: nenhum elemento visível com rolagem lateral escondida em 390 px e 1440 px.
+
+### Frases descritivas
+
+Cada tela tem uma frase curta embaixo do título, que diz o que dá para fazer ali, na voz da pessoa e sem citar infraestrutura (prática do Material, do Apple HIG e do GOV.UK: verbo, benefício, sem jargão; a mesma estrutura em todas as seções). Textos do protótipo:
+
+| Onde | Frase |
+| --- | --- |
+| Tarefas | O que vence hoje, o que vem depois e o que já foi feito. |
+| Notas | Ideias, listas e o que veio das conversas. Tudo se salva sozinho. |
+| Agenda | Seus eventos do Google Agenda, sempre atualizados. O que você cria aqui ou pela Zuri vai direto para lá. |
+| Memória | O que a Zuri lembra sobre você e como cada coisa se liga. Você corrige ou apaga quando quiser. |
+| Automações › Rotinas | Lembretes, resumos e rotinas que rodam sozinhos, no seu fuso. |
+| Automações › Fluxos | Sequências de passos que você monta, com hora para rodar e limites. |
+| CRM › Módulos | Rotinas do consultório já testadas no n8n. Você liga, escolhe a credencial e acompanha o ensaio. |
+| CRM › Credenciais | Endereços e chaves dos serviços de fora, guardados uma vez e usados por todos os módulos. |
+| Configurações | Conta, segurança, integrações e o jeito como a Zuri trabalha para você. |
+| › Conta | Nome, idioma, fuso, tema e senha |
+| › Agenda | Horário de trabalho, visualização e lembretes |
+| › Segurança | Duas etapas, passkeys, sessões e acesso pela API |
+| › Uso da IA | Quanto a IA usou hoje e em cada período |
+| › Modelos e limites | Modelo de IA, agentes e limites |
+| › Avisos | O que chega, quando e por qual canal |
+| › Integrações | Google, Telegram e outros serviços |
+| › Dados | Cópias de segurança, espaço e lixeira |
+| › Diagnóstico | Falhas recentes e como relatar |
+| › Sobre a Zuri | Versão instalada e novidades |
+| Entrar | Entre para continuar de onde parou. Lado da marca: "Sua agenda, suas tarefas e seus lembretes, em ordem." |
+| Esqueci minha senha | Criar uma senha nova: "Informe o e-mail da conta. Se ele estiver cadastrado, você recebe um link para criar a senha nova." |
+
+Cada PR passa os textos novos pela `humanizer:humanizer` e põe a tradução en junto.
 
 ### Consumo por período (PR H e PR de servidor)
 
@@ -164,26 +268,41 @@ Tudo o que foi definido no protótipo entra no app. A ordem respeita as dependê
 | # | PR | O que entra | Depende de | Tamanho |
 | --- | --- | --- | --- | --- |
 | 1 | A · Fundamentos | Tokens, Figtree em woff2, peças base, tema só com ícones | Aprovação do Sinal refinado | M |
-| 2 | B · Casca | Menu lateral com Avaliações e as partes de Automações, menu de baixo no celular, folha "Mais", perfil e avisos em painel, ⌘K | A; teto do JS aprovado | G |
-| 3 | I · Entrada | Textos novos, campo de e-mail sem exemplo, linha da verificação, "Esqueci minha senha" ao lado da senha, recuperação no desenho novo | A | P |
+| 2 | B · Casca | Menu lateral com Avaliações, Automações (Rotinas, Fluxos) e CRM (Módulos, Credenciais), menu de baixo no celular, folha "Mais", perfil e avisos em painel (versão no pé do perfil, sem "Agenda"), ⌘K | A; teto do JS aprovado (até 141 kB, resposta 2 de 10/11) | G |
+| 3 | I · Entrada | Textos novos, campo de e-mail sem exemplo, os seis estados da verificação de segurança, "Esqueci minha senha" ao lado da senha, recuperação no desenho novo, título da página de erro | A | P |
 | 4 | C · Início | Saudação pela hora, cortina do que passou, pendências | B | M |
 | 5 | Servidor · sugestões | [sugestoes-do-inicio.md](sugestoes-do-inicio.md) e as sugestões no Início | C | M |
-| 6 | D · Conversa e Memória | Sem clipe; um componente de gravação para todos os microfones | B | M |
+| 6 | D · Conversa e Memória | Sem clipe; um componente de gravação para todos os microfones; memória com filtros, lista agrupada, painel e visão Mapa | B | M |
 | 7 | E · Tarefas e Notas | "Pastas", "Nova nota", salvamento automático | B | M |
-| 8 | F · Agenda | Linha de agora, legenda, rodapé "Configurações", preferência do horário visível (servidor pequeno junto) | B | M |
+| 8 | F · Agenda | Linha de agora, legenda, rodapé "Configurações", horário e dias de trabalho, esconder dia inteiro e fora do horário com aviso (servidor pequeno junto) | B | M |
 | 9 | Servidor · sincronização | Contatos 5 min, Avaliações 10 min, etiquetas por hora, recarga só com mudança, campos novos ([plano](sincronizacao-contatos-avaliacoes.md), PR 1) | — | M |
-| 10 | G · Contatos | Sem Clientes, etiquetas no topo, contagem, ficha com todos os campos e "Vazio no Google" | B, 9 | M |
+| 10 | G · Contatos | Sem Clientes, filtro de etiquetas em lista com busca, contagem, ficha com todos os campos e "Vazio no Google" | B, 9 | M |
 | 11 | Servidor · métricas | Métricas das avaliações ([plano](sincronizacao-contatos-avaliacoes.md), PR 2) | — | P |
-| 12 | G2 · Avaliações | Área própria: Visão geral, Avaliações, Pedidos | B, 11 | M |
+| 12 | G2 · Avaliações | Área própria: Visão geral, Avaliações, Pedidos e Como responder (com o servidor dos campos novos e do teste) | B, 11 | M |
 | 13 | Servidor · consumo | Contadores por hora e resumo por mês | — | P |
-| 14 | H · Automações e Configurações | Rotinas, Fluxos, Módulos (vazia até a 16), Conexões, Configurações, consumo por dia/semana/mês/ano | B, 13 | G |
-| 15 | Servidor · conexões | Tipo de conexão (`http`, `chatwoot`), senha, troca de chave, remoção bloqueada em uso ([modulos.md](modulos.md)) | H | M |
+| 14 | H · Automações, CRM e Configurações | Rotinas, Fluxos; CRM com Módulos (vazia até a 16) e Credenciais; Configurações com Sobre a Zuri e `/api/version`; Relatar no GitHub com prévia; consumo por dia/semana/mês/ano | B, 13 | G |
+| 15 | Servidor · credenciais | Tipo de credencial (`http`, `chatwoot`), senha, troca de chave, remoção bloqueada em uso ([modulos.md](modulos.md), [modulos-crm.md](modulos-crm.md)) | H | M |
 | 16 | Servidor · módulos | Manifesto, ensaio, comparação, rotas ([modulos.md](modulos.md), PR 1) | 15 | G |
 | 17 | Módulo · Pedido de avaliação | Fila, dias úteis, homônimos, Chatwoot ([envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md)) | 16, 12 | G |
 | 18 | Catálogo de modelos | Conferido sozinho uma vez por dia | H | P |
-| 19 em diante | Um módulo por fluxo do n8n | Na ordem do Pablo, cada um com a aprovação da exceção, se mandar mensagem a pacientes | 16 | M cada |
+| 19 em diante | Um módulo por fluxo do n8n | Na ordem de [modulos-crm.md](modulos-crm.md), cada um com a aprovação da exceção, se mandar mensagem a pacientes | 16 | M cada |
+| Penúltima | Conferência das capturas | Nenhuma captura do visual antigo sobra no README nem em `docs/capturas/` | Todas as de interface | P |
+| **Última** | **Pentest autônomo final** | Um agente autônomo age como pentester contra o sistema inteiro e depois aplica as correções (detalhes abaixo) | Tudo concluído **e** autorização explícita do Pablo | G |
 
-Em paralelo depois da B: I, C, D, E, F; os servidores 9, 11 e 13 não dependem de interface e podem começar já. A PR de README da outra thread troca as capturas quando as PRs B a H entrarem.
+Em paralelo depois da B: I, C, D, E, F; os servidores 9, 11 e 13 não dependem de interface e podem começar já.
+
+### Capturas do README (pedido do Pablo, 10/11)
+
+O README precisa mostrar o frontend novo. Cada PR que troca uma tela refaz, no mesmo PR, a captura correspondente do README com `node scripts/capturas-do-readme.ts` (regras em `.claude/rules/readme.md` e `.claude/rules/capturas.md`), nos dois temas. A PR #239 (README compacto) já deixou o espaço das capturas. A penúltima linha do cronograma confere que não sobrou nenhuma captura do visual antigo.
+
+### Pentest autônomo final (pedido do Pablo, 10/11, 00:54)
+
+**Trava:** só começa depois de todas as linhas anteriores mescladas **e** de uma autorização explícita do Pablo, dada na hora. Nenhuma rotina nem thread inicia esta etapa sozinha.
+
+- Um agente autônomo se comporta como pentester e testa o sistema por completo: entrada e sessão, verificação de segurança, API e rotas, WebSocket `/api/live`, bot do Telegram, ferramentas do agente e injeção de prompt, MCP, módulos e credenciais do CRM, webhooks (Chatwoot e n8n), backup, cabeçalhos e CSP, custo no plano Free.
+- Só contra o ambiente local ou de ensaio (`wrangler dev --local` ou um Worker de teste), nunca contra produção nem contra serviços de terceiros reais.
+- Relatório em `docs/qa/auditorias/<data>-pentest-final.md`, no formato das auditorias anteriores.
+- Correções em PRs para a `develop`, pelas regras de sempre (teste que prova a falha, QA, auditoria). Achado alto ou médio vai ao Pablo antes de corrigir.
 
 ### Conferência antes de cada merge
 
@@ -208,6 +327,6 @@ Em paralelo depois da B: I, C, D, E, F; os servidores 9, 11 e 13 não dependem d
 ### Perguntas abertas
 
 1. Aprovar o Sinal refinado como a nova interface? Recomendação: sim; a PR A começa em seguida.
-2. Teto do JS inicial para a casca nova: medir na PR B e pedir com o número. Recomendação: aceitar até 141 kB se a economia não bastar.
-3. Configurações › Agenda (horário visível da semana) entra como preferência nova? Recomendação: sim, numa PR pequena de servidor junto da F.
+2. ~~Teto do JS inicial para a casca nova~~ Respondida em 10/11: sim, até 141 kB se a economia não bastar.
+3. ~~Configurações › Agenda como preferência nova~~ Respondida em 10/11: sim (horário, dias, dia inteiro e fora do horário).
 4. Ordem do cronograma da seção 11? Recomendação: como está, com os servidores 9, 11 e 13 começando já, porque não dependem da interface.
