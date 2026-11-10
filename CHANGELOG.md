@@ -19,6 +19,14 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.39.5] - 2026-11-10
+
+Mesclada às 12:54 (UTC-3) · commit [`102719c`](https://github.com/pablopfg/Zuri/commit/102719c66e0aecf797684963c8cf34daa21ffffe) · PR [#254](https://github.com/pablopfg/Zuri/pull/254) · Estudo de viabilidade do segundo cérebro na memória
+
+### Alterado
+
+- Sem mudança visível: estudo de viabilidade do segundo cérebro na memória.
+
 ## [0.39.4] - 2026-11-10
 
 Mesclada às 10:55 (UTC-3) · commit [`d20d7c3`](https://github.com/pablopfg/Zuri/commit/d20d7c31d0ca60dd033e860912315d0eddd413e6) · PR [#251](https://github.com/pablopfg/Zuri/pull/251) · Formulário de novo token não fecha sozinho depois de ligar o acesso
@@ -2918,7 +2926,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.4...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.5...develop
+[0.39.5]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.5
 [0.39.4]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.4
 [0.39.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.3
 [0.39.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.2
