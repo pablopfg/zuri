@@ -5,6 +5,8 @@ import { estimateTokens, type StepUsage, tokenCount, tokens } from "./provider.t
 export interface StepMeter {
   inputEstimate: number;
   input?: number | undefined;
+  /** The input as the company bills it, in full-price tokens, when that differs from the count (a prompt cache). */
+  inputBilled?: number | undefined;
   output?: number | undefined;
   /** Characters of text, reasoning and tool calls seen in the raw answer, even what the SDK dropped on an error. */
   outputChars: number;
@@ -111,5 +113,6 @@ export function stepUsage(model: string, meter: StepMeter, sdkOutputChars = 0): 
     billable: true,
     input: tokens(meter.input, meter.inputEstimate),
     output: tokens(meter.output, estimateTokens(Math.max(sdkOutputChars, meter.outputChars))),
+    ...(meter.inputBilled === undefined ? {} : { billedInput: meter.inputBilled }),
   };
 }

@@ -11,7 +11,7 @@ import { AppError } from "../http/errors.ts";
 import { MAX_RELEVANT_MEMORIES, memoryPromptSection, memoryTokenBudget, selectRelevantMemories } from "../memory/recall.ts";
 import { ALL_TOOLS } from "../tools/index.ts";
 import { type Notice, type ToolContext, type ToolDefinition, ToolExecutor } from "../tools/registry.ts";
-import { contextBudget, contextWindow, SUMMARIZE_THRESHOLD, summaryRequest } from "./context.ts";
+import { contextBudget, contextWindow, SUMMARIZE_THRESHOLD, summaryRequest, ToolsNoteFilter } from "./context.ts";
 import { buildSystemPrompt, chatPromptVersion, scheduledInstructions } from "./prompt.ts";
 import { dataLine } from "./data.ts";
 import { log } from "../log.ts";
@@ -148,6 +148,9 @@ export class AgentRunner {
     yield { type: "start", conversation: conversations.get(conversation.id), userMessage, assistantMessageId };
 
     let text = "";
+    /** A tool ran since the last text: the next text is a new passage. */
+    let resumed = false;
+    const echo = new ToolsNoteFilter();
     let fallback = false;
     // Who reads the tools' results in each try (step 21): MeteredAI flips it for a company outside the account.
     const exposure: { external: boolean; sawLocalOnly?: boolean } = { external: false };
@@ -272,9 +275,24 @@ export class AgentRunner {
           // The chosen model failed before answering; the mark goes with the stored answer.
           fallback = true;
         } else if (event.type === "text") {
-          text += event.delta;
-          yield { type: "text", delta: event.delta };
+          // A model that speaks before a tool and again after it (Claude does, every time) sends two
+          // separate passages: without a break they reach the owner glued ("…a nota.Pronto, …").
+          // The model's copy of the history's tools note never reaches the owner (context.ts).
+          const shown = echo.push(event.delta);
+          // An empty delta is not a passage: it must not spend the break.
+          if (!shown) continue;
+          const delta = resumed && text && !/\s$/.test(text) && !/^\s/.test(shown) ? `\n\n${shown}` : shown;
+          resumed = false;
+          text += delta;
+          yield { type: "text", delta };
         } else if (event.type === "tool-start") {
+          // What was held back before the tool belongs to the passage that just ended.
+          const rest = echo.end();
+          if (rest) {
+            text += rest;
+            yield { type: "text", delta: rest };
+          }
+          resumed = true;
           // A name the model made up is refused by the executor and never shown.
           const found = turnTools.find(event.name);
           if (!found) continue;
@@ -301,6 +319,11 @@ export class AgentRunner {
           if (actionId) yield { type: "approval", action: this.deps.tools.actions.view(actionId) };
           if (planId) yield { type: "plan", plan: this.deps.tools.plans.get(planId) };
         }
+      }
+      const rest = echo.end();
+      if (rest) {
+        text += rest;
+        yield { type: "text", delta: rest };
       }
       // The SDK ends an aborted stream quietly: the signal says the owner stopped it.
       if (input.signal.aborted) {

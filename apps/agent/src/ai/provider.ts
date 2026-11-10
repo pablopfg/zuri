@@ -27,6 +27,11 @@ export interface StepUsage {
   billable: boolean;
   input: TokenCount;
   output: TokenCount;
+  /**
+   * The input in full-price tokens, when the company bills part of it at another rate (Anthropic's
+   * prompt cache: a write costs more, a read much less). The cost uses it; the token counts stay real.
+   */
+  billedInput?: number;
 }
 
 export interface GenerateRequest {

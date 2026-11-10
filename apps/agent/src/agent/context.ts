@@ -41,9 +41,70 @@ const PLAN_OUTCOME: Record<TaskPlan["status"], string> = {
   expired: "expired without confirmation; nothing was created",
 };
 
+/** How the note of the tools an earlier answer ran begins. */
+const TOOLS_NOTE = "[Tools called in that turn:";
+
+/** The longest list of tools a note carries; a longer "note" is text, and is shown. */
+const NOTE_BODY_MAX = 400;
+/** Blank characters before a note that go away with it. */
+const NOTE_LEAD_MAX = 8;
+/** A whole note, exactly as `outcomes` writes it: names, counts and outcomes, nothing else. Bounded, so it reads in linear time. */
+const WHOLE_NOTE = new RegExp(`[ \\t\\r\\n]{0,${NOTE_LEAD_MAX}}\\[Tools called in that turn: [\\w ,()]{1,${NOTE_BODY_MAX}}\\]`, "g");
+const NOTE_BODY = /^[\w ,()]*$/;
+
+/** Where the blank run that ends `text` starts, looking back at most NOTE_LEAD_MAX characters. */
+function blankTail(text: string): number {
+  let from = text.length;
+  while (from > 0 && text.length - from < NOTE_LEAD_MAX && " \t\r\n".includes(text[from - 1] as string)) from--;
+  return from;
+}
+
+/**
+ * Takes the tools note out of what the model writes. The model reads the note at the end of its own
+ * earlier answers and sometimes copies it into the next one (seen on a real model); the owner must
+ * never see it, and stored again it would stack. A stream filter: it holds back only what may be the
+ * start of a note (never more than a note's length), so the rest of the text flows as it comes, and
+ * text that only begins like a note is shown.
+ */
+export class ToolsNoteFilter {
+  private held = "";
+
+  /** The part of `delta` (with what was held) that is safe to show now. */
+  push(delta: string): string {
+    const text = (this.held + delta).replace(WHOLE_NOTE, "");
+    this.held = "";
+    // A note still being written, or a "[" that may become one: wait for more.
+    const open = text.lastIndexOf("[");
+    const tail = open >= 0 ? text.slice(open) : "";
+    const unfinished =
+      tail !== "" &&
+      (TOOLS_NOTE.startsWith(tail) || (tail.startsWith(`${TOOLS_NOTE} `) && tail.length <= TOOLS_NOTE.length + 1 + NOTE_BODY_MAX && NOTE_BODY.test(tail.slice(TOOLS_NOTE.length + 1))));
+    // The blank characters before it go with it, or they would be left hanging if it is a note.
+    // With no note in sight, trailing blank lines may still be leading into one.
+    const from = unfinished ? blankTail(text.slice(0, open)) : blankTail(text);
+    this.held = text.slice(from);
+    return text.slice(0, from);
+  }
+
+  /** What was held at the end of the stream: shown, unless it is a note cut short. */
+  end(): string {
+    const rest = this.held;
+    this.held = "";
+    return rest.trimStart().startsWith(TOOLS_NOTE) || !rest.trim() ? "" : rest;
+  }
+}
+
 function outcomes(row: MessageRow, actions: Map<string, PendingAction>, plans: Map<string, TaskPlan>): string[] {
   const notes: string[] = [];
+  // Tools that simply ran (no proposal, no plan), counted by name and result. Without this line the
+  // model reads its own earlier "done" with no call behind it and concludes it never acted: a real
+  // model then apologizes for an action it did take, or does it a second time.
+  const ran = new Map<string, number>();
   for (const tool of decodeTools(row.tools)) {
+    if (!tool.actionId && !tool.planId && tool.status !== "running") {
+      const key = `${tool.name} (${tool.status === "success" ? "done" : "failed"})`;
+      ran.set(key, (ran.get(key) ?? 0) + 1);
+    }
     const action = tool.actionId ? actions.get(tool.actionId) : undefined;
     if (tool.actionId && action?.tool === "mcp_call") {
       // An external call (step 18): what the server answered comes back as data, never as instructions.
@@ -59,6 +120,7 @@ function outcomes(row: MessageRow, actions: Map<string, PendingAction>, plans: M
     const plan = tool.planId ? plans.get(tool.planId) : undefined;
     if (tool.planId) notes.push(`[Task plan: ${plan ? PLAN_OUTCOME[plan.status] : PLAN_OUTCOME.expired}]`);
   }
+  if (ran.size > 0) notes.unshift(`${TOOLS_NOTE} ${[...ran].map(([key, count]) => (count > 1 ? `${count}x ${key}` : key)).join(", ")}]`);
   return notes;
 }
 
