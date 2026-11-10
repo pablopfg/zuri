@@ -40,10 +40,11 @@ Não existe na develop: calendário de feriados, fila de mensagens a contatos, c
 - 09/11, 19:34: exceção à regra "a Zuri não escreve a contatos", **só para o pedido de avaliação**, pelo Chatwoot self-hosted (última versão), caixa tipo API (WhatsApp não oficial, sem custo da Meta), 8 dias depois da consulta, só em dia útil, teto de 20 por dia, intervalo sorteado de 1 a 3 minutos (trocado em 10/11, 03:01, por 30 s a 1 min na credencial). Parâmetros guardados uma vez em "Credenciais".
 - 09/11, 20:02: avaliação ↔ contato. O Google só entrega nome, foto ou "anônimo"; homônimos nunca se ligam sozinhos; ninguém recebe pedido até o Pablo escolher.
 - 10/11, 00:51: "Clientes" sai da tela e o CRM em segundo plano fica para depois. **Módulos** e **Credenciais** saem de Automações e vão para um menu lateral próprio, **CRM**. Todo módulo nasce desligado.
+- 10/11, termos da interface (fechados na #204, `novo-frontend-sinal.md` seção 7): **Rotina** é o que a Zuri roda sozinha (o menu "Automações" de hoje vira "Rotinas"); **Automação** é o processo do consultório vindo do n8n, na tela **CRM › Automações**; **Fluxo** é o que o dono monta no editor, em **CRM › Fluxos**; **Credencial** fica em **CRM › Credenciais**. "Módulo" é só o nome interno no código e neste plano; nada na tela diz "módulo".
 
 ### Planos anteriores
 
-- [modulos.md](modulos.md) (PR #204): manifesto, runtime, ensaio comparado com o n8n, estados, rotas `/api/modules`, conexões com tipo (`http` e `chatwoot`). Este plano usa tudo isso. Onde lá está "Automações › Módulos e Conexões", vale agora "CRM › Módulos e Credenciais" (decisão de 10/11).
+- [modulos.md](modulos.md) (PR #204): manifesto, runtime, ensaio comparado com o n8n, estados, rotas `/api/modules`, conexões com tipo (`http` e `chatwoot`). Este plano usa tudo isso. Onde lá está "Automações › Módulos e Conexões", vale agora "CRM › Automações e Credenciais" (decisões de 10/11).
 - [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md) (PR #204): chamadas ao Chatwoot, envio sem repetir, retorno do Chatwoot, disjuntor.
 - [sincronizacao-contatos-avaliacoes.md](sincronizacao-contatos-avaliacoes.md) (PR #204): contatos a cada 5 min, área de Avaliações com o funil dos pedidos.
 - [workflows-n8n.md](workflows-n8n.md) e [etapa-22a-motor-de-fluxos.md](etapa-22a-motor-de-fluxos.md): limites do motor.
@@ -153,9 +154,9 @@ O ensaio (seção 11) confere essa ordem na prática: se a Zuri decidir antes de
 
 ### Onde fica
 
-Menu lateral **CRM**, com duas partes:
+Menu lateral **CRM**, com três abas (Fluxos é a aba dos fluxos montados no editor, que sai de Automações). Abaixo, as duas que este plano usa. Na tela, cada módulo aparece como uma **automação**:
 
-- **Módulos**: a lista de módulos do código. Cada cartão mostra o nome, uma frase do que faz, o estado (Desligado, Em ensaio, Ligado, Pausado), o que falta para ligar ("Precisa da credencial do Chatwoot") e, se escreve a pacientes, o selo "Escreve a pacientes".
+- **Automações**: a lista dos módulos do código, chamados de automações na tela. Cada cartão mostra o nome, uma frase do que faz, o estado (Desligado, Em ensaio, Ligado, Pausado), o que falta para ligar ("Precisa da credencial do Chatwoot") e, se escreve a pacientes, o selo "Escreve a pacientes".
 - **Credenciais**: as credenciais do Chatwoot (e as que vierem), cadastradas uma vez e escolhidas pelo nome em cada módulo. Mostra o final da chave e quem usa cada uma.
 
 Os estados vazio, carregando e erro, o celular, o tema escuro, o teclado e o leitor de tela seguem a casca da nova interface. Cada tela é desenhada no plano da sua PR.
@@ -171,7 +172,7 @@ Os estados vazio, carregando e erro, o celular, o tema escuro, o teclado e o lei
 
 ### Fluxo 2 · Ligar um módulo
 
-1. CRM › Módulos › **Ligar**.
+1. CRM › Automações › **Ligar**.
 2. Escolhe a credencial (por nome) e ajusta as opções do módulo dentro da faixa (limite por dia, horário, dias depois da consulta).
 3. Começa **sempre em ensaio**: a Zuri faz as leituras de verdade e troca cada envio por uma anotação ("Enviaria a Ana S."). O n8n continua trabalhando e avisa a Zuri do que fez; a tela mostra "12 iguais, 1 só no n8n, 0 só na Zuri".
 4. Com 3 dias úteis sem diferença, aparece **Ligar de verdade** (senha). A tela lembra de desligar o fluxo no n8n no mesmo dia.
@@ -411,7 +412,7 @@ Uma PR por linha, cada uma mesclável sozinha e entregue **desligada**. Toda PR 
 
 | PR | O que entra | Fluxos do n8n | Depende de | Precisa do Pablo |
 | --- | --- | --- | --- | --- |
-| 1 | **Base dos módulos**: manifesto, runtime, ensaio, comparação, estados, rotas, menu CRM com Módulos (vazio) e Credenciais | — | casca da nova interface | — |
+| 1 | **Base dos módulos**: manifesto, runtime, ensaio, comparação, estados, rotas, menu CRM com Automações (vazia) e Credenciais | — | casca da nova interface | — |
 | 2 | **Calendário**: feriados, dias úteis, dias sem expediente, janelas e fuso, com a tela de dias sem expediente | regras do MSG - 08 | 1 | Marcar dias sem expediente |
 | 3 | **Chatwoot e fila de saída**: credencial com teste e "Enviar teste para mim", webhook assinado, `crmBloqueado` e "não quer receber", fila com janelas, intervalo, digitando, conversa em andamento, tentativas e envio incerto | CFG - 04, MSG - 08, MSG - 09 | 1, 2 | Credencial do Chatwoot e webhook |
 | 4 | **Identidade do paciente**: evento da agenda → contato, com a lista "precisa de você" | regra do AGE - 12 e do ATD - 13 | 1 | — |
@@ -490,7 +491,7 @@ Pedido do Pablo (10/11, 02:24). Hoje o PLA - 16 lê a caixa do consultório por 
 
 1. Cloudflare › o domínio › **Email** › **Email Routing** › **Routing rules** › **Create address**.
 2. Endereço: `planos` (fica `planos@exemplo.com.br`). Ação: **Send to a Worker**. Destino: o Worker `zuri`. Salvar.
-3. Na Zuri: CRM › Módulos › **Plano alimentar** › Ligar. Conferir as opções que já vêm preenchidas com as do PLA - 16: remetente esperado (o domínio do Webdiet), texto que o assunto contém ("planejamento alimentar"), endereços do consultório a ignorar e domínio do link do portal. Escolher a credencial do Chatwoot. Começa em ensaio.
+3. Na Zuri: CRM › Automações › **Plano alimentar** › Ligar. Conferir as opções que já vêm preenchidas com as do PLA - 16: remetente esperado (o domínio do Webdiet), texto que o assunto contém ("planejamento alimentar"), endereços do consultório a ignorar e domínio do link do portal. Escolher a credencial do Chatwoot. Começa em ensaio.
 4. No e-mail onde o Webdiet manda os avisos, criar um **filtro**: de quem for do domínio do Webdiet **e** com "planejamento alimentar" no assunto, encaminhar para `planos@exemplo.com.br`. Só esses e-mails saem da caixa; o resto nunca chega à Zuri.
 5. **Confirmação do encaminhamento.** O Gmail e outros provedores mandam um e-mail de confirmação para o endereço novo antes de liberar o encaminhamento. A Zuri reconhece esse e-mail (remetente do provedor e assunto de confirmação), **não clica em nada** e mostra ao Pablo um aviso com o código de confirmação. O Pablo digita o código no provedor.
 6. **Teste.** Encaminhar à mão um aviso antigo do Webdiet para `planos@exemplo.com.br`. Em ensaio, a tela mostra "Recebido às 10:42 · Ana S. · plano de 08/11 · enviaria o aviso". Nada sai ao paciente.
