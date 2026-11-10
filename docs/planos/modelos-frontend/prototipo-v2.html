@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="pt-BR" data-model="menta" data-theme="claro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modelos de interface Zuri, rodada 2</title>
+<meta name="description" content="Protótipo estático da segunda rodada: Menta refinado e três modelos pela ui-skills, com todas as telas e a de entrar.">
+<!--
+  Protótipo descartável (docs/planos/modelos-frontend.md, rodada 2). Não é o app.
+  Parâmetros: ?m=menta|zinco|pedra|ardosia  &s=entrar|inicio|conversa|tarefas|notas|agenda|automacoes|memoria|configuracoes
+              &t=claro|escuro  &captura=1 (esconde a barra de escolha).
+  Menta usa a fonte Outfit (Google Fonts só aqui; no app viria como woff2 do próprio Worker).
+  Zinco, Pedra e Ardósia seguem a baseline-ui da ui-skills (commit 97dea9e7, avaliada em docs/planos/skill-ui-skills.md):
+  cores e sombras padrão do Tailwind, fonte do sistema, sem gradiente, sem brilho, um destaque por tela,
+  números tabulares, títulos balanceados, movimento só de transform/opacity em até 200 ms.
+-->
+<style>
+*{box-sizing:border-box}
+html,body{margin:0}
+:root{--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;--side:264px;
+  --sys:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji";--sysmono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --z-sticky:10;--z-overlay:20}
+
+/* ---------- Menta (refinado) ---------- */
+[data-model="menta"]{--f:"Outfit",var(--sys);--fm:"DM Mono",var(--sysmono);--r-card:24px;--r-in:16px;--r-ctl:999px;--r-nav:999px;--w-h:500;--shadow:none}
+[data-model="menta"][data-theme="claro"]{--bg:#ffffff;--surface:#f5f6f4;--raised:#eaece8;--ink:#1f2321;--head:#121513;--muted:#59605b;--line:#e2e5e1;--accent:#a1ffcb;--on-accent:#0a2a19;--accent-text:#0a7041;--soft:#e3fff0;--side-bg:#f7f8f6;--warn:#9a3f00;--warn-soft:#fff1e3;--danger:#b42318;--focus:#0a7041}
+[data-model="menta"][data-theme="escuro"]{--bg:#111312;--surface:#1a1d1b;--raised:#242826;--ink:#eef2ef;--head:#ffffff;--muted:#a9b0ab;--line:#2c312e;--accent:#a1ffcb;--on-accent:#0a2a19;--accent-text:#a1ffcb;--soft:#173425;--side-bg:#151816;--warn:#ffb779;--warn-soft:#3a2614;--danger:#ffb4ab;--focus:#a1ffcb}
+
+/* ---------- Zinco: zinc + emerald (Tailwind) ---------- */
+[data-model="zinco"]{--f:var(--sys);--fm:var(--sysmono);--r-card:12px;--r-in:8px;--r-ctl:8px;--r-nav:6px;--w-h:600;--shadow:none}
+[data-model="zinco"][data-theme="claro"]{--bg:#fafafa;--surface:#ffffff;--raised:#f4f4f5;--ink:#18181b;--head:#09090b;--muted:#52525b;--line:#e4e4e7;--accent:#047857;--on-accent:#ffffff;--accent-text:#047857;--soft:#ecfdf5;--side-bg:#ffffff;--warn:#b45309;--warn-soft:#fffbeb;--danger:#b91c1c;--focus:#047857}
+[data-model="zinco"][data-theme="escuro"]{--bg:#09090b;--surface:#18181b;--raised:#27272a;--ink:#f4f4f5;--head:#fafafa;--muted:#a1a1aa;--line:#27272a;--accent:#34d399;--on-accent:#022c22;--accent-text:#34d399;--soft:#064e3b;--side-bg:#09090b;--warn:#fbbf24;--warn-soft:#451a03;--danger:#f87171;--focus:#34d399}
+
+/* ---------- Pedra: stone + orange (Tailwind) ---------- */
+[data-model="pedra"]{--f:var(--sys);--fm:var(--sysmono);--r-card:16px;--r-in:10px;--r-ctl:10px;--r-nav:10px;--w-h:600;--shadow:0 1px 2px 0 rgb(0 0 0 / 0.05)}
+[data-model="pedra"][data-theme="claro"]{--bg:#f5f5f4;--surface:#ffffff;--raised:#f5f5f4;--ink:#1c1917;--head:#0c0a09;--muted:#57534e;--line:#e7e5e4;--accent:#c2410c;--on-accent:#ffffff;--accent-text:#c2410c;--soft:#fff7ed;--side-bg:#f5f5f4;--warn:#b91c1c;--warn-soft:#fef2f2;--danger:#b91c1c;--focus:#c2410c}
+[data-model="pedra"][data-theme="escuro"]{--bg:#0c0a09;--surface:#1c1917;--raised:#292524;--ink:#f5f5f4;--head:#fafaf9;--muted:#a8a29e;--line:#292524;--accent:#fb923c;--on-accent:#431407;--accent-text:#fdba74;--soft:#431407;--side-bg:#0c0a09;--warn:#f87171;--warn-soft:#450a0a;--danger:#f87171;--focus:#fdba74}
+
+/* ---------- Ardósia: slate + sky (Tailwind), menu escuro fixo ---------- */
+[data-model="ardosia"]{--f:var(--sys);--fm:var(--sysmono);--r-card:8px;--r-in:6px;--r-ctl:6px;--r-nav:6px;--w-h:600;--shadow:none}
+[data-model="ardosia"][data-theme="claro"]{--bg:#f8fafc;--surface:#ffffff;--raised:#f1f5f9;--ink:#0f172a;--head:#020617;--muted:#475569;--line:#e2e8f0;--accent:#0369a1;--on-accent:#ffffff;--accent-text:#0369a1;--soft:#f0f9ff;--side-bg:#0f172a;--side-ink:#cbd5e1;--side-head:#ffffff;--side-raised:#1e293b;--side-line:#1e293b;--side-muted:#94a3b8;--warn:#b45309;--warn-soft:#fffbeb;--danger:#b91c1c;--focus:#0369a1}
+[data-model="ardosia"][data-theme="escuro"]{--bg:#020617;--surface:#0f172a;--raised:#1e293b;--ink:#e2e8f0;--head:#f8fafc;--muted:#94a3b8;--line:#1e293b;--accent:#38bdf8;--on-accent:#082f49;--accent-text:#7dd3fc;--soft:#082f49;--side-bg:#0f172a;--side-ink:#cbd5e1;--side-head:#ffffff;--side-raised:#1e293b;--side-line:#1e293b;--side-muted:#94a3b8;--warn:#fbbf24;--warn-soft:#451a03;--danger:#f87171;--focus:#7dd3fc}
+
+body{background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--f);-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:var(--accent-text)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+h1,h2,h3{text-wrap:balance}
+p{text-wrap:pretty}
+.num,time,.when{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:8px;top:-60px;background:var(--surface);padding:8px 12px;border-radius:8px;z-index:var(--z-overlay)}
+.skip:focus{top:8px}
+.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.ic.sm{width:16px;height:16px}
+
+.picker{margin:0;border:0;min-width:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 16px;background:#0b0f19;color:#f8fafc;font:500 13px/1.4 system-ui,sans-serif}
+.picker label{display:flex;gap:6px;align-items:center}
+.picker select{background:#1a2233;color:#f8fafc;border:1px solid #56627a;border-radius:6px;padding:4px 8px;min-height:32px}
+[data-captura] .picker{display:none}
+
+/* ---------- moldura ---------- */
+.app{display:grid;grid-template-columns:var(--side) 1fr;min-height:100dvh}
+[data-captura] .app{height:100dvh;min-height:0}
+.side{background:var(--side-bg);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:var(--s4);padding:var(--s4) var(--s3);overflow:hidden;color:var(--side-ink,var(--ink))}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px;font:var(--w-h) 20px/1 var(--f);color:var(--side-head,var(--head));text-decoration:none}
+.mark{width:32px;height:32px;border-radius:calc(var(--r-in) * .8);background:var(--side-head,var(--head));color:var(--side-bg);display:grid;place-items:center;font:600 17px/1 var(--f);position:relative;flex:none}
+.mark::after{content:"";position:absolute;right:-3px;top:-3px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--side-bg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:var(--r-ctl);border:1px solid transparent;font-weight:500;cursor:pointer;text-decoration:none;transition:transform .15s ease-out}
+.btn:active{transform:scale(.97)}
+@media (prefers-reduced-motion:reduce){.btn{transition:none}.btn:active{transform:none}}
+.btn-primary{background:var(--accent);color:var(--on-accent)}
+.btn-ghost{background:transparent;color:inherit;border-color:var(--side-line,var(--line))}
+.btn-quiet{background:var(--raised);color:var(--ink)}
+.side-actions{display:grid;gap:var(--s2)}
+.side .btn{justify-content:flex-start;width:100%}
+.kbd{margin-left:auto;font:500 13px/1 var(--fm);color:var(--side-muted,var(--muted))}
+.nav{display:grid;gap:2px;margin:0;padding:0;list-style:none}
+.nav a{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 12px;border-radius:var(--r-nav);color:inherit;text-decoration:none}
+.nav a[aria-current="page"]{background:var(--side-raised,var(--raised));color:var(--side-head,var(--head));font-weight:500}
+.nav .count{margin-left:auto;font-size:13px;color:var(--side-muted,var(--muted))}
+.side h2{font:500 13px/1.3 var(--f);color:var(--side-muted,var(--muted));margin:var(--s2) 12px 4px}
+.recent{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.recent a{display:block;padding:8px 12px;border-radius:var(--r-nav);color:inherit;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account{margin-top:auto;display:flex;align-items:center;gap:12px;min-height:52px;padding:8px;border-radius:var(--r-in);border:1px solid var(--side-line,var(--line));background:transparent;width:100%;text-align:left;cursor:pointer;color:inherit}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--soft);color:var(--head);display:grid;place-items:center;font-weight:600;flex:none}
+.account small{display:block;color:var(--side-muted,var(--muted));font-size:13px}
+
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:auto}
+#conteudo{flex:1;min-height:0;display:flex;flex-direction:column}
+#conteudo>*{flex:1 0 auto;min-height:0}
+#conteudo>.chat,#conteudo>.split2{flex:1 1 0}
+.top{display:none}
+.page{width:100%;max-width:1040px;margin:0 auto;padding:var(--s7) var(--s7) var(--s8)}
+.head-row{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s4);flex-wrap:wrap;margin-bottom:var(--s5)}
+.eyebrow{font:500 13px/1.3 var(--f);color:var(--muted);margin:0 0 var(--s2)}
+h1{font:var(--w-h) clamp(28px,2vw + 12px,40px)/1.15 var(--f);color:var(--head);margin:0}
+h2{font:var(--w-h) 18px/1.3 var(--f);color:var(--head);margin:0}
+h3{font:500 16px/1.4 var(--f);color:var(--head);margin:0}
+.lead{color:var(--muted);margin:var(--s2) 0 0;max-width:62ch}
+.muted{color:var(--muted)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:var(--s5);box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3)}
+.card-head a{font-size:14px;font-weight:500;min-height:44px;display:inline-flex;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s5)}
+.list{list-style:none;margin:0;padding:0}
+.list>li{display:flex;align-items:center;gap:var(--s3);padding:12px 0;border-top:1px solid var(--line)}
+.list>li:first-child{border-top:0}
+.check{width:22px;height:22px;border:1.5px solid var(--muted);border-radius:6px;flex:none;background:transparent;cursor:pointer;padding:0}
+.when{margin-left:auto;font-size:14px;color:var(--muted);white-space:nowrap}
+.late{color:var(--warn);display:inline-flex;align-items:center;gap:4px}
+.tag{font:500 13px/1 var(--f);padding:4px 8px;border-radius:999px;background:var(--raised);color:var(--ink);white-space:nowrap}
+.tag.accent{background:var(--soft);color:var(--head)}
+.grow{flex:1;min-width:0}
+.sub{display:block;font-size:14px;color:var(--muted)}
+
+.composer{display:flex;align-items:flex-end;gap:var(--s2);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-in);padding:var(--s2) var(--s2) var(--s2) var(--s4)}
+.composer textarea{flex:1;border:0;background:transparent;resize:none;min-height:44px;padding:10px 0;outline:none}
+.composer:focus-within{border-color:var(--focus)}
+.icon-btn{width:44px;height:44px;display:grid;place-items:center;border-radius:var(--r-ctl);border:0;background:transparent;color:inherit;cursor:pointer}
+.send{background:var(--accent);color:var(--on-accent)}
+.chips{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s3)}
+.chip{min-height:44px;padding:0 14px;border-radius:var(--r-ctl);border:1px solid var(--line);background:transparent;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.tabs{display:flex;gap:4px;padding:4px;background:var(--raised);border-radius:calc(var(--r-ctl) + 4px);width:max-content;max-width:100%;overflow:auto}
+.tabs button{min-height:40px;padding:0 14px;border:0;border-radius:var(--r-ctl);background:transparent;cursor:pointer;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--head);font-weight:500;box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.08)}
+.field{display:grid;gap:6px;margin-bottom:var(--s4)}
+.field label{font-weight:500;font-size:14px}
+.input{min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-in);background:var(--surface)}
+.search{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--surface);color:var(--muted)}
+.search input{border:0;background:transparent;outline:none;flex:1;min-width:0;color:var(--ink)}
+.switch{width:44px;height:26px;border-radius:999px;border:0;background:var(--raised);position:relative;cursor:pointer;flex:none;box-shadow:inset 0 0 0 1px var(--line)}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:transform .15s ease-out}
+.switch[aria-checked="true"]{background:var(--accent)}
+.switch[aria-checked="true"]::after{transform:translateX(18px);background:var(--on-accent)}
+.seg{display:inline-flex;gap:4px;padding:4px;background:var(--raised);border-radius:calc(var(--r-ctl) + 4px)}
+.seg button{min-height:40px;padding:0 14px;border:0;border-radius:var(--r-ctl);background:transparent;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);font-weight:500;color:var(--head)}
+
+/* conversa */
+.chat{display:flex;flex-direction:column;min-height:0}
+.chat-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:var(--s4) var(--s7);border-bottom:1px solid var(--line)}
+.chat-head h1{font-size:18px;line-height:1.3}
+.thread{flex:1;overflow:auto;padding:var(--s6) var(--s7)}
+.thread-in{max-width:760px;margin:0 auto;display:grid;gap:var(--s5)}
+.msg{max-width:84%}
+.msg p{margin:0 0 8px}
+.msg p:last-child{margin:0}
+.msg.me{justify-self:end;background:var(--raised);padding:12px 16px;border-radius:var(--r-card)}
+.msg.zuri{justify-self:start}
+.who{font:500 13px/1.3 var(--f);color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.who .mark{width:22px;height:22px;font-size:12px;background:var(--head);color:var(--bg)}
+.who .mark::after{border-color:var(--bg)}
+.tool{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r-ctl);border:1px solid var(--line);background:var(--surface);font-size:14px;margin:0 8px 8px 0}
+.tool .ic{color:var(--accent-text)}
+.dock{padding:var(--s3) var(--s7) var(--s5)}
+.dock-in{max-width:760px;margin:0 auto}
+.dock small{display:block;text-align:center;color:var(--muted);font-size:13px;margin-top:8px}
+
+/* telas em duas colunas */
+.split2{display:grid;grid-template-columns:340px minmax(0,1fr);min-height:0}
+.split2>.pane{overflow:auto;padding:var(--s5)}
+.split2>.pane:first-child{border-right:1px solid var(--line);background:var(--surface)}
+.note-item{display:block;padding:12px;border-radius:var(--r-in);color:inherit;text-decoration:none}
+.note-item[aria-current="page"]{background:var(--raised)}
+.note-item p{margin:4px 0 0;font-size:14px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.prose{max-width:68ch}
+.prose h2{margin:var(--s5) 0 var(--s2)}
+.prose ul{padding-left:20px}
+.day{margin-top:var(--s5)}
+.day h2{font-size:15px;color:var(--muted);font-weight:500;margin-bottom:var(--s2)}
+.event{display:grid;grid-template-columns:88px 4px 1fr;gap:12px;align-items:stretch;padding:12px 0;border-top:1px solid var(--line)}
+.event time{color:var(--muted);font-size:14px;padding-top:2px}
+.event .bar{border-radius:4px;background:var(--accent)}
+.event .bar.alt{background:var(--muted)}
+.autos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4)}
+.auto-top{display:flex;align-items:flex-start;gap:var(--s3)}
+.auto-meta{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);margin-top:var(--s3);font-size:14px;color:var(--muted)}
+.auto-actions{display:flex;gap:var(--s2);margin-top:var(--s4)}
+.mem{display:flex;gap:var(--s3);align-items:flex-start}
+.settings{display:grid;grid-template-columns:220px minmax(0,1fr);gap:var(--s6)}
+.settings nav ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.settings nav a{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:var(--r-nav);color:var(--ink);text-decoration:none}
+.settings nav a[aria-current="page"]{background:var(--raised);font-weight:500;color:var(--head)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);padding:var(--s4) 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+
+/* entrar */
+#conteudo.login{display:grid;grid-template-columns:1fr 1fr;min-height:100dvh}
+[data-captura] #conteudo.login{height:100dvh;min-height:0}
+.login-brand{background:var(--head);color:var(--bg);padding:var(--s7);display:flex;flex-direction:column;justify-content:space-between}
+.login-brand .brand{color:var(--bg);padding:0}
+.login-brand .mark{background:var(--bg);color:var(--head)}
+.login-brand .mark::after{border-color:var(--head)}
+.login-brand p.big{font:var(--w-h) clamp(28px,2.4vw + 8px,44px)/1.15 var(--f);margin:0;max-width:16ch;text-wrap:balance}
+.login-brand small{opacity:.8;font-size:14px}
+.login-form{display:grid;place-items:center;padding:var(--s7) var(--s5)}
+.login-card{width:100%;max-width:380px}
+.login-card .btn{width:100%}
+.divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:14px;margin:var(--s4) 0}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.login-mob{display:none}
+
+/* ======== variações por modelo ======== */
+/* Menta: cantos concêntricos, pílulas, cartões sem borda, sinal menta */
+[data-model="menta"] .card{border:0}
+[data-model="menta"] .nav a[aria-current="page"]{background:var(--accent);color:var(--on-accent)}
+[data-model="menta"] .nav a[aria-current="page"] .count{color:var(--on-accent)}
+[data-model="menta"] .msg.me{background:var(--accent);color:var(--on-accent);border-radius:22px 22px 6px 22px}
+[data-model="menta"] .msg.zuri{background:var(--surface);padding:14px 18px;border-radius:22px 22px 22px 6px}
+[data-model="menta"] .composer{border-radius:24px}
+[data-model="menta"] .check{border-radius:50%}
+[data-model="menta"] .hero{background:var(--surface);border-radius:32px;padding:var(--s6)}
+[data-model="menta"] .hero .composer{background:var(--bg)}
+[data-model="menta"] .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);margin:var(--s4) 0 var(--s5)}
+[data-model="menta"] .tile{display:flex;align-items:center;gap:12px;min-height:64px;padding:12px 16px;border-radius:24px;border:1px solid var(--line);text-decoration:none;color:var(--ink);font-weight:500}
+[data-model="menta"] .tile .ico{width:40px;height:40px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center}
+[data-model="menta"] .login-brand{background:var(--accent);color:var(--on-accent);border-radius:0 40px 40px 0}
+[data-model="menta"] .login-brand .brand{color:var(--on-accent)}
+[data-model="menta"] .login-brand .mark{background:var(--on-accent);color:var(--accent)}
+[data-model="menta"] .login-brand .mark::after{background:#ffffff;border-color:var(--on-accent)}
+[data-model="menta"] .split2>.pane:first-child{border-right:0}
+[data-model="menta"] .event .bar{border-radius:999px}
+[data-model="menta"] .settings nav a{border-radius:999px}
+html:not([data-model="menta"]) .hero{padding:0}
+html:not([data-model="menta"]) .tiles{display:none}
+
+/* Zinco: linhas finas, denso, cartões só com borda */
+[data-model="zinco"] .nav a[aria-current="page"]{background:var(--raised)}
+[data-model="zinco"] .side{border-right-color:var(--line)}
+[data-model="zinco"] .msg.zuri{padding:0}
+[data-model="zinco"] .login-brand{background:var(--raised);color:var(--ink);border-right:1px solid var(--line)}
+[data-model="zinco"] .login-brand .brand{color:var(--head)}
+[data-model="zinco"] .login-brand .mark{background:var(--head);color:var(--bg)}
+[data-model="zinco"] .login-brand .mark::after{border-color:var(--raised)}
+
+/* Pedra: menu no mesmo fundo, cartões com sombra pequena, laranja só no botão principal */
+[data-model="pedra"] .side{border-right:0}
+[data-model="pedra"] .nav a[aria-current="page"]{background:var(--surface);box-shadow:var(--shadow)}
+[data-model="pedra"] .msg.me{background:var(--surface);box-shadow:var(--shadow);border:1px solid var(--line)}
+[data-model="pedra"] .split2>.pane:first-child{background:transparent}
+[data-model="pedra"] .main{background:var(--bg)}
+
+/* Ardósia: menu escuro fixo, tabelas densas */
+[data-model="ardosia"] .side{border-right:0}
+[data-model="ardosia"] .nav a[aria-current="page"]{box-shadow:inset 2px 0 0 #38bdf8}
+[data-model="ardosia"] .side .btn-primary{background:#38bdf8;color:#082f49}
+[data-model="ardosia"] .account{background:transparent}
+[data-model="ardosia"] .account .avatar{background:#1e293b;color:#ffffff}
+[data-model="ardosia"] .page{max-width:1120px}
+[data-model="ardosia"] .msg.me{background:var(--soft)}
+[data-model="ardosia"] .login-brand{background:#0f172a;color:#e2e8f0}
+[data-model="ardosia"] .login-brand .brand{color:#ffffff}
+[data-model="ardosia"] .login-brand .mark{background:#ffffff;color:#0f172a}
+[data-model="ardosia"] .login-brand .mark::after{background:#38bdf8;border-color:#0f172a}
+
+/* ---------- celular ---------- */
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  .side{display:none}
+  .top{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);padding-top:max(var(--s2),env(safe-area-inset-top));border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0;z-index:var(--z-sticky)}
+  .top .brand{margin-right:auto;font-size:18px;color:var(--head)}
+  .top .mark{background:var(--head);color:var(--bg)}
+  .top .mark::after{border-color:var(--bg)}
+  .page{padding:var(--s5) var(--s4) var(--s7)}
+  .grid,.autos,.settings{grid-template-columns:1fr;gap:var(--s4)}
+  .settings nav{display:none}
+  [data-model="menta"] .tiles{grid-template-columns:1fr}
+  [data-model="menta"] .hero{padding:var(--s5) var(--s4);border-radius:28px}
+  .split2{grid-template-columns:1fr}
+  .split2>.pane:last-child{display:none}
+  .split2>.pane:first-child{border-right:0;padding:var(--s4)}
+  .chat-head{padding:var(--s3) var(--s4)}
+  .thread{padding:var(--s5) var(--s4)}
+  .dock{padding:var(--s2) var(--s3) calc(var(--s3) + env(safe-area-inset-bottom))}
+  .msg{max-width:92%}
+  #conteudo.login{grid-template-columns:1fr}
+  .login-brand{display:none}
+  .login-mob{display:flex;margin-bottom:var(--s6);color:var(--head)}
+  .login-mob .mark{background:var(--head);color:var(--bg)}
+  .login-mob .mark::after{border-color:var(--bg)}
+  .event{grid-template-columns:64px 4px 1fr}
+  .card{padding:var(--s4)}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+<aside aria-label="Controles do protótipo"><fieldset class="picker"><legend class="sr">Escolher o que ver no protótipo</legend>
+  <label>Modelo
+    <select id="pm">
+      <option value="menta">Menta (refinado)</option>
+      <option value="zinco">A · Zinco</option>
+      <option value="pedra">B · Pedra</option>
+      <option value="ardosia">C · Ardósia</option>
+    </select>
+  </label>
+  <label>Tela
+    <select id="ps">
+      <option value="entrar">Entrar</option><option value="inicio">Início</option><option value="conversa">Conversa</option>
+      <option value="tarefas">Tarefas</option><option value="notas">Notas</option><option value="agenda">Agenda</option>
+      <option value="automacoes">Automações</option><option value="memoria">Memória</option><option value="configuracoes">Configurações</option>
+    </select>
+  </label>
+  <label>Tema
+    <select id="pt"><option value="claro">Claro</option><option value="escuro">Escuro</option></select>
+  </label>
+</fieldset></aside>
+<div id="app"></div>
+
+<script>
+const I = {
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  newchat: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"/>',
+  chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/>',
+  tasks: '<path d="m9 11 3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
+  notes: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
+  zap: '<path d="M13 2 4 14h7l-1 8 9-12h-7Z"/>',
+  memory: '<path d="M12 3a4 4 0 0 0-4 4v1a4 4 0 0 0-2 7 4 4 0 0 0 6 4 4 4 0 0 0 6-4 4 4 0 0 0-2-7V7a4 4 0 0 0-4-4Z"/>',
+  bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+  mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10a7 7 0 0 1-14 0M12 17v5"/>',
+  spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/>',
+  bot: '<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9 14h.01M15 14h.01"/>',
+  plug: '<path d="M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0ZM12 17v5"/>',
+  db: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  play: '<path d="m7 4 13 8-13 8Z"/>',
+  warn: '<path d="M12 3 2 21h20Z"/><path d="M12 10v4M12 17h.01"/>',
+  pin: '<path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12Z"/><circle cx="12" cy="9" r="2.5"/>'
+};
+const ic = (n, c = "") => `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+
+// Only known values reach the markup: anything else in the URL falls back to the default.
+const pick = (v, allowed) => (allowed.includes(v) ? v : allowed[0]);
+const MODELS = ["menta", "zinco", "pedra", "ardosia"];
+const SCREENS = ["inicio", "entrar", "conversa", "tarefas", "notas", "agenda", "automacoes", "memoria", "configuracoes"];
+const THEMES = ["claro", "escuro"];
+const params = new URLSearchParams(location.search);
+const st = { m: pick(params.get("m"), MODELS), s: pick(params.get("s"), SCREENS), t: pick(params.get("t"), THEMES) };
+if (params.get("captura")) document.documentElement.dataset.captura = "1";
+const href = (s) => `?m=${st.m}&s=${s}&t=${st.t}`;
+
+const NAV = [
+  ["inicio", "home", "Início", ""], ["conversa", "chat", "Conversa", ""], ["tarefas", "tasks", "Tarefas", "3"],
+  ["notas", "notes", "Notas", ""], ["agenda", "cal", "Agenda", "2"], ["automacoes", "zap", "Automações", ""], ["memoria", "memory", "Memória", ""]
+];
+const RECENT = ["O que tenho amanhã?", "Lista da mudança", "Resumo da semana", "Presente da Bia"];
+const TODAY = [
+  ["Separar documentos para a imobiliária", "Mudança de apartamento", "Ontem", true],
+  ["Pagar o condomínio", "", "Hoje", false],
+  ["Ligar para a transportadora", "Mudança de apartamento", "Hoje, 15:00", false]
+];
+const NEXT = [
+  ["Vistoria do apartamento novo", "Amanhã, 09:00", ""],
+  ["Resumo da manhã", "Qua, 07:30", "Automação"],
+  ["Aula do curso de fotografia", "Sex, 19:00", ""]
+];
+const IDEAS = ["Organizar a semana", "O que tenho amanhã?", "Me lembre de pagar a luz"];
+
+function side() {
+  const current = st.s === "configuracoes" ? "" : st.s;
+  const nav = NAV.map(([id, i, l, n]) => `<li><a href="${href(id)}"${id === current ? ' aria-current="page"' : ""}>${ic(i)}${l}${n ? `<span class="count num" aria-label="${n} pendentes">${n}</span>` : ""}</a></li>`).join("");
+  const rec = RECENT.map((r) => `<li><a href="${href("conversa")}">${r}</a></li>`).join("");
+  return `<aside class="side" aria-label="Menu">
+    <a class="brand" href="${href("inicio")}" aria-label="Zuri, página inicial"><span class="mark" aria-hidden="true">Z</span>Zuri</a>
+    <div class="side-actions">
+      <a class="btn btn-primary" href="${href("conversa")}">${ic("newchat")}Nova conversa</a>
+      <button class="btn btn-ghost" type="button">${ic("search")}Buscar<span class="kbd">Ctrl K</span></button>
+    </div>
+    <nav aria-label="Navegação principal"><ul class="nav">${nav}</ul></nav>
+    <div><h2>Recentes</h2><ul class="recent">${rec}</ul></div>
+    <a class="account" href="${href("configuracoes")}" aria-label="Conta e configurações: Ana"><span class="avatar" aria-hidden="true">A</span><span>Ana<small>Configurações e tema</small></span></a>
+  </aside>`;
+}
+const topbar = () => `<header class="top">
+    <button class="icon-btn" type="button" aria-label="Abrir menu" aria-expanded="false">${ic("menu")}</button>
+    <a class="brand" href="${href("inicio")}" aria-label="Zuri, página inicial"><span class="mark" aria-hidden="true">Z</span>Zuri</a>
+    <button class="icon-btn" type="button" aria-label="Avisos">${ic("bell")}</button>
+    <a class="icon-btn" href="${href("conversa")}" aria-label="Nova conversa">${ic("newchat")}</a>
+  </header>`;
+
+const composer = (ph, id) => `<form class="composer" onsubmit="return false"><label class="sr" for="${id}">${ph}</label>
+  <textarea id="${id}" rows="1" placeholder="${ph}"></textarea>
+  <button class="icon-btn" type="button" aria-label="Gravar áudio">${ic("mic")}</button>
+  <button class="icon-btn send" type="submit" aria-label="Enviar para a Zuri">${ic("send")}</button></form>`;
+const chips = () => `<div class="chips" role="group" aria-label="Ideias para começar">${IDEAS.map((x) => `<button class="chip" type="button">${ic("spark", "sm")}${x}</button>`).join("")}</div>`;
+const lateLabel = (w) => `<span class="when late">${ic("warn", "sm")}Atrasada · ${w}</span>`;
+const taskItem = ([t, p, w, late]) => `<li><button class="check" type="button" aria-label="Concluir: ${t}"></button><span class="grow">${t}${p ? `<span class="sub">${p}</span>` : ""}</span>${late ? lateLabel(w) : `<span class="when">${w}</span>`}</li>`;
+const head = (title, lead, action) => `<div class="head-row"><div><h1>${title}</h1>${lead ? `<p class="lead">${lead}</p>` : ""}</div>${action || ""}</div>`;
+
+function inicio() {
+  const today = `<section class="card" aria-labelledby="h-hoje"><div class="card-head"><h2 id="h-hoje">Hoje</h2><a href="${href("tarefas")}">Ver tarefas</a></div><ul class="list">${TODAY.map(taskItem).join("")}</ul></section>`;
+  const next = `<section class="card" aria-labelledby="h-prox"><div class="card-head"><h2 id="h-prox">Próximos dias</h2><a href="${href("agenda")}">Ver agenda</a></div><ul class="list">${NEXT.map(([t, w, tag]) => `<li><span class="grow">${t}${tag ? ` <span class="tag accent">${tag}</span>` : ""}</span><span class="when">${w}</span></li>`).join("")}</ul></section>`;
+  return `<div class="page">
+    <section class="hero" aria-labelledby="h-ola">
+      <p class="eyebrow">Segunda, 9 de novembro</p><h1 id="h-ola">Bom dia, Ana</h1>
+      <p class="lead">Três tarefas para hoje, uma atrasada. Amanhã cedo tem a vistoria do apartamento.</p>
+      <div style="margin-top:24px">${composer("Escreva para a Zuri", "hc")}</div>${chips()}
+    </section>
+    <nav class="tiles" aria-label="Atalhos">
+      <a class="tile" href="${href("tarefas")}"><span class="ico">${ic("plus")}</span>Nova tarefa</a>
+      <a class="tile" href="${href("notas")}"><span class="ico">${ic("notes")}</span>Nova nota</a>
+      <a class="tile" href="${href("agenda")}"><span class="ico">${ic("cal")}</span>Agenda de hoje</a>
+    </nav>
+    <div class="grid" style="margin-top:24px">${today}${next}</div></div>`;
+}
+
+function conversa() {
+  const mk = '<span class="mark" aria-hidden="true">Z</span>';
+  return `<div class="chat">
+    <div class="chat-head"><h1>O que tenho amanhã?</h1><button class="icon-btn" type="button" aria-label="Mais opções da conversa">${ic("more")}</button></div>
+    <div class="thread" role="log" aria-label="Mensagens" tabindex="0"><div class="thread-in">
+      <div class="msg me"><span class="sr">Você disse:</span><p>O que tenho amanhã?</p></div>
+      <div class="msg zuri"><div class="who">${mk}Zuri</div>
+        <p>Amanhã você tem duas coisas marcadas: a vistoria do apartamento novo às 09:00 e a aula de fotografia às 19:00.</p>
+        <p>Também vence “Separar documentos para a imobiliária”, que já está atrasada. Quer que eu te lembre da vistoria às 08:00?</p></div>
+      <div class="msg me"><span class="sr">Você disse:</span><p>Quero. E anota que preciso levar a planta.</p></div>
+      <div class="msg zuri"><div class="who">${mk}Zuri</div>
+        <div><span class="tool">${ic("clock", "sm")}Lembrete criado · amanhã, 08:00</span><span class="tool">${ic("notes", "sm")}Nota criada · Vistoria</span></div>
+        <p>Pronto. Às 08:00 eu te aviso, e a nota “Vistoria” já tem a planta na lista do que levar.</p></div>
+    </div></div>
+    <div class="dock"><div class="dock-in">${composer("Responda ou peça outra coisa", "cc")}<small>A Zuri pede a sua confirmação antes de apagar ou mandar algo.</small></div></div>
+  </div>`;
+}
+
+function tarefas() {
+  const more = [["Comprar caixas de papelão", "Mudança de apartamento", "Qua", false], ["Revisar fotos da última aula", "Curso de fotografia", "Sex", false]];
+  return `<div class="page">${head("Tarefas", "O que vence hoje, o que vem depois e o que já foi feito.", `<button class="btn btn-primary" type="button">${ic("plus")}Nova tarefa</button>`)}
+    <div class="tabs" role="tablist" aria-label="Visões">
+      <button role="tab" type="button" aria-selected="true">Hoje <span class="num">3</span></button>
+      <button role="tab" type="button" aria-selected="false" tabindex="-1">Próximos dias <span class="num">5</span></button>
+      <button role="tab" type="button" aria-selected="false" tabindex="-1">Feitas</button>
+    </div>
+    <section class="card" style="margin-top:16px" aria-labelledby="h-t1"><div class="card-head"><h2 id="h-t1">Para hoje</h2><span class="muted num">3 tarefas</span></div><ul class="list">${TODAY.map(taskItem).join("")}</ul></section>
+    <section class="card" style="margin-top:16px" aria-labelledby="h-t2"><div class="card-head"><h2 id="h-t2">Esta semana</h2><span class="muted num">2 tarefas</span></div><ul class="list">${more.map(taskItem).join("")}</ul></section>
+  </div>`;
+}
+
+function notas() {
+  const N = [["Vistoria", "Levar a planta, o contrato e a lista de defeitos do quarto.", "hoje"], ["Lista da mudança", "Caixas, fita, plástico bolha. Ver preço da transportadora.", "ontem"], ["Ideias de presente para a Bia", "Livro de receitas, aula de cerâmica, vaso para a varanda.", "sáb"], ["Curso de fotografia", "Regra dos terços, abertura e profundidade de campo.", "qui"]];
+  const list = N.map(([t, p, d], i) => `<a class="note-item" href="${href("notas")}"${i === 0 ? ' aria-current="page"' : ""}><span style="display:flex;justify-content:space-between;gap:8px"><strong style="font-weight:500">${t}</strong><span class="muted num" style="font-size:13px">${d}</span></span><p>${p}</p></a>`).join("");
+  return `<div class="split2">
+    <section class="pane" aria-labelledby="h-notas"><div class="head-row" style="margin-bottom:16px"><h1 id="h-notas" style="font-size:24px">Notas</h1><button class="btn btn-primary" type="button">${ic("plus")}Nova nota</button></div>
+      <label class="search" style="margin-bottom:12px">${ic("search", "sm")}<span class="sr">Buscar nas notas</span><input type="search" placeholder="Buscar nas notas"></label>${list}</section>
+    <article class="pane" aria-labelledby="h-nota"><div class="prose"><p class="eyebrow">Editada hoje, 08:14</p><h2 id="h-nota" style="font-size:28px;margin:0">Vistoria</h2>
+      <p>Amanhã às 09:00, no apartamento novo. Chegar uns 10 minutos antes.</p>
+      <h3 style="margin-top:24px">O que levar</h3><ul><li>Planta do apartamento</li><li>Contrato assinado</li><li>Lista de defeitos do quarto</li></ul>
+      <h3>Para conferir</h3><ul><li>Infiltração no banheiro</li><li>Tomadas da cozinha</li></ul></div></article>
+  </div>`;
+}
+
+function agenda() {
+  const D = [["Hoje · segunda, 9 de novembro", [["15:00", "Ligar para a transportadora", "Tarefa", true]]], ["Amanhã · terça, 10 de novembro", [["08:00", "Lembrete da vistoria", "Lembrete", true], ["09:00", "Vistoria do apartamento novo", "Agenda Google", false]]], ["Sexta, 13 de novembro", [["19:00", "Aula do curso de fotografia", "Agenda Google", false]]]];
+  const days = D.map(([d, evs]) => `<section class="day" aria-label="${d}"><h2>${d}</h2>${evs.map(([h, t, src, acc]) => `<div class="event"><time>${h}</time><span class="bar${acc ? "" : " alt"}" aria-hidden="true"></span><span><strong style="font-weight:500">${t}</strong><span class="sub">${src}</span></span></div>`).join("")}</section>`).join("");
+  return `<div class="page">${head("Agenda", "Compromissos da sua agenda e o que a Zuri marcou.", `<div class="seg" role="group" aria-label="Período"><button type="button" aria-pressed="true">Semana</button><button type="button" aria-pressed="false">Mês</button></div>`)}${days}</div>`;
+}
+
+function automacoes() {
+  const A = [["Remédio da pressão", "Lembrete", "Todo dia às 08:00", "Amanhã, 08:00", true], ["Resumo da manhã", "Resumo de tarefas", "Seg a sex às 07:30", "Amanhã, 07:30", true], ["Pagar o aluguel", "Lembrete", "Todo dia 31 às 09:00", "30 de nov, 09:00", true], ["Revisar a semana", "Resumo de tarefas", "Domingo às 18:00", "Pausada", false]];
+  const cards = A.map(([n, k, w, nx, on]) => `<article class="card" aria-label="${n}"><div class="auto-top"><span class="grow"><h2 style="font-size:16px">${n}</h2><span class="sub">${k}</span></span><button class="switch" type="button" role="switch" aria-checked="${on}" aria-label="${on ? "Ativa" : "Pausada"}: ${n}"></button></div>
+    <div class="auto-meta"><span>${ic("clock", "sm")} ${w}</span><span class="num">Próxima: ${nx}</span></div>
+    <div class="auto-actions"><button class="btn btn-quiet" type="button">${ic("play", "sm")}Rodar agora</button><button class="icon-btn" type="button" aria-label="Mais opções: ${n}">${ic("more")}</button></div></article>`).join("");
+  return `<div class="page">${head("Automações", '<span class="num">3 de 20</span> ativas. A Zuri roda cada uma no horário marcado.', `<button class="btn btn-primary" type="button">${ic("plus")}Criar automação</button>`)}<div class="autos">${cards}</div></div>`;
+}
+
+function memoria() {
+  const M = [["Prefere ser lembrada de manhã cedo, antes das 08:00.", "Preferências", "conversa de 08/11"], ["A Bia faz aniversário em 2 de dezembro.", "Pessoas", "conversa de 05/11"], ["Mudança para o apartamento novo prevista para 20 de novembro.", "Casa", "você adicionou em 01/11"], ["Toma o remédio da pressão todo dia com água.", "Saúde", "conversa de 28/10"]];
+  const list = M.map(([t, c, src]) => `<li class="mem"><span class="grow">${t}<span class="sub">De ${src}</span></span><span class="tag">${c}</span><button class="icon-btn" type="button" aria-label="Mais opções da memória">${ic("more")}</button></li>`).join("");
+  return `<div class="page">${head("Memória", "O que a Zuri lembra sobre você. Só você vê e pode apagar.", `<button class="btn btn-primary" type="button">${ic("plus")}Adicionar memória</button>`)}
+    <label class="search" style="max-width:420px;margin-bottom:16px">${ic("search", "sm")}<span class="sr">Buscar na memória</span><input type="search" placeholder="Buscar na memória"></label>
+    <section class="card" aria-labelledby="h-mem"><div class="card-head"><h2 id="h-mem">Lembranças</h2><span class="muted num">4 de 128</span></div><ul class="list">${list}</ul></section></div>`;
+}
+
+function configuracoes() {
+  const S = [["user", "Conta"], ["shield", "Segurança"], ["bot", "IA"], ["bell", "Avisos"], ["plug", "Integrações"], ["db", "Dados"]];
+  return `<div class="page">${head("Configurações", "", "")}
+    <div class="settings"><nav aria-label="Seções das configurações"><ul>${S.map(([i, l], n) => `<li><a href="${href("configuracoes")}"${n === 0 ? ' aria-current="page"' : ""}>${ic(i)}${l}</a></li>`).join("")}</ul></nav>
+    <div><section class="card" aria-labelledby="h-conta"><div class="card-head"><h2 id="h-conta">Conta</h2></div>
+      <div class="field"><label for="nome">Como a Zuri te chama</label><input class="input" id="nome" value="Ana"></div>
+      <div class="field"><label for="fuso">Fuso horário</label><select class="input" id="fuso"><option>São Paulo (UTC−3)</option></select></div>
+      <div class="field"><label for="idioma">Idioma</label><select class="input" id="idioma"><option>Português (Brasil)</option><option>English</option></select></div>
+      <button class="btn btn-primary" type="button">Salvar</button></section>
+    <section class="card" style="margin-top:16px" aria-labelledby="h-apar"><div class="card-head"><h2 id="h-apar">Aparência</h2></div>
+      <div class="row"><span>Tema</span><div class="seg" role="group" aria-label="Tema"><button type="button" aria-pressed="false">Claro</button><button type="button" aria-pressed="false">Escuro</button><button type="button" aria-pressed="true">Sistema</button></div></div>
+      <div class="row"><span>Reduzir movimento</span><button class="switch" type="button" role="switch" aria-checked="false" aria-label="Reduzir movimento"></button></div></section></div></div></div>`;
+}
+
+function entrar() {
+  return `<main id="conteudo" class="login">
+    <section class="login-brand" aria-label="Zuri">
+      <span class="brand"><span class="mark" aria-hidden="true">Z</span>Zuri</span>
+      <p class="big">Sua assistente para tarefas, notas e agenda.</p>
+      <small>Só você entra aqui.</small>
+    </section>
+    <div class="login-form"><div class="login-card">
+      <span class="brand login-mob"><span class="mark" aria-hidden="true">Z</span>Zuri</span>
+      <h1 style="font-size:28px">Entrar</h1><p class="lead" style="margin-bottom:24px">Que bom te ver de novo.</p>
+      <form onsubmit="return false">
+        <div class="field"><label for="senha">Senha</label><input class="input" id="senha" type="password" autocomplete="current-password"></div>
+        <button class="btn btn-primary" type="submit">Entrar</button>
+      </form>
+      <div class="divider">ou</div>
+      <button class="btn btn-ghost" type="button" style="width:100%;color:var(--ink)">${ic("key")}Entrar com passkey</button>
+      <p class="muted" style="font-size:14px;margin-top:24px">Esqueceu a senha? <a href="${href("entrar")}">Recuperar o acesso</a></p>
+    </div></div></main>`;
+}
+
+const SCREEN = { inicio, conversa, tarefas, notas, agenda, automacoes, memoria, configuracoes };
+function render() {
+  const html = document.documentElement;
+  html.dataset.model = st.m;
+  html.dataset.theme = st.t;
+  document.getElementById("pm").value = st.m;
+  document.getElementById("ps").value = st.s;
+  document.getElementById("pt").value = st.t;
+  let link = document.getElementById("fonts");
+  if (st.m === "menta") {
+    if (!link) { link = document.createElement("link"); link.id = "fonts"; link.rel = "stylesheet"; document.head.appendChild(link); }
+    link.href = "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=DM+Mono:wght@500&display=swap";
+  } else if (link) link.remove();
+  const app = document.getElementById("app");
+  if (st.s === "entrar") { app.className = ""; app.innerHTML = entrar(); return; }
+  app.className = "app";
+  app.innerHTML = `${side()}<div class="main">${topbar()}<main id="conteudo">${SCREEN[st.s]()}</main></div>`;
+}
+for (const [id, k] of [["pm", "m"], ["ps", "s"], ["pt", "t"]]) {
+  document.getElementById(id).addEventListener("change", (e) => {
+    st[k] = pick(e.target.value, { m: MODELS, s: SCREENS, t: THEMES }[k]);
+    history.replaceState(null, "", href(st.s));
+    render();
+  });
+}
+render();
+</script>
+</body>
+</html>
