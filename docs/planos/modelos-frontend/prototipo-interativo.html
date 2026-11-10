@@ -2566,6 +2566,15 @@ ol.pk-list{list-style:none;margin:0;padding:0}
   .rv-split .split-rv>.pane:first-child{border-right:0}
   .rv-split .back-m{display:inline-flex;margin:0 0 var(--s3) -10px}
 }
+/* 10/11 16:15: funções do app que faltavam no protótipo (revisão cruzada com o código) */
+.cl-li{display:flex;align-items:center;gap:2px}
+.cl-li .cl-item{flex:1;min-width:0}
+.cl-li .cl-more{flex-shrink:0;color:var(--muted)}
+.rv-pub-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s2)}
+.rv-pub-row .rv-pub{margin:0}
+.evk{display:grid;gap:var(--s3)}
+.evk code{display:block;padding:10px 12px;border-radius:var(--r-md);background:var(--sunken);font-size:var(--t-sm);overflow-wrap:anywhere}
+.runs-more{display:flex;justify-content:center;margin-top:var(--s3)}
 </style>
 </head>
 <body>
@@ -3305,8 +3314,10 @@ function avaliacoes() {
       <p class="ped-sum"><span><b class="num">${c.hoje}</b> para hoje</span><span><b class="num">${c.agendado}</b> agendados</span><span><b class="num">${c["sem-resposta"]}</b> sem resposta</span><span><b class="num">${c.avaliou}</b> avaliaram</span></p>`;
   } else {
     const lbl = { done: "Respondida", low: "Nota baixa", wait: "Para revisar", gone: "Apagada" };
-    list = REVIEWS.map((r) => item({ ...r, sub: r.text }, `<span class="pr">${stars(r.stars)}<span class="${r.st === "wait" || r.st === "low" ? "rv-st" : "num"}">${lbl[r.st]}</span></span>`)).join("");
-    top = `<div class="rv-bar"><label class="sr" for="rv-f">Filtrar avaliações</label><select id="rv-f" class="input input-sm"><option>Precisa de você (${waiting})</option><option>Publicadas sozinha (0)</option><option>Todas (${REVIEWS.length})</option></select><label class="sr" for="rv-n">Nota</label><select id="rv-n" class="input input-sm"><option>Todas as notas</option><option>5 estrelas</option><option>4 estrelas</option><option>3 estrelas</option><option>2 estrelas</option><option>1 estrela</option></select></div>`;
+    const RVF = { all: () => true, need: (r) => r.st === "wait" || r.st === "low", auto: () => false, done: (r) => r.st === "done" };
+    const shown = REVIEWS.filter(RVF[st.rvf] || RVF.all);
+    list = shown.map((r) => item({ ...r, sub: r.text }, `<span class="pr">${stars(r.stars)}<span class="${r.st === "wait" || r.st === "low" ? "rv-st" : "num"}">${lbl[r.st]}</span></span>`)).join("") || `<li class="cl-empty">${st.rvf === "done" ? "As avaliações respondidas pela Zuri ou direto no Google ficam aqui." : "Nenhuma avaliação neste filtro."}</li>`;
+    top = `<div class="rv-bar"><label class="sr" for="rv-f">Filtrar avaliações</label><select id="rv-f" class="input input-sm">${[["all", `Todas (${REVIEWS.length})`], ["need", `Precisa de você (${waiting})`], ["done", `Respondidas (${REVIEWS.filter((r) => r.st === "done").length})`], ["auto", "Publicadas sozinha (0)"]].map(([k, l]) => `<option value="${k}"${st.rvf === k ? " selected" : ""}>${l}</option>`).join("")}</select><label class="sr" for="rv-n">Nota</label><select id="rv-n" class="input input-sm"><option>Todas as notas</option><option>5 estrelas</option><option>4 estrelas</option><option>3 estrelas</option><option>2 estrelas</option><option>1 estrela</option></select></div>`;
   }
   const pane = pedidos
     ? `<article class="person" aria-labelledby="h-p">${back("Avaliações")}<header class="person-head">${pav(cur, "pav-xl")}<div><h2 id="h-p">${cur.n}</h2><p class="role">${cur.sub}</p></div></header>
@@ -3403,7 +3414,7 @@ function review(r) {
   const state = r.st === "gone"
     ? `<p class="rv-low">${ic("trash-2", "ic-sm")}A pessoa apagou esta avaliação em 25/10. Fica aqui só no histórico.</p>`
     : r.st === "done"
-      ? `<p class="rv-pub">${ic("circle-check", "ic-sm")}Publicada em <span class="num">${r.pub}</span></p>`
+      ? `<div class="rv-pub-row"><p class="rv-pub">${ic("circle-check", "ic-sm")}Publicada em <span class="num">${r.pub}</span></p><button class="iconbtn" type="button" data-x="rv-reply-menu" data-id="${r.id}" aria-haspopup="dialog" aria-label="Mais opções da resposta">${ic("ellipsis", "ic-sm")}</button></div>`
       : `${r.st === "low" ? `<p class="rv-low">${ic("triangle-alert", "ic-sm")}Nota baixa: a Zuri nunca responde sozinha. Você decide.</p>` : ""}
        <p class="hint">A aprovação vale até ${r.until}.</p>
        <div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-rv="${r.id}">${ic("send-horizontal", "ic-sm")}Aprovar e publicar</button><button class="btn btn-secondary btn-sm" type="button" data-rv-redo>${ic("refresh-cw", "ic-sm")}Escrever de novo</button><button class="btn btn-quiet btn-sm" type="button" data-rv-drop="${r.id}">Descartar rascunho</button><button class="btn btn-quiet btn-sm" type="button" data-rv-done>Já resolvi fora da Zuri</button></div>`;
@@ -3469,6 +3480,12 @@ function automacoes() {
       <div class="ctl"><button class="btn btn-secondary btn-sm" type="button" data-x="run" aria-label="Executar “${n}”">${ic("play", "ic-sm")}Executar</button><button class="iconbtn" type="button" data-x="flow-menu" aria-label="Mais opções de “${n}”">${ic("ellipsis")}</button></div></li>`).join("")}</ul>
     <section class="block" aria-labelledby="h-fsug"><div class="block-head"><h2 id="h-fsug">Sugestões da Zuri</h2></div>
       <ul class="card"><li class="auto"><span class="tile">${ic("sparkles")}</span><div><p class="t">Avisar do pedido de avaliação</p><p class="meta"><span>Todo dia útil às 09:00 · Buscar contatos → Avisar você</span></p></div><div class="ctl"><button class="btn btn-secondary btn-sm" type="button" data-x="flow-new" data-name="Avisar do pedido de avaliação" aria-label="Revisar “Avisar do pedido de avaliação”">Revisar</button></div></li></ul></section>
+    <section class="block" aria-labelledby="h-fruns"><div class="block-head"><h2 id="h-fruns">Últimas execuções</h2></div>
+      <ul class="card runs">
+        <li><time class="num">Hoje, 09:00</time><span>${F[0] ? F[0][0] : "Fluxo"} · 3 chamadas · 12 itens</span><span class="state on">${ic("check", "ic-sm")}Concluída</span></li>
+        <li><time class="num">Hoje, 08:15</time><span>${F[1] ? F[1][0] : "Fluxo"} · continua às 15:00</span><span class="state off">Esperando</span></li>
+        <li><time class="num">Ontem, 09:00</time><span>${F[0] ? F[0][0] : "Fluxo"} · parou no passo 2, o serviço respondeu com erro</span><span class="state wait">${ic("triangle-alert", "ic-sm")}Com erro</span></li>
+      </ul><p class="runs-more"><button class="btn btn-quiet btn-sm" type="button" data-x="runs-more">Carregar mais</button></p></section>
     <p class="ro">${ic("info", "ic-sm")}<span>Os passos que existem hoje: chamar um serviço, filtrar itens, montar campos, esperar, avisar você, pedir à IA, olhar sites, ler a agenda, criar evento e buscar contatos. “Chamar um serviço” usa uma das <button class="linkbtn" type="button" data-af="conexoes">credenciais</button>.</span></p>`;
   const pkState = { off: ["off", "Desligado"], ensaio: ["wait", "Em ensaio"], on: ["on", "Ligado"], next: ["wait", "Próxima a chegar"], dev: ["off", "Em desenvolvimento"] };
   const pkPanel = (x) => {
@@ -3506,7 +3523,7 @@ function automacoes() {
       ${open && !lock ? pkPanel(x) : ""}</li>`; }).join("")}</ol>
     <p class="ro">${ic("info", "ic-sm")}<span>Cada automação só é liberada depois de passar no ensaio ao lado do n8n, e chega desligada, com caminhos e limites fixos no código. Não roda código de fora nem importa arquivo do n8n.</span></p>`;
   const conexoes = `${cwQueue()}<ul class="card conn-list" aria-label="Credenciais">${CONNS.map((c) => { const u = connUsers(c);
-      return `<li class="auto"><span class="tile">${ic(c.kind === "chatwoot" ? "message-circle" : "cable")}</span><div><p class="t">${c.n} <span class="tag">${c.kind === "chatwoot" ? "Chatwoot" : "Serviço"}</span></p><p class="meta"><span>${c.url}</span><span>${c.info}</span></p><p class="meta"><span class="pill on"><i></i>Pronta</span><span>${c.key}</span><span>${u.length ? `Usada por ${u.length}: ${u.join(", ")}` : "Nenhuma automação usa ainda"}</span></p></div>
+      return `<li class="auto"><span class="tile">${ic(c.kind === "chatwoot" ? "message-circle" : "cable")}</span><div><p class="t">${c.n} <span class="tag">${c.kind === "chatwoot" ? "Chatwoot" : "Serviço"}</span></p><p class="meta"><span>${c.url}</span><span>${c.info}</span></p><p class="meta"><span class="pill on"><i></i>Pronta</span><span>${c.key}</span><span>${u.length ? `Usada por ${u.length}: ${u.join(", ")}` : "Nenhuma automação usa ainda"}</span></p>${c.id === "n8n" ? `<p class="meta"><span class="pill ${st.evk ? "on" : "off"}"><i></i>${st.evk ? "Eventos ligados" : "Eventos desligados"}</span><span>${st.evk ? "Clientes, mensagens e agendamentos que o n8n manda à Zuri · último hoje, 07:58 · 14 hoje" : "O n8n não manda eventos à Zuri"}</span></p>` : ""}</div>
       <div class="ctl"><button class="btn btn-secondary btn-sm" type="button" data-conn-test="${c.id}" aria-label="Testar “${c.n}”">${ic("plug-zap", "ic-sm")}Testar</button><button class="iconbtn" type="button" data-x="conn-menu" data-id="${c.id}" aria-label="Mais opções de “${c.n}”">${ic("ellipsis")}</button></div></li>`; }).join("")}</ul>
     <ul class="card ro-list">
       <li>${ic("lock", "ic-sm")}<span>A chave fica cifrada no servidor e nunca volta para a tela: aparece só o final.</span></li>
@@ -3688,6 +3705,8 @@ function cfgAvisos() {
   + sec("h-rot", "O que vai para cada canal", "Escolha por onde cada tipo de aviso sai do app.",
     `<div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Tipo de aviso</th><th scope="col">Aparelho</th><th scope="col">Telegram</th><th scope="col">E-mail</th></tr></thead><tbody>${cats.map(([n, v]) => `<tr><th scope="row">${n}</th>${v.map((on, k) => `<td><input type="checkbox" class="chk" aria-label="${n} por ${["Aparelho", "Telegram", "E-mail"][k]}"${on ? " checked" : ""}${n === "Segurança" ? " disabled" : ""}></td>`).join("")}</tr>`).join("")}</tbody></table></div>
      <p class="hint">Segurança sai sempre por todos os canais.</p>`, save())
+  + sec("h-crmav", "CRM", "O que a Zuri avisa sobre os seus clientes, pelos canais acima.",
+    swRow("crm-ret", "Quando chegar a hora de um retorno", "", true) + swRow("crm-aniv", "Aniversários de clientes, às 9h", "", false) + swRow("crm-novo", "Cliente novo vindo do n8n", "Até 20 avisos por dia.", true))
   + sec("h-dig", "Resumo do dia", "Uma vez por dia a Zuri junta o que está atrasado, o que vence hoje e o que chegou.",
     swRow("dig-on", "Receber o resumo do dia", "", true) + ctlRow("Horário do resumo", "", `<label class="sr" for="dig-h">Horário do resumo</label><input id="dig-h" class="input input-sm num" value="07:30" inputmode="numeric">`))
   + sec("h-hist", "Últimos envios", "Cada tentativa de mandar um aviso para fora do app nos últimos 90 dias.",
@@ -4399,6 +4418,10 @@ const ACT6 = [
   [(t) => t.matches("[data-x=conn-menu]"), (t) => { const c = CONNS.find((x) => x.id === t.dataset.id); const u = connUsers(c);
     menuDlg(c.n, [["pencil", "Editar", (op) => (c.kind === "chatwoot" ? cwDlg(op, c) : senhaDlg("Credenciais guardam chaves. Confirme para editar.", () => say("Credencial salva.")))],
       ["key-round", "Trocar a chave", () => senhaDlg("A chave nova vale na hora para todas as automações que usam esta credencial.", () => { c.key = "Chave nova, terminada em 7b1e"; render(); say("Chave trocada. A antiga foi apagada."); })],
+      ...(c.id === "n8n" ? (st.evk
+        ? [["refresh-cw", "Trocar o segredo dos eventos", (op) => senhaDlg("O segredo atual para de valer na hora. O n8n precisa do novo para continuar mandando eventos.", () => { setTimeout(() => evkDlg(), 0); }, op)],
+           ["power", "Desligar os eventos", (op) => confirmDlg("Desligar os eventos do n8n?", "A Zuri para de receber clientes, mensagens e agendamentos do n8n. O segredo é apagado.", "Desligar", () => { st.evk = false; DLG.opener = null; render(); refocus('[data-x=conn-menu][data-id="n8n"]'); say("Eventos do n8n desligados."); }, op)]]
+        : [["power", "Ligar os eventos", (op) => senhaDlg("Ao ligar, a Zuri mostra o endereço e o segredo uma única vez.", () => { st.evk = true; render(); setTimeout(() => evkDlg(), 0); }, op)]]) : []),
       ["trash-2", "Remover", (op) => (u.length ? dlgShow({ t: "Esta credencial está em uso", sub: `Usada por: ${u.join(", ")}. Troque a credencial ou desligue essas automações antes de remover.` }, op) : confirmDlg(`Remover “${c.n}”?`, "A chave é apagada do servidor. Nada muda no serviço.", "Remover", () => { CONNS.splice(CONNS.indexOf(c), 1); DLG.opener = null; render(); refocus('[data-af="conexoes"]'); say("Credencial removida."); }, op)), true]], t); }]
 ];
 ACT.unshift(...ACT6);
@@ -4958,7 +4981,7 @@ function convList() {
   const q = st.clq.trim().toLowerCase();
   const items = CONVS.filter((c) => !q || c.t.toLowerCase().includes(q));
   const groups = [...new Set(items.map((c) => c.g))];
-  const list = groups.map((g) => `<li class="grp" aria-hidden="true">${g}</li>${items.filter((c) => c.g === g).map((c) => `<li><button class="cl-item" type="button" data-conv="${c.id}" aria-current="${c.id === st.conv ? "true" : "false"}"><span class="t">${escH(c.t)}</span><span class="m num">${c.cur ? `<span class="pill on"><i></i>Em uso</span>` : ""}${c.h}</span></button></li>`).join("")}`).join("");
+  const list = groups.map((g) => `<li class="grp" aria-hidden="true">${g}</li>${items.filter((c) => c.g === g).map((c) => `<li class="cl-li"><button class="cl-item" type="button" data-conv="${c.id}" aria-current="${c.id === st.conv ? "true" : "false"}"><span class="t">${escH(c.t)}</span><span class="m num">${c.cur ? `<span class="pill on"><i></i>Em uso</span>` : ""}${c.h}</span></button><button class="iconbtn cl-more" type="button" data-x="conv-menu" data-id="${c.id}" aria-haspopup="dialog" aria-label="Mais opções de “${escH(c.t)}”">${ic("ellipsis", "ic-sm")}</button></li>`).join("")}`).join("");
   return `<section class="clist" aria-labelledby="h-cl">
     <div class="cl-head"><button class="iconbtn only-mob" type="button" data-cl-close aria-label="Voltar para a conversa">${ic("arrow-left")}</button><${st.cl ? "h1" : "h2"} id="h-cl">Conversas</${st.cl ? "h1" : "h2"}><a class="btn btn-secondary btn-sm" href="${href("conversa")}" data-conv-new>${ic("square-pen", "ic-sm")}Nova</a></div>
     <label class="sr" for="cl-q">Buscar nas conversas</label><div class="cl-q">${ic("search", "ic-sm")}<input id="cl-q" class="input input-sm" type="search" placeholder="Buscar" value="${escH(st.clq)}" data-cl-q></div>
@@ -5111,7 +5134,10 @@ function cfgAssist() {
   return sec("h-olho", "A Zuri de olho", "Prazo chegando, tarefa parada há uma semana, conflito na agenda.",
     swRow("olho-on", "Deixar a Zuri avisar por conta própria", "Alertas de segurança e falhas do sistema continuam sempre ligados.", true))
   + sec("h-apr", "Prioridades que a Zuri aprendeu", "A Zuri repara no que você abre logo e no que deixa para depois.",
-    swRow("apr-on", "Deixar a Zuri ajustar as prioridades", "Lembretes, alertas de segurança e críticos não mudam.", true));
+    swRow("apr-on", "Deixar a Zuri ajustar as prioridades", "Lembretes, alertas de segurança e críticos não mudam.", true))
+  + sec("h-memc", "Memória", "Como a Zuri cuida do que você pediu para ela guardar.",
+    swRow("memc-on", "Revisão de conflitos", "Ao guardar uma memória, a Zuri procura as antigas que ela pode mudar e pergunta antes de trocar. Não usa IA. Desligada, as memórias são guardadas sem essa conferência.", st.memConf)
+    + `<p class="hint">O que está guardado fica em <a class="linkbtn" href="${href("memoria")}">Memória</a>.</p>`);
 }
 CFG_VIEW.conta = cfgConta;
 CFG_VIEW.assist = () => cfgConversas() + cfgAssist();
@@ -5651,6 +5677,35 @@ document.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); return; }
   if (e.key === "Escape") { closePalette(); if (UI.sheet) { UI.sheet = false; renderSheet(); } }
   if (e.key === "Enter" && !e.shiftKey && e.target.matches(".composer textarea")) { e.preventDefault(); e.target.form.requestSubmit(); }
+});
+
+/* ---------- 10/11 16:15: funções do app que faltavam no protótipo ---------- */
+st.rvf = "all"; st.evk = true; st.memConf = true;
+function evkDlg(op) {
+  dlgShow({ t: "Endereço e segredo do n8n", sub: "Guarde agora: o segredo não aparece de novo. O anterior, se havia um, parou de valer.",
+    body: `<div class="evk"><div><p class="label">Endereço</p><code>https://zuri.exemplo.com.br/api/crm/events/exemplo</code></div><div><p class="label">Segredo</p><code>segredo-de-exemplo-0000</code></div>
+      <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-x="evk-copy" data-done="Endereço copiado">${ic("copy", "ic-sm")}Copiar endereço</button><button class="btn btn-secondary btn-sm" type="button" data-x="evk-copy" data-done="Segredo copiado">${ic("copy", "ic-sm")}Copiar segredo</button></div>
+      <p class="hint">O n8n assina cada evento com esse segredo. A Zuri recusa evento sem assinatura, repetido ou atrasado. Até 300 por hora e 1.000 por dia.</p></div>`,
+    foot: `<span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-ok>Já guardei</button>`, ok: () => {} }, op);
+}
+const ACT28 = [
+  [(t) => t.matches("[data-x=conv-menu]"), (t) => { const c = CONVS.find((x) => x.id === t.dataset.id); if (!c) return;
+    menuDlg(`Mais opções de “${escH(c.t)}”`, [
+      ["pencil", "Renomear", (op) => dlgShow({ t: "Renomear a conversa", body: `<label class="field"><span class="label">Nome</span><input class="input" maxlength="80" data-cv-name data-autofocus value="${escH(c.t)}"></label><p class="hint" data-dlg-err role="status"></p>`,
+        foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar</button>`,
+        ok: () => { const v = dlgRaw("[data-cv-name]"); if (!v) { const e = document.querySelector("[data-dlg-err]"); e.textContent = "Dê um nome à conversa."; e.classList.add("err"); return false; } c.t = v; DLG.opener = null; render(); refocus(`[data-x=conv-menu][data-id="${c.id}"]`); say("Conversa renomeada."); } }, op)],
+      ["trash-2", "Apagar conversa", (op) => (c.cur
+        ? dlgShow({ t: "Esta é a conversa em uso", sub: "Comece uma conversa nova antes de apagar esta." }, op)
+        : confirmDlg(`Apagar a conversa “${escH(c.t)}”?`, "As mensagens somem. O que a Zuri guardou na Memória, as tarefas e as notas continuam.", "Apagar", () => { CONVS.splice(CONVS.indexOf(c), 1); if (st.conv === c.id) st.conv = "c0"; DLG.opener = null; render(); refocus("#cl-q"); say("Conversa apagada."); }, op)), true]], t); }],
+  [(t) => t.matches("[data-x=evk-copy]"), (t) => say(t.dataset.done)],
+  [(t) => t.matches("[data-x=runs-more]"), () => say("Não há execuções mais antigas.")],
+  [(t) => t.matches("[data-x=rv-reply-menu]"), (t) => { const r = REVIEWS.find((x) => x.id === t.dataset.id); if (!r) return;
+    menuDlg("Mais opções da resposta", [["trash-2", "Apagar a resposta no Google", (op) => confirmDlg("Apagar a resposta no Google?", "A resposta some do seu perfil e a avaliação volta a esperar você.", "Apagar", () => { r.st = r.stars <= 3 ? "low" : "wait"; r.until = "amanhã, neste horário"; DLG.opener = null; render(); refocus("[data-rv]"); say("Resposta apagada."); }, op), true]], t); }]
+];
+ACT.unshift(...ACT28);
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.matches && el.matches("#rv-f")) { st.rvf = pick(el.value, ["all", "need", "auto", "done"]); render(); refocus("#rv-f"); }
 });
 
 render();

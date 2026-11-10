@@ -482,3 +482,14 @@ O Pablo aprova um dos modelos da rodada 4 (ou uma mistura, por exemplo "logomarc
 ### Ajuste de 10/11, 15:34
 
 - **Avaliações, corte e faixa vazia:** em janela baixa, as duas colunas paravam antes do fim da moldura (colunas com teto pela altura da janela, moldura com mínimo fixo de 560 px) e sobrava uma faixa vazia embaixo. Moldura e colunas agora usam a mesma altura. Entre 821 e 1.100 px de largura (tablet e celular deitado), a tela passa a ter uma coluna só, com o "voltar" do celular, em vez de espremer o detalhe.
+
+### Funções do app que faltavam no protótipo (10/11, 16:15)
+
+A revisão cruzada do plano de implementação (`docs/planos/implementacao-frontend-sinal.md`, seção 4.1, PR #257) achou funções da `develop` sem lugar no protótipo. Entraram nos dois HTML, com os textos do catálogo do app:
+
+- **Conversa:** "Renomear" e "Apagar conversa" no ⋯ de cada linha da lista. A conversa em uso não é apagada.
+- **Configurações › Assistente:** cartão "Memória" com "Revisão de conflitos".
+- **Configurações › Avisos:** grupo "CRM" (retorno, aniversários, cliente novo vindo do n8n).
+- **CRM › Credenciais:** o cartão "n8n do consultório" mostra se os eventos estão ligados e o último recebido; no ⋯, "Trocar o segredo dos eventos" e "Desligar os eventos" (ou "Ligar"), com senha, e o endereço e o segredo aparecem uma única vez.
+- **CRM › Fluxos:** "Últimas execuções" embaixo da lista, com "Carregar mais".
+- **Avaliações:** o filtro da lista passou a funcionar e ganhou "Respondidas"; a resposta publicada tem ⋯ com "Apagar a resposta no Google".
