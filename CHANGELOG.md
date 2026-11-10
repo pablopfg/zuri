@@ -19,6 +19,15 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.39.3] - 2026-11-09
+
+Mesclada às 22:56 (UTC-3) · commit [`7b2ba61`](https://github.com/pablopfg/Zuri/commit/7b2ba613f5743c0b33c83d43ed3a3d0bf329f7c5) · PR [#239](https://github.com/pablopfg/Zuri/pull/239) · Compacta o README e planeja a main limpa da primeira release
+
+### Alterado
+
+- README mais curto e organizado para a primeira versão: uma linha por área em "O que já funciona", documentação agrupada por uso, instalação logo depois da arquitetura e o mapa das etapas recolhido. Os links para o que fica só na `develop` usam o endereço completo, para o mesmo README servir na `main`. As capturas das telas serão refeitas quando o novo visual entrar.
+- Plano da `main` limpa na primeira release, em `docs/planos/release-main-limpa.md`: a lista do que vai para produção, como montar o commit da release e os riscos. Nada foi feito na `main`.
+
 ## [0.39.2] - 2026-11-09
 
 Mesclada às 21:54 (UTC-3) · commit [`d8bedd0`](https://github.com/pablopfg/Zuri/commit/d8bedd01f4c25da0aef76dda17eaac18dd9aae05) · PR [#245](https://github.com/pablopfg/Zuri/pull/245) · Máscara dos modelos externos não esconde pedaços de UUID
@@ -2901,7 +2910,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.2...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.3...develop
+[0.39.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.3
 [0.39.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.2
 [0.39.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.1
 [0.39.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.0
