@@ -197,9 +197,7 @@ Pedido do Pablo: a resposta é pública, então os ajustes do agente que escreve
 | Mudança | Como |
 | --- | --- |
 | Os ajustes do agente aparecem em Avaliações | Mesma rota e mesma tabela de Configurações › Modelos; a tela de Avaliações só mostra o `review_draft` e o `review_check`. Nenhuma tabela nova |
-| Teto de temperatura de 0,7 para resposta pública | Campo `temperatureMax` no perfil do agente em `agents.ts`; o schema Zod recusa acima disso |
-| Tempo para cancelar antes de publicar sozinha (na hora, 15, 30 ou 60 min; padrão 30) | Coluna `auto_hold_min` em `zur_review_settings` e `publish_after` em `zur_reviews`; o alarme único publica quando a hora chega, depois da releitura |
-| Amostra: 1 a cada 5 publicadas sozinhas volta para conferir | Coluna `audit` em `zur_reviews`; reprovar a amostra aciona a parada que já existe |
+| Temperatura das respostas públicas em 0,5, que também é o teto | Padrão do `review_draft` passa de 0,2 para 0,5 e o perfil ganha `temperatureMax: 0.5` em `agents.ts`; o schema Zod recusa acima disso |
 | Assuntos que sempre passam pelo dono | Lista fechada em `packages/shared` (saúde, preço, jurídico fixos; nome de profissional, criança, outra empresa opcionais), conferida por palavras, sem IA, antes da segunda leitura |
 | Teste de segurança com 12 casos | Os casos saem do corpus de injeção de `scripts/avaliar-prompts.ts`; rota `POST /api/reviews/agent/test`, no máximo uma vez a cada 10 minutos, dentro do teto diário da IA |
 
@@ -207,10 +205,12 @@ Tudo de acréscimo, na mesma migration desta parte. Nenhum recurso novo da Cloud
 
 ### Testes
 
-Unidade: teto de temperatura (0,70 passa, 0,75 não), assuntos (cada um, com e sem acento), sorteio da amostra. Integração: publicação adiada cancelada, editada e vencida; releitura que acha resposta de outra pessoa; reprovar a amostra desliga o automático. Segurança: os 12 casos como teste fixo, com IA simulada. E2e da parte nova com axe.
+Unidade: teto de temperatura (0,50 passa, 0,55 não) e assuntos (cada um, com e sem acento). Integração: releitura que acha resposta de outra pessoa; resposta que passa nas travas é publicada na mesma leitura. Segurança: os 12 casos como teste fixo, com IA simulada. E2e da parte nova com axe.
 
-### Perguntas ao Pablo
+### Respostas do Pablo (10/11, 12:02)
 
-1. **Teto de 0,7 na temperatura das respostas públicas?** Recomendação: sim. Acima disso o texto varia demais para ir a público sem leitura.
-2. **Esperar 30 minutos antes de publicar sozinha, para você poder cancelar?** Recomendação: sim, como padrão.
-3. **Conferir 1 a cada 5 respostas publicadas sozinhas?** Recomendação: sim. É o que mostra cedo se a qualidade caiu.
+1. **Temperatura:** 0,5, não 0,7. Vale como padrão e como teto das respostas públicas.
+2. **Espera antes de publicar sozinha:** não. Resposta que passa nos guardrails e no protocolo de segurança é publicada na hora.
+3. **Amostra para o Pablo conferir:** não. O que passa nas travas não volta para conferência manual.
+
+A espera e a amostra saíram do protótipo e deste plano. Continuam valendo as travas fixas, os limites de 3 por leitura e 10 por dia e a parada automática.

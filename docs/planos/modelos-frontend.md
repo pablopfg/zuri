@@ -202,7 +202,7 @@ Pedido do Pablo depois de abrir o protótipo no celular. O que mudou nos dois ar
 
 - **Notas:** microfone no título e no texto. É viável sem serviço novo: a conversa já grava e transcreve (`apps/web/src/pages/chat/voice.ts` e `POST /api/chat/transcribe`), com trecho de até 60 segundos e 2 MB, 60 minutos de áudio por dia somando app e bot, e o áudio nunca é guardado. No código, o gancho `useVoice` sai da pasta da conversa para uma pasta comum e a tela de Notas ganha os dois botões. Para ditar mais de um minuto, a pessoa grava de novo e o texto entra no fim.
 - **Avaliações:** "Conferir agora" e "Pausar respostas" ficam só com o ícone também no computador.
-- **Avaliações › Ajustes › Agente e segurança:** controles do agente que escreve (temperatura, top_p, tamanho, tentativas), o agente que confere, as sete travas de cada resposta, os controles do dono, a parada automática e o teste de segurança. O que já existe e o que é novo no código está em [avaliacoes-conexao-e-respostas.md](avaliacoes-conexao-e-respostas.md), seção 15.
+- **Avaliações › Ajustes › Agente e segurança:** controles do agente que escreve (temperatura, top_p, tamanho, tentativas), o agente que confere, as sete travas de cada resposta, os controles do dono, a parada automática e o teste de segurança. Decisão do Pablo (12:02): temperatura 0,5, sem espera antes de publicar e sem amostra para conferir; o que passa nas travas é publicado na hora. O que já existe e o que é novo no código está em [avaliacoes-conexao-e-respostas.md](avaliacoes-conexao-e-respostas.md), seção 15.
 
 ### Recomendação
 

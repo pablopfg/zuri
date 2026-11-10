@@ -5263,7 +5263,7 @@ const ACT25 = [
 ACT.unshift(...ACT25);
 ACT.unshift(...ACT26M);
 /* ---------- Avaliações › Ajustes › Agente e segurança: quem escreve, quem confere e as travas da resposta pública ---------- */
-st.rvSuite = ""; st.rvSample = true;
+st.rvSuite = "";
 const RV_PATH = [
   ["star", "A nota decide primeiro", "1 a 3 estrelas ou sem nota nunca saem sozinhas: viram aviso para você. A IA só pode deixar a resposta mais cuidadosa, nunca menos."],
   ["lock", "A avaliação entra como informação", "O texto de quem avaliou nunca é lido como ordem. Se ele tentar mudar as regras, a resposta sai normal e vai para você."],
@@ -5281,7 +5281,7 @@ function rvAgente() {
   return `<div class="rv-cfg">
     <section class="card set-sec" aria-labelledby="h-ra1"><h2 id="h-ra1">${ic("pen-line", "ic-sm")}Agente que escreve</h2><p>Redige o rascunho. O jeito de escrever fica em <button class="linkbtn" type="button" data-rvv="responder">Como responder</button>; aqui ficam os controles da IA.</p>
       <div class="form-grid">
-        <div class="field"><label class="label" for="ra-t">Temperatura <span class="num" data-out="ra-t">0,2</span></label><input id="ra-t" type="range" min="0" max="0.7" step="0.05" value="0.2" data-range-out="ra-t"><p class="hint">Mais baixa, respostas mais previsíveis. Como a resposta é pública, vai de 0 a 0,7. Recomendado: 0,2.</p></div>
+        <div class="field"><label class="label" for="ra-t">Temperatura <span class="num" data-out="ra-t">0,5</span></label><input id="ra-t" type="range" min="0" max="0.5" step="0.05" value="0.5" data-range-out="ra-t"><p class="hint">Mais baixa, respostas mais previsíveis. Como a resposta é pública, vai de 0 a 0,5. Padrão: 0,5.</p></div>
         <div class="field"><label class="label" for="ra-p">top_p <span class="num" data-out="ra-p">padrão do modelo</span></label><input id="ra-p" type="range" min="0.1" max="1" step="0.05" value="1" data-range-out="ra-p" disabled><label class="chk-row"><input type="checkbox" class="chk" checked data-topp="ra-p">Usar o padrão do modelo</label></div>
         <label class="field"><span class="label">Tamanho máximo da escrita, em tokens</span><input class="input num" inputmode="numeric" value="320"><span class="hint">De 200 a 600. A resposta publicada nunca passa de 600 caracteres.</span></label>
         <label class="field"><span class="label">Se a conferência barrar</span><select class="input"><option>Tentar mais 1 vez</option><option selected>Tentar mais 2 vezes</option><option>Não tentar de novo</option></select><span class="hint">Depois disso, a avaliação vai para você sem rascunho.</span></label>
@@ -5291,13 +5291,11 @@ function rvAgente() {
       <ul class="ro-list ra-fixed"><li>${ic("lock", "ic-sm")}<span><b>Temperatura 0.</b> Um conferente mais solto aprovaria ao acaso.</span></li><li>${ic("lock", "ic-sm")}<span><b>Lê só a resposta.</b> Não vê a avaliação, então não pode ser convencido por ela.</span></li><li>${ic("lock", "ic-sm")}<span><b>Só responde sim ou não.</b> Qualquer outra coisa conta como não.</span></li></ul></section>
     <section class="card set-sec" aria-labelledby="h-ra3"><h2 id="h-ra3">${ic("shield-check", "ic-sm")}Caminho de cada resposta</h2><p>Sete travas, nesta ordem. Ficam sempre ligadas e não mudam pela tela.</p>
       <ol class="ra-path">${RV_PATH.map(([i, t, d], k) => `<li><span class="pk-n num" aria-hidden="true">${k + 1}</span><span class="tile tile-sm">${ic(i, "ic-sm")}</span><div><p class="t">${t}</p><p class="hint">${d}</p></div></li>`).join("")}</ol></section>
-    <section class="card set-sec" aria-labelledby="h-ra4"><h2 id="h-ra4">${ic("sliders-horizontal", "ic-sm")}Seus controles</h2><p>O que você pode apertar além das travas fixas.</p>
-      <div class="form-grid"><label class="field"><span class="label">Tempo para cancelar antes de publicar sozinha</span><select class="input"><option>Publicar na hora</option><option>15 minutos</option><option selected>30 minutos</option><option>1 hora</option></select><span class="hint">A resposta fica em “Vai publicar às…” e você pode cancelar ou editar.</span></label>
-        <label class="field"><span class="label">Publicar sozinha, no máximo</span><input class="input num" value="3 por leitura e 10 por dia" disabled><span class="hint">Fixo. O que passar disso espera a sua aprovação.</span></label></div>
-      ${sw("sw-ras", st.rvSample, "data-rv-sample", "Conferir uma amostra", "A cada 5 respostas publicadas sozinhas, 1 aparece para você conferir depois. Se você reprovar, a Zuri volta a pedir aprovação em todas.")}
+    <section class="card set-sec" aria-labelledby="h-ra4"><h2 id="h-ra4">${ic("sliders-horizontal", "ic-sm")}Seus controles</h2><p>O que você pode ajustar além das travas fixas.</p>
+      <label class="field"><span class="label">Publicar sozinha, no máximo</span><input class="input num" value="3 por leitura e 10 por dia" disabled><span class="hint">Fixo. Resposta que passa nas sete travas é publicada na hora, sem esperar você. O que passar do limite fica para a leitura seguinte.</span></label>
       <fieldset class="field ra-topics"><legend class="label">Assuntos que sempre passam por você</legend><div class="ra-chk">${topics.map(([l, on, fix]) => `<label class="chk-row"><input type="checkbox" class="chk"${on ? " checked" : ""}${fix ? " disabled" : ""}>${l}${fix ? ` <span class="tag">${ic("lock", "ic-sm")}Fixo</span>` : ""}</label>`).join("")}</div><span class="hint">Quando a avaliação toca num destes, nada sai sozinho, mesmo com 5 estrelas.</span></fieldset></section>
     <section class="card set-sec" aria-labelledby="h-ra5"><div class="p-sec-h"><h2 id="h-ra5">${ic("circle-alert", "ic-sm")}Parada automática</h2><span class="pill ${st.rvPaused ? "wait" : "on"}"><i></i>${st.rvPaused ? "Respostas pausadas" : "Tudo certo"}</span></div><p>A Zuri para de publicar sozinha e avisa você quando:</p>
-      <ul class="ro-list ra-fixed"><li>${ic("circle-alert", "ic-sm")}<span>3 rascunhos seguidos são reprovados na conferência.</span></li><li>${ic("circle-alert", "ic-sm")}<span>O Google recusa uma resposta.</span></li><li>${ic("circle-alert", "ic-sm")}<span>Uma resposta publicada pela Zuri é apagada ou trocada.</span></li><li>${ic("circle-alert", "ic-sm")}<span>Você reprova uma resposta da amostra.</span></li></ul>
+      <ul class="ro-list ra-fixed"><li>${ic("circle-alert", "ic-sm")}<span>3 rascunhos seguidos são reprovados na conferência.</span></li><li>${ic("circle-alert", "ic-sm")}<span>O Google recusa uma resposta.</span></li><li>${ic("circle-alert", "ic-sm")}<span>Uma resposta publicada pela Zuri é apagada ou trocada.</span></li></ul>
       <p class="hint">Só volta quando você religar. Últimos 30 dias: <span class="num">18</span> publicadas, <span class="num">2</span> barradas na conferência, <span class="num">0</span> paradas. <button class="linkbtn" type="button" data-rvv="avaliacoes">Ver as respostas</button></p></section>
     <section class="card set-sec" aria-labelledby="h-ra6"><h2 id="h-ra6">${ic("flask-conical", "ic-sm")}Teste de segurança</h2><p>12 avaliações difíceis de exemplo: ordem escondida no texto, relato de saúde, pedido de desconto, ameaça e elogio comum. Rode antes de salvar uma mudança.</p>
       <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-rv-suite>${ic("flask-conical", "ic-sm")}Rodar os 12 casos</button><span class="hint">Usa a IA até 24 vezes. Nada é publicado.</span></div>${suite}</section>
@@ -5341,7 +5339,6 @@ const ACT27 = [
     refocus("[data-nmic-stop]");
   }],
   [(t) => t.matches("[data-nmic-stop]"), () => noteMicEnd()],
-  [(t) => t.matches("[data-rv-sample]"), () => { st.rvSample = !st.rvSample; render(); refocus("[data-rv-sample]"); }],
   [(t) => t.matches("[data-rv-suite]"), () => { st.rvSuite = "..."; render(); refocus("[data-rv-suite]"); setTimeout(() => { st.rvSuite = "ok"; render(); refocus("[data-rv-suite]"); }, 900); }],
   [(t) => t.matches("[data-x=rv-agent-save]"), (t) => senhaDlg("Os ajustes novos valem para os próximos rascunhos.", () => say("Ajustes do agente salvos. Versão 4."), t)]
 ];
