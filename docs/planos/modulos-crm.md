@@ -1,6 +1,6 @@
 # Plano · Módulos do CRM a partir dos fluxos do n8n
 
-Situação: esperando o Pablo (perguntas da seção 14). Nada aqui foi implementado.
+Situação: esperando o Pablo (perguntas da seção 14). Nada aqui foi implementado. Revisto em 10/11, 02:24: ordem de processamento, recebimento do e-mail do Webdiet e intervalo na credencial do Chatwoot.
 Origem: pedido do Pablo em 10/11/2026, 01:23 ("verifique quais são viáveis, a ordem correta e as credenciais").
 Dependências: plano da base dos módulos ([modulos.md](modulos.md)) e do envio pelo Chatwoot ([envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md)), os dois na PR #204; nova interface (casca e menu lateral "CRM").
 
@@ -113,6 +113,42 @@ Contagem: **7 cobertos** (OPS - 01, CTT - 06, IA - 10, IA - 11, AGE - 12, AVA - 
 
 No n8n, o pedido de avaliação nasce 24 h depois do **plano alimentar** (o PLA - 16 grava o pedido). Na Zuri, pela decisão de 09/11, nasce 8 dias depois da **consulta**, lida na agenda. Os dois caminhos convivem no ensaio: a comparação com o n8n vai mostrar diferenças de data, e isso é esperado. Quando o PLA - 16 vier (PR 8), a origem do pedido pode trocar para o plano, se o Pablo quiser. Até lá, vale a consulta.
 
+### Ordem de recebimento e processamento dos dados
+
+Pedido do Pablo (10/11, 02:24): os módulos têm de seguir a mesma ordem dos fluxos do n8n, porque cada etapa usa o que a anterior gravou. Conferi as chamadas entre fluxos (os nós "Execute Workflow" de cada arquivo), o porteiro do banco e os horários dos gatilhos.
+
+**Como o n8n encadeia hoje:**
+
+| Elo | Quem chama quem | Por que a ordem importa |
+| --- | --- | --- |
+| Cadastro | CTT - 05 (06:10) → CTT - 06 → CTT - 07 | A padronização corrige o Google, o espelho lê o corrigido e só depois o Chatwoot recebe. Os produtores das 07:00 em diante já acham o cadastro do dia |
+| Bloqueio | Chatwoot (webhook `contact_updated`) → CTT - 07 → espelho `crm_bloqueado` | Todo produtor lê o bloqueio do espelho antes de enfileirar |
+| Agenda | AGE - 12 a cada 5 min, das 07:30 às 18:30 | A confirmação (07:00) e a recaptação (10:00) leem a agenda direto, não esse espelho |
+| Plano alimentar | e-mail do Webdiet → PLA - 16 → PLA - 17 → fila | O PLA - 16 resolve o contato pelo espelho antes de chamar o PLA - 17. Contato ainda não sincronizado: o PLA - 17 tenta de novo 3 vezes, de 2 em 2 h |
+| Pedido de avaliação | PLA - 16 grava o pedido → AVA - 19 (de hora em hora) → fila | O AVA - 19 só pega pedido que ainda não tem job na fila |
+| Fila | ATD - 13/14/15, PLA - 17/18, AVA - 19, MKT - 25 → `crm_job_queue` → porteiro (`NOTIFY`) → MSG - 08 → MSG - 09 → Chatwoot | Os produtores só gravam; o MSG - 08 é o único que envia, um por vez. O resultado volta para o pedido (`sent` ou `error`) |
+| Avaliações | AVA - 20 (15 min) → AVA - 21 e AVA - 22, só quando há pendência | O vínculo só casa pedidos já `sent`. A resposta passa por IA - 10 e IA - 11 |
+
+**Na Zuri, a mesma ordem vira etapas fixas dentro de cada despertar do alarme.** Uma etapa nunca começa antes da anterior terminar e gravar, e cada uma lê só o que a anterior já gravou no banco:
+
+| Etapa | O que roda | Grava | Quem lê depois |
+| --- | --- | --- | --- |
+| 1. Entrada | Leitura incremental dos contatos (`syncToken`), da agenda e das avaliações; eventos do Chatwoot já recebidos (bloqueio, "não quer receber", situação da mensagem); e-mails do Webdiet já recebidos | cópia dos contatos, eventos, avaliações, planos | etapa 2 |
+| 2. Identificação | Evento da agenda → contato (PR 4); e-mail do plano → contato (PR 8); avaliação → pedido (PR 6) | `zur_patient_links`, vínculos | etapa 3 |
+| 3. Produtores | Os módulos que decidem quem recebe, cada um só no seu horário | intenção na fila (`zur_outbox`), com a chave única | etapa 4 |
+| 4. Fila | **Um** envio, se o intervalo da credencial já passou (seção 6) | situação do envio, resultado no pedido | etapa 1 do próximo despertar (o retorno do Chatwoot) |
+
+Regras que garantem a ordem:
+
+1. **Portão de frescor.** Antes de produzir, o módulo confere que a última leitura boa dos contatos e da agenda tem no máximo 10 minutos. Se não tem, a etapa 1 lê de novo no mesmo despertar. Se o Google falhar, o módulo **não produz** com dados velhos: espera o próximo despertar e, depois de 2 janelas sem dados frescos, avisa o Pablo. É o papel do CTT - 05 às 06:10 antes dos envios das 07:00.
+2. **Sinal de trabalho, sem consulta à toa.** Quem grava algo para a próxima etapa marca "há trabalho" (o mesmo papel do `NOTIFY` do porteiro). Sem a marca, a etapa não lê a tabela. Despertar sem nada devido lê poucas linhas, como hoje.
+3. **Cada etapa termina numa transação.** Se o objeto cair no meio, o próximo despertar retoma da etapa que não gravou. Nada fica pela metade.
+4. **Orçamento por etapa.** As 44 subrequisições do despertar são divididas nessa ordem. Se a entrada gastar quase tudo (uma leitura completa dos contatos, por exemplo), os produtores e a fila ficam para o próximo despertar, nunca o contrário. Assim a fila não envia com o cadastro pela metade.
+5. **Horário do produtor depois da entrada.** O produtor roda alguns minutos antes da janela (por exemplo, a confirmação às 06:50 para a janela das 07:00). Isso dá tempo para a leitura, a identificação e o aviso de "não coube na janela" antes do primeiro envio.
+6. **Retorno antes de nova decisão.** Um envio só conta como feito quando o Chatwoot responde (ou quando a conferência do envio incerto acha a mensagem). Os produtores do dia seguinte e o vínculo das avaliações só veem pedidos já confirmados, como o AVA - 21 só casa pedidos `sent`.
+
+O ensaio (seção 11) confere essa ordem na prática: se a Zuri decidir antes de ter os dados que o n8n tinha, a comparação mostra "só no n8n" e o motivo.
+
 ## 5. Como funciona para o Pablo
 
 ### Onde fica
@@ -129,8 +165,9 @@ Os estados vazio, carregando e erro, o celular, o tema escuro, o teclado e o lei
 1. CRM › Credenciais › **Nova credencial** › Chatwoot.
 2. Endereço https do Chatwoot, número da conta e a chave do agente "Zuri" (um agente criado no Chatwoot só com acesso à caixa do WhatsApp). Pede a senha se passou de 15 minutos.
 3. **Testar**: a Zuri só lê. Mostra as caixas de entrada; o Pablo escolhe a do WhatsApp (tipo API).
-4. A tela mostra o endereço do webhook da Zuri e pede para criá-lo no Chatwoot com os eventos `contact_updated`, `message_created` e `message_updated`. O segredo que o Chatwoot mostra ao criar o webhook é colado de volta na Zuri.
-5. **Enviar teste para mim**: manda uma mensagem ao próprio número do Pablo, de ponta a ponta, antes de qualquer paciente.
+4. **Intervalo entre mensagens**: de quanto a quanto tempo a Zuri espera entre duas mensagens por esta caixa (padrão de 1 a 3 minutos, sorteado a cada envio). Vale para todos os módulos que usam a credencial (seção 6).
+5. A tela mostra o endereço do webhook da Zuri e pede para criá-lo no Chatwoot com os eventos `contact_updated`, `message_created` e `message_updated`. O segredo que o Chatwoot mostra ao criar o webhook é colado de volta na Zuri.
+6. **Enviar teste para mim**: manda uma mensagem ao próprio número do Pablo, de ponta a ponta, antes de qualquer paciente.
 
 ### Fluxo 2 · Ligar um módulo
 
@@ -163,7 +200,7 @@ Os textos de cada tela entram no plano da PR dela, em pt-BR e en, no catálogo (
 | Fuso | `America/Sao_Paulo` pelo `Intl` (o mesmo cuidado do `dominio/tempo/fuso.js`), nunca "−3 h" fixo | Se o horário de verão voltar, vale sozinho |
 | Dia útil | Segunda a sexta, menos feriados nacionais calculados no código (Páscoa por Meeus/Jones/Butcher, de 1900 a 2199) e os "dias sem expediente" do Pablo | Carnaval e Corpus Christi só entram se o Pablo marcar |
 | Janela | Própria de cada tipo (tabela abaixo). O fim é exclusivo: na janela 09:00 às 09:30, a última sai às 09:29 | O que não sair na janela vai para a próxima janela do mesmo tipo |
-| Intervalo | Sorteado antes de cada envio, dentro da faixa do tipo | Uma mensagem por despertar do alarme |
+| Intervalo | O da **credencial do Chatwoot**, sorteado antes de cada envio e valendo para todos os módulos juntos (abaixo) | Uma mensagem por despertar do alarme |
 | "Digitando" | Mostra "digitando" e espera o **maior** entre o intervalo e o tempo de digitação; os dois nunca se somam | Sem humanização, só o intervalo |
 | Conversa em andamento | Se o paciente mandou mensagem hoje a qualquer caixa, o envio é adiado pela política do tipo, sem gastar tentativa | Confirmação espera 10 min e sai até o fim da janela |
 | Tentativas | 3, com espera crescente (2, 4 e 8 min) | Na terceira falha: "falhou" e aviso no Telegram |
@@ -180,15 +217,46 @@ Valores do n8n (`docs/regras/horarios-e-execucoes.md`, confirmados pelo Pablo em
 
 | Tipo | Dias | Janela | Intervalo | Teto/dia | Feriado | Conversa em andamento |
 | --- | --- | --- | --- | --- | --- | --- |
-| Pedido de avaliação | seg a sex | 09:00 às 18:00 | 1 a 3 min | 20 | não sai | próximo dia útil |
-| Confirmação | seg a sáb | 07:00 às 07:30 | 5 a 15 s no n8n; **na Zuri, 30 s a 1 min** (seção 13) | 30 | não sai; a véspera confirma até o próximo dia de envio | espera 10 min; a partir de 07:28 sai |
-| Aniversário | todo dia | 09:00 às 09:30 | 30 s a 1 min | 20 | sai | próximo dia, só se ainda for o dia (senão expira) |
-| Recaptação | seg a sex | 10:00 às 10:30 | 30 s a 1 min | 10 | não sai | próximo dia útil |
-| Plano liberado | seg a sáb | 07:00 às 18:00 | 30 s a 1 min | 20 | sai | 10 min |
-| Acompanhamento do plano | seg a sex | 14:00 às 14:30 | 30 s a 1 min | 10 | não sai | próximo dia útil |
-| Convite para o canal | seg a sex | 11:00 às 11:30 | 30 s a 1 min | 15 | não sai | próximo dia útil |
+| Pedido de avaliação | seg a sex | 09:00 às 18:00 | da credencial | 20 | não sai | próximo dia útil |
+| Confirmação | seg a sáb | 07:00 às 07:30 | da credencial (5 a 15 s no n8n) | 10 com o padrão (abaixo) | não sai; a véspera confirma até o próximo dia de envio | espera 10 min; a partir de 07:28 sai |
+| Aniversário | todo dia | 09:00 às 09:30 | da credencial | 20 | sai | próximo dia, só se ainda for o dia (senão expira) |
+| Recaptação | seg a sex | 10:00 às 10:30 | da credencial | 10 | não sai | próximo dia útil |
+| Plano liberado | seg a sáb | 07:00 às 18:00 | da credencial | 20 | sai | 10 min |
+| Acompanhamento do plano | seg a sex | 14:00 às 14:30 | da credencial | 10 | não sai | próximo dia útil |
+| Convite para o canal | seg a sex | 11:00 às 11:30 | da credencial | 15 | não sai | próximo dia útil |
 
-Por que intervalos maiores que no n8n: na Zuri, cada envio é um despertar do alarme, e o alarme mínimo prático é de segundos, mas cada `setAlarm` conta uma escrita e cada envio gasta de 4 a 7 subrequisições. Com até 60 mensagens por dia, 30 s a 1 min ainda cabe nas janelas de 30 minutos (30 confirmações × 1 min = 30 min no pior caso, no limite exato da janela). Por isso o teto da confirmação é 30, não 50. Se o Pablo tiver mais de 30 consultas por dia de envio, o teto e o intervalo voltam para a pergunta.
+### Intervalo entre mensagens (na credencial do Chatwoot)
+
+Pedido do Pablo (10/11, 02:24): quando há várias mensagens para sair (confirmações, pedidos de avaliação e outras), a Zuri manda uma, espera o intervalo e só então manda a próxima. O intervalo fica na credencial do Chatwoot e o código o respeita sempre. É viável e já é como a fila funciona; o que muda é **onde** o intervalo mora e que ele vale para todos os módulos juntos.
+
+**Configuração.** Na credencial: "Intervalo entre mensagens, de X a Y". Padrão de 1 a 3 minutos (o da decisão de 09/11). Faixa permitida: mínimo de 30 segundos, máximo de 10 minutos, e X menor ou igual a Y. Fora disso, o servidor recusa com `VALIDATION_FAILED`. Mudar o intervalo não pede a senha de novo (não é segredo), mas fica no histórico.
+
+**Lógica, passo a passo:**
+
+1. A credencial guarda, além do intervalo, **"próximo envio livre em"**: um horário no banco, não na memória. Assim um Worker que reinicia não "esquece" a espera e não manda duas de uma vez.
+2. A cada despertar, a fila só tenta enviar se agora ≥ "próximo envio livre em". Antes disso, só agenda o alarme para esse horário.
+3. Ao reservar o job, numa única transação: confere de novo o horário, sorteia o próximo intervalo (entre X e Y, sorteio uniforme com `crypto.getRandomValues`) e grava "próximo envio livre em" = agora + intervalo. Dois despertares ou duas abas que chegassem juntos: só um ganha a reserva, porque a gravação só vale se o horário ainda for o lido (atualização condicional).
+4. **Um envio por despertar, um despertar por intervalo.** Nunca há espera dentro do despertar (nada de `sleep`): a espera é o alarme.
+5. O "digitando" acontece dentro do intervalo, não soma a ele: a Zuri mostra "digitando", e o envio sai no despertar seguinte, quando o intervalo já cobriu o tempo de digitação. Se o texto pede mais tempo de digitação que o intervalo sorteado, vale o maior dos dois.
+6. **O intervalo é por credencial, não por módulo.** Confirmação, pedido de avaliação e aniversário pela mesma caixa dividem a mesma fila e o mesmo relógio: nunca saem duas mensagens por essa caixa em menos que X. Duas credenciais (duas caixas) têm relógios separados.
+7. **Prioridade** quando há várias esperando: confirmação, plano liberado, aniversário, pedido de avaliação, acompanhamento, recaptação, convite. Primeiro o que vence (a consulta de amanhã), por último o que pode esperar.
+8. **Erro não encurta o intervalo.** Falha, adiamento por conversa em andamento ou envio incerto também esperam o intervalo antes da próxima tentativa por essa caixa. Uma falha seguida de nova tentativa imediata pareceria disparo.
+9. **Pausar, bloqueio e volta.** Ao sair de "Pausar envios" ou do bloqueio, a primeira mensagem espera pelo menos X. Nada se acumula para sair de uma vez.
+10. **Janela fechando.** Se "próximo envio livre em" cai depois do fim da janela do tipo, o job espera a próxima janela do mesmo tipo, ou expira se o tipo vence (confirmação depois da consulta, aniversário depois do dia).
+
+**Capacidade da janela (aviso antes, não surpresa depois).** O produtor calcula quantas mensagens cabem: duração da janela ÷ Y (o pior caso do intervalo), menos o que outros tipos já reservaram para a mesma caixa na mesma hora. Se não cabe tudo, ele grava só o que cabe e avisa: "8 confirmações não cabem entre 07:00 e 07:30 com intervalo de 1 a 3 minutos". Com o padrão:
+
+| Janela | Duração | Cabem (pior caso, Y = 3 min) |
+| --- | --- | --- |
+| Confirmação, 07:00 às 07:30 | 30 min | 10 |
+| Aniversário, 09:00 às 09:30 | 30 min | 10 |
+| Recaptação, 10:00 às 10:30 | 30 min | 10 |
+| Acompanhamento, 14:00 às 14:30 | 30 min | 10 |
+| Pedido de avaliação, 09:00 às 18:00 | 9 h | 180 (o teto de 20 vale antes) |
+
+As janelas de 30 minutos do n8n foram feitas para intervalos de 5 a 25 segundos. Com 1 a 3 minutos, elas cabem pouco. Por isso a P1 (seção 14) pergunta também a janela da confirmação.
+
+**Testes do intervalo:** dois jobs devidos ao mesmo tempo saem com pelo menos X entre eles; reinício do objeto no meio não encurta; duas reservas concorrentes, só uma ganha; X = 30 s e Y = 10 min aceitos, 29 s e 10 min e 1 s recusados, X > Y recusado; erro e adiamento também esperam; janela que fecha no meio manda o resto para a próxima ou expira; duas credenciais não se atrasam uma à outra.
 
 ### Chaves únicas (nunca enviar duas vezes)
 
@@ -367,7 +435,7 @@ Por que esta ordem:
 7. Busca o contato pelo telefone (com e sem o 9º dígito). Acha: lê o `crmBloqueado`. Não acha: cria.
 8. Acha a conversa aberta na caixa do WhatsApp ou cria.
 9. Lê as mensagens de hoje: paciente falou com a equipe → adia pela política do tipo. Job "a conferir" → procura o `zuriJobId`; achou, marca enviado.
-10. Grava "enviando", mostra "digitando", espera o maior entre o intervalo e a digitação (no próximo despertar, não dentro dele), envia.
+10. Confere "próximo envio livre em" da credencial; antes da hora, só agenda o alarme. Na hora: reserva, sorteia e grava o próximo horário livre na mesma transação, grava "enviando", mostra "digitando" e envia no despertar seguinte.
 11. Sucesso: "enviado" e a chave "feita". Erro: tentativa +1 com espera crescente; erro depois do POST: "a conferir".
 12. Solta a trava e agenda o próximo despertar só se houver job devido.
 
@@ -389,11 +457,49 @@ Por que esta ordem:
 
 **Plano liberado (PR 8), se P2 e P7 = sim:**
 
-1. O Webdiet manda o aviso para o e-mail do Pablo; uma regra de encaminhamento manda uma cópia para `planos@exemplo.com.br`, que o Email Routing entrega ao Worker.
-2. A Zuri confere remetente, SPF e DKIM, extrai o e-mail do paciente, o primeiro nome e o link (só do domínio do portal, https).
+1. O Webdiet manda o aviso para o e-mail do Pablo; uma regra de encaminhamento manda uma cópia para `planos@exemplo.com.br`, que o Email Routing entrega ao Worker (passo a passo abaixo).
+2. A Zuri confere destinatário, remetente, assunto e a assinatura DKIM do Webdiet, extrai o e-mail do paciente, o primeiro nome e o link (só do domínio do portal, https).
 3. Acha o contato pelo e-mail **e** o primeiro nome. Não achou: tenta de novo 3 vezes, de 2 em 2 horas, e depois avisa o Pablo só com a hora do e-mail.
 4. Um aviso por paciente por dia; se já há um na fila, só troca o link.
 5. O e-mail não é guardado. Fica só a data do plano, para o acompanhamento e, se o Pablo quiser, para a origem do pedido de avaliação.
+
+### Como a Zuri recebe os e-mails do Webdiet (passo a passo)
+
+Pedido do Pablo (10/11, 02:24). Hoje o PLA - 16 lê a caixa do consultório por IMAP. A Zuri não pode fazer isso: IMAP é uma conexão TCP aberta para um servidor de e-mail, com senha da caixa, e a regra 3 proíbe conexão livre e guardar senha de e-mail. O caminho grátis da Cloudflare é o contrário: **o e-mail vem até a Zuri**. O Email Routing recebe o e-mail num endereço do domínio do Pablo e o entrega ao Worker, que tem uma função `email()` para isso ([Email Workers](https://developers.cloudflare.com/email-routing/email-workers/)).
+
+**O que é preciso:**
+
+- O domínio na Cloudflare com o Email Routing ligado. A Zuri já usa o Email Routing para mandar e-mail ao dono (`SEND_EMAIL`), então isso já existe.
+- Um endereço novo no domínio só para isso, por exemplo `planos@exemplo.com.br`.
+- Uma regra de encaminhamento no e-mail onde o Webdiet manda os avisos.
+- Nenhum segredo novo, nenhuma senha de e-mail, nenhum custo.
+
+**Passo a passo do Pablo (uma vez, na PR 8):**
+
+1. Cloudflare › o domínio › **Email** › **Email Routing** › **Routing rules** › **Create address**.
+2. Endereço: `planos` (fica `planos@exemplo.com.br`). Ação: **Send to a Worker**. Destino: o Worker `zuri`. Salvar.
+3. Na Zuri: CRM › Módulos › **Plano alimentar** › Ligar. Conferir as opções que já vêm preenchidas com as do PLA - 16: remetente esperado (o domínio do Webdiet), texto que o assunto contém ("planejamento alimentar"), endereços do consultório a ignorar e domínio do link do portal. Escolher a credencial do Chatwoot. Começa em ensaio.
+4. No e-mail onde o Webdiet manda os avisos, criar um **filtro**: de quem for do domínio do Webdiet **e** com "planejamento alimentar" no assunto, encaminhar para `planos@exemplo.com.br`. Só esses e-mails saem da caixa; o resto nunca chega à Zuri.
+5. **Confirmação do encaminhamento.** O Gmail e outros provedores mandam um e-mail de confirmação para o endereço novo antes de liberar o encaminhamento. A Zuri reconhece esse e-mail (remetente do provedor e assunto de confirmação), **não clica em nada** e mostra ao Pablo um aviso com o código de confirmação. O Pablo digita o código no provedor.
+6. **Teste.** Encaminhar à mão um aviso antigo do Webdiet para `planos@exemplo.com.br`. Em ensaio, a tela mostra "Recebido às 10:42 · Ana S. · plano de 08/11 · enviaria o aviso". Nada sai ao paciente.
+7. Depois de 3 dias úteis de ensaio sem diferença com o n8n, ligar de verdade e desligar o PLA - 16 e o PLA - 17 no n8n no mesmo dia.
+
+**O que a Zuri faz com cada e-mail (código da PR 8):**
+
+1. A função `email()` do Worker recebe. Destinatário diferente do endereço configurado, ou e-mail com mais de 1 MB: recusa (`setReject`) sem ler.
+2. Lê o cabeçalho **From** (não o envelope, que no encaminhamento é o do provedor do Pablo). Precisa ser do domínio do Webdiet.
+3. Confere a autenticidade: o `Authentication-Results` que a Cloudflare acrescenta precisa dizer `dkim=pass` com a assinatura do domínio do Webdiet. O encaminhamento sem mudança no corpo mantém essa assinatura válida. Se o provedor do Pablo quebrar o DKIM ao encaminhar, vale o `arc=pass` do provedor dele, e isso aparece no ensaio antes de ligar. Sem nenhum dos dois: descarta e avisa, como o `exigirDkim` do PLA - 16.
+4. O assunto precisa conter o texto configurado. Senão, descarta em silêncio (não é aviso de plano).
+5. Lê o texto (MIME com texto e HTML) e extrai: o e-mail do paciente nos campos Para e Cc, ignorando os do consultório, e, se faltar, no corpo; o primeiro nome pelo assunto ("…, Ana" ou "… para Ana"); o primeiro link https do domínio do portal, no texto e nos `href`. O leitor de MIME é decidido no plano da PR 8: a biblioteca `postal-mime`, indicada pela Cloudflare, em versão exata, ou um leitor pequeno próprio, o que pesar menos no bundle.
+6. Acha o contato pelo **e-mail e o primeiro nome** juntos (mãe e filha podem dividir o mesmo e-mail). Dois contatos possíveis: "precisa de você". Nenhum: tenta de novo 3 vezes, de 2 em 2 h (o contato pode ainda não ter chegado à cópia), e então avisa o Pablo só com a hora do e-mail.
+7. Grava o plano: contato, data, link e a chave `plano:<contato>:<dia>`. O mesmo plano chegando duas vezes em 72 h não gera outro aviso (o `horasReenvioMesmoPlano` do n8n).
+8. Entrega ao produtor do "plano liberado" (etapa 3 da ordem acima) e devolve. O e-mail em si **não é guardado**. O link é apagado 7 dias depois do envio.
+
+**Se a Zuri estiver fora do ar** quando o e-mail chega, o Email Routing devolve erro temporário e o provedor tenta de novo. Se ainda assim falhar, o original continua na caixa do Pablo, e basta encaminhá-lo de novo. A tela mostra "último e-mail do Webdiet recebido às…" e avisa se passar um dia útil sem nenhum.
+
+**Segurança:** só o endereço configurado aceita; só e-mail com DKIM do Webdiet passa; o conteúdo é dado, nunca instrução, e não vai para a IA; o link só é aceito no domínio do portal e nunca é aberto pela Zuri; nada do e-mail vai para log. Testes na PR 8: remetente trocado, DKIM falho, assunto diferente, link de outro domínio, e-mail de 1 MB e 1 byte, dois contatos com o mesmo e-mail, e-mail de confirmação do provedor.
+
+**Portabilidade:** fora da Cloudflare, a mesma regra encaminha para um endereço que um serviço de e-mail entrega por webhook assinado. Anotar em `portabilidade-vps.md` na PR 8.
 
 **Vínculo avaliação ↔ pedido (PR 6), a cada avaliação nova:**
 
@@ -409,13 +515,13 @@ Tudo guardado uma vez, cifrado, e reaproveitado pelo nome. Nada no repositório.
 
 | Credencial ou configuração | Onde fica | Quem usa | Como o Pablo consegue |
 | --- | --- | --- | --- |
-| Chatwoot: endereço https, conta, caixa, chave do agente "Zuri" | CRM › Credenciais (`chatwoot-v1`) | PRs 3, 5, 7, 8, 10, 12 | Criar o agente "Zuri" no Chatwoot com acesso só à caixa do WhatsApp e copiar a chave do perfil dele |
+| Chatwoot: endereço https, conta, caixa, chave do agente "Zuri" e intervalo entre mensagens (padrão 1 a 3 min) | CRM › Credenciais (`chatwoot-v1`) | PRs 3, 5, 7, 8, 10, 12 | Criar o agente "Zuri" no Chatwoot com acesso só à caixa do WhatsApp e copiar a chave do perfil dele |
 | Segredo do webhook do Chatwoot | Na mesma credencial | PR 3 | Criar o webhook da conta com o endereço que a Zuri mostra; copiar o segredo |
 | Atributo `crmBloqueado` no contato do Chatwoot | No Chatwoot | PR 3 | Já existe pelo CFG - 04; se não, criar como atributo de contato do tipo caixa de seleção |
 | Google (Agenda, Contatos, Perfil da Empresa) | OAuth que já existe, tokens cifrados (`google-v1`) | PRs 4, 5, 6, 7, 9, 11 | Nada novo |
 | Link de avaliação do perfil | Opção do módulo (não é segredo) | PR 5 | Perfil da Empresa › "Pedir avaliações" |
 | Telegram | Bot e grupo que já existem | Avisos de todos | Nada novo |
-| Encaminhamento do Webdiet | Regra no e-mail do Pablo e rota do Email Routing para o Worker | PR 8 | Passo a passo em `docs/instalacao-cloudflare.md` na PR 8 |
+| Encaminhamento do Webdiet | Endereço do Email Routing que entrega ao Worker e filtro de encaminhamento no e-mail do Pablo | PR 8 | Passo a passo na seção 11, "Como a Zuri recebe os e-mails do Webdiet", que vai para `docs/instalacao-cloudflare.md` na PR 8 |
 | Remetente do Webdiet | Opção do módulo | PR 8 | O endereço de onde chegam os avisos |
 | Preços por local e despesas | CRM › Resultados | PR 9 | Digitar na tela |
 | Times e etiquetas de papel | Opção do módulo | PR 10 | Os ids que o CFG - 04 já criou |
@@ -448,7 +554,7 @@ Para o pedido de avaliação, a diferença de regra (8 dias da consulta contra 2
 | Paciente errado por homônimo | baixa | alto | Nome sozinho só quando único; o resto vai para "precisa de você" |
 | Envio duplicado na troca n8n → Zuri | média | médio | Chave única; ensaio; o n8n desligado no mesmo dia |
 | Mudança na API do Chatwoot (segue a última versão) | média | médio | Caminhos fixos, resposta validada, disjuntor na primeira resposta estranha |
-| Janela curta demais para o volume (confirmação) | média | médio | Teto de 30 e intervalo de 30 s a 1 min; acima disso, pergunta ao Pablo |
+| Janela curta demais para o volume (confirmação) | média | médio | Cálculo de capacidade no produtor, aviso do que não coube antes do primeiro envio e a janela maior da P1 |
 | E-mail do Webdiet muda de formato | média | baixo | Extração testada com exemplos; falha vira aviso sem dado pessoal, e o plano não é perdido (o e-mail continua na caixa do Pablo) |
 | Orçamento de subrequisições disputado no despertar | baixa | baixo | O runtime confere o que sobra e deixa para o próximo despertar |
 | Chatwoot fora do ar | baixa | médio | Tenta de novo, pausa depois de 2 falhas e avisa |
@@ -459,7 +565,7 @@ Para o pedido de avaliação, a diferença de regra (8 dias da consulta contra 2
 - O volume é de consultório: até 30 consultas por dia de envio, algumas dezenas de mensagens por dia.
 - A agenda do consultório é a mesma conta Google já ligada à Zuri.
 - Os nomes no Google Contatos seguem a regra do n8n (o nome completo é o que o paciente usa para avaliar).
-- Intervalos de 30 s a 1 min na Zuri, em vez dos 5 a 25 s do n8n: decisão técnica pelo custo do alarme e pelo risco de bloqueio. O Pablo pode pedir os do n8n; aí o teto da confirmação pode subir.
+- Intervalo único por credencial do Chatwoot (padrão de 1 a 3 min, mínimo de 30 s), em vez dos 5 a 25 s por tipo do n8n: pedido do Pablo de 10/11 e menor risco de bloqueio. Ele pode baixar até 30 s na credencial.
 - O webhook do Chatwoot da versão do Pablo assina como o CTT - 07 confere hoje. Se a versão mudar a assinatura, a PR 3 trata.
 
 ## 14. Entrevista com o Pablo
@@ -474,7 +580,7 @@ Sem rodada ainda. As três primeiras perguntas (P1 a P3) vão na mensagem da thr
 
 Todas as que liberam mensagem a pacientes são exceção à regra de 02/11 e são decididas uma a uma (decisão de 09/11).
 
-1. **P1 · Confirmação de consulta (ATD - 13).** Recomendação: **sim**, depois do pedido de avaliação estar ligado de verdade há 2 semanas. É uma mensagem que o paciente espera e reduz faltas. Teto de 30 por dia; acima disso, revemos o intervalo.
+1. **P1 · Confirmação de consulta (ATD - 13).** Recomendação: **sim**, depois do pedido de avaliação estar ligado de verdade há 2 semanas. É uma mensagem que o paciente espera e reduz faltas. Com o intervalo de 1 a 3 minutos, a janela de 07:00 às 07:30 do n8n só garante 10 confirmações. Recomendo abrir a janela para **07:00 às 09:00** (até 40), com o produtor às 06:50.
 2. **P2 · Aviso de plano alimentar liberado (PLA - 17).** Recomendação: **sim**. O paciente está esperando o link. Depende da P7.
 3. **P3 · "Perguntar se está a caminho" (GES - 28).** Recomendação: **não por ora**. Sem o painel da recepção, quem decide perguntar é o Pablo, e isso é atendimento em tempo real, que continua no n8n e no Chatwoot (decisão de 02/11).
 4. **P4 · Aniversário (ATD - 14).** Recomendação: **sim, depois**, com teto de 20 por dia, só para quem tem a etiqueta de paciente, e só depois de 30 dias sem bloqueio com as mensagens anteriores.
