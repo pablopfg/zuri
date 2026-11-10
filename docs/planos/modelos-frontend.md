@@ -177,6 +177,20 @@ Pedido do Pablo: revisar tudo de novo, tela por tela, menu por menu, no claro e 
 - **Textos e exemplos:** as ferramentas do servidor de exemplo tinham nome de prontuário (`buscar_paciente`) num servidor chamado "Casa" e viraram `ver_temperatura`, `ligar_luz` e `apagar_cena`; o relato para o GitHub citava "automações" para uma falha de fluxo e um código com nome de infraestrutura; a Identidade visual mostrava as cores antigas do tema claro; o fuso aparecia sem o deslocamento; duas opções de lista eram longas demais para o campo no celular; "Marcar como passado" usava o ícone de histórico.
 - **Resultado depois dos ajustes:** nenhum erro de script, nenhuma vista com sobra para o lado, nenhum texto cortado fora dos resumos que cortam de propósito (prévia de avaliação, evento na grade da agenda) e nenhuma violação de contraste no axe, nos dois arquivos. Nenhum menu ou diálogo deixou de abrir. Continuam para a implementação o aviso experimental do axe e os alvos de toque pequenos já citados acima.
 
+### Ajustes do celular (10/11, 12:35)
+
+Pedido do Pablo depois de abrir o protótipo no celular. O que mudou nos dois arquivos:
+
+- **Perfil:** o item do menu passou a ser só "Configurações".
+- **Início:** "Seu dia" mostra das 08:00 às 18:00 do dia; o que cai fora fica numa linha no fim ("N fora das 08:00 às 18:00 · Mostrar"). A janela é a mesma de Configurações › Agenda.
+- **Tarefas e Notas:** no celular, Pastas, Lixeira e nova nota viram ícones no canto do título; a busca e a pasta dividem uma linha. No computador os botões continuam com texto.
+- **Agenda:** "Dia inteiro" e "Fora do horário" saíram da barra e ficam só em Configurações › Agenda. "Novo evento" já cria o evento no Google Agenda no código da `develop` (`POST /google/events`).
+- **Contatos:** as etiquetas aparecem uma vez só, num botão de filtro ao lado da busca, com a etiqueta ativa numa linha abaixo.
+- **Avaliações:** "Conferir agora" e "Pausar respostas" viram ícones; o período padrão é 30 dias; Ajustes ganhou "Pedidos e link", com o link de avaliação do perfil, o endereço curto, a mensagem e "Quando pedir". O que falta no código está em [link-de-avaliacao.md](link-de-avaliacao.md). O nome do perfil já vem do Google; "Consultório Exemplo" é dado de exemplo.
+- **CRM › Automações:** a base pronta e as dez automações na ordem do [plano dos módulos](https://github.com/pablopfg/zuri/pull/247), cada uma com a situação (pronta, próxima a chegar, em desenvolvimento) e a marca "Escreve a contatos".
+- **Configurações:** menu em cinco grupos (Você, A Zuri, Seu dia, Conexões, Sistema). Senha foi para Segurança, Telegram para Integrações, "A Zuri de olho" e "Prioridades" para a seção nova Assistente, e os pedidos de avaliação para Avaliações › Ajustes.
+- **Estados das telas e Identidade visual:** são páginas de referência do protótipo e não vão para o app.
+
 ### Recomendação
 
 Se o Pablo aprovar, o Sinal refinado vira o plano de [novo-frontend-sinal.md](novo-frontend-sinal.md): os tokens deste protótipo passam para o Tailwind do app, a Figtree entra como arquivo servido pelo Worker e a tela "Estados das telas" vira o padrão de carregando, vazio e erro de todas as telas.
