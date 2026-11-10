@@ -4704,7 +4704,7 @@ function memoria() {
   const links = mp(cur)[2];
   const uses = cur.uses || [];
   const near = M.map((m, k) => k).filter((k) => k !== sel && mp(M[k])[2].some((n) => mp(cur)[2].includes(n)));
-  const thingLi = (k) => { const n = MNODES[k]; const inner = `<span class="tile tile-sm">${ic(n.i, "ic-sm")}</span><span><b>${n.l}</b><span class="hint">${n.k}</span></span>`; return `<li>${view === "mapa" ? `<button class="mem-thing" type="button" data-mthing="${k}" aria-label="Ver ${escH(n.l)} no mapa">${inner}</button>` : inner}</li>`; };
+  const thingLi = (k) => { const n = MNODES[k]; const inner = `<span class="tile tile-sm">${ic(n.i, "ic-sm")}</span><span><b>${n.l}</b><span class="hint">${n.k}</span></span>`; return `<li>${view === "mapa" ? `<button class="mem-thing" type="button" data-mthing="${k}">${inner}</button>` : inner}</li>`; };
   let detail = "";
   if (thing) {
     const n = MNODES[thing];
