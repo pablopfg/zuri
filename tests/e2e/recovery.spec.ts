@@ -1,6 +1,6 @@
 import type { Route } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
-import { expectAccessible, tooSmallControls } from "./ui-helpers.ts";
+import { expectAccessible, expectFits, tooSmallControls } from "./ui-helpers.ts";
 
 // Password recovery by e-mail (step 11c). The local Worker has no e-mail binding, so it says a
 // link can't arrive; the states with e-mail on are the server's answers rewritten on their way.
@@ -21,7 +21,7 @@ test("without e-mail set up, the page points to the installation code @mobile", 
   await page.goto("/entrar");
   await page.getByRole("link", { name: "Esqueci minha senha" }).click();
   await expect(page).toHaveURL(/\/recuperar-senha$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Esqueci minha senha" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Criar uma senha nova" })).toBeVisible();
   await expect(page.getByText("O envio de e-mail ainda não foi configurado.", { exact: false })).toBeVisible();
   await expectAccessible(page, "recuperar senha sem e-mail");
   await page.getByRole("link", { name: "Usar um código de instalação" }).click();
@@ -47,19 +47,24 @@ test("asks for a link with the robot check, and answers the same whatever the e-
   await page.getByLabel("E-mail").fill("pessoa@exemplo.com.br");
   await page.locator('[data-testid="turnstile"][data-solved="true"]').waitFor();
   await page.getByRole("button", { name: "Enviar o link" }).click();
-  await expect(page.getByRole("alert")).toHaveText("Muitas tentativas. Espere um pouco.");
-  await expect(page.getByRole("button", { name: /Tente de novo em \d s/ })).toBeDisabled();
+  await expect(page.getByRole("alert")).toHaveText(/Muitas tentativas seguidas\. Tente de novo em 0:0\d\./);
+  await expect(page.getByRole("button", { name: /Espere 0:0\d/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Enviar o link" })).toBeEnabled({ timeout: 5000 });
   await page.locator('[data-testid="turnstile"][data-solved="true"]').waitFor();
   await page.getByRole("button", { name: "Enviar o link" }).click();
 
   await expect(page.getByRole("heading", { name: "Confira o seu e-mail" })).toBeFocused();
+  await expectFits(page, "recuperação, link enviado");
   await expect(page.getByText("Ele vale por 30 minutos", { exact: false })).toBeVisible();
   expect(sent).toHaveLength(2);
   expect(sent[1]?.email).toBe("pessoa@exemplo.com.br");
   expect(sent[1]?.turnstileToken).toBeTruthy();
   await expectAccessible(page, "link pedido");
   expect(await tooSmallControls(page)).toEqual([]);
+  // From here: back to the sign-in, or the form again for another link.
+  await expect(page.getByRole("link", { name: "Voltar para entrar" })).toHaveAttribute("href", "/entrar");
+  await page.getByRole("button", { name: "Pedir um link novo" }).click();
+  await expect(page.getByRole("button", { name: "Enviar o link" })).toBeVisible();
 });
 
 test("a link with two-step sign-in asks for a code, survives a wrong one and saves the new password @mobile", async ({ page }) => {
@@ -107,7 +112,7 @@ test("a link pasted into the open page is read too", async ({ page }) => {
   await page.route("**/api/auth/recover", (route) => route.fulfill({ json: { available: true } }));
   await page.route("**/api/auth/recover/check", (route) => route.fulfill({ json: { secondStep: false } }));
   await page.goto("/recuperar-senha");
-  await expect(page.getByRole("heading", { level: 1, name: "Esqueci minha senha" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Criar uma senha nova" })).toBeVisible();
   await page.goto(`/recuperar-senha#${TOKEN}`);
   await expect(page.getByRole("heading", { name: "Crie uma senha nova" })).toBeFocused();
   await expect(page).toHaveURL(/\/recuperar-senha$/);
@@ -122,5 +127,5 @@ test("a link that no longer works offers a new one @mobile", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Este link não vale mais" })).toBeFocused();
   await expectAccessible(page, "link vencido");
   await page.getByRole("button", { name: "Pedir um link novo" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Esqueci minha senha" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Criar uma senha nova" })).toBeVisible();
 });

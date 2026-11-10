@@ -153,47 +153,6 @@ body {
 }
 
 /*
- * The sign-in page's brand side: dark in both themes, so the mark keeps its own
- * colors: the brand's ink (#0b0f19, the same of the icons and the manifest),
- * not the neutral grays of the app. It gets the new look with the sign-in
- * screens (S03 of docs/planos/implementacao-frontend-sinal.md).
- */
-.login-brand {
-  --color-fg: #e8ecf3;
-  --color-fg-muted: #a3acbd;
-  --color-accent: #4ade80;
-  --color-brand-tile: #1a2233;
-  color-scheme: dark;
-  color: var(--color-fg);
-  background:
-    radial-gradient(22rem 16rem at 85% 10%, color-mix(in srgb, var(--color-brand-signal) 28%, transparent), transparent 65%),
-    #0b0f19;
-  border-bottom: 1px solid #263043;
-}
-
-@media (min-width: 64rem) {
-  .login-brand {
-    border-bottom: 0;
-    background:
-      radial-gradient(32rem 32rem at 78% 30%, color-mix(in srgb, var(--color-brand-signal) 28%, transparent), transparent 65%),
-      #0b0f19;
-  }
-}
-
-/*
- * The sign-in button: ink on the page, with the mark's green light. Outside the
- * utilities layer on purpose, so it wins over the primary variant's colors.
- */
-.login-submit {
-  background: var(--color-fg);
-  color: var(--color-bg);
-}
-
-.login-submit:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-fg) 86%, var(--color-bg));
-}
-
-/*
  * Loading (new interface): nothing in the first 300 ms, so a fast answer never
  * flashes; then gray lines in the shape of the content, with a soft shine, and
  * a thin green line on top while a screen downloads. Only CSS. The delay is a
@@ -563,5 +522,197 @@ dialog::backdrop {
   }
   .zuri-more-row > svg:last-child {
     @apply h-4 w-4;
+  }
+}
+
+/*
+ * The screens outside the app (Sinal, S03): the sign-in, the password recovery,
+ * the first access and the ones that lock the app share one frame
+ * (components/EntryLayout.tsx). On a computer the brand side stands beside the
+ * content, dark in both themes; on a phone only the mark stays, above the content.
+ */
+@layer components {
+  .zuri-entry {
+    display: grid;
+    min-height: 100%;
+    background: var(--color-bg);
+  }
+  .zuri-entry-art {
+    display: none;
+  }
+  /* minmax(0, 1fr): a long line wraps instead of widening the column past a narrow phone. */
+  .zuri-entry-side {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    place-items: center;
+    padding: 2rem 1.5rem;
+  }
+  /* The security check's box asks for 300 px: on the narrowest phones the margins give way to it. */
+  @media (max-width: 22rem) {
+    .zuri-entry-side {
+      padding-inline: 0.625rem;
+    }
+  }
+  .zuri-entry-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 24rem;
+  }
+  .zuri-entry-card[data-wide] {
+    max-width: 36rem;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .zuri-entry-card {
+      animation: var(--animate-rise);
+    }
+  }
+  .zuri-entry-card h1 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .zuri-entry-card h1:focus {
+    outline: none;
+  }
+  .zuri-entry-card h1 + p {
+    margin-top: 0.375rem;
+    color: var(--color-fg-muted);
+  }
+  /* The forms written for this frame; one that brings its own spacing keeps it. */
+  .zuri-entry-card form:not([class]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+  .zuri-entry-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 1.375rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .zuri-entry-brand > svg {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  /* A text link of these screens: underlined ink, with a full touch target that doesn't push the lines apart. */
+  .zuri-entry-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    margin-block: -0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  /* The security check's line (components/HumanCheck.tsx): the icon stays beside the text when the sentence wraps. */
+  .zuri-human {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 0.5rem;
+    min-height: 1.5rem;
+    font-size: 0.875rem;
+    color: var(--color-fg-muted);
+  }
+  .zuri-human > svg {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+  }
+  .zuri-human > span {
+    flex: 1 1 12rem;
+  }
+  .zuri-human[data-state="done"] > svg {
+    color: var(--color-success);
+  }
+  .zuri-human[role="alert"],
+  .zuri-human[data-state="wait"] {
+    color: var(--color-danger);
+  }
+  /* The box that asks for a click, under the line. */
+  .zuri-human + div:not(:empty) {
+    margin-top: 0.75rem;
+  }
+  .zuri-human > button {
+    min-height: 2.75rem;
+    margin-left: 1.5rem;
+    font-weight: 500;
+    color: var(--color-fg);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  @media (min-width: 64rem) {
+    .zuri-entry {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    }
+    .zuri-entry-art {
+      --color-brand-tile: #26262b;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      padding: 3rem;
+      background: #18181b;
+      color: #fafafa;
+    }
+    .zuri-entry-art > .zuri-entry-brand {
+      position: relative;
+    }
+    .zuri-entry-art > .zuri-entry-brand > svg {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+    .zuri-entry-art > p:not(.zuri-entry-brand) {
+      position: relative;
+      max-width: 12ch;
+      font-size: 2.75rem;
+      line-height: 1.08;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      text-wrap: balance;
+    }
+    /* The mark's light, sending out its signal. */
+    .zuri-entry-art > svg {
+      position: absolute;
+      top: -8.75rem;
+      right: -8.75rem;
+      width: 35rem;
+      height: 35rem;
+      pointer-events: none;
+    }
+    .zuri-entry-art circle {
+      fill: none;
+      stroke: var(--color-brand-signal);
+      stroke-width: 1.5;
+      opacity: 0.1;
+    }
+    .zuri-entry-art circle:first-child {
+      fill: var(--color-brand-signal);
+      stroke: none;
+      opacity: 0.9;
+    }
+    .zuri-entry-art circle:nth-child(2) {
+      opacity: 0.32;
+    }
+    .zuri-entry-art circle:nth-child(3) {
+      opacity: 0.2;
+    }
+    .zuri-entry-side {
+      padding: 3rem 2rem;
+    }
+    .zuri-entry-card > .zuri-entry-brand {
+      display: none;
+    }
+  }
+  .dark .zuri-entry-art {
+    background: #08080a;
   }
 }

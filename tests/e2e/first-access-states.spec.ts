@@ -57,7 +57,7 @@ test("the code waits for the robot check, learns its key from a refusal and coun
   await page.getByLabel("Código de instalação").fill(CODE);
   await page.getByRole("button", { name: "Continuar" }).click();
   // Held back: no try spent while the check gets ready.
-  await expect(page.getByRole("alert")).toHaveText("Preparando a verificação de segurança…");
+  await expect(page.getByRole("alert")).toHaveText("Fazendo a verificação de segurança… Mais um instante.");
   expect(sent).toEqual([]);
 
   // Without the options the try goes; the refusal brings the key and the check appears.
@@ -75,9 +75,10 @@ test("the code waits for the robot check, learns its key from a refusal and coun
   expect(sent[1]).not.toBe("none");
 
   // A pause counts down on the button, which waits with it.
-  const button = page.getByRole("button", { name: /Tente de novo em \d s/ });
+  const button = page.getByRole("button", { name: /Espere 0:0\d/ });
   await expect(button).toBeDisabled();
-  await expect(page.getByRole("alert")).toHaveText("Muitas tentativas. Espere um pouco.");
+  // The line above the button says the pause, with the same clock; the server's own words stay out.
+  await expect(page.getByRole("alert")).toHaveText(/Muitas tentativas seguidas\. Tente de novo em 0:0\d\./);
   await expect(page.getByRole("button", { name: "Continuar" })).toBeEnabled({ timeout: 5000 });
   expect(await tooSmallControls(page)).toEqual([]);
 });

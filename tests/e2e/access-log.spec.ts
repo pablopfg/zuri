@@ -8,7 +8,8 @@ test.use({ locale: "pt-BR" });
 test("the sign-in form runs the robot check quietly and sends its token with the password", async ({ page }) => {
   await page.goto("/entrar");
   await expect(page.getByTestId("turnstile")).toContainText("turnstile:1x00000000000000000000AA:login");
-  // Discreet: no line about it unless the check needs a click or fails.
+  // One discreet line says it is done; nothing asks for a click.
+  await expect(page.getByRole("status").filter({ hasText: "Verificação de segurança concluída" })).toBeVisible();
   await expect(page.getByText("Confirme que é você para continuar.")).toHaveCount(0);
   const sent = page.waitForRequest((r) => r.url().endsWith("/api/auth/login"));
   await signIn(page);
@@ -84,7 +85,7 @@ test("the robot check that fails to load says so and loads again on request", as
   await page.goto("/entrar");
   await page.getByLabel("E-mail").fill(EMAIL);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
-  await expect(page.getByRole("alert").filter({ hasText: "A verificação de segurança não carregou. Tente de novo para entrar." })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "A verificação de segurança não carregou." })).toBeVisible();
   // The button stays active; without the check's token, a try sends nothing and says why.
   let tries = 0;
   await page.route("**/api/auth/login", (route) => {
@@ -92,11 +93,11 @@ test("the robot check that fails to load says so and loads again on request", as
     return route.continue();
   });
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "Confirme que é você para continuar." })).toBeAttached();
+  await expect(page.getByRole("alert").filter({ hasText: "A verificação de segurança não carregou." })).toBeVisible();
   expect(tries).toBe(0);
   await page.getByRole("button", { name: "Recarregar a verificação" }).click();
-  // Once the new widget answers, the line about the check goes away.
-  await expect(page.locator("p").filter({ hasText: "Confirme que é você para continuar." })).toHaveCount(0);
+  // Once the new widget answers, the line says the check is done.
+  await expect(page.getByRole("status").filter({ hasText: "Verificação de segurança concluída" })).toBeVisible();
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
 });
@@ -115,7 +116,7 @@ test("without the form's options the server's refusal brings the robot check", a
   await page.getByLabel("E-mail").fill(EMAIL);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   // Until the options fail the form can't tell whether the check is on: a try only says it is getting ready.
-  const loading = page.locator("p").filter({ hasText: "Preparando a verificação de segurança…" });
+  const loading = page.getByRole("alert").filter({ hasText: "Fazendo a verificação de segurança… Mais um instante." });
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(loading).toBeVisible();
   release();

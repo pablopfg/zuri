@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, signIn } from "./ui-helpers.ts";
+import { expectAccessible, expectFits, signIn } from "./ui-helpers.ts";
 
 // The states the server can't easily be put in: the maximum session time, a
 // failing session check and a password that must change. The Worker is real;
@@ -91,6 +91,7 @@ test("a password that must change locks the app on the change screen @mobile", a
   await expect(page.getByLabel("Senha atual")).toBeVisible();
   await expect(page.getByRole("navigation")).toHaveCount(0);
   await expectAccessible(page, "troca de senha obrigatória");
+  await expectFits(page, "troca de senha obrigatória");
   await page.getByRole("button", { name: "Sair" }).click();
   await expect(page).toHaveURL(/\/entrar/);
 });

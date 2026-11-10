@@ -229,6 +229,25 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
   propriedade e deixe a casca desenhar o painel em volta. Listas longas de
   classes repetidas na casca pesam no JS: foram para `.zuri-*` em
   `styles.css`.
+- Entrada do Sinal (S03): `components/HumanCheck.tsx` (a verificação de
+  segurança) está no pacote inicial, por causa da tela de entrar, e tem
+  ícones. As telas sob demanda que a usam (primeiro acesso e recuperação)
+  recebem o hook por propriedade (`useHuman`, vindo do `App.tsx`); o import
+  direto separou o `ui-*.js` e subiu o JS inicial em 1 kB. `EntryLayout.tsx`
+  não importa `ui.tsx`, como o `Logo.tsx`.
+- Contagem regressiva com `now` em estado: leia o relógio de novo ao começar
+  a pausa (`setNow(Date.now())`). O `now` do primeiro desenho pode ter minutos,
+  e a primeira conta saía maior que a pausa (achado pelo relógio falso da S03).
+- Widget externo desmontado ainda pode chamar o `callback` (resposta a
+  caminho): `TurnstileWidget` ignora tudo depois do `cancelled`. Sem isso, um
+  token atrasado desfazia o estado "não passou".
+- Medir o JS inicial: só `npm run build` seguido de `npm run size` vale. O
+  `vite build` chamado direto em `apps/web` deu uns 28 bytes a menos na S03, e
+  a CI mede pelo primeiro. A S03 fechou em 140.891 B, com teto de 140.900 B:
+  a S04 começa sem folga nenhuma.
+- Contagem regressiva nunca dentro de `role="alert"` ou `status`: o leitor de
+  tela repete a cada segundo. O aviso falado é um elemento à parte, com o
+  tempo do início (S03, `HumanCheck.tsx`).
 - `dialog::backdrop` do `styles.css` fica fora de camada e vence qualquer
   `backdrop:` do Tailwind (que vai em `@layer`). Para mudar o fundo de um
   diálogo, escreva a regra fora de camada, depois da geral.

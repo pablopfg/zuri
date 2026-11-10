@@ -1,6 +1,6 @@
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
-import { expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { expectAccessible, expectFits, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // "Sair do bloqueio" and the bot's alerts acknowledged in the app (step 16b).
 // A real lockdown would end every session of the shared e2e Worker and refuse
@@ -48,6 +48,7 @@ test("the app opens on Sair do bloqueio, asks for the code and opens again once 
   await sessionSays(page, () => ({ lockdown: locked }));
 
   await expect(page.getByRole("heading", { level: 1, name: "Modo de bloqueio" })).toBeVisible();
+  await expectFits(page, "modo de bloqueio");
   await expect(page.getByText("Ligado pelo Telegram em 02/11/2026", { exact: false })).toBeVisible();
   await expect(page.getByText("Foi o segundo bloqueio em 24 horas", { exact: false })).toBeVisible();
   // No menu, no other screen: the shell stays closed while it lasts.
