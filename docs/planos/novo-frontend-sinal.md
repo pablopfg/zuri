@@ -43,7 +43,7 @@ A varredura de 09/11 comparou as rotas, os cartões de Configurações e os comp
 | Notas (lista, editor, Escrever e Prévia, pastas) | Sim, com "Nova nota", salvamento automático, "Pôr numa pasta", menu da nota e lixeira só com as notas | E |
 | Agenda (dia, semana, mês, criar e editar evento) | Sim: as três visões funcionam, "Novo evento" cria na semana, com a linha de agora; o atalho do rodapé diz só "Configurações" | F |
 | Contatos (pessoas, clientes do CRM, avaliações) | Pessoas, com todos os campos do Google e contagem regressiva. As etiquetas saem da faixa que rolava de lado: um botão "Etiqueta: Todas ▾" abre a lista com busca e contagem, e um X limpa o filtro. Clientes sai da tela e fica para depois (resposta 6 de 10/11: nada roda em segundo plano por enquanto). Avaliações vira item próprio do menu | G e G2 |
-| Automações (rotinas, sugestão da Zuri, fluxos, conexões, editor de fluxo, menu ⋯) | Automações fica com Rotinas e Fluxos. Módulos e Conexões saem para um item próprio do menu lateral, **CRM**, com as partes Módulos e **Credenciais** (o novo nome de Conexões; decisão de 10/11, 00:51) | H |
+| Automações (rotinas, sugestão da Zuri, fluxos, conexões, editor de fluxo, menu ⋯) | O item vira **Rotinas** (lembretes, resumos e rotinas da Zuri). O menu lateral ganha o item **CRM**, com as partes **Automações** (as que vêm do n8n; antes "Módulos"), **Fluxos** (os que você monta) e **Credenciais** (o novo nome de Conexões). Termos fechados em 10/11, 02:45 (seção 7, "Termos") | H |
 | Memória ("Nova memória" em diálogo, tipos, filtros, conflitos, "nunca enviar para fora" marcável no menu ⋯) | Sim, com o microfone dentro do diálogo. Novo desenho: filtros à esquerda (Mostrar e Tipos, com contagem), lista agrupada por tipo, painel da memória escolhida ("Ligada a", "Aparece em", "Memórias próximas") e a visão **Mapa** (seção 7, "Memória em mapa") | D |
 | Configurações › Conta (preferências, senha, tema; sem o cartão "Sair deste aparelho") | Sim, tema só com ícones | H |
 | Configurações › Segurança (duas etapas, passkeys, limites de sessão, atividade, acesso pela API) | Sim; limites de sessão em "Saída automática". Encerrar as sessões abertas continua só no Telegram (`/sessoes`, `/encerrar_sessoes`), como na develop | H |
@@ -74,7 +74,7 @@ A varredura de 09/11 comparou as rotas, os cartões de Configurações e os comp
 | Configurações › Agenda (horário de trabalho, dias de trabalho, eventos de dia inteiro e fora do horário) | preferência nova aprovada (resposta 3 de 10/11); seção 7, "Agenda no horário de trabalho" |
 | Versão do servidor para conferir a atualização | `GET /api/version`; seção 7, "Versão" |
 | "Como responder" das avaliações (dados do consultório, exemplos, teste) | seção 7, "Como responder" |
-| Conversa nova a cada 24 h, no app e no Telegram, com o resumo da anterior | seção 7, "Conversas recentes" |
+| Conversa nova todo dia à 0:00, no app e no Telegram, com o resumo da anterior | seção 7, "Conversas recentes" |
 | Intervalo entre mensagens do Chatwoot e fila de envio | [modulos-crm.md](modulos-crm.md), seção 6 (PR #247) |
 | Módulos do CRM e credenciais (servidor) | [modulos-crm.md](modulos-crm.md) (PR #247), que decide quais fluxos do n8n viram módulo, a ordem e as credenciais; este plano cuida só da interface do menu CRM |
 
@@ -132,24 +132,35 @@ Os textos do protótipo entram no catálogo pelas chaves existentes sempre que o
 
 ### Menu CRM (PR B e PR H)
 
-- Item novo **CRM** no menu lateral (ícone `handshake`), depois de Automações, com duas partes: **Módulos** e **Credenciais**. No celular fica na folha "Mais".
+- Item novo **CRM** no menu lateral (ícone `handshake`), no grupo Relacionamento, com três partes: **Automações** (ícone `zap`), **Fluxos** (`workflow`) e **Credenciais** (`key-round`). No celular fica na folha "Mais".
 - "Conexões" vira "Credenciais" em todo texto do CRM (títulos, botões, diálogos, avisos de uso: "Usa: credencial do Chatwoot"). As chaves do catálogo mudam junto, pt-BR e en.
-- Automações fica com Rotinas e Fluxos. Um fluxo que usa uma credencial abre a escolha pelo nome, como hoje.
+- O antigo item Automações vira **Rotinas** (ícone `alarm-clock`), só com a lista das rotinas, sem abas. Fluxos vão para o CRM, perto das credenciais que usam. Um fluxo que usa uma credencial abre a escolha pelo nome, como hoje.
 - A parte de servidor (quais fluxos do n8n viram módulo, ordem, credenciais por tipo) está em [modulos-crm.md](modulos-crm.md).
+
+### Termos (pedido do Pablo, 10/11, 02:45)
+
+| Termo | O que é | Onde fica |
+| --- | --- | --- |
+| **Rotina** | O que a Zuri roda sozinha para você: lembrete, resumo ou rotina com IA ("Rotina da Zuri") | Menu **Rotinas** (antes Automações). Botão "Criar rotina" |
+| **Automação** | Processo do consultório trazido do n8n (pedido de avaliação, confirmação de consulta, boas-vindas); você liga, escolhe a credencial e acompanha o ensaio | CRM › **Automações** (antes Módulos) |
+| **Fluxo** | Automação que você monta passo a passo no editor | CRM › **Fluxos** |
+| **Credencial** | Endereço e chave de um serviço de fora, guardados uma vez | CRM › **Credenciais** |
+
+No código e nos planos de servidor, "módulo" continua como nome interno (`modulos.md`, `modulos-crm.md`); nada na tela diz "módulo". A regra de textos (`.claude/rules/textos-da-interface.md`) muda junto.
 
 ### Menu lateral em grupos (PR B; pedido do Pablo, 10/11, 02:24)
 
-- Três grupos, com títulos pequenos que somem quando o menu está recolhido: sem título **Início** e **Conversa**; **Organizar** com Tarefas, Agenda, Notas, Memória e Automações; **Relacionamento** com Contatos, Avaliações e CRM. Cada grupo é uma lista com `aria-labelledby` no título.
-- Ícones (lucide, um traço só, mesmo tamanho): Início `house`, Conversa `messages-square`, Tarefas `list-todo`, Agenda `calendar-days`, Notas `notebook`, Memória `brain`, Automações `zap`, Contatos `book-user`, Avaliações `star`, CRM `handshake`. Nenhum ícone se repete entre itens do menu.
+- Três grupos, com títulos pequenos que somem quando o menu está recolhido: sem título **Início** e **Conversa**; **Organizar** com Tarefas, Agenda, Notas, Memória e Rotinas; **Relacionamento** com Contatos, Avaliações e CRM. Cada grupo é uma lista com `aria-labelledby` no título.
+- Ícones (lucide, um traço só, mesmo tamanho): Início `house`, Conversa `messages-square`, Tarefas `list-todo`, Agenda `calendar-days`, Notas `notebook`, Memória `brain`, Rotinas `alarm-clock`, Contatos `book-user`, Avaliações `star`, CRM `handshake`. Nenhum ícone se repete entre itens do menu.
 - A contagem continua à direita do item, com o motivo para o leitor de tela ("4 para hoje").
 
 ### Conversas recentes (PR D e servidor; pedido do Pablo, 10/11, 02:24)
 
 - A tela Conversa ganha a lista das conversas ao lado (no celular, atrás do botão de lista do cabeçalho), com busca, grupos por data, "Em uso" na atual e "Nova". Abrir uma conversa antiga mostra o histórico e um aviso: "Esta conversa terminou. Escrever aqui continua na conversa de hoje."
-- **Conversa nova a cada 24 h:** quando chega uma mensagem 24 h ou mais depois da primeira mensagem da conversa em uso, o servidor começa uma conversa nova antes de responder. Vale no app e no Telegram (que hoje fica numa conversa só até `/nova_conversa`). Sem agendamento: a troca acontece na chegada da mensagem, sem custo de cota.
+- **Conversa nova todo dia à 0:00** (pedido do Pablo, 10/11, 03:12; troca a regra das 24 h depois da primeira mensagem): à meia-noite do fuso do dono (Configurações › Conta), a conversa em uso fecha e uma nova começa. Vale no app e no Telegram (que hoje fica numa conversa só até `/nova_conversa`). A troca usa o alarme único que já existe (regra P8): o despertar depois da 0:00 cria a conversa nova e avisa a tela aberta pelo canal de tempo real, que passa para ela sozinha. Se o objeto não despertar na hora, a primeira mensagem depois da 0:00 faz a troca antes de responder. Dia sem mensagem não cria conversa vazia: a nova só é gravada quando algo é escrito nela.
 - A conversa nova leva o resumo curto da anterior (o mesmo resumo que o histórico longo já gera), sem chamada extra de IA; a memória continua igual. Isso evita mandar 200 linhas de histórico a cada pergunta e a perda de contexto do corte.
-- Configurações › Conta › **Conversas**: "Começar uma conversa nova a cada 24 h", ligado por padrão. O cabeçalho da conversa mostra "Desde hoje, 08:12 · nova conversa amanhã, 08:12".
-- Sem migration nova: o início da conversa já está em `zur_conversations.created_at` e a preferência é uma chave de `zur_settings`. Testes: a troca acontece uma vez só com mensagens simultâneas, e uma conversa antiga reaberta não troca de novo sozinha.
+- Configurações › Conta › **Conversas**: "Começar uma conversa nova todo dia à 0:00", ligado por padrão. O cabeçalho da conversa mostra "Desde hoje, 08:12 · nova conversa à 0:00"; a lista diz "Todo dia, à 0:00, começa uma conversa nova. As anteriores ficam aqui."
+- Sem migration nova: o início da conversa já está em `zur_conversations.created_at` e a preferência é uma chave de `zur_settings`. Testes: a troca acontece uma vez só com mensagens simultâneas e com o alarme ao mesmo tempo; mensagem às 23:59:59 fica na conversa do dia e à 0:00:00 vai para a nova (relógio falso, fuso de São Paulo e outro fuso); horário de verão não cria duas trocas; uma conversa antiga reaberta e escrita continua na conversa do dia.
 
 ### Exemplo do link de avaliação (PR G2)
 
@@ -163,8 +174,9 @@ Os textos do protótipo entram no catálogo pelas chaves existentes sempre que o
 
 ### Intervalo entre mensagens do Chatwoot (PR H e servidor das credenciais)
 
-- Na credencial do Chatwoot, o grupo **Intervalo entre mensagens** com "De" e "Até" (30 s a 10 min; padrão 1 a 3 min). "De" maior que "Até" não salva e o erro aparece no campo. Mudar o intervalo não pede a chave de novo.
+- Na credencial do Chatwoot, o grupo **Intervalo entre mensagens** com "De" e "Até" (30 s a 1 min, que é também o padrão; pedidos do Pablo de 10/11, 03:01 e 03:22). "De" maior que "Até" não salva e o erro aparece no campo. Mudar o intervalo não pede a chave de novo.
 - Em CRM › Credenciais, a **Fila de envio** mostra a última enviada, a próxima e as que esperam, com o intervalo da credencial.
+- Cotas do plano grátis da Cloudflare (conferidas em 10/11 com `docs/arquitetura/orcamento-free-tier.md`): com o teto de 60 mensagens por dia, são no máximo uns 120 despertares do alarme único (0,1% das 100.000 requisições diárias do objeto), 4 a 7 subrequisições por envio (o teto é 44 por despertar) e algumas centenas de linhas gravadas (de 100.000). Entre um envio e outro o objeto dorme, então a duração quase não conta. O piso de 30 s não chega perto de nenhum limite da Cloudflare; quem limita o ritmo é o risco de bloqueio do número no WhatsApp não oficial.
 - A lógica no servidor (um relógio por credencial, próximo horário livre guardado no banco com atualização condicional, prioridade, mensagem que perderia a hora vira aviso) está em [modulos-crm.md](modulos-crm.md), seção 6, e vale para todos os módulos que usam a mesma credencial.
 
 ### Versão (PR H e servidor pequeno)
@@ -188,6 +200,9 @@ O link já sai preenchido hoje (`apps/web/src/lib/issue-report.ts`, modelo `erro
 - Na Agenda, dois botões de alternar ficam na barra ("Dia inteiro" e "Fora do horário") para mudar só naquela visita. O que fica escondido nunca some sem aviso: uma linha diz "1 evento de dia inteiro escondido · Mostrar" ou "2 eventos escondidos fora do horário · Mostrar".
 - A visão Mês mostra tudo (é um resumo). A conversa e as rotinas continuam vendo todos os eventos; a preferência é só da tela.
 - Servidor: a preferência entra em `zur_settings` (sem migration nova se couber nas chaves existentes; senão, a próxima livre).
+- **Hoje de verdade** (pedido do Pablo, 10/11, 03:17): a Agenda abre na semana de hoje, no fuso do dono, e marca o dia atual na faixa dos dias, na coluna da semana e no mês (`aria-current="date"`). À 0:00 a marca passa para o dia novo sem recarregar (a linha da hora já roda a cada minuto; ao virar o dia, a tela troca a semana se preciso). O Início mostra a data do dia ("Terça-feira, 10 de novembro"). Teste com relógio falso às 23:59 e à 0:00.
+- **Sem a data da semana:** a visão Semana não tem mais o título "9 a 15 de novembro"; a faixa dos dias já mostra os números. Dia e Mês mantêm o título ("Terça, 10 de novembro", "Novembro de 2026").
+- **Barra no celular:** setas e "Hoje" à esquerda e Dia/Semana/Mês à direita na mesma linha; "Dia inteiro" e "Fora do horário" embaixo, em duas colunas iguais. Nada quebra linha em 360 px.
 
 ### Como responder, em Avaliações (PR G2 e servidor)
 
@@ -216,7 +231,7 @@ A varredura de 10/11 procurou em cada tela, nos dois tamanhos, elementos que rol
 
 - Nenhuma faixa de botões rola de lado. Filtros com muitas opções viram uma lista que abre (etiquetas dos contatos, seções das Configurações no celular: "Seção: Agenda ▾").
 - No celular, abas viram uma grade de colunas iguais: até três numa linha, quatro em 2 × 2 (Avaliações, Tarefas). Nenhuma aba fica sozinha numa linha nem corta o texto (pedido do Pablo, 10/11, 02:32).
-- Linhas com ícone (Módulos, Automações, "Precisa de você") usam ícone de 32 px no canto, texto ao lado e os botões embaixo, alinhados ao texto. Título com selo ("Esperando aprovação") põe o selo na linha de baixo em vez de partir o título.
+- Linhas com ícone (Automações do CRM, Rotinas, "Precisa de você") usam ícone de 32 px no canto, texto ao lado e os botões embaixo, alinhados ao texto. Título com selo ("Esperando aprovação") põe o selo na linha de baixo em vez de partir o título.
 - Botões de decisão com textos longos (Memória › Para revisar) ficam em grade: a ação principal na largura toda, as outras duas a duas.
 - Botão com ícone mostra o texto também no celular quando cabe (Pastas e Lixeira em Tarefas).
 - O teste de cada PR roda a mesma varredura no e2e: nenhum elemento visível com rolagem lateral escondida em 390 px e 1440 px.
@@ -231,10 +246,12 @@ Cada tela tem uma frase curta embaixo do título, que diz o que dá para fazer a
 | Notas | Ideias, listas e o que veio das conversas. Tudo se salva sozinho. |
 | Agenda | Seus eventos do Google Agenda, sempre atualizados. O que você cria aqui ou pela Zuri vai direto para lá. |
 | Memória | O que a Zuri lembra sobre você e como cada coisa se liga. Você corrige ou apaga quando quiser. |
-| Automações › Rotinas | Lembretes, resumos e rotinas que rodam sozinhos, no seu fuso. |
-| Automações › Fluxos | Sequências de passos que você monta, com hora para rodar e limites. |
-| CRM › Módulos | Rotinas do consultório já testadas no n8n. Você liga, escolhe a credencial e acompanha o ensaio. |
-| CRM › Credenciais | Endereços e chaves dos serviços de fora, guardados uma vez e usados por todos os módulos. |
+| Rotinas | Lembretes, resumos e rotinas que a Zuri roda para você, no seu fuso. |
+| CRM › Automações | Automações do consultório trazidas do n8n, já testadas. Você liga, escolhe a credencial e acompanha o ensaio. |
+| CRM › Fluxos | Automações que você monta passo a passo, com hora para rodar e limites. |
+| CRM › Credenciais | Endereços e chaves dos serviços de fora, guardados uma vez e usados por todas as automações e fluxos. |
+| Avaliações | O que dizem do consultório no Google, as respostas que a Zuri prepara e os pedidos de avaliação. |
+| Avaliações › Ajustes | Conexão com o Google (ler, importar e responder) e Como responder ([avaliacoes-conexao-e-respostas.md](avaliacoes-conexao-e-respostas.md)) |
 | Configurações | Conta, segurança, integrações e o jeito como a Zuri trabalha para você. |
 | › Conta | Nome, idioma, fuso, tema e senha |
 | › Agenda | Horário de trabalho, visualização e lembretes |
@@ -303,25 +320,25 @@ Tudo o que foi definido no protótipo entra no app. A ordem respeita as dependê
 | # | PR | O que entra | Depende de | Tamanho |
 | --- | --- | --- | --- | --- |
 | 1 | A · Fundamentos | Tokens, Figtree em woff2, peças base, tema só com ícones | Aprovação do Sinal refinado | M |
-| 2 | B · Casca | Menu lateral em três grupos com ícones revistos, Avaliações, Automações (Rotinas, Fluxos) e CRM (Módulos, Credenciais), menu de baixo no celular, folha "Mais", perfil e avisos em painel (linha "Versão" abaixo de "Avisos", sem "Agenda"), ⌘K | A; teto do JS aprovado (até 141 kB, resposta 2 de 10/11) | G |
+| 2 | B · Casca | Menu lateral em três grupos com ícones revistos, Avaliações, Rotinas e CRM (Automações, Fluxos, Credenciais), menu de baixo no celular, folha "Mais", perfil e avisos em painel (linha "Versão" abaixo de "Avisos", sem "Agenda"), ⌘K | A; teto do JS aprovado (até 141 kB, resposta 2 de 10/11) | G |
 | 3 | I · Entrada | Textos novos, campo de e-mail sem exemplo, os seis estados da verificação de segurança, "Esqueci minha senha" ao lado da senha, recuperação no desenho novo, título da página de erro | A | P |
 | 4 | C · Início | Saudação pela hora, cortina do que passou, pendências | B | M |
 | 5 | Servidor · sugestões | [sugestoes-do-inicio.md](sugestoes-do-inicio.md) e as sugestões no Início | C | M |
-| 6 | D · Conversa e Memória | Lista das conversas recentes com busca; preferência "conversa nova a cada 24 h"; sem clipe; um componente de gravação para todos os microfones; memória com filtros, lista agrupada, painel e visão Mapa | B | M |
-| 6b | Servidor · conversa de 24 h | Troca de conversa na chegada da mensagem (app e Telegram), resumo da anterior, preferência | — | P |
+| 6 | D · Conversa e Memória | Lista das conversas recentes com busca; preferência "conversa nova todo dia à 0:00"; sem clipe; um componente de gravação para todos os microfones; memória com filtros, lista agrupada, painel e visão Mapa | B | M |
+| 6b | Servidor · conversa do dia | Troca de conversa à 0:00 no fuso do dono pelo alarme único, com reserva na chegada da mensagem (app e Telegram), resumo da anterior, preferência | — | P |
 | 7 | E · Tarefas e Notas | "Pastas", "Nova nota", salvamento automático | B | M |
-| 8 | F · Agenda | Linha de agora, legenda, rodapé "Configurações", horário e dias de trabalho, esconder dia inteiro e fora do horário com aviso (servidor pequeno junto) | B | M |
+| 8 | F · Agenda | Dia de hoje de verdade e troca à 0:00, sem título da semana, barra do celular em duas linhas, linha de agora, legenda, rodapé "Configurações", horário e dias de trabalho, esconder dia inteiro e fora do horário com aviso (servidor pequeno junto) | B | M |
 | 9 | Servidor · sincronização | Contatos 5 min, Avaliações 10 min, etiquetas por hora, recarga só com mudança, campos novos ([plano](sincronizacao-contatos-avaliacoes.md), PR 1) | — | M |
 | 10 | G · Contatos | Sem Clientes, filtro de etiquetas em lista com busca, contagem, ficha com todos os campos e "Vazio no Google" | B, 9 | M |
 | 11 | Servidor · métricas | Métricas das avaliações ([plano](sincronizacao-contatos-avaliacoes.md), PR 2) | — | P |
-| 12 | G2 · Avaliações | Área própria: Visão geral, Avaliações, Pedidos (com o exemplo do link) e Como responder (com o servidor dos campos novos e do teste) | B, 11 | M |
+| 12 | G2 · Avaliações | Área própria: Visão geral, Avaliações, Pedidos (com o exemplo do link) e Ajustes, com a conexão com o Google e Como responder ([avaliacoes-conexao-e-respostas.md](avaliacoes-conexao-e-respostas.md); com o servidor dos campos novos e do teste) | B, 11 | M |
 | 13 | Servidor · consumo | Contadores por hora e resumo por mês | — | P |
-| 14 | H · Automações, CRM e Configurações | Rotinas, Fluxos; CRM com Módulos (vazia até a 16) e Credenciais; Configurações com Sobre a Zuri e `/api/version`; Relatar no GitHub com prévia; consumo por dia/semana/mês/ano | B, 13 | G |
+| 14 | H · Rotinas, CRM e Configurações | Rotinas; CRM com Automações (vazia até a 16), Fluxos e Credenciais; Configurações com Sobre a Zuri e `/api/version`; Relatar no GitHub com prévia; consumo por dia/semana/mês/ano | B, 13 | G |
 | 15 | Servidor · credenciais | Tipo de credencial (`http`, `chatwoot`), senha, troca de chave, intervalo entre mensagens e fila por credencial, remoção bloqueada em uso ([modulos.md](modulos.md), [modulos-crm.md](modulos-crm.md)) | H | M |
-| 16 | Servidor · módulos | Manifesto, ensaio, comparação, rotas ([modulos.md](modulos.md), PR 1) | 15 | G |
-| 17 | Módulo · Pedido de avaliação | Fila, dias úteis, homônimos, Chatwoot ([envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md)) | 16, 12 | G |
+| 16 | Servidor · automações do CRM (módulos no código) | Manifesto, ensaio, comparação, rotas ([modulos.md](modulos.md), PR 1) | 15 | G |
+| 17 | Automação · Pedido de avaliação | Fila, dias úteis, homônimos, Chatwoot ([envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md)) | 16, 12 | G |
 | 18 | Catálogo de modelos | Conferido sozinho uma vez por dia | H | P |
-| 19 em diante | Um módulo por fluxo do n8n | Na ordem de [modulos-crm.md](modulos-crm.md), cada um com a aprovação da exceção, se mandar mensagem a pacientes | 16 | M cada |
+| 19 em diante | Uma automação por fluxo do n8n | Na ordem de [modulos-crm.md](modulos-crm.md), cada um com a aprovação da exceção, se mandar mensagem a pacientes | 16 | M cada |
 | Penúltima | Conferência das capturas | Nenhuma captura do visual antigo sobra no README nem em `docs/capturas/` | Todas as de interface | P |
 | **Última** | **Pentest autônomo final** | Um agente autônomo age como pentester contra o sistema inteiro e depois aplica as correções (detalhes abaixo) | Tudo concluído **e** autorização explícita do Pablo | G |
 

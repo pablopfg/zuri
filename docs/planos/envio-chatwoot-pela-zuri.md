@@ -50,12 +50,12 @@ Automações › Criar automação › **Pedido de avaliação**:
 1. **Quando:** todo dia útil, às 09:00. Pula sábado, domingo, feriados nacionais e os seus "dias sem expediente".
 2. **Quem:** consulta há 8 dias (o número pode mudar), nunca avaliou, não pediu para não receber.
 3. **Mensagem:** o texto, com `{primeiro_nome}` e `{link}`. Aparece uma prévia. Como a caixa é de API, não há modelo da Meta para escolher.
-4. **Envio:** "Perguntar antes" (padrão) ou "Automático" (liberado depois de 10 aprovações). Limite por dia (padrão 20) e intervalo entre mensagens (padrão de 1 a 3 minutos, sorteado a cada envio, para não parecer disparo em massa).
+4. **Envio:** "Perguntar antes" (padrão) ou "Automático" (liberado depois de 10 aprovações). Limite por dia (padrão 20) e intervalo entre mensagens (padrão de 30 segundos a 1 minuto, sorteado a cada envio, para não parecer disparo em massa).
 5. **Revisar.**
 
 ### Fluxo 3 · Dia a dia
 
-Às 09:00 chega um aviso: "3 pedidos de avaliação prontos". A lista mostra nome, data da consulta e telefone. Você tira quem quiser e toca em "Enviar 3". A Zuri envia um a cada 1 a 3 minutos e marca cada um como enviado, com falha ou "Não quer receber". O mesmo vale pelo Telegram, com `/aprovar`.
+Às 09:00 chega um aviso: "3 pedidos de avaliação prontos". A lista mostra nome, data da consulta e telefone. Você tira quem quiser e toca em "Enviar 3". A Zuri envia um a cada 30 segundos a 1 minuto e marca cada um como enviado, com falha ou "Não quer receber". O mesmo vale pelo Telegram, com `/aprovar`.
 
 ### Textos visíveis
 
@@ -69,7 +69,7 @@ Seguem o catálogo `pt-BR-reviews.ts` e `pt-BR-automations.ts`. Os novos são es
 | Dia útil | Segunda a sexta, menos os feriados nacionais (calculados no código, sem chamar API) e os dias sem expediente |
 | Horário | Das 09:00 às 18:00, no fuso da conta; o que sobrar fica para o próximo dia útil |
 | Mensagens por dia | Até 20 (de 1 a 50) |
-| Intervalo | 1 mensagem a cada 1 a 3 minutos (sorteado), no alarme único do objeto. O intervalo é da **credencial** do Chatwoot (campos "De" e "Até", de 30 s a 10 min), vale para todos os módulos que usam a mesma caixa e segue a fila única descrita em [modulos-crm.md](modulos-crm.md), seção 6 (pedido do Pablo, 10/11, 02:24) |
+| Intervalo | 1 mensagem a cada 30 segundos a 1 minuto (sorteado; pedido do Pablo, 10/11, 03:01), no alarme único do objeto. O intervalo é da **credencial** do Chatwoot (campos "De" e "Até", de 30 s a 1 min; teto reduzido de 10 min para 1 min a pedido do Pablo, 10/11, 03:22), vale para todos os módulos que usam a mesma caixa e segue a fila única descrita em [modulos-crm.md](modulos-crm.md), seção 6 (pedido do Pablo, 10/11, 02:24) |
 | Lembrete | Um só, 7 dias depois, também em dia útil |
 | Quem recebe | Só quem nunca avaliou, sem avaliação pendente de confirmação e sem "não quero receber" |
 | Disjuntor | Desliga o modo automático e pausa o envio com: 2 falhas seguidas do Chatwoot, recusa da chave (401/403), mensagem marcada como falha pela ponte do WhatsApp, 3 respostas "não quero receber" no mesmo dia |
