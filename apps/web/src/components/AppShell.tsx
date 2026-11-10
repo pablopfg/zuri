@@ -45,7 +45,7 @@ const MfaReminder = lazy(() => import("./MfaReminder.tsx").then((m) => ({ defaul
 const SecretNotices = lazy(() => import("./SecretNotices.tsx").then((m) => ({ default: m.SecretNotices })));
 
 const NEW_CHAT = "/conversa";
-const iconButton = "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg hover:bg-raised";
+const iconButton = "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg hover:bg-border";
 
 /**
  * The frame of every signed-in page, organized like the big chat apps: a
@@ -206,7 +206,7 @@ function Sidebar({ collapsed, onToggle, onClose, onSearch }: { collapsed: boolea
     cn(
       "flex min-h-11 w-full items-center gap-3 rounded-xl text-sm font-medium transition-colors",
       collapsed ? "justify-center px-0" : "px-3",
-      isActive ? "bg-accent-soft text-accent-text" : "text-fg-muted hover:bg-raised hover:text-fg",
+      isActive ? "bg-accent-soft text-accent-text" : "text-fg-muted hover:bg-border hover:text-fg",
     );
   const tip = (label: string) => (collapsed ? label : null);
   const platform = navigator.platform;
@@ -332,7 +332,7 @@ function AccountMenu({ collapsed, tipsHidden, onPick }: { collapsed: boolean; ti
     setOpen(false);
     onPick?.();
   };
-  const item = "flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-fg hover:bg-raised";
+  const item = "flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-fg hover:bg-border";
 
   return (
     <div ref={box} className="relative">
@@ -343,7 +343,7 @@ function AccountMenu({ collapsed, tipsHidden, onPick }: { collapsed: boolean; ti
           onClick={() => setOpen(!open)}
           aria-expanded={open}
           aria-controls={id}
-          className={cn("flex min-h-12 w-full items-center gap-3 rounded-xl text-left hover:bg-raised", collapsed ? "justify-center px-0" : "px-2")}
+          className={cn("flex min-h-12 w-full items-center gap-3 rounded-xl text-left hover:bg-border", collapsed ? "justify-center px-0" : "px-2")}
         >
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-fg" aria-hidden>
             {settings.data?.ownerName.trim() ? [...name][0]?.toUpperCase() : <SettingsIcon className="h-4 w-4" />}

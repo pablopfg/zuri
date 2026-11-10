@@ -99,14 +99,14 @@ test("the theme choice applies at once and stays after a reload", async ({ page 
   await page.goto("/configuracoes/conta");
   await signIn(page);
   const theme = page.getByRole("group", { name: "Tema" });
-  await theme.getByText("Escuro").click();
+  await theme.getByTitle("Escuro").click();
   await expect(page.locator("html")).toHaveClass(/dark/);
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#0b0f19");
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#0c0c0e");
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
   await expect(page.locator("html")).toHaveClass(/dark/);
   await expect(theme.getByRole("radio", { name: "Escuro" })).toBeChecked();
-  await theme.getByText("Claro").click();
+  await theme.getByTitle("Claro").click();
   await expect(page.locator("html")).not.toHaveClass(/dark/);
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#f6f7f9");
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#f1f1f3");
 });
