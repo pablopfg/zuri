@@ -463,6 +463,35 @@ describe("prompt injection (security scenarios)", () => {
     });
   });
 
+  it("tools that ran in an earlier answer reach the model as a note, so it knows it did act", async () => {
+    await withChatWorld(async (world) => {
+      const first = await turn(
+        world,
+        new ScriptedProvider([callTools({ name: "create_task", input: { title: "Leite" } }, { name: "create_task", input: { title: "Pão" } }, { name: "complete_task", input: { task: "não existe" } }), say("Criei.")]),
+        "Crie duas tarefas",
+      );
+      const provider = new ScriptedProvider([say("Ok.")]);
+      await turn(world, provider, "Criou mesmo?", { conversationId: first.conversationId });
+      const answer = provider.transcript.requests[0]?.messages[1]?.content ?? "";
+      expect(answer).toBe("Criei.\n\n[Tools called in that turn: 2x create_task (done), complete_task (failed)]");
+    });
+  });
+
+  it("separates what the model says before a tool from what it says after", async () => {
+    await withChatWorld(async (world) => {
+      const before: Step = () => ({ text: "Vou criar a tarefa.", calls: [{ name: "create_task", input: { title: "Leite" } }] });
+      const { events, done } = await turn(world, new ScriptedProvider([before, say("Pronto, criei.")]), "Crie a tarefa leite");
+      const streamed = events.filter((event) => event.type === "text").map((event) => (event as { delta: string }).delta).join("");
+      expect(streamed).toBe("Vou criar a tarefa.\n\nPronto, criei.");
+      expect(done.message.content).toBe(streamed);
+      // Text that already brings its own break gets no second one, and plain streaming is untouched.
+      const spaced = await turn(world, new ScriptedProvider([before, say("\nPronto.")]), "De novo");
+      expect(spaced.done.message.content).toBe("Vou criar a tarefa.\nPronto.");
+      const plain = await turn(world, new ScriptedProvider([say("Uma frase só.")]), "Oi");
+      expect(plain.done.message.content).toBe("Uma frase só.");
+    });
+  });
+
   it("past proposals reach the model with their real outcome, so it never claims one it did not get", async () => {
     await withChatWorld(async (world) => {
       const task = world.productivity.tasks.create({ title: "Academia" });

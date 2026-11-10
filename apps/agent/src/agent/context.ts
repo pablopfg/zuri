@@ -43,7 +43,15 @@ const PLAN_OUTCOME: Record<TaskPlan["status"], string> = {
 
 function outcomes(row: MessageRow, actions: Map<string, PendingAction>, plans: Map<string, TaskPlan>): string[] {
   const notes: string[] = [];
+  // Tools that simply ran (no proposal, no plan), counted by name and result. Without this line the
+  // model reads its own earlier "done" with no call behind it and concludes it never acted: a real
+  // model then apologizes for an action it did take, or does it a second time.
+  const ran = new Map<string, number>();
   for (const tool of decodeTools(row.tools)) {
+    if (!tool.actionId && !tool.planId && tool.status !== "running") {
+      const key = `${tool.name} (${tool.status === "success" ? "done" : "failed"})`;
+      ran.set(key, (ran.get(key) ?? 0) + 1);
+    }
     const action = tool.actionId ? actions.get(tool.actionId) : undefined;
     if (tool.actionId && action?.tool === "mcp_call") {
       // An external call (step 18): what the server answered comes back as data, never as instructions.
@@ -59,6 +67,7 @@ function outcomes(row: MessageRow, actions: Map<string, PendingAction>, plans: M
     const plan = tool.planId ? plans.get(tool.planId) : undefined;
     if (tool.planId) notes.push(`[Task plan: ${plan ? PLAN_OUTCOME[plan.status] : PLAN_OUTCOME.expired}]`);
   }
+  if (ran.size > 0) notes.unshift(`[Tools called in that turn: ${[...ran].map(([key, count]) => (count > 1 ? `${count}x ${key}` : key)).join(", ")}]`);
   return notes;
 }
 

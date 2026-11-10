@@ -97,7 +97,10 @@ mudança de preço não reescreve o passado.
     volta, e o resultado das ferramentas é mascarado de novo antes de voltar ao
     modelo. Um marcador que a tentativa não entregou fica como está, e um que
     já vinha escrito no conteúdo vira texto comum (`(EMAIL_1)`), para nunca
-    trazer de volta um valor de outro lugar.
+    trazer de volta um valor de outro lugar. O valor é escondido também no fim
+    da frase, seguido de ponto final. O prompt de fora termina com uma nota
+    fixa (`MARKER_NOTE`) que explica ao modelo o que é um marcador, para ele
+    usar o marcador como o valor e nunca dizer ao dono que o dado está faltando.
   - a marca acompanha a memória corrigida, a nota que volta da lixeira e o
     título da nota; a linha de um fato antigo não cita a substituta marcada, e
     uma proposta sobre item marcado (apagar, reescrever) entra no histórico com

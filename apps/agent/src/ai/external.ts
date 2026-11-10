@@ -50,7 +50,8 @@ const PATTERNS: Readonly<Record<Kind, RegExp>> = {
   EMAIL: /(?<![\w.+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63})*\.[A-Za-z]{2,24}(?![\w-])/g,
   IBAN: /(?<![A-Za-z0-9])[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?(?![A-Za-z0-9])/g,
   CARD: /(?<![\w-])\d(?:[ -]?\d){12,18}(?![\w-])/g,
-  CPF: /(?<![\w.-])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![\w.-])/g,
+  // A full stop right after it ends the sentence ("CPF 529.982.247-25."); only a dot that goes on into more digits or letters makes it part of a longer id.
+  CPF: /(?<![\w.-])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![\w-]|\.\w)/g,
   PHONE: /(?<![\w+-])(?:\+\d{1,3}[ .-]?)?(?:\(\d{2,3}\)|\d{2,3})[ .-]?9?\d{4}[ .-]?\d{4}(?![\w-])/g,
 };
 
@@ -203,13 +204,20 @@ export function shorterHistory(messages: ModelMessage[]): ModelMessage[] {
   return first <= 0 ? recent : recent.slice(first);
 }
 
+/**
+ * Told to every external model, after the system prompt: without it a real model reads `[PHONE_1]`
+ * as a value the owner forgot to fill in, says so, and offers to "save the real one".
+ */
+export const MARKER_NOTE =
+  "Markers such as [EMAIL_1], [PHONE_1] or [CPF_1] stand for real values the owner gave; the app keeps them and puts each one back wherever you write its marker. Copy a marker exactly, in answers and in tool arguments, as if it were the value. Never tell the owner a value is hidden, missing or a placeholder, and never ask for it again.";
+
 /** The prompt of one try to an external provider: D3, D4 and D5 on the system prompt and the messages. */
 export function externalPrompt(
   req: { system: string; messages: ModelMessage[] },
   pseudonyms: Pseudonymizer,
 ): { system: string; messages: ModelMessage[] } {
   return {
-    system: pseudonyms.hide(withoutLocalOnly(req.system)),
+    system: `${pseudonyms.hide(withoutLocalOnly(req.system))}\n\n${MARKER_NOTE}`,
     messages: shorterHistory(req.messages).map((message) => ({
       role: message.role,
       content: message.localOnly

@@ -390,3 +390,11 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
   na décima recusa a rede fica bloqueada (proteção contra tentativa de token).
   Não é instabilidade. Repita em lotes de até 8 por subida do servidor
   (10/11/2026).
+- `[` sem barra dentro de uma classe de caracteres (`[^\s@[\]]`) num `.regex()` de
+  schema de ferramenta: o JavaScript aceita, a API da Anthropic recusa o pedido
+  inteiro com 400 ("JSON schema is invalid") e nenhum teste com IA simulada
+  percebe. Escreva `\[`. O teste "writes every pattern…" em
+  `apps/agent/test/chat-tools.test.ts` confere todas as ferramentas (10/11/2026).
+- Um padrão de dado pessoal (`apps/agent/src/ai/external.ts`) que proíbe `.`
+  logo depois do valor deixa passar o valor no fim da frase. Proíba só o ponto
+  seguido de letra ou número, e teste cada tipo com ponto final (10/11/2026).

@@ -148,6 +148,8 @@ export class AgentRunner {
     yield { type: "start", conversation: conversations.get(conversation.id), userMessage, assistantMessageId };
 
     let text = "";
+    /** A tool ran since the last text: the next text is a new passage. */
+    let resumed = false;
     let fallback = false;
     // Who reads the tools' results in each try (step 21): MeteredAI flips it for a company outside the account.
     const exposure: { external: boolean; sawLocalOnly?: boolean } = { external: false };
@@ -272,9 +274,14 @@ export class AgentRunner {
           // The chosen model failed before answering; the mark goes with the stored answer.
           fallback = true;
         } else if (event.type === "text") {
-          text += event.delta;
-          yield { type: "text", delta: event.delta };
+          // A model that speaks before a tool and again after it (Claude does, every time) sends two
+          // separate passages: without a break they reach the owner glued ("…a nota.Pronto, …").
+          const delta = resumed && text && !/\s$/.test(text) && !/^\s/.test(event.delta) ? `\n\n${event.delta}` : event.delta;
+          resumed = false;
+          text += delta;
+          yield { type: "text", delta };
         } else if (event.type === "tool-start") {
+          resumed = true;
           // A name the model made up is refused by the executor and never shown.
           const found = turnTools.find(event.name);
           if (!found) continue;

@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   EXTERNAL_HISTORY_MESSAGES,
   externalPrompt,
+  MARKER_NOTE,
   LOCAL_ONLY_TEXT,
   luhn,
   Pseudonymizer,
@@ -51,6 +52,18 @@ describe("the pseudonymizer (D5)", () => {
     expect(hidden).toMatch(/\[PHONE_1\]/);
     expect(p.size).toBe(6);
     expect(p.reveal(hidden)).toBe(original);
+  });
+
+  it("hides a value that ends a sentence, full stop and all", () => {
+    for (const value of [EMAIL, CPF, CARD, IBAN, PHONE, KEY]) {
+      const p = new Pseudonymizer();
+      const hidden = p.hide(`Anote: ${value}.`);
+      expect(hidden, value).not.toContain(value);
+      expect(hidden, value).toMatch(/^Anote: \[[A-Z]+_1\]\.$/);
+    }
+    // A dot that goes on into more digits is a longer id, not a CPF.
+    const p = new Pseudonymizer();
+    expect(p.hide(`versão ${CPF}.7`)).toBe(`versão ${CPF}.7`);
   });
 
   it("leaves alone what only looks like a value: a wrong check digit, a bad IBAN, a timestamp, an id", () => {
@@ -144,7 +157,8 @@ describe("what leaves for an external model (D3 and D4)", () => {
       { system: `Dono: ${EMAIL}\n<data kind="note" local="1">CPF ${CPF}</data>`, messages: [{ role: "user", content: `Meu CPF é ${CPF}` }] },
       p,
     );
-    expect(out.system).toBe(`Dono: [EMAIL_1]\n<data kind="note" local="1">${LOCAL_ONLY_TEXT}</data>`);
+    // The model is told what a marker is, or it reports the value as missing (seen on a real model).
+    expect(out.system).toBe(`Dono: [EMAIL_1]\n<data kind="note" local="1">${LOCAL_ONLY_TEXT}</data>\n\n${MARKER_NOTE}`);
     expect(out.messages).toEqual([{ role: "user", content: "Meu CPF é [CPF_1]" }]);
   });
 });
