@@ -12,7 +12,7 @@ import { Logo } from "./Logo.tsx";
  *
  * No import from ui.tsx, like the mark itself (Logo.tsx): the lazy screens use it too.
  */
-export function EntryLayout({ children, wide = false, working = false }: { children: ReactNode; wide?: boolean; working?: boolean }) {
+export function EntryLayout({ children, wide, working = false }: { children: ReactNode; wide?: boolean; working?: boolean }) {
   const { t } = useI18n();
   const brand = (
     <p className="zuri-entry-brand">
@@ -34,7 +34,7 @@ export function EntryLayout({ children, wide = false, working = false }: { child
         </svg>
       </div>
       <div className="zuri-entry-side">
-        <div className="zuri-entry-card" data-wide={wide || undefined}>
+        <div className="zuri-entry-card" data-wide={wide}>
           {brand}
           {children}
         </div>
