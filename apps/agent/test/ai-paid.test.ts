@@ -253,6 +253,19 @@ describe("the paid provider", () => {
     ]);
     expect(stepUsd(steps[0] as StepUsage)).toBeCloseTo(paidUsd(HAIKU, 12_700, 10), 12);
     expect(stepUsd(steps[1] as StepUsage)).toBeCloseTo(paidUsd(HAIKU, 1_200, 10), 12);
+
+    // A tool that is off this turn (an MCP server not in use) is not sent: the mark goes on the last one that is.
+    await collect(provider.generateWithTools({ ...request, tools: [tool("first"), tool("middle"), tool("off")], activeTools: () => ["first", "middle"] }));
+    const filtered = sent[2]?.body as typeof body;
+    expect(filtered.tools.map((item) => [item.name, item.cache_control])).toEqual([
+      ["first", undefined],
+      ["middle", { type: "ephemeral" }],
+    ]);
+    // A single call (a summary) is never read again: no cache write to pay for.
+    // (The stand-in answers with a stream, which this call does not read; only what was sent matters here.)
+    await provider.generate({ system: "Summarize.", messages: [{ role: "user", content: "Oi" }], maxOutputTokens: 300 }).catch(() => undefined);
+    expect(sent).toHaveLength(4);
+    expect(sent[3]?.body).not.toHaveProperty("cache_control");
   });
 
   it("asks OpenAI to keep nothing (store: false), with reasoning off and no temperature", async () => {

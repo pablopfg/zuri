@@ -587,6 +587,24 @@ describe("what the AI sees", () => {
     });
   });
 
+  it("keeps the restrictions' places for restrictions, and never offers a marked one in every turn", async () => {
+    await withWorld((w) => {
+      // Everyday sentences that only sound like a restriction took the three places from a real one.
+      for (const text of ["A gravidade do projeto X é alta", "Restrição de horário: reuniões só à tarde", "Não posso trabalhar às sextas", "Não pode estacionar na rua de casa", "The report must not be late"]) save(w, text, "fact");
+      save(w, "Depois de muitos exames e de uma longa conversa com a médica da família, ficou claro que tem alergia a amendoim", "fact");
+      save(w, "Está grávida de cinco meses", "fact");
+      expect(selectRelevantMemories(w.m.repo, "Sugira um lanche").map((m) => m.content).sort()).toEqual([
+        "Depois de muitos exames e de uma longa conversa com a médica da família, ficou claro que tem alergia a amendoim",
+        "Está grávida de cinco meses",
+      ]);
+      // Marked "never send out": in every turn it would mark every answer as local. It still comes when the question asks.
+      const marked = save(w, "É celíaco", "fact").memory.id;
+      w.m.setLocalOnly(marked, { localOnly: true });
+      expect(selectRelevantMemories(w.m.repo, "Sugira um lanche").some((m) => m.id === marked)).toBe(false);
+      expect(selectRelevantMemories(w.m.repo, "Sou celíaco?").some((m) => m.id === marked)).toBe(true);
+    });
+  });
+
 
   it("at most 8 memories, only current ones for a present question, plus recent preferences while there is room", async () => {
     await withWorld((w) => {

@@ -68,13 +68,15 @@ mudança de preço não reescreve o passado.
   pior caso (o prompt todo gravado). Uma chamada que a empresa recusa (sem
   crédito, chave errada, erro do servidor) conta como pedido e custa zero.
 - Cache de prompt da Anthropic (10/11/2026): cada pedido marca dois pontos de
-  cache de 5 minutos, o padrão da empresa. Um fica na última ferramenta (as
+  cache de 5 minutos, o padrão da empresa. Um fica na última ferramenta
+  oferecida no turno (ferramenta de servidor MCP fora de uso não é enviada; as
   ferramentas vêm primeiro no pedido e não mudam com o relógio, então uma
   mensagem nova minutos depois ainda as lê do cache) e o outro no fim do
   pedido (o passo seguinte do mesmo turno lê tudo o que já foi enviado). Numa
   bateria de 20 cenários no Claude Haiku 5.5, a entrada cobrada caiu cerca de
   80%. O que fica no cache é o mesmo conteúdo que já ia para a empresa, já com
-  o perfil de fora aplicado, e some em 5 minutos sem uso. A OpenAI não recebe
+  o perfil de fora aplicado, e some em 5 minutos sem uso. Chamada única, como o resumo da conversa, não
+  marca nada: pagaria a gravação sem nunca ler. A OpenAI não recebe
   nenhuma marca.
 - Os endereços das APIs são fixos no código (`api.anthropic.com` e
   `api.openai.com`): uma variável de ambiente com o nome de base dos SDKs não

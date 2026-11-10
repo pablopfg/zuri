@@ -44,40 +44,46 @@ const PLAN_OUTCOME: Record<TaskPlan["status"], string> = {
 /** How the note of the tools an earlier answer ran begins. */
 const TOOLS_NOTE = "[Tools called in that turn:";
 
+/** The longest list of tools a note carries; a longer "note" is text, and is shown. */
+const NOTE_BODY_MAX = 400;
+/** Blank characters before a note that go away with it. */
+const NOTE_LEAD_MAX = 8;
+/** A whole note, exactly as `outcomes` writes it: names, counts and outcomes, nothing else. Bounded, so it reads in linear time. */
+const WHOLE_NOTE = new RegExp(`[ \\t\\r\\n]{0,${NOTE_LEAD_MAX}}\\[Tools called in that turn: [\\w ,()]{1,${NOTE_BODY_MAX}}\\]`, "g");
+const NOTE_BODY = /^[\w ,()]*$/;
+
+/** Where the blank run that ends `text` starts, looking back at most NOTE_LEAD_MAX characters. */
+function blankTail(text: string): number {
+  let from = text.length;
+  while (from > 0 && text.length - from < NOTE_LEAD_MAX && " \t\r\n".includes(text[from - 1] as string)) from--;
+  return from;
+}
+
 /**
  * Takes the tools note out of what the model writes. The model reads the note at the end of its own
  * earlier answers and sometimes copies it into the next one (seen on a real model); the owner must
  * never see it, and stored again it would stack. A stream filter: it holds back only what may be the
- * start of a note, so the rest of the text flows as it comes.
+ * start of a note (never more than a note's length), so the rest of the text flows as it comes, and
+ * text that only begins like a note is shown.
  */
 export class ToolsNoteFilter {
   private held = "";
 
   /** The part of `delta` (with what was held) that is safe to show now. */
   push(delta: string): string {
-    let text = this.held + delta;
+    const text = (this.held + delta).replace(WHOLE_NOTE, "");
     this.held = "";
-    // Whole notes, with the blank lines that led to them.
-    text = text.replace(/\s*\[Tools called in that turn:[^\]\n]*\]/g, "");
     // A note still being written, or a "[" that may become one: wait for more.
     const open = text.lastIndexOf("[");
-    if (open >= 0) {
-      const tail = text.slice(open);
-      const unfinished = tail.startsWith(TOOLS_NOTE) ? !/[\]\n]/.test(tail) : TOOLS_NOTE.startsWith(tail);
-      if (unfinished) {
-        // The blank lines before it go with it, or they would be left hanging if it is a note.
-        const from = text.slice(0, open).search(/\s*$/);
-        this.held = text.slice(from);
-        return text.slice(0, from);
-      }
-    }
-    // Trailing blank lines may be leading into a note too.
-    const from = text.search(/\n\s*$/);
-    if (from >= 0) {
-      this.held = text.slice(from);
-      return text.slice(0, from);
-    }
-    return text;
+    const tail = open >= 0 ? text.slice(open) : "";
+    const unfinished =
+      tail !== "" &&
+      (TOOLS_NOTE.startsWith(tail) || (tail.startsWith(`${TOOLS_NOTE} `) && tail.length <= TOOLS_NOTE.length + 1 + NOTE_BODY_MAX && NOTE_BODY.test(tail.slice(TOOLS_NOTE.length + 1))));
+    // The blank characters before it go with it, or they would be left hanging if it is a note.
+    // With no note in sight, trailing blank lines may still be leading into one.
+    const from = unfinished ? blankTail(text.slice(0, open)) : blankTail(text);
+    this.held = text.slice(from);
+    return text.slice(0, from);
   }
 
   /** What was held at the end of the stream: shown, unless it is a note cut short. */

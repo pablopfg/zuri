@@ -78,7 +78,11 @@ parecidas, em pt-BR e en, pela expressão fixa `RESTRICTION_QUERY`), que entram
 em qualquer pergunta; depois as da busca FTS5 pelas palavras da pergunta; e,
 havendo lugar, até 4 preferências atuais. Sem a primeira parte, "sugira um
 jantar" não trazia "é alérgico a camarão", porque as duas frases não têm
-palavra em comum. `memoryPromptSection` agrupa em "Atuais", "Podem estar
+palavra em comum. A expressão só tem termos próprios de saúde e alimentação:
+frases do dia a dia como "não posso" ou "restrição de horário" ficam de fora,
+para não ocupar o lugar de uma alergia. Restrição marcada como "nunca enviar
+para fora" não entra em todo turno (marcaria toda resposta como local); ela
+vem quando a pergunta tem uma palavra dela. `memoryPromptSection` agrupa em "Atuais", "Podem estar
 desatualizadas" e "Passadas", dentro de um orçamento de
 `min(1500, 20% do contexto)` tokens. As passadas só entram quando a pergunta é
 sobre o passado ("onde eu morava?", "what did I drive before?").

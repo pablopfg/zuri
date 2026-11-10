@@ -33,12 +33,12 @@ export abstract class SdkProvider implements AIProvider {
   protected abstract createModel(steps: StepMeter[], closed: () => boolean): LanguageModel;
 
   /** The settings of one call: Workers AI takes the temperature; the paid models get their own (paid.ts). */
-  protected settings(req: GenerateRequest): Record<string, unknown> {
+  protected settings(req: GenerateRequest, _withTools = false): Record<string, unknown> {
     return callOptions(req);
   }
 
-  /** Extra fields of one tool's definition, by its place in the list; none unless a provider has some (paid.ts). */
-  protected toolOptions(_index: number, _total: number): Record<string, unknown> {
+  /** Extra fields of one tool's definition; `last` is the last one the model is offered as the turn starts. None unless a provider has some (paid.ts). */
+  protected toolOptions(_last: boolean): Record<string, unknown> {
     return {};
   }
 
@@ -91,12 +91,15 @@ export abstract class SdkProvider implements AIProvider {
 
   async *generateWithTools(req: ToolRequest): AsyncIterable<AgentEvent> {
     const tools: ToolSet = {};
+    // Tools that are off this turn (an MCP server not in use) are not sent, so the last one sent may not be the last of the list.
+    const active = req.activeTools ? new Set(req.activeTools()) : null;
+    const last = req.tools.findLastIndex((tool) => !active || active.has(tool.name));
     for (const [index, tool] of req.tools.entries()) {
       tools[tool.name] = {
         description: tool.description,
         inputSchema: tool.inputSchema,
         execute: async (input: unknown, options: { toolCallId: string }) => tool.execute(input, options.toolCallId),
-        ...this.toolOptions(index, req.tools.length),
+        ...this.toolOptions(index === last),
       } as ToolSet[string];
     }
     const hasTools = req.tools.length > 0;
@@ -113,7 +116,7 @@ export abstract class SdkProvider implements AIProvider {
       instructions: req.system,
       messages: plainMessages(req.messages),
       maxOutputTokens: req.maxOutputTokens,
-      ...this.settings(req),
+      ...this.settings(req, hasTools),
       maxRetries: 0,
       telemetry: { isEnabled: false },
       ...(hasTools

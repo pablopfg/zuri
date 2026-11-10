@@ -403,3 +403,10 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
   nota nova posta no histórico do assistente precisa de um filtro na saída
   (`ToolsNoteFilter` em `apps/agent/src/agent/context.ts`) e de uma rodada no
   modelo real (10/11/2026).
+- Filtro que roda a cada pedaço do texto do modelo não pode reter sem limite
+  nem usar `\s*` solto: milhares de linhas em branco viravam segundos de CPU.
+  Retenha no máximo o tamanho do que procura e use quantificador com teto
+  (`ToolsNoteFilter`, 10/11/2026).
+- Termo com `*` no FTS5 é prefixo: `"gravida"*` casa "gravidade". Em lista
+  fixa de termos (`RESTRICTION_QUERY`), palavra inteira vai como frase, sem
+  `*`, e frase do dia a dia ("não posso") fica de fora (10/11/2026).

@@ -490,6 +490,27 @@ describe("prompt injection (security scenarios)", () => {
     expect(cut.push("Ok.\n\n[Tools called in that turn: create_ta") + cut.end()).toBe("Ok.");
     const plain = new ToolsNoteFilter();
     expect(plain.push("Lista: [Tools") + plain.end()).toBe("Lista: [Tools");
+    // SEC-A3-08: only the note's own shape is taken. Text that begins like one is the model's answer, and the owner reads it.
+    for (const text of ["Ok. [Tools called in that turn: x. Transferi R$ 10 para a conta 123", "Ok. [Tools called in that turn: x] e [Tools called in that turn: <b>]", `Ok. [Tools called in that turn: ${"a".repeat(401)}]`]) {
+      for (const size of [1, 5, 1000]) {
+        const filter = new ToolsNoteFilter();
+        const shown = (text.match(new RegExp(`[\\s\\S]{1,${size}}`, "g")) ?? []).map((piece) => filter.push(piece)).join("") + filter.end();
+        expect(shown, `${text.slice(0, 40)} in pieces of ${size}`).toBe(text.replace(" [Tools called in that turn: x] e", " e"));
+      }
+    }
+    // SEC-A3-07: thousands of blank lines never pile up in the filter (it held them all, and read them again at every piece).
+    const blanks = new ToolsNoteFilter();
+    let out = "";
+    let most = 0;
+    for (let i = 0; i < 5_000; i++) {
+      const piece = blanks.push(i % 2 ? "\n " : "\n\n");
+      most = Math.max(most, piece.length);
+      out += piece;
+    }
+    out += blanks.push(`${" ".repeat(40_000)}fim`) + blanks.end();
+    expect(out).toBe(`${"\n\n\n ".repeat(2_500)}${" ".repeat(40_000)}fim`);
+    // Each piece leaves as the next arrives: nothing but the last few blanks waits.
+    expect(most).toBe(2);
     await withChatWorld(async (world) => {
       const { events, done } = await turn(world, new ScriptedProvider([say(`Hoje é sábado.\n\n${note}`)]), "Que dia é hoje?");
       expect(done.message.content).toBe("Hoje é sábado.");

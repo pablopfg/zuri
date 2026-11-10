@@ -18,11 +18,11 @@ const ALWAYS_RESTRICTIONS = 3;
  */
 export const RESTRICTION_QUERY = [
   // pt-BR
-  ...["alerg", "intoler", "celiac", "diabet", "hipertens", "vegetarian", "vegan", "restric", "lactose", "gluten", "gravid", "gestante", "asma", "contraindic"].map((term) => `"${term}"*`),
-  ...["nao come", "nao como", "nao bebe", "nao bebo", "nao pode", "nao posso", "nao toma", "nao tomo"].map((phrase) => `"${phrase}"`),
+  ...["alerg", "intoler", "celiac", "diabet", "hipertens", "vegetarian", "vegan", "lactose", "gluten", "gravidez", "gestante", "asma", "contraindic"].map((term) => `"${term}"*`),
+  ...["gravida", "nao come", "nao como", "nao bebe", "nao bebo", "nao toma", "nao tomo"].map((phrase) => `"${phrase}"`),
   // en
   ...["allerg", "intoleran", "coeliac", "pregnan", "asthma"].map((term) => `"${term}"*`),
-  ...["does not eat", "doesn't eat", "cannot eat", "can't eat", "does not drink", "doesn't drink", "must not", "must avoid"].map((phrase) => `"${phrase}"`),
+  ...["does not eat", "doesn't eat", "cannot eat", "can't eat", "does not drink", "doesn't drink"].map((phrase) => `"${phrase}"`),
 ].join(" OR ");
 /** Hard ceiling of prompt tokens for memories. */
 export const MEMORY_TOKEN_CEILING = 1_500;
@@ -47,7 +47,10 @@ export function selectRelevantMemories(repo: MemoryRepository, query: string, me
   const past = hasHistoricalIntent(query);
   const selected = new Map<string, MemoryRow>();
   // First, so that eight keyword matches never crowd an allergy out.
-  for (const m of repo.match(RESTRICTION_QUERY, { filter: "current", limit: ALWAYS_RESTRICTIONS })) selected.set(m.id, m);
+  // One marked "never send out" comes only when the question asks for it: in every turn, it would mark every answer as local too.
+  for (const m of repo.match(RESTRICTION_QUERY, { filter: "current", limit: MAX_RELEVANT_MEMORIES })) {
+    if (m.local_only !== 1 && selected.size < ALWAYS_RESTRICTIONS) selected.set(m.id, m);
+  }
   const match = anyWordQuery(query);
   const matched = match ? repo.match(match, { filter: past ? "all" : "current", limit: MAX_RELEVANT_MEMORIES }) : [];
   if (meaning.length === 0) {

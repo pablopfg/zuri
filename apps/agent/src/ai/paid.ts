@@ -71,18 +71,19 @@ export class PaidProvider extends SdkProvider {
    * on the wire): cached there, a new message minutes later still reads the tools from the cache,
    * though the system prompt (the clock, the memories) changed.
    */
-  protected override toolOptions(index: number, total: number): Record<string, unknown> {
-    return this.id === "anthropic" && index === total - 1 ? { providerOptions: { anthropic: { cacheControl: CACHE } } } : {};
+  protected override toolOptions(last: boolean): Record<string, unknown> {
+    return this.id === "anthropic" && last ? { providerOptions: { anthropic: { cacheControl: CACHE } } } : {};
   }
 
-  protected override settings(req: GenerateRequest): Record<string, unknown> {
+  protected override settings(req: GenerateRequest, withTools = false): Record<string, unknown> {
     return {
       ...(req.signal ? { abortSignal: req.signal } : {}),
       providerOptions:
         this.id === "anthropic"
           ? // Haiku takes "disabled"; Sonnet 5.5 refuses it and turns reasoning off with "between_tools".
             // cacheControl: the prompt so far is cached for 5 minutes, so the next step of the turn reads it at a tenth of the price.
-            { anthropic: { thinking: this.remoteModel.startsWith("claude-haiku") ? { type: "disabled" } : { type: "between_tools" }, cacheControl: CACHE } }
+            // Only in a turn with tools: a single call (a summary) would pay for the write and never read it.
+            { anthropic: { thinking: this.remoteModel.startsWith("claude-haiku") ? { type: "disabled" } : { type: "between_tools" }, ...(withTools ? { cacheControl: CACHE } : {}) } }
           : { openai: { store: false, reasoningEffort: "none" } },
     };
   }
