@@ -238,6 +238,8 @@ describe("approveHeldRuns (fake gh)", () => {
     const approved: number[] = [];
     const calls: number[] = [];
     const asked: string[] = [];
+    /** A key present with no value: GitHub answers an object without the list. */
+    const answerMissing = (file: string) => file in byWorkflow && byWorkflow[file] === undefined;
     const refusals: Record<number, number> = Array.isArray(refuse)
       ? Object.fromEntries(refuse.map((id) => [id, Number.POSITIVE_INFINITY]))
       : { ...refuse };
@@ -260,6 +262,7 @@ describe("approveHeldRuns (fake gh)", () => {
       if (own) {
         const file = own[1] ?? "";
         asked.push(file);
+        if (answerMissing(file)) return "{}";
         const answer = byWorkflow[file] ?? [];
         if (answer instanceof Error) throw answer;
         return JSON.stringify({ workflow_runs: answer });
@@ -322,6 +325,11 @@ describe("approveHeldRuns (fake gh)", () => {
     expect(result.missing).toEqual([]);
     const none = fake([[run(2, "CodeQL"), run(3, "Merge order")]], [], { "ci.yml": [run(4, "CI", { head_sha: "b".repeat(40) }), run(6, "CI", { event: "push" })] });
     expect(approveHeldRuns(none.ctx, SHA, { attempts: 1 }).missing).toEqual(["CI"]);
+  });
+
+  it("keeps the workflow as missing when its own runs come back without a list", () => {
+    const { ctx } = fake([[run(2, "CodeQL"), run(3, "Merge order")]], [], { "ci.yml": undefined as unknown as WorkflowRun[] });
+    expect(approveHeldRuns(ctx, SHA, { attempts: 1 }).missing).toEqual(["CI"]);
   });
 
   it("keeps the workflow as missing when its own runs can't be read", () => {
@@ -415,7 +423,10 @@ describe("approveLateRuns (fake gh)", () => {
         return "";
       }
       // A workflow's own newest runs (asked for one the commit's listing left out): none here.
-      if (path.includes("/actions/workflows/")) return JSON.stringify({ workflow_runs: path.includes("/ci.yml/") ? own : [] });
+      if (path.includes("/actions/workflows/")) {
+        count.own = (count.own ?? 0) + 1;
+        return JSON.stringify({ workflow_runs: path.includes("/ci.yml/") ? own : [] });
+      }
       const sha = path.match(/head_sha=([0-9a-f]{40})/)?.[1] ?? "";
       const n = count[sha] ?? 0;
       count[sha] = n + 1;
@@ -448,6 +459,13 @@ describe("approveLateRuns (fake gh)", () => {
     expect(result).toEqual({ approved: ["CodeQL", "Merge order", "CI"], failed: [], errors: [], missing: [] });
     expect(approved).toEqual([2, 3, 1]);
     expect(opts.now()).toBe(0);
+  });
+
+  it("reads each workflow's own runs once per round, however many commits wait (hourly API limit)", () => {
+    const { ctx, count, opts } = fake({ [SHA_A]: [[], all(SHA_A, 1)], [SHA_B]: [[], all(SHA_B, 11)] });
+    approveLateRuns(ctx, [SHA_A, SHA_B].map((sha) => ({ sha, pushedAt: 0, approved: [] })), { deadline: RUN_BUDGET_MS, ...opts });
+    // First round: nothing listed for either commit, so the three workflows are asked, once for both.
+    expect(count.own).toBe(Object.keys(PR_WORKFLOWS).length);
   });
 
   it("waits for several commits in the same loop and keeps what the first round approved", () => {

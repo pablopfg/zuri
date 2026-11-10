@@ -146,6 +146,29 @@ describe("/api/google/contacts", () => {
     expect(next?.next_reminder).toBeGreaterThan(Date.now());
   });
 
+  it("\"Sync now\" copies the label saved while it waited for Google, in the same answer (issue #264)", async () => {
+    await turnOn();
+    expect((await api("PATCH", "/google/contacts/labels", { selected: [CLIENTS] })).status).toBe(200);
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+    // The other label is saved while the next sync reads the contacts at Google.
+    const real = google.handle.bind(google);
+    let saved = false;
+    await inOwner((agent) => {
+      google.handle = async (request) => {
+        if (!saved && new URL(request.url).pathname === "/v1/people/me/connections") {
+          saved = true;
+          agent.store.contacts.select([CLIENTS, FAMILY]);
+        }
+        return real(request);
+      };
+    });
+    const res = await api("POST", "/google/contacts/sync");
+    google.handle = real;
+    expect(saved).toBe(true);
+    expect(res.status).toBe(200);
+    expect((await res.json()) as ContactsStatus & { outcome: string }).toMatchObject({ outcome: "ok", status: "ok", contacts: 2 });
+  });
+
   it("says when a sync is already running and when the contacts are off", async () => {
     await turnOn();
     await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET running_since = ?`, Date.now()));

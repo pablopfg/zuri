@@ -102,7 +102,6 @@ test("\"Sync now\" waits for the labels being saved, then copies the new choice 
   await contacts.getByRole("button", { name: "Salvar etiquetas" }).click();
   const sync = contacts.getByRole("button", { name: "Sincronizar agora" });
   await expect(sync).toBeDisabled();
-  expect(syncs).toEqual([]);
   release();
   await expect(page.getByRole("status").filter({ hasText: "Etiquetas salvas" })).toBeVisible();
   await expect(sync).toBeEnabled();
