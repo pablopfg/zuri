@@ -20,9 +20,9 @@ const tag = () => uniqueTag(test.info().project.name);
 const toast = (page: Page, text: string | RegExp) => page.getByRole("status").filter({ hasText: text });
 
 async function openFlows(page: Page) {
-  await page.goto("/automacoes/fluxos");
+  await page.goto("/crm/fluxos");
   await signIn(page);
-  await expect(page).toHaveURL(/\/automacoes\/fluxos$/);
+  await expect(page).toHaveURL(/\/crm\/fluxos$/);
   await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
 }
 
@@ -69,7 +69,7 @@ test("a flow reads a calendar and creates a follow-up once; the Google steps say
   await form.getByRole("button", { name: "Cancelar" }).click();
 
   await connect(page);
-  await page.goto("/automacoes/fluxos");
+  await page.goto("/crm/fluxos");
   await page.getByRole("button", { name: "Novo fluxo" }).click();
   form = page.getByRole("dialog", { name: "Novo fluxo" });
   await form.getByLabel("Nome").fill(name);

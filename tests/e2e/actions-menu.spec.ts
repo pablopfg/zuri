@@ -10,9 +10,9 @@ import { CSRF, expectAccessible, signIn } from "./ui-helpers.ts";
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
 test("the row menu floats over the list, keeps Apagar last and answers the keyboard @mobile", async ({ page }) => {
-  await page.goto("/automacoes");
+  await page.goto("/rotinas");
   await signIn(page);
-  await expect(page.getByRole("heading", { level: 1, name: "Automações" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Rotinas" })).toBeVisible();
   const name = `Menu ${test.info().project.name} ${crypto.randomUUID().slice(0, 8)}`;
   const created = await page.request.post("/api/automations", {
     headers: CSRF,
@@ -59,7 +59,7 @@ test("the row menu floats over the list, keeps Apagar last and answers the keybo
 
     await more.click();
     await expect(menu).toBeVisible();
-    await page.getByRole("heading", { level: 1, name: "Automações" }).click();
+    await page.getByRole("heading", { level: 1, name: "Rotinas" }).click();
     await expect(menu).toHaveCount(0);
 
     await more.click();

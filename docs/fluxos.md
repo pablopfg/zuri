@@ -1,6 +1,6 @@
 # Fluxos e monitor de sites
 
-A partir da etapa 22a, a aba **Fluxos**, em **Automações**, guarda passos que
+A partir da etapa 22a, a tela **CRM › Fluxos** (`/crm/fluxos`; antes uma aba de Automações) guarda passos que
 rodam sozinhos: olhar os seus sites, buscar dados de um serviço seu, filtrar o
 que interessa e avisar você. O primeiro modelo pronto é o **monitor de sites**.
 O plano técnico está em `docs/planos/etapa-22a-motor-de-fluxos.md`.
@@ -9,7 +9,7 @@ O plano técnico está em `docs/planos/etapa-22a-motor-de-fluxos.md`.
 
 ### Monitorar sites
 
-1. Abra **Automações › Fluxos** e toque em **Monitorar sites**.
+1. Abra **CRM › Fluxos** e toque em **Monitorar sites**.
 2. Escreva os endereços, um por linha, com `https://`. Cabem até 10 endereços
    somando todos os fluxos.
 3. Toque em **Criar fluxo**. O fluxo nasce **desligado**: confira e toque em

@@ -54,7 +54,7 @@ mudam nada.
 ### Sugestões de fluxo
 
 Quando você pede na conversa um fluxo ("me avisa se o site cair"), a Zuri
-deixa uma **sugestão** em **Automações › Fluxos**, na seção **Sugestões da
+deixa uma **sugestão** em **CRM › Fluxos**, na seção **Sugestões da
 Zuri**. Nada roda: você toca em **Revisar**, confere e salva com a sua senha.
 O fluxo salvo começa **desligado**. Uma sugestão some em 7 dias se você não a
 salvar, e cabem 5 de cada vez.

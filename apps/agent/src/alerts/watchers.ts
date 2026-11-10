@@ -165,7 +165,7 @@ export class Watchers {
         category: "routines",
         priority: "normal",
         params: { name: [...automation.name].slice(0, TITLE_MAX).join("") },
-        link: "/automacoes",
+        link: "/rotinas",
         dedupeKey: `routine-failing:${automation.id}`,
         dedupeMs: 20 * HOUR,
       });

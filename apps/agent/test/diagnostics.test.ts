@@ -187,6 +187,11 @@ describe("the failure log", () => {
   it("keeps only the screen of a path the interface sends: the page, a settings tab, the rest as 'id'", () => {
     expect(screenOf("/")).toBe("/");
     expect(screenOf("/tarefas")).toBe("/tarefas");
+    // The places of the Sinal shell, and the old name that still arrives from saved links.
+    expect(screenOf("/rotinas")).toBe("/rotinas");
+    expect(screenOf("/avaliacoes")).toBe("/avaliacoes");
+    expect(screenOf("/crm/fluxos")).toBe("/crm/id");
+    expect(screenOf("/automacoes")).toBe("/automacoes");
     expect(screenOf("/notas/id")).toBe("/notas/id");
     expect(screenOf("/notas/joao-silva-cpf")).toBe("/notas/id");
     expect(screenOf("/configuracoes/diagnostico")).toBe("/configuracoes/diagnostico");

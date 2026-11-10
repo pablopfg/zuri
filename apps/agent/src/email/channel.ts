@@ -1,4 +1,4 @@
-import { type ChannelState, disarmLinks, type Locale, NOTICE_LINKS, t } from "@zuri/shared";
+import { type ChannelState, disarmLinks, type Locale, noticePage, t } from "@zuri/shared";
 import type { AlertChannel, AlertMessage, SendResult } from "../alerts/channels.ts";
 import type { EmailSender } from "./sender.ts";
 
@@ -28,7 +28,7 @@ export class EmailChannel implements AlertChannel {
   async send({ notice }: AlertMessage): Promise<SendResult> {
     const locale = this.deps.locale();
     const urgent = notice.priority === "high" || notice.priority === "critical";
-    const link = notice.link && (NOTICE_LINKS as readonly string[]).includes(notice.link) ? notice.link : "/";
+    const link = noticePage(notice.link) ?? "/";
     const open = new URL(link, this.deps.origin()).href;
     const text = [disarmLinks(notice.title), "", disarmLinks(notice.body), "", t(locale, "notice.email.open", { link: open })].join("\n");
     const outcome = await this.deps.sender.send({

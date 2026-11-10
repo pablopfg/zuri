@@ -423,7 +423,7 @@ describe("/pausar_rotinas", () => {
     await idle(13 * HOUR);
     expect(await command("/pausar_rotinas")).toBe("Pausar as 2 rotinas da Zuri? Lembretes e o resumo das tarefas continuam. Para retomar, só pelo app.");
     await press("Pausar todas");
-    expect(texts()).toContain("Pausei 2 rotinas da Zuri. Para retomar, abra Automações › Rotinas no app.");
+    expect(texts()).toContain("Pausei 2 rotinas da Zuri. Para retomar, abra Rotinas no app.");
     const status = (id: string) => inOwner((agent) => agent.store.automations.get(id).status);
     expect(await status(ai?.id ?? "")).toBe("paused");
     expect(await status(sentinel?.id ?? "")).toBe("paused");

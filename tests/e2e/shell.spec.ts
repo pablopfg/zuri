@@ -1,6 +1,6 @@
 import { APP_VERSION } from "@zuri/shared";
 import { expect, test } from "./fixtures.ts";
-import { CSRF, EMAIL, expectAccessible, openAccountMenu, openSettingsSection, openSidebar, PASSWORD, settingsHasTabs, settingsTitle, signIn, signOutFromMenu } from "./ui-helpers.ts";
+import { CSRF, EMAIL, expectAccessible, openAccountMenu, openSettingsSection, openPlace, PASSWORD, settingsHasTabs, settingsTitle, signIn, signOutFromMenu } from "./ui-helpers.ts";
 
 // The interface against the real Worker: sign-in, the session guard, sign-out
 // and the ways a session ends. pt-BR is the default language.
@@ -94,7 +94,7 @@ test("a session the server ended sends to the sign-in at the next request, with 
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
   await context.clearCookies();
   // The tasks page asks the server for its list on opening; the answer is 401.
-  await (await openSidebar(page)).getByRole("link", { name: "Tarefas" }).click();
+  await openPlace(page, "Tarefas");
   await expect(page).toHaveURL(/\/entrar\?next=%2Ftarefas$/);
   await expect(page.getByText("Sua sessão terminou. Entre de novo para continuar.")).toBeVisible();
 });
@@ -117,11 +117,11 @@ test("settings has the eight sections, each with its address and content: tabs o
   await page.goto("/configuracoes");
   await signIn(page);
   const sections = page.getByRole("navigation", { name: "Seções das configurações" });
-  // The version in use, quietly: in the account menu on a computer, also at the foot of the list on a phone.
+  // The version in use, quietly: in the account panel on a computer, also at the foot of the list on a phone.
   const version = `Versão ${APP_VERSION}`;
   if (settingsHasTabs(page)) {
     await expect(page).toHaveURL(/\/configuracoes\/conta$/);
-    await expect((await openAccountMenu(page)).getByText(version, { exact: true })).toBeVisible();
+    await expect((await openAccountMenu(page)).getByRole("listitem").filter({ hasText: "Versão" })).toHaveText(`Versão${APP_VERSION}`);
     await page.keyboard.press("Escape");
   } else {
     await expect(page.getByRole("main").getByText(version, { exact: true })).toBeVisible();
@@ -227,7 +227,7 @@ test("the two-step reminder shows until put off, and never on the settings @mobi
   await expect(page).toHaveURL(/\/configuracoes\/seguranca$/);
   await expect(reminder).toHaveCount(0);
 
-  await (await openSidebar(page)).getByRole("link", { name: "Início" }).click();
+  await openPlace(page, "Início");
   await expect(reminder).toBeVisible();
   await reminder.getByRole("button", { name: "Dispensar por 3 dias" }).click();
   await expect(reminder).toHaveCount(0);

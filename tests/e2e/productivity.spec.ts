@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, openSidebar, signIn, signOutFromMenu, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, openPlace, signIn, signOutFromMenu, tooSmallControls } from "./ui-helpers.ts";
 
 // Tasks, notes, projects and the trash against the real Worker (step 6):
 // create, edit, complete, delete and restore. pt-BR, the owner in São Paulo.
@@ -308,7 +308,7 @@ test("unsaved note text: the main navigation and the browser's back ask first on
 
   // The sidebar on a computer, its drawer on a phone.
   await page.getByLabel("Texto da nota").fill("ainda não salvo");
-  await (await openSidebar(page)).getByRole("link", { name: "Início" }).click();
+  await openPlace(page, "Início");
   await expect(leave).toBeVisible();
   await leave.getByRole("button", { name: "Continuar editando" }).click();
   expect(page.url()).toBe(noteUrl);

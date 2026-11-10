@@ -229,11 +229,11 @@ describe("the Telegram channel", () => {
 
   it("rings for high and critical, with Adiar 1 h and Silenciar too", async () => {
     await linkOwner();
-    await raise({ ...routine("high"), link: "/automacoes" });
+    await raise({ ...routine("high"), link: "/rotinas" });
     const [message] = sent();
     expect(message?.body.disable_notification).toBe(false);
     expect(buttons(message).map((b) => b.text)).toEqual(["Feito", "Adiar 1 h", "Silenciar", "Abrir"]);
-    expect(buttons(message).at(-1)?.url).toBe(`${ORIGIN}/automacoes`);
+    expect(buttons(message).at(-1)?.url).toBe(`${ORIGIN}/rotinas`);
   });
 
   it("keeps the button data opaque: v1, the action and 16 random characters, never the notice's id", async () => {
@@ -631,12 +631,12 @@ describe("the notices' group", () => {
   it("step 19c: reviews go to their own topic 'Avaliações'; drafts, bursts and problems only to the private chat", async () => {
     await linkOwner();
     await linkGroup({ forum: true });
-    await raise({ kind: "reviews.negative", category: "system", priority: "normal", params: { n: 2 }, body: "Ana: Demorou", link: "/contatos/avaliacoes", origin: "system" });
+    await raise({ kind: "reviews.negative", category: "system", priority: "normal", params: { n: 2 }, body: "Ana: Demorou", link: "/avaliacoes", origin: "system" });
     expect(sent("createForumTopic").map((c) => c.body.name)).toEqual(["Avaliações"]);
     expect(sent().map((m) => [m.body.chat_id, m.body.message_thread_id])).toEqual([[GROUP, topicIds]]);
     botCalls.length = 0;
     for (const kind of ["reviews.draft", "reviews.burst", "reviews.problem"] as const) {
-      await raise({ kind, category: "system", priority: "normal", params: { count: 2 }, link: "/contatos/avaliacoes", origin: "system" });
+      await raise({ kind, category: "system", priority: "normal", params: { count: 2 }, link: "/avaliacoes", origin: "system" });
     }
     expect(sent().map((m) => m.body.chat_id)).toEqual([OWNER, OWNER, OWNER]);
     expect(sent("createForumTopic")).toHaveLength(0);
@@ -646,13 +646,13 @@ describe("the notices' group", () => {
     await linkOwner();
     await linkGroup({ forum: true });
     await json(await api("PATCH", "/settings", { alertFullText: ["system"] }), 200);
-    await raise({ kind: "reviews.negative", category: "system", priority: "normal", params: { n: 2 }, body: "Ana: Demorou demais", link: "/contatos/avaliacoes", origin: "system" });
+    await raise({ kind: "reviews.negative", category: "system", priority: "normal", params: { n: 2 }, body: "Ana: Demorou demais", link: "/avaliacoes", origin: "system" });
     const [message] = sent();
     expect(message?.body.chat_id).toBe(GROUP);
     expect(String(message?.body.text)).not.toContain("Demorou");
     botCalls.length = 0;
     // Any other notice of the category keeps the owner's choice.
-    await raise({ kind: "reviews.draft", category: "system", priority: "normal", params: { count: 1 }, body: "Texto do sistema", link: "/contatos/avaliacoes", origin: "system" });
+    await raise({ kind: "reviews.draft", category: "system", priority: "normal", params: { count: 1 }, body: "Texto do sistema", link: "/avaliacoes", origin: "system" });
     expect(String(sent()[0]?.body.text)).toContain("Texto do sistema");
   });
 

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type Automation, type Memory, type NoteSummary, ptBRPalette, ptBRSettingsTabs, SEMANTIC_LIMITS, type Task } from "@zuri/shared";
+import { type Automation, type Memory, type MessageKey, type NoteSummary, ptBRPalette, ptBRSettingsTabs, SEMANTIC_LIMITS, type Task } from "@zuri/shared";
 import {
   Activity,
   Bell,
@@ -7,16 +7,14 @@ import {
   Brain,
   CalendarDays,
   CalendarPlus,
-  Clock,
   CircleCheck,
   Database,
   FilePlus2,
-  House,
   ListPlus,
   ListTodo,
   type LucideIcon,
-  MessageCircle,
-  NotebookPen,
+  MessagesSquare,
+  Notebook,
   Plug,
   Plus,
   Search,
@@ -24,7 +22,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   User,
-  Users,
 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api.ts";
@@ -39,14 +36,14 @@ addMessages(ptBRPalette);
 addMessages(ptBRSettingsTabs);
 
 /**
- * "Nova automação" opens the form on the Automations page: by the address when
+ * "Nova automação" opens the form on the Rotinas page: by the address when
  * the page still has to load, by an event when it is already open. Plain
  * strings, so that lazy screen needs no shared module (armadilhas.md).
  */
 const NEW_AUTOMATION = "nova-automacao";
 /** The same for the Agenda's "Novo evento" (AgendaPage.tsx, NEW_EVENT). */
 const NEW_EVENT = "novo-evento";
-/** And for "Novo fluxo", on the Flows tab of Automations (FlowsPanel.tsx, NEW_FLOW). */
+/** And for "Novo fluxo", on the flows of the CRM (FlowsPanel.tsx, NEW_FLOW). */
 const NEW_FLOW = "novo-fluxo";
 
 /** How many of each kind the search lists: a shortcut, not the full page. */
@@ -69,7 +66,16 @@ interface Item {
  * settings section, create a task or a note, and find tasks, notes and
  * memories without leaving the keyboard. Loaded the first time it opens.
  */
-export function CommandPalette({ onClose, navigate }: { onClose: () => void; navigate: (to: string, options?: { state: unknown }) => void }) {
+export function CommandPalette({
+  onClose,
+  navigate,
+  places,
+}: {
+  onClose: () => void;
+  navigate: (to: string, options?: { state: unknown }) => void;
+  /** The menu's own list (lib/nav.ts), handed over by the shell: the same places, names and icons, and no module shared with the first load. */
+  places: readonly { id: string; to: string; label: MessageKey; icon: LucideIcon }[];
+}) {
   const { t } = useI18n();
   const dialog = useRef<HTMLDialogElement>(null);
   const listId = useId();
@@ -102,14 +108,7 @@ export function CommandPalette({ onClose, navigate }: { onClose: () => void; nav
       to: `/configuracoes/${id}`,
     });
     return [
-      { id: "home", group: go, label: t("web.nav.home"), icon: House, to: "/" },
-      { id: "chat", group: go, label: t("web.nav.chat"), icon: MessageCircle, to: "/conversa" },
-      { id: "tasks", group: go, label: t("web.nav.tasks"), icon: ListTodo, to: "/tarefas" },
-      { id: "notes", group: go, label: t("web.nav.notes"), icon: NotebookPen, to: "/notas" },
-      { id: "agenda", group: go, label: t("web.nav.agenda"), icon: CalendarDays, to: "/agenda" },
-      { id: "contacts", group: go, label: t("web.nav.contacts"), icon: Users, to: "/contatos" },
-      { id: "automations", group: go, label: t("web.nav.automations"), icon: Clock, to: "/automacoes" },
-      { id: "memory", group: go, label: t("web.nav.memory"), icon: Brain, to: "/memoria" },
+      ...places.map(({ id, to, label, icon }) => ({ id, group: go, label: t(label), icon, to })),
       { id: "access", group: go, label: t("web.nav.accessLog"), icon: ShieldCheck, to: "/acessos" },
       section("conta", "web.settings.tab.account", User),
       section("seguranca", "web.settings.tab.security", Shield),
@@ -127,7 +126,7 @@ export function CommandPalette({ onClose, navigate }: { onClose: () => void; nav
         label: t("web.palette.newAutomation"),
         icon: CalendarPlus,
         // Already there: the page hears the event and the address stays clean. Elsewhere: the page reads the address.
-        to: location.pathname === "/automacoes" ? "/automacoes" : `/automacoes#${NEW_AUTOMATION}`,
+        to: location.pathname === "/rotinas" ? "/rotinas" : `/rotinas#${NEW_AUTOMATION}`,
         before: () => window.dispatchEvent(new Event(NEW_AUTOMATION)),
       },
       {
@@ -135,7 +134,7 @@ export function CommandPalette({ onClose, navigate }: { onClose: () => void; nav
         group: t("web.palette.groupCreate"),
         label: t("web.palette.newFlow"),
         icon: Plus,
-        to: location.pathname === "/automacoes/fluxos" ? "/automacoes/fluxos" : `/automacoes/fluxos#${NEW_FLOW}`,
+        to: ["/crm", "/crm/fluxos", "/crm/credenciais"].includes(location.pathname) ? location.pathname : `/crm/fluxos#${NEW_FLOW}`,
         before: () => window.dispatchEvent(new Event(NEW_FLOW)),
       },
       { id: "new-note", group: t("web.palette.groupCreate"), label: t("web.palette.newNote"), icon: FilePlus2, to: "/notas/nova" },
@@ -149,7 +148,7 @@ export function CommandPalette({ onClose, navigate }: { onClose: () => void; nav
         before: () => window.dispatchEvent(new Event(NEW_EVENT)),
       },
     ];
-  }, [t]);
+  }, [t, places]);
 
   // One request for the three kinds would need a new route; three small ones reuse what the pages already ask.
   const found = useQuery({
@@ -196,7 +195,7 @@ export function CommandPalette({ onClose, navigate }: { onClose: () => void; nav
     // A sentence (words with a space between) may be a question: the last option asks Zuri, in a new conversation.
     const question = query.trim();
     const ask: Item[] = /\S\s+\S/.test(question)
-      ? [{ id: "ask", group: t("web.palette.groupAsk"), label: t("web.palette.ask", { query: question }), icon: MessageCircle, to: "/conversa", state: { ask: question } }]
+      ? [{ id: "ask", group: t("web.palette.groupAsk"), label: t("web.palette.ask", { query: question }), icon: MessagesSquare, to: "/conversa", state: { ask: question } }]
       : [];
     const list = commands.filter((item) => matches(query, item.label));
     if (term === "" || !found.data) return [...list, ...ask];
@@ -209,8 +208,8 @@ export function CommandPalette({ onClose, navigate }: { onClose: () => void; nav
       ? [
           ...meaning.memories.filter((m) => !listed.has(m.id)).map((memory) => ({ id: `meaning-memory-${memory.id}`, group, label: memory.content, detail: t("web.nav.memory"), icon: Brain, to: "/memoria", before: () => askMemorySearch([...memory.content].slice(0, 80).join("")) })),
           ...meaning.tasks.filter((task) => !listed.has(task.id)).map((task) => ({ id: `meaning-task-${task.id}`, group, label: task.title, detail: t("web.nav.tasks"), icon: ListTodo, to: "/tarefas", state: { openTask: task } })),
-          ...meaning.notes.filter((note) => !listed.has(note.id)).map((note) => ({ id: `meaning-note-${note.id}`, group, label: note.title, detail: t("web.nav.notes"), icon: NotebookPen, to: `/notas/${note.id}` })),
-          ...meaning.automations.map((automation) => ({ id: `meaning-automation-${automation.id}`, group, label: automation.name, detail: t("web.nav.automations"), icon: Clock, to: "/automacoes" })),
+          ...meaning.notes.filter((note) => !listed.has(note.id)).map((note) => ({ id: `meaning-note-${note.id}`, group, label: note.title, detail: t("web.nav.notes"), icon: Notebook, to: `/notas/${note.id}` })),
+          ...meaning.automations.map((automation) => ({ id: `meaning-automation-${automation.id}`, group, label: automation.name, detail: t("web.nav.routines"), icon: places.find((place) => place.id === "routines")?.icon ?? Search, to: "/rotinas" })),
         ].slice(0, PER_KIND * 2)
       : [];
     return [
@@ -224,12 +223,12 @@ export function CommandPalette({ onClose, navigate }: { onClose: () => void; nav
         to: "/tarefas",
         state: { openTask: task },
       })),
-      ...notes.map((note) => ({ id: `note-${note.id}`, group: t("web.nav.notes"), label: note.title, detail: note.excerpt, icon: NotebookPen, to: `/notas/${note.id}` })),
+      ...notes.map((note) => ({ id: `note-${note.id}`, group: t("web.nav.notes"), label: note.title, detail: note.excerpt, icon: Notebook, to: `/notas/${note.id}` })),
       ...memories.map((memory) => ({ id: `memory-${memory.id}`, group: t("web.nav.memory"), label: memory.content, icon: Brain, to: "/memoria", before: () => askMemorySearch(term) })),
       ...extra,
       ...ask,
     ];
-  }, [commands, query, term, found.data, byMeaning.data, t]);
+  }, [commands, places, query, term, found.data, byMeaning.data, t]);
 
   const current = Math.min(active, Math.max(items.length - 1, 0));
   const optionId = (index: number) => `${listId}-${index}`;

@@ -57,7 +57,7 @@ export function tooSmallControls(page: Page) {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("button, a[href], select, input:not([type=radio])")]
       // Visible ones only; the skip link is 1 px until focused, then a full-size target.
-      .filter((el) => el.offsetParent !== null && !el.classList.contains("sr-only"))
+      .filter((el) => el.offsetParent !== null && !el.matches(".sr-only, .zuri-skip:not(:focus)"))
       .map((el) => ({ text: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName, height: el.getBoundingClientRect().height }))
       // Layout works in 1/64 px units and a transform or zoom can leave a 44 px box at
       // 43.9999 px: anything within one layout unit of 44 is 44, never a smaller target.
@@ -82,31 +82,37 @@ export async function openSettingsSection(page: Page, name: string) {
   await sections.getByRole("link", { name, exact: true }).click();
 }
 
-/** True where the sidebar is a drawer behind the top bar's menu button (Tailwind's md). */
-export function navIsDrawer(page: Page) {
+/** True where the shell is the phone's: a top bar and a bottom bar instead of the side menu (Tailwind's md). */
+export function navIsPhone(page: Page) {
   return (page.viewportSize()?.width ?? 0) < 768;
 }
 
-/** The sidebar as the owner reaches it: on a phone, the drawer opened from the top bar. */
-export async function openSidebar(page: Page) {
-  if (navIsDrawer(page)) {
-    await page.getByRole("button", { name: "Abrir menu" }).click();
-    return page.getByRole("dialog", { name: "Navegação principal" });
-  }
-  return page.locator("aside");
+/** The places of the phone's bottom bar; the others are behind "Mais". */
+const TABS = ["Início", "Conversa", "Tarefas", "Agenda"];
+
+/**
+ * Goes to a place the way the owner does: the side menu on a computer; on a
+ * phone, the bottom bar or the "Mais" sheet. Tarefas may carry today's count.
+ */
+export async function openPlace(page: Page, place: string) {
+  const name = new RegExp(`^${place}( \\d+)?$`);
+  if (!navIsPhone(page)) return page.locator("aside").getByRole("link", { name }).click();
+  if (TABS.includes(place)) return page.getByRole("navigation", { name: "Navegação principal" }).getByRole("link", { name }).click();
+  await page.getByRole("button", { name: "Mais", exact: true }).click();
+  await page.getByRole("dialog", { name: "Mais" }).getByRole("link", { name }).click();
 }
 
-/** Opens the account menu at the foot of the sidebar (Configurações, Acessos, tema, Sair). */
+/** Opens the account panel (Conta e perfil, Segurança, Avisos, Configurações, Versão, tema, Sair): beside the menu on a computer, a sheet on a phone. */
 export async function openAccountMenu(page: Page) {
-  const sidebar = await openSidebar(page);
-  await sidebar.getByRole("button", { name: /^Menu da conta:/ }).click();
-  return sidebar;
+  // The side menu's button on a computer, the top bar's on a phone: only one shows.
+  await page.getByRole("button", { name: /^Menu da conta:/ }).filter({ visible: true }).click();
+  return page.getByRole("dialog", { name: "Sua conta" });
 }
 
-/** Signs out the way the owner does: the account menu's "Sair". */
+/** Signs out the way the owner does: the account panel's "Sair". */
 export async function signOutFromMenu(page: Page) {
-  const sidebar = await openAccountMenu(page);
-  await sidebar.getByRole("button", { name: "Sair", exact: true }).click();
+  const panel = await openAccountMenu(page);
+  await panel.getByRole("button", { name: "Sair", exact: true }).click();
 }
 
 /** Picks an action from a row's "⋯ Mais opções" menu (stage 26c). */

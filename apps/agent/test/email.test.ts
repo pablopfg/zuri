@@ -153,7 +153,8 @@ describe("the e-mail channel", () => {
       const [first, second] = w.box.sent;
       expect(first?.subject).toBe("Zuri: você tem um aviso novo");
       expect(first?.text).toContain("Veja hxxps://exemplo[.]com[.]br/x e mande para fulano[.]exemplo[.]org");
-      expect(first?.text).toContain("Abrir na Zuri: https://zuri.exemplo.com.br/automacoes");
+      // The notice was saved with the address of before the Sinal shell: the e-mail carries today's.
+      expect(first?.text).toContain("Abrir na Zuri: https://zuri.exemplo.com.br/rotinas");
       expect(second?.subject).toBe("Zuri: você tem um aviso importante");
       // A link outside the app's list falls back to the app itself.
       expect(second?.text).toContain("Abrir na Zuri: https://zuri.exemplo.com.br/\n");

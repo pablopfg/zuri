@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type Notice, ptBRAlerts } from "@zuri/shared";
-import { BellOff, Check, Trash2 } from "lucide-react";
+import { BellOff, Check, ChevronRight, Trash2 } from "lucide-react";
 import { useEffect } from "react";
 import { NOTICES_KEY, setUnread, useNotices } from "../hooks/notices.ts";
 import { api, errorMessage } from "../lib/api.ts";
@@ -73,20 +73,33 @@ export function NoticesPanel({ onClose, navigate }: { onClose: () => void; navig
     navigate(notice.link);
   };
 
-  if (query.isPending) return <Loading label={t("web.notices.loading")} />;
+  if (query.isPending) {
+    return (
+      <div className="p-4">
+        <Loading label={t("web.notices.loading")} />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      {query.isError && <ErrorNotice error={query.error} onRetry={() => void query.refetch()} />}
+    <div>
+      {query.isError && (
+        <div className="p-4">
+          <ErrorNotice error={query.error} onRetry={() => void query.refetch()} />
+        </div>
+      )}
       {!query.isError && notices.length === 0 && (
-        <EmptyState icon={<BellOff className="h-6 w-6" />} title={t("web.notices.emptyTitle")}>
-          {t("web.notices.emptyBody")}
-        </EmptyState>
+        <div className="p-4">
+          <EmptyState icon={<BellOff className="h-6 w-6" />} title={t("web.notices.emptyTitle")}>
+            {t("web.notices.emptyBody")}
+          </EmptyState>
+        </div>
       )}
       {notices.length > 0 && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-fg-muted" aria-live="polite">
+          <div className="flex min-h-11 flex-wrap items-center justify-between gap-2 px-4 py-1">
+            <p className={cn("text-sm", unread ? "inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent-text" : "text-fg-muted")} aria-live="polite">
+              {Boolean(unread) && <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />}
               {unread ? plural("web.notices.unread", unread) : t("web.notices.allRead")}
             </p>
             {Boolean(unread) && (
@@ -96,7 +109,8 @@ export function NoticesPanel({ onClose, navigate }: { onClose: () => void; navig
               </Button>
             )}
           </div>
-          <ul aria-label={t("web.notices.listLabel")} className="-mx-1 max-h-[min(60vh,32rem)] space-y-2 overflow-y-auto px-1">
+          {/* The panel around it scrolls: the list has no window of its own. */}
+          <ul aria-label={t("web.notices.listLabel")} className="divide-y divide-border border-t border-border">
             {notices.map((notice) => (
               <NoticeItem
                 key={notice.id}
@@ -111,13 +125,15 @@ export function NoticesPanel({ onClose, navigate }: { onClose: () => void; navig
             ))}
           </ul>
           {query.hasNextPage && (
-            <Button variant="secondary" className="w-full" loading={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
-              {t("web.notices.more")}
-            </Button>
+            <div className="border-t border-border p-3">
+              <Button variant="secondary" className="w-full" loading={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
+                {t("web.notices.more")}
+              </Button>
+            </div>
           )}
         </>
       )}
-      <div className="flex">
+      <div className="flex border-t border-border px-2 py-1">
         <Button
           variant="ghost"
           onClick={() => {
@@ -126,6 +142,7 @@ export function NoticesPanel({ onClose, navigate }: { onClose: () => void; navig
           }}
         >
           {t("web.notices.settings")}
+          <ChevronRight className="h-4 w-4" aria-hidden />
         </Button>
       </div>
     </div>
@@ -157,7 +174,7 @@ function NoticeItem({
   return (
     <li
       aria-busy={busy || undefined}
-      className={cn("rounded-xl border p-3", unread ? "border-accent/40 bg-accent-soft/40" : "border-border bg-surface", notice.security && unread && "border-danger/50")}
+      className={cn("px-4 py-3", unread && "bg-raised", notice.security && unread && "shadow-[inset_3px_0_0_var(--color-danger)]")}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted">
         {unread && (
