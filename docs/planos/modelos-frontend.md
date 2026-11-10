@@ -200,7 +200,7 @@ Pedido do Pablo depois de abrir o protótipo no celular. O que mudou nos dois ar
 
 ### Ajustes de 10/11, 14:35
 
-- **Notas:** microfone no título e no texto. É viável sem serviço novo: a conversa já grava e transcreve (`apps/web/src/pages/chat/voice.ts` e `POST /api/chat/transcribe`), com trecho de até 60 segundos e 2 MB, 60 minutos de áudio por dia somando app e bot, e o áudio nunca é guardado. No código, o gancho `useVoice` sai da pasta da conversa para uma pasta comum e a tela de Notas ganha os dois botões. Para ditar mais de um minuto, a pessoa grava de novo e o texto entra no fim.
+- **Notas:** microfone no texto da nota (o do título saiu a pedido do Pablo, 10/11 12:14). É viável sem serviço novo: a conversa já grava e transcreve (`apps/web/src/pages/chat/voice.ts` e `POST /api/chat/transcribe`), com trecho de até 60 segundos e 2 MB, 60 minutos de áudio por dia somando app e bot, e o áudio nunca é guardado. No código, o gancho `useVoice` sai da pasta da conversa para uma pasta comum e a tela de Notas ganha o botão no texto. Para ditar mais de um minuto, a pessoa grava de novo e o texto entra no fim.
 - **Avaliações:** "Conferir agora" e "Pausar respostas" ficam só com o ícone também no computador.
 - **Avaliações › Ajustes › Agente e segurança:** controles do agente que escreve (temperatura, top_p, tamanho, tentativas), o agente que confere, as sete travas de cada resposta, os controles do dono, a parada automática e o teste de segurança. Decisão do Pablo (12:02): temperatura 0,5, sem espera antes de publicar e sem amostra para conferir; o que passa nas travas é publicado na hora. O que já existe e o que é novo no código está em [avaliacoes-conexao-e-respostas.md](avaliacoes-conexao-e-respostas.md), seção 15.
 
@@ -473,3 +473,8 @@ Os três seguem a `baseline-ui` à risca: cores e sombras padrão do Tailwind, f
 ## 10. Próximo passo
 
 O Pablo aprova um dos modelos da rodada 4 (ou uma mistura, por exemplo "logomarca do Farol com a montagem do Norte"). Aí sai um plano de implementação pela skill `planejar`, com testes, axe, capturas antes e depois e o teto de JS conferido.
+
+### Ajustes de 10/11, 15:13
+
+- **Configurações › Segurança, "Atividade de acesso":** cada acesso mostra também o endereço IP, na lista e em "Todos os acessos". O registro já guarda esse dado (`apps/agent/src/auth/events.ts`), com detalhe por 90 dias; falta só a tela nova mostrar. Quando a conexão chega por IPv6, aparece o endereço IPv6, porque nesse acesso não existe IPv4. Os exemplos do protótipo usam faixas de documentação.
+- **Notas:** o microfone fica só no texto da nota.

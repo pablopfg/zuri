@@ -2525,7 +2525,7 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .ph-ic>.actions .btn{width:40px;height:40px;min-height:40px;padding:0;justify-content:center}
 .ph-ic>.actions .lbl-d{display:none}
 .n-title-row{position:relative;display:flex;align-items:center;gap:var(--s2);margin:var(--s4) 0 var(--s3)}
-.n-title-row .title-in{margin:0;flex:1;min-width:0}
+.n-title-row .title-in{margin:0;flex:1;min-width:0;min-height:44px}
 .n-title-row .rec{min-height:44px}
 .n-rec:empty{display:none}
 .n-rec{margin:0 0 var(--s3)}
@@ -2552,6 +2552,9 @@ ol.pk-list{list-style:none;margin:0;padding:0}
   .ra-path .tile{display:none}
 }
 
+/* 10/11 15:13: endereço IP na atividade de acesso */
+.acc-ip{display:block;margin-top:2px;font-size:var(--t-sm);color:var(--muted);overflow-wrap:anywhere}
+.acc-ip .num{color:var(--ink-2)}
 </style>
 </head>
 <body>
@@ -2878,7 +2881,7 @@ function notas() {
         <div class="seg seg-xs" role="group" aria-label="Modo do editor"><button type="button" data-nmode="write" aria-pressed="true">Escrever</button><button type="button" data-nmode="prev" aria-pressed="false">Prévia</button></div>
         <span class="nlocal"><button class="switch switch-sm" type="button" role="switch" aria-checked="${cur.id === "contas"}" aria-labelledby="n-lo"></button><span id="n-lo">Nunca enviar para fora</span></span>
         <button class="iconbtn" type="button" data-nmic aria-label="Ditar no texto da nota" title="Ditar no texto da nota">${ic("mic")}</button><button class="iconbtn" type="button" aria-label="Mais ações da nota" data-x="nota-menu">${ic("ellipsis")}</button></div>
-      <h2 class="sr">${cur.t || "Nota sem título"}</h2><label class="sr" for="n-title">Título da nota</label><div class="n-title-row" data-mic-box data-mic-text="Ligar para a transportadora"><input id="n-title" class="title-in" value="${cur.t}" placeholder="Título" autocomplete="off" data-autosave="${cur.id}"><button class="iconbtn mic" type="button" data-mic aria-label="Ditar o título" title="Ditar o título">${ic("mic")}</button></div>
+      <h2 class="sr">${cur.t || "Nota sem título"}</h2><label class="sr" for="n-title">Título da nota</label><div class="n-title-row"><input id="n-title" class="title-in" value="${cur.t}" placeholder="Título" autocomplete="off" data-autosave="${cur.id}"></div>
       <div class="n-rec" data-nrec></div>
       <div class="prose" id="n-body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto da nota" data-ph="Escreva ou cole aqui. Tudo é salvo sozinho." data-autosave="${cur.id}">${body}</div>
     </article></div>
@@ -3582,7 +3585,7 @@ function cfgAgenda() {
 }
 
 function cfgSeg() {
-  const acts = [["Entrada", "Chrome no Windows", "Curitiba, PR", "hoje, 08:01", "on"], ["Senha errada", "Safari no iPhone", "Curitiba, PR", "ontem, 22:14", "wait"], ["Passkey adicionada", "Chrome no Windows", "Curitiba, PR", "03/11, 10:20", "on"]];
+  const acts = [["Entrada", "Chrome no Windows", "Curitiba, PR", "hoje, 08:01", "on", "203.0.113.24"], ["Senha errada", "Safari no iPhone", "Curitiba, PR", "ontem, 22:14", "wait", "198.51.100.7"], ["Passkey adicionada", "Chrome no Windows", "Curitiba, PR", "03/11, 10:20", "on", "203.0.113.24"]];
   return sec("h-pw", "Senha", "Trocar a senha encerra as outras sessões abertas.",
     `<div class="form-grid"><label class="field"><span>Senha atual</span><input class="input" type="password" autocomplete="current-password"></label><label class="field"><span>Senha nova</span><input class="input" type="password" autocomplete="new-password"></label></div>`, save("Trocar a senha"))
   + sec("h-2fa", "Verificação em duas etapas", "Depois da senha, a Zuri pede um código do aplicativo autenticador ou uma passkey.",
@@ -3592,8 +3595,8 @@ function cfgSeg() {
     `<button class="btn btn-secondary" type="button" data-x="pk-add">${ic("plus", "ic-sm")}Adicionar passkey</button>`)
   + sec("h-sai", "Saída automática", "Quando a Zuri encerra a sessão sozinha. Mudar pede a senha de novo.",
     `<div class="form-grid form-3"><label class="field"><span>Sem uso</span><select class="input"><option>15 minutos</option><option selected>30 minutos</option><option>1 hora</option></select></label><label class="field"><span>Sem aba aberta</span><select class="input"><option selected>5 minutos</option><option>10 minutos</option><option>15 minutos</option></select></label><label class="field"><span>Duração máxima</span><select class="input"><option selected>6 horas</option><option>12 horas</option><option>24 horas</option></select></label></div>`, save())
-  + sec("h-act", "Atividade de acesso", "Os acessos mais recentes: quem entrou, de onde e o que aconteceu.",
-    `<ul class="runs">${acts.map(([k, d, l, w, s]) => `<li><time class="num">${w}</time><span><b>${k}</b> · ${d} · ${l}</span><span class="pill ${s}"><i></i>${s === "on" ? "Certo" : "Atenção"}</span></li>`).join("")}</ul>`,
+  + sec("h-act", "Atividade de acesso", "Os acessos mais recentes: quem entrou, de onde, por qual endereço IP e o que aconteceu.",
+    `<ul class="runs acc-runs">${acts.map(([k, d, l, w, s, ip]) => `<li><time class="num">${w}</time><span><b>${k}</b> · ${d} · ${l}<span class="acc-ip">IP <span class="num">${ip}</span></span></span><span class="pill ${s}"><i></i>${s === "on" ? "Certo" : "Atenção"}</span></li>`).join("")}</ul>`,
     `<button class="btn btn-quiet" type="button" data-x="acessos" aria-haspopup="dialog">Ver todos os acessos${ic("chevron-right", "ic-sm")}</button>`)
   + sec("h-rem", "Acesso pela API", "Chaves de API para o n8n, o Home Assistant ou um script usarem a Zuri. Cada chave tem o seu nome e só o acesso que precisa.",
     swRow("rem-on", "Permitir acesso pela API", "Desligado, nenhuma chave funciona, nem as que já existem.", true)
@@ -4137,11 +4140,12 @@ function eventoDlg(opener) {
     } }, opener);
 }
 function acessosDlg(opener, filtro = "todos") {
-  const L = [["Hoje, 08:02", "Entrou", "Celular · Curitiba", "on"], ["Hoje, 07:58", "Senha errada", "Celular · Curitiba", "off"], ["Ontem, 22:10", "Entrou com passkey", "Computador · Curitiba", "on"], ["Ontem, 13:44", "Chave de API usada", "n8n do consultório", "on"], ["07/11, 03:12", "Tentativa bloqueada", "Endereço desconhecido · fora do Brasil", "off"], ["06/11, 19:20", "Saiu", "Computador · Curitiba", "on"]];
+  const L = [["Hoje, 08:02", "Entrou", "Celular · Curitiba", "on", "203.0.113.24"], ["Hoje, 07:58", "Senha errada", "Celular · Curitiba", "off", "203.0.113.24"], ["Ontem, 22:10", "Entrou com passkey", "Computador · Curitiba", "on", "2001:db8:41a2:7c00::18"], ["Ontem, 13:44", "Chave de API usada", "n8n do consultório", "on", "192.0.2.61"], ["07/11, 03:12", "Tentativa bloqueada", "Endereço desconhecido · fora do Brasil", "off", "198.51.100.203"], ["06/11, 19:20", "Saiu", "Computador · Curitiba", "on", "203.0.113.24"]];
   const vis = L.filter((x) => filtro === "todos" || x[3] === "off");
-  dlgShow({ t: "Todos os acessos", sub: "Dos últimos 90 dias. Só o tipo, o aparelho e a cidade aproximada.", kind: "acessos",
+  dlgShow({ t: "Todos os acessos", sub: "Dos últimos 90 dias: o tipo, o aparelho, a cidade aproximada e o endereço IP.", kind: "acessos",
     body: `<div class="seg" role="group" aria-label="Mostrar"><button type="button" data-ac-f="todos" aria-pressed="${filtro === "todos"}">Todos <span class="n">${L.length}</span></button><button type="button" data-ac-f="atencao" aria-pressed="${filtro !== "todos"}">Pedem atenção <span class="n">${L.filter((x) => x[3] === "off").length}</span></button></div>
-      <ul class="runs dlg-runs">${vis.map(([w, k, d, s]) => `<li><time class="num">${w}</time><span><b>${k}</b> · ${d}</span><span class="pill ${s}"><i></i>${s === "on" ? "Certo" : "Atenção"}</span></li>`).join("")}</ul>` }, opener);
+      <ul class="runs dlg-runs acc-runs">${vis.map(([w, k, d, s, ip]) => `<li><time class="num">${w}</time><span><b>${k}</b> · ${d}<span class="acc-ip">IP <span class="num">${ip}</span></span></span><span class="pill ${s}"><i></i>${s === "on" ? "Certo" : "Atenção"}</span></li>`).join("")}</ul>
+      <p class="hint">Quando a conexão chega por IPv6, aparece o endereço IPv6: nesse acesso não existe IPv4. O endereço fica só nesta lista e sai junto com o registro, depois de 90 dias.</p>` }, opener);
 }
 
 const ACT = [
@@ -5307,7 +5311,7 @@ function rvAjustes() {
   const seg = `<div class="seg rv-sub rv-sub4" role="group" aria-label="Ajustes das avaliações">${[["conexao", "plug", "Conexão"], ["responder", "pen-line", "Como responder"], ["agente", "shield-check", "Agente e segurança"], ["envio", "send", "Pedidos e link"]].map(([k, i, l]) => `<button type="button" data-rvv="${k}" aria-pressed="${sub === k}">${ic(i, "ic-sm")}${l}</button>`).join("")}</div>`;
   return seg + (sub === "responder" ? rvResponder() : sub === "agente" ? rvAgente() : sub === "envio" ? rvEnvio() : rvConexao());
 }
-/* ---------- Notas: ditar o título e o texto ---------- */
+/* ---------- Notas: ditar o texto ---------- */
 let noteRecTimer = 0;
 function noteMicEnd() {
   clearInterval(noteRecTimer);
