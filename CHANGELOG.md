@@ -19,6 +19,36 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.39.1] - 2026-11-09
+
+Mesclada às 20:47 (UTC-3) · commit [`326623f`](https://github.com/pablopfg/Zuri/commit/326623ffbd352ae69bbcc5354d9ef1bd9155e26f) · PR [#242](https://github.com/pablopfg/Zuri/pull/242) · Rótulos únicos nos títulos e axe dividido por grupo de telas
+
+### Alterado
+
+- Sem mudança visível: rótulos únicos nos títulos e axe dividido por grupo de telas.
+
+## [0.39.0] - 2026-11-09
+
+Mesclada às 18:55 (UTC-3) · commit [`29ddb29`](https://github.com/pablopfg/Zuri/commit/29ddb29020bcd14217e807e0d601f7ec7b2d53ba) · PR [#235](https://github.com/pablopfg/Zuri/pull/235) · Auditoria final e testes de ponta a ponta (etapa 25)
+
+### Corrigido
+
+- A lixeira aberta de Tarefas ou de Notas conta e lista só aquele tipo, direto do servidor. Antes, uma lixeira cheia de notas podia mostrar "nenhuma tarefa".
+- Diagnóstico nomeia as telas Agenda e Contatos, que apareciam como "outra".
+- A busca de clientes com um texto longo voltava erro. Agora encontra normalmente.
+- Uma rotina com a repetição ilegível é pausada e aparece na atividade, em vez de travar o alarme das outras.
+
+### Segurança
+
+- Ler a agenda, os contatos ou um texto encaminhado do Telegram agora também faz as ferramentas externas perguntarem antes de rodar, como já acontecia com o MCP e os clientes.
+- Uma resposta da Zuri escrita com um item "Nunca enviar para fora" à vista não volta mais no histórico nem no resumo que vão para um modelo de outra empresa.
+- A trava de contato das respostas a avaliações também pega domínios de final pouco comum e domínios escritos por extenso.
+- Depois de redefinir a senha pelo painel da Cloudflare, os tokens de acesso remoto param na hora, sem esperar o próximo login.
+
+### Atualização
+
+- Migration 31: a coluna `local_only` em `zur_messages`. Ela é aplicada sozinha na primeira requisição, sem nada a fazer.
+
 ## [0.38.0] - 2026-11-09
 
 Mesclada às 15:25 (UTC-3) · commit [`2e4f09f`](https://github.com/pablopfg/Zuri/commit/2e4f09fd48ec5fe835768e52b0f5b30be49688fe) · PR [#232](https://github.com/pablopfg/Zuri/pull/232) · Reorganização das telas e menu Mais opções (etapa 26c)
@@ -2863,7 +2893,9 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.38.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.1...develop
+[0.39.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.1
+[0.39.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.0
 [0.38.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.38.0
 [0.37.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.3
 [0.37.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.37.2
