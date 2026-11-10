@@ -1,0 +1,1128 @@
+<!doctype html>
+<html lang="pt-BR" data-model="sinal" data-theme="claro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modelos de interface Zuri, rodada 3</title>
+<!-- Protótipo estático. No app, as fontes escolhidas entram como woff2 servidas pelo próprio Worker. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=Source+Sans+3:wght@400;500;600&display=swap">
+<style>
+/* ============ escala comum (taste: 4..128; ui-skills: z-index fixo) ============ */
+:root{
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+  --side-w:264px;--rail-w:320px;
+  --z-base:0;--z-sticky:10;--z-drawer:20;--z-overlay:30;
+  --t-xs:13px;--t-sm:14px;--t-md:16px;--t-lg:18px;--t-xl:22px;--t-2xl:28px;--t-3xl:34px;
+  --ease:cubic-bezier(0,0,.2,1);--dur:150ms;
+}
+
+/* ============ 1 · Sinal: a marca atual levada a sério ============ */
+[data-model="sinal"]{--f-ui:"Figtree",ui-sans-serif,system-ui,sans-serif;--f-read:var(--f-ui);--w-h:600;--w-strong:600;
+  --r-sm:10px;--r-md:12px;--r-lg:16px;--r-xl:22px;--r-pill:999px;--lh-read:1.6;--t-read:16px}
+[data-model="sinal"][data-theme="claro"]{
+  --bg:#ffffff;--surface:#ffffff;--sunken:#f4f4f5;--hover:#f4f4f5;--line:#e4e4e7;--line-strong:#d4d4d8;
+  --ink:#18181b;--ink-2:#3f3f46;--muted:#62626a;
+  --accent:#15803d;--accent-hover:#166534;--on-accent:#ffffff;--accent-ink:#15803d;--accent-soft:#f0fdf4;--accent-soft-ink:#14532d;--focus:#15803d;
+  --warn-ink:#b45309;--warn-soft:#fffbeb;--danger-ink:#b91c1c;--ok-ink:#15803d;
+  --cal-a:#16a34a;--cal-b:#0284c7;--now:#dc2626;
+  --side-bg:#fafafa;--side-ink:#3f3f46;--side-head:#18181b;--side-muted:#62626a;--side-hover:#f0f0f1;--side-active-bg:#ffffff;--side-active-ink:#18181b;--side-line:#e4e4e7;--side-active-shadow:0 1px 2px 0 rgb(0 0 0 / .06),0 0 0 1px #e4e4e7;
+  --shadow-sm:0 1px 2px 0 rgb(0 0 0 / .05);--tile:#18181b;--mark:#ffffff;--signal:#22c55e}
+[data-model="sinal"][data-theme="escuro"]{
+  --bg:#18181b;--surface:#1f1f23;--sunken:#27272a;--hover:#27272a;--line:#2f2f34;--line-strong:#3f3f46;
+  --ink:#f4f4f5;--ink-2:#d4d4d8;--muted:#a1a1aa;
+  --accent:#4ade80;--accent-hover:#86efac;--on-accent:#052e16;--accent-ink:#4ade80;--accent-soft:#0f2a1a;--accent-soft-ink:#bbf7d0;--focus:#4ade80;
+  --warn-ink:#fbbf24;--warn-soft:#2a2111;--danger-ink:#f87171;--ok-ink:#4ade80;
+  --cal-a:#4ade80;--cal-b:#38bdf8;--now:#f87171;
+  --side-bg:#141416;--side-ink:#d4d4d8;--side-head:#fafafa;--side-muted:#a1a1aa;--side-hover:#222226;--side-active-bg:#27272a;--side-active-ink:#fafafa;--side-line:#232327;--side-active-shadow:none;
+  --shadow-sm:none;--tile:#27272a;--mark:#fafafa;--signal:#4ade80}
+
+/* ============ 2 · Painel: o dia em volta da conversa ============ */
+[data-model="painel"]{--f-ui:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;--f-read:var(--f-ui);--w-h:600;--w-strong:600;
+  --r-sm:6px;--r-md:6px;--r-lg:8px;--r-xl:8px;--r-pill:999px;--lh-read:1.55;--t-read:16px}
+[data-model="painel"][data-theme="claro"]{
+  --bg:#f8fafc;--surface:#ffffff;--sunken:#f1f5f9;--hover:#f1f5f9;--line:#e2e8f0;--line-strong:#cbd5e1;
+  --ink:#0f172a;--ink-2:#334155;--muted:#556275;
+  --accent:#0e7490;--accent-hover:#155e75;--on-accent:#ffffff;--accent-ink:#0e7490;--accent-soft:#ecfeff;--accent-soft-ink:#164e63;--focus:#0e7490;
+  --warn-ink:#b45309;--warn-soft:#fffbeb;--danger-ink:#b91c1c;--ok-ink:#15803d;
+  --cal-a:#0891b2;--cal-b:#64748b;--now:#dc2626;
+  --side-bg:#0f172a;--side-ink:#cbd5e1;--side-head:#ffffff;--side-muted:#94a3b8;--side-hover:#1a2436;--side-active-bg:#1e293b;--side-active-ink:#ffffff;--side-line:#1e293b;--side-active-shadow:inset 2px 0 0 #22d3ee;
+  --shadow-sm:0 1px 2px 0 rgb(15 23 42 / .06);--tile:#1e293b;--mark:#ffffff;--signal:#22c55e}
+[data-model="painel"][data-theme="escuro"]{
+  --bg:#0f172a;--surface:#162032;--sunken:#1e293b;--hover:#1e293b;--line:#26334a;--line-strong:#334155;
+  --ink:#f1f5f9;--ink-2:#cbd5e1;--muted:#97a3b6;
+  --accent:#22d3ee;--accent-hover:#67e8f9;--on-accent:#083344;--accent-ink:#22d3ee;--accent-soft:#0c2a33;--accent-soft-ink:#a5f3fc;--focus:#22d3ee;
+  --warn-ink:#fbbf24;--warn-soft:#2a2111;--danger-ink:#f87171;--ok-ink:#4ade80;
+  --cal-a:#22d3ee;--cal-b:#94a3b8;--now:#f87171;
+  --side-bg:#0b1324;--side-ink:#cbd5e1;--side-head:#ffffff;--side-muted:#94a3b8;--side-hover:#16203a;--side-active-bg:#1e293b;--side-active-ink:#ffffff;--side-line:#16203a;--side-active-shadow:inset 2px 0 0 #22d3ee;
+  --shadow-sm:none;--tile:#1e293b;--mark:#ffffff;--signal:#4ade80}
+
+/* ============ 3 · Caderno: a Zuri escreve, você lê ============ */
+[data-model="caderno"]{--f-ui:"Source Sans 3",ui-sans-serif,system-ui,sans-serif;--f-read:"Literata",Georgia,serif;--w-h:500;--w-strong:600;
+  --r-sm:6px;--r-md:8px;--r-lg:10px;--r-xl:12px;--r-pill:999px;--lh-read:1.7;--t-read:17px}
+[data-model="caderno"][data-theme="claro"]{
+  --bg:#ffffff;--surface:#ffffff;--sunken:#f3f3f0;--hover:#f3f3f0;--line:#e7e6e1;--line-strong:#d2d1cb;
+  --ink:#1c1c1a;--ink-2:#3d3d39;--muted:#65655f;
+  --accent:#1e40af;--accent-hover:#1e3a8a;--on-accent:#ffffff;--accent-ink:#1e40af;--accent-soft:#eff6ff;--accent-soft-ink:#1e3a8a;--focus:#1e40af;
+  --warn-ink:#a16207;--warn-soft:#fefce8;--danger-ink:#b91c1c;--ok-ink:#15803d;
+  --cal-a:#1e40af;--cal-b:#78716c;--now:#dc2626;
+  --side-bg:#f8f8f6;--side-ink:#3d3d39;--side-head:#1c1c1a;--side-muted:#65655f;--side-hover:#efefeb;--side-active-bg:#ecece7;--side-active-ink:#1c1c1a;--side-line:#e7e6e1;--side-active-shadow:none;
+  --shadow-sm:none;--tile:#1c1c1a;--mark:#ffffff;--signal:#22c55e}
+[data-model="caderno"][data-theme="escuro"]{
+  --bg:#1c1b19;--surface:#22211e;--sunken:#2a2926;--hover:#2a2926;--line:#34332f;--line-strong:#45443f;
+  --ink:#edece8;--ink-2:#d3d2cc;--muted:#a6a59e;
+  --accent:#93c5fd;--accent-hover:#bfdbfe;--on-accent:#172554;--accent-ink:#93c5fd;--accent-soft:#1a2440;--accent-soft-ink:#dbeafe;--focus:#93c5fd;
+  --warn-ink:#facc15;--warn-soft:#2a2410;--danger-ink:#f87171;--ok-ink:#4ade80;
+  --cal-a:#93c5fd;--cal-b:#a8a29e;--now:#f87171;
+  --side-bg:#171614;--side-ink:#d3d2cc;--side-head:#edece8;--side-muted:#a6a59e;--side-hover:#22211e;--side-active-bg:#2a2926;--side-active-ink:#edece8;--side-line:#262522;--side-active-shadow:none;
+  --shadow-sm:none;--tile:#2a2926;--mark:#edece8;--signal:#4ade80}
+
+/* ============ base ============ */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 var(--t-md)/1.5 var(--f-ui);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button,input,textarea,select{font:inherit;color:inherit}
+h1,h2,h3,p{margin:0}
+h1,h2,h3{font-weight:var(--w-h);color:var(--ink);text-wrap:balance}
+p{text-wrap:pretty}
+ul,ol{margin:0;padding:0;list-style:none}
+a{color:var(--accent-ink);text-underline-offset:3px;text-decoration-thickness:1px}
+a:hover{text-decoration-thickness:2px}
+.num{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.ic-sm{width:16px;height:16px}
+.ic-lg{width:24px;height:24px}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:var(--r-sm)}
+.skip{position:absolute;left:var(--s4);top:-100px;z-index:var(--z-overlay);background:var(--surface);color:var(--ink);padding:var(--s3) var(--s4);border-radius:var(--r-sm);box-shadow:0 0 0 2px var(--focus)}
+.skip:focus{top:var(--s4)}
+
+/* barra do protótipo (some nas capturas) */
+.proto{position:sticky;top:0;z-index:var(--z-overlay)}
+.picker{margin:0;border:0;min-width:0;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:8px 16px;background:#0b0f19;color:#f8fafc;font:500 13px/1.4 system-ui,sans-serif}
+.picker label{display:flex;gap:6px;align-items:center}
+.picker select{background:#1a2233;color:#f8fafc;border:1px solid #56627a;border-radius:6px;padding:4px 8px;min-height:32px}
+[data-captura] .proto{display:none}
+
+/* ============ moldura ============ */
+.app{display:grid;grid-template-columns:var(--side-w) minmax(0,1fr);height:100dvh}
+.app.has-rail{grid-template-columns:var(--side-w) minmax(0,1fr) var(--rail-w)}
+.side{background:var(--side-bg);color:var(--side-ink);border-right:1px solid var(--side-line);display:flex;flex-direction:column;min-height:0;padding:var(--s3)}
+.side-head{display:flex;align-items:center;gap:var(--s1);padding:var(--s1) var(--s1) var(--s3)}
+.brand{display:flex;align-items:center;gap:10px;color:var(--side-head);text-decoration:none;font:var(--w-strong) 19px/1 var(--f-ui);margin-right:auto;padding:4px;border-radius:var(--r-sm)}
+.logo{width:30px;height:30px;flex:none}
+.logo .t{fill:var(--tile)}.logo .m{fill:var(--mark)}.logo .s{fill:var(--signal)}
+.side .iconbtn{color:var(--side-muted)}
+.side .iconbtn:hover{background:var(--side-hover);color:var(--side-head)}
+.side-new{margin-bottom:var(--s2)}
+.searchbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 10px;border:1px solid var(--side-line);border-radius:var(--r-md);background:transparent;color:var(--side-muted);cursor:pointer;text-align:left}
+.searchbtn span{flex:1}
+.searchbtn:hover{background:var(--side-hover);color:var(--side-ink)}
+kbd{font:500 12px/1 var(--f-ui);padding:3px 6px;border-radius:5px;border:1px solid var(--side-line);color:var(--side-muted);background:transparent}
+.nav{margin:var(--s4) 0 0;display:grid;gap:2px}
+.nav a{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 10px;border-radius:var(--r-md);color:var(--side-ink);text-decoration:none;font-weight:500;transition:background-color var(--dur) var(--ease)}
+.nav a:hover{background:var(--side-hover);color:var(--side-head)}
+.nav a[aria-current="page"]{background:var(--side-active-bg);color:var(--side-active-ink);box-shadow:var(--side-active-shadow)}
+.nav .count{margin-left:auto;font-size:var(--t-xs);font-weight:600;color:var(--side-muted);font-variant-numeric:tabular-nums}
+.nav .count.alert{color:var(--side-head);background:var(--side-active-bg);border-radius:var(--r-pill);min-width:22px;height:22px;display:grid;place-items:center;padding:0 6px}
+.side-h{font:600 var(--t-xs)/1 var(--f-ui);color:var(--side-muted);padding:var(--s5) 10px var(--s2)}
+.recent{flex:1;min-height:0;overflow:auto}
+.recent a{display:block;padding:8px 10px;border-radius:var(--r-md);color:var(--side-ink);text-decoration:none;font-size:var(--t-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recent a:hover{background:var(--side-hover)}
+.account{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:0;border-radius:var(--r-md);background:transparent;color:var(--side-ink);cursor:pointer;text-align:left;margin-top:var(--s2)}
+.account:hover{background:var(--side-hover)}
+.account b{display:block;color:var(--side-head);font-weight:600}
+.account small{display:block;color:var(--side-muted);font-size:var(--t-xs)}
+.avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;flex:none;font:600 14px/1 var(--f-ui);background:var(--accent-soft);color:var(--accent-soft-ink)}
+.main{min-width:0;min-height:0;overflow:auto;display:flex;flex-direction:column}
+.topbar{display:none}
+#conteudo{flex:1 0 auto;display:flex;flex-direction:column;min-height:0}
+#conteudo>.fill{flex:1 1 0;min-height:0}
+
+/* ============ peças ============ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:var(--r-md);border:1px solid transparent;font-weight:600;font-size:15px;text-decoration:none;cursor:pointer;white-space:nowrap;transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease)}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:var(--on-accent)}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-secondary{background:var(--surface);color:var(--ink);border-color:var(--line-strong)}
+.btn-secondary:hover{background:var(--hover)}
+.btn-quiet{background:transparent;color:var(--ink-2)}
+.btn-quiet:hover{background:var(--hover);color:var(--ink)}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.btn-sm{min-height:36px;padding:0 12px;font-size:14px}
+.btn-block{width:100%}
+.iconbtn{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:var(--r-md);border:0;background:transparent;color:var(--muted);cursor:pointer;position:relative;flex:none}
+.iconbtn:hover{background:var(--hover);color:var(--ink)}
+.badge{position:absolute;top:5px;right:4px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:var(--accent);color:var(--on-accent);font:700 11px/17px var(--f-ui);text-align:center;font-variant-numeric:tabular-nums}
+.field{display:grid;gap:6px}
+.field>span:first-child,.label{font-size:var(--t-sm);font-weight:600;color:var(--ink)}
+.hint{font-size:var(--t-sm);color:var(--muted)}
+.input{width:100%;min-height:44px;padding:0 14px;border-radius:var(--r-md);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+.input::placeholder,textarea::placeholder{color:var(--muted)}
+select.input{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:36px}
+.with-ic{position:relative}
+.with-ic .ic{position:absolute;left:13px;top:50%;translate:0 -50%;color:var(--muted);pointer-events:none}
+.with-ic .input{padding-left:40px}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:var(--r-md);background:var(--sunken);max-width:100%;overflow-x:auto}
+.seg button{min-height:36px;padding:0 14px;border:0;border-radius:calc(var(--r-md) - 3px);background:transparent;color:var(--ink-2);font-weight:500;font-size:14px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px 0 rgb(0 0 0 / .08),0 0 0 1px var(--line)}
+.seg .n{color:var(--muted);font-variant-numeric:tabular-nums;font-weight:500}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:var(--t-xs);font-weight:500;color:var(--ink-2);background:var(--sunken);border-radius:var(--r-pill);padding:2px 9px;line-height:20px;white-space:nowrap}
+.tag-accent{background:var(--accent-soft);color:var(--accent-soft-ink)}
+.prio{display:inline-flex;align-items:center;gap:5px;font-size:var(--t-sm);color:var(--ink-2);white-space:nowrap}
+.prio.hot{color:var(--warn-ink);font-weight:600}
+.late{display:inline-flex;align-items:center;gap:5px;color:var(--danger-ink);font-weight:600;font-size:var(--t-sm)}
+.check{width:22px;height:22px;flex:none;border-radius:50%;border:1.5px solid var(--line-strong);background:transparent;cursor:pointer;padding:0;display:grid;place-items:center}
+.check:hover{border-color:var(--accent)}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;font-size:var(--t-sm);color:var(--muted);margin-top:2px}
+.meta>span{display:inline-flex;align-items:center;gap:5px}
+.switch{width:44px;height:26px;border-radius:999px;border:0;background:var(--line-strong);position:relative;cursor:pointer;flex:none;padding:0}
+.switch::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .2);transition:transform var(--dur) var(--ease)}
+.switch[aria-checked="true"]{background:var(--accent)}
+.switch[aria-checked="true"]::after{transform:translateX(18px)}
+[data-theme="escuro"] .switch[aria-checked="true"]::after{background:var(--on-accent)}
+.rowlink{color:inherit;text-decoration:none}
+.rowlink:hover{color:var(--accent-ink)}
+.more{color:var(--accent-ink);font-weight:600;font-size:var(--t-sm);text-decoration:none;white-space:nowrap}
+.more:hover{text-decoration:underline}
+
+/* cabeçalho de página */
+.page{width:100%;max-width:1080px;margin:0 auto;padding:var(--s7) var(--s7) var(--s8)}
+.page-narrow{max-width:800px}
+.pagehead{display:flex;align-items:flex-end;gap:var(--s4);margin-bottom:var(--s6);flex-wrap:wrap}
+.pagehead>div:first-child{flex:1;min-width:240px}
+.pagehead h1{font-size:var(--t-2xl);line-height:1.2}
+.pagehead p{color:var(--muted);margin-top:6px}
+.actions{display:flex;gap:var(--s2);flex-wrap:wrap}
+.block{margin-top:var(--s7)}
+.block-head{display:flex;align-items:baseline;gap:var(--s3);margin-bottom:var(--s3)}
+.block-head h2{font-size:var(--t-lg)}
+.block-head .more{margin-left:auto}
+.block-head .n{color:var(--muted);font-variant-numeric:tabular-nums;font-size:var(--t-sm)}
+
+/* compositor (falar com a Zuri) */
+.composer{display:flex;align-items:flex-end;gap:var(--s2);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-xl);padding:10px 10px 10px 18px;box-shadow:var(--shadow-sm)}
+.composer:focus-within{border-color:var(--focus);box-shadow:0 0 0 1px var(--focus)}
+.composer textarea,.composer input{flex:1;border:0;background:transparent;resize:none;min-height:24px;padding:10px 0;line-height:1.5;outline:none;color:var(--ink)}
+.sendbtn{width:40px;height:40px;border-radius:calc(var(--r-xl) - 8px);border:0;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;cursor:pointer;flex:none;transition:transform var(--dur) var(--ease)}
+.sendbtn:active{transform:scale(.94)}
+.chips{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s3)}
+.chip{min-height:36px;padding:0 14px;border-radius:var(--r-pill);border:1px solid var(--line);background:transparent;color:var(--ink-2);font-size:14px;font-weight:500;cursor:pointer}
+.chip:hover{background:var(--hover);color:var(--ink)}
+
+/* linha do tempo do dia (tarefas, eventos e automações juntos) */
+.day{display:grid}
+.day li{display:grid;grid-template-columns:76px 14px minmax(0,1fr) auto;gap:0 var(--s3);align-items:start;padding:12px 0;border-top:1px solid var(--line)}
+.day li:first-child{border-top:0}
+.day time,.day .when{font-size:var(--t-sm);color:var(--ink-2);font-variant-numeric:tabular-nums;padding-top:2px;font-weight:500}
+.day .kind{width:14px;height:14px;margin-top:4px;display:grid;place-items:center}
+.day .kind i{display:block;width:8px;height:8px;border-radius:50%;background:var(--cal-a)}
+.day .kind i.b{background:var(--cal-b)}
+.day .kind .check{width:16px;height:16px;border-width:1.5px}
+.day .kind .ic{width:15px;height:15px;color:var(--muted)}
+.day .t{font-weight:500;color:var(--ink)}
+.day .side-note{font-size:var(--t-sm);color:var(--muted);text-align:right;white-space:nowrap;padding-top:2px}
+.day.compact li{grid-template-columns:22px minmax(0,1fr) auto}
+.day.compact .kind{width:22px;height:22px;margin-top:0}
+.day.compact .kind .check{width:20px;height:20px}
+.day.compact .kind i{background:var(--line-strong)}
+.day li.past .t{color:var(--muted)}
+
+/* lista de atenção */
+.attn{display:grid}
+.attn li{display:flex;align-items:center;gap:var(--s4);padding:var(--s4) var(--s5)}
+.attn li+li{border-top:1px solid var(--line)}
+.attn .tile{width:40px;height:40px;border-radius:var(--r-md);display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-soft-ink);flex:none}
+.attn .txt{flex:1;min-width:0}
+.attn .t{font-weight:600}
+.attn p.d{color:var(--muted);font-size:var(--t-sm);margin-top:2px}
+
+/* listas genéricas */
+.rows>li{display:flex;align-items:flex-start;gap:var(--s3);padding:14px var(--s5)}
+.rows>li+li{border-top:1px solid var(--line)}
+.rows .grow{flex:1;min-width:0}
+.rows .t{font-weight:500}
+.grouph{display:flex;align-items:baseline;gap:var(--s2);font-size:var(--t-sm);font-weight:600;color:var(--ink-2);padding:var(--s5) 0 var(--s2)}
+.grouph .n{color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+
+/* ============ Conversa ============ */
+.chat{display:flex;flex-direction:column;min-height:0;height:100%}
+.chat-head{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s5);border-bottom:1px solid var(--line);min-height:60px}
+.chat-head h1{font-size:var(--t-md);font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thread{flex:1;min-height:0;overflow:auto}
+.thread-in{max-width:760px;margin:0 auto;padding:var(--s6) var(--s5) var(--s5);display:grid;gap:var(--s6)}
+.dock{padding:var(--s3) var(--s5) var(--s4)}
+.dock-in{max-width:760px;margin:0 auto}
+.dock .hint{margin-top:6px;text-align:center;font-size:var(--t-xs)}
+.msg-me{justify-self:end;max-width:75%;background:var(--sunken);color:var(--ink);padding:12px 16px;border-radius:var(--r-xl) var(--r-xl) 6px var(--r-xl)}
+.msg-z{display:grid;grid-template-columns:28px minmax(0,1fr);gap:var(--s3)}
+.msg-z .logo{width:28px;height:28px}
+.msg-z .body{display:grid;gap:var(--s3);min-width:0}
+.msg-z .say{font:400 var(--t-read)/var(--lh-read) var(--f-read);color:var(--ink)}
+.tools{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:var(--t-sm);color:var(--muted)}
+.tools span{display:inline-flex;align-items:center;gap:6px}
+.tools .ic{color:var(--ok-ink)}
+.plan{padding:var(--s5)}
+.plan h2{font-size:var(--t-lg);margin-top:2px}
+.plan .ph{display:flex;gap:var(--s3);align-items:flex-start}
+.plan .ph .tile{width:36px;height:36px;border-radius:var(--r-md);display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-soft-ink);flex:none}
+.plan .kicker{font-size:var(--t-sm);color:var(--muted)}
+.plan ul{margin:var(--s4) 0;border:1px solid var(--line);border-radius:var(--r-md)}
+.plan li{display:grid;grid-template-columns:minmax(0,1fr) auto 96px;gap:4px var(--s4);padding:12px var(--s4);align-items:center}
+.plan li .meta{margin:0;order:2;justify-content:flex-end}
+.plan li .prio{order:3}
+.plan li+li{border-top:1px solid var(--line)}
+.plan li .t{font-weight:500}
+.plan .status{font-size:var(--t-sm);color:var(--ink-2);display:flex;align-items:center;gap:6px;margin-bottom:var(--s3)}
+.plan .row-actions{display:flex;gap:var(--s2);flex-wrap:wrap}
+.sugg{font-size:var(--t-xs);color:var(--muted)}
+.done-card{padding:var(--s3) var(--s4);display:grid;gap:2px}
+.done-card .ok{color:var(--ok-ink);display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:var(--t-sm)}
+.done-card p{font-size:var(--t-sm);color:var(--ink-2);margin-top:2px}
+
+/* ============ Tarefas ============ */
+.addrow{display:flex;gap:var(--s2);margin-bottom:var(--s3)}
+.addrow .with-ic{flex:1}
+.filters{display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap;margin:var(--s5) 0 0}
+.filters .with-ic{flex:1;min-width:220px}
+.filters select{width:220px}
+.tabs-row{display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap}
+.task{display:flex;gap:var(--s3);align-items:flex-start;padding:14px var(--s5)}
+.task+.task{border-top:1px solid var(--line)}
+.task .check{margin-top:1px}
+.task .grow{flex:1;min-width:0}
+.task .t{font-weight:500}
+.task .right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
+.table{width:100%;border-collapse:collapse;font-size:15px}
+.table th{font-size:var(--t-xs);font-weight:600;color:var(--muted);text-align:left;padding:10px var(--s4);border-bottom:1px solid var(--line);white-space:nowrap}
+.table td{padding:12px var(--s4);border-bottom:1px solid var(--line);vertical-align:middle}
+.table tr:last-child td{border-bottom:0}
+.table .t{font-weight:500}
+.table .first{display:flex;gap:var(--s3);align-items:center}
+
+/* ============ Notas ============ */
+.split{display:grid;grid-template-columns:320px minmax(0,1fr);min-height:0;height:100%}
+.split>.pane{min-height:0;overflow:auto}
+.split>.pane:first-child{border-right:1px solid var(--line);padding:var(--s5) var(--s4)}
+.pane-head{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s4)}
+.pane-head h1{font-size:var(--t-xl);flex:1}
+.notelist{margin-top:var(--s3);display:grid;gap:2px}
+.notelist a{display:block;padding:12px;border-radius:var(--r-md);text-decoration:none;color:var(--ink)}
+.notelist a:hover{background:var(--hover)}
+.notelist a[aria-current="true"]{background:var(--sunken)}
+.notelist .t{font-weight:600;display:flex;gap:var(--s2)}
+.notelist .t span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notelist .t time{font-weight:400;font-size:var(--t-xs);color:var(--muted);padding-top:2px}
+.notelist p{font-size:var(--t-sm);color:var(--muted);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.editor{max-width:720px;margin:0 auto;padding:var(--s6) var(--s6) var(--s8)}
+.editor-bar{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s5);flex-wrap:wrap}
+.editor-bar .saved{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-sm);color:var(--muted);margin-right:auto}
+.editor h2.title{font:var(--w-h) var(--t-3xl)/1.15 var(--f-read);margin-bottom:var(--s2)}
+.prose{font:400 var(--t-read)/var(--lh-read) var(--f-read);color:var(--ink);margin-top:var(--s5)}
+.prose h3{font:var(--w-strong) var(--t-lg)/1.3 var(--f-ui);margin:var(--s6) 0 var(--s2)}
+.prose p{margin:0 0 var(--s3)}
+.prose ul{display:grid;gap:6px;margin-bottom:var(--s3)}
+.prose li{display:flex;gap:10px;align-items:flex-start}
+.prose li .box{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line-strong);margin-top:5px;flex:none;display:grid;place-items:center}
+.prose li .box.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.prose li.on span{color:var(--muted);text-decoration:line-through}
+
+/* ============ Agenda ============ */
+.agenda-bar{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;margin-bottom:var(--s4)}
+.agenda-bar h2{font-size:var(--t-lg);margin-right:auto}
+.week{display:grid;grid-template-columns:56px repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--surface)}
+.week .dh{padding:10px 8px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);font-size:var(--t-sm);color:var(--muted);text-align:center}
+.week .dh b{display:block;font-size:var(--t-xl);font-weight:var(--w-h);color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.2}
+.week .dh.today b{color:var(--accent-ink)}
+.week .dh.today b span{display:inline-grid;place-items:center;min-width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--on-accent)}
+.week .corner{border-bottom:1px solid var(--line)}
+.week .allday{grid-column:1/-1;display:grid;grid-template-columns:56px repeat(7,minmax(0,1fr));border-bottom:1px solid var(--line);min-height:34px}
+.week .allday .lbl{font-size:12px;color:var(--muted);padding:9px 6px;text-align:right;white-space:nowrap}
+.week .hours{display:grid;grid-template-rows:repeat(13,44px)}
+.week .hours span{font-size:var(--t-xs);color:var(--muted);text-align:right;padding:0 8px;translate:0 -8px;font-variant-numeric:tabular-nums}
+.week .col{position:relative;border-left:1px solid var(--line);background-image:linear-gradient(var(--line) 1px,transparent 1px);background-size:100% 44px}
+.ev{position:absolute;left:4px;right:4px;border-radius:var(--r-sm);padding:4px 8px;font-size:var(--t-xs);line-height:1.3;overflow:hidden;background:var(--accent-soft);color:var(--accent-soft-ink);border-left:3px solid var(--cal-a)}
+.ev b{display:block;font-weight:600;font-size:var(--t-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev.b{background:var(--sunken);color:var(--ink-2);border-left-color:var(--cal-b)}
+.ev.ad{position:static;margin:4px;display:flex;align-items:center}
+.nowline{position:absolute;left:0;right:0;height:2px;background:var(--now)}
+.nowline::before{content:"";position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--now)}
+.legend{display:flex;gap:var(--s4);flex-wrap:wrap;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--s3)}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.legend i{width:10px;height:10px;border-radius:3px;background:var(--cal-a)}
+.legend i.b{background:var(--cal-b)}
+.daystrip{display:none}
+.daylist{display:none}
+
+/* ============ Automações ============ */
+.auto{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:var(--s4);align-items:center;padding:var(--s4) var(--s5)}
+.auto+.auto{border-top:1px solid var(--line)}
+.auto .tile{width:40px;height:40px;border-radius:var(--r-md);display:grid;place-items:center;background:var(--sunken);color:var(--ink-2)}
+.auto .t{font-weight:600}
+.auto .ctl{display:flex;align-items:center;gap:var(--s2)}
+.state{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-sm);font-weight:600}
+.state.on{color:var(--ok-ink)}
+.state.wait{color:var(--warn-ink)}
+.state.off{color:var(--muted)}
+.state i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.runs li{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:var(--s4);padding:12px var(--s5);align-items:center;font-size:15px}
+.runs li+li{border-top:1px solid var(--line)}
+.runs time{color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+/* ============ Memória ============ */
+.mem-add{display:grid;grid-template-columns:minmax(0,1fr) 180px auto;gap:var(--s2);align-items:end;padding:var(--s4) var(--s5)}
+.mem li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s2) var(--s4);padding:var(--s4) var(--s5);align-items:start}
+.mem li+li{border-top:1px solid var(--line)}
+.mem .fact{font:400 var(--t-read)/1.5 var(--f-read);color:var(--ink)}
+.mem .meta{margin-top:8px}
+.mem .acts{display:flex;gap:2px}
+
+/* ============ Configurações ============ */
+.settings{display:grid;grid-template-columns:200px minmax(0,1fr);gap:var(--s7);align-items:start}
+.settings nav ul{display:grid;gap:2px}
+.settings nav a{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border-radius:var(--r-md);text-decoration:none;color:var(--ink-2);font-weight:500}
+.settings nav a:hover{background:var(--hover);color:var(--ink)}
+.settings nav a[aria-current="page"]{background:var(--sunken);color:var(--ink)}
+.set-sec{padding:var(--s5)}
+.set-sec+.set-sec{margin-top:var(--s5)}
+.set-sec h2{font-size:var(--t-lg)}
+.set-sec>p{color:var(--muted);margin-top:4px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s4);margin-top:var(--s5)}
+.form-grid .wide{grid-column:1/-1}
+.set-row{display:flex;align-items:center;gap:var(--s4);padding:var(--s4) 0;border-top:1px solid var(--line)}
+.set-row:first-of-type{border-top:0}
+.set-row .grow{flex:1}
+.set-row .t{font-weight:600}
+.set-foot{display:flex;justify-content:flex-end;margin-top:var(--s5)}
+
+/* ============ Entrar ============ */
+#conteudo.login{min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);background:var(--bg)}
+[data-captura] #conteudo.login{height:100dvh;min-height:0}
+.login-art{display:flex;flex-direction:column;justify-content:space-between;padding:var(--s7);background:var(--side-bg);border-right:1px solid var(--side-line);color:var(--side-ink);min-height:0;overflow:hidden}
+.login-art .brand{font-size:22px}
+.login-art .logo{width:36px;height:36px}
+.login-form{display:grid;place-items:center;padding:var(--s7) var(--s5)}
+.login-card{width:100%;max-width:380px;display:grid;gap:var(--s4)}
+.login-card h1{font-size:var(--t-2xl)}
+.login-card .sub{color:var(--muted);margin-top:-8px}
+.turnstile{display:flex;align-items:center;gap:var(--s3);min-height:56px;padding:0 var(--s4);border:1px solid var(--line);border-radius:var(--r-md);background:var(--sunken);font-size:var(--t-sm);color:var(--ink-2)}
+.turnstile .ic{color:var(--ok-ink)}
+.login-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);font-size:var(--t-sm);color:var(--muted)}
+.pw{position:relative}
+.pw .iconbtn{position:absolute;right:2px;top:2px}
+.pw .input{padding-right:48px}
+.login-mob{display:none}
+.task .mob-meta{display:none}
+.only-mob{display:none}
+
+/* ============ variações por modelo ============ */
+/* Sinal: conversa primeiro, uma coluna, verde só onde a Zuri age */
+[data-model="sinal"] .hello h1{font-size:var(--t-3xl);line-height:1.15;letter-spacing:0}
+[data-model="sinal"] .hello p{font-size:var(--t-lg);color:var(--ink-2);margin-top:var(--s2);max-width:56ch}
+[data-model="sinal"] .hello{margin-bottom:var(--s5)}
+[data-model="sinal"] .composer-lg{border-radius:var(--r-xl);padding:12px 12px 12px 20px}
+[data-model="sinal"] .composer-lg textarea{min-height:52px;font-size:17px}
+[data-model="sinal"] .login-art{background:var(--tile);color:#d4d4d8;border-right:0}
+[data-model="sinal"][data-theme="escuro"] .login-art{background:#111113}
+[data-model="sinal"] .login-art .brand{color:#fafafa}
+[data-model="sinal"] .login-art .logo .t{fill:#27272a}
+[data-model="sinal"] .login-art .logo .m{fill:#fafafa}
+[data-model="sinal"] .art-head{font:600 40px/1.12 var(--f-ui);color:#fafafa;max-width:13ch;text-wrap:balance}
+[data-model="sinal"] .art-lead{font-size:var(--t-lg);color:#d4d4d8;margin-top:var(--s4);max-width:36ch}
+[data-model="sinal"] .art-points{display:grid;gap:var(--s3);margin-top:var(--s6);color:#e4e4e7}
+[data-model="sinal"] .art-points li{display:flex;gap:var(--s3);align-items:center}
+[data-model="sinal"] .art-points .ic{color:#4ade80}
+[data-model="sinal"] .art-foot{font-size:var(--t-sm);color:#a1a1aa;display:flex;align-items:center;gap:8px}
+
+/* Painel: menu escuro, painel lateral "Agora", tudo em tabela */
+[data-model="painel"] .page{max-width:1120px;padding:var(--s6) var(--s6) var(--s8)}
+[data-model="painel"] .pagehead h1{font-size:24px}
+[data-model="painel"] .side .searchbtn{border-color:#26334a}
+[data-model="painel"] kbd{border-color:#334155;color:#94a3b8}
+[data-model="painel"] .side .btn-primary{background:#22d3ee;color:#083344}
+[data-model="painel"] .side .btn-primary:hover{background:#67e8f9}
+[data-model="painel"] .nav .count.alert{background:#22d3ee;color:#083344}
+[data-model="painel"] .avatar{background:#1e293b;color:#e2e8f0}
+[data-model="painel"] .main .avatar{background:var(--sunken);color:var(--ink)}
+[data-model="painel"] .card{box-shadow:var(--shadow-sm)}
+.rail{border-left:1px solid var(--line);background:var(--surface);overflow:auto;padding:var(--s5)}
+.rail h2{font-size:var(--t-sm);font-weight:600;color:var(--muted);margin:0 0 var(--s3)}
+.rail section+section{margin-top:var(--s6)}
+.next-ev{border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--s4)}
+.next-ev .when{font-size:var(--t-sm);color:var(--accent-ink);font-weight:600}
+.next-ev .t{font-size:var(--t-lg);font-weight:600;margin-top:4px}
+.next-ev .meta{margin-top:var(--s2)}
+.rail .attn li{padding:var(--s3) 0}
+.rail .attn .tile{width:32px;height:32px}
+.rail .mini li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:var(--s2);padding:8px 0;font-size:15px}
+.rail .mini li+li{border-top:1px solid var(--line)}
+.rail .mini time{color:var(--ink-2);font-variant-numeric:tabular-nums}
+.cmdbar{display:flex;align-items:center;gap:var(--s2);border:1px solid var(--line-strong);border-radius:var(--r-lg);background:var(--surface);padding:6px 6px 6px 14px;box-shadow:var(--shadow-sm)}
+.cmdbar:focus-within{border-color:var(--focus);box-shadow:0 0 0 1px var(--focus)}
+.cmdbar>.ic{color:var(--accent-ink)}
+.cmdbar input{flex:1;border:0;background:transparent;outline:none;min-height:40px}
+.sched{position:relative;display:grid;grid-template-columns:52px minmax(0,1fr)}
+.sched .hrs{display:grid;grid-template-rows:repeat(14,40px)}
+.sched .hrs span{font-size:var(--t-xs);color:var(--muted);text-align:right;padding-right:10px;translate:0 -8px;font-variant-numeric:tabular-nums}
+.sched .lane{position:relative;background-image:linear-gradient(var(--line) 1px,transparent 1px);background-size:100% 40px;border-left:1px solid var(--line)}
+.sched .ev{left:8px;right:8px}
+.sched .tk{position:absolute;left:8px;right:8px;display:flex;align-items:center;gap:8px;font-size:var(--t-sm);color:var(--ink);height:24px;padding:0 8px;border:1px dashed var(--line-strong);border-radius:var(--r-sm);background:var(--surface)}
+.sched .tk .ic{color:var(--muted)}
+.sched .tk.hot .ic{color:var(--warn-ink)}
+.grid-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--s5);margin-top:var(--s5)}
+.panel{padding:var(--s4) var(--s5) var(--s5)}
+.panel-h{display:flex;align-items:baseline;gap:var(--s3);margin-bottom:var(--s4)}
+.panel-h h2{font-size:var(--t-md)}
+.panel-h .more{margin-left:auto}
+.convlist{border-right:1px solid var(--line);padding:var(--s4);overflow:auto;min-height:0}
+.convlist a{display:block;padding:10px 12px;border-radius:var(--r-md);text-decoration:none;color:var(--ink);font-size:15px}
+.convlist a[aria-current="page"]{background:var(--sunken);font-weight:600}
+.convlist a:hover{background:var(--hover)}
+.convlist .grouph{padding:var(--s4) 12px var(--s1)}
+[data-model="painel"] .chatwrap{display:grid;grid-template-columns:280px minmax(0,1fr);height:100%;min-height:0}
+[data-model="painel"] .msg-me{justify-self:stretch;max-width:none;border-radius:var(--r-md);background:var(--sunken);border-left:3px solid var(--line-strong)}
+[data-model="painel"] .who{font-size:var(--t-xs);font-weight:600;color:var(--muted);margin-bottom:4px;display:flex;gap:8px}
+[data-model="painel"] .login-art{background:#0f172a;color:#cbd5e1;border-right:0}
+[data-model="painel"] .login-art .brand{color:#fff}
+.peek{border:1px solid #26334a;border-radius:10px;background:#162032;padding:var(--s4);max-width:420px;color:#e2e8f0}
+.peek h2{font-size:var(--t-sm);color:#94a3b8;font-weight:600;margin-bottom:var(--s3)}
+.peek li{display:grid;grid-template-columns:52px 1fr;gap:var(--s2);padding:9px 0;border-top:1px solid #26334a;font-size:15px}
+.peek li:first-child{border-top:0}
+.peek time{color:#94a3b8;font-variant-numeric:tabular-nums}
+.peek .z{display:flex;gap:10px;align-items:flex-start;margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid #26334a;font-size:15px;color:#cbd5e1}
+.peek .z .logo{width:24px;height:24px}
+[data-model="painel"] .art-head{font:600 34px/1.15 var(--f-ui);color:#fff;max-width:16ch;margin-bottom:var(--s5)}
+[data-model="painel"] .art-foot{font-size:var(--t-sm);color:#94a3b8;display:flex;align-items:center;gap:8px}
+
+/* Caderno: texto da Zuri em serifa, sem caixas, a página é o caderno */
+[data-model="caderno"] .page{max-width:1000px}
+[data-model="caderno"] .pagehead h1,[data-model="caderno"] .pane-head h1{font-family:var(--f-read);font-weight:500}
+[data-model="caderno"] .pagehead h1{font-size:32px}
+[data-model="caderno"] .card{border-color:var(--line)}
+[data-model="caderno"] .letter{max-width:640px}
+[data-model="caderno"] .letter h1{font:500 40px/1.15 var(--f-read);margin-bottom:var(--s5)}
+[data-model="caderno"] .letter .say{font:400 20px/1.65 var(--f-read);color:var(--ink);display:grid;gap:var(--s4)}
+[data-model="caderno"] .letter .sign{display:flex;align-items:center;gap:10px;margin-top:var(--s5);font-size:var(--t-sm);color:var(--muted)}
+[data-model="caderno"] .letter .sign .logo{width:24px;height:24px}
+[data-model="caderno"] .reply{margin-top:var(--s6);max-width:640px}
+[data-model="caderno"] .cols{display:grid;grid-template-columns:1fr 1fr;gap:var(--s7);margin-top:var(--s7);padding-top:var(--s6);border-top:1px solid var(--line)}
+[data-model="caderno"] .cols h2{font:500 var(--t-xl)/1.2 var(--f-read);margin-bottom:var(--s3)}
+[data-model="caderno"] .msg-me{justify-self:stretch;max-width:none;background:transparent;border-radius:0;padding:0 0 0 var(--s4);border-left:2px solid var(--line-strong);color:var(--ink-2)}
+[data-model="caderno"] .msg-z{grid-template-columns:minmax(0,1fr)}
+[data-model="caderno"] .msg-z>.logo{display:none}
+[data-model="caderno"] .thread-in{max-width:700px}
+[data-model="caderno"] #conteudo.login{grid-template-columns:1fr}
+[data-model="caderno"] .login-art{display:none}
+[data-model="caderno"] .login-form{align-content:center}
+[data-model="caderno"] .login-card{max-width:400px}
+[data-model="caderno"] .login-card h1{font:500 34px/1.15 var(--f-read)}
+[data-model="caderno"] .login-card .brand{color:var(--ink);margin-bottom:var(--s5)}
+[data-model="caderno"] .login-card .quote{font:400 18px/1.6 var(--f-read);color:var(--ink-2);margin-top:-4px}
+[data-model="caderno"] .avatar{background:var(--sunken);color:var(--ink)}
+.who{display:none;gap:8px;font-size:var(--t-xs);font-weight:600;color:var(--muted);margin-bottom:4px;font-family:var(--f-ui)}
+[data-model="painel"] .who,[data-model="caderno"] .who,[data-model="caderno"] .msg-me .who{display:flex}
+
+/* ============ celular ============ */
+@media (max-width:820px){
+  .app,.app.has-rail{grid-template-columns:1fr}
+  .side,.rail{display:none}
+  .topbar{display:flex;align-items:center;gap:var(--s1);position:sticky;top:0;z-index:var(--z-sticky);background:var(--bg);border-bottom:1px solid var(--line);padding:calc(var(--s2) + env(safe-area-inset-top)) var(--s2) var(--s2);min-height:60px}
+  .topbar .brand{color:var(--ink);font-size:18px}
+  .page,[data-model="painel"] .page{padding:var(--s5) var(--s4) var(--s7)}
+  .pagehead{margin-bottom:var(--s5)}
+  .pagehead h1{font-size:var(--t-xl)}
+  [data-model="caderno"] .pagehead h1{font-size:26px}
+  .actions .btn{flex:1}
+  [data-model="sinal"] .hello h1{font-size:28px}
+  [data-model="sinal"] .hello p{font-size:var(--t-md)}
+  .attn li{padding:var(--s4);flex-wrap:wrap}
+  .attn li .btn{width:100%}
+  .day li{grid-template-columns:56px 14px minmax(0,1fr);}
+  .day.compact li{grid-template-columns:22px minmax(0,1fr) auto}
+  .day .side-note{grid-column:3;text-align:left;padding-top:0}
+  .grid-2,[data-model="caderno"] .cols{grid-template-columns:1fr;gap:var(--s5)}
+  [data-model="caderno"] .letter h1{font-size:30px}
+  [data-model="caderno"] .letter .say{font-size:18px}
+  .rows>li,.task,.auto,.mem li,.runs li{padding-left:var(--s4);padding-right:var(--s4)}
+  .task .right{display:none}
+  .task .mob-meta{display:inline-flex}
+  .only-mob{display:block}
+  .filters select{width:100%}
+  .addrow .btn span{display:none}
+  .table thead{display:none}
+  .table tr{display:grid;grid-template-columns:auto 1fr;padding:12px var(--s4);border-bottom:1px solid var(--line)}
+  .table td{border:0;padding:0}
+  .table td.c-prj,.table td.c-due,.table td.c-pri{grid-column:2;font-size:var(--t-sm);color:var(--muted);padding-top:2px}
+  .table td.c-first{grid-column:1/-1}
+  .split,[data-model="painel"] .chatwrap{grid-template-columns:1fr}
+  .split>.pane:last-child,.convlist{display:none}
+  .split>.pane:first-child{border-right:0;padding:var(--s4)}
+  .thread-in{padding:var(--s5) var(--s4)}
+  .dock{padding:var(--s2) var(--s3) calc(var(--s3) + env(safe-area-inset-bottom))}
+  .dock .hint{display:none}
+  .msg-me{max-width:88%}
+  .msg-z{grid-template-columns:minmax(0,1fr)}
+  .msg-z>.logo{display:none}
+  [data-model="sinal"] .msg-z .body::before{content:"Zuri";font-size:var(--t-xs);font-weight:600;color:var(--muted)}
+  .chat-head{padding:var(--s2) var(--s4)}
+  .plan{padding:var(--s4)}
+  .plan li{grid-template-columns:minmax(0,1fr) auto}
+  .plan li .meta{grid-column:1;justify-content:flex-start}
+  .plan li .prio{grid-row:1;grid-column:2}
+  .plan .row-actions .btn{flex:1}
+  .week,.legend{display:none}
+  .daystrip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--s4)}
+  .daystrip button{display:grid;gap:2px;justify-items:center;padding:8px 0;border:0;border-radius:var(--r-md);background:transparent;color:var(--muted);font-size:var(--t-xs);cursor:pointer}
+  .daystrip button b{font-size:var(--t-lg);color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .daystrip button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+  .daystrip button[aria-pressed="true"] b{color:var(--on-accent)}
+  .daylist{display:block}
+  .agenda-bar .seg{order:3;width:100%}
+  .auto{grid-template-columns:40px minmax(0,1fr)}
+  .auto .ctl{grid-column:1/-1;justify-content:flex-start}
+  .runs li{grid-template-columns:1fr;gap:2px}
+  .mem-add{grid-template-columns:1fr}
+  .mem li{grid-template-columns:1fr}
+  .mem .acts{justify-content:flex-start;margin-left:-10px}
+  .settings{grid-template-columns:1fr;gap:var(--s4)}
+  .settings nav ul{display:flex;overflow-x:auto;gap:4px}
+  .settings nav a{white-space:nowrap}
+  .form-grid{grid-template-columns:1fr}
+  .set-sec{padding:var(--s4)}
+  #conteudo.login{grid-template-columns:1fr}
+  .login-art{display:none}
+  .login-form{align-content:start;padding:var(--s7) var(--s5)}
+  .login-mob{display:flex;margin-bottom:var(--s4)}
+  .login-mob.brand{color:var(--ink)}
+  [data-model="caderno"] .login-card .brand{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:0s !important;animation-duration:0s !important}
+  .btn:hover,.btn:active,.sendbtn:active{transform:none}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+<aside class="proto" aria-label="Controles do protótipo"><fieldset class="picker"><legend class="sr">Escolher o que ver no protótipo</legend>
+  <label>Modelo
+    <select id="pm">
+      <option value="sinal">1. Sinal</option>
+      <option value="painel">2. Painel</option>
+      <option value="caderno">3. Caderno</option>
+    </select>
+  </label>
+  <label>Tela
+    <select id="ps">
+      <option value="entrar">Entrar</option><option value="inicio">Início</option><option value="conversa">Conversa</option>
+      <option value="tarefas">Tarefas</option><option value="notas">Notas</option><option value="agenda">Agenda</option>
+      <option value="automacoes">Automações</option><option value="memoria">Memória</option><option value="configuracoes">Configurações</option>
+    </select>
+  </label>
+  <label>Tema
+    <select id="pt"><option value="claro">Claro</option><option value="escuro">Escuro</option></select>
+  </label>
+</fieldset></aside>
+<div id="app"></div>
+<script>
+const I = {
+  'house': '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />',
+  'message-circle': '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" />',
+  'list-todo': '<path d="M13 5h8" /> <path d="M13 12h8" /> <path d="M13 19h8" /> <path d="m3 17 2 2 4-4" /> <rect x="3" y="4" width="6" height="6" rx="1" />',
+  'calendar-days': '<path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /> <path d="M8 13h.01" /> <path d="M12 13h.01" /> <path d="M16 13h.01" /> <path d="M8 17h.01" /> <path d="M12 17h.01" /> <path d="M16 17h.01" />',
+  'users': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <path d="M16 3.128a4 4 0 0 1 0 7.744" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <circle cx="9" cy="7" r="4" />',
+  'notebook-pen': '<path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" /> <path d="M2 6h4" /> <path d="M2 10h4" /> <path d="M2 14h4" /> <path d="M2 18h4" /> <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" />',
+  'brain': '<path d="M12 18V5" /> <path d="M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4" /> <path d="M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294" /> <path d="M17.996 5.125a4 4 0 012.526 5.77" /> <path d="M18 18a4 4 0 002-7.465" /> <path d="M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517" /> <path d="M6 18a4 4 0 01-2-7.465" /> <path d="M6.004 5.125a4 4 0 00-2.526 5.77" />',
+  'clock': '<circle cx="12" cy="12" r="10" /> <path d="M12 6v6l4 2" />',
+  'search': '<path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" />',
+  'plus': '<path d="M5 12h14" /> <path d="M12 5v14" />',
+  'square-pen': '<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /> <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />',
+  'bell': '<path d="M10.268 21a2 2 0 0 0 3.464 0" /> <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" />',
+  'settings': '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /> <circle cx="12" cy="12" r="3" />',
+  'chevron-right': '<path d="m9 18 6-6-6-6" />',
+  'chevron-left': '<path d="m15 18-6-6 6-6" />',
+  'chevron-down': '<path d="m6 9 6 6 6-6" />',
+  'mic': '<path d="M12 19v3" /> <path d="M19 10v2a7 7 0 0 1-14 0v-2" /> <rect x="9" y="2" width="6" height="13" rx="3" />',
+  'arrow-up': '<path d="m5 12 7-7 7 7" /> <path d="M12 19V5" />',
+  'check': '<path d="M20 6 9 17l-5-5" />',
+  'circle': '<circle cx="12" cy="12" r="10" />',
+  'circle-dot': '<circle cx="12" cy="12" r="1" /> <circle cx="12" cy="12" r="10" />',
+  'flag': '<path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528" />',
+  'folder': '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />',
+  'trash-2': '<path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />',
+  'ellipsis': '<circle cx="12" cy="12" r="1" /> <circle cx="19" cy="12" r="1" /> <circle cx="5" cy="12" r="1" />',
+  'play': '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />',
+  'pause': '<rect x="14" y="3" width="5" height="18" rx="1" /> <rect x="5" y="3" width="5" height="18" rx="1" />',
+  'sparkles': '<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /> <path d="M20 2v4" /> <path d="M22 4h-4" /> <circle cx="4" cy="20" r="2" />',
+  'shield-check': '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" />',
+  'key-round': '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" /> <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />',
+  'lock': '<rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 10 0v4" />',
+  'mail': '<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7" /> <rect x="2" y="4" width="20" height="16" rx="2" />',
+  'eye': '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /> <circle cx="12" cy="12" r="3" />',
+  'sun': '<circle cx="12" cy="12" r="4" /> <path d="M12 2v2" /> <path d="M12 20v2" /> <path d="m4.93 4.93 1.41 1.41" /> <path d="m17.66 17.66 1.41 1.41" /> <path d="M2 12h2" /> <path d="M20 12h2" /> <path d="m6.34 17.66-1.41 1.41" /> <path d="m19.07 4.93-1.41 1.41" />',
+  'moon': '<path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />',
+  'monitor': '<rect width="20" height="14" x="2" y="3" rx="2" /> <line x1="8" x2="16" y1="21" y2="21" /> <line x1="12" x2="12" y1="17" y2="21" />',
+  'x': '<path d="M18 6 6 18" /> <path d="m6 6 12 12" />',
+  'menu': '<path d="M4 5h16" /> <path d="M4 12h16" /> <path d="M4 19h16" />',
+  'panel-left': '<rect width="18" height="18" x="3" y="3" rx="2" /> <path d="M9 3v18" />',
+  'refresh-cw': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" />',
+  'pencil': '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" />',
+  'history': '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /> <path d="M12 7v5l4 2" />',
+  'circle-help': '<circle cx="12" cy="12" r="10" /> <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /> <path d="M12 17h.01" />',
+  'archive': '<rect width="20" height="5" x="2" y="3" rx="1" /> <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" /> <path d="M10 12h4" />',
+  'calendar-plus': '<path d="M16 18h6" /> <path d="M16 2v3" /> <path d="M19 15v6" /> <path d="M21 11.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h8.3" /> <path d="M3 9h18" /> <path d="M8 2v3" />',
+  'triangle-alert': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" />',
+  'list-checks': '<path d="M13 5h8" /> <path d="M13 12h8" /> <path d="M13 19h8" /> <path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" />',
+  'bot': '<path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" />',
+  'plug': '<path d="M12 22v-5" /> <path d="M15 8V2" /> <path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z" /> <path d="M9 8V2" />',
+  'database': '<ellipse cx="12" cy="5" rx="9" ry="3" /> <path d="M3 5V19A9 3 0 0 0 21 19V5" /> <path d="M3 12A9 3 0 0 0 21 12" />',
+  'user': '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" />',
+  'log-out': '<path d="m16 17 5-5-5-5" /> <path d="M21 12H9" /> <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />',
+  'repeat': '<path d="m17 2 4 4-4 4" /> <path d="M3 11v-1a4 4 0 0 1 4-4h14" /> <path d="m7 22-4-4 4-4" /> <path d="M21 13v1a4 4 0 0 1-4 4H3" />',
+  'file-text': '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M10 9H8" /> <path d="M16 13H8" /> <path d="M16 17H8" />',
+  'map-pin': '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" />',
+  'video': '<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" /> <rect x="2" y="6" width="14" height="12" rx="2" />',
+  'clipboard-list': '<rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /> <path d="M12 11h4" /> <path d="M12 16h4" /> <path d="M8 11h.01" /> <path d="M8 16h.01" />',
+  'send-horizontal': '<path d="M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z" /> <path d="M6 12h16" />',
+  'sunrise': '<path d="M12 2v8" /> <path d="m4.93 10.93 1.41 1.41" /> <path d="M2 18h2" /> <path d="M20 18h2" /> <path d="m19.07 10.93-1.41 1.41" /> <path d="M22 22H2" /> <path d="m8 6 4-4 4 4" /> <path d="M16 18a4 4 0 0 0-8 0" />',
+  'inbox': '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /> <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />',
+  'at-sign': '<circle cx="12" cy="12" r="4" /> <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" />',
+  'globe': '<circle cx="12" cy="12" r="10" /> <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /> <path d="M2 12h20" />',
+  'smartphone': '<rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" />',
+  'message-square-text': '<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" /> <path d="M7 11h10" /> <path d="M7 15h6" /> <path d="M7 7h8" />'
+};
+
+const ic = (n, c = "") => `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+const logo = (c = "") => `<svg class="logo ${c}" viewBox="0 0 64 64" aria-hidden="true"><rect class="t" width="64" height="64" rx="16"/><g class="s"><circle cx="32" cy="19" r="12" opacity=".25"/><circle cx="32" cy="19" r="7"/></g><rect class="m" x="27" y="31" width="10" height="21" rx="5"/></svg>`;
+
+// Only known values reach the markup: anything else in the URL falls back to the default.
+const pick = (v, allowed) => (allowed.includes(v) ? v : allowed[0]);
+const MODELS = ["sinal", "painel", "caderno"];
+const SCREENS = ["inicio", "entrar", "conversa", "tarefas", "notas", "agenda", "automacoes", "memoria", "configuracoes"];
+const THEMES = ["claro", "escuro"];
+const params = new URLSearchParams(location.search);
+const st = { m: pick(params.get("m"), MODELS), s: pick(params.get("s"), SCREENS), t: pick(params.get("t"), THEMES) };
+if (params.get("captura")) document.documentElement.dataset.captura = "1";
+const href = (s) => `?m=${st.m}&s=${s}&t=${st.t}`;
+const is = (m) => st.m === m;
+
+/* ---------- dados de exemplo (a dona é a "Ana"; nada real) ---------- */
+const NAV = [
+  ["inicio", "house", "Início"], ["conversa", "message-circle", "Conversa"], ["tarefas", "list-todo", "Tarefas", "4", "para hoje"],
+  ["agenda", "calendar-days", "Agenda"], ["contatos", "users", "Contatos"], ["notas", "notebook-pen", "Notas"],
+  ["memoria", "brain", "Memória"], ["automacoes", "clock", "Automações", "1", "esperando aprovação", true]
+];
+const RECENT = ["Organizar a mudança", "O que tenho amanhã?", "Presente da Bia", "Resumo da semana", "Contas de novembro"];
+const DAY = [
+  { when: "Ontem", kind: "late", t: "Enviar documentos para a imobiliária", note: "Atrasada", sub: "Mudança de apartamento" },
+  { when: "07:30", kind: "auto", t: "Resumo da manhã", note: "Enviado no Telegram", past: true },
+  { when: "09:00", kind: "a", t: "Vistoria do apartamento novo", note: "até 10:00", sub: "Água Verde" },
+  { when: "12:30", kind: "a", t: "Almoço com a Bia", note: "até 13:30" },
+  { when: "15:00", kind: "task", t: "Ligar para a transportadora", sub: "Mudança de apartamento" },
+  { when: "18:00", kind: "task", t: "Pagar a conta de luz", note: "Alta", hot: true },
+  { when: "19:00", kind: "b", t: "Aula de fotografia", note: "até 20:30", sub: "Agenda do curso" },
+  { when: "21:00", kind: "auto", t: "Lembrete do remédio" }
+];
+const NEXT = [["Amanhã", "Reunião com a transportadora", "14:00"], ["Quarta", "Encaixotar livros e louças", "Tarefa"], ["Sexta", "Aniversário da Bia em 3 semanas", "Lembrete"]];
+const ATTN = [
+  ["clipboard-list", "Plano “Organizar a mudança”", "4 tarefas esperando a sua revisão. Nada foi criado ainda.", "Revisar plano", "conversa"],
+  ["repeat", "Rotina “Revisão da semana”", "Usa IA todo domingo às 18:00. Só começa depois que você aprovar.", "Revisar rotina", "automacoes"]
+];
+
+/* ---------- moldura ---------- */
+function side() {
+  const nav = NAV.map(([s, i, l, n, why, alert]) => {
+    const cur = s === st.s ? ' aria-current="page"' : "";
+    const count = n ? `<span class="count${alert ? " alert" : ""}">${n}<span class="sr"> ${why}</span></span>` : "";
+    const target = SCREENS.includes(s) ? href(s) : "#";
+    return `<li><a href="${target}"${cur}>${ic(i)}<span>${l}</span>${count}</a></li>`;
+  }).join("");
+  return `<aside class="side" aria-label="Menu da Zuri">
+    <div class="side-head">
+      <a class="brand" href="${href("inicio")}">${logo()}<span>Zuri</span></a>
+      <button class="iconbtn" type="button" aria-label="Avisos: 2 novos">${ic("bell")}<span class="badge" aria-hidden="true">2</span></button>
+      <button class="iconbtn" type="button" aria-label="Recolher o menu">${ic("panel-left")}</button>
+    </div>
+    <a class="btn btn-primary btn-block side-new" href="${href("conversa")}">${ic("square-pen")}Nova conversa</a>
+    <button class="searchbtn" type="button">${ic("search", "ic-sm")}<span>Buscar</span><kbd>Ctrl K</kbd></button>
+    <nav aria-label="Seções"><ul class="nav">${nav}</ul></nav>
+    <h2 class="side-h">Recentes</h2>
+    <ul class="recent">${RECENT.map((r) => `<li><a href="${href("conversa")}">${r}</a></li>`).join("")}</ul>
+    <button class="account" type="button" aria-label="Conta de Ana: configurações e tema"><span class="avatar" aria-hidden="true">A</span><span><b>Ana</b><small>Configurações e tema</small></span></button>
+  </aside>`;
+}
+function topbar() {
+  return `<header class="topbar">
+    <button class="iconbtn" type="button" aria-label="Abrir o menu">${ic("menu")}</button>
+    <a class="brand" href="${href("inicio")}">${logo()}<span>Zuri</span></a>
+    <button class="iconbtn" type="button" aria-label="Avisos: 2 novos">${ic("bell")}<span class="badge" aria-hidden="true">2</span></button>
+    <a class="iconbtn" href="${href("conversa")}" aria-label="Nova conversa">${ic("square-pen")}</a>
+  </header>`;
+}
+function rail() {
+  return `<aside class="rail" aria-label="Agora">
+    <section aria-labelledby="r1"><h2 id="r1">Próximo compromisso</h2>
+      <div class="next-ev"><p class="when">Em 48 minutos</p><p class="t">Vistoria do apartamento novo</p>
+        <p class="meta"><span>${ic("clock", "ic-sm")}<span class="num">09:00 até 10:00</span></span><span>${ic("map-pin", "ic-sm")}Água Verde</span></p></div>
+    </section>
+    <section aria-labelledby="r2"><h2 id="r2">Precisa de você</h2>
+      <ul class="attn">${ATTN.map(([i, t, , b, s]) => `<li><span class="tile">${ic(i, "ic-sm")}</span><span class="txt"><a class="rowlink t" href="${href(s)}">${t}</a></span></li>`).join("")}</ul>
+    </section>
+    <section aria-labelledby="r3"><h2 id="r3">Automações de hoje</h2>
+      <ul class="mini"><li><time>07:30</time><span>Resumo da manhã, enviado</span></li><li><time>21:00</time><span>Lembrete do remédio</span></li></ul>
+    </section>
+  </aside>`;
+}
+
+/* ---------- peças ---------- */
+const composer = (id, ph, big = false) => `<form class="composer${big ? " composer-lg" : ""}" aria-label="Escrever para a Zuri" onsubmit="return false">
+  <label class="sr" for="${id}">Escreva para a Zuri</label>
+  <textarea id="${id}" rows="${big ? 2 : 1}" placeholder="${ph}"></textarea>
+  <button class="iconbtn" type="button" aria-label="Falar em vez de escrever">${ic("mic")}</button>
+  <button class="sendbtn" type="submit" aria-label="Enviar para a Zuri">${ic("arrow-up")}</button>
+</form>`;
+const chips = () => `<ul class="chips" aria-label="Ideias para começar">${["Organizar a semana", "O que tenho amanhã?", "Me lembre de pagar a luz"].map((c) => `<li><button class="chip" type="button">${c}</button></li>`).join("")}</ul>`;
+function dayRow(d) {
+  let k;
+  if (d.kind === "a" || d.kind === "b") k = `<span class="kind"><i class="${d.kind}"></i></span>`;
+  else if (d.kind === "auto") k = `<span class="kind">${ic("clock")}</span>`;
+  else k = `<span class="kind"><button class="check" type="button" role="checkbox" aria-checked="false" aria-label="Concluir “${d.t}”"></button></span>`;
+  let note = "";
+  if (d.kind === "late") note = `<span class="late">${ic("triangle-alert", "ic-sm")}Atrasada</span>`;
+  else if (d.hot) note = `<span class="prio hot">${ic("flag", "ic-sm")}${d.note}</span>`;
+  else if (d.note) note = d.note;
+  const type = { a: "Evento", b: "Evento", auto: "Automação", task: "Tarefa", late: "Tarefa" }[d.kind];
+  return `<li class="${d.past ? "past" : ""}"><span class="when">${d.when}</span>${k}
+    <span><span class="t">${d.t}</span><span class="sr">, ${type}</span>${d.sub ? `<span class="meta"><span>${d.sub}</span></span>` : ""}</span>
+    <span class="side-note">${note}</span></li>`;
+}
+function compactRow(d) {
+  const late = d.kind === "late";
+  const note = late ? `<span class="late">${ic("triangle-alert", "ic-sm")}Atrasada</span>` : d.hot ? `<span class="prio hot">${ic("flag", "ic-sm")}Alta</span>` : "";
+  const sub = [late ? "Ontem" : d.when, d.sub].filter(Boolean).join(", ");
+  return `<li><span class="kind"><button class="check" type="button" role="checkbox" aria-checked="false" aria-label="Concluir “${d.t}”"></button></span><span><span class="t">${d.t}</span>${sub ? `<span class="meta"><span class="num">${sub}</span></span>` : ""}</span><span class="side-note">${note}</span></li>`;
+}
+const attnList = () => `<ul class="card attn">${ATTN.map(([i, t, d, b, s]) => `<li><span class="tile">${ic(i)}</span><span class="txt"><span class="t">${t}</span><p class="d">${d}</p></span><a class="btn btn-secondary btn-sm" href="${href(s)}">${b}</a></li>`).join("")}</ul>`;
+
+/* ---------- Início ---------- */
+function inicio() {
+  if (is("painel")) return inicioPainel();
+  if (is("caderno")) return inicioCaderno();
+  return `<div class="page page-narrow">
+    <header class="hello"><h1>Bom dia, Ana</h1>
+      <p>Quatro tarefas hoje, uma delas atrasada. A vistoria do apartamento novo é às 9h.</p></header>
+    ${composer("ask", "Peça uma tarefa, um lembrete ou uma resposta", true)}
+    ${chips()}
+    <section class="block" aria-labelledby="h-att"><div class="block-head"><h2 id="h-att">Precisa de você</h2><span class="n">2</span></div>${attnList()}</section>
+    <section class="block" aria-labelledby="h-day"><div class="block-head"><h2 id="h-day">Seu dia</h2><span class="n">segunda, 9 de novembro</span><a class="more" href="${href("agenda")}">Abrir agenda</a></div>
+      <ul class="day">${DAY.map(dayRow).join("")}</ul></section>
+    <section class="block" aria-labelledby="h-next"><div class="block-head"><h2 id="h-next">Próximos dias</h2><a class="more" href="${href("tarefas")}">Ver tarefas</a></div>
+      <ul class="day">${NEXT.map(([w, t, n]) => `<li><span class="when">${w}</span><span class="kind"></span><span class="t">${t}</span><span class="side-note">${n}</span></li>`).join("")}</ul></section>
+  </div>`;
+}
+function inicioPainel() {
+  const H = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+  const y = (h, m = 0) => (h - 8) * 40 + (m / 60) * 40;
+  const ev = (h, m, dur, t, sub, c = "") => `<div class="ev ${c}" style="top:${y(h, m) + 1}px;height:${dur * 40 - 3}px"><b>${t}</b>${sub}</div>`;
+  const tk = (h, m, t, hot) => `<div class="tk${hot ? " hot" : ""}" style="top:${y(h, m) - 12}px">${ic(hot ? "flag" : "circle", "ic-sm")}<span>${t}</span></div>`;
+  return `<div class="page">
+    <header class="pagehead"><div><h1>Bom dia, Ana</h1><p>Segunda-feira, 9 de novembro. Quatro tarefas e três compromissos hoje.</p></div></header>
+    <form class="cmdbar" aria-label="Pedir algo à Zuri" onsubmit="return false">${ic("sparkles")}<label class="sr" for="cmd">Peça algo à Zuri</label><input id="cmd" placeholder="Peça algo à Zuri"><button class="iconbtn" type="button" aria-label="Falar em vez de escrever">${ic("mic")}</button><button class="sendbtn" type="submit" aria-label="Enviar para a Zuri">${ic("arrow-up")}</button></form>
+    <section class="block only-mob" aria-labelledby="h-att2"><div class="block-head"><h2 id="h-att2">Precisa de você</h2><span class="n">2</span></div>${attnList()}</section>
+    <div class="grid-2">
+      <section class="card panel" aria-labelledby="h-sch"><div class="panel-h"><h2 id="h-sch">Agenda de hoje</h2><a class="more" href="${href("agenda")}">Abrir agenda</a></div>
+        <div class="sched"><div class="hrs" aria-hidden="true">${H.map((h) => `<span>${String(h).padStart(2, "0")}:00</span>`).join("")}</div>
+          <div class="lane" role="list" aria-label="Compromissos e tarefas de hoje">
+            <div role="listitem">${ev(9, 0, 1, "Vistoria do apartamento novo", "09:00 até 10:00, Água Verde")}</div>
+            <div role="listitem">${ev(12, 30, 1, "Almoço com a Bia", "12:30 até 13:30")}</div>
+            <div role="listitem">${tk(15, 0, "15:00 Ligar para a transportadora")}</div>
+            <div role="listitem">${tk(18, 0, "18:00 Pagar a conta de luz, prioridade alta", true)}</div>
+            <div role="listitem">${ev(19, 0, 1.5, "Aula de fotografia", "19:00 até 20:30", "b")}</div>
+            <div class="nowline" style="top:${y(8, 12)}px" aria-hidden="true"></div>
+          </div></div>
+      </section>
+      <div style="display:grid;gap:var(--s5);align-content:start">
+        <section class="card panel" aria-labelledby="h-tk"><div class="panel-h"><h2 id="h-tk">Tarefas de hoje</h2><span class="n num" style="color:var(--muted);font-size:14px">4</span><a class="more" href="${href("tarefas")}">Ver todas</a></div>
+          <ul class="day compact">${[...DAY.filter((d) => d.kind === "task" || d.kind === "late"), { when: "", kind: "task", t: "Separar livros para doação", sub: "Em andamento" }].map((d) => compactRow(d)).join("")}</ul></section>
+        <section class="card panel" aria-labelledby="h-nx"><div class="panel-h"><h2 id="h-nx">Próximos dias</h2></div>
+          <ul class="day compact">${NEXT.map(([w, t, n]) => `<li><span class="kind"><i></i></span><span><span class="t">${t}</span><span class="meta"><span>${w}</span></span></span><span class="side-note">${n}</span></li>`).join("")}</ul></section>
+      </div>
+    </div>
+  </div>`;
+}
+function inicioCaderno() {
+  const tasks = [["Enviar documentos para a imobiliária", "late"], ["Ligar para a transportadora", "15:00"], ["Pagar a conta de luz", "18:00"], ["Separar livros para doação", ""]];
+  return `<div class="page">
+    <article class="letter" aria-labelledby="h-l"><h1 id="h-l">Segunda-feira, 9 de novembro</h1>
+      <div class="say">
+        <p>Bom dia, Ana. Hoje são quatro tarefas e três compromissos.</p>
+        <p>A vistoria do apartamento novo é às 9h, no Água Verde. A lista do que levar está na nota <a href="${href("notas")}">Vistoria</a>. Os documentos para a imobiliária eram para ontem e continuam abertos.</p>
+        <p>Também montei um plano com quatro tarefas para a mudança. Nada foi criado ainda: <a href="${href("conversa")}">revise o plano</a> quando puder.</p>
+      </div>
+      <p class="sign">${logo()}Zuri, às 07:30</p>
+    </article>
+    <div class="reply">${composer("ask", "Responder à Zuri")}</div>
+    <div class="cols">
+      <section aria-labelledby="h-t"><h2 id="h-t">Tarefas de hoje</h2>
+        <ul class="day">${tasks.map(([t, w]) => `<li><span class="when">${w === "late" ? "Ontem" : w}</span><span class="kind"><button class="check" type="button" role="checkbox" aria-checked="false" aria-label="Concluir “${t}”"></button></span><span class="t">${t}</span><span class="side-note">${w === "late" ? `<span class="late">${ic("triangle-alert", "ic-sm")}Atrasada</span>` : ""}</span></li>`).join("")}</ul>
+        <p style="margin-top:12px"><a class="more" href="${href("tarefas")}">Todas as tarefas</a></p></section>
+      <section aria-labelledby="h-a"><h2 id="h-a">Na agenda</h2>
+        <ul class="day">${DAY.filter((d) => d.kind === "a" || d.kind === "b").map(dayRow).join("")}</ul>
+        <p style="margin-top:12px"><a class="more" href="${href("agenda")}">Abrir a agenda</a></p></section>
+    </div>
+  </div>`;
+}
+
+/* ---------- Conversa ---------- */
+function conversa() {
+  const plan = [
+    ["Fechar o orçamento da transportadora", "Urgente", "13/11", true, false],
+    ["Encaixotar livros e louças", "Alta", "16/11", true, true],
+    ["Transferir a conta de luz", "Média", "18/11", false, true],
+    ["Avisar a portaria do prédio novo", "Baixa", "Sem prazo", false, false]
+  ];
+  const who = (n, t) => `<p class="who"><span>${n}</span><span class="num">${t}</span></p>`;
+  const z = (inner) => `<div class="msg-z">${logo()}<div class="body">${who("Zuri", "08:14")}${inner}</div></div>`;
+  const thread = `<div class="thread" tabindex="0" aria-label="Mensagens da conversa"><div class="thread-in">
+      <div class="msg-me">${who("Você", "08:12")}Pode apagar a nota “Rascunho da mudança”? Ficou velha.</div>
+      ${z(`<div class="card done-card"><span class="ok">${ic("check", "ic-sm")}Aprovado e feito</span><div><p>Apagar a nota “Rascunho da mudança”. Ela fica 30 dias na lixeira.</p></div></div>
+        <p class="say">Pronto, apaguei. Se precisar dela de volta, está na lixeira até 9 de dezembro.</p>`)}
+      <div class="msg-me">${who("Você", "08:13")}Agora me ajuda a organizar a mudança? As chaves saem no dia 20.</div>
+      ${z(`<p class="tools"><span>${ic("check", "ic-sm")}Consultou as tarefas</span><span>${ic("check", "ic-sm")}Consultou a agenda</span></p>
+        <p class="say">Montei um plano com quatro tarefas no projeto Mudança de apartamento, contando para trás a partir do dia 20. Ajuste o que quiser e confirme; nada é criado antes disso.</p>
+        <section class="card plan" aria-labelledby="h-plan"><div class="ph"><span class="tile">${ic("clipboard-list")}</span><div><p class="kicker">Plano proposto, no projeto Mudança de apartamento</p><h2 id="h-plan">Organizar a mudança</h2></div></div>
+          <ul>${plan.map(([t, p, d, hot, s]) => `<li><span class="t">${t}</span><span class="prio${hot ? " hot" : ""}">${ic("flag", "ic-sm")}${p}</span><span class="meta"><span>${ic("calendar-days", "ic-sm")}<span class="num">${d}</span>${s ? ' <span class="sugg">(sugerido)</span>' : ""}</span></span></li>`).join("")}</ul>
+          <p class="status">${ic("circle-help", "ic-sm")}Nada foi criado ainda. Revise e confirme.</p>
+          <div class="row-actions"><button class="btn btn-primary" type="button">${ic("check")}Criar 4 tarefas</button><button class="btn btn-secondary" type="button">${ic("pencil", "ic-sm")}Editar</button><button class="btn btn-quiet" type="button">Descartar</button></div>
+        </section>`)}
+    </div></div>`;
+  const dock = `<div class="dock"><div class="dock-in">${composer("msg", "Escreva uma mensagem")}<p class="hint">Enter envia. Shift + Enter quebra a linha.</p></div></div>`;
+  const head = `<header class="chat-head"><h1>Organizar a mudança</h1><button class="iconbtn" type="button" aria-label="Opções da conversa">${ic("ellipsis")}</button></header>`;
+  if (is("painel")) {
+    const list = `<nav class="convlist" aria-label="Conversas"><form onsubmit="return false" class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="cs">Buscar conversas</label><input id="cs" class="input" placeholder="Buscar conversas"></form>
+      <p class="grouph">Hoje</p><a href="${href("conversa")}" aria-current="page">Organizar a mudança</a><a href="${href("conversa")}">O que tenho amanhã?</a>
+      <p class="grouph">Esta semana</p><a href="${href("conversa")}">Presente da Bia</a><a href="${href("conversa")}">Resumo da semana</a><a href="${href("conversa")}">Contas de novembro</a></nav>`;
+    return `<div class="chatwrap fill">${list}<div class="chat">${head}${thread}${dock}</div></div>`;
+  }
+  return `<div class="chat fill">${head}${thread}${dock}</div>`;
+}
+
+/* ---------- Tarefas ---------- */
+const TASKS = {
+  late: [["Enviar documentos para a imobiliária", "Mudança de apartamento", "Ontem, 18:00", "Urgente", true]],
+  today: [
+    ["Ligar para a transportadora", "Mudança de apartamento", "Hoje, 15:00", "Média", false],
+    ["Pagar a conta de luz", "Casa", "Hoje, 18:00", "Alta", true],
+    ["Separar livros para doação", "Mudança de apartamento", "Hoje", "Baixa", false, "Em andamento"]
+  ]
+};
+function tarefas() {
+  const tabs = [["Hoje", "4", true], ["Próximas", "6"], ["Atrasadas", "1"], ["Concluídas", ""], ["Todas", ""]];
+  const head = `<header class="pagehead"><div><h1>Tarefas</h1><p>O que vence hoje, o que vem depois e o que já foi feito.</p></div>
+    <div class="actions"><button class="btn btn-secondary btn-sm" type="button">${ic("folder", "ic-sm")}Projetos</button><button class="btn btn-quiet btn-sm" type="button">${ic("trash-2", "ic-sm")}Lixeira</button></div></header>`;
+  const add = `<form class="addrow" onsubmit="return false"><div class="with-ic">${ic("plus", "ic-sm")}<label class="sr" for="nt">Adicionar tarefa para hoje</label><input id="nt" class="input" placeholder="Adicionar tarefa para hoje"></div><button class="btn btn-primary" type="submit" aria-label="Adicionar tarefa">${ic("plus", "ic-sm")}<span>Adicionar</span></button></form>`;
+  const seg = `<div class="seg" role="group" aria-label="Mostrar">${tabs.map(([l, n, on]) => `<button type="button" aria-pressed="${on ? "true" : "false"}">${l}${n ? ` <span class="n">${n}</span>` : ""}</button>`).join("")}</div>`;
+  const filters = `<div class="filters"><div class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ts">Buscar tarefas</label><input id="ts" class="input" placeholder="Buscar tarefas"></div><label class="sr" for="tp">Filtrar por projeto</label><select id="tp" class="input"><option>Todos os projetos</option><option>Mudança de apartamento</option><option>Casa</option></select></div>`;
+  const chk = (t) => `<button class="check" type="button" role="checkbox" aria-checked="false" aria-label="Concluir “${t}”"></button>`;
+  const prio = (p, hot) => `<span class="prio${hot ? " hot" : ""}">${ic("flag", "ic-sm")}${p}</span>`;
+  const due = (d, late) => (late ? `<span class="late">${ic("triangle-alert", "ic-sm")}${d}</span>` : `<span class="num">${d}</span>`);
+  if (is("painel")) {
+    const rows = (list, late) => list.map(([t, pj, d, p, hot, stt]) => `<tr><td class="c-first"><span class="first">${chk(t)}<span><span class="t">${t}</span>${stt ? `<span class="meta"><span>${stt}</span></span>` : ""}</span></span></td><td class="c-prj">${pj}</td><td class="c-due">${due(d, late)}</td><td class="c-pri">${prio(p, hot)}</td></tr>`).join("");
+    return `<div class="page">${head}${add}<div class="tabs-row">${seg}</div>${filters}
+      <div class="card" style="margin-top:var(--s4);overflow:hidden"><table class="table"><caption class="sr">Tarefas de hoje e atrasadas</caption>
+        <thead><tr><th scope="col">Tarefa</th><th scope="col">Projeto</th><th scope="col">Prazo</th><th scope="col">Prioridade</th></tr></thead>
+        <tbody>${rows(TASKS.late, true)}${rows(TASKS.today, false)}</tbody></table></div></div>`;
+  }
+  const item = ([t, pj, d, p, hot, stt], late) => `<li class="task">${chk(t)}<div class="grow"><span class="t">${t}</span>
+      <span class="meta"><span>${ic("folder", "ic-sm")}${pj}</span>${stt ? `<span>${ic("circle-dot", "ic-sm")}${stt}</span>` : ""}<span class="mob-meta">${due(d, late)}</span><span class="mob-meta">${prio(p, hot)}</span></span></div>
+      <div class="right">${due(d, late)}${prio(p, hot)}</div></li>`;
+  return `<div class="page">${head}${add}<div class="tabs-row">${seg}</div>${filters}
+    <h2 class="grouph">Atrasadas <span class="n">1</span></h2><ul class="card">${TASKS.late.map((x) => item(x, true)).join("")}</ul>
+    <h2 class="grouph">Hoje <span class="n">3</span></h2><ul class="card">${TASKS.today.map((x) => item(x, false)).join("")}</ul></div>`;
+}
+
+/* ---------- Notas ---------- */
+function notas() {
+  const N = [
+    ["Vistoria", "08:02", "Levar documentos, trena e o celular carregado. Chegar 10 minutos antes.", true],
+    ["Lista da mudança", "ontem", "Caixas, fita, plástico bolha. Pedir orçamento a três transportadoras."],
+    ["Ideias de presente para a Bia", "sex", "Livro de receitas, aula de cerâmica, a caneca que ela viu na feira."],
+    ["Curso de fotografia", "03/11", "Regra dos terços, abertura e profundidade de campo. Treinar no parque."],
+    ["Contas fixas", "01/11", "Luz vence dia 9, condomínio dia 10, internet dia 15."]
+  ];
+  return `<div class="split fill">
+    <div class="pane"><div class="pane-head"><h1>Notas</h1><button class="btn btn-primary btn-sm" type="button">${ic("plus", "ic-sm")}Nova nota</button></div>
+      <form onsubmit="return false" class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ns">Buscar notas</label><input id="ns" class="input" placeholder="Buscar notas"></form>
+      <nav aria-label="Suas notas"><ul class="notelist">${N.map(([t, d, p, on]) => `<li><a href="${href("notas")}"${on ? ' aria-current="true"' : ""}><span class="t"><span>${t}</span><time>${d}</time></span><p>${p}</p></a></li>`).join("")}</ul></nav></div>
+    <div class="pane" tabindex="0" aria-label="Nota aberta"><article class="editor" aria-labelledby="h-n">
+      <div class="editor-bar"><span class="saved">${ic("check", "ic-sm")}Salva às 08:02</span><span class="tag">${ic("folder", "ic-sm")}Mudança de apartamento</span>
+        <button class="btn btn-secondary btn-sm" type="button">${ic("pencil", "ic-sm")}Editar</button><button class="iconbtn" type="button" aria-label="Mais ações da nota">${ic("ellipsis")}</button></div>
+      <h2 class="title" id="h-n">Vistoria</h2>
+      <div class="prose">
+        <p>Vistoria do apartamento novo, segunda às 9h. A imobiliária manda a pessoa responsável e o laudo sai em até três dias.</p>
+        <h3>O que levar</h3>
+        <ul><li class="on"><span class="box on">${ic("check", "ic-sm")}</span><span>RG e comprovante de renda</span></li><li><span class="box"></span><span>Trena e caneta</span></li><li><span class="box"></span><span>Celular carregado para as fotos</span></li></ul>
+        <h3>Conferir</h3>
+        <p>Tomadas, registro do gás, pressão do chuveiro e as janelas da sala. Fotografar tudo o que tiver marca ou risco antes de assinar.</p>
+      </div></article></div>
+  </div>`;
+}
+
+/* ---------- Agenda ---------- */
+function agenda() {
+  const days = [["seg", 9], ["ter", 10], ["qua", 11], ["qui", 12], ["sex", 13], ["sáb", 14], ["dom", 15]];
+  const y = (h, m = 0) => (h - 8) * 44 + (m / 60) * 44;
+  const E = {
+    0: [[9, 0, 1, "Vistoria do apartamento novo", "09:00 Água Verde", "a"], [12, 30, 1, "Almoço com a Bia", "12:30", "a"], [19, 0, 1.5, "Aula de fotografia", "19:00", "b"]],
+    1: [[14, 0, 1, "Reunião com a transportadora", "14:00", "a"]],
+    2: [[10, 0, 1, "Dentista", "10:00", "a"]],
+    3: [[19, 0, 1.5, "Aula de fotografia", "19:00", "b"]],
+    4: [[9, 0, 3, "Embalar a cozinha", "09:00 até 12:00", "a"], [18, 30, 1.5, "Jantar na casa da mãe", "18:30", "a"]],
+    5: [], 6: [[10, 0, 1, "Feira do bairro", "10:00", "a"]]
+  };
+  const head = `<header class="pagehead"><div><h1>Agenda</h1><p>Seus eventos do Google Agenda. Quando algo muda lá, muda aqui também.</p></div>
+    <div class="actions"><button class="btn btn-primary btn-sm" type="button">${ic("calendar-plus", "ic-sm")}Novo evento</button></div></header>`;
+  const bar = `<div class="agenda-bar"><h2>9 a 15 de novembro</h2>
+    <button class="iconbtn" type="button" aria-label="Período anterior">${ic("chevron-left")}</button><button class="btn btn-secondary btn-sm" type="button">Hoje</button><button class="iconbtn" type="button" aria-label="Próximo período">${ic("chevron-right")}</button>
+    <div class="seg" role="group" aria-label="Visualização"><button type="button" aria-pressed="false">Dia</button><button type="button" aria-pressed="true">Semana</button><button type="button" aria-pressed="false">Mês</button></div></div>`;
+  const hours = Array.from({ length: 13 }, (_, i) => `<span>${String(8 + i).padStart(2, "0")}:00</span>`).join("");
+  const week = `<div class="week" role="table" aria-label="Semana de 9 a 15 de novembro">
+    <div role="row" style="display:contents"><div class="corner" role="columnheader"><span class="sr">Hora</span></div>${days.map(([d, n], i) => `<div class="dh${i === 0 ? " today" : ""}" role="columnheader">${d}<b>${i === 0 ? `<span>${n}</span>` : n}</b></div>`).join("")}</div>
+    <div class="allday" role="row"><span class="lbl" role="rowheader">Dia todo</span>${days.map((_, i) => `<div role="cell">${i === 5 ? '<div class="ev ad"><b>Mudança</b></div>' : ""}</div>`).join("")}</div>
+    <div role="row" style="display:contents"><div class="hours" role="rowheader" aria-hidden="true">${hours}</div>${days.map((_, i) => `<div class="col" role="cell" style="height:${13 * 44}px">${E[i].map(([h, m, dur, t, s, c]) => `<div class="ev ${c === "b" ? "b" : ""}" style="top:${y(h, m) + 1}px;height:${dur * 44 - 3}px"><b>${t}</b>${s}</div>`).join("")}${i === 0 ? `<div class="nowline" style="top:${y(8, 12)}px" aria-hidden="true"></div>` : ""}</div>`).join("")}</div>
+  </div>
+  <p class="legend"><span><i></i>Pessoal</span><span><i class="b"></i>Curso de fotografia (só leitura)</span></p>`;
+  const strip = `<div class="daystrip" role="group" aria-label="Dia">${days.map(([d, n], i) => `<button type="button" aria-pressed="${i === 0}"><span>${d}</span><b>${n}</b></button>`).join("")}</div>
+    <ul class="day daylist">${E[0].map(([h, m, dur, t, s, c]) => dayRow({ when: s.slice(0, 5), kind: c, t, note: "", sub: s.length > 5 ? s.slice(6) : "" })).join("")}</ul>`;
+  return `<div class="page" style="max-width:1200px">${head}${bar}${week}${strip}</div>`;
+}
+
+/* ---------- Automações ---------- */
+function automacoes() {
+  const A = [
+    ["sunrise", "Resumo da manhã", "Resumo das tarefas, todo dia às 07:30", "Próxima: amanhã, 07:30", "on", "Ativa"],
+    ["bell", "Lembrete do remédio", "Lembrete, todo dia às 21:00", "Próxima: hoje, 21:00", "on", "Ativa"],
+    ["repeat", "Revisão da semana", "Rotina da Zuri, todo domingo às 18:00. Usa IA a cada vez.", "Criada na conversa", "wait", "Esperando aprovação"],
+    ["bell", "Pagar o aluguel", "Lembrete, todo dia 5 às 09:00", "Pausada desde 01/11", "off", "Pausada"]
+  ];
+  const ctl = (s, n) => s === "wait"
+    ? `<a class="btn btn-primary btn-sm" href="${href("conversa")}">Revisar e aprovar</a>`
+    : `<button class="btn btn-secondary btn-sm" type="button"${s === "off" ? " disabled" : ""}>${ic("play", "ic-sm")}Rodar agora</button><button class="switch" type="button" role="switch" aria-checked="${s === "on"}" aria-label="${s === "on" ? "Pausar" : "Retomar"} “${n}”"></button><button class="iconbtn" type="button" aria-label="Ações de “${n}”">${ic("ellipsis")}</button>`;
+  return `<div class="page">
+    <header class="pagehead"><div><h1>Automações</h1><p>Lembretes, resumos e rotinas que rodam sozinhos, sempre no seu fuso. <span class="num">2 de 20</span> ativas.</p></div>
+      <div class="actions"><button class="btn btn-secondary btn-sm" type="button">${ic("plus", "ic-sm")}Criar automação</button></div></header>
+    <ul class="card" aria-label="Suas automações">${A.map(([i, n, d, nx, s, sl]) => `<li class="auto"><span class="tile">${ic(i)}</span>
+      <div><p class="t">${n}</p><p class="meta"><span>${d}</span></p><p class="meta"><span class="state ${s}"><i></i>${sl}</span><span>${nx}</span></p></div>
+      <div class="ctl">${ctl(s, n)}</div></li>`).join("")}</ul>
+    <section class="block" aria-labelledby="h-runs"><div class="block-head"><h2 id="h-runs">Últimas execuções</h2></div>
+      <ul class="card runs">
+        <li><time>Hoje, 07:30</time><span>Resumo da manhã: 4 tarefas, 1 atrasada</span><span class="state on">${ic("send-horizontal", "ic-sm")}Enviado no Telegram</span></li>
+        <li><time>Ontem, 21:00</time><span>Lembrete do remédio</span><span class="state on">${ic("check", "ic-sm")}Enviado</span></li>
+        <li><time>Ontem, 07:30</time><span>Resumo da manhã: nada atrasado</span><span class="state off">Sem aviso, nada novo</span></li>
+      </ul></section>
+  </div>`;
+}
+
+/* ---------- Memória ---------- */
+function memoria() {
+  const M = [
+    ["Prefere café sem açúcar.", "Preferência", "Atual", "Anotada pela Zuri numa conversa", "03/11"],
+    ["Está organizando a mudança para um apartamento novo no Água Verde.", "Projeto", "Atual", "Anotada pela Zuri numa conversa", "02/11"],
+    ["A Bia faz aniversário em 2 de dezembro.", "Pessoa", "Atual", "Guardada por você", "28/10"],
+    ["Faz aula de fotografia às segundas e quintas, às 19h.", "Hábito", "Atual", "Pelo Telegram", "20/10"],
+    ["Talvez troque de plano de internet em dezembro.", "Objetivo", "Incerta", "Anotada pela Zuri numa conversa", "15/10"]
+  ];
+  return `<div class="page">
+    <header class="pagehead"><div><h1>Memória</h1><p>O que a Zuri sabe sobre você. Corrija ou apague o que quiser; nada muda sem você saber.</p></div></header>
+    <form class="card mem-add" onsubmit="return false" aria-label="Guardar uma memória">
+      <label class="field"><span>Guardar uma memória</span><input class="input" placeholder="Um fato por vez, com as suas palavras"></label>
+      <label class="field"><span>Tipo</span><select class="input"><option>Fato</option><option>Preferência</option><option>Pessoa</option><option>Projeto</option></select></label>
+      <button class="btn btn-primary" type="submit">Guardar</button>
+    </form>
+    <div class="filters" style="margin-top:var(--s6)"><div class="seg" role="group" aria-label="Mostrar"><button type="button" aria-pressed="true">Todas <span class="n">7</span></button><button type="button" aria-pressed="false">Atuais <span class="n">6</span></button><button type="button" aria-pressed="false">Incertas <span class="n">1</span></button><button type="button" aria-pressed="false">Passadas <span class="n">0</span></button></div>
+      <div class="with-ic">${ic("search", "ic-sm")}<label class="sr" for="ms">Buscar nas memórias</label><input id="ms" class="input" placeholder="Buscar nas memórias"></div></div>
+    <ul class="card mem" style="margin-top:var(--s4)" aria-label="Memórias">${M.map(([f, k, s, o, d]) => `<li><div><p class="fact">${f}</p><p class="meta"><span class="tag">${k}</span>${s === "Incerta" ? `<span class="prio hot">${ic("circle-help", "ic-sm")}Incerta</span>` : `<span>${s}</span>`}<span>${o}</span><span class="num">${d}</span></p></div>
+      <div class="acts"><button class="iconbtn" type="button" aria-label="Corrigir “${f}”">${ic("pencil", "ic-sm")}</button><button class="iconbtn" type="button" aria-label="Histórico de “${f}”">${ic("history", "ic-sm")}</button><button class="iconbtn" type="button" aria-label="Mais ações">${ic("ellipsis", "ic-sm")}</button></div></li>`).join("")}</ul>
+  </div>`;
+}
+
+/* ---------- Configurações ---------- */
+function configuracoes() {
+  const T = [["user", "Conta", true], ["shield-check", "Segurança"], ["sparkles", "IA"], ["bell", "Avisos"], ["plug", "Integrações"], ["database", "Dados"], ["globe", "Diagnóstico"]];
+  return `<div class="page">
+    <header class="pagehead"><div><h1>Configurações</h1><p>Sua conta, a segurança e como a Zuri trabalha.</p></div></header>
+    <div class="settings"><nav aria-label="Seções das configurações"><ul>${T.map(([i, l, on]) => `<li><a href="${href("configuracoes")}"${on ? ' aria-current="page"' : ""}>${ic(i, "ic-sm")}${l}</a></li>`).join("")}</ul></nav>
+      <div>
+        <section class="card set-sec" aria-labelledby="h-c"><h2 id="h-c">Conta</h2><p>Como a Zuri chama você e onde você está.</p>
+          <div class="form-grid">
+            <label class="field"><span>Nome</span><input class="input" value="Ana"></label>
+            <label class="field"><span>E-mail</span><input class="input" value="ana@exemplo.com.br" readonly></label>
+            <label class="field"><span>Fuso horário</span><select class="input"><option>São Paulo (UTC−3)</option></select></label>
+            <label class="field"><span>Idioma</span><select class="input"><option>Português (Brasil)</option><option>English</option></select></label>
+          </div>
+          <div class="set-foot"><button class="btn btn-primary" type="button">Salvar alterações</button></div></section>
+        <section class="card set-sec" aria-labelledby="h-ap"><h2 id="h-ap">Aparência</h2>
+          <div class="set-row" style="margin-top:var(--s3)"><div class="grow"><p class="t">Tema</p><p class="hint">Segue o aparelho quando está em Sistema.</p></div>
+            <div class="seg" role="group" aria-label="Tema"><button type="button" aria-pressed="${st.t === "claro"}">${ic("sun", "ic-sm")}Claro</button><button type="button" aria-pressed="${st.t === "escuro"}">${ic("moon", "ic-sm")}Escuro</button><button type="button" aria-pressed="false">${ic("monitor", "ic-sm")}Sistema</button></div></div>
+          <div class="set-row"><div class="grow"><p class="t" id="rm">Reduzir movimento</p><p class="hint">Desliga animações e o pulso do sinal da Zuri.</p></div><button class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="rm"></button></div>
+        </section>
+      </div></div>
+  </div>`;
+}
+
+/* ---------- Entrar ---------- */
+function entrar() {
+  let art = "";
+  if (is("sinal")) art = `<div class="login-art"><span class="brand">${logo()}<span>Zuri</span></span>
+      <div><p class="art-head">Tudo o que importa, num só lugar.</p><p class="art-lead">Tarefas, notas e lembranças organizadas por uma assistente que aprende com você.</p>
+      <ul class="art-points"><li>${ic("shield-check")}Entrada protegida em duas etapas</li><li>${ic("lock")}Suas informações, só para você</li><li>${ic("smartphone")}No computador, no celular e no Telegram</li></ul></div>
+      <p class="art-foot">${ic("lock", "ic-sm")}Conexão protegida</p></div>`;
+  if (is("painel")) art = `<div class="login-art"><span class="brand">${logo()}<span>Zuri</span></span>
+      <div><p class="art-head">O seu dia, organizado antes de você abrir.</p>
+        <div class="peek"><h2>Hoje, segunda</h2><ul><li><time>09:00</time><span>Vistoria do apartamento novo</span></li><li><time>15:00</time><span>Ligar para a transportadora</span></li><li><time>18:00</time><span>Pagar a conta de luz</span></li></ul>
+        <p class="z">${logo()}<span>Montei um plano com quatro tarefas para a mudança. Confirma?</span></p></div></div>
+      <p class="art-foot">${ic("lock", "ic-sm")}Conexão protegida. Só a dona desta Zuri entra aqui.</p></div>`;
+  const quote = is("caderno") ? `<p class="quote">Que bom te ver de novo. Deixei o resumo do dia pronto.</p>` : `<p class="sub">Que bom te ver de novo.</p>`;
+  return `<main id="conteudo" class="login">${art}
+    <div class="login-form"><form class="login-card" onsubmit="return false" aria-labelledby="h-in">
+      <span class="brand login-mob">${logo()}<span>Zuri</span></span>
+      ${is("caderno") ? `<span class="brand">${logo()}<span>Zuri</span></span>` : ""}
+      <h1 id="h-in">Entrar</h1>${quote}
+      <label class="field"><span>E-mail</span><span class="with-ic">${ic("mail", "ic-sm")}<input class="input" type="email" autocomplete="username" placeholder="ana@exemplo.com.br"></span></label>
+      <div class="field"><label for="pw" class="label">Senha</label><span class="pw with-ic">${ic("lock", "ic-sm")}<input id="pw" class="input" type="password" autocomplete="current-password"><button class="iconbtn" type="button" aria-label="Mostrar a senha">${ic("eye", "ic-sm")}</button></span></div>
+      <div class="turnstile" role="status">${ic("shield-check")}Verificação de segurança concluída</div>
+      <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+      <p class="login-foot"><a href="${href("entrar")}">Esqueci minha senha</a><span>Depois, o código ou a passkey</span></p>
+    </form></div></main>`;
+}
+
+const SCREEN = { inicio, conversa, tarefas, notas, agenda, automacoes, memoria, configuracoes };
+function render() {
+  const html = document.documentElement;
+  html.dataset.model = st.m;
+  html.dataset.theme = st.t;
+  document.getElementById("pm").value = st.m;
+  document.getElementById("ps").value = st.s;
+  document.getElementById("pt").value = st.t;
+  const app = document.getElementById("app");
+  if (st.s === "entrar") { app.className = ""; app.innerHTML = entrar(); return; }
+  const withRail = is("painel");
+  app.className = withRail ? "app has-rail" : "app";
+  app.innerHTML = `${side()}<div class="main">${topbar()}<main id="conteudo">${SCREEN[st.s]()}</main></div>${withRail ? rail() : ""}`;
+  const thread = app.querySelector(".thread");
+  if (thread) thread.scrollTop = thread.scrollHeight;
+}
+for (const [id, k] of [["pm", "m"], ["ps", "s"], ["pt", "t"]]) {
+  document.getElementById(id).addEventListener("change", (e) => {
+    st[k] = pick(e.target.value, { m: MODELS, s: SCREENS, t: THEMES }[k]);
+    history.replaceState(null, "", href(st.s));
+    render();
+  });
+}
+render();
+</script>
+</body>
+</html>
