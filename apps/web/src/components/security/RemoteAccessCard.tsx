@@ -50,13 +50,14 @@ export function RemoteAccessCard() {
     setError(null);
   };
 
-  async function run(work: () => Promise<void>, done?: string) {
+  /** `close`: the work came from a form or a confirmation, which goes away once it is done. */
+  async function run(work: () => Promise<void>, done?: string, close = true) {
     setPending(true);
     setError(null);
     try {
       await work();
       await qc.invalidateQueries({ queryKey: REMOTE_KEY });
-      reset();
+      if (close) reset();
       if (done) toast(done);
     } catch (err) {
       setError(errorMessage(err));
@@ -65,10 +66,16 @@ export function RemoteAccessCard() {
     }
   }
 
+  // The switch leaves the form alone: closing it when the list came back threw away a form
+  // opened meanwhile, and what was typed in it (#250). Off, the form is just not shown.
   const toggle = (enabled: boolean) =>
-    void run(async () => {
-      qc.setQueryData(REMOTE_KEY, await api<RemoteOverview>("/remote", { method: "PATCH", body: { enabled } }));
-    });
+    void run(
+      async () => {
+        qc.setQueryData(REMOTE_KEY, await api<RemoteOverview>("/remote", { method: "PATCH", body: { enabled } }));
+      },
+      undefined,
+      false,
+    );
 
   const create = (e: FormEvent) => {
     e.preventDefault();
@@ -102,7 +109,7 @@ export function RemoteAccessCard() {
               {t("web.remote.offHint")}
             </p>
           )}
-          {error && mode.kind === "idle" && (
+          {error && (mode.kind === "idle" || (mode.kind === "add" && !data.enabled)) && (
             <p role="alert" className="text-sm text-danger">
               {error}
             </p>
@@ -151,7 +158,7 @@ export function RemoteAccessCard() {
               </fieldset>
             </div>
           )}
-          {mode.kind === "add" && (
+          {mode.kind === "add" && data.enabled && (
             <form onSubmit={create} className="space-y-3" noValidate>
               <TextField
                 label={t("web.remote.name")}

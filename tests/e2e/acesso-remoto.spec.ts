@@ -64,6 +64,55 @@ test("turns remote access on, makes an events token shown once, sends an event w
   await expect(toggle).not.toBeChecked();
 });
 
+// #250: the list is read again after the switch answers. The form opened meanwhile used to close
+// (and lose the name typed) when that late answer arrived, on a slow connection or a busy runner.
+test("keeps the new-token form and the name typed when the list comes back late after access is turned on", async ({ page }) => {
+  await page.goto("/entrar");
+  await signIn(page);
+  await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
+  expect((await page.request.delete("/api/remote/tokens", { headers: CSRF })).ok()).toBe(true);
+  expect((await page.request.patch("/api/remote", { headers: CSRF, data: { enabled: false } })).ok()).toBe(true);
+  await page.goto("/configuracoes/seguranca");
+  const toggle = page.getByRole("switch", { name: "Permitir acesso por token" });
+  await expect(toggle).not.toBeChecked();
+
+  // From here on the list's answer waits until the test lets it go.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/remote", async (route) => {
+    if (route.request().method() === "GET") await held;
+    await route.fallback();
+  });
+
+  await toggle.click();
+  await expect(toggle).toBeChecked();
+  // Still saving: the list hasn't come back.
+  await expect(toggle).toHaveAttribute("aria-busy", "true");
+  await page.getByRole("button", { name: "Novo token" }).click();
+  const name = page.getByLabel("Nome do token");
+  await name.fill("n8n");
+  await page.getByRole("radio", { name: /Só enviar eventos/ }).check();
+
+  release();
+  await expect(toggle).not.toHaveAttribute("aria-busy", "true");
+  await expect(name).toHaveValue("n8n");
+  await expect(page.getByRole("radio", { name: /Só enviar eventos/ })).toBeChecked();
+
+  await page.unroute("**/api/remote");
+  // Off, the form goes away (no token can be made); back on, the name is still there.
+  await toggle.click();
+  await expect(toggle).not.toBeChecked();
+  await expect(name).toHaveCount(0);
+  await toggle.click();
+  await expect(toggle).toBeChecked();
+  await expect(name).toHaveValue("n8n");
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  await toggle.click();
+  await expect(toggle).not.toBeChecked();
+});
+
 test("says so when the list can't load, and loads again on request", async ({ page }) => {
   await page.goto("/entrar");
   await signIn(page);
