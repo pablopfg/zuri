@@ -50,8 +50,8 @@ const PATTERNS: Readonly<Record<Kind, RegExp>> = {
   EMAIL: /(?<![\w.+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63})*\.[A-Za-z]{2,24}(?![\w-])/g,
   IBAN: /(?<![A-Za-z0-9])[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?(?![A-Za-z0-9])/g,
   CARD: /(?<![\w-])\d(?:[ -]?\d){12,18}(?![\w-])/g,
-  // A full stop right after it ends the sentence ("CPF 529.982.247-25."); only a dot that goes on into more digits or letters makes it part of a longer id.
-  CPF: /(?<![\w.-])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![\w-]|\.\w)/g,
+  // A full stop right after it ends the sentence ("CPF 529.982.247-25." or "…-25.Obrigado"); only a dot that goes on into more digits makes it part of a longer number.
+  CPF: /(?<![\w.-])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![\w-]|\.\d)/g,
   PHONE: /(?<![\w+-])(?:\+\d{1,3}[ .-]?)?(?:\(\d{2,3}\)|\d{2,3})[ .-]?9?\d{4}[ .-]?\d{4}(?![\w-])/g,
 };
 

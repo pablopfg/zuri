@@ -61,6 +61,10 @@ describe("the pseudonymizer (D5)", () => {
       expect(hidden, value).not.toContain(value);
       expect(hidden, value).toMatch(/^Anote: \[[A-Z]+_1\]\.$/);
     }
+    // A full stop glued to the next word still ends the value.
+    expect(new Pseudonymizer().hide(`Meu CPF ${CPF}.Obrigado`)).toBe("Meu CPF [CPF_1].Obrigado");
+    expect(new Pseudonymizer().hide(`CPF ${CPF}...`)).toBe("CPF [CPF_1]...");
+    expect(new Pseudonymizer().hide(`CPF ${CPF}.\nOutra linha`)).toBe("CPF [CPF_1].\nOutra linha");
     // A dot that goes on into more digits is a longer id, not a CPF.
     const p = new Pseudonymizer();
     expect(p.hide(`versão ${CPF}.7`)).toBe(`versão ${CPF}.7`);

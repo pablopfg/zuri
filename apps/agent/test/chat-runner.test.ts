@@ -487,6 +487,9 @@ describe("prompt injection (security scenarios)", () => {
       // Text that already brings its own break gets no second one, and plain streaming is untouched.
       const spaced = await turn(world, new ScriptedProvider([before, say("\nPronto.")]), "De novo");
       expect(spaced.done.message.content).toBe("Vou criar a tarefa.\nPronto.");
+      // A tool with nothing said after it leaves no blank lines at the end.
+      const silent = await turn(world, new ScriptedProvider([before, say("")]), "Mais uma");
+      expect(silent.done.message.content).toBe("Vou criar a tarefa.");
       const plain = await turn(world, new ScriptedProvider([say("Uma frase só.")]), "Oi");
       expect(plain.done.message.content).toBe("Uma frase só.");
     });

@@ -7,4 +7,4 @@
 
 ### Segurança
 
-- Um CPF no fim da frase, seguido de ponto final, agora também é trocado por um marcador antes de ir a um modelo de fora. Antes só era escondido quando vinha seguido de espaço ou vírgula.
+- Um CPF seguido de ponto final, no fim da frase ou colado na palavra seguinte, agora também é trocado por um marcador antes de ir a um modelo de fora. Antes só era escondido quando vinha seguido de espaço ou vírgula.

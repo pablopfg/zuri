@@ -276,6 +276,8 @@ export class AgentRunner {
         } else if (event.type === "text") {
           // A model that speaks before a tool and again after it (Claude does, every time) sends two
           // separate passages: without a break they reach the owner glued ("…a nota.Pronto, …").
+          // An empty delta is not a passage: it must not spend the break.
+          if (!event.delta) continue;
           const delta = resumed && text && !/\s$/.test(text) && !/^\s/.test(event.delta) ? `\n\n${event.delta}` : event.delta;
           resumed = false;
           text += delta;
