@@ -60,6 +60,20 @@ describe("the pseudonymizer (D5)", () => {
     expect(p.size).toBe(0);
   });
 
+  it("leaves a phone-, card- or CPF-shaped run inside a UUID alone, and still hides real phones (#244)", () => {
+    const p = new Pseudonymizer();
+    const ids = [
+      "8623c544-2436-4786-b3c2-0b717f555893",
+      "4450f401-a151-4712-8625-bf7788456cc3",
+      "52998224-7250-4111-1111-111111111111",
+      "a5299822-4725-4abc-8def-5299822472500",
+    ].join(" ");
+    expect(p.hide(ids)).toBe(ids);
+    expect(p.size).toBe(0);
+    const phones = "ligue (11) 91234-5678 ou 11 91234-5678 ou 11912345678.";
+    expect(p.hide(phones)).toBe("ligue [PHONE_1] ou [PHONE_2] ou [PHONE_3].");
+  });
+
   it("checks cards with Luhn", () => {
     expect(luhn("4111111111111111")).toBe(true);
     expect(luhn("4111111111111112")).toBe(false);
