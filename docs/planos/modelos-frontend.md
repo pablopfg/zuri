@@ -128,7 +128,7 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 - **Contatos:** a faixa de etiquetas virou o botão "Etiqueta: Todas ▾" com uma lista que tem busca e contagem.
 - **Avaliações:** aba **Como responder**, com dados do consultório, instruções (até 2.000 caracteres), o que fazer em cada nota, exemplos, palavras proibidas e um teste que gera o rascunho sem publicar.
 - **Memória:** filtros à esquerda, lista agrupada por tipo, painel com "Ligada a", "Aparece em" e "Memórias próximas", e a visão **Mapa**, parecida com o grafo do Obsidian, sem IA nova.
-- **Versão:** Configurações › **Sobre a Zuri** mostra a versão, a data e se a tela e o servidor estão na mesma versão; o menu do perfil perdeu "Agenda" e ganhou "Zuri 0.39.2 · Novidades" no pé.
+- **Versão:** Configurações › **Sobre a Zuri** mostra a versão, a data e se a tela e o servidor estão na mesma versão; o menu do perfil perdeu "Agenda" e ganhou a linha "Versão 0.39.2", com ícone próprio, logo abaixo de "Avisos" (ajuste das 02:00).
 - **Relatar no GitHub:** prévia de todos os campos que vão preenchidos na issue.
 - **Nada escondido:** a varredura das 53 vistas nos dois tamanhos tirou toda faixa que rolava de lado (seções das Configurações no celular viraram uma lista, botões de Tarefas mostram o texto).
 - **Frases descritivas** de todas as telas e seções revistas; tabela em [novo-frontend-sinal.md](novo-frontend-sinal.md), seção 7.

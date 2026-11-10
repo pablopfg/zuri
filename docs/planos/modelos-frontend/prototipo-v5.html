@@ -1982,6 +1982,8 @@ details.adv>.form-grid,details.adv>.hint{padding:0 var(--s4) var(--s4)}
 /* Map labels: only exist while hovered or focused, so they never widen the page */
 .mm-tip{display:none}
 .mm-node:hover .mm-tip,.mm-node:focus-visible .mm-tip{display:block}
+/* Version row in the profile menu: label on the left, number quiet on the right */
+.pop-list .pop-meta{margin-left:auto;padding-left:var(--s3);color:var(--muted);font-size:var(--t-xs)}
 
 </style>
 </head>
@@ -2414,10 +2416,10 @@ function pops() {
       <ul class="pop-list">
         <li><a href="${href("configuracoes")}" data-cfg-go="conta">${ic("user", "ic-sm")}Conta e perfil</a></li>
         <li><a href="${href("configuracoes")}" data-cfg-go="seg">${ic("shield-check", "ic-sm")}Segurança</a></li>
-        <li><a href="${href("configuracoes")}" data-cfg-go="avisos">${ic("bell", "ic-sm")}Avisos</a></li></ul>
+        <li><a href="${href("configuracoes")}" data-cfg-go="avisos">${ic("bell", "ic-sm")}Avisos</a></li>
+        <li><a href="${href("configuracoes")}" data-cfg-go="sobre">${ic("tag", "ic-sm")}<span>Versão</span><span class="pop-meta num">${APP_VER}</span></a></li></ul>
       <div class="pop-sec"><p class="label" id="pop-tema">Tema</p>${temaSeg()}</div>
-      <ul class="pop-list"><li><a href="${href("entrar")}" data-logout>${ic("log-out", "ic-sm")}Sair</a></li></ul>
-      <p class="pop-ver"><a href="${href("configuracoes")}" data-cfg-go="sobre"><span class="num">Zuri ${APP_VER}</span><span aria-hidden="true">·</span><span>Novidades</span></a></p></div></div>`;
+      <ul class="pop-list"><li><a href="${href("entrar")}" data-logout>${ic("log-out", "ic-sm")}Sair</a></li></ul></div></div>`;
   if (st.menu === "avisos") {
     const n = AVISOS.filter((a) => a.unread).length;
     return `<div class="pop-wrap" data-scrim="menu"><div class="pop pop-avisos" role="dialog" aria-modal="true" aria-labelledby="h-av">

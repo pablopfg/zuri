@@ -52,7 +52,7 @@ A varredura de 09/11 comparou as rotas, os cartões de Configurações e os comp
 | Configurações › Integrações (Google, servidores MCP) | Sim | H |
 | Configurações › Dados (backup, importar, backup automático, restaurar, lixeira com "Voltar" e "Ver tudo") | Sim; "Baixar backup" baixa um arquivo de exemplo | H |
 | Configurações › Diagnóstico | Sim, com "Relatar no GitHub" em cada falha e a prévia do que vai na issue (seção 7, "Relatar no GitHub") | H |
-| Versão (hoje no menu da conta, na lista das Configurações do celular e no Diagnóstico) | Seção nova **Configurações › Sobre a Zuri** e uma linha discreta "Zuri 0.39.2 · Novidades" no pé do menu do perfil, que deixa de ter "Agenda" | H (B para o menu) |
+| Versão (hoje no menu da conta, na lista das Configurações do celular e no Diagnóstico) | Seção nova **Configurações › Sobre a Zuri** e a linha "Versão 0.39.2", com ícone próprio, logo abaixo de "Avisos" no menu do perfil, que deixa de ter "Agenda" | H (B para o menu) |
 | Acessos (`/acessos`) | "Ver todos os acessos" em Segurança abre a lista com filtro | H |
 | Paleta ⌘K | Sim | B |
 | Lembrete de duas etapas, aviso de sessão perto do fim, senha de novo, confirmação | Estados das telas | A |
@@ -139,7 +139,7 @@ Os textos do protótipo entram no catálogo pelas chaves existentes sempre que o
 
 - `APP_VERSION` (`packages/shared/src/version.ts`) já vai no bundle da tela. O servidor ganha `GET /api/version` (sessão exigida, resposta `{ version }`, sem cache), que lê a mesma constante do bundle do Worker.
 - **Configurações › Sobre a Zuri:** "Zuri 0.39.2", data da instalação, e uma das duas linhas: "Tudo na mesma versão" ou "A tela está em X e o servidor em Y. Recarregue a página." com o botão "Recarregar". "Conferir de novo" chama a rota. Embaixo, "Novidades desta versão" (do `CHANGELOG.md`, gerado no build, só os itens da versão) e "Ver todas as versões" (abre as releases em outra aba).
-- No pé do menu do perfil, em texto pequeno: "Zuri 0.39.2 · Novidades", que leva a Sobre. "Agenda" sai desse menu.
+- No menu do perfil, uma linha própria logo abaixo de "Avisos", com o ícone de etiqueta: "Versão" à esquerda e o número (0.39.2) discreto à direita; leva a Sobre a Zuri (pedido do Pablo, 10/11, 02:00). "Agenda" sai desse menu.
 - Assim, depois de cada atualização, o Pablo abre Sobre e vê a versão nova e "Tudo na mesma versão".
 
 ### Relatar no GitHub (PR H)
@@ -268,7 +268,7 @@ Tudo o que foi definido no protótipo entra no app. A ordem respeita as dependê
 | # | PR | O que entra | Depende de | Tamanho |
 | --- | --- | --- | --- | --- |
 | 1 | A · Fundamentos | Tokens, Figtree em woff2, peças base, tema só com ícones | Aprovação do Sinal refinado | M |
-| 2 | B · Casca | Menu lateral com Avaliações, Automações (Rotinas, Fluxos) e CRM (Módulos, Credenciais), menu de baixo no celular, folha "Mais", perfil e avisos em painel (versão no pé do perfil, sem "Agenda"), ⌘K | A; teto do JS aprovado (até 141 kB, resposta 2 de 10/11) | G |
+| 2 | B · Casca | Menu lateral com Avaliações, Automações (Rotinas, Fluxos) e CRM (Módulos, Credenciais), menu de baixo no celular, folha "Mais", perfil e avisos em painel (linha "Versão" abaixo de "Avisos", sem "Agenda"), ⌘K | A; teto do JS aprovado (até 141 kB, resposta 2 de 10/11) | G |
 | 3 | I · Entrada | Textos novos, campo de e-mail sem exemplo, os seis estados da verificação de segurança, "Esqueci minha senha" ao lado da senha, recuperação no desenho novo, título da página de erro | A | P |
 | 4 | C · Início | Saudação pela hora, cortina do que passou, pendências | B | M |
 | 5 | Servidor · sugestões | [sugestoes-do-inicio.md](sugestoes-do-inicio.md) e as sugestões no Início | C | M |
