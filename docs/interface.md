@@ -170,13 +170,17 @@ O acabamento aprovado pelo Pablo em 10/11/2026 (protótipo em
 - **Cores:** neutros em zinco e o verde como única cor de ação. No tema claro
   o fundo da página é cinza claro (`#f1f1f3`) e os cartões são brancos, para
   cada bloco se destacar; no escuro o fundo é `#0c0c0e`, sem preto puro. A
-  borda de campos e controles tem contraste de 4,8:1 no claro.
+  borda de campos e controles tem contraste de 4,8:1 sobre o cartão no claro
+  (4,3:1 sobre a página).
 - **Fonte:** Figtree, um arquivo variável para todos os pesos
   (`apps/web/src/fonts/`, licença SIL OFL junto). Ela sai do próprio endereço
   da Zuri, com cache longo; nenhum serviço de fontes é chamado. Enquanto não
   carrega, aparece a fonte do sistema.
 - **Cantos:** 8 px em controles pequenos, 10 px em botões e campos, 14 px em
   cartões e 20 px em diálogos (`--radius-lg` a `--radius-3xl`).
+- **O que não mudou:** a marca. O quadrado do logo, o favicon, os ícones do
+  aplicativo instalado, o manifesto e o lado escuro da tela de entrar seguem
+  na tinta `#0b0f19`; a tela de entrar ganha o desenho novo na PR S03.
 - **Tema:** a escolha mostra só os três ícones (como o sistema, claro e
   escuro); o nome de cada um fica para o leitor de tela e na dica do ponteiro.
 

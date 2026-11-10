@@ -1,3 +1,4 @@
+<!-- versao: minor -->
 ### Alterado
 
 - Novo acabamento visual, o Sinal refinado, em todas as telas: cores em tons de cinza neutro com o verde só nas ações, cartões brancos sobre fundo cinza claro no tema claro, tema escuro com mais contraste e cantos mais discretos.

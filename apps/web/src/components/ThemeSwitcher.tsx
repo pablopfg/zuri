@@ -25,7 +25,7 @@ export function ThemeSwitcher() {
               title={labels[option]}
               className={cn(
                 "flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent",
-                checked ? "bg-surface text-fg shadow-sm" : "text-fg-muted hover:text-fg",
+                checked ? "border border-accent bg-accent-soft text-accent-text" : "border border-transparent text-fg-muted hover:text-fg",
               )}
             >
               <input

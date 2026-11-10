@@ -147,12 +147,12 @@ test.describe("on a phone-wide screen", () => {
 });
 });
 
-test("the interface's font comes from this same address, cached for good", async ({ page }) => {
+test("the interface's font comes from this same address, cached for good", async ({ page, baseURL }) => {
   const fonts: { url: string; type: string | undefined; cache: string | undefined }[] = [];
   const outside: string[] = [];
   page.on("response", (response) => {
     const url = new URL(response.url());
-    if (url.origin !== new URL(page.url() === "about:blank" ? response.url() : page.url()).origin) outside.push(response.url());
+    if (url.origin !== new URL(baseURL ?? "").origin) outside.push(response.url());
     if (url.pathname.endsWith(".woff2")) fonts.push({ url: url.pathname, type: response.headers()["content-type"], cache: response.headers()["cache-control"] });
   });
   await page.goto("/entrar");
@@ -160,12 +160,15 @@ test("the interface's font comes from this same address, cached for good", async
   await page.evaluate(() => document.fonts.ready);
   expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toMatch(/^"?Figtree/);
   expect(await page.evaluate(() => document.fonts.check('16px "Figtree"'))).toBe(true);
-  // Basic Latin only: the extended file stays on the server until a text needs it.
-  expect(fonts.map((font) => font.url)).toEqual([expect.stringMatching(/^\/assets\/figtree-latin-wght-normal-[\w-]+\.woff2$/)]);
-  expect(fonts[0]?.type).toBe("font/woff2");
-  expect(fonts[0]?.cache).toContain("immutable");
+  // Basic Latin always; the extended file only when a text needs it. Both are built files with a hash in the name.
+  expect(fonts.map((font) => font.url)).toContainEqual(expect.stringMatching(/^\/assets\/figtree-latin-wght-normal-[\w-]+\.woff2$/));
+  for (const font of fonts) {
+    expect(font.url).toMatch(/^\/assets\/figtree-latin(-ext)?-wght-normal-[\w-]+\.woff2$/);
+    expect(font.type).toBe("font/woff2");
+    expect(font.cache).toContain("immutable");
+  }
   // No font service, nor any other address (rule 7, no telemetry). The fake check of the tests is routed locally.
-  expect(outside.filter((url) => !url.includes("challenges.cloudflare.com"))).toEqual([]);
+  expect(outside.filter((url) => new URL(url).origin !== "https://challenges.cloudflare.com")).toEqual([]);
 });
 
 test("the sign-in page breaks no rule of the content security policy", async ({ page }) => {

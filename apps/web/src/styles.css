@@ -18,7 +18,7 @@
   --color-fg: #0f0f12;
   --color-fg-muted: #4d4d57;
   --color-border: #d0d0d6;
-  /* Edges of fields and controls: 4.8:1 against the surface (WCAG 1.4.11 asks 3:1). */
+  /* Edges of fields and controls: 4.8:1 on a card, 4.3:1 on the page, 3.9:1 on a raised fill (WCAG 1.4.11 asks 3:1). */
   --color-border-strong: #71717a;
   --color-accent: #15803d;
   --color-accent-hover: #14532d;
@@ -154,7 +154,9 @@ body {
 
 /*
  * The sign-in page's brand side: dark in both themes, so the mark keeps its own
- * colors. Its tokens are the .dark ones; one soft green light, nothing to load.
+ * colors: the brand's ink (#0b0f19, the same of the icons and the manifest),
+ * not the neutral grays of the app. It gets the new look with the sign-in
+ * screens (S03 of docs/planos/implementacao-frontend-sinal.md).
  */
 .login-brand {
   --color-fg: #e8ecf3;
