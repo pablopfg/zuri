@@ -230,7 +230,7 @@ Valores do n8n (`docs/regras/horarios-e-execucoes.md`, confirmados pelo Pablo em
 
 Pedido do Pablo (10/11, 02:24): quando há várias mensagens para sair (confirmações, pedidos de avaliação e outras), a Zuri manda uma, espera o intervalo e só então manda a próxima. O intervalo fica na credencial do Chatwoot e o código o respeita sempre. É viável e já é como a fila funciona; o que muda é **onde** o intervalo mora e que ele vale para todos os módulos juntos.
 
-**Configuração.** Na credencial: "Intervalo entre mensagens, de X a Y". Padrão de **30 segundos a 1 minuto** (pedido do Pablo em 10/11, 03:01). Ele substitui o 1 a 3 minutos da decisão de 09/11 e vale também para o pedido de avaliação. Faixa permitida: mínimo de 30 segundos, máximo de 10 minutos, e X menor ou igual a Y. Fora disso, o servidor recusa com `VALIDATION_FAILED`. Mudar o intervalo não pede a senha de novo (não é segredo), mas fica no histórico.
+**Configuração.** Na credencial: "Intervalo entre mensagens, de X a Y". Padrão de **30 segundos a 1 minuto** (pedido do Pablo em 10/11, 03:01). Ele substitui o 1 a 3 minutos da decisão de 09/11 e vale também para o pedido de avaliação. Faixa permitida: mínimo de 30 segundos e máximo de 1 minuto (teto reduzido pelo Pablo em 10/11, 03:22), com X menor ou igual a Y. O padrão usa a faixa inteira. Fora disso, o servidor recusa com `VALIDATION_FAILED`. Mudar o intervalo não pede a senha de novo (não é segredo), mas fica no histórico.
 
 **Lógica, passo a passo:**
 
@@ -269,7 +269,7 @@ Com o padrão de 30 s a 1 min, cada janela de 30 minutos do n8n garante 30 mensa
 
 O que limita o intervalo para baixo não é a Cloudflare, é o risco de bloqueio do número. Por isso o piso da credencial continua em 30 segundos.
 
-**Testes do intervalo:** dois jobs devidos ao mesmo tempo saem com pelo menos X entre eles; reinício do objeto no meio não encurta; duas reservas concorrentes, só uma ganha; X = 30 s e Y = 10 min aceitos, 29 s e 10 min e 1 s recusados, X > Y recusado; erro e adiamento também esperam; janela que fecha no meio manda o resto para a próxima ou expira; duas credenciais não se atrasam uma à outra.
+**Testes do intervalo:** dois jobs devidos ao mesmo tempo saem com pelo menos X entre eles; reinício do objeto no meio não encurta; duas reservas concorrentes, só uma ganha; X = 30 s e Y = 1 min aceitos, 29 s e 1 min e 1 s recusados, X > Y recusado; erro e adiamento também esperam; janela que fecha no meio manda o resto para a próxima ou expira; duas credenciais não se atrasam uma à outra.
 
 ### Chaves únicas (nunca enviar duas vezes)
 
@@ -578,7 +578,7 @@ Para o pedido de avaliação, a diferença de regra (8 dias da consulta contra 2
 - O volume é de consultório: até 30 consultas por dia de envio, algumas dezenas de mensagens por dia.
 - A agenda do consultório é a mesma conta Google já ligada à Zuri.
 - Os nomes no Google Contatos seguem a regra do n8n (o nome completo é o que o paciente usa para avaliar).
-- Intervalo único por credencial do Chatwoot (padrão de 30 s a 1 min, piso de 30 s e teto de 10 min), em vez dos 5 a 25 s por tipo do n8n: pedidos do Pablo de 10/11 (02:24 e 03:01). O piso de 30 s é pelo risco de bloqueio do número, não por limite da Cloudflare.
+- Intervalo único por credencial do Chatwoot (padrão de 30 s a 1 min, piso de 30 s e teto de 1 min), em vez dos 5 a 25 s por tipo do n8n: pedidos do Pablo de 10/11 (02:24, 03:01 e 03:22). O piso de 30 s é pelo risco de bloqueio do número, não por limite da Cloudflare.
 - O webhook do Chatwoot da versão do Pablo assina como o CTT - 07 confere hoje. Se a versão mudar a assinatura, a PR 3 trata.
 
 ## 14. Entrevista com o Pablo
