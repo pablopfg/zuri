@@ -19,6 +19,14 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.39.2] - 2026-11-09
+
+Mesclada às 21:54 (UTC-3) · commit [`d8bedd0`](https://github.com/pablopfg/Zuri/commit/d8bedd01f4c25da0aef76dda17eaac18dd9aae05) · PR [#245](https://github.com/pablopfg/Zuri/pull/245) · Máscara dos modelos externos não esconde pedaços de UUID
+
+### Corrigido
+
+- Com um modelo externo ligado, a Zuri não esconde mais pedaços de ids (como `8623c544-2436-4786-…`) achando que eram telefone, cartão ou CPF. Telefones de verdade continuam escondidos (#244).
+
 ## [0.39.1] - 2026-11-09
 
 Mesclada às 20:47 (UTC-3) · commit [`326623f`](https://github.com/pablopfg/Zuri/commit/326623ffbd352ae69bbcc5354d9ef1bd9155e26f) · PR [#242](https://github.com/pablopfg/Zuri/pull/242) · Rótulos únicos nos títulos e axe dividido por grupo de telas
@@ -2893,7 +2901,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.1...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.2...develop
+[0.39.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.2
 [0.39.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.1
 [0.39.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.0
 [0.38.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.38.0
