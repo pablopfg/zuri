@@ -72,26 +72,39 @@ resposta de `/api/*` sai com `Cache-Control: no-store`, e o cliente pede com
 
 ## Casca depois do login
 
-Organização dos grandes apps de conversa com o visual da Zuri (decisão do
-Pablo, 03/11/2026; plano em `docs/planos/nova-ui.md`):
+A casca do Sinal (aprovada pelo Pablo em 10/11/2026; plano em
+`docs/planos/implementacao-frontend-sinal.md`, PR S02). Só o conteúdo rola: os
+menus nunca saem da tela.
 
-- **Computador:** barra lateral de altura total (`AppShell`). No topo, a
-  marca, a busca (Ctrl/⌘ K) e o botão de recolher. Logo abaixo, "Nova
-  conversa" como botão principal (também com Ctrl/⌘ ⇧ O). No meio, as seis
-  telas (Início, Conversa, Tarefas, Notas, Memória e Automações); uma tela
-  nova é um item a mais em `sections`. No pé, a conta: o nome do dono abre um
-  menu com Configurações, Acessos, o tema (desta máquina), Sair e a versão.
-  Esc ou um clique fora fecham o menu e devolvem o foco. O sino fica na barra
-  do topo, à direita.
-  Recolhida, a barra vira uma coluna só de ícones. Cada ícone mostra o nome
-  numa dica ao passar o mouse ou focar pelo teclado (Esc esconde a dica); o
-  nome continua no controle para leitores de tela. A escolha fica em
-  `localStorage` (`zuri.sidebar`), só neste navegador, e as outras abas
-  acompanham.
-- **Celular:** não há barra de baixo. A barra do topo tem o botão de menu, a
-  marca, o sino e "Nova conversa"; o menu abre a mesma barra lateral como
-  gaveta (um `<dialog>` modal: o foco fica dentro, Esc, o X, um toque fora ou
-  escolher uma tela fecham).
+- **Uma lista só de lugares** (`apps/web/src/lib/nav.ts`): Início e Conversa;
+  em **Organizar**, Tarefas, Agenda, Notas, Memória e Rotinas; em
+  **Relacionamento**, Contatos, Avaliações e CRM. O menu lateral, o menu de
+  baixo, a folha "Mais" e a paleta (Ctrl/⌘ K) leem essa lista, então um lugar
+  novo aparece em todos com o mesmo nome e o mesmo ícone.
+- **Computador:** menu lateral de altura total (`shell/Sidebar.tsx`). No topo,
+  a marca, o sino e o botão de recolher. Abaixo, "Nova conversa" (também com
+  Ctrl/⌘ ⇧ O) e a busca. No meio, os lugares nos três grupos. No pé, a conta.
+  Recolhido, o menu vira uma coluna só de ícones. Cada ícone mostra o nome ao
+  lado ao passar o mouse ou focar pelo teclado (Esc esconde); o nome continua
+  no controle para leitores de tela, e o Tab percorre tudo na mesma ordem. A
+  escolha fica em `localStorage` (`zuri.sidebar`), só neste navegador, e as
+  outras abas acompanham.
+- **Celular:** barra de cima com a marca, a busca, o sino e a conta; ela some
+  enquanto o conteúdo desce e volta ao subir ou ao trocar de lugar. Embaixo, o
+  menu com Início, Conversa, Tarefas, Agenda e **Mais**, que abre uma folha com
+  os outros lugares e Configurações.
+- **Conta e avisos:** abrem num painel ao lado do menu no computador e numa
+  folha que sobe de baixo no celular (`shell/Panel.tsx`, um `<dialog>` modal:
+  o foco fica dentro, e Esc, o X, um toque fora ou escolher um item fecham e
+  devolvem o foco). A conta leva a Conta e perfil, Segurança, Avisos e
+  Configurações, mostra a linha **Versão**, o tema deste aparelho e Sair.
+- **Endereços:** Rotinas em `/rotinas`, CRM em `/crm` (`/crm/fluxos` e
+  `/crm/credenciais`) e Avaliações em `/avaliacoes`. Os endereços antigos
+  (`/automacoes`, `/automacoes/fluxos`, `/automacoes/conexoes` e
+  `/contatos/avaliacoes`) levam para os novos para sempre, com o que vinha
+  depois deles (`packages/shared/src/pages.ts`); aviso guardado com endereço
+  antigo sai com o novo. Um teste percorre todo endereço que o servidor
+  escreve (`tests/e2e/rotas.spec.ts`).
 - **Carregamento:** `Loading` mostra linhas cinzas no formato de uma lista,
   com um brilho suave; `ScreenLoading` soma uma linha verde fina no topo
   enquanto uma tela sob demanda baixa. Nada aparece nos primeiros 300 ms (uma

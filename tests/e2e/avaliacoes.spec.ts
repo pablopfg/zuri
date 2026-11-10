@@ -53,7 +53,7 @@ test("turns the reviews on, tells the team of a negative one and publishes an ap
   await expectAccessible(page, "integracoes-avaliacoes");
 
   await reviews.getByRole("link", { name: "Abrir avaliações" }).click();
-  await expect(page).toHaveURL(/\/contatos\/avaliacoes$/);
+  await expect(page).toHaveURL(/\/avaliacoes$/);
   await expect(page.getByRole("link", { name: "Avaliações", exact: true })).toHaveAttribute("aria-current", "page");
   // Saving made the first read, which keeps what exists as history; this one brings the three new reviews.
   await expect(page.getByText(/^Última leitura:/)).toBeVisible();
@@ -112,7 +112,7 @@ test("turns the reviews on, tells the team of a negative one and publishes an ap
   await reviews.getByRole("button", { name: "Desligar avaliações" }).click();
   await page.getByRole("dialog", { name: "Desligar as avaliações?" }).getByRole("button", { name: "Desligar avaliações" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Avaliações desligadas" })).toBeVisible();
-  await page.goto("/contatos/avaliacoes");
+  await page.goto("/avaliacoes");
   await expect(page.getByText("Avaliações desligadas", { exact: true })).toBeVisible();
 });
 
@@ -164,7 +164,7 @@ test("lists the replies published by itself with Delete reply, and shows why the
     const items = tab === "auto" || tab === "answered" || tab === "all" ? [item({})] : [];
     return route.fulfill({ json: { items, nextCursor: null, counts: { needs: 0, answered: 1, auto: 1, all: 1 } } });
   });
-  await page.goto("/contatos/avaliacoes");
+  await page.goto("/avaliacoes");
   await signIn(page);
   await expect(page.getByText("A Zuri publica sozinha as respostas às positivas: 1 de 10 hoje.")).toBeVisible();
   await expect(page.getByText("Nada esperando você", { exact: true })).toBeVisible();

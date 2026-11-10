@@ -1,14 +1,21 @@
 import { APP_VERSION } from "@zuri/shared";
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, openAccountMenu, signIn } from "./ui-helpers.ts";
+import { expectAccessible, openAccountMenu, signIn, tooSmallControls } from "./ui-helpers.ts";
 
-// The sidebar of the new interface (docs/planos/nova-ui.md): mark, search and
-// toggle on top, "Nova conversa" as the main button, six places, and the
-// account at the foot with its menu. It collapses to an icon rail on wide
-// screens (remembered on this device, every control keeps its name, each icon
-// shows its name on hover and keyboard focus); on a phone it is a drawer.
+// The shell of the Sinal interface (docs/planos/implementacao-frontend-sinal.md, S02).
+// On a computer: the side menu with the mark, the bell and the toggle on top,
+// "Nova conversa", the search, the places in three groups and the account at
+// the foot; it collapses to a rail of icons (remembered on this device, every
+// control keeps its name and shows it on hover and keyboard focus). On a phone:
+// a top bar that leaves while the content scrolls down, a bottom bar with four
+// places and "Mais". The account and the notices open as a panel, a sheet on a
+// phone. Only the content scrolls.
 
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
+
+const PLACES = ["Início", "Conversa", "Tarefas", "Agenda", "Notas", "Memória", "Rotinas", "Contatos", "Avaliações", "CRM"];
+/** A place as its link reads: Tarefas may carry today's count. */
+const asLink = (place: string) => (place === "Tarefas" ? /^Tarefas( \d+)?$/ : place);
 
 const sidebar = (page: Page) => page.locator("aside");
 
@@ -18,48 +25,88 @@ async function openHome(page: Page) {
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
 }
 
-test("the sidebar holds Nova conversa, the eight places and the account; settings and sign-out moved to the account menu", async ({ page }) => {
+test("the side menu holds Nova conversa, the search, the ten places in three groups and the account", async ({ page }) => {
   await openHome(page);
   const aside = sidebar(page);
   await expect(aside.getByRole("link", { name: "Nova conversa" })).toHaveAttribute("href", "/conversa");
+  await expect(aside.getByRole("button", { name: "Buscar" })).toBeVisible();
+  await expect(aside.getByRole("button", { name: /^Abrir avisos/ })).toBeVisible();
   const nav = aside.getByRole("navigation", { name: "Navegação principal" });
-  await expect(nav.getByRole("link")).toHaveText(["Início", "Conversa", /^Tarefas( \d+)?$/, "Agenda", "Contatos", "Notas", "Memória", "Automações"]);
+  await expect(nav.getByRole("link")).toHaveText(PLACES.map(asLink));
+  // Three groups: the first has no title, the others are lists named by theirs.
+  await expect(nav.getByRole("list")).toHaveCount(3);
+  await expect(nav.getByRole("list", { name: "Organizar" }).getByRole("link")).toHaveText([asLink("Tarefas"), "Agenda", "Notas", "Memória", "Rotinas"]);
+  await expect(nav.getByRole("list", { name: "Relacionamento" }).getByRole("link")).toHaveText(["Contatos", "Avaliações", "CRM"]);
+  await expect(nav.getByRole("link", { name: "Início" })).toHaveAttribute("aria-current", "page");
+  // Settings and sign-out live in the account panel, never loose in the menu.
   await expect(aside.getByRole("link", { name: "Configurações" })).toHaveCount(0);
   await expect(aside.getByRole("button", { name: "Sair" })).toHaveCount(0);
-  // The bell lives in the top bar now.
-  await expect(page.getByRole("banner").getByRole("button", { name: /^Abrir avisos/ })).toBeVisible();
+  await expectAccessible(page, "menu lateral");
+  expect(await tooSmallControls(page)).toEqual([]);
+});
 
-  const menu = await openAccountMenu(page);
-  const account = menu.getByRole("button", { name: /^Menu da conta:/ });
+test("the account panel has the ways into the settings, the version, the theme and Sair", async ({ page }) => {
+  await openHome(page);
+  const account = sidebar(page).getByRole("button", { name: /^Menu da conta:/ });
+  const panel = await openAccountMenu(page);
+  await expect(panel).toBeVisible();
   await expect(account).toHaveAttribute("aria-expanded", "true");
-  for (const name of ["Configurações", "Acessos"]) await expect(menu.getByRole("link", { name, exact: true })).toBeVisible();
-  await expect(menu.getByRole("button", { name: "Sair", exact: true })).toBeVisible();
-  await expect(menu.getByText(`Versão ${APP_VERSION}`, { exact: true })).toBeVisible();
-  await expectAccessible(page, "menu da conta");
-  // Escape closes it and gives focus back; a click outside closes it too.
+  await expect(panel.getByRole("link")).toHaveText(["Conta e perfil", "Segurança", "Avisos", "Configurações"]);
+  // Opening puts the focus on the first choice.
+  await expect(panel.getByRole("link", { name: "Conta e perfil" })).toBeFocused();
+  await expect(panel.getByRole("listitem").filter({ hasText: "Versão" })).toHaveText(`Versão${APP_VERSION}`);
+  await expect(panel.getByRole("group", { name: "Tema" }).getByRole("radio")).toHaveCount(3);
+  await expect(panel.getByRole("button", { name: "Sair", exact: true })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Fechar" })).toBeVisible();
+  // The panel sits above the account, whole, and the menu stays where it was.
+  await expect(panel).toBeInViewport({ ratio: 1 });
+  await expectAccessible(page, "painel da conta");
+  expect(await tooSmallControls(page)).toEqual([]);
+
+  // Tab never leaves the panel: after its last control comes the first one again.
+  await panel.getByRole("button", { name: "Fechar" }).focus();
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest("aside, main"))).toBe(false);
+
+  // Escape closes it and gives the focus back; a click on the page around it closes it too.
   await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
   await expect(account).toHaveAttribute("aria-expanded", "false");
   await expect(account).toBeFocused();
   await account.click();
-  // Outside, on a spot with no action of its own: the greeting.
-  await page.getByRole("heading", { level: 1 }).click();
-  await expect(account).toHaveAttribute("aria-expanded", "false");
+  await page.mouse.click(900, 500);
+  await expect(panel).toHaveCount(0);
   await account.click();
-  await menu.getByRole("link", { name: "Configurações", exact: true }).click();
-  await expect(page).toHaveURL(/\/configuracoes\/conta$/);
-  await expect(account).toHaveAttribute("aria-expanded", "false");
+  await panel.getByRole("button", { name: "Fechar" }).click();
+  await expect(panel).toHaveCount(0);
+
+  // Each way in is an address; picking one closes the panel.
+  for (const [name, address] of [
+    ["Segurança", /\/configuracoes\/seguranca$/],
+    ["Avisos", /\/configuracoes\/avisos$/],
+    ["Conta e perfil", /\/configuracoes\/conta$/],
+    ["Configurações", /\/configuracoes\/conta$/],
+  ] as const) {
+    await account.click();
+    await panel.getByRole("link", { name, exact: true }).click();
+    await expect(page).toHaveURL(address);
+    await expect(panel).toHaveCount(0);
+  }
 });
 
-test("the account menu switches the theme of this device", async ({ page }) => {
+test("the account panel switches the theme of this device", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await openHome(page);
-  const menu = await openAccountMenu(page);
-  await menu.getByRole("button", { name: "Tema escuro" }).click();
+  const panel = await openAccountMenu(page);
+  const theme = panel.getByRole("group", { name: "Tema" });
+  await expect(theme.getByRole("radio", { name: "Como o sistema" })).toBeChecked();
+  await theme.getByRole("radio", { name: "Escuro" }).check({ force: true });
   await expect(page.locator("html")).toHaveClass(/dark/);
-  await expect(menu.getByRole("button", { name: "Tema claro" })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("zuri.theme"))).toBe("dark");
-  await menu.getByRole("button", { name: "Tema claro" }).click();
+  await expectAccessible(page, "painel da conta (escuro)");
+  await theme.getByRole("radio", { name: "Claro" }).check({ force: true });
   await expect(page.locator("html")).not.toHaveClass(/dark/);
+  expect(await page.evaluate(() => localStorage.getItem("zuri.theme"))).toBe("light");
 });
 
 test("Ctrl Shift O opens a new conversation from anywhere, never over another dialog", async ({ page }) => {
@@ -70,6 +117,33 @@ test("Ctrl Shift O opens a new conversation from anywhere, never over another di
   await page.getByRole("button", { name: /^Abrir avisos/ }).click();
   await page.keyboard.press("Control+Shift+O");
   await expect(page).toHaveURL(/\/tarefas$/);
+});
+
+test("only the content scrolls: the window stays still and the menu never leaves", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await openHome(page);
+  await page.goto("/configuracoes/seguranca");
+  await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
+  const main = page.locator("main");
+  await expect.poll(() => main.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(200);
+  const account = sidebar(page).getByRole("button", { name: /^Menu da conta:/ });
+  const before = await account.boundingBox();
+  await main.hover();
+  await page.mouse.wheel(0, 2000);
+  await expect.poll(() => main.evaluate((el) => el.scrollTop)).toBeGreaterThan(200);
+  expect(await page.evaluate(() => [window.scrollY, document.documentElement.scrollHeight - window.innerHeight])).toEqual([0, 0]);
+  expect(await account.boundingBox()).toEqual(before);
+  await expect(account).toBeInViewport({ ratio: 1 });
+});
+
+test("the palette goes to the same places as the menu, in the same order", async ({ page }) => {
+  await openHome(page);
+  const places = await sidebar(page).getByRole("navigation", { name: "Navegação principal" }).getByRole("link").allInnerTexts();
+  await page.keyboard.press("Control+k");
+  const options = page.getByRole("dialog", { name: "Buscar e ir para" }).getByRole("group", { name: "Ir para" }).getByRole("option");
+  await expect(options.first()).toBeVisible();
+  const listed = (await options.allInnerTexts()).slice(0, places.length);
+  expect(listed).toEqual(places.map((place) => place.replace(/\s+\d+$/, "").trim()));
 });
 
 test("collapsing keeps every control named, remembers the choice and expands again", async ({ page }) => {
@@ -85,15 +159,24 @@ test("collapsing keeps every control named, remembers the choice and expands aga
   await expect.poll(async () => (await aside.boundingBox())?.width).toBeLessThanOrEqual(72);
 
   // Labels leave the screen but stay as accessible names.
-  await expect(aside.getByRole("link", { name: "Início" })).toBeVisible();
+  for (const place of PLACES) await expect(aside.getByRole("link", { name: asLink(place), exact: true })).toBeVisible();
   await expect(aside.getByRole("link", { name: "Nova conversa" })).toBeVisible();
   await expect(aside.getByRole("button", { name: "Buscar" })).toBeVisible();
+  await expect(aside.getByRole("button", { name: /^Abrir avisos/ })).toBeVisible();
   await expect(aside.getByRole("button", { name: /^Menu da conta:/ })).toBeVisible();
   await expect(aside.getByRole("link", { name: "Início" }).getByText("Início", { exact: true })).toHaveClass(/sr-only/);
   await expect(page.locator("main")).toBeInViewport();
-  // The account menu opens beside the rail, whole.
-  const menu = await openAccountMenu(page);
-  await expect(menu.getByRole("button", { name: "Sair", exact: true })).toBeInViewport();
+  expect(await tooSmallControls(page)).toEqual([]);
+  // The account panel opens beside the rail, whole.
+  const panel = await openAccountMenu(page);
+  await expect(panel).toBeInViewport({ ratio: 1 });
+  expect((await panel.boundingBox())?.x).toBeGreaterThanOrEqual(72);
+  await page.keyboard.press("Escape");
+  // So do the notices.
+  await aside.getByRole("button", { name: /^Abrir avisos/ }).click();
+  const notices = page.getByRole("dialog", { name: "Avisos" });
+  await expect(notices).toBeInViewport({ ratio: 1 });
+  expect((await notices.boundingBox())?.x).toBeGreaterThanOrEqual(72);
   await page.keyboard.press("Escape");
 
   // Still collapsed after a reload: a look remembered on this device.
@@ -109,22 +192,25 @@ test("collapsing keeps every control named, remembers the choice and expands aga
   await expect(aside.getByRole("button", { name: "Recolher menu" })).toBeVisible();
 });
 
-test("on the rail each icon shows its name on hover and keyboard focus, and Escape hides it", async ({ page }) => {
+test("on the rail the keyboard reaches every control, each icon shows its name on hover and focus, and Escape hides it", async ({ page }) => {
   await openHome(page);
   const aside = sidebar(page);
   await aside.getByRole("button", { name: "Recolher menu" }).click();
-  const tip = (name: string) => aside.locator('[aria-hidden="true"]', { hasText: name });
+  const tip = (name: string) => aside.locator('.zuri-tip > [aria-hidden="true"]', { hasText: new RegExp(`^${name}$`) });
 
   await expect(tip("Tarefas")).toBeHidden();
-  await aside.getByRole("link", { name: "Tarefas" }).hover();
+  await aside.getByRole("link", { name: asLink("Tarefas") }).hover();
   await expect(tip("Tarefas")).toBeVisible();
+  // The name sits beside the rail, whole, never cut by the menu's own scroll area.
+  await expect(tip("Tarefas").locator("span")).toBeInViewport({ ratio: 1 });
+  expect((await tip("Tarefas").locator("span").boundingBox())?.x).toBeGreaterThanOrEqual(((await aside.boundingBox())?.width ?? 0) - 2);
   // The pointer can move onto the name without losing it (WCAG 1.4.13).
-  await tip("Tarefas").hover();
+  await tip("Tarefas").locator("span").hover();
   await expect(tip("Tarefas")).toBeVisible();
   await page.mouse.move(900, 400);
   await expect(tip("Tarefas")).toBeHidden();
 
-  // Keyboard: focus the toggle, then step to the next control.
+  // Keyboard: from the toggle, Tab walks Nova conversa, the search, the ten places and the account, in this order.
   await aside.getByRole("button", { name: "Expandir menu" }).focus();
   await page.keyboard.press("Tab");
   await expect(aside.getByRole("link", { name: "Nova conversa" })).toBeFocused();
@@ -132,15 +218,26 @@ test("on the rail each icon shows its name on hover and keyboard focus, and Esca
   await page.keyboard.press("Escape");
   await expect(tip("Nova conversa")).toBeHidden();
   await page.keyboard.press("Tab");
-  await expect(aside.getByRole("link", { name: "Início" })).toBeFocused();
-  await expect(tip("Início")).toBeVisible();
+  await expect(aside.getByRole("button", { name: "Buscar" })).toBeFocused();
+  await expect(tip("Buscar")).toBeVisible();
+  for (const place of PLACES) {
+    await page.keyboard.press("Tab");
+    await expect(aside.getByRole("link", { name: asLink(place), exact: true })).toBeFocused();
+    await expect(tip(place)).toBeVisible();
+  }
+  await page.keyboard.press("Tab");
+  await expect(aside.getByRole("button", { name: /^Menu da conta:/ })).toBeFocused();
+  // Enter on a place opens it.
+  await aside.getByRole("link", { name: "Rotinas" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/rotinas$/);
 
-  // Enter on the toggle expands the menu; no tooltips once labels show.
+  // Enter on the toggle expands the menu; no names beside the icons once labels show.
   await aside.getByRole("button", { name: "Expandir menu" }).focus();
   await page.keyboard.press("Enter");
   await expect(aside).toHaveAttribute("data-collapsed", "false");
   await expect(aside.getByRole("button", { name: "Recolher menu" })).toBeFocused();
-  await expect(aside.locator('[aria-hidden="true"]', { hasText: "Tarefas" })).toHaveCount(0);
+  await expect(aside.locator('.zuri-tip > [aria-hidden="true"]')).toHaveCount(0);
 });
 
 test("another tab follows the change", async ({ page, context }) => {
@@ -153,45 +250,153 @@ test("another tab follows the change", async ({ page, context }) => {
 });
 
 for (const scheme of ["light", "dark"] as const) {
-  test(`the collapsed rail has no serious violation (${scheme})`, async ({ page }) => {
+  test(`the collapsed rail and the panels beside it have no serious violation (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await openHome(page);
     await sidebar(page).getByRole("button", { name: "Recolher menu" }).click();
-    await sidebar(page).getByRole("link", { name: "Tarefas" }).hover();
+    await sidebar(page).getByRole("link", { name: asLink("Tarefas") }).hover();
     await expectAccessible(page, `menu recolhido (${scheme})`);
+    await sidebar(page).getByRole("button", { name: /^Abrir avisos/ }).click();
+    await expect(page.getByRole("dialog", { name: "Avisos" }).getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
+    await expectAccessible(page, `avisos ao lado do menu recolhido (${scheme})`);
+  });
+
+  test(`the phone's shell, its sheets and the bottom bar have no serious violation (${scheme}) @mobile`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ colorScheme: scheme });
+    await openHome(page);
+    await expectAccessible(page, `casca no celular (${scheme})`);
+    expect(await tooSmallControls(page)).toEqual([]);
+    await page.getByRole("button", { name: "Mais", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Mais" })).toBeVisible();
+    await expectAccessible(page, `folha Mais (${scheme})`);
+    expect(await tooSmallControls(page)).toEqual([]);
+    await page.keyboard.press("Escape");
+    await openAccountMenu(page);
+    await expectAccessible(page, `folha da conta (${scheme})`);
+    expect(await tooSmallControls(page)).toEqual([]);
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: /^Abrir avisos/ }).click();
+    await expect(page.getByRole("dialog", { name: "Avisos" }).getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
+    await expectAccessible(page, `folha de avisos (${scheme})`);
   });
 }
 
-test("on a phone the sidebar is a drawer from the top bar, with no bottom bar and no toggle, even when collapsed before @mobile", async ({ page }) => {
+test("on a phone: a top bar, a bottom bar with four places and Mais, and no side menu, even when collapsed before @mobile", async ({ page }) => {
   await page.goto("/entrar");
   await page.evaluate(() => localStorage.setItem("zuri.sidebar", "collapsed"));
   await page.setViewportSize({ width: 390, height: 844 });
   await openHome(page);
+  await expect(sidebar(page)).toBeHidden();
   const banner = page.getByRole("banner");
   await expect(banner.getByText("Zuri", { exact: true })).toBeVisible();
-  await expect(banner.getByRole("link", { name: "Nova conversa" })).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Navegação principal" })).toHaveCount(0);
+  await expect(banner.getByRole("button", { name: "Buscar" })).toBeVisible();
+  await expect(banner.getByRole("button", { name: /^Abrir avisos/ })).toBeVisible();
+  await expect(banner.getByRole("button", { name: /^Menu da conta:/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^(Recolher|Expandir) menu$/ })).toHaveCount(0);
 
-  await banner.getByRole("button", { name: "Abrir menu" }).click();
-  const drawer = page.getByRole("dialog", { name: "Navegação principal" });
-  await expect(drawer).toBeVisible();
-  await expect(drawer.getByRole("button", { name: "Recolher menu" })).toHaveCount(0);
-  await expect(drawer.getByRole("link", { name: "Automações" })).toBeVisible();
-  await expectAccessible(page, "gaveta do menu (celular)");
-  // Escape closes it and gives focus back to the menu button.
+  const bar = page.getByRole("navigation", { name: "Navegação principal" });
+  await expect(bar.getByRole("link")).toHaveText(["Início", "Conversa", asLink("Tarefas"), "Agenda"]);
+  await expect(bar.getByRole("link", { name: "Início" })).toHaveAttribute("aria-current", "page");
+  const more = bar.getByRole("button", { name: "Mais", exact: true });
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+  // The bar is the last thing on the screen, whole.
+  await expect(bar).toBeInViewport({ ratio: 1 });
+  const box = await bar.boundingBox();
+  expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(844);
+
+  // "Mais": the other places from the same list, and the settings.
+  await more.click();
+  const sheet = page.getByRole("dialog", { name: "Mais" });
+  await expect(sheet).toBeVisible();
+  await expect(more).toHaveAttribute("aria-expanded", "true");
+  await expect(sheet.getByRole("link")).toHaveText(["Notas", "Memória", "Rotinas", "Contatos", "Avaliações", "CRM", "Configurações"]);
+  await expect(sheet.getByRole("link", { name: "Notas" })).toBeFocused();
+  // Tab stays inside the sheet.
+  await sheet.getByRole("button", { name: "Fechar" }).focus();
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest("main, header, nav.zuri-tab-bar"))).toBe(false);
+  // Escape closes it and gives the focus back to "Mais".
   await page.keyboard.press("Escape");
-  await expect(drawer).toBeHidden();
-  await expect(banner.getByRole("button", { name: "Abrir menu" })).toBeFocused();
-  // A tap on the shaded page closes it too.
-  await banner.getByRole("button", { name: "Abrir menu" }).click();
-  await page.mouse.click(380, 400);
-  await expect(drawer).toBeHidden();
-  // The close button, and a place picked, close it as well.
-  await banner.getByRole("button", { name: "Abrir menu" }).click();
-  await drawer.getByRole("button", { name: "Fechar" }).click();
-  await expect(drawer).toBeHidden();
-  await banner.getByRole("button", { name: "Abrir menu" }).click();
-  await drawer.getByRole("link", { name: "Tarefas" }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(more).toBeFocused();
+  // A tap on the shaded page closes it too, and so does the X.
+  await more.click();
+  await page.mouse.click(195, 60);
+  await expect(sheet).toHaveCount(0);
+  await more.click();
+  await sheet.getByRole("button", { name: "Fechar" }).click();
+  await expect(sheet).toHaveCount(0);
+  // A place picked closes it, and "Mais" stays lit while the place is one of its own.
+  await more.click();
+  await sheet.getByRole("link", { name: "Rotinas" }).click();
+  await expect(page).toHaveURL(/\/rotinas$/);
+  await expect(sheet).toHaveCount(0);
+  await expect(more).toHaveAttribute("data-current", "true");
+  await expect(bar.getByRole("link", { name: "Início" })).not.toHaveAttribute("aria-current", "page");
+  await bar.getByRole("link", { name: asLink("Tarefas") }).click();
   await expect(page).toHaveURL(/\/tarefas$/);
-  await expect(drawer).toBeHidden();
+  await expect(more).not.toHaveAttribute("data-current", "true");
+});
+
+test("on a phone the account opens as a sheet from the top bar @mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHome(page);
+  const account = page.getByRole("banner").getByRole("button", { name: /^Menu da conta:/ });
+  const sheet = await openAccountMenu(page);
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole("link")).toHaveText(["Conta e perfil", "Segurança", "Avisos", "Configurações"]);
+  await expect(sheet.getByRole("listitem").filter({ hasText: "Versão" })).toHaveText(`Versão${APP_VERSION}`);
+  // A sheet: as wide as the screen, resting on its bottom edge.
+  const box = await sheet.boundingBox();
+  expect(box?.width).toBe(390);
+  expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(844);
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  await expect(account).toBeFocused();
+  await account.click();
+  await sheet.getByRole("link", { name: "Segurança" }).click();
+  await expect(page).toHaveURL(/\/configuracoes\/seguranca$/);
+  await expect(sheet).toHaveCount(0);
+});
+
+test("on a phone the top bar leaves while the content scrolls down and returns on the way up; the bottom bar stays @mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHome(page);
+  await page.goto("/configuracoes/seguranca");
+  await expect(page.getByRole("heading", { level: 1, name: "Segurança" })).toBeVisible();
+  const main = page.locator("main");
+  await expect.poll(() => main.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(900);
+  const banner = page.getByRole("banner");
+  const bar = page.getByRole("navigation", { name: "Navegação principal" });
+  await expect(banner).toBeInViewport({ ratio: 1 });
+
+  // The owner's scroll, step by step, as a finger would.
+  const scrollBy = async (step: number, times: number) => {
+    for (let i = 0; i < times; i++) {
+      await main.evaluate((el, by) => el.scrollBy(0, by), step);
+      await page.waitForTimeout(40);
+    }
+  };
+  await scrollBy(60, 8);
+  await expect(banner).toHaveAttribute("data-off", "true");
+  await expect(banner).not.toBeInViewport();
+  await expect(bar).toBeInViewport({ ratio: 1 });
+  // The window itself never scrolls.
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+
+  // The bar's own coming and going moves the content: wait it out, as the shell does.
+  await page.waitForTimeout(400);
+  await scrollBy(-40, 4);
+  await expect(banner).toHaveAttribute("data-off", "false");
+  await expect(banner).toBeInViewport({ ratio: 1 });
+
+  // Away again; another place brings it back.
+  await page.waitForTimeout(400);
+  await scrollBy(60, 8);
+  await expect(banner).toHaveAttribute("data-off", "true");
+  await bar.getByRole("link", { name: "Agenda" }).click();
+  await expect(page).toHaveURL(/\/agenda$/);
+  await expect(banner).toHaveAttribute("data-off", "false");
+  await expect(banner).toBeInViewport({ ratio: 1 });
 });

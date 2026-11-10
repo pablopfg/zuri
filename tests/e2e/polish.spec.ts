@@ -104,18 +104,16 @@ test("the password form in settings has a reveal on each field", async ({ page }
 test.describe("on a phone-wide screen", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("sign-out sits two taps away, in the drawer's account menu, never in the top bar", async ({ page }) => {
+  test("sign-out sits two taps away, in the account sheet, never in the top bar", async ({ page }) => {
     await page.goto("/");
     await signIn(page);
     await expect(page).toHaveTitle("Início · Zuri");
     await expect(page.getByRole("banner").getByRole("button", { name: "Sair" })).toHaveCount(0);
-    const drawer = await openAccountMenu(page);
-    await expect(drawer.getByRole("button", { name: "Sair", exact: true })).toBeVisible();
-    // Escape closes the menu first, then the drawer, and the session stays.
+    const sheet = await openAccountMenu(page);
+    await expect(sheet.getByRole("button", { name: "Sair", exact: true })).toBeVisible();
+    // Escape closes the sheet, and the session stays.
     await page.keyboard.press("Escape");
-    await expect(drawer.getByRole("button", { name: "Sair", exact: true })).toBeHidden();
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog", { name: "Navegação principal" })).toHaveCount(0);
+    await expect(sheet).toHaveCount(0);
     await expect(page).toHaveURL(/\/$/);
   });
 

@@ -20,7 +20,7 @@ Cada automação tem também a prioridade dos seus avisos (`priority`: baixa, no
 - `apps/agent/src/automations/executor.ts`: roda cada tipo.
 - `apps/agent/src/tools/automations.ts`: as ferramentas do chat.
 - `apps/agent/src/api/automations.ts`: as rotas `/api/automations*`.
-- `apps/web/src/pages/automations/`: a tela `/automacoes`, carregada sob demanda.
+- `apps/web/src/pages/automations/`: a tela `/rotinas` (no menu, **Rotinas**), carregada sob demanda. O endereço antigo `/automacoes` leva para ela.
 - Migration 9: `zur_automations` e `zur_automation_runs`. Migration 13: coluna `priority`.
 
 ## Como o horário funciona

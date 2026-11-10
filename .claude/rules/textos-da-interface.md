@@ -23,7 +23,8 @@ novo ou mexido** já segue isto. Detalhes, glossário completo e exemplos:
 - Glossário: Apagar (não Excluir), Remover só para ligações sem perda de dado,
   Conectar/Desconectar para contas (Telegram, Google; nunca Desvincular),
   Salvar, Editar, Cancelar, Tentar de novo, Ligar/Desligar, Aprovar/Recusar,
-  Aviso, Automação (e "Rotina da Zuri" para a com IA), Conversa, Entrar/Sair
+  Aviso, Rotinas (o lugar do menu; dentro da tela, Automação e "Rotina da
+  Zuri" para a com IA, até a PR S14 do Sinal), CRM › Fluxos, Conversa, Entrar/Sair
   ("a entrada", nunca "login").
 - O lint de microcopy (`scripts/lint-microcopy.ts`, dentro de
   `npm run lint`) barra o que dá para barrar; exceção só em `i18n-ignore.json`

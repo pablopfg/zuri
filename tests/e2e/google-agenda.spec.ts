@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, openSidebar, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, openPlace, signIn, tooSmallControls } from "./ui-helpers.ts";
 
 // Google Calendar (step 19) against the real Worker. Over loopback the Worker
 // answers Google itself (apps/agent/src/google/dev-google.ts), with sample
@@ -80,8 +80,7 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   await expectAccessible(page, "integracoes-google");
 
   // The Agenda, from the side menu.
-  const sidebar = await openSidebar(page);
-  await sidebar.getByRole("link", { name: "Agenda" }).click();
+  await openPlace(page, "Agenda");
   await expect(page).toHaveURL(/\/agenda$/);
   await expect(page.getByRole("heading", { level: 1, name: "Agenda" })).toBeVisible();
   await chooseView(page, "Dia");

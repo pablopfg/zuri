@@ -13,10 +13,10 @@ test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 const tag = () => uniqueTag(test.info().project.name);
 
 async function openFlows(page: Page) {
-  await page.goto("/automacoes/fluxos");
+  await page.goto("/crm/fluxos");
   await signIn(page);
-  await expect(page).toHaveURL(/\/automacoes\/fluxos$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Automações" })).toBeVisible();
+  await expect(page).toHaveURL(/\/crm\/fluxos$/);
+  await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Fluxos" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
 }
@@ -164,17 +164,14 @@ test("a connection keeps its credential on the server; a flow calls it, filters 
   await expect(item).toHaveCount(0);
 });
 
-test("the tabs are addresses, and the palette opens a new flow from anywhere", async ({ page }) => {
-  await page.goto("/automacoes");
+test("the flows have their own address in the CRM, and the palette opens a new flow from anywhere", async ({ page }) => {
+  await page.goto("/rotinas");
   await signIn(page);
-  await expect(page.getByRole("link", { name: "Rotinas" })).toHaveAttribute("aria-current", "page");
-  await page.getByRole("link", { name: "Fluxos" }).click();
-  await expect(page).toHaveURL(/\/automacoes\/fluxos$/);
-  await page.goBack();
-  await expect(page).toHaveURL(/\/automacoes$/);
-  // An unknown tab goes back to the routines.
-  await page.goto("/automacoes/outra");
-  await expect(page).toHaveURL(/\/automacoes$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Rotinas" })).toBeVisible();
+  // An unknown part of the CRM goes back to its first screen.
+  await page.goto("/crm/outra");
+  await expect(page).toHaveURL(/\/crm$/);
+  await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
 
   for (const from of ["routines", "flows"]) {
     await page.keyboard.press("Control+k");
@@ -182,7 +179,7 @@ test("the tabs are addresses, and the palette opens a new flow from anywhere", a
     await page.keyboard.press("Enter");
     const form = page.getByRole("dialog", { name: "Novo fluxo" });
     await expect(form, from).toBeVisible();
-    await expect(page).toHaveURL(/\/automacoes\/fluxos$/);
+    await expect(page).toHaveURL(/\/crm\/fluxos$/);
     await form.getByRole("button", { name: "Cancelar" }).click();
     await expect(form).toBeHidden();
   }
@@ -199,7 +196,7 @@ test("loading, empty and error states of the tab", async ({ page }) => {
       body: JSON.stringify({ flows: [], drafts: [], connections: [], counts: { flows: 0, enabled: 0, connections: 0, sites: 0, runsToday: 0, neuronsToday: 0 }, credentialsAvailable: false }),
     });
   });
-  await page.goto("/automacoes/fluxos");
+  await page.goto("/crm/fluxos");
   await signIn(page);
   await expect(page.getByRole("status").filter({ hasText: "Carregando fluxos" })).toBeVisible();
   answer = "empty";
@@ -225,8 +222,8 @@ test("a flow the chat suggests waits on the tab; saved by the owner, it starts o
   expect((await done).status()).toBe(200);
   await expect(page.getByRole("button", { name: "Parar" })).toHaveCount(0);
 
-  await page.goto("/automacoes/fluxos");
-  await expect(page.getByRole("heading", { level: 1, name: "Automações" })).toBeVisible();
+  await page.goto("/crm/fluxos");
+  await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
   const drafts = page.getByRole("region", { name: "Sugestões da Zuri" });
   const draft = drafts.getByRole("listitem").filter({ hasText: name });
   await expect(draft).toBeVisible();

@@ -1088,7 +1088,7 @@ function flowNotice(alerts: AlertService, diagnostics: DiagnosticsService, notic
   const source = `flow:${notice.flowId}`;
   switch (notice.kind) {
     case "step":
-      alerts.raise({ kind: "flow.notice", category: "routines", priority: notice.priority, params: { title: notice.title }, body: notice.body || null, source, link: "/automacoes/fluxos" });
+      alerts.raise({ kind: "flow.notice", category: "routines", priority: notice.priority, params: { title: notice.title }, body: notice.body || null, source, link: "/crm/fluxos" });
       return;
     case "site": {
       const { change } = notice;
@@ -1099,16 +1099,16 @@ function flowNotice(alerts: AlertService, diagnostics: DiagnosticsService, notic
         priority: change.state === "down" ? "high" : "normal",
         params: { host: change.host, name: notice.flowName, status },
         source,
-        link: "/automacoes/fluxos",
+        link: "/crm/fluxos",
       });
       return;
     }
     case "failed":
       diagnostics.record({ source: "automation", code: notice.problem, errorName: "FlowRun" });
-      alerts.raise({ kind: "flow.failed", category: "system", priority: "normal", params: { name: notice.flowName }, source, link: "/automacoes/fluxos", dedupeKey: `flow-failed:${notice.flowId}`, dedupeMs: 6 * 3_600_000 });
+      alerts.raise({ kind: "flow.failed", category: "system", priority: "normal", params: { name: notice.flowName }, source, link: "/crm/fluxos", dedupeKey: `flow-failed:${notice.flowId}`, dedupeMs: 6 * 3_600_000 });
       return;
     case "paused":
-      alerts.raise({ kind: "flow.paused", category: "system", priority: "high", params: { name: notice.flowName }, source, link: "/automacoes/fluxos" });
+      alerts.raise({ kind: "flow.paused", category: "system", priority: "high", params: { name: notice.flowName }, source, link: "/crm/fluxos" });
       return;
   }
 }
@@ -1155,7 +1155,7 @@ function crmNotice(alerts: AlertService, notice: CrmNotice): void {
  * negative review must always reach the team.
  */
 export function reviewNotice(alerts: Pick<AlertService, "raise">, notice: ReviewNotice): void {
-  const base = { category: "system" as const, link: "/contatos/avaliacoes" as const, source: null };
+  const base = { category: "system" as const, link: "/avaliacoes" as const, source: null };
   switch (notice.kind) {
     case "reviews.negative":
     case "reviews.worse":

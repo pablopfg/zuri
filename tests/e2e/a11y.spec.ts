@@ -70,7 +70,7 @@ for (const scheme of ["light", "dark"] as const) {
         ["/conversa", "Conversa"],
         ["/tarefas", "Tarefas"],
         ["/notas", "Notas"],
-        ["/automacoes", "Automações"],
+        ["/rotinas", "Rotinas"],
         ["/memoria", "Memória"],
         ["/acessos", "Acessos"],
       ] as const) {
@@ -94,12 +94,12 @@ for (const scheme of ["light", "dark"] as const) {
     });
 
     // A test of its own, so each group above keeps its time on a phone.
-    test(`the Flows tab has no serious violation (${scheme}) @mobile`, async ({ page }) => {
-      await page.goto("/automacoes/fluxos");
+    test(`the flows screen of the CRM has no serious violation (${scheme}) @mobile`, async ({ page }) => {
+      await page.goto("/crm/fluxos");
       await signIn(page);
-      await expect(page.getByRole("heading", { level: 1, name: "Automações" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
       await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
-      await expectAccessible(page, "/automacoes/fluxos");
+      await expectAccessible(page, "/crm/fluxos");
       expect(await tooSmallControls(page)).toEqual([]);
     });
 
@@ -119,11 +119,11 @@ for (const scheme of ["light", "dark"] as const) {
       }
     });
 
-    test(`the Reviews tab, off, has no serious violation (${scheme}) @mobile`, async ({ page }) => {
-      await page.goto("/contatos/avaliacoes");
+    test(`the Reviews screen, off, has no serious violation (${scheme}) @mobile`, async ({ page }) => {
+      await page.goto("/avaliacoes");
       await signIn(page);
       await expect(page.getByText("Avaliações desligadas", { exact: true })).toBeVisible();
-      await expectAccessible(page, "/contatos/avaliacoes");
+      await expectAccessible(page, "/avaliacoes");
       expect(await tooSmallControls(page)).toEqual([]);
     });
   });

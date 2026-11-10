@@ -13,6 +13,9 @@
  *   script shoots the sign-in screen and home.
  * - `name=/path>Region name`: the same, with that region (role region) scrolled to the top first.
  * - `painel-de-avisos=/`: the notice center, opened from the bell on that page.
+ * - `painel-da-conta=/`: the account panel (a sheet on a phone), opened on that page.
+ * - `folha-mais=/`: the "Mais" sheet of the phone's bottom bar (phone only).
+ * - `menu-recolhido=/`: the side menu as a rail of icons, with one name showing (computer only).
  * - `--exemplos`: fills the empty database with the sample data of
  *   dados-de-exemplo.ts first, so lists are not empty.
  */
@@ -95,11 +98,26 @@ for (const [device, options] of [
       }
     }
     for (const screen of signedIn) {
+      // Shots that exist on one size only.
+      if (screen.name === "folha-mais" && device !== "celular") continue;
+      if (screen.name === "menu-recolhido" && device !== "computador") continue;
       await page.goto(BASE + screen.path);
       await page.getByRole("heading", { level: 1 }).first().waitFor();
       if (screen.name === "painel-de-avisos") {
         await page.getByRole("button", { name: /^Abrir avisos/ }).first().click();
         await page.getByRole("dialog", { name: "Avisos" }).getByRole("list").or(page.getByRole("dialog", { name: "Avisos" }).getByText("Nenhum aviso")).first().waitFor();
+      }
+      if (screen.name === "painel-da-conta") {
+        await page.getByRole("button", { name: /^Menu da conta:/ }).click();
+        await page.getByRole("dialog", { name: "Sua conta" }).getByRole("button", { name: "Sair", exact: true }).waitFor();
+      }
+      if (screen.name === "folha-mais") {
+        await page.getByRole("button", { name: "Mais", exact: true }).click();
+        await page.getByRole("dialog", { name: "Mais" }).waitFor();
+      }
+      if (screen.name === "menu-recolhido") {
+        await page.getByRole("button", { name: "Recolher menu" }).click();
+        await page.locator("aside").getByRole("link", { name: "Agenda", exact: true }).hover();
       }
       if (screen.region) {
         const region = page.getByRole("region", { name: screen.region });
@@ -107,9 +125,11 @@ for (const [device, options] of [
         await region.evaluate((box: HTMLElement) => box.scrollIntoView({ block: "start" }));
       }
       await shot(screen.name);
+      // The rail is remembered on the device: the next shots get the wide menu back.
+      if (screen.name === "menu-recolhido") await page.getByRole("button", { name: "Expandir menu" }).click();
     }
     await context.close();
   }
 }
 await browser.close();
-console.log(`${screens.length * 4} screenshots in ${out}`);
+console.log(`Screenshots in ${out}`);

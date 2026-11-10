@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, openSidebar, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
+import { expectAccessible, openPlace, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // Automations against the real Worker (step 10): create with the preview, run
 // now, pause, edit and delete; a routine Zuri proposes in the chat waits for the
@@ -11,10 +11,10 @@ test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 const tag = () => uniqueTag(test.info().project.name);
 
 async function openAutomations(page: Page) {
-  await page.goto("/automacoes");
+  await page.goto("/rotinas");
   await signIn(page);
-  await expect(page).toHaveURL(/\/automacoes$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Automações" })).toBeVisible();
+  await expect(page).toHaveURL(/\/rotinas$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Rotinas" })).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
 }
 
@@ -149,8 +149,8 @@ test("a routine Zuri proposes in the chat runs nothing until the owner approves 
   expect((await done).status()).toBe(200);
   await expect(page.getByRole("button", { name: "Parar" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Revisar em Automações" }).last().click();
-  await expect(page).toHaveURL(/\/automacoes#automacao-[0-9a-f-]{36}$/);
+  await page.getByRole("link", { name: "Revisar em Rotinas" }).last().click();
+  await expect(page).toHaveURL(/\/rotinas#automacao-[0-9a-f-]{36}$/);
   const pending = page.getByRole("region", { name: /^A Zuri sugeriu (uma rotina|\d+ rotinas)$/ });
   const item = pending.getByRole("listitem").filter({ hasText: name });
   await expect(item.getByText("Veja minhas tarefas da semana e diga o que está atrasado.")).toBeVisible();
@@ -179,21 +179,20 @@ test("the palette opens the form, from another page or on the page itself", asyn
     const form = page.getByRole("dialog", { name: "Nova automação" });
     await expect(form, from).toBeVisible();
     // The request is consumed: the address is clean, so a reload doesn't open the form again.
-    await expect(page).toHaveURL(/\/automacoes$/);
+    await expect(page).toHaveURL(/\/rotinas$/);
     await form.getByRole("button", { name: "Cancelar" }).click();
     await expect(form).toBeHidden();
   }
   await page.reload();
-  await expect(page.getByRole("heading", { level: 1, name: "Automações" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Rotinas" })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Nova automação" })).toBeHidden();
 });
 
-test("Automations sits in the sidebar, which is a drawer on a phone @mobile", async ({ page }) => {
+test("Rotinas sits in the side menu, and behind Mais on a phone @mobile", async ({ page }) => {
   await page.goto("/");
   await signIn(page);
-  const sidebar = await openSidebar(page);
-  await sidebar.getByRole("link", { name: "Automações" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Automações" })).toBeVisible();
-  // The drawer closes once a place is picked.
-  await expect(page.getByRole("dialog", { name: "Navegação principal" })).toHaveCount(0);
+  await openPlace(page, "Rotinas");
+  await expect(page.getByRole("heading", { level: 1, name: "Rotinas" })).toBeVisible();
+  // The sheet closes once a place is picked.
+  await expect(page.getByRole("dialog", { name: "Mais" })).toHaveCount(0);
 });

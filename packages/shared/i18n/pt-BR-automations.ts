@@ -1,7 +1,7 @@
 // The Automations screen's pt-BR texts (step 10). Part of the pt-BR catalog, kept apart so
 // the interface downloads them with the screen and not in its first bundle (rule P11).
 export const ptBRAutomations = {
-  "web.automations.title": "Automações",
+  "web.automations.title": "Rotinas",
   "web.automations.description": "Lembretes, resumos e rotinas que rodam sozinhos, sempre no seu fuso.",
   "web.automations.new": "Criar automação",
   "web.automations.activeCount": "{active} de {max} ativas",
@@ -145,7 +145,4 @@ export const ptBRAutomations = {
   "web.automations.template.funnel.name": "Resumo do funil",
   "web.automations.template.funnel.message": "Resuma o funil do meu CRM: quantos clientes há em cada etapa, os retornos atrasados e os desta semana, e quem entrou nos últimos 7 dias. Termine com os três clientes que mais pedem atenção agora.",
   // The tabs of the screen (step 22a): the routines and the flows.
-  "web.automations.tabs": "Tipos de automação",
-  "web.automations.tab.routines": "Rotinas",
-  "web.automations.tab.flows": "Fluxos",
 } as const;

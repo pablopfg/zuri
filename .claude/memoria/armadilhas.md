@@ -220,6 +220,18 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
   demanda que importava um deles separou o roteador em `components-*.js` e
   subiu o JS inicial em 1,5 KB. As telas de primeiro acesso e de trocar a
   senha desenham o próprio `<main>` e recebem `go` por propriedade.
+- Casca do Sinal (S02): três divisões novas do pacote inicial, cada uma com
+  1 a 2 kB. Painel sob demanda que chega ao `i18n.tsx` sem usar o
+  `react-query` separa `useBaseQuery` (o painel da conta usa `useSession`, que
+  já está no início). Módulo sob demanda que importa um módulo inicial com
+  ícones (a paleta importando `lib/nav.ts`, o painel importando
+  `shell/Panel.tsx`) separa os ícones em pedaços próprios: passe a lista por
+  propriedade e deixe a casca desenhar o painel em volta. Listas longas de
+  classes repetidas na casca pesam no JS: foram para `.zuri-*` em
+  `styles.css`.
+- `dialog::backdrop` do `styles.css` fica fora de camada e vence qualquer
+  `backdrop:` do Tailwind (que vai em `@layer`). Para mudar o fundo de um
+  diálogo, escreva a regra fora de camada, depois da geral.
   Lembrete: um `lazy()` sem uso continua no pacote (a chamada não é pura), então
   para medir tire a declaração inteira, não só o uso.
 - `/* @__PURE__ */` deixa o bundler apagar a chamada, mas não os argumentos

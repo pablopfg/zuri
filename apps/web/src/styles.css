@@ -305,6 +305,15 @@ input::-ms-clear {
 dialog::backdrop {
   background: rgb(0 0 0 / 0.5);
 }
+/* A panel of the shell shades the page only on a phone, where it is a sheet; on a computer it sits beside the menu. */
+.zuri-panel::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+@media (min-width: 48rem) {
+  .zuri-panel::backdrop {
+    background: transparent;
+  }
+}
 
 /* Markdown of notes: readable defaults without a typography plugin. */
 .prose-zuri {
@@ -378,4 +387,181 @@ dialog::backdrop {
 }
 .prose-zuri hr {
   border-color: var(--color-border);
+}
+
+/*
+ * The shell (Sinal): the menu, the phone's bars and the panels. Their looks live
+ * here, not in class lists in the code: the shell is in the first load, where
+ * every byte of JavaScript counts (rule P11), and a stylesheet doesn't.
+ * A utility on the element still wins (this layer comes before the utilities).
+ */
+@layer components {
+  /* A square button with only an icon: the bell, the toggle, the search, a panel's X. */
+  .zuri-icon-button {
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg-muted hover:bg-raised hover:text-fg;
+  }
+
+  /* A line of the menu: a place, "Nova conversa", the search. */
+  .zuri-menu-row {
+    @apply flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-[0.9375rem] font-medium transition-colors;
+  }
+  .zuri-menu-row[data-rail] {
+    @apply justify-center px-0;
+  }
+  .zuri-menu-field {
+    @apply gap-2.5 border border-border-strong bg-surface shadow-sm hover:bg-raised dark:bg-transparent;
+  }
+
+  .zuri-menu-place {
+    @apply relative text-fg hover:bg-raised;
+  }
+  .zuri-menu-place > svg {
+    @apply h-5 w-5 shrink-0 text-fg-muted;
+  }
+  .zuri-menu-place:hover > svg,
+  .zuri-menu-place[aria-current="page"] > svg {
+    @apply text-fg;
+  }
+  .zuri-menu-place[aria-current="page"] {
+    @apply bg-surface font-semibold shadow-sm dark:bg-raised;
+  }
+  /* The dark theme marks the current place with the green light too. */
+  .zuri-menu-place[aria-current="page"]::before {
+    @apply absolute inset-y-2.5 left-0 hidden w-[3px] rounded-r bg-accent dark:block;
+    content: "";
+  }
+  .zuri-menu-heading {
+    @apply px-3 pb-1 text-xs font-semibold tracking-wide text-fg-muted uppercase;
+  }
+
+  /* The name of a rail icon, beside it (shell/Sidebar.tsx, Tip). */
+  .zuri-tip {
+    @apply relative flex items-center justify-end;
+  }
+  /*
+   * Fixed with no offsets: it stays where the line puts it (the icon's right edge,
+   * centered) and moves out by its own width, free of the menu's own scroll area,
+   * which would cut it. The padding bridges the gap, so the pointer can move onto it.
+   */
+  .zuri-tip > [aria-hidden] {
+    @apply invisible fixed z-40 translate-x-full pl-3;
+  }
+  .zuri-tip:not([data-quiet]):hover > [aria-hidden],
+  .zuri-tip:not([data-quiet]):has(:focus-visible) > [aria-hidden] {
+    @apply visible;
+  }
+  .zuri-tip > [aria-hidden] > span {
+    @apply block rounded-lg bg-fg px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-bg shadow-lg;
+  }
+
+  .zuri-avatar {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-tile text-sm font-semibold text-brand-mark;
+  }
+
+  /* The link that jumps the menus, seen only with keyboard focus. */
+  .zuri-skip {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-3 focus:shadow-lg;
+  }
+
+  /* The menu's column on a computer: wide, or a rail of icons. */
+  .zuri-menu {
+    @apply hidden w-[17rem] shrink-0 border-r border-border bg-subtle motion-safe:transition-[width] motion-safe:duration-200 md:flex;
+  }
+  .zuri-menu[data-collapsed="true"] {
+    @apply w-[4.5rem];
+  }
+
+  /* The only area that scrolls, and the column of the page inside it. */
+  .zuri-content {
+    @apply min-h-0 flex-1 overflow-y-auto overscroll-contain focus:outline-none;
+  }
+  .zuri-content > div {
+    @apply mx-auto w-full max-w-5xl space-y-6 px-4 pt-5 pb-10 md:px-8 md:pt-8;
+  }
+
+  .zuri-top-bar > a {
+    @apply mr-auto flex min-h-11 min-w-0 items-center gap-2.5 rounded-xl;
+  }
+  .zuri-top-bar > a > span {
+    @apply truncate text-lg font-semibold tracking-tight;
+  }
+
+  /* The phone's top bar: it leaves while the content scrolls down (data-off), never while the focus is in it. */
+  .zuri-top-bar {
+    @apply flex min-h-14 flex-none items-center gap-0.5 border-b border-border bg-bg pt-[env(safe-area-inset-top)] pr-2 pl-4 motion-safe:transition-[margin] motion-safe:duration-200 md:hidden;
+  }
+  .zuri-top-bar[data-off="true"]:not(:focus-within) {
+    @apply -mt-14;
+  }
+
+  /* The phone's bottom bar and each of its five targets. */
+  .zuri-tab-bar {
+    @apply grid flex-none grid-cols-5 border-t border-border bg-surface px-1 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] md:hidden;
+  }
+  .zuri-tab {
+    @apply relative flex min-h-13 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-medium text-fg-muted;
+  }
+  .zuri-tab > svg {
+    @apply h-[1.375rem] w-[1.375rem];
+  }
+  .zuri-tab[aria-current="page"],
+  .zuri-tab[data-current] {
+    @apply font-semibold text-fg;
+  }
+  .zuri-tab[aria-current="page"] > svg,
+  .zuri-tab[data-current] > svg {
+    @apply text-accent-text;
+  }
+  .zuri-tab > [aria-hidden]:not(svg) {
+    @apply absolute top-2 left-[calc(50%+0.5rem)] h-2 w-2 rounded-full bg-warning ring-2 ring-surface;
+  }
+
+  /* A panel of the shell: a sheet from the bottom on a phone, a small panel beside the menu on a computer. */
+  .zuri-panel {
+    @apply fixed inset-x-0 top-auto bottom-0 m-0 max-h-[88dvh] w-full max-w-none overflow-hidden rounded-t-3xl border border-border bg-surface p-0 text-fg shadow-xl md:inset-auto md:max-h-[min(86dvh,42rem)] md:rounded-2xl;
+  }
+  .zuri-panel > div {
+    @apply relative flex max-h-[inherit] flex-col pb-[env(safe-area-inset-bottom)] md:pb-0;
+  }
+  /* The handle of a sheet, only a picture. */
+  .zuri-panel > div::before {
+    @apply mx-auto mt-2 block h-1 w-10 shrink-0 rounded-full bg-border-strong md:hidden;
+    content: "";
+  }
+  .zuri-panel > div > .zuri-icon-button {
+    @apply absolute top-4 right-2 md:top-2;
+  }
+  /* Where each panel sits on a computer: under the bell, above the account; beside the rail when the menu is collapsed. */
+  .zuri-panel[data-at="notices"] {
+    @apply md:top-14 md:left-3 md:w-[25rem];
+  }
+  .zuri-panel[data-at="notices-rail"] {
+    @apply md:top-3 md:left-20 md:w-[25rem];
+  }
+  .zuri-panel[data-at="account"] {
+    @apply md:bottom-16 md:left-3 md:w-[18.75rem];
+  }
+  .zuri-panel[data-at="account-rail"] {
+    @apply md:bottom-3 md:left-20 md:w-[18.75rem];
+  }
+  .zuri-panel[data-at="more"] {
+    @apply md:hidden;
+  }
+  .zuri-panel-title {
+    @apply shrink-0 px-5 pt-3 pr-14 pb-3 text-lg font-semibold md:pt-4;
+  }
+
+  /* A line of the "Mais" sheet. */
+  .zuri-more-row {
+    @apply flex min-h-13 items-center gap-3.5 rounded-xl px-3 font-medium text-fg hover:bg-raised;
+  }
+  .zuri-more-row[aria-current="page"] {
+    @apply bg-raised font-semibold;
+  }
+  .zuri-more-row > svg {
+    @apply h-5 w-5 shrink-0 text-fg-muted;
+  }
+  .zuri-more-row > svg:last-child {
+    @apply h-4 w-4;
+  }
 }

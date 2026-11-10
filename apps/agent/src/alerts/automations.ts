@@ -31,7 +31,7 @@ export function noticeForRun(alerts: AlertService, diagnostics: DiagnosticsServi
       category: "system",
       priority: "normal",
       params: { name: automation.name },
-      link: "/automacoes",
+      link: "/rotinas",
       dedupeKey: `routine-budget:${automation.id}`,
       dedupeMs: 20 * 3_600_000,
     });

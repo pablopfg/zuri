@@ -154,7 +154,7 @@ describe("/api/reviews", () => {
     const notice = notices.notices.find((n) => n.kind === "reviews.negative");
     expect(notice?.title).not.toContain("Ana");
     expect(notice?.body).toContain("Ana");
-    expect(notice?.link).toBe("/contatos/avaliacoes");
+    expect(notice?.link).toBe("/avaliacoes");
     // Answers never carry Google's ids.
     expect(JSON.stringify(page)).not.toContain("accounts/");
   });

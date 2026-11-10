@@ -1,6 +1,6 @@
 import { ptBR } from "@zuri/shared";
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, openSidebar, signIn } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, openPlace, signIn } from "./ui-helpers.ts";
 
 // The greeting on the home page: good morning, afternoon or evening by the
 // owner's zone (settings, not the device), with their name once they give one,
@@ -66,7 +66,7 @@ test("uses the name saved in Account, refuses one with a tag, and greets without
   await expectAccessible(page, "conta com nome");
 
   // Back to the home page inside the app: the saved name shows without reloading.
-  await (await openSidebar(page)).getByRole("link", { name: "Início", exact: true }).click();
+  await openPlace(page, "Início");
   const heading = page.getByRole("heading", { level: 1 });
   await expect(heading).toHaveText(/^(Bom dia|Boa tarde|Boa noite), Ana Clara!$/);
   // One line in her voice under the title, from the catalog.

@@ -281,18 +281,18 @@ test("from the home page, a message at the chat's limit is sent and one characte
   await expect(page).toHaveURL(/\/conversa\/[0-9a-f-]{36}$/);
 });
 
-test("a drawer left open closes when the screen widens, and the page stays usable", async ({ page }) => {
+test("the Mais sheet left open closes when the screen widens, and the page stays usable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openHome(page);
-  await page.getByRole("button", { name: "Abrir menu" }).click();
-  await expect(page.getByRole("dialog", { name: "Navegação principal" })).toBeVisible();
+  await page.getByRole("button", { name: "Mais", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Mais" })).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 800 });
-  await expect(page.getByRole("dialog", { name: "Navegação principal" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Mais" })).toHaveCount(0);
   await page.locator("aside").getByRole("link", { name: "Notas" }).click();
   await expect(page).toHaveURL(/\/notas$/);
 });
 
-test("the bell over 99 unread says 99+ in its name too, as the badge shows @mobile", async ({ page }) => {
+test("the bell over 99 unread says 99+ in its name, and shows the dot @mobile", async ({ page }) => {
   await openHome(page);
   await page.route("**/api/auth/session", async (route) => {
     const res = await route.fetch();
@@ -304,6 +304,6 @@ test("the bell over 99 unread says 99+ in its name too, as the badge shows @mobi
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
   const bell = page.getByRole("button", { name: "Abrir avisos, 99+ sem ler" });
   await expect(bell).toBeVisible();
-  await expect(bell).toHaveText("99+");
+  await expect(bell.locator("[data-unread]")).toBeVisible();
   await expectAccessible(page, "sino-99");
 });
