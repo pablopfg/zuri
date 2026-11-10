@@ -398,3 +398,8 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
 - Um padrão de dado pessoal (`apps/agent/src/ai/external.ts`) que proíbe `.`
   logo depois do valor deixa passar o valor no fim da frase. Proíba só o ponto
   seguido de letra ou número, e teste cada tipo com ponto final (10/11/2026).
+- Linha de sistema no fim das respostas anteriores do histórico (`[Tools called
+  in that turn: …]`): um modelo real copia a linha na resposta seguinte. Toda
+  nota nova posta no histórico do assistente precisa de um filtro na saída
+  (`ToolsNoteFilter` em `apps/agent/src/agent/context.ts`) e de uma rodada no
+  modelo real (10/11/2026).

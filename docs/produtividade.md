@@ -61,7 +61,10 @@ prazo; Próximas mostra o resto do que está aberto.
   bytes, e a caixa de busca aceita 200 caracteres.
 - **Notas:** índice FTS5 (`unicode61 remove_diacritics 2`), então "reuniao"
   acha "reunião". O texto vira palavras (só letras e números), cada uma entre
-  aspas e como prefixo, e todas precisam aparecer. Aspas, `AND`, `OR`, `NOT`,
+  aspas e como prefixo, e todas precisam aparecer. O prefixo é a parte que o
+  singular e o plural têm em comum (`searchStem`): "presentes" acha
+  "presente", "reunião" acha "reuniões" e "animal" acha "animais". A busca de
+  memórias usa a mesma regra. Aspas, `AND`, `OR`, `NOT`,
   `NEAR`, `*`, `^` e `coluna:` digitados nunca viram sintaxe do FTS5. Palavras
   muito comuns ("de", "com", "the") são ignoradas. Uma busca sem palavra
   nenhuma (só `%` ou `_`) procura o texto literal com `instr`, no título e no

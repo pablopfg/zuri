@@ -1,6 +1,6 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
-import { type PaidModel, type PaidProviderId, paidProviderOf } from "@zuri/shared";
+import { ANTHROPIC_CACHE_RATES, type PaidModel, type PaidProviderId, paidProviderOf } from "@zuri/shared";
 import { createParser } from "eventsource-parser";
 import type { LanguageModel } from "ai";
 import type { GenerateRequest } from "./provider.ts";
@@ -19,6 +19,9 @@ export function paidKey(keys: PaidKeys, provider: PaidProviderId): string | null
   const key = keys[provider]?.trim();
   return key ? key : null;
 }
+
+/** Anthropic's 5-minute prompt cache (the default lifetime): nothing is kept beyond it. */
+const CACHE = { type: "ephemeral" } as const;
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1";
 const OPENAI_URL = "https://api.openai.com/v1";
@@ -63,13 +66,23 @@ export class PaidProvider extends SdkProvider {
     return createOpenAI({ apiKey: this.key, baseURL: OPENAI_URL, fetch: metered }).responses(this.remoteModel);
   }
 
+  /**
+   * The last tool closes the part of the prompt that is the same in every turn (the tools come first
+   * on the wire): cached there, a new message minutes later still reads the tools from the cache,
+   * though the system prompt (the clock, the memories) changed.
+   */
+  protected override toolOptions(index: number, total: number): Record<string, unknown> {
+    return this.id === "anthropic" && index === total - 1 ? { providerOptions: { anthropic: { cacheControl: CACHE } } } : {};
+  }
+
   protected override settings(req: GenerateRequest): Record<string, unknown> {
     return {
       ...(req.signal ? { abortSignal: req.signal } : {}),
       providerOptions:
         this.id === "anthropic"
           ? // Haiku takes "disabled"; Sonnet 5.5 refuses it and turns reasoning off with "between_tools".
-            { anthropic: { thinking: this.remoteModel.startsWith("claude-haiku") ? { type: "disabled" } : { type: "between_tools" } } }
+            // cacheControl: the prompt so far is cached for 5 minutes, so the next step of the turn reads it at a tenth of the price.
+            { anthropic: { thinking: this.remoteModel.startsWith("claude-haiku") ? { type: "disabled" } : { type: "between_tools" }, cacheControl: CACHE } }
           : { openai: { store: false, reasoningEffort: "none" } },
     };
   }
@@ -107,8 +120,12 @@ function capture(meter: StepMeter, value: unknown): void {
     if (!usage) continue;
     const input = tokenCount(usage.input_tokens);
     if (input !== undefined) {
-      // Anthropic counts the cached part apart; it was still sent.
-      meter.input = input + (tokenCount(usage.cache_creation_input_tokens) ?? 0) + (tokenCount(usage.cache_read_input_tokens) ?? 0);
+      // Anthropic counts the cached part apart; it was still sent, so it counts as prompt.
+      const written = tokenCount(usage.cache_creation_input_tokens) ?? 0;
+      const read = tokenCount(usage.cache_read_input_tokens) ?? 0;
+      meter.input = input + written + read;
+      // The bill is another matter: a write costs more than plain input, a read much less.
+      if (written + read > 0) meter.inputBilled = input + written * ANTHROPIC_CACHE_RATES.write + read * ANTHROPIC_CACHE_RATES.read;
     }
     meter.output = tokenCount(usage.output_tokens) ?? meter.output;
   }

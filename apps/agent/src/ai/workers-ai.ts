@@ -37,6 +37,11 @@ export abstract class SdkProvider implements AIProvider {
     return callOptions(req);
   }
 
+  /** Extra fields of one tool's definition, by its place in the list; none unless a provider has some (paid.ts). */
+  protected toolOptions(_index: number, _total: number): Record<string, unknown> {
+    return {};
+  }
+
   private usage(meter: StepMeter, outputChars: number) {
     return { ...stepUsage(this.model, meter, outputChars), billable: this.billable };
   }
@@ -86,11 +91,12 @@ export abstract class SdkProvider implements AIProvider {
 
   async *generateWithTools(req: ToolRequest): AsyncIterable<AgentEvent> {
     const tools: ToolSet = {};
-    for (const tool of req.tools) {
+    for (const [index, tool] of req.tools.entries()) {
       tools[tool.name] = {
         description: tool.description,
         inputSchema: tool.inputSchema,
         execute: async (input: unknown, options: { toolCallId: string }) => tool.execute(input, options.toolCallId),
+        ...this.toolOptions(index, req.tools.length),
       } as ToolSet[string];
     }
     const hasTools = req.tools.length > 0;

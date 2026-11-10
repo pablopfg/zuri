@@ -70,5 +70,23 @@ export function searchTerms(query: string): string[] {
 export function ftsQuery(query: string): string | null {
   const terms = searchTerms(query);
   if (terms.length === 0) return null;
-  return terms.map((term) => `"${term}"*`).join(" ");
+  return terms.map((term) => `"${searchStem(term)}"*`).join(" ");
+}
+
+/**
+ * The start of a word that its singular and its plural share, in pt-BR and en, so the prefix search
+ * finds one from the other: "presentes" finds "presente", "reunião" finds "reuniões", "animal" finds
+ * "animais". Only the ending goes, and only from a word long enough to stay a word; a short or
+ * unknown ending is left alone. It widens a search, never narrows it.
+ */
+export function searchStem(term: string): string {
+  const cut = (ending: RegExp, min: number) => (term.length >= min && ending.test(term) ? term.replace(ending, "") : null);
+  return (
+    cut(/(?:ões|ães|ãos|oes|aes|aos)$/u, 6) ??
+    cut(/(?:ão|ao)$/u, 5) ??
+    cut(/(?:is|es)$/u, 6) ??
+    cut(/(?<!s)s$/u, 5) ??
+    cut(/(?<=[aeou])l$/u, 5) ??
+    term
+  );
 }

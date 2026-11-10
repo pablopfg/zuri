@@ -61,10 +61,21 @@ mudança de preço não reescreve o passado.
   Haiku sem raciocínio; Sonnet com raciocínio só entre ferramentas; OpenAI com
   `reasoningEffort: "none"`.
 - O uso vem da própria resposta (tokens de entrada, de saída e de cache) por um
-  `fetch` medido, e cada passo é acertado no medidor como os do Workers AI. Os
-  tokens de cache entram pelo preço cheio de entrada: a conta fica um pouco
-  acima da fatura, nunca abaixo. Uma chamada que a empresa recusa (sem
+  `fetch` medido, e cada passo é acertado no medidor como os do Workers AI. A
+  contagem de tokens é sempre a do prompt inteiro; o custo segue a tarifa do
+  cache (`ANTHROPIC_CACHE_RATES`): o que é gravado no cache custa 1,25 vez a
+  entrada e o que é lido custa 0,1. A reserva feita antes da chamada conta o
+  pior caso (o prompt todo gravado). Uma chamada que a empresa recusa (sem
   crédito, chave errada, erro do servidor) conta como pedido e custa zero.
+- Cache de prompt da Anthropic (10/11/2026): cada pedido marca dois pontos de
+  cache de 5 minutos, o padrão da empresa. Um fica na última ferramenta (as
+  ferramentas vêm primeiro no pedido e não mudam com o relógio, então uma
+  mensagem nova minutos depois ainda as lê do cache) e o outro no fim do
+  pedido (o passo seguinte do mesmo turno lê tudo o que já foi enviado). Numa
+  bateria de 20 cenários no Claude Haiku 5.5, a entrada cobrada caiu cerca de
+  80%. O que fica no cache é o mesmo conteúdo que já ia para a empresa, já com
+  o perfil de fora aplicado, e some em 5 minutos sem uso. A OpenAI não recebe
+  nenhuma marca.
 - Os endereços das APIs são fixos no código (`api.anthropic.com` e
   `api.openai.com`): uma variável de ambiente com o nome de base dos SDKs não
   desvia a chave para outro lugar.

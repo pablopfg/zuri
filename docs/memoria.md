@@ -72,8 +72,13 @@ mesmas e o que fecharia um ciclo.
 
 ## Memória no prompt
 
-`selectRelevantMemories` escolhe até 8 memórias pela busca FTS5, mais até 4
-preferências atuais. `memoryPromptSection` agrupa em "Atuais", "Podem estar
+`selectRelevantMemories` escolhe até 8 memórias: primeiro até 3 restrições de
+saúde e alimentação atuais (alergia, intolerância, "não come", gestante e
+parecidas, em pt-BR e en, pela expressão fixa `RESTRICTION_QUERY`), que entram
+em qualquer pergunta; depois as da busca FTS5 pelas palavras da pergunta; e,
+havendo lugar, até 4 preferências atuais. Sem a primeira parte, "sugira um
+jantar" não trazia "é alérgico a camarão", porque as duas frases não têm
+palavra em comum. `memoryPromptSection` agrupa em "Atuais", "Podem estar
 desatualizadas" e "Passadas", dentro de um orçamento de
 `min(1500, 20% do contexto)` tokens. As passadas só entram quando a pergunta é
 sobre o passado ("onde eu morava?", "what did I drive before?").

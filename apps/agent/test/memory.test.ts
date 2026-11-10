@@ -560,6 +560,34 @@ describe("search", () => {
 });
 
 describe("what the AI sees", () => {
+  it("always offers the owner's health and diet restrictions, whatever the question (found with a real model)", async () => {
+    await withWorld((w) => {
+      save(w, "É alérgico a camarão e não come carne de porco", "fact");
+      save(w, "Torce para o Bahia", "fact");
+      // No word in common: the keyword recall alone left the allergy out, and the model suggested ham.
+      expect(selectRelevantMemories(w.m.repo, "Sugira três opções de jantar para hoje").map((m) => m.content)).toEqual(["É alérgico a camarão e não come carne de porco"]);
+      // Without the accent, in a phrase, and in English.
+      save(w, "Nao bebe alcool", "fact");
+      save(w, "The owner is lactose intolerant", "fact");
+      expect(selectRelevantMemories(w.m.repo, "Qual o meu time?").map((m) => m.content).sort()).toEqual([
+        "Nao bebe alcool",
+        "The owner is lactose intolerant",
+        "É alérgico a camarão e não come carne de porco",
+      ].sort());
+      // Three at most (n+1), a past one never, and eight matches don't crowd them out.
+      const past = save(w, "Era vegetariano").memory.id;
+      w.m.setStatus(past, { status: "historical" });
+      save(w, "Tem diabetes tipo 2", "fact");
+      for (let i = 0; i < 9; i++) save(w, `Gosto de música número ${i}`);
+      const many = selectRelevantMemories(w.m.repo, "Que música eu gosto?");
+      expect(many).toHaveLength(8);
+      const restrictions = many.filter((m) => /alérgico|alcool|lactose|diabetes/.test(m.content));
+      expect(restrictions).toHaveLength(3);
+      expect(many.some((m) => m.id === past)).toBe(false);
+    });
+  });
+
+
   it("at most 8 memories, only current ones for a present question, plus recent preferences while there is room", async () => {
     await withWorld((w) => {
       save(w, "Prefiro respostas curtas", "preference");

@@ -1,3 +1,9 @@
+### Alterado
+
+- A Zuri passa a levar em conta as suas restrições de saúde e alimentação (alergia, intolerância, o que você não come) em qualquer conversa, mesmo quando a pergunta não cita o assunto. Antes, pedir uma sugestão de jantar podia ignorar uma alergia guardada na memória.
+- A busca de notas e de memórias encontra o plural pelo singular e o contrário: "presentes" acha "presente" e "reunião" acha "reuniões".
+- Com um modelo da Anthropic, a parte repetida de cada pedido fica 5 minutos no cache da empresa e custa um décimo nas chamadas seguintes. Em teste, o custo de entrada caiu cerca de 80%. O painel de uso mostra o valor já com esse desconto.
+
 ### Corrigido
 
 - A conversa com os modelos da Anthropic voltou a funcionar. A empresa recusava todo pedido por causa do padrão de e-mail da ferramenta de clientes, e a Zuri respondia "A IA não aceitou este pedido" a qualquer mensagem.

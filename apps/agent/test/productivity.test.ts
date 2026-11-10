@@ -5,7 +5,7 @@ import { Database } from "../src/db/database.ts";
 import { migrate } from "../src/db/migrations.ts";
 import { AppError } from "../src/http/errors.ts";
 import { Productivity } from "../src/productivity/index.ts";
-import { foldSearch, ftsQuery, needsLatinFold, searchColumn, searchTerms } from "../src/productivity/search.ts";
+import { foldSearch, ftsQuery, needsLatinFold, searchColumn, searchStem, searchTerms } from "../src/productivity/search.ts";
 import { testEnv } from "./helpers.ts";
 
 // The repositories over a database of their own, with a clock the test moves.
@@ -57,8 +57,32 @@ describe("search helpers", () => {
     expect(searchColumn("title", "água")).toMatch(/^lower\(replace\(/);
   });
 
+  it("search by the part a singular and its plural share, and leave short words alone", () => {
+    const pairs = [["presentes", "presente"], ["reuniões", "reunião"], ["flores", "flor"], ["animais", "animal"], ["papéis", "papel"], ["tasks", "task"], ["feijões", "feijão"]];
+    for (const [plural, singular] of pairs) {
+      const stem = searchStem(singular as string);
+      expect((plural as string).normalize("NFD").replace(/[\u0300-\u036f]/g, "").startsWith(searchStem(plural as string).normalize("NFD").replace(/[\u0300-\u036f]/g, "")), plural).toBe(true);
+      expect((plural as string).normalize("NFD").replace(/[\u0300-\u036f]/g, "").startsWith(stem.normalize("NFD").replace(/[\u0300-\u036f]/g, "")), `${singular} -> ${plural}`).toBe(true);
+      expect((singular as string).normalize("NFD").replace(/[\u0300-\u036f]/g, "").startsWith(searchStem(plural as string).normalize("NFD").replace(/[\u0300-\u036f]/g, "")), `${plural} -> ${singular}`).toBe(true);
+    }
+    for (const short of ["mês", "gás", "sol", "mal", "pão", "não", "seis", "class"]) expect(searchStem(short), short).toBe(short);
+  });
+
+  it("finds a note by the plural of a word it has in the singular, and the other way round", async () => {
+    await withWorld(({ p }) => {
+      p.notes.create({ title: "Ideias de presente", content: "Livro para a mãe." });
+      p.notes.create({ title: "Reuniões da semana", content: "Segunda e quinta." });
+      p.notes.create({ title: "Animais da fazenda", content: "Dois cavalos." });
+      p.notes.create({ title: "Outra coisa", content: "Nada a ver." });
+      expect(p.notes.list({ q: "presentes" }).map((n) => n.title)).toEqual(["Ideias de presente"]);
+      expect(p.notes.list({ q: "reunião" }).map((n) => n.title)).toEqual(["Reuniões da semana"]);
+      expect(p.notes.list({ q: "animal" }).map((n) => n.title)).toEqual(["Animais da fazenda"]);
+      expect(p.notes.list({ q: "ideia presentes" }).map((n) => n.title)).toEqual(["Ideias de presente"]);
+    });
+  });
+
   it("turn any text into quoted FTS5 prefixes: no operator, quote or column filter survives", () => {
-    expect(ftsQuery('"reunião" OR title:segredo NOT x* NEAR(a b) ^c')).toBe('"reunião"* "title"* "segredo"* "not"* "near"*');
+    expect(ftsQuery('"reunião" OR title:segredo NOT x* NEAR(a b) ^c')).toBe('"reuni"* "title"* "segredo"* "not"* "near"*');
     expect(ftsQuery('" OR "')).toBeNull();
     expect(ftsQuery("%_*()")).toBeNull();
     expect(searchTerms("a de o com")).toEqual([]);

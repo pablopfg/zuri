@@ -1,7 +1,7 @@
 import { type AgentId, type ChatEvent, CHAT_MODELS, type Settings } from "@zuri/shared";
 import { AgentConfigs } from "../src/specialists/configs.ts";
 import { describe, expect, it } from "vitest";
-import { contextBudget, contextWindow, IMPORTED_PREFIX, SUMMARIZE_THRESHOLD, summaryRequest } from "../src/agent/context.ts";
+import { contextBudget, contextWindow, IMPORTED_PREFIX, SUMMARIZE_THRESHOLD, summaryRequest, ToolsNoteFilter } from "../src/agent/context.ts";
 import { decodeQuoted } from "../src/chat/conversations.ts";
 import { agentNameLine, buildSystemPrompt, FIXED_INSTRUCTIONS, languageReminder, SUMMARY_SYSTEM } from "../src/agent/prompt.ts";
 import { AgentRunner } from "../src/agent/runner.ts";
@@ -474,6 +474,26 @@ describe("prompt injection (security scenarios)", () => {
       await turn(world, provider, "Criou mesmo?", { conversationId: first.conversationId });
       const answer = provider.transcript.requests[0]?.messages[1]?.content ?? "";
       expect(answer).toBe("Criei.\n\n[Tools called in that turn: 2x create_task (done), complete_task (failed)]");
+    });
+  });
+
+  it("never shows or stores the model's own copy of the tools note, however the stream cuts it", async () => {
+    const note = "[Tools called in that turn: complete_task (done)]";
+    for (const size of [1, 3, 7, 1_000]) {
+      const filter = new ToolsNoteFilter();
+      const pieces = `Feito! Veja [isto] e [Tools de jardim].\n\n${note}\n\nMais uma linha.\n\n${note}`.match(new RegExp(`[\\s\\S]{1,${size}}`, "g")) ?? [];
+      const shown = pieces.map((piece) => filter.push(piece)).join("") + filter.end();
+      expect(shown, `in pieces of ${size}`).toBe("Feito! Veja [isto] e [Tools de jardim].\n\nMais uma linha.");
+    }
+    // A note cut short by the end of the answer goes too; a bracket that only looks like one stays.
+    const cut = new ToolsNoteFilter();
+    expect(cut.push("Ok.\n\n[Tools called in that turn: create_ta") + cut.end()).toBe("Ok.");
+    const plain = new ToolsNoteFilter();
+    expect(plain.push("Lista: [Tools") + plain.end()).toBe("Lista: [Tools");
+    await withChatWorld(async (world) => {
+      const { events, done } = await turn(world, new ScriptedProvider([say(`Hoje é sábado.\n\n${note}`)]), "Que dia é hoje?");
+      expect(done.message.content).toBe("Hoje é sábado.");
+      expect(JSON.stringify(events)).not.toContain("Tools called");
     });
   });
 

@@ -41,6 +41,53 @@ const PLAN_OUTCOME: Record<TaskPlan["status"], string> = {
   expired: "expired without confirmation; nothing was created",
 };
 
+/** How the note of the tools an earlier answer ran begins. */
+const TOOLS_NOTE = "[Tools called in that turn:";
+
+/**
+ * Takes the tools note out of what the model writes. The model reads the note at the end of its own
+ * earlier answers and sometimes copies it into the next one (seen on a real model); the owner must
+ * never see it, and stored again it would stack. A stream filter: it holds back only what may be the
+ * start of a note, so the rest of the text flows as it comes.
+ */
+export class ToolsNoteFilter {
+  private held = "";
+
+  /** The part of `delta` (with what was held) that is safe to show now. */
+  push(delta: string): string {
+    let text = this.held + delta;
+    this.held = "";
+    // Whole notes, with the blank lines that led to them.
+    text = text.replace(/\s*\[Tools called in that turn:[^\]\n]*\]/g, "");
+    // A note still being written, or a "[" that may become one: wait for more.
+    const open = text.lastIndexOf("[");
+    if (open >= 0) {
+      const tail = text.slice(open);
+      const unfinished = tail.startsWith(TOOLS_NOTE) ? !/[\]\n]/.test(tail) : TOOLS_NOTE.startsWith(tail);
+      if (unfinished) {
+        // The blank lines before it go with it, or they would be left hanging if it is a note.
+        const from = text.slice(0, open).search(/\s*$/);
+        this.held = text.slice(from);
+        return text.slice(0, from);
+      }
+    }
+    // Trailing blank lines may be leading into a note too.
+    const from = text.search(/\n\s*$/);
+    if (from >= 0) {
+      this.held = text.slice(from);
+      return text.slice(0, from);
+    }
+    return text;
+  }
+
+  /** What was held at the end of the stream: shown, unless it is a note cut short. */
+  end(): string {
+    const rest = this.held;
+    this.held = "";
+    return rest.trimStart().startsWith(TOOLS_NOTE) || !rest.trim() ? "" : rest;
+  }
+}
+
 function outcomes(row: MessageRow, actions: Map<string, PendingAction>, plans: Map<string, TaskPlan>): string[] {
   const notes: string[] = [];
   // Tools that simply ran (no proposal, no plan), counted by name and result. Without this line the
@@ -67,7 +114,7 @@ function outcomes(row: MessageRow, actions: Map<string, PendingAction>, plans: M
     const plan = tool.planId ? plans.get(tool.planId) : undefined;
     if (tool.planId) notes.push(`[Task plan: ${plan ? PLAN_OUTCOME[plan.status] : PLAN_OUTCOME.expired}]`);
   }
-  if (ran.size > 0) notes.unshift(`[Tools called in that turn: ${[...ran].map(([key, count]) => (count > 1 ? `${count}x ${key}` : key)).join(", ")}]`);
+  if (ran.size > 0) notes.unshift(`${TOOLS_NOTE} ${[...ran].map(([key, count]) => (count > 1 ? `${count}x ${key}` : key)).join(", ")}]`);
   return notes;
 }
 
