@@ -44,7 +44,7 @@ Cada linha ganhou um lugar na interface nova. O protótipo recebe a mesma mudan�
 | C5 | Clientes (funil, etiquetas, retorno, histórico) | A tela sai (decisão de 09/11, 21:51). As rotas `/api/crm/*`, as 5 ferramentas da conversa e os dados continuam. `/contatos/clientes` leva a Contatos | S10 |
 | C6 | Fluxos: **Histórico dos fluxos** (`GET /flows/runs`) | CRM › Fluxos, "Últimas execuções" embaixo da lista, como em Rotinas | S15 |
 | C7 | Avaliações: aba **Respondidas** e **Apagar a resposta no Google** | Filtro "Respondidas" na lista e item no ⋯ da resposta publicada | S12 |
-| C8 | Estados "ainda não ligado" (Agenda sem Google, Contatos desligados, Avaliações desligadas, nenhuma agenda aberta) e os vazios de cada lista | Padrão único de vazio da S01 (ícone, título, uma frase, um botão) | cada PR de tela |
+| C8 | Estados "ainda não ligado" (Agenda sem Google, Contatos desligados, Avaliações desligadas, nenhuma agenda aberta) e os vazios de cada lista | O `EmptyState` que já existe (ícone, título, uma frase, um botão), com os tokens da S01 | cada PR de tela |
 | C9 | Rotas `/acessos`, `/aprovar`, primeiro acesso, segundo passo, troca de senha, bloqueio, 404 e "Esta tela parou" | Mesmo desenho da tela de entrar | S03 (S16 para `/acessos`) |
 
 Conferido e **presente** no protótipo: "Nunca enviar para fora" em notas e memórias, autonomia por ferramenta dos servidores MCP, "Publicadas sozinha", notificação neste aparelho, busca por significado, histórico da memória, aprovação de rotina, sugestões de fluxo, backup automático e lixeira por tipo.
@@ -131,7 +131,7 @@ Rotas novas, criadas na S02 apontando para as telas de hoje, e trocadas pela tel
 
 | PR | Arquivos principais |
 | --- | --- |
-| S01 | `apps/web/src/styles.css`, `components/ui.tsx`, `components/ThemeSwitcher.tsx`, `components/Switch.tsx`, `apps/web/public/fonts/`, `_headers` (cache da fonte), `docs/interface.md` |
+| S01 | `apps/web/src/styles.css`, `components/ThemeSwitcher.tsx`, `apps/web/src/fonts/` (o build põe o hash no nome, então o cache longo de `/assets/` já vale), `docs/interface.md` |
 | S02 | `components/AppShell.tsx` (dividido em `shell/Sidebar.tsx`, `shell/TabBar.tsx`, `shell/MoreSheet.tsx`, `shell/AccountPanel.tsx`), `lib/nav.ts` (a lista única do menu, usada pela lateral, pela folha "Mais" e pela paleta), `NotificationCenter.tsx`, `CommandPalette.tsx`, `App.tsx`, `packages/shared/src/alerts.ts` e os geradores de link do agente |
 | S03 a S16 | A pasta `pages/` da área, o `pt-BR-<tela>.ts` dela, os e2e da área |
 
@@ -187,7 +187,7 @@ Uma PR por linha, para a `develop`, uma por conversa. Branch `feat/sinal-NN-<ass
 
 | # | PR | Entrega | Critérios de aceite próprios | Depende de |
 | --- | --- | --- | --- | --- |
-| S01 | Fundamentos | Tokens do Sinal refinado (claro com fundo `#f1f1f3`), Figtree, botão, campo, interruptor, segmentado, selo, cartão, diálogo, folha, vazio, esqueleto com a linha verde, tema só com ícones | Toda tela de hoje continua funcionando e passa no axe com as cores novas; a fonte carrega do próprio endereço; nenhum texto cortado | — |
+| S01 | Fundamentos | Tokens do Sinal refinado (claro com fundo `#f1f1f3`), Figtree, cantos, tema só com ícones. As peças base que já existem em `components/ui.tsx` (botão, campo, cartão, diálogo, aviso, vazio, esqueleto com a linha verde) ganham a cara nova pelos tokens; peça que muda de forma ou que ainda não existe (segmentado, selo, folha) entra na PR da primeira tela que a usa | Toda tela de hoje continua funcionando e passa no axe com as cores novas; a fonte carrega do próprio endereço; nenhuma tela com sobra lateral em 320, 390, 820 e 1440 px e em 1440 × 600 | — |
 | S02 | Casca | Menu em três grupos, rotas novas com redirecionamento, menu de baixo e folha "Mais", perfil e avisos em painel e folha, linha "Versão", barra de cima que some ao descer, paleta com a mesma lista do menu | Seção 7 "Rotas" inteira; só o conteúdo rola; teclado na lateral recolhida; JS ≤ 141 kB medido | S01 |
 | S03 | Entrada | Entrar, verificação em seis estados, recuperação, primeiro acesso, segundo passo, troca de senha, bloqueio, `/aprovar`, 404, erro de tela | Os seis estados com Playwright; nenhum texto cita infraestrutura | S01 |
 | S04 | Início | Saudação pela hora, data, "Seu dia" com cortina, pendentes, janela de horário, linha de agora | Relógio falso: a linha anda, o item passa para a cortina, a lista se refaz sem roubar o foco | S02 |
@@ -225,7 +225,7 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 
 | PR | Situação |
 | --- | --- |
-| S01 | a fazer |
+| S01 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
