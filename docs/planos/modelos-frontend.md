@@ -27,7 +27,7 @@ Nada no app muda até o Pablo escolher. Vale lembrar que em 03/11 ele preferiu m
 
 - Protótipo: `docs/planos/modelos-frontend/prototipo-v5.html` (a barra do topo troca a tela e o tema).
 - Telas: Entrar, Início, Conversa, Tarefas, Notas, Agenda, **Contatos**, Automações, Memória, Configurações, **Estados das telas** e Identidade visual.
-- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (184 imagens: as 13 telas e mais 33 vistas de dentro delas, entre elas o carregando, "Esqueci minha senha" e "Confira o seu e-mail", os painéis de perfil e de avisos, a nota nova, a memória e a conversa por voz, o assistente de automação, os fluxos, os módulos, as conexões, a ficha de contato com WhatsApp, o contato sem nome e o só com e-mail, as avaliações com a lista, os homônimos e os pedidos, as nove seções das configurações, o consumo por ano, o ajuste de um agente e o mês da agenda), e a comparação com a rodada 3 em `antes-depois-*.png`.
+- Capturas: `docs/capturas/pr/modelos-frontend-v5/`, nome `sinal-<tela>-<computador|celular>-<claro|escuro>.png` (228 imagens de 57 vistas: as 13 telas e as vistas de dentro delas, entre elas o carregando, "Esqueci minha senha" e "Confira o seu e-mail", os painéis de perfil e de avisos, a nota nova, a memória e a conversa por voz, o assistente de automação, os fluxos, os módulos, as conexões, a ficha de contato com WhatsApp, o contato sem nome e o só com e-mail, as avaliações com a lista, os homônimos e os pedidos, as nove seções das configurações, o consumo por ano, o ajuste de um agente, o mês da agenda, a lista de conversas, a conversa anterior, o exemplo do link e a credencial do Chatwoot), e a comparação com a rodada 3 em `antes-depois-*.png`.
 - Acessibilidade: axe (WCAG 2.1 e 2.2 A/AA e boas práticas) sem nenhuma violação nas 136 combinações, e nenhum erro de script.
 
 O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a fonte Figtree, os neutros em zinco e o verde como cor de ação. O que mudou foi o acabamento, regra por regra.
@@ -134,6 +134,15 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 - **Frases descritivas** de todas as telas e seções revistas; tabela em [novo-frontend-sinal.md](novo-frontend-sinal.md), seção 7.
 - **Cronograma:** capturas do README refeitas em cada PR de tela, e a etapa final de **pentest autônomo**, que só começa com tudo concluído e com a autorização do Pablo.
 - **Respostas:** 2 (teto de 141 kB), 3 (preferência da Agenda), 5 (IA só escolhe as sugestões) e 7 (índice pelas estrelas) aprovadas; 6 (Clientes em segundo plano) fica para depois; 11 (fluxos do n8n) foi para o plano dos módulos do CRM.
+
+### Ajustes pedidos pelo Pablo (10/11, 02:24 e 02:32)
+
+- **Menu lateral:** três grupos (sem título: Início e Conversa; **Organizar**: Tarefas, Agenda, Notas, Memória e Automações; **Relacionamento**: Contatos, Avaliações e CRM) e ícones revistos, sem repetição: Conversa `messages-square`, Notas `notebook`, Automações `zap`, Contatos `book-user`, CRM `handshake`.
+- **Exemplo do link:** em Avaliações › Pedidos, "Como funciona o link" abre o passo a passo: a mensagem com o link, o que acontece no toque e a linha do tempo do pedido (vista "Avaliações · exemplo do link").
+- **Conversas:** lista das conversas recentes ao lado da conversa (no celular, no botão do cabeçalho), conversa antiga com aviso, e a regra de conversa nova a cada 24 h, ligada por padrão em Configurações › Conta › Conversas (vistas "Conversa · lista" e "Conversa · anterior").
+- **Chaves dos modelos pagos:** continuam como segredos do servidor; a tela mostra só o estado. Motivo em [novo-frontend-sinal.md](novo-frontend-sinal.md), seção 7.
+- **Intervalo do Chatwoot:** a credencial ganhou "Intervalo entre mensagens" (de 1 a 3 min por padrão) e CRM › Credenciais mostra a fila de envio (vista "CRM · credencial do Chatwoot"). A lógica do servidor está em [modulos-crm.md](modulos-crm.md), seção 6; a ordem dos módulos e o recebimento dos e-mails do Webdiet, no mesmo plano (PR #247).
+- **Celular (02:32):** ícones de 32 px no canto das linhas de Módulos, Automações e "Precisa de você", com os botões embaixo, alinhados ao texto; abas em grade de colunas iguais (quatro abas em 2 × 2); selo de título na linha de baixo; fila de envio em três colunas; botões da Memória › Para revisar em grade; a lista de Notas ocupa a largura toda.
 
 ### Recomendação
 

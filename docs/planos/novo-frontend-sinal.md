@@ -74,6 +74,8 @@ A varredura de 09/11 comparou as rotas, os cartões de Configurações e os comp
 | Configurações › Agenda (horário de trabalho, dias de trabalho, eventos de dia inteiro e fora do horário) | preferência nova aprovada (resposta 3 de 10/11); seção 7, "Agenda no horário de trabalho" |
 | Versão do servidor para conferir a atualização | `GET /api/version`; seção 7, "Versão" |
 | "Como responder" das avaliações (dados do consultório, exemplos, teste) | seção 7, "Como responder" |
+| Conversa nova a cada 24 h, no app e no Telegram, com o resumo da anterior | seção 7, "Conversas recentes" |
+| Intervalo entre mensagens do Chatwoot e fila de envio | [modulos-crm.md](modulos-crm.md), seção 6 (PR #247) |
 | Módulos do CRM e credenciais (servidor) | [modulos-crm.md](modulos-crm.md) (PR #247), que decide quais fluxos do n8n viram módulo, a ordem e as credenciais; este plano cuida só da interface do menu CRM |
 
 Até a PR de servidor chegar, a interface daquela parte **não aparece**. Nada de botão que não faz nada.
@@ -130,10 +132,40 @@ Os textos do protótipo entram no catálogo pelas chaves existentes sempre que o
 
 ### Menu CRM (PR B e PR H)
 
-- Item novo **CRM** no menu lateral (ícone `briefcase-business`), depois de Automações, com duas partes: **Módulos** e **Credenciais**. No celular fica na folha "Mais".
+- Item novo **CRM** no menu lateral (ícone `handshake`), depois de Automações, com duas partes: **Módulos** e **Credenciais**. No celular fica na folha "Mais".
 - "Conexões" vira "Credenciais" em todo texto do CRM (títulos, botões, diálogos, avisos de uso: "Usa: credencial do Chatwoot"). As chaves do catálogo mudam junto, pt-BR e en.
 - Automações fica com Rotinas e Fluxos. Um fluxo que usa uma credencial abre a escolha pelo nome, como hoje.
 - A parte de servidor (quais fluxos do n8n viram módulo, ordem, credenciais por tipo) está em [modulos-crm.md](modulos-crm.md).
+
+### Menu lateral em grupos (PR B; pedido do Pablo, 10/11, 02:24)
+
+- Três grupos, com títulos pequenos que somem quando o menu está recolhido: sem título **Início** e **Conversa**; **Organizar** com Tarefas, Agenda, Notas, Memória e Automações; **Relacionamento** com Contatos, Avaliações e CRM. Cada grupo é uma lista com `aria-labelledby` no título.
+- Ícones (lucide, um traço só, mesmo tamanho): Início `house`, Conversa `messages-square`, Tarefas `list-todo`, Agenda `calendar-days`, Notas `notebook`, Memória `brain`, Automações `zap`, Contatos `book-user`, Avaliações `star`, CRM `handshake`. Nenhum ícone se repete entre itens do menu.
+- A contagem continua à direita do item, com o motivo para o leitor de tela ("4 para hoje").
+
+### Conversas recentes (PR D e servidor; pedido do Pablo, 10/11, 02:24)
+
+- A tela Conversa ganha a lista das conversas ao lado (no celular, atrás do botão de lista do cabeçalho), com busca, grupos por data, "Em uso" na atual e "Nova". Abrir uma conversa antiga mostra o histórico e um aviso: "Esta conversa terminou. Escrever aqui continua na conversa de hoje."
+- **Conversa nova a cada 24 h:** quando chega uma mensagem 24 h ou mais depois da primeira mensagem da conversa em uso, o servidor começa uma conversa nova antes de responder. Vale no app e no Telegram (que hoje fica numa conversa só até `/nova_conversa`). Sem agendamento: a troca acontece na chegada da mensagem, sem custo de cota.
+- A conversa nova leva o resumo curto da anterior (o mesmo resumo que o histórico longo já gera), sem chamada extra de IA; a memória continua igual. Isso evita mandar 200 linhas de histórico a cada pergunta e a perda de contexto do corte.
+- Configurações › Conta › **Conversas**: "Começar uma conversa nova a cada 24 h", ligado por padrão. O cabeçalho da conversa mostra "Desde hoje, 08:12 · nova conversa amanhã, 08:12".
+- Sem migration nova: o início da conversa já está em `zur_conversations.created_at` e a preferência é uma chave de `zur_settings`. Testes: a troca acontece uma vez só com mensagens simultâneas, e uma conversa antiga reaberta não troca de novo sozinha.
+
+### Exemplo do link de avaliação (PR G2)
+
+- Em Avaliações › Pedidos, o botão "Como funciona o link" (e "Ver um exemplo do link" no texto do funil) abre um diálogo em três passos: a mensagem que o paciente recebe com `zuri.exemplo.com.br/a/k7Q2mX9p`; o que acontece no toque (a Zuri anota a abertura e leva direto à página de avaliação do Google; a prévia do WhatsApp não conta como abertura; o link vale 30 dias); e a linha do tempo do pedido (enviado, entregue, aberto, avaliou 5 estrelas e ligado ao contato).
+- O link curto e a contagem de aberturas são do servidor do pedido de avaliação ([sinal-refinado-funcionalidades.md](sinal-refinado-funcionalidades.md), seção 8).
+
+### Chaves dos modelos pagos (resposta ao Pablo, 10/11, 02:24)
+
+- Continuam como segredos do Worker (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`), gravados no painel da Cloudflare, como no guia de instalação. A tela não recebe nem guarda a chave: mostra só "Chave gravada" ou "Sem chave", o botão de ligar com a senha (como hoje) e o passo a passo para gravar ou trocar.
+- Por quê: a chave nunca chega ao navegador, ao banco do Durable Object nem ao backup (regra 2 do `AGENTS.md`); trocar a chave não depende de a Zuri estar no ar; e quem invadir uma sessão não consegue ler nem trocar a chave para gastar no cartão do Pablo.
+
+### Intervalo entre mensagens do Chatwoot (PR H e servidor das credenciais)
+
+- Na credencial do Chatwoot, o grupo **Intervalo entre mensagens** com "De" e "Até" (30 s a 10 min; padrão 1 a 3 min). "De" maior que "Até" não salva e o erro aparece no campo. Mudar o intervalo não pede a chave de novo.
+- Em CRM › Credenciais, a **Fila de envio** mostra a última enviada, a próxima e as que esperam, com o intervalo da credencial.
+- A lógica no servidor (um relógio por credencial, próximo horário livre guardado no banco com atualização condicional, prioridade, mensagem que perderia a hora vira aviso) está em [modulos-crm.md](modulos-crm.md), seção 6, e vale para todos os módulos que usam a mesma credencial.
 
 ### Versão (PR H e servidor pequeno)
 
@@ -182,7 +214,10 @@ As regras fixas e a segunda leitura (`docs/planos/guardrails-multiagentes-ia.md`
 
 A varredura de 10/11 procurou em cada tela, nos dois tamanhos, elementos que rolam de lado ou cortam conteúdo. Ficou assim, e vale para o app:
 
-- Nenhuma faixa de botões rola de lado. Filtros com muitas opções viram uma lista que abre (etiquetas dos contatos, seções das Configurações no celular: "Seção: Agenda ▾"). Abas e grupos de botões quebram linha.
+- Nenhuma faixa de botões rola de lado. Filtros com muitas opções viram uma lista que abre (etiquetas dos contatos, seções das Configurações no celular: "Seção: Agenda ▾").
+- No celular, abas viram uma grade de colunas iguais: até três numa linha, quatro em 2 × 2 (Avaliações, Tarefas). Nenhuma aba fica sozinha numa linha nem corta o texto (pedido do Pablo, 10/11, 02:32).
+- Linhas com ícone (Módulos, Automações, "Precisa de você") usam ícone de 32 px no canto, texto ao lado e os botões embaixo, alinhados ao texto. Título com selo ("Esperando aprovação") põe o selo na linha de baixo em vez de partir o título.
+- Botões de decisão com textos longos (Memória › Para revisar) ficam em grade: a ação principal na largura toda, as outras duas a duas.
 - Botão com ícone mostra o texto também no celular quando cabe (Pastas e Lixeira em Tarefas).
 - O teste de cada PR roda a mesma varredura no e2e: nenhum elemento visível com rolagem lateral escondida em 390 px e 1440 px.
 
@@ -268,20 +303,21 @@ Tudo o que foi definido no protótipo entra no app. A ordem respeita as dependê
 | # | PR | O que entra | Depende de | Tamanho |
 | --- | --- | --- | --- | --- |
 | 1 | A · Fundamentos | Tokens, Figtree em woff2, peças base, tema só com ícones | Aprovação do Sinal refinado | M |
-| 2 | B · Casca | Menu lateral com Avaliações, Automações (Rotinas, Fluxos) e CRM (Módulos, Credenciais), menu de baixo no celular, folha "Mais", perfil e avisos em painel (linha "Versão" abaixo de "Avisos", sem "Agenda"), ⌘K | A; teto do JS aprovado (até 141 kB, resposta 2 de 10/11) | G |
+| 2 | B · Casca | Menu lateral em três grupos com ícones revistos, Avaliações, Automações (Rotinas, Fluxos) e CRM (Módulos, Credenciais), menu de baixo no celular, folha "Mais", perfil e avisos em painel (linha "Versão" abaixo de "Avisos", sem "Agenda"), ⌘K | A; teto do JS aprovado (até 141 kB, resposta 2 de 10/11) | G |
 | 3 | I · Entrada | Textos novos, campo de e-mail sem exemplo, os seis estados da verificação de segurança, "Esqueci minha senha" ao lado da senha, recuperação no desenho novo, título da página de erro | A | P |
 | 4 | C · Início | Saudação pela hora, cortina do que passou, pendências | B | M |
 | 5 | Servidor · sugestões | [sugestoes-do-inicio.md](sugestoes-do-inicio.md) e as sugestões no Início | C | M |
-| 6 | D · Conversa e Memória | Sem clipe; um componente de gravação para todos os microfones; memória com filtros, lista agrupada, painel e visão Mapa | B | M |
+| 6 | D · Conversa e Memória | Lista das conversas recentes com busca; preferência "conversa nova a cada 24 h"; sem clipe; um componente de gravação para todos os microfones; memória com filtros, lista agrupada, painel e visão Mapa | B | M |
+| 6b | Servidor · conversa de 24 h | Troca de conversa na chegada da mensagem (app e Telegram), resumo da anterior, preferência | — | P |
 | 7 | E · Tarefas e Notas | "Pastas", "Nova nota", salvamento automático | B | M |
 | 8 | F · Agenda | Linha de agora, legenda, rodapé "Configurações", horário e dias de trabalho, esconder dia inteiro e fora do horário com aviso (servidor pequeno junto) | B | M |
 | 9 | Servidor · sincronização | Contatos 5 min, Avaliações 10 min, etiquetas por hora, recarga só com mudança, campos novos ([plano](sincronizacao-contatos-avaliacoes.md), PR 1) | — | M |
 | 10 | G · Contatos | Sem Clientes, filtro de etiquetas em lista com busca, contagem, ficha com todos os campos e "Vazio no Google" | B, 9 | M |
 | 11 | Servidor · métricas | Métricas das avaliações ([plano](sincronizacao-contatos-avaliacoes.md), PR 2) | — | P |
-| 12 | G2 · Avaliações | Área própria: Visão geral, Avaliações, Pedidos e Como responder (com o servidor dos campos novos e do teste) | B, 11 | M |
+| 12 | G2 · Avaliações | Área própria: Visão geral, Avaliações, Pedidos (com o exemplo do link) e Como responder (com o servidor dos campos novos e do teste) | B, 11 | M |
 | 13 | Servidor · consumo | Contadores por hora e resumo por mês | — | P |
 | 14 | H · Automações, CRM e Configurações | Rotinas, Fluxos; CRM com Módulos (vazia até a 16) e Credenciais; Configurações com Sobre a Zuri e `/api/version`; Relatar no GitHub com prévia; consumo por dia/semana/mês/ano | B, 13 | G |
-| 15 | Servidor · credenciais | Tipo de credencial (`http`, `chatwoot`), senha, troca de chave, remoção bloqueada em uso ([modulos.md](modulos.md), [modulos-crm.md](modulos-crm.md)) | H | M |
+| 15 | Servidor · credenciais | Tipo de credencial (`http`, `chatwoot`), senha, troca de chave, intervalo entre mensagens e fila por credencial, remoção bloqueada em uso ([modulos.md](modulos.md), [modulos-crm.md](modulos-crm.md)) | H | M |
 | 16 | Servidor · módulos | Manifesto, ensaio, comparação, rotas ([modulos.md](modulos.md), PR 1) | 15 | G |
 | 17 | Módulo · Pedido de avaliação | Fila, dias úteis, homônimos, Chatwoot ([envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md)) | 16, 12 | G |
 | 18 | Catálogo de modelos | Conferido sozinho uma vez por dia | H | P |

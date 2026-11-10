@@ -69,7 +69,7 @@ Seguem o catálogo `pt-BR-reviews.ts` e `pt-BR-automations.ts`. Os novos são es
 | Dia útil | Segunda a sexta, menos os feriados nacionais (calculados no código, sem chamar API) e os dias sem expediente |
 | Horário | Das 09:00 às 18:00, no fuso da conta; o que sobrar fica para o próximo dia útil |
 | Mensagens por dia | Até 20 (de 1 a 50) |
-| Intervalo | 1 mensagem a cada 1 a 3 minutos (sorteado), no alarme único do objeto |
+| Intervalo | 1 mensagem a cada 1 a 3 minutos (sorteado), no alarme único do objeto. O intervalo é da **credencial** do Chatwoot (campos "De" e "Até", de 30 s a 10 min), vale para todos os módulos que usam a mesma caixa e segue a fila única descrita em [modulos-crm.md](modulos-crm.md), seção 6 (pedido do Pablo, 10/11, 02:24) |
 | Lembrete | Um só, 7 dias depois, também em dia útil |
 | Quem recebe | Só quem nunca avaliou, sem avaliação pendente de confirmação e sem "não quero receber" |
 | Disjuntor | Desliga o modo automático e pausa o envio com: 2 falhas seguidas do Chatwoot, recusa da chave (401/403), mensagem marcada como falha pela ponte do WhatsApp, 3 respostas "não quero receber" no mesmo dia |
