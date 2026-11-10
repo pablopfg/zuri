@@ -19,6 +19,27 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.39.6] - 2026-11-10
+
+Mesclada às 13:55 (UTC-3) · commit [`cdbf57b`](https://github.com/pablopfg/Zuri/commit/cdbf57b6d8bdb7d1753318567a0906b07aa8bd54) · PR [#255](https://github.com/pablopfg/Zuri/pull/255) · Conversa com modelo real da Anthropic, restrições de saúde na memória, busca por plural e cache de prompt
+
+### Alterado
+
+- A Zuri passa a levar em conta as suas restrições de saúde e alimentação (alergia, intolerância, o que você não come) em qualquer conversa, mesmo quando a pergunta não cita o assunto. Antes, pedir uma sugestão de jantar podia ignorar uma alergia guardada na memória.
+- A busca de notas e de memórias encontra o plural pelo singular e o contrário: "presentes" acha "presente" e "reunião" acha "reuniões".
+- Com um modelo da Anthropic, a parte repetida de cada pedido fica 5 minutos no cache da empresa e custa um décimo nas chamadas seguintes. Em teste, o custo de entrada caiu cerca de 80%. O painel de uso mostra o valor já com esse desconto.
+
+### Corrigido
+
+- A conversa com os modelos da Anthropic voltou a funcionar. A empresa recusava todo pedido por causa do padrão de e-mail da ferramenta de clientes, e a Zuri respondia "A IA não aceitou este pedido" a qualquer mensagem.
+- Quando a Zuri fala antes de usar uma ferramenta e de novo depois, as duas partes da resposta saem em parágrafos separados, e não mais coladas.
+- A Zuri sabe, nas mensagens seguintes da mesma conversa, quais ferramentas usou antes. Um modelo de fora deixava de reconhecer o que já tinha feito e pedia desculpas por uma ação que tinha concluído.
+- Com um modelo de fora, a Zuri não diz mais que um telefone, e-mail ou CPF "veio como marcador": ela usa o dado normalmente.
+
+### Segurança
+
+- Um CPF seguido de ponto final, no fim da frase ou colado na palavra seguinte, agora também é trocado por um marcador antes de ir a um modelo de fora. Antes só era escondido quando vinha seguido de espaço ou vírgula.
+
 ## [0.39.5] - 2026-11-10
 
 Mesclada às 12:54 (UTC-3) · commit [`102719c`](https://github.com/pablopfg/Zuri/commit/102719c66e0aecf797684963c8cf34daa21ffffe) · PR [#254](https://github.com/pablopfg/Zuri/pull/254) · Estudo de viabilidade do segundo cérebro na memória
@@ -2926,7 +2947,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.5...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.6...develop
+[0.39.6]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.6
 [0.39.5]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.5
 [0.39.4]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.4
 [0.39.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.3
