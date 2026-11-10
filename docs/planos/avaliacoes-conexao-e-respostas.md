@@ -176,3 +176,41 @@ Entra na linha 12 do cronograma do novo frontend (G2 · Avaliações), junto com
 ## 14. Entrevista com o Pablo
 
 Sem pergunta nova: o pedido das 02:45 decidiu o escopo. O Pablo confere no protótipo e pode pedir ajuste.
+
+## 15. Agente e segurança (pedido de 10/11, 11:35)
+
+Pedido do Pablo: a resposta é pública, então os ajustes do agente que escreve precisam estar em Avaliações, com temperatura e demais variáveis, guardrails e controles para nada errado ou inadequado sair. No protótipo isso virou a parte **Ajustes › Agente e segurança**.
+
+### O que já existe no código
+
+| Proteção | Onde |
+| --- | --- |
+| Temperatura (padrão 0,2), `top_p`, tamanho da escrita (200 a 600 tokens) e camada do dono com versões | `packages/shared/src/agents.ts` (`review_draft`), tabela `zur_agent_configs`; hoje só em Configurações › Modelos e limites |
+| Agente que confere com temperatura 0, sem ajuste | `review_check`, `apps/agent/src/reviews/responder.ts` (`secondRead`) |
+| Texto da avaliação como dado, resposta em formato fixo (Zod), agente sem ferramentas | `apps/agent/src/reviews/responder.ts` |
+| Conferência fixa: tamanho, idioma, contato, marcação, nome, cópia, palavras proibidas, assinatura, caractere escondido | `apps/agent/src/reviews/guard.ts` |
+| A nota decide; 1 a 3 estrelas nunca saem sozinhas | `apps/agent/src/reviews/triage.ts` |
+| Publicar sozinha só depois de 10 aprovações, 3 por leitura e 10 por dia; parada com 3 reprovações, recusa do Google ou resposta trocada | etapa 19d, migration 27 |
+
+### O que é novo
+
+| Mudança | Como |
+| --- | --- |
+| Os ajustes do agente aparecem em Avaliações | Mesma rota e mesma tabela de Configurações › Modelos; a tela de Avaliações só mostra o `review_draft` e o `review_check`. Nenhuma tabela nova |
+| Teto de temperatura de 0,7 para resposta pública | Campo `temperatureMax` no perfil do agente em `agents.ts`; o schema Zod recusa acima disso |
+| Tempo para cancelar antes de publicar sozinha (na hora, 15, 30 ou 60 min; padrão 30) | Coluna `auto_hold_min` em `zur_review_settings` e `publish_after` em `zur_reviews`; o alarme único publica quando a hora chega, depois da releitura |
+| Amostra: 1 a cada 5 publicadas sozinhas volta para conferir | Coluna `audit` em `zur_reviews`; reprovar a amostra aciona a parada que já existe |
+| Assuntos que sempre passam pelo dono | Lista fechada em `packages/shared` (saúde, preço, jurídico fixos; nome de profissional, criança, outra empresa opcionais), conferida por palavras, sem IA, antes da segunda leitura |
+| Teste de segurança com 12 casos | Os casos saem do corpus de injeção de `scripts/avaliar-prompts.ts`; rota `POST /api/reviews/agent/test`, no máximo uma vez a cada 10 minutos, dentro do teto diário da IA |
+
+Tudo de acréscimo, na mesma migration desta parte. Nenhum recurso novo da Cloudflare. O teste de segurança gasta até 24 chamadas de IA por rodada e conta no limite diário.
+
+### Testes
+
+Unidade: teto de temperatura (0,70 passa, 0,75 não), assuntos (cada um, com e sem acento), sorteio da amostra. Integração: publicação adiada cancelada, editada e vencida; releitura que acha resposta de outra pessoa; reprovar a amostra desliga o automático. Segurança: os 12 casos como teste fixo, com IA simulada. E2e da parte nova com axe.
+
+### Perguntas ao Pablo
+
+1. **Teto de 0,7 na temperatura das respostas públicas?** Recomendação: sim. Acima disso o texto varia demais para ir a público sem leitura.
+2. **Esperar 30 minutos antes de publicar sozinha, para você poder cancelar?** Recomendação: sim, como padrão.
+3. **Conferir 1 a cada 5 respostas publicadas sozinhas?** Recomendação: sim. É o que mostra cedo se a qualidade caiu.

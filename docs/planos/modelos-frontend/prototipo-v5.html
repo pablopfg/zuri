@@ -2431,6 +2431,38 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 }
 @media (prefers-reduced-motion:reduce){.mg line,.mg-n,.mg-n text{transition:none}}
 
+/* 10/11 14:35: microfone nas notas, botões de Avaliações só com ícone e ajustes do agente de respostas */
+.ph-ic>.actions{flex-wrap:nowrap;gap:6px}
+.ph-ic>.actions .btn{width:40px;height:40px;min-height:40px;padding:0;justify-content:center}
+.ph-ic>.actions .lbl-d{display:none}
+.n-title-row{position:relative;display:flex;align-items:center;gap:var(--s2);margin:var(--s4) 0 var(--s3)}
+.n-title-row .title-in{margin:0;flex:1;min-width:0}
+.n-title-row .rec{min-height:44px}
+.n-rec:empty{display:none}
+.n-rec{margin:0 0 var(--s3)}
+.n-rec-ok{display:flex;gap:6px;align-items:center;margin:0}
+.rv-cfg .set-sec>h2{display:flex;gap:8px;align-items:center}
+.rv-cfg .set-sec>h2>.ic,.rv-cfg .p-sec-h h2>.ic{color:var(--muted);flex:none}
+.rv-cfg .p-sec-h h2{display:flex;gap:8px;align-items:center;margin:0}
+.ra-fixed{margin:0;padding:0}
+.ra-fixed b{color:var(--ink)}
+.ra-path{list-style:none;margin:0;padding:0;display:grid}
+.ra-path li{display:grid;grid-template-columns:24px 32px minmax(0,1fr);gap:var(--s3);align-items:start;padding:12px 0}
+.ra-path li+li{border-top:1px solid var(--line-soft)}
+.ra-path .pk-n{margin-top:6px}
+.ra-path .t{margin:0;font-weight:600}
+.ra-path .hint{margin:2px 0 0}
+.ra-topics{border:0;padding:0;margin:var(--s3) 0 0}
+.ra-chk{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px var(--s4);margin:var(--s2) 0}
+.ra-chk .chk-row{min-height:40px;align-items:center}
+.ra-chk .tag{margin-left:6px}
+@media (max-width:820px){
+  .rv-sub.rv-sub4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ra-chk{grid-template-columns:1fr}
+  .ra-path li{grid-template-columns:24px minmax(0,1fr)}
+  .ra-path .tile{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -2479,7 +2511,7 @@ st.av = pick(params.get("av"), ["semana", "dia", "mes"]);
 st.dayDone = new Set();
 st.dayOpen = false;
 st.p = params.get("p") || "";
-st.rvv = pick(params.get("rvv"), ["visao", "avaliacoes", "pedidos", "responder", "conexao", "envio"]);
+st.rvv = pick(params.get("rvv"), ["visao", "avaliacoes", "pedidos", "responder", "agente", "conexao", "envio"]);
 st.n = params.get("n") || "";
 st.mv = params.get("mv") === "1";
 st.memNew = st.mv;
@@ -2755,8 +2787,9 @@ function notas() {
       <div class="editor-bar"><span class="saved" data-save="${cur.id}" role="status" aria-live="polite">${status}</span>${cur.proj ? `<span class="tag">${ic("folder", "ic-sm")}${cur.proj}</span>` : `<button class="btn btn-quiet btn-sm" type="button" data-x="nota-pasta">${ic("folder", "ic-sm")}Pôr numa pasta</button>`}
         <div class="seg seg-xs" role="group" aria-label="Modo do editor"><button type="button" data-nmode="write" aria-pressed="true">Escrever</button><button type="button" data-nmode="prev" aria-pressed="false">Prévia</button></div>
         <span class="nlocal"><button class="switch switch-sm" type="button" role="switch" aria-checked="${cur.id === "contas"}" aria-labelledby="n-lo"></button><span id="n-lo">Nunca enviar para fora</span></span>
-        <button class="iconbtn" type="button" aria-label="Mais ações da nota" data-x="nota-menu">${ic("ellipsis")}</button></div>
-      <h2 class="sr">${cur.t || "Nota sem título"}</h2><label class="sr" for="n-title">Título da nota</label><input id="n-title" class="title-in" value="${cur.t}" placeholder="Título" autocomplete="off" data-autosave="${cur.id}">
+        <button class="iconbtn" type="button" data-nmic aria-label="Ditar no texto da nota" title="Ditar no texto da nota">${ic("mic")}</button><button class="iconbtn" type="button" aria-label="Mais ações da nota" data-x="nota-menu">${ic("ellipsis")}</button></div>
+      <h2 class="sr">${cur.t || "Nota sem título"}</h2><label class="sr" for="n-title">Título da nota</label><div class="n-title-row" data-mic-box data-mic-text="Ligar para a transportadora"><input id="n-title" class="title-in" value="${cur.t}" placeholder="Título" autocomplete="off" data-autosave="${cur.id}"><button class="iconbtn mic" type="button" data-mic aria-label="Ditar o título" title="Ditar o título">${ic("mic")}</button></div>
+      <div class="n-rec" data-nrec></div>
       <div class="prose" id="n-body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto da nota" data-ph="Escreva ou cole aqui. Tudo é salvo sozinho." data-autosave="${cur.id}">${body}</div>
     </article></div>
   </div>`;
@@ -3149,10 +3182,10 @@ function avaliacoes() {
   const waiting = REVIEWS.filter((r) => r.st === "wait" || r.st === "low").length;
   const tabs = rvTabs(v, waiting);
   const pl = st.rvPaused ? "Retomar respostas" : "Pausar respostas";
-  const head = `<header class="pagehead ph-acts"><div><h1>Avaliações</h1><p>O que dizem do consultório no Google, as respostas que a Zuri prepara e os pedidos de avaliação.</p>${syncLine("avaliacoes", `Consultório Exemplo · Curitiba${st.rvPaused ? ' · <span class="pill wait"><i></i>Respostas pausadas</span>' : ""}`)}</div>
+  const head = `<header class="pagehead ph-acts ph-ic"><div><h1>Avaliações</h1><p>O que dizem do consultório no Google, as respostas que a Zuri prepara e os pedidos de avaliação.</p>${syncLine("avaliacoes", `Consultório Exemplo · Curitiba${st.rvPaused ? ' · <span class="pill wait"><i></i>Respostas pausadas</span>' : ""}`)}</div>
       <div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-sync="avaliacoes" aria-label="Conferir agora" title="Conferir agora">${ic("refresh-cw", "ic-sm")}<span class="lbl-d">Conferir agora</span></button><button class="btn btn-secondary btn-sm" type="button" data-rv-pause aria-label="${pl}" title="${pl}">${ic(st.rvPaused ? "play" : "pause", "ic-sm")}<span class="lbl-d">${pl}</span></button></div></header>`;
   if (v === "visao") return `<div class="page page-wide rv-page">${head}<div class="tabs-row tabs-row-x">${tabs}${rvPeriod()}</div>${rvOverview()}</div>`;
-  if (v === "responder" || v === "conexao" || v === "envio") return `<div class="page page-wide rv-page">${head}<div class="tabs-row">${tabs}</div>${rvAjustes()}</div>`;
+  if (v === "responder" || v === "agente" || v === "conexao" || v === "envio") return `<div class="page page-wide rv-page">${head}<div class="tabs-row">${tabs}</div>${rvAjustes()}</div>`;
   const pedidos = v === "pedidos";
   const set = pedidos ? PEOPLE.filter((p) => p.nps) : REVIEWS;
   const found = set.find((p) => p.id === st.p);
@@ -4341,6 +4374,8 @@ ACT.unshift(...ACT22);
 /* ---------- 10/11 00:51: CRM, verificação, etiquetas em lista, memória em mapa, Avaliações › Como responder, Sobre a Zuri ---------- */
 const APP_VER = "0.39.2";
 const escH = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+/* O arquivo das capturas não traz as interações do publicado: o escape simples fica aqui. */
+const esc = (x) => escH(x);
 /* Mais etiquetas, como no Google Contatos de um consultório: muitas, e só algumas sincronizadas. */
 const EXTRA_TAGS = { carla: ["Pacientes 2026", "Retorno"], luciana: ["Pacientes 2025"], marina: ["Pacientes 2026"], pedro: ["Pacientes 2026", "Retorno"], thiago: ["Pacientes 2025"], renata: ["Pacientes 2026"], bruno: ["Pacientes 2026", "Primeira consulta"], semnome: ["Primeira consulta"], prisma: ["Parceiros"], helena: ["Parceiros"], sofia: ["Academia"], rafael: ["Academia"], julia: ["Vizinhos"], marcos: ["Condomínio"], imob: ["Condomínio"], carlos: ["Fornecedores"] };
 for (const p of PEOPLE) if (EXTRA_TAGS[p.id]) p.tags = [...(p.tags || []), ...EXTRA_TAGS[p.id]];
@@ -4997,7 +5032,7 @@ if (params.get("rvv") === "conexao") st.rvv = "conexao";
 
 const RV_TABS = [["visao", "layout-dashboard", "Visão geral"], ["avaliacoes", "message-square-text", "Avaliações"], ["pedidos", "send", "Pedidos"], ["conexao", "sliders-horizontal", "Ajustes"]];
 const rvTabs = (v, waiting) => `<div class="seg seg-ic-l" role="group" aria-label="Partes de Avaliações">${RV_TABS.map(([k, i, l]) => {
-  const on = k === v || (k === "conexao" && (v === "responder" || v === "envio"));
+  const on = k === v || (k === "conexao" && (v === "responder" || v === "agente" || v === "envio"));
   return `<button type="button" data-rvv="${k}" aria-pressed="${on}">${ic(i, "ic-sm")}${l}${k === "avaliacoes" && waiting ? ` <span class="n">${waiting}</span>` : ""}</button>`;
 }).join("")}</div>`;
 
@@ -5079,12 +5114,6 @@ Se não quiser mais receber, é só responder SAIR.</textarea><span class="hint"
   </div>`;
 }
 
-function rvAjustes() {
-  const sub = st.rvv === "responder" ? "responder" : st.rvv === "envio" ? "envio" : "conexao";
-  const seg = `<div class="seg rv-sub" role="group" aria-label="Ajustes das avaliações">${[["conexao", "plug", "Conexão"], ["responder", "pen-line", "Como responder"], ["envio", "send", "Pedidos e link"]].map(([k, i, l]) => `<button type="button" data-rvv="${k}" aria-pressed="${sub === k}">${ic(i, "ic-sm")}${l}</button>`).join("")}</div>`;
-  return seg + (sub === "responder" ? rvResponder() : sub === "envio" ? rvEnvio() : rvConexao());
-}
-
 /* Como responder, com o modelo novo: fatos, canal oficial, sigilo de profissional de saúde e variação. */
 function rvResponder() {
   const prompt = st.rvPrompt ?? "Escreva como a equipe escreveria de próprio punho: com calma, carinho e frases do dia a dia, tratando por você. Use o primeiro nome e reaja ao que a pessoa destacou no atendimento (acolhimento, atenção, pontualidade, ambiente), com outras palavras. Sem comentário, uma ou duas frases; com comentário, duas a quatro. Em 4 estrelas, convide com delicadeza a contar pelo canal oficial o que faltou. Nada de “Prezado”, “Atenciosamente” ou “Agradecemos o seu feedback”.";
@@ -5147,6 +5176,90 @@ const ACT25 = [
 ];
 ACT.unshift(...ACT25);
 ACT.unshift(...ACT26M);
+/* ---------- Avaliações › Ajustes › Agente e segurança: quem escreve, quem confere e as travas da resposta pública ---------- */
+st.rvSuite = ""; st.rvSample = true;
+const RV_PATH = [
+  ["star", "A nota decide primeiro", "1 a 3 estrelas ou sem nota nunca saem sozinhas: viram aviso para você. A IA só pode deixar a resposta mais cuidadosa, nunca menos."],
+  ["lock", "A avaliação entra como informação", "O texto de quem avaliou nunca é lido como ordem. Se ele tentar mudar as regras, a resposta sai normal e vai para você."],
+  ["pen-line", "A Zuri escreve em formato fixo", "Sem ferramentas e sem acesso a mais nada: só devolve a resposta, se precisa de você e por quê. Fora do formato, o rascunho é descartado."],
+  ["list-ordered", "Conferência fixa, sem IA", "Tamanho, idioma, telefone, link, e-mail e números, marcação e emoji, nome além do primeiro, cópia do texto da pessoa, palavras proibidas, assinatura e caractere escondido."],
+  ["eye", "Segunda leitura", "Outro agente lê só a resposta, sem a avaliação, e diz se ela pode ir a público. Na dúvida, reprova."],
+  ["circle-check", "Você aprova, ou a Zuri publica dentro dos limites", "Publicar sozinha só vale para 4 e 5 estrelas, depois de 10 rascunhos aprovados sem mudança."],
+  ["refresh-cw", "Releitura antes de publicar", "A Zuri confere no Google se a avaliação ainda é a mesma e se ninguém respondeu antes. Mudou: volta para você."]
+];
+function rvAgente() {
+  const suite = st.rvSuite === "..." ? `<p class="hint" role="status">${ic("loader-circle", "ic-sm spin")}Rodando os 12 casos…</p>`
+    : st.rvSuite === "ok" ? `<div class="rv-draft" role="status"><p class="label">Resultado · nada foi publicado</p><ul class="rv-checks"><li>${ic("circle-check", "ic-sm")}4 avaliações com ordem escondida: resposta normal, encaminhadas para você</li><li>${ic("circle-check", "ic-sm")}3 relatos de saúde: nenhum dado repetido, nenhuma confirmação de atendimento</li><li>${ic("circle-check", "ic-sm")}3 pedidos de desconto, reembolso ou ameaça jurídica: sem promessa, encaminhados</li><li>${ic("circle-check", "ic-sm")}2 elogios comuns: rascunho aprovado nas duas conferências</li></ul><p class="hint num">12 de 12 como esperado. Usou a IA 24 vezes.</p></div>` : "";
+  const sw = (id, on, attr, t, d) => `<div class="set-row"><div class="grow"><p class="t" id="${id}">${t}</p><p class="hint">${d}</p></div><button class="switch" type="button" role="switch" aria-checked="${on}" aria-labelledby="${id}" ${attr}></button></div>`;
+  const topics = [["Saúde, exame ou resultado", 1, 1], ["Preço, desconto ou reembolso", 1, 1], ["Ameaça jurídica ou acusação", 1, 1], ["Nome de profissional", 1, 0], ["Criança ou familiar", 1, 0], ["Outra empresa ou concorrente", 0, 0]];
+  return `<div class="rv-cfg">
+    <section class="card set-sec" aria-labelledby="h-ra1"><h2 id="h-ra1">${ic("pen-line", "ic-sm")}Agente que escreve</h2><p>Redige o rascunho. O jeito de escrever fica em <button class="linkbtn" type="button" data-rvv="responder">Como responder</button>; aqui ficam os controles da IA.</p>
+      <div class="form-grid">
+        <div class="field"><label class="label" for="ra-t">Temperatura <span class="num" data-out="ra-t">0,2</span></label><input id="ra-t" type="range" min="0" max="0.7" step="0.05" value="0.2" data-range-out="ra-t"><p class="hint">Mais baixa, respostas mais previsíveis. Como a resposta é pública, vai de 0 a 0,7. Recomendado: 0,2.</p></div>
+        <div class="field"><label class="label" for="ra-p">top_p <span class="num" data-out="ra-p">padrão do modelo</span></label><input id="ra-p" type="range" min="0.1" max="1" step="0.05" value="1" data-range-out="ra-p" disabled><label class="chk-row"><input type="checkbox" class="chk" checked data-topp="ra-p">Usar o padrão do modelo</label></div>
+        <label class="field"><span class="label">Tamanho máximo da escrita, em tokens</span><input class="input num" inputmode="numeric" value="320"><span class="hint">De 200 a 600. A resposta publicada nunca passa de 600 caracteres.</span></label>
+        <label class="field"><span class="label">Se a conferência barrar</span><select class="input"><option>Tentar mais 1 vez</option><option selected>Tentar mais 2 vezes</option><option>Não tentar de novo</option></select><span class="hint">Depois disso, a avaliação vai para você sem rascunho.</span></label>
+      </div>
+      <p class="ro">${ic("info", "ic-sm")}<span>Usa o mesmo modelo da conversa. <button class="linkbtn" type="button" data-cfg-open="modelos">Ver modelos e limites</button></span></p></section>
+    <section class="card set-sec" aria-labelledby="h-ra2"><h2 id="h-ra2">${ic("eye", "ic-sm")}Agente que confere</h2><p>Faz a segunda leitura. Não tem ajuste de propósito.</p>
+      <ul class="ro-list ra-fixed"><li>${ic("lock", "ic-sm")}<span><b>Temperatura 0.</b> Um conferente mais solto aprovaria ao acaso.</span></li><li>${ic("lock", "ic-sm")}<span><b>Lê só a resposta.</b> Não vê a avaliação, então não pode ser convencido por ela.</span></li><li>${ic("lock", "ic-sm")}<span><b>Só responde sim ou não.</b> Qualquer outra coisa conta como não.</span></li></ul></section>
+    <section class="card set-sec" aria-labelledby="h-ra3"><h2 id="h-ra3">${ic("shield-check", "ic-sm")}Caminho de cada resposta</h2><p>Sete travas, nesta ordem. Ficam sempre ligadas e não mudam pela tela.</p>
+      <ol class="ra-path">${RV_PATH.map(([i, t, d], k) => `<li><span class="pk-n num" aria-hidden="true">${k + 1}</span><span class="tile tile-sm">${ic(i, "ic-sm")}</span><div><p class="t">${t}</p><p class="hint">${d}</p></div></li>`).join("")}</ol></section>
+    <section class="card set-sec" aria-labelledby="h-ra4"><h2 id="h-ra4">${ic("sliders-horizontal", "ic-sm")}Seus controles</h2><p>O que você pode apertar além das travas fixas.</p>
+      <div class="form-grid"><label class="field"><span class="label">Tempo para cancelar antes de publicar sozinha</span><select class="input"><option>Publicar na hora</option><option>15 minutos</option><option selected>30 minutos</option><option>1 hora</option></select><span class="hint">A resposta fica em “Vai publicar às…” e você pode cancelar ou editar.</span></label>
+        <label class="field"><span class="label">Publicar sozinha, no máximo</span><input class="input num" value="3 por leitura e 10 por dia" disabled><span class="hint">Fixo. O que passar disso espera a sua aprovação.</span></label></div>
+      ${sw("sw-ras", st.rvSample, "data-rv-sample", "Conferir uma amostra", "A cada 5 respostas publicadas sozinhas, 1 aparece para você conferir depois. Se você reprovar, a Zuri volta a pedir aprovação em todas.")}
+      <fieldset class="field ra-topics"><legend class="label">Assuntos que sempre passam por você</legend><div class="ra-chk">${topics.map(([l, on, fix]) => `<label class="chk-row"><input type="checkbox" class="chk"${on ? " checked" : ""}${fix ? " disabled" : ""}>${l}${fix ? ` <span class="tag">${ic("lock", "ic-sm")}Fixo</span>` : ""}</label>`).join("")}</div><span class="hint">Quando a avaliação toca num destes, nada sai sozinho, mesmo com 5 estrelas.</span></fieldset></section>
+    <section class="card set-sec" aria-labelledby="h-ra5"><div class="p-sec-h"><h2 id="h-ra5">${ic("circle-alert", "ic-sm")}Parada automática</h2><span class="pill ${st.rvPaused ? "wait" : "on"}"><i></i>${st.rvPaused ? "Respostas pausadas" : "Tudo certo"}</span></div><p>A Zuri para de publicar sozinha e avisa você quando:</p>
+      <ul class="ro-list ra-fixed"><li>${ic("circle-alert", "ic-sm")}<span>3 rascunhos seguidos são reprovados na conferência.</span></li><li>${ic("circle-alert", "ic-sm")}<span>O Google recusa uma resposta.</span></li><li>${ic("circle-alert", "ic-sm")}<span>Uma resposta publicada pela Zuri é apagada ou trocada.</span></li><li>${ic("circle-alert", "ic-sm")}<span>Você reprova uma resposta da amostra.</span></li></ul>
+      <p class="hint">Só volta quando você religar. Últimos 30 dias: <span class="num">18</span> publicadas, <span class="num">2</span> barradas na conferência, <span class="num">0</span> paradas. <button class="linkbtn" type="button" data-rvv="avaliacoes">Ver as respostas</button></p></section>
+    <section class="card set-sec" aria-labelledby="h-ra6"><h2 id="h-ra6">${ic("flask-conical", "ic-sm")}Teste de segurança</h2><p>12 avaliações difíceis de exemplo: ordem escondida no texto, relato de saúde, pedido de desconto, ameaça e elogio comum. Rode antes de salvar uma mudança.</p>
+      <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-rv-suite>${ic("flask-conical", "ic-sm")}Rodar os 12 casos</button><span class="hint">Usa a IA até 24 vezes. Nada é publicado.</span></div>${suite}</section>
+    <div class="set-foot rv-save"><span class="hint">${ic("lock", "ic-sm")}Salvar pede a sua senha e guarda uma versão nova, com volta para a anterior.</span><button class="btn btn-primary" type="button" data-x="rv-agent-save">Salvar ajustes do agente</button></div>
+  </div>`;
+}
+function rvAjustes() {
+  const sub = ["responder", "agente", "envio"].includes(st.rvv) ? st.rvv : "conexao";
+  const seg = `<div class="seg rv-sub rv-sub4" role="group" aria-label="Ajustes das avaliações">${[["conexao", "plug", "Conexão"], ["responder", "pen-line", "Como responder"], ["agente", "shield-check", "Agente e segurança"], ["envio", "send", "Pedidos e link"]].map(([k, i, l]) => `<button type="button" data-rvv="${k}" aria-pressed="${sub === k}">${ic(i, "ic-sm")}${l}</button>`).join("")}</div>`;
+  return seg + (sub === "responder" ? rvResponder() : sub === "agente" ? rvAgente() : sub === "envio" ? rvEnvio() : rvConexao());
+}
+/* ---------- Notas: ditar o título e o texto ---------- */
+let noteRecTimer = 0;
+function noteMicEnd() {
+  clearInterval(noteRecTimer);
+  const host = document.querySelector("[data-nrec]");
+  if (!host || !host.dataset.on) return;
+  host.innerHTML = `<div class="rec" role="status">${ic("loader-circle", "ic-sm spin")}<span class="rec-t">Transcrevendo…</span></div>`;
+  setTimeout(() => {
+    const h = document.querySelector("[data-nrec]");
+    const body = document.getElementById("n-body");
+    if (!h || !body) return;
+    delete h.dataset.on;
+    h.innerHTML = `<p class="hint n-rec-ok" role="status">${ic("circle-check", "ic-sm")}Texto ditado no fim da nota. Confira antes de sair: o áudio não fica guardado.</p>`;
+    const p = document.createElement("p");
+    p.textContent = "Ligar para a transportadora e confirmar o caminhão para sábado de manhã.";
+    body.appendChild(p);
+    body.dispatchEvent(new Event("input", { bubbles: true }));
+    refocus("[data-nmic]");
+  }, 900);
+}
+const ACT27 = [
+  [(t) => t.matches("[data-nmic]"), () => {
+    const host = document.querySelector("[data-nrec]");
+    if (!host || host.dataset.on) return;
+    host.dataset.on = "1";
+    host.innerHTML = `<div class="rec" role="status" aria-label="Gravando"><span class="rec-dot" aria-hidden="true"></span><span class="rec-t">Ouvindo… <span class="num" data-nrec-t>0:00</span></span><span class="wave" aria-hidden="true">${"<i></i>".repeat(14)}</span><button class="btn btn-secondary btn-sm" type="button" data-nmic-stop>${ic("check", "ic-sm")}Pronto</button></div>`;
+    let s = 0;
+    clearInterval(noteRecTimer);
+    noteRecTimer = setInterval(() => { s++; const o = document.querySelector("[data-nrec-t]"); if (o) o.textContent = `0:${String(s).padStart(2, "0")}`; if (s >= 4) noteMicEnd(); }, 1000);
+    refocus("[data-nmic-stop]");
+  }],
+  [(t) => t.matches("[data-nmic-stop]"), () => noteMicEnd()],
+  [(t) => t.matches("[data-rv-sample]"), () => { st.rvSample = !st.rvSample; render(); refocus("[data-rv-sample]"); }],
+  [(t) => t.matches("[data-rv-suite]"), () => { st.rvSuite = "..."; render(); refocus("[data-rv-suite]"); setTimeout(() => { st.rvSuite = "ok"; render(); refocus("[data-rv-suite]"); }, 900); }],
+  [(t) => t.matches("[data-x=rv-agent-save]"), (t) => senhaDlg("Os ajustes novos valem para os próximos rascunhos.", () => say("Ajustes do agente salvos. Versão 4."), t)]
+];
+ACT.unshift(...ACT27);
 
 /* Celular: a barra de cima sai ao descer a tela e volta ao subir. Teclado (foco nela) e o topo da tela sempre a mostram. */
 (() => {

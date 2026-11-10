@@ -198,6 +198,12 @@ Pedido do Pablo depois de abrir o protótipo no celular. O que mudou nos dois ar
 - **Mapa:** grafo como o do Obsidian. Os pontos se arrumam sozinhos, dá para arrastar um ponto (os vizinhos acompanham), aproximar com a rolagem ou os botões, mover o fundo e enquadrar tudo. Passar o ponteiro destaca as ligações. Tocar numa pasta, contato, nota ou evento mostra as memórias ligadas. No app o mapa precisa de uma rota com as ligações (elas saem do que já existe, sem IA) e entra como parte lazy, sem biblioteca nova.
 - **CRM › Envios:** a fila de envio saiu de Credenciais e ganhou área própria, com a situação (enviando, lenta, parada, pausada), a fila de agora, o que acontece em cada falha e o histórico por período com o detalhe de cada envio. O que muda no código está em [envios-monitoramento.md](envios-monitoramento.md).
 
+### Ajustes de 10/11, 14:35
+
+- **Notas:** microfone no título e no texto. É viável sem serviço novo: a conversa já grava e transcreve (`apps/web/src/pages/chat/voice.ts` e `POST /api/chat/transcribe`), com trecho de até 60 segundos e 2 MB, 60 minutos de áudio por dia somando app e bot, e o áudio nunca é guardado. No código, o gancho `useVoice` sai da pasta da conversa para uma pasta comum e a tela de Notas ganha os dois botões. Para ditar mais de um minuto, a pessoa grava de novo e o texto entra no fim.
+- **Avaliações:** "Conferir agora" e "Pausar respostas" ficam só com o ícone também no computador.
+- **Avaliações › Ajustes › Agente e segurança:** controles do agente que escreve (temperatura, top_p, tamanho, tentativas), o agente que confere, as sete travas de cada resposta, os controles do dono, a parada automática e o teste de segurança. O que já existe e o que é novo no código está em [avaliacoes-conexao-e-respostas.md](avaliacoes-conexao-e-respostas.md), seção 15.
+
 ### Recomendação
 
 Se o Pablo aprovar, o Sinal refinado vira o plano de [novo-frontend-sinal.md](novo-frontend-sinal.md): os tokens deste protótipo passam para o Tailwind do app, a Figtree entra como arquivo servido pelo Worker e a tela "Estados das telas" vira o padrão de carregando, vazio e erro de todas as telas.
