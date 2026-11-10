@@ -191,6 +191,13 @@ Pedido do Pablo depois de abrir o protótipo no celular. O que mudou nos dois ar
 - **Configurações:** menu em cinco grupos (Você, A Zuri, Seu dia, Conexões, Sistema). Senha foi para Segurança, Telegram para Integrações, "A Zuri de olho" e "Prioridades" para a seção nova Assistente, e os pedidos de avaliação para Avaliações › Ajustes.
 - **Estados das telas e Identidade visual:** são páginas de referência do protótipo e não vão para o app.
 
+### Ajustes do computador (10/11, 13:07)
+
+- **Conversas:** saiu a linha "Todo dia, à 0:00, começa uma conversa nova" do pé da lista. A opção continua em Configurações.
+- **Memória:** busca e Lista/Mapa numa barra só, filtros em linha (situação e tipo) e o painel da memória ao lado. "Para revisar" virou uma faixa que abre quando o Pablo quer. A busca filtra de verdade.
+- **Mapa:** grafo como o do Obsidian. Os pontos se arrumam sozinhos, dá para arrastar um ponto (os vizinhos acompanham), aproximar com a rolagem ou os botões, mover o fundo e enquadrar tudo. Passar o ponteiro destaca as ligações. Tocar numa pasta, contato, nota ou evento mostra as memórias ligadas. No app o mapa precisa de uma rota com as ligações (elas saem do que já existe, sem IA) e entra como parte lazy, sem biblioteca nova.
+- **CRM › Envios:** a fila de envio saiu de Credenciais e ganhou área própria, com a situação (enviando, lenta, parada, pausada), a fila de agora, o que acontece em cada falha e o histórico por período com o detalhe de cada envio. O que muda no código está em [envios-monitoramento.md](envios-monitoramento.md).
+
 ### Recomendação
 
 Se o Pablo aprovar, o Sinal refinado vira o plano de [novo-frontend-sinal.md](novo-frontend-sinal.md): os tokens deste protótipo passam para o Tailwind do app, a Figtree entra como arquivo servido pelo Worker e a tela "Estados das telas" vira o padrão de carregando, vazio e erro de todas as telas.
