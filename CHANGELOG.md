@@ -19,6 +19,14 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.39.4] - 2026-11-10
+
+Mesclada às 10:55 (UTC-3) · commit [`d20d7c3`](https://github.com/pablopfg/Zuri/commit/d20d7c31d0ca60dd033e860912315d0eddd413e6) · PR [#251](https://github.com/pablopfg/Zuri/pull/251) · Formulário de novo token não fecha sozinho depois de ligar o acesso
+
+### Corrigido
+
+- Em Configurações › Segurança, o formulário "Novo token" não fecha mais sozinho (apagando o nome digitado) quando é aberto logo depois de ligar "Permitir acesso por token" numa conexão lenta. Com o acesso desligado o formulário some, e o nome digitado volta quando o acesso é ligado de novo. Era também a causa da falha intermitente do teste de interface do acesso remoto (#250).
+
 ## [0.39.3] - 2026-11-09
 
 Mesclada às 22:56 (UTC-3) · commit [`7b2ba61`](https://github.com/pablopfg/Zuri/commit/7b2ba613f5743c0b33c83d43ed3a3d0bf329f7c5) · PR [#239](https://github.com/pablopfg/Zuri/pull/239) · Compacta o README e planeja a main limpa da primeira release
@@ -2910,7 +2918,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.3...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.4...develop
+[0.39.4]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.4
 [0.39.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.3
 [0.39.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.2
 [0.39.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.1
