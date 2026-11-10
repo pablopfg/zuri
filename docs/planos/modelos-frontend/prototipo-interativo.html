@@ -2326,6 +2326,49 @@ li.is-done .t{color:var(--muted);text-decoration:line-through;text-decoration-co
   .check,.switch{position:relative}
   .check::before,.switch::before{content:"";position:absolute;inset:-11px -4px}
 }
+
+/* ---------- 10/11 segunda passada: revisão tela por tela (alinhamento, cortes e folgas) ---------- */
+/* Linha da verificação: o ícone fica ao lado do texto mesmo quando a frase quebra. */
+.hv{flex-wrap:nowrap;align-items:flex-start}
+.hv>.ic{flex:none;margin-top:3px}
+.hv.err{flex-wrap:wrap}
+.hv.err>span{flex:1 1 0;min-width:0}
+.hv.err>.linkbtn{flex:1 1 100%;text-align:left;margin-left:24px}
+/* Folga entre o funil e a explicação. */
+.hbars+.hint{margin-top:var(--s3)}
+/* Versão das instruções: ícone, texto e atalhos numa linha que quebra inteira. */
+.rv-ver{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.rv-ver>.ic{flex:none}
+/* Passo a passo numerado. */
+.steps{list-style:decimal}
+.steps li{display:list-item}
+/* Lixeira: a etiqueta tem o tamanho do texto. */
+.runs li>.tag{justify-self:start}
+/* Versões do agente: nome inteiro numa linha e o aviso da senha embaixo dos botões. */
+.ag-vers li>span:first-child{white-space:nowrap}
+.ag-panel .row-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
+.ag-panel .row-actions>.hint{flex:1 1 100%;margin:0}
+.ag-panel .btn-primary[disabled]{background:var(--press);color:var(--muted)}
+/* Onde o carregando aparece: ícones na mesma coluna. */
+.ld-where li>.tile{flex:none;width:24px;display:grid;place-items:center}
+/* Endereço mais largo que o número da conta. */
+.dlg-box .grid-2.grid-url{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+/* Avaliações: os dois filtros com o texto inteiro. */
+.rv-split .rv-bar select{flex:1 1 100%}
+@media (max-width:820px){
+  .set-sec>.row-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
+  .gbp-act .btn-quiet{border:1px solid var(--line-strong)}
+  .cat-list li{flex-wrap:wrap}
+  .cat-list li>span:nth-child(2){flex:1 1 180px}
+  .cal-list .set-row>.grow{flex:1 1 120px}
+  .dlg-runs li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px var(--s3);align-items:center}
+  .dlg-runs li>time{grid-column:1/-1}
+  .rv-reply .row-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+  .rv-reply .row-actions>.btn{white-space:normal;justify-content:center}
+  .rv-reply .row-actions>.btn-primary,.rv-reply .row-actions>.btn:last-child{grid-column:1/-1}
+  .rv-reply .row-actions>.btn-quiet{border:1px solid var(--line-strong)}
+  .dlg-box .grid-2.grid-url{grid-template-columns:minmax(0,1fr)}
+}
 </style>
 </head>
 <body>
@@ -2714,7 +2757,7 @@ function auBody() {
   if (st.au === 2) return `<p class="wz-q">Quando?</p>
     <div class="field"><span class="label" id="au-fq">Repetir</span><div class="seg seg-wrap" role="group" aria-labelledby="au-fq">${["Uma vez", "Todo dia", "Toda semana", "Todo mês", "A cada algumas horas"].map((l, k) => `<button type="button" aria-pressed="${k === 2}">${l}</button>`).join("")}</div></div>
     <div class="field"><span class="label" id="au-dw">Dias da semana</span><div class="days" role="group" aria-labelledby="au-dw" data-multi>${["seg", "ter", "qua", "qui", "sex", "sáb", "dom"].map((d, k) => `<button type="button" aria-pressed="${k < 5}">${d}</button>`).join("")}</div></div>
-    <div class="form-grid"><label class="field"><span>Horário</span><input class="input num" inputmode="numeric" value="07:30" autocomplete="off"></label><label class="field"><span>Fuso</span><select class="input" disabled><option>São Paulo (UTC−3), o da sua conta</option></select></label></div>
+    <div class="form-grid"><label class="field"><span>Horário</span><input class="input num" inputmode="numeric" value="07:30" autocomplete="off"></label><label class="field"><span>Fuso</span><select class="input" disabled><option>São Paulo (UTC−3)</option></select></label></div>
     <p class="au-prev">${ic("calendar-clock", "ic-sm")}<span>Próximas execuções: <b>amanhã, 07:30</b> · quarta, 07:30 · quinta, 07:30</span></p>`;
   if (st.au === 3) {
     if (t === "lembrete") return `<p class="wz-q">Do que lembrar?</p><label class="field"><span>Texto do lembrete</span><input class="input" value="Tomar o remédio"></label><p class="hint">Chega do jeito que você escrever.</p>`;
@@ -3453,12 +3496,12 @@ function cfgInteg() {
   + sec("h-gr", "Avaliações do Google", "A Zuri lê as avaliações do seu Perfil da Empresa a cada 10 min, escreve rascunhos e avisa das negativas.",
     `${syncLine("avaliacoes", "A cada 10 min · só o que mudou")}<div class="form-grid"><label class="field"><span>Perfil lido</span><select class="input"><option>Consultório · Curitiba</option></select></label><label class="field"><span>Assinatura</span><input class="input" value="Equipe do Consultório"></label>
       <label class="field"><span>Tom</span><select class="input"><option selected>Próximo e caloroso</option><option>Educado e formal</option></select></label>
-      <label class="field"><span>O que a Zuri faz</span><select class="input"><option>Só lê e avisa</option><option selected>Escreve rascunhos para eu aprovar</option><option>Publica sozinha as positivas</option></select></label></div>
+      <label class="field"><span>O que a Zuri faz</span><select class="input"><option>Só lê e avisa</option><option selected>Rascunhos para eu aprovar</option><option>Publica sozinha as positivas</option></select></label></div>
      <p class="hint">Você aprovou <span class="num">7 de 10</span> rascunhos sem mudar nada. Depois de 10, dá para deixar a Zuri publicar sozinha as de 4 e 5 estrelas.</p>`, save("Salvar avaliações"))
   + sec("h-ped", "Pedidos de avaliação", "Quem recebe o link e quando. Só recebe quem nunca avaliou.",
     `<div class="form-grid"><label class="field"><span>Dias depois da consulta</span><input class="input num" value="8" inputmode="numeric"></label>
       <label class="field"><span>Horário do lembrete para você</span><input class="input num" value="09:00" inputmode="numeric"></label>
-      <label class="field"><span>De onde vem a consulta</span><select class="input"><option selected>Agenda Pessoal, eventos com o nome do contato</option><option>Agendamentos do CRM (n8n)</option><option>Os dois</option></select></label>
+      <label class="field"><span>De onde vem a consulta</span><select class="input"><option selected>Agenda Pessoal, pelo nome</option><option>Agendamentos do CRM (n8n)</option><option>Os dois</option></select></label>
       <label class="field"><span>Quem envia</span><select class="input"><option selected>Eu, com um toque no WhatsApp</option><option>Pelo Chatwoot, com a automação “Pedido de avaliação”</option></select></label></div>
      ${swRow("ped-du", "Só em dia útil", "Sábado, domingo e feriado passam para o próximo dia útil. Os feriados nacionais já vêm marcados.", true, true)}
      ${swRow("ped-lb", "Um lembrete, 7 dias depois", "Só se a pessoa não avaliou. Depois disso, a Zuri não sugere de novo.", true)}
@@ -3548,7 +3591,7 @@ function estados() {
 
 /* ---------- Identidade visual ---------- */
 function identidade() {
-  const SW = [["Verde Sinal", "#15803d", "botão principal e foco", "5,0:1 no branco"], ["Verde vivo", "#4ade80", "o mesmo papel no tema escuro", "10,2:1 no grafite"], ["Grafite", "#18181b", "texto e o fundo da marca", "17,7:1 no branco"], ["Zinco", "#5c5c66", "texto de apoio", "6,6:1 no branco"], ["Névoa", "#f4f4f5", "menu e fundos", "superfície"]];
+  const SW = [["Verde Sinal", "#15803d", "botão principal e foco", "5,0:1 no branco"], ["Verde vivo", "#4ade80", "o mesmo papel no tema escuro", "10,2:1 no grafite"], ["Grafite", "#18181b", "texto e o fundo da marca", "17,7:1 no branco"], ["Zinco", "#4d4d57", "texto de apoio", "8,4:1 no branco"], ["Névoa", "#f1f1f3", "fundo da página", "superfície"]];
   const TY = [["Título da página", "34 / 600", "t1"], ["Seção", "22 / 600", "t2"], ["Texto", "16 / 400, altura 1,6", "t3"], ["Apoio", "14 / 400", "t4"], ["Rótulo", "13 / 500", "t5"]];
   const icons = [["house", "Início"], ["message-circle", "Conversa"], ["list-todo", "Tarefas"], ["calendar-days", "Agenda"], ["notebook-pen", "Notas"], ["brain", "Memória"], ["alarm-clock", "Rotinas"], ["users", "Contatos"], ["bell", "Avisos"], ["search", "Buscar"], ["mic", "Falar"], ["shield-check", "Segurança"]];
   return `<div class="page">
@@ -3955,7 +3998,7 @@ const ACT = [
   [(t) => t.matches("[data-mf]"), (t) => { st.mf = t.dataset.mf; render(); refocus(`[data-mf="${st.mf}"]`); }],
   [(t) => t.matches("[data-x=mem-edit]"), (t) => { const m = MEMS.find((x) => x[0] === nameIn(t)); dlgShow({ t: "Atualizar a memória", sub: "A versão antiga fica no histórico.", body: `<label class="field"><span class="label">O que a Zuri sabe</span><textarea class="input" rows="3" data-me maxlength="2000">${m[0]}</textarea></label>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Guardar</button>`, ok: () => { const v = dlgVal("[data-me]"); if (v) { m[0] = v; m[4] = "agora"; DLG.opener = null; render(); refocus(".mem [data-x=mem-edit]"); } say("Memória atualizada."); } }, t); }],
   [(t) => t.matches("[data-x=mem-hist]"), (t) => { const f = nameIn(t); dlgShow({ t: "Histórico", sub: f, body: `<ul class="runs dlg-runs"><li><time class="num">09/11</time><span>Versão atual</span><span class="pill on"><i></i>Atual</span></li><li><time class="num">03/11</time><span>Anotada pela Zuri numa conversa</span><span class="pill off"><i></i>Antiga</span></li></ul>` }, t); }],
-  [(t) => t.matches("[data-x=mem-menu]"), (t) => { const m = MEMS.find((x) => x[0] === nameIn(t)); menuDlg("Mais opções", [["history", "Histórico", (op) => dlgShow({ t: "Histórico", sub: m[0], body: `<ul class="runs dlg-runs"><li><time class="num">${m[4]}</time><span>Versão atual</span><span class="pill on"><i></i>Atual</span></li><li><time class="num">03/11</time><span>Anotada pela Zuri numa conversa</span><span class="pill off"><i></i>Antiga</span></li></ul>` }, op)], [m[5] ? "lock" : "lock-open", `Nunca enviar para fora${m[5] ? " · ligado" : ""}`, () => { m[5] = m[5] ? "" : "local"; render(); say(m[5] ? "Fica só na sua conta." : "Pode ir para os modelos de novo."); }, false, !!m[5]], m[2] === "Passado" ? ["history", "Marcar como atual", () => { m[2] = "Atual"; render(); say("Marcada como atual."); }] : ["history", "Marcar como passado", () => { m[2] = "Passado"; render(); say("Marcada como passado."); }], ["trash-2", "Apagar", () => confirmDlg("Apagar esta memória?", m[0], "Apagar", () => { MEMS.splice(MEMS.indexOf(m), 1); DLG.opener = null; render(); refocus("#ms"); say("Memória apagada."); }), true]], t); }],
+  [(t) => t.matches("[data-x=mem-menu]"), (t) => { const m = MEMS.find((x) => x[0] === nameIn(t)); menuDlg("Mais opções", [["history", "Histórico", (op) => dlgShow({ t: "Histórico", sub: m[0], body: `<ul class="runs dlg-runs"><li><time class="num">${m[4]}</time><span>Versão atual</span><span class="pill on"><i></i>Atual</span></li><li><time class="num">03/11</time><span>Anotada pela Zuri numa conversa</span><span class="pill off"><i></i>Antiga</span></li></ul>` }, op)], [m[5] ? "lock" : "lock-open", `Nunca enviar para fora${m[5] ? " · ligado" : ""}`, () => { m[5] = m[5] ? "" : "local"; render(); say(m[5] ? "Fica só na sua conta." : "Pode ir para os modelos de novo."); }, false, !!m[5]], m[2] === "Passado" ? ["history", "Marcar como atual", () => { m[2] = "Atual"; render(); say("Marcada como atual."); }] : ["calendar-off", "Marcar como passado", () => { m[2] = "Passado"; render(); say("Marcada como passado."); }], ["trash-2", "Apagar", () => confirmDlg("Apagar esta memória?", m[0], "Apagar", () => { MEMS.splice(MEMS.indexOf(m), 1); DLG.opener = null; render(); refocus("#ms"); say("Memória apagada."); }), true]], t); }],
 
   /* segurança */
   [(t) => t.matches("[data-x=codes]"), (t) => senhaDlg("Os códigos antigos param de valer.", () => { const c = Array.from({ length: 10 }, (_, k) => `${(4821 + k * 733) % 9000 + 1000}-${(1297 + k * 571) % 9000 + 1000}`); setTimeout(() => dlgShow({ t: "Códigos de recuperação", sub: "Guarde num lugar seguro. Cada um vale uma vez.", body: `<ol class="codes num">${c.map((x) => `<li>${x}</li>`).join("")}</ol>`, foot: `<span class="grow"></span><button class="btn btn-secondary" type="button" data-x="codes-dl">${ic("download", "ic-sm")}Baixar</button><button class="btn btn-primary" type="button" data-dlg-x>Guardei</button>`, codes: c })); }, t)],
@@ -3977,7 +4020,7 @@ const ACT = [
   [(t) => t.matches("[data-x=disconnect]"), (t) => { const what = esc(t.dataset.what || "esta conexão"); confirmDlg(`Desconectar ${what}?`, "Dá para conectar de novo quando quiser.", "Desconectar", () => { const p = rowOf(t).querySelector(".hint, p"); if (p) p.textContent = "Desconectado agora"; t.disabled = true; say(`${what[0].toUpperCase()}${what.slice(1)} desconectado.`); }, t); }],
   [(t) => t.matches("[data-x=refresh]"), (t) => busy(t, 900, () => say(t.dataset.done || "Tudo em dia."))],
   [(t) => t.matches("[data-x=day-off]"), (t) => dlgShow({ t: "Dia sem expediente", sub: "Pedidos que cairiam neste dia passam para o próximo dia útil.", body: `<label class="field"><span class="label">Dia</span><input class="input" type="date" data-do value="2026-12-24"></label><label class="field"><span class="label">Motivo (opcional)</span><input class="input" data-do-m placeholder="Ex.: recesso"></label>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Adicionar</button>`, ok: () => { const v = dlgVal("[data-do]"); if (!v) return false; const [y, m, d] = v.split("-"); t.insertAdjacentHTML("beforebegin", `<span class="tag">${d}/${m}/${y}${dlgVal("[data-do-m]") ? ` · ${dlgVal("[data-do-m]")}` : ""}</span> `); say("Dia adicionado."); } }, t)],
-  [(t) => t.matches("[data-x=mcp-tools]"), (t) => dlgShow({ t: "Ferramentas do servidor", sub: "Escolha quanto a Zuri pode usar cada uma sem perguntar.", body: `<ul class="dlg-list">${[["buscar_paciente", "Só consulta"], ["criar_lembrete", "Altera dados"], ["apagar_registro", "Apaga"]].map(([n, k], i) => `<li><span class="grow"><b class="num">${n}</b><span class="hint">${k}</span></span><label class="sr" for="mt-${i}">Autonomia de ${n}</label><select id="mt-${i}" class="input input-sm"${k === "Apaga" ? " disabled" : ""}><option>Perguntar sempre</option>${k === "Apaga" ? "" : "<option>Sem perguntar na conversa</option><option>Também em rotinas</option>"}</select></li>`).join("")}</ul><p class="hint">O que apaga sempre pergunta.</p>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar</button>`, ok: () => say("Autonomia salva.") }, t)],
+  [(t) => t.matches("[data-x=mcp-tools]"), (t) => dlgShow({ t: "Ferramentas do servidor", sub: "Escolha quanto a Zuri pode usar cada uma sem perguntar.", body: `<ul class="dlg-list">${[["ver_temperatura", "Só consulta"], ["ligar_luz", "Altera dados"], ["apagar_cena", "Apaga"]].map(([n, k], i) => `<li><span class="grow"><b class="num">${n}</b><span class="hint">${k}</span></span><label class="sr" for="mt-${i}">Autonomia de ${n}</label><select id="mt-${i}" class="input input-sm"${k === "Apaga" ? " disabled" : ""}><option>Perguntar sempre</option>${k === "Apaga" ? "" : "<option>Sem perguntar na conversa</option><option>Também em rotinas</option>"}</select></li>`).join("")}</ul><p class="hint">O que apaga sempre pergunta.</p>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar</button>`, ok: () => say("Autonomia salva.") }, t)],
   [(t) => t.matches("[data-x=mcp-add]"), (t) => dlgShow({ t: "Adicionar servidor MCP", sub: "Só https. A chave fica cifrada.", body: `<label class="field"><span class="label">Nome</span><input class="input" data-mc-n value="Planilhas"></label><label class="field"><span class="label">Endereço</span><input class="input" data-mc-u value="https://mcp.exemplo.com.br" inputmode="url"></label><label class="field"><span class="label">Chave (opcional)</span><input class="input" type="password" autocomplete="off"></label><p class="hint" data-mc-e role="status"></p>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Adicionar</button>`, ok: () => { if (!/^https:\/\//.test(dlgVal("[data-mc-u]"))) { const e = document.querySelector("[data-mc-e]"); e.textContent = "Use um endereço https."; e.classList.add("err"); return false; } say(`Servidor “${dlgVal("[data-mc-n]")}” adicionado. Todas as ferramentas começam em “Perguntar sempre”.`); } }, t)],
 
   /* dados */
@@ -4095,9 +4138,9 @@ function cwDlg(opener, c) {
   const edit = !!c;
   dlgShow({ t: edit ? `Editar “${c.n}”` : "Nova credencial do Chatwoot", sub: "Configure uma vez. Toda automação que fala com o Chatwoot usa esta credencial.", kind: "conn",
     body: `<label class="field"><span class="label">Nome</span><input class="input" data-cn-name value="${edit ? c.n : "Chatwoot do consultório"}"></label>
-      <div class="grid-2"><label class="field"><span class="label">Endereço do Chatwoot</span><input class="input" data-cn-url value="${edit ? c.url : "https://chat.exemplo.com.br"}" inputmode="url" data-was="${edit ? c.url : ""}"></label>
+      <div class="grid-2 grid-url"><label class="field"><span class="label">Endereço do Chatwoot</span><input class="input" data-cn-url value="${edit ? c.url : "https://chat.exemplo.com.br"}" inputmode="url" data-was="${edit ? c.url : ""}"></label>
       <label class="field"><span class="label">Número da conta</span><input class="input num" data-cn-acc value="1" inputmode="numeric"></label></div>
-      <label class="field"><span class="label">Chave de acesso</span><input class="input" type="password" data-cn-key value="${edit ? "" : "xxxxxxxxxxxxxxxx"}" placeholder="${edit ? `${c.key}. Deixe em branco para manter` : ""}" autocomplete="off"><span class="hint">Fica cifrada e nunca volta para a tela. Crie no Chatwoot um agente “Zuri” só com a caixa do WhatsApp e use a chave dele.</span></label>
+      <label class="field"><span class="label">Chave de acesso</span><input class="input" type="password" data-cn-key value="${edit ? "" : "xxxxxxxxxxxxxxxx"}" placeholder="${edit ? "Em branco, fica a atual" : ""}" autocomplete="off"><span class="hint">Fica cifrada e nunca volta para a tela. Crie no Chatwoot um agente “Zuri” só com a caixa do WhatsApp e use a chave dele.</span></label>
       <label class="field"><span class="label">Caixa de entrada</span><select class="input" data-cn-box><option>WhatsApp do consultório (API)</option></select><span class="hint">A Zuri lista as caixas que essa chave enxerga.</span></label>
       ${cwPacing()}
       <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-cn-test>${ic("plug-zap", "ic-sm")}Testar</button><span data-cn-st role="status"></span></div>`,
@@ -4386,7 +4429,7 @@ function cfgSobre() {
 
 /* ---------- Relatar no GitHub: mostra antes o que vai no relato ---------- */
 function reportDlg(opener) {
-  const fields = [["Título", "[erro] TIMEOUT (automações)"], ["Contexto", `Falha registrada no Diagnóstico (origem: automações). Rota: /api/flows/:id/run. Primeira vez: 2026-11-07 14:02 UTC. Última vez: 2026-11-07 14:02 UTC. Versão da Zuri: ${APP_VER}`], ["Passos para reproduzir", "Rodar o fluxo pela tela CRM › Fluxos › Executar."], ["Esperado", "O fluxo termina sem erro."], ["Obtido", "TIMEOUT: 1 hoje, 3 nos últimos 30 dias."], ["Código do erro", "TIMEOUT · cf-ray 8e1f2a3b4c5d6e7f · id 42"], ["Impacto", "Baixo: aconteceu 3 vezes em 30 dias."]];
+  const fields = [["Título", "[erro] TIMEOUT (fluxos)"], ["Contexto", `Falha registrada no Diagnóstico (origem: fluxos). Rota: /api/flows/:id/run. Primeira vez: 2026-11-07 14:02 UTC. Última vez: 2026-11-07 14:02 UTC. Versão da Zuri: ${APP_VER}`], ["Passos para reproduzir", "Rodar o fluxo pela tela CRM › Fluxos › Executar."], ["Esperado", "O fluxo termina sem erro."], ["Obtido", "TIMEOUT: 1 hoje, 3 nos últimos 30 dias."], ["Código do erro", "TIMEOUT · requisição 8e1f2a3b4c5d6e7f · registro 42"], ["Impacto", "Baixo: aconteceu 3 vezes em 30 dias."]];
   dlgShow({ t: "Relatar no GitHub", sub: "O formulário do GitHub abre já preenchido. Você confere e envia por lá.",
     body: `<dl class="rep-list">${fields.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
       <p class="ro">${ic("lock", "ic-sm")}<span>Vai só o que o Diagnóstico guarda: tipo da falha, onde, quando, versão e o código da requisição. Nada do que você escreveu, nem e-mail ou endereço. O GitHub é público.</span></p>`,
@@ -4630,7 +4673,7 @@ function rvResponder() {
       <label class="field"><span class="label">Instruções</span><textarea class="input" rows="6" maxlength="2000" data-rv-prompt>${escH(prompt)}</textarea><span class="hint num" data-rv-count>${n} de 2.000 caracteres</span></label>
       <div class="form-grid"><label class="field"><span class="label">Tom</span><select class="input"><option selected>Próximo e caloroso</option><option>Educado e formal</option></select></label><label class="field"><span class="label">Assinatura</span><input class="input" value="Equipe Exemplo" maxlength="40"></label></div>
       ${sw("sw-rvv", st.rvVary, "data-rv-vary", "Variar o começo das respostas", "Cada resposta começa de um jeito: a Zuri sorteia um de 7 estilos e compara com as 15 últimas publicadas. Uma resposta parecida demais com outra é escrita de novo.")}
-      <p class="hint">${ic("history", "ic-sm")}Versão 3, salva em 08/11. <button class="linkbtn" type="button" data-x="rv-model" aria-haspopup="dialog">Ver o modelo completo</button> · <button class="linkbtn" type="button" data-x="rv-versions">Ver versões</button> · <button class="linkbtn" type="button" data-x="rv-default">Voltar ao padrão</button></p></section>
+      <p class="hint rv-ver">${ic("history", "ic-sm")}<span>Versão 3, salva em 08/11.</span><button class="linkbtn" type="button" data-x="rv-model" aria-haspopup="dialog">Ver o modelo completo</button><button class="linkbtn" type="button" data-x="rv-versions">Ver versões</button><button class="linkbtn" type="button" data-x="rv-default">Voltar ao padrão</button></p></section>
     <section class="card set-sec" aria-labelledby="h-rc3"><h2 id="h-rc3">O que fazer em cada nota</h2><p>A nota decide primeiro. A IA só pode deixar a resposta mais cuidadosa, nunca menos.</p>
       <ul class="cal-list">${[["5 estrelas", "Agradece e reage ao ponto que a pessoa elogiou", ["Rascunho para aprovar", "Publicar sozinha"], 0], ["4 estrelas", "Agradece e convida a contar, pelo canal oficial, o que faltou", ["Rascunho para aprovar", "Publicar sozinha"], 0], ["1 a 3 estrelas ou sem nota", "Aviso para a equipe; o rascunho pede desculpas sem discutir e convida para o canal oficial", ["Só avisar", "Rascunho para aprovar"], 0]].map(([t, d, o, on], k) => `<li class="set-row"><div class="grow"><p class="t" id="rn-${k}">${t}</p><p class="hint">${d}</p></div><div class="seg seg-xs" role="group" aria-labelledby="rn-${k}">${o.map((x, j) => `<button type="button" aria-pressed="${j === on}"${k < 2 && j === 1 ? " disabled" : ""}>${x}</button>`).join("")}</div></li>`).join("")}</ul>
       <p class="hint">Publicar sozinha libera depois de 10 rascunhos aprovados sem mudança. Hoje: 7 de 10.</p></section>
