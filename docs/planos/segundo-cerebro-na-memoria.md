@@ -1,6 +1,6 @@
 # Plano · Segundo cérebro na memória (estudo de viabilidade)
 
-Situação: esperando o Pablo
+Situação: aprovado em 10/11/2026 (estudo). A implementação começa depois do primeiro deploy.
 Origem: pedido do Pablo em 10/11/2026
 Dependências: nenhuma para o estudo. A implementação, se aprovada, vem depois do primeiro deploy e combina com a PR D do novo frontend (`docs/planos/novo-frontend-sinal.md`, "Memória em mapa").
 
@@ -238,10 +238,10 @@ Telas novas: e2e, axe e capturas nos dois tamanhos e temas.
 
 | Data | Pergunta | Resposta |
 | --- | --- | --- |
-| 10/11/2026 | 1. Seguimos com "fazer em parte" (arrumação por IA e resumos por assunto, mantendo as memórias curtas como fonte)? Recomendo sim. | aguardando |
-| 10/11/2026 | 2. Os resumos ficam só na tela de Memória até a medição provar ganho, e só então entram na conversa? Recomendo sim. | aguardando |
-| 10/11/2026 | 3. Depois do primeiro deploy, ligamos a busca por significado (já pronta, perto de 0,01 Neuron por busca) como primeiro passo, antes de construir qualquer coisa? Recomendo sim. | aguardando |
+| 10/11/2026 | 1. Seguimos com "fazer em parte" (arrumação por IA e resumos por assunto, mantendo as memórias curtas como fonte)? Recomendo sim. | sim (10/11/2026) |
+| 10/11/2026 | 2. Os resumos ficam só na tela de Memória até a medição provar ganho, e só então entram na conversa? Recomendo sim. | sim (10/11/2026) |
+| 10/11/2026 | 3. Depois do primeiro deploy, ligamos a busca por significado (já pronta, perto de 0,01 Neuron por busca) como primeiro passo, antes de construir qualquer coisa? Recomendo sim. | sim (10/11/2026) |
 
 ### Perguntas abertas
 
-- As três acima. Nenhuma trava este PR, que é só o estudo.
+- Nenhuma: o Pablo respondeu sim às três em 10/11/2026.
