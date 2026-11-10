@@ -379,3 +379,14 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
   `tests/e2e/ui-helpers.ts` e `exact: true` no nome. Um teste e2e com
   muitas telas e axe em cada uma passa perto dos 30 s: divida por grupo de
   telas em vez de subir o timeout (#241) (09/11/2026).
+- Uma ação que faz `await` da releitura da lista e só depois limpa o estado
+  da tela (`reset()`) fecha o que o dono abriu nesse meio-tempo. No acesso
+  remoto, ligar a chave e abrir "Novo token" antes de a lista voltar fechava o
+  formulário (#250: o e2e travava no rádio, que tinha sumido). Só limpe o
+  estado no fim quando a ação nasceu do próprio formulário ou confirmação, e
+  no e2e segure a resposta com `page.route` para provar a ordem (10/11/2026).
+- `--repeat-each` acima de 10 no e2e do acesso remoto dá 429 no
+  `POST /api/remote/events`: cada repetição usa uma vez o token já revogado, e
+  na décima recusa a rede fica bloqueada (proteção contra tentativa de token).
+  Não é instabilidade. Repita em lotes de até 8 por subida do servidor
+  (10/11/2026).
