@@ -505,11 +505,11 @@ dialog::backdrop {
     @apply h-[1.375rem] w-[1.375rem];
   }
   .zuri-tab[aria-current="page"],
-  .zuri-tab[data-current] {
+  .zuri-tab[aria-current] {
     @apply font-semibold text-fg;
   }
   .zuri-tab[aria-current="page"] > svg,
-  .zuri-tab[data-current] > svg {
+  .zuri-tab[aria-current] > svg {
     @apply text-accent-text;
   }
   .zuri-tab > [aria-hidden]:not(svg) {

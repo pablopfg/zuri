@@ -32,12 +32,15 @@ export function Sidebar({
   onSearch,
   account,
   navigate,
+  place,
 }: {
   collapsed: boolean;
   onToggle: () => void;
   onSearch: () => void;
   account: { name: string; initial: string | undefined; open: boolean; onOpen: () => void };
   navigate: (to: string) => void;
+  /** The address in view. */
+  place: string;
 }) {
   const { t } = useI18n();
   // Escape hides the rail's names until the pointer or focus moves (WCAG 1.4.13).
@@ -63,7 +66,8 @@ export function Sidebar({
             <span className={collapsed ? "sr-only" : "truncate text-[1.1875rem] font-semibold tracking-tight"}>{t("app.name")}</span>
           </NavLink>
         </Tip>
-        <NotificationCenter navigate={navigate} rail={collapsed} />
+        {/* A new one at each address: a move to another page closes the notices. */}
+        <NotificationCenter key={place} navigate={navigate} rail={collapsed} />
         <Tip label={tip(t("web.nav.expand"))} quiet={tipsHidden}>
           <button type="button" onClick={onToggle} aria-expanded={!collapsed} aria-controls="menu-lateral" aria-label={collapsed ? t("web.nav.expand") : t("web.nav.collapse")} className="zuri-icon-button">
             <PanelLeft className="h-5 w-5" aria-hidden />

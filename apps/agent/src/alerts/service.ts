@@ -720,7 +720,8 @@ export class AlertService {
       category: row.category,
       priority: row.priority,
       ...noticeText(row, locale),
-      link: row.link,
+      // A notice saved under an old address goes out with today's (packages/shared/src/pages.ts).
+      link: noticePage(row.link),
       createdAt: row.created_at,
       readAt: row.read_at,
       escalation: row.escalation,

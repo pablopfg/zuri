@@ -30,7 +30,7 @@ test("the new places answer at their addresses, each with its title @mobile", as
   ] as const) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1, name: heading, exact: true }), path).toBeVisible();
-    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    expect(new URL(page.url()).pathname, path).toBe(path);
   }
   // A part of the CRM or a tab of the reviews that doesn't exist goes back to the place's first screen.
   await page.goto("/crm/nada");
@@ -43,7 +43,7 @@ test("every address that changed name sends to the new one, for good, keeping wh
   await enter(page);
   for (const [from, to] of Object.entries(MOVED_PAGES)) {
     await page.goto(from);
-    await expect(page, from).toHaveURL(new RegExp(`${to}$`));
+    await expect.poll(() => new URL(page.url()).pathname, { message: from }).toBe(to);
     await expect(page.getByRole("heading", { name: NOT_FOUND }), from).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1 }).first(), from).toBeVisible();
   }
@@ -57,8 +57,12 @@ test("every address that changed name sends to the new one, for good, keeping wh
   await expect(page).toHaveURL(/\/avaliacoes$/);
   // An old tab that never existed still lands on Rotinas, never on the 404.
   await page.goto("/automacoes/outra");
-  await expect(page).toHaveURL(/\/rotinas$/);
+  await expect.poll(() => new URL(page.url()).pathname).toBe("/rotinas");
   await expect(page.getByRole("heading", { level: 1, name: "Rotinas" })).toBeVisible();
+  // The router minds no case, and neither does the old name.
+  await page.goto("/Automacoes/Fluxos");
+  await expect.poll(() => new URL(page.url()).pathname).toBe("/crm/fluxos");
+  await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
 
   // For good: the old address leaves the history, so the browser's back doesn't bounce.
   await page.goto("/tarefas");

@@ -30,7 +30,7 @@ export function TabBar({ moreOpen, onMore }: { moreOpen: boolean; onMore: () => 
           )}
         </NavLink>
       ))}
-      <button type="button" onClick={onMore} aria-haspopup="dialog" aria-expanded={moreOpen} data-current={inMore || undefined} className="zuri-tab">
+      <button type="button" onClick={onMore} aria-haspopup="dialog" aria-expanded={moreOpen} aria-current={inMore || undefined} className="zuri-tab">
         <LayoutGrid aria-hidden />
         <span>{t("web.nav.more")}</span>
       </button>

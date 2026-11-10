@@ -259,6 +259,14 @@ for (const scheme of ["light", "dark"] as const) {
     await sidebar(page).getByRole("button", { name: /^Abrir avisos/ }).click();
     await expect(page.getByRole("dialog", { name: "Avisos" }).getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
     await expectAccessible(page, `avisos ao lado do menu recolhido (${scheme})`);
+    expect(await tooSmallControls(page)).toEqual([]);
+    // The browser's back closes the panel with the page it was opened on.
+    await page.keyboard.press("Escape");
+    await page.goto("/tarefas");
+    await sidebar(page).getByRole("button", { name: /^Abrir avisos/ }).click();
+    await expect(page.getByRole("dialog", { name: "Avisos" })).toBeVisible();
+    await page.goBack();
+    await expect(page.getByRole("dialog", { name: "Avisos" })).toHaveCount(0);
   });
 
   test(`the phone's shell, its sheets and the bottom bar have no serious violation (${scheme}) @mobile`, async ({ page }) => {
@@ -279,6 +287,7 @@ for (const scheme of ["light", "dark"] as const) {
     await page.getByRole("button", { name: /^Abrir avisos/ }).click();
     await expect(page.getByRole("dialog", { name: "Avisos" }).getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
     await expectAccessible(page, `folha de avisos (${scheme})`);
+    expect(await tooSmallControls(page)).toEqual([]);
   });
 }
 
@@ -332,11 +341,11 @@ test("on a phone: a top bar, a bottom bar with four places and Mais, and no side
   await sheet.getByRole("link", { name: "Rotinas" }).click();
   await expect(page).toHaveURL(/\/rotinas$/);
   await expect(sheet).toHaveCount(0);
-  await expect(more).toHaveAttribute("data-current", "true");
+  await expect(more).toHaveAttribute("aria-current", "true");
   await expect(bar.getByRole("link", { name: "Início" })).not.toHaveAttribute("aria-current", "page");
   await bar.getByRole("link", { name: asLink("Tarefas") }).click();
   await expect(page).toHaveURL(/\/tarefas$/);
-  await expect(more).not.toHaveAttribute("data-current", "true");
+  await expect(more).not.toHaveAttribute("aria-current", "true");
 });
 
 test("on a phone the account opens as a sheet from the top bar @mobile", async ({ page }) => {

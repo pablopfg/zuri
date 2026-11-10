@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { catalogs } from "../i18n/index.ts";
 import { MOVED_PAGES, movedTo, NOTICE_LINKS, noticePage } from "../src/index.ts";
 
 describe("addresses that changed name with the Sinal shell", () => {
@@ -14,6 +15,20 @@ describe("addresses that changed name with the Sinal shell", () => {
     expect(movedTo("/automacoes/")).toBe("/rotinas");
     expect(movedTo("/automacoes/fluxos/")).toBe("/crm/fluxos");
     expect(movedTo("/automacoes/qualquer/coisa")).toBe("/rotinas");
+  });
+
+  it("minds no case, as the router does", () => {
+    expect(movedTo("/Automacoes")).toBe("/rotinas");
+    expect(movedTo("/AUTOMACOES/Fluxos")).toBe("/crm/fluxos");
+  });
+
+  it("SEC-A10-01: a huge address is refused at once, never trimmed slash by slash", () => {
+    const started = performance.now();
+    expect(movedTo(`${"/".repeat(60_000)}x`)).toBeNull();
+    expect(movedTo(`/automacoes${"/".repeat(60_000)}x`)).toBeNull();
+    expect(performance.now() - started).toBeLessThan(50);
+    // The longest real one still fits, with a made-up tab.
+    expect(movedTo(`/automacoes/${"a".repeat(60)}`)).toBe("/rotinas");
   });
 
   it("leaves alone what never moved, a look-alike and a name of Object's own", () => {
@@ -42,12 +57,22 @@ describe("the page a notice opens", () => {
   });
 
   it("drops nothing, an address outside the list and another site", () => {
-    for (const link of [null, undefined, "", "/conversa", "/crm/credenciais", "/automacoes/conexoes", "https://exemplo.com.br/rotinas", "//exemplo.com.br", "/rotinas?x=1", "/rotinas#a"]) {
+    for (const link of [null, undefined, "", "/conversa", "/crm/credenciais", "/automacoes/conexoes", "/automacoes/outra", "/automacoes/../../x", "/automacoes//exemplo.com.br", "https://exemplo.com.br/rotinas", "//exemplo.com.br", "/rotinas?x=1", "/rotinas#a"]) {
       expect(noticePage(link), String(link)).toBeNull();
     }
   });
 
   it("no page of the list is an old address", () => {
     for (const link of NOTICE_LINKS) expect(movedTo(link), link).toBeNull();
+  });
+});
+
+describe("texts that tell the owner where to go", () => {
+  it("name no place that left the menu with the Sinal shell", () => {
+    const gone = /Automações ›|Contatos › Avaliações|Automations ›|Contacts › Reviews/;
+    for (const [locale, catalog] of Object.entries(catalogs)) {
+      const stale = Object.entries(catalog).filter(([, text]) => gone.test(text)).map(([key]) => key);
+      expect(stale, locale).toEqual([]);
+    }
   });
 });

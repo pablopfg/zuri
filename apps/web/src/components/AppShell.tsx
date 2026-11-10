@@ -150,7 +150,7 @@ export function AppShell() {
         data-collapsed={collapsed}
         className="zuri-menu"
       >
-        <Sidebar collapsed={collapsed} onToggle={toggle} onSearch={openSearch} account={{ name, initial, open: accountOpen, onOpen: openAccount }} navigate={navigate} />
+        <Sidebar collapsed={collapsed} onToggle={toggle} onSearch={openSearch} account={{ name, initial, open: accountOpen, onOpen: openAccount }} navigate={navigate} place={location.pathname} />
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -165,7 +165,7 @@ export function AppShell() {
           <button type="button" onClick={openSearch} aria-label={t("web.search.open")} aria-haspopup="dialog" className="zuri-icon-button">
             <Search className="h-5 w-5" aria-hidden />
           </button>
-          <NotificationCenter navigate={navigate} />
+          <NotificationCenter key={location.pathname} navigate={navigate} />
           <button type="button" onClick={openAccount} aria-haspopup="dialog" aria-expanded={accountOpen} className="zuri-icon-button">
             <Avatar initial={initial} />
             <span className="sr-only">
