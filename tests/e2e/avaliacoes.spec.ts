@@ -54,7 +54,7 @@ test("turns the reviews on, tells the team of a negative one and publishes an ap
 
   await reviews.getByRole("link", { name: "Abrir avaliações" }).click();
   await expect(page).toHaveURL(/\/avaliacoes$/);
-  await expect(page.getByRole("link", { name: "Avaliações", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { level: 1, name: "Avaliações" })).toBeVisible();
   // Saving made the first read, which keeps what exists as history; this one brings the three new reviews.
   await expect(page.getByText(/^Última leitura:/)).toBeVisible();
   await page.getByRole("button", { name: "Conferir agora" }).click();

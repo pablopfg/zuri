@@ -56,7 +56,7 @@ export function Sidebar({
       onFocus={() => setTipsHidden(false)}
       onMouseLeave={() => setTipsHidden(false)}
     >
-      <div className={collapsed ? "flex flex-col items-center gap-1" : "flex items-center gap-0.5"}>
+      <div className={collapsed ? "flex flex-col items-center" : "flex items-center gap-0.5"}>
         <Tip label={tip(t("app.name"))} quiet={tipsHidden} className={collapsed ? "" : "mr-auto min-w-0"}>
           <NavLink to="/" className="flex min-h-11 min-w-0 items-center gap-2.5 rounded-xl px-1" aria-label={t("web.nav.homeLink")}>
             <Logo />
@@ -84,9 +84,9 @@ export function Sidebar({
           </button>
         </Tip>
       </div>
-      <nav aria-label={t("web.nav.main")} className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <nav aria-label={t("web.nav.main")} className={`${collapsed ? "mt-2" : "mt-4"} min-h-0 flex-1 overflow-y-auto overscroll-contain`}>
         {NAV.map((group, index) => (
-          <div key={group.heading ?? "top"} className={index === 0 ? "" : collapsed ? "mt-2 border-t border-border pt-2" : "mt-4"}>
+          <div key={group.heading ?? "top"} className={index === 0 ? "" : collapsed ? "mt-1 border-t border-border pt-1" : "mt-4"}>
             {group.heading && (
               <p id={`nav-${index}`} className={collapsed ? "hidden" : "zuri-menu-heading"}>
                 {t(group.heading)}

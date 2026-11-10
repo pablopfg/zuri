@@ -76,7 +76,7 @@ test("a reminder's run reaches the bell: open, read, delete and read all @mobile
 
   // The panel's shortcut to its settings.
   await page.getByRole("button", { name: "Abrir avisos", exact: true }).first().click();
-  await panel.getByRole("button", { name: "Configurar avisos" }).click();
+  await panel.getByRole("button", { name: "Escolher o que avisar" }).click();
   await expect(page).toHaveURL(/\/configuracoes\/avisos$/);
 
   expect((await page.request.delete(`/api/automations/${id}`, { headers: CSRF })).status()).toBe(204);

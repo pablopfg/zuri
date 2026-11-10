@@ -411,7 +411,7 @@ describe("reading", () => {
     await withStatusFlows(async () => {
       const flows = await command("/status");
       expect(flows).toContain("Sites monitorados: 1 de 2 no ar.\n• Fora do ar: b[.]exemplo[.]com[.]br");
-      expect(flows).toContain("Fluxos com falha na última execução (1): Monitor falso. Veja em Automações › Fluxos.");
+      expect(flows).toContain("Fluxos com falha na última execução (1): Monitor falso. Veja em CRM › Fluxos.");
     });
   });
 
@@ -440,7 +440,7 @@ describe("reading", () => {
     await withStatusFlows(async () => {
       const flows = await command("/status");
       expect(flows).toContain("Sites monitorados: 1 de 2 no ar.");
-      expect(flows).toContain("Fluxos com falha na última execução: 1. Veja em Automações › Fluxos.");
+      expect(flows).toContain("Fluxos com falha na última execução: 1. Veja em CRM › Fluxos.");
       expect(flows).not.toContain("exemplo");
       expect(flows).not.toContain("Monitor");
     });

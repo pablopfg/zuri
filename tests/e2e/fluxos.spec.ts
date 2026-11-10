@@ -17,7 +17,6 @@ async function openFlows(page: Page) {
   await signIn(page);
   await expect(page).toHaveURL(/\/crm\/fluxos$/);
   await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Fluxos" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
 }
 
@@ -173,7 +172,10 @@ test("the flows have their own address in the CRM, and the palette opens a new f
   await expect(page).toHaveURL(/\/crm$/);
   await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
 
-  for (const from of ["routines", "flows"]) {
+  // From another place and from the flows themselves.
+  for (const from of ["/rotinas", "/crm/fluxos"]) {
+    await page.goto(from);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.keyboard.press("Control+k");
     await page.getByRole("dialog", { name: "Buscar e ir para" }).getByRole("combobox").fill("criar fluxo");
     await page.keyboard.press("Enter");
