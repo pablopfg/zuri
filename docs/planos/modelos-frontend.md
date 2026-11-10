@@ -478,3 +478,7 @@ O Pablo aprova um dos modelos da rodada 4 (ou uma mistura, por exemplo "logomarc
 
 - **Configurações › Segurança, "Atividade de acesso":** cada acesso mostra também o endereço IP, na lista e em "Todos os acessos". O registro já guarda esse dado (`apps/agent/src/auth/events.ts`), com detalhe por 90 dias; falta só a tela nova mostrar. Quando a conexão chega por IPv6, aparece o endereço IPv6, porque nesse acesso não existe IPv4. Os exemplos do protótipo usam faixas de documentação.
 - **Notas:** o microfone fica só no texto da nota.
+
+### Ajuste de 10/11, 15:34
+
+- **Avaliações, corte e faixa vazia:** em janela baixa, as duas colunas paravam antes do fim da moldura (colunas com teto pela altura da janela, moldura com mínimo fixo de 560 px) e sobrava uma faixa vazia embaixo. Moldura e colunas agora usam a mesma altura. Entre 821 e 1.100 px de largura (tablet e celular deitado), a tela passa a ter uma coluna só, com o "voltar" do celular, em vez de espremer o detalhe.
