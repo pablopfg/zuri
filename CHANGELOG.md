@@ -19,6 +19,20 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.40.0] - 2026-11-10
+
+Mesclada às 15:21 (UTC-3) · commit [`64b3762`](https://github.com/pablopfg/Zuri/commit/64b37620de89bcb13d6f47976682bb692d1395e8) · PR [#261](https://github.com/pablopfg/Zuri/pull/261) · Cores, fonte e cantos do Sinal refinado (S01)
+
+### Alterado
+
+- Novo acabamento visual, o Sinal refinado, em todas as telas: cores em tons de cinza neutro com o verde só nas ações, cartões brancos sobre fundo cinza claro no tema claro, tema escuro com mais contraste e cantos mais discretos.
+- Fonte Figtree em toda a interface. Ela é servida pela própria Zuri; nenhum serviço de fontes é chamado.
+- A escolha do tema em Configurações › Conta mostra só os três ícones (como o sistema, claro e escuro).
+
+### Corrigido
+
+- Configurações › Avisos não rola mais para o lado em celulares de tela pequena (320 px) (#259).
+
 ## [0.39.7] - 2026-11-10
 
 Mesclada às 14:39 (UTC-3) · commit [`cda406a`](https://github.com/pablopfg/Zuri/commit/cda406aa718b27fc6c92071d00551c3b5e32bdcd) · PR [#257](https://github.com/pablopfg/Zuri/pull/257) · Revisão cruzada do protótipo Sinal e plano de implementação
@@ -2955,7 +2969,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.7...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.40.0...develop
+[0.40.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.40.0
 [0.39.7]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.7
 [0.39.6]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.6
 [0.39.5]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.5
