@@ -1,10 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import {
   isLocale,
   isOwnerName,
   LOCALES,
-  LOGIN_OPTIONS_PATH,
-  loginOptionsSchema,
   normalizeOwnerName,
   OWNER_NAME_MAX,
   PASSWORD_MIN_LENGTH,
@@ -14,10 +11,11 @@ import {
   sessionStateSchema,
   setupTicketSchema,
 } from "@zuri/shared";
-import { KeyRound, LockKeyhole, Mail, RotateCw, UserRound } from "lucide-react";
+import { KeyRound, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { type FormEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { EntryLayout } from "../../components/EntryLayout.tsx";
+import type { UseHumanCheck } from "../../components/HumanCheck.tsx";
 import { Logo } from "../../components/Logo.tsx";
-import { TurnstileWidget } from "../../components/TurnstileWidget.tsx";
 import { Button, ErrorNotice, Notice, PasswordField, SelectField, Loading, TextField, useDocumentTitle } from "../../components/ui.tsx";
 import { useSetupStatus } from "../../hooks/setup.ts";
 import { useSession } from "../../hooks/session.tsx";
@@ -34,7 +32,6 @@ type Step = { kind: "code" } | { kind: "form"; ticket: SetupTicket } | { kind: "
 interface RefusalDetails {
   retryAfter?: number;
   setup?: "expired";
-  turnstileSiteKey?: string;
   fields?: string[];
 }
 
@@ -45,7 +42,7 @@ interface RefusalDetails {
  * registered e-mail only set a new password. The server holds every rule; this
  * screen only says them clearly.
  */
-export function FirstAccessPage({ go }: { go: (path: string) => void }) {
+export function FirstAccessPage({ go, useHuman }: { go: (path: string) => void; useHuman: UseHumanCheck }) {
   const { t, locale, timeZone: browserZone, dateTime, adoptSettings } = useI18n();
   const { session, loading, signedIn } = useSession();
   const status = useSetupStatus();
@@ -70,24 +67,8 @@ export function FirstAccessPage({ go }: { go: (path: string) => void }) {
   const [retryAt, setRetryAt] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
 
-  // The robot check, on every try with the code, as on the sign-in form.
-  const options = useQuery({
-    queryKey: ["login-options"],
-    queryFn: async () => loginOptionsSchema.parse(await api<unknown>(LOGIN_OPTIONS_PATH.replace(/^\/api/, ""))),
-    staleTime: Number.POSITIVE_INFINITY,
-    retry: 1,
-  });
-  // A refusal may carry the key too, when the options came late or not at all.
-  const [refusedKey, setRefusedKey] = useState<string | null>(null);
-  const siteKey = refusedKey ?? options.data?.turnstileSiteKey ?? null;
-  // Until the options arrive the screen can't know whether the check is on: a try waits, so it
-  // doesn't spend one of the network's few attempts on a refusal.
-  const optionsPending = options.isPending && refusedKey === null;
-  const [humanToken, setHumanToken] = useState<string | null>(null);
-  const [humanRound, setHumanRound] = useState(0);
-  const [humanBroken, setHumanBroken] = useState(false);
-  const [humanNudge, setHumanNudge] = useState(false);
-  const [humanInteractive, setHumanInteractive] = useState(false);
+  // The security check, on every try with the code, as on the sign-in form.
+  const human = useHuman();
 
   const codeRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -133,16 +114,14 @@ export function FirstAccessPage({ go }: { go: (path: string) => void }) {
   }
 
   function refused(err: unknown) {
-    setError(errorMessage(err));
-    if (!(err instanceof ApiError)) return;
-    const details = err.details as RefusalDetails;
-    if (err.code === "RATE_LIMITED" && typeof details.retryAfter === "number") setRetryAt(Date.now() + details.retryAfter * 1000);
-    if (typeof details.turnstileSiteKey === "string" && details.turnstileSiteKey && details.turnstileSiteKey !== siteKey) {
-      setHumanRound((n) => n + 1);
-      setHumanToken(null);
-      setRefusedKey(details.turnstileSiteKey);
-      setHumanNudge(false);
+    // A check the server refused, or a pause at the code: the line above the button says it.
+    const paused = err instanceof ApiError && err.code === "RATE_LIMITED" && typeof (err.details as RefusalDetails).retryAfter === "number";
+    if (paused) {
+      // The clock is read again here: the last reading may be as old as the screen.
+      setNow(Date.now());
+      setRetryAt(Date.now() + ((err.details as RefusalDetails).retryAfter as number) * 1000);
     }
+    setError(human.refused(err) || (paused && step.kind === "code") ? null : errorMessage(err));
   }
 
   /** The form's time ran out (or the code was used meanwhile): back to the code, with the server's words. */
@@ -165,19 +144,11 @@ export function FirstAccessPage({ go }: { go: (path: string) => void }) {
       codeRef.current?.focus();
       return;
     }
-    if (optionsPending || (siteKey !== null && !humanToken)) {
-      setHumanNudge(true);
-      return;
-    }
     setAttempted(false);
+    if (human.hold()) return;
     setPending(true);
     setError(null);
-    const token = humanToken;
-    if (siteKey !== null) {
-      // A token works once: a new widget for the next try.
-      setHumanToken(null);
-      setHumanRound((n) => n + 1);
-    }
+    const token = human.take();
     try {
       const answer = await api<unknown>("/setup/code", { method: "POST", body: { code: code.trim(), ...(token ? { turnstileToken: token } : {}) } });
       const ticket = setupTicketSchema.parse(answer);
@@ -267,27 +238,19 @@ export function FirstAccessPage({ go }: { go: (path: string) => void }) {
   );
 
   return (
-    <main className="flex min-h-full flex-col items-center px-4 py-8 sm:justify-center sm:px-6 sm:py-12">
-      <div className="w-full max-w-md space-y-6 motion-safe:animate-rise">
-        <header className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Logo className="h-9 w-9" working={pending} />
-            <span className="text-lg font-bold tracking-tight">{t("app.name")}</span>
-          </div>
-          <div className="space-y-1.5">
-            <h1 className="text-[1.625rem] font-bold tracking-tight text-balance sm:text-[1.875rem]">
-              {t(recovery ? "web.setup.recoveryTitle" : "web.setup.title")}
-            </h1>
-            <p className="text-[0.9375rem] leading-6 text-fg-muted">{t(recovery ? "web.setup.recoveryLead" : "web.setup.lead")}</p>
-          </div>
-          {!recovery && step.kind !== "recovered" && <SetupSteps current={step.kind === "code" ? 0 : 1} />}
-        </header>
-
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+    <EntryLayout working={pending}>
+      <div className="grid gap-4">
+        <div>
+          <h1>{t(recovery ? "web.setup.recoveryTitle" : "web.setup.title")}</h1>
+          <p>{t(recovery ? "web.setup.recoveryLead" : "web.setup.lead")}</p>
+        </div>
+        {!recovery && step.kind !== "recovered" && <SetupSteps current={step.kind === "code" ? 0 : 1} />}
+      </div>
+      <div className="grid gap-5">
           {status.isError ? (
             <ErrorNotice error={status.error} onRetry={() => void status.refetch()} />
           ) : step.kind === "code" ? (
-            <form onSubmit={submitCode} className="space-y-4" noValidate aria-describedby={error ? "setup-error" : undefined}>
+            <form onSubmit={submitCode} noValidate aria-describedby={error ? "setup-error" : undefined}>
               <PasswordField
                 ref={codeRef}
                 label={t("web.setup.code")}
@@ -301,54 +264,14 @@ export function FirstAccessPage({ go }: { go: (path: string) => void }) {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
               />
-              {optionsPending && humanNudge && (
-                <p className="text-sm leading-6 text-danger" role="alert">
-                  {t("web.login.humanLoading")}
-                </p>
-              )}
-              {siteKey !== null && (
-                <div className={humanBroken || humanNudge || humanInteractive ? "space-y-1.5" : "!mt-0"}>
-                  {(humanBroken || humanNudge || humanInteractive) && (
-                    <p className={humanBroken || humanNudge ? "text-sm leading-6 text-danger" : "text-sm leading-6 text-fg-muted"} role={humanBroken || humanNudge ? "alert" : undefined}>
-                      {humanBroken ? t("web.login.humanBroken") : t("web.login.humanHint")}
-                    </p>
-                  )}
-                  {humanBroken && (
-                    <Button
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() => {
-                        setHumanBroken(false);
-                        setHumanToken(null);
-                        setHumanRound((n) => n + 1);
-                      }}
-                    >
-                      <RotateCw className="h-4 w-4" aria-hidden />
-                      {t("web.login.humanRetry")}
-                    </Button>
-                  )}
-                  <TurnstileWidget
-                    key={`${siteKey}-${humanRound}`}
-                    siteKey={siteKey}
-                    onToken={(value) => {
-                      setHumanToken(value);
-                      if (value) {
-                        setHumanBroken(false);
-                        setHumanNudge(false);
-                      }
-                    }}
-                    onError={() => setHumanBroken(true)}
-                    onInteractive={setHumanInteractive}
-                  />
-                </div>
-              )}
+              {human.line(step.kind === "code" ? waitSeconds : 0)}
               <Button type="submit" className="min-h-12 w-full" loading={pending} disabled={waitSeconds > 0}>
-                {waitSeconds > 0 ? t("web.login.waitSeconds", { seconds: waitSeconds }) : t("web.setup.continue")}
+                {waitSeconds > 0 ? human.wait(waitSeconds) : t("web.setup.continue")}
               </Button>
               {errorLine}
             </form>
           ) : step.kind === "form" ? (
-            <form onSubmit={submitForm} className="space-y-4" noValidate aria-describedby={error ? "setup-error" : undefined}>
+            <form onSubmit={submitForm} noValidate aria-describedby={error ? "setup-error" : undefined}>
               <div className="space-y-1">
                 <h2 ref={headingRef} tabIndex={-1} className="text-lg font-semibold focus:outline-none">
                   {t(step.ticket.mode === "setup" ? "web.setup.detailsTitle" : "web.setup.recoverTitle")}
@@ -439,7 +362,7 @@ export function FirstAccessPage({ go }: { go: (path: string) => void }) {
               <p className="text-xs leading-5 text-fg-muted">{t("web.setup.formUntil", { time: dateTime(step.ticket.expiresAt) })}</p>
               <Button type="submit" className="min-h-12 w-full" loading={pending} disabled={waitSeconds > 0}>
                 {waitSeconds > 0
-                  ? t("web.login.waitSeconds", { seconds: waitSeconds })
+                  ? human.wait(waitSeconds)
                   : t(step.ticket.mode === "setup" ? "web.setup.create" : "web.setup.recover")}
               </Button>
               {errorLine}
@@ -455,17 +378,15 @@ export function FirstAccessPage({ go }: { go: (path: string) => void }) {
               </a>
             </div>
           )}
-        </section>
-
-        {recovery && step.kind !== "recovered" && (
-          <p className="text-center text-sm">
-            <a href={LOGIN_PATH} onClick={(e) => follow(e, LOGIN_PATH)} className="inline-flex min-h-11 items-center font-medium text-accent-text underline-offset-4 hover:underline">
-              {t("web.setup.backToLogin")}
-            </a>
-          </p>
-        )}
       </div>
-    </main>
+      {recovery && step.kind !== "recovered" && (
+        <p className="text-center">
+          <a href={LOGIN_PATH} onClick={(e) => follow(e, LOGIN_PATH)} className="zuri-entry-link">
+            {t("web.setup.backToLogin")}
+          </a>
+        </p>
+      )}
+    </EntryLayout>
   );
 }
 

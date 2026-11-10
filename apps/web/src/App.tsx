@@ -2,6 +2,7 @@ import { movedTo } from "@zuri/shared";
 import { lazy, Suspense, useCallback, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router";
 import { AppShell } from "./components/AppShell.tsx";
+import { useHumanCheck } from "./components/HumanCheck.tsx";
 import { RequireSession, SessionChecking } from "./components/RequireSession.tsx";
 import { ScreenLoading } from "./components/ui.tsx";
 import { useSession } from "./hooks/session.tsx";
@@ -44,18 +45,18 @@ function SignedIn() {
   return <AppShell />;
 }
 
-/** The router stays out of the lazy screen (.claude/memoria/armadilhas.md, "Pacote da interface"): it gets `go`. */
+/** The router and the security check stay out of the lazy screen (.claude/memoria/armadilhas.md, "Pacote da interface"): it gets `go` and the hook. */
 function FirstAccess() {
   const navigate = useNavigate();
   const go = useCallback((path: string) => navigate(path, { replace: true }), [navigate]);
-  return <FirstAccessPage go={go} />;
+  return <FirstAccessPage go={go} useHuman={useHumanCheck} />;
 }
 
 /** Password recovery by e-mail (step 11c): the same shape, the router stays outside. */
 function Recovery() {
   const navigate = useNavigate();
   const go = useCallback((path: string) => navigate(path, { replace: true }), [navigate]);
-  return <RecoveryPage go={go} />;
+  return <RecoveryPage go={go} useHuman={useHumanCheck} />;
 }
 
 /**

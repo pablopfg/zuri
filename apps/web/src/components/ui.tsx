@@ -202,9 +202,10 @@ export function PasswordField({
   hint,
   error,
   icon,
+  aside,
   className,
   ...rest
-}: Omit<ComponentProps<"input">, "type"> & { label: string; hint?: string; error?: string | null; icon?: ReactNode }) {
+}: Omit<ComponentProps<"input">, "type"> & { label: string; hint?: string; error?: string | null; icon?: ReactNode; aside?: ReactNode }) {
   const { t } = useI18n();
   const [shown, setShown] = useState(false);
   const id = useId();
@@ -225,9 +226,13 @@ export function PasswordField({
   const described = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined;
   return (
     <div className={cn("space-y-1.5", className)}>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-      </label>
+      {/* `aside` sits at the end of the label's line: the sign-in's "Esqueci minha senha". */}
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={id} className="block text-sm font-medium">
+          {label}
+        </label>
+        {aside}
+      </div>
       <div className="relative">
         {icon && <FieldIcon>{icon}</FieldIcon>}
         <input

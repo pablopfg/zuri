@@ -192,8 +192,19 @@ O acabamento aprovado pelo Pablo em 10/11/2026 (protótipo em
 - **Cantos:** 8 px em controles pequenos, 10 px em botões e campos, 14 px em
   cartões e 20 px em diálogos (`--radius-lg` a `--radius-3xl`).
 - **O que não mudou:** a marca. O quadrado do logo, o favicon, os ícones do
-  aplicativo instalado, o manifesto e o lado escuro da tela de entrar seguem
-  na tinta `#0b0f19`; a tela de entrar ganha o desenho novo na PR S03.
+  aplicativo instalado e o manifesto seguem na tinta `#0b0f19`.
+- **Telas fora do app:** entrar, criar uma senha nova, primeiro acesso,
+  segundo passo, troca de senha, bloqueio, a confirmação do bot (`/aprovar`)
+  e "Esta tela parou" usam a mesma moldura (`components/EntryLayout.tsx`). No
+  computador, o lado da marca fica à esquerda, escuro nos dois temas, com o
+  sinal verde e a frase "Sua agenda, suas tarefas e seus lembretes, em
+  ordem."; no celular fica só a marca em cima do conteúdo. O verde aparece
+  só no botão principal.
+- **Verificação de segurança:** uma linha discreta acima do botão, em seis
+  estados (conferindo, concluída, pedir clique, não carregou, não passou e
+  espera, com a contagem em minutos e segundos também no botão). Aparece em
+  Entrar, em "Criar uma senha nova" e no código do primeiro acesso
+  (`components/HumanCheck.tsx`). A tela nunca cita o serviço por trás.
 - **Tema:** a escolha mostra só os três ícones (como o sistema, claro e
   escuro); o nome de cada um fica para o leitor de tela e na dica do ponteiro.
 

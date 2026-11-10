@@ -373,10 +373,17 @@ O Turnstile é gratuito. As chaves são `TURNSTILE_SITE_KEY` (pública) e
   ausente, porque qualquer pessoa conhece o token de teste.
 - **A interface** busca a chave pública em `GET /api/auth/login-options`
   (respondido pelo próprio Worker, com CSRF e sem acordar o Durable Object) e
-  desenha o widget assim que a tela abre. O botão Entrar espera o token. Cada
-  token vale uma vez: o widget recomeça depois de cada tentativa. Se o widget
-  não carregar, a tela diz que sem ele não dá para entrar e oferece carregar
-  de novo.
+  desenha o widget assim que a tela abre. Uma linha acima do botão diz em que
+  pé a verificação está: conferindo, concluída, pedindo um clique, não
+  carregou, não passou ou em espera. Sem o token, uma tentativa não sai do
+  navegador e a linha diz por quê. Cada token vale uma vez: o widget recomeça
+  depois de cada tentativa. Se o widget não carregar, ou se o servidor
+  recusar o token, a linha oferece "Recarregar a verificação": depois da
+  recusa nenhuma verificação fica ativa nem é enviada, e a resposta atrasada
+  de um widget que já saiu da tela é ignorada. Se a recusa trouxer uma chave
+  pública diferente (trocada com a tela aberta), o recarregar já usa a nova. Na pausa por excesso de tentativas, a linha e o botão
+  mostram a contagem ("Espere 14:52", com horas quando passa de uma hora); o
+  leitor de tela ouve a pausa uma vez, não a cada segundo.
 - **No Worker**, a ordem é: limite da rede (uma rede bloqueada ouve "espere",
   sem custar `siteverify`), Turnstile, a tentativa contada como falha e só
   então a senha. Sem token, 400 `TURNSTILE_REQUIRED` com

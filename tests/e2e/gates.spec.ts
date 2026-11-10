@@ -17,7 +17,7 @@ test("the interface arrives with the security headers of _headers", async ({ pag
   expect(headers["strict-transport-security"]).toContain("max-age=");
   expect(headers["cache-control"]).toBe("no-cache");
   // The page works under the policy: the script ran and filled the heading.
-  await expect(page.getByRole("heading", { level: 1, name: "Zuri" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Sign in" })).toBeVisible();
   expect(violations).toEqual([]);
 });
 

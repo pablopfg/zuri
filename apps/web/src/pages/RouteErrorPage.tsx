@@ -2,8 +2,8 @@ import { CSRF_HEADER } from "@zuri/shared";
 import { TriangleAlert } from "lucide-react";
 import { useEffect } from "react";
 import { useRouteError } from "react-router";
-import { Logo } from "../components/Logo.tsx";
-import { Button } from "../components/ui.tsx";
+import { EntryLayout } from "../components/EntryLayout.tsx";
+import { Button, useDocumentTitle } from "../components/ui.tsx";
 import { useI18n } from "../lib/i18n.tsx";
 
 /**
@@ -15,27 +15,29 @@ import { useI18n } from "../lib/i18n.tsx";
 export function RouteErrorPage() {
   const { t } = useI18n();
   const error = useRouteError();
+  useDocumentTitle(t("web.crash.title"));
   // Loaded only when a screen breaks: the report never weighs on the first load (rule P11).
   useEffect(() => {
     void import("../lib/report-error.ts").then((m) => m.reportClientError(error, CSRF_HEADER)).catch(() => undefined);
   }, [error]);
   return (
-    <main className="flex min-h-full items-center justify-center bg-bg px-4 py-10">
-      <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-2xl border border-border bg-surface px-6 py-10 text-center shadow-sm">
-        <Logo className="h-10 w-10" />
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-warning-soft text-warning" aria-hidden>
-          <TriangleAlert className="h-6 w-6" />
-        </span>
-        <h1 className="text-xl font-bold tracking-tight">{t("web.crash.title")}</h1>
-        <p className="text-sm leading-6 text-fg-muted">{t("web.crash.body")}</p>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={() => window.location.reload()}>{t("web.crash.reload")}</Button>
-          {/* A full page load, not the router: the one that failed may be in a bad state. */}
-          <a href="/" className="inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold text-accent-text hover:bg-raised">
-            {t("web.notFound.home")}
-          </a>
-        </div>
+    <EntryLayout>
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-warning-soft text-warning" aria-hidden>
+        <TriangleAlert className="h-5 w-5" />
+      </span>
+      <div>
+        <h1>{t("web.crash.title")}</h1>
+        <p>{t("web.crash.body")}</p>
       </div>
-    </main>
+      <Button className="min-h-12 w-full" onClick={() => window.location.reload()}>
+        {t("web.crash.reload")}
+      </Button>
+      <p className="text-center">
+        {/* A full page load, not the router: the one that failed may be in a bad state. */}
+        <a href="/" className="zuri-entry-link">
+          {t("web.notFound.home")}
+        </a>
+      </p>
+    </EntryLayout>
   );
 }

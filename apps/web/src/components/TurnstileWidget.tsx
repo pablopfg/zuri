@@ -70,12 +70,14 @@ export function TurnstileWidget({
           theme: "auto",
           size: "flexible",
           appearance: "interaction-only",
-          "before-interactive-callback": () => callbacks.current.onInteractive?.(true),
-          "after-interactive-callback": () => callbacks.current.onInteractive?.(false),
+          "before-interactive-callback": () => !cancelled && callbacks.current.onInteractive?.(true),
+          "after-interactive-callback": () => !cancelled && callbacks.current.onInteractive?.(false),
           language: locale.toLowerCase(),
-          callback: (token: string) => callbacks.current.onToken(token),
-          "expired-callback": () => callbacks.current.onToken(null),
+          // A widget already taken off the screen has nothing more to say (its answer may still be on the way).
+          callback: (token: string) => !cancelled && callbacks.current.onToken(token),
+          "expired-callback": () => !cancelled && callbacks.current.onToken(null),
           "error-callback": () => {
+            if (cancelled) return;
             callbacks.current.onToken(null);
             callbacks.current.onError();
           },
@@ -90,5 +92,6 @@ export function TurnstileWidget({
     };
   }, [siteKey, locale]);
 
-  return <div ref={ref} />;
+  // Its box asks for 300 px: where the screen has less, the box scrolls, not the page.
+  return <div ref={ref} className="overflow-x-auto" />;
 }

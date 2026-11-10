@@ -226,9 +226,19 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | PR | Situação |
 | --- | --- |
 | S01 | mesclada (#261) |
-| S02 | em revisão |
+| S02 | mesclada (#265) |
+| S03 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
+
+Diferenças da S03 para o que as tabelas previam, registradas aqui para as PRs seguintes não as desfazerem:
+
+- A página não encontrada (404) continua dentro da casca, com o menu: quem chega a ela já entrou, e tirar o menu deixaria a pessoa sem caminho de volta. As outras rotas da linha C9 usam a moldura da tela de entrar.
+- O botão principal fica ativo enquanto a verificação de segurança roda. Uma tentativa nessa hora não sai do navegador e a linha diz por quê; o botão só desliga na pausa por excesso de tentativas.
+- Quando o token vence com a tela aberta, a linha volta para "conferindo" (o serviço refaz sozinho), sem passar por "não passou".
+- Os textos da linha não são os da tabela do protótipo palavra por palavra: passaram pelo lint de microcopy e pelo glossário ("Recarregar a verificação", "Verificação de segurança concluída").
+- A aba do navegador da tela de erro diz "Esta tela parou", o mesmo do título. "Algo deu errado" é barrado pelo lint de microcopy.
+- Pausa de uma hora ou mais mostra horas ("23:59:59"). Um leitor de tela ouve a pausa uma vez, com o tempo do início; a contagem na tela anda em silêncio.
 
 ## 12. Riscos
 

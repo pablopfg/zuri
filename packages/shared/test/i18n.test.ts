@@ -39,8 +39,8 @@ describe("i18n catalogs", () => {
 
 describe("t", () => {
   it("interpolates placeholders", () => {
-    expect(t("pt-BR", "web.login.waitSeconds", { seconds: 5 })).toBe("Tente de novo em 5 s");
-    expect(t("en", "web.login.waitSeconds", { seconds: 5 })).toBe("Try again in 5 s");
+    expect(t("pt-BR", "web.login.wait", { time: "0:05" })).toBe("Espere 0:05");
+    expect(t("en", "web.login.wait", { time: "0:05" })).toBe("Wait 0:05");
   });
 
   it("falls back to pt-BR for an unknown locale", () => {
@@ -48,12 +48,12 @@ describe("t", () => {
   });
 
   it("keeps a placeholder without value visible", () => {
-    expect(t("pt-BR", "web.login.waitSeconds")).toContain("{seconds}");
+    expect(t("pt-BR", "web.login.wait")).toContain("{time}");
   });
 
   it("does not read inherited properties as params", () => {
-    expect(t("pt-BR", "web.login.waitSeconds", {})).toContain("{seconds}");
-    expect(t("pt-BR", "web.login.waitSeconds", JSON.parse('{"__proto__": {"seconds": "x"}}'))).toContain("{seconds}");
+    expect(t("pt-BR", "web.login.wait", {})).toContain("{time}");
+    expect(t("pt-BR", "web.login.wait", JSON.parse('{"__proto__": {"time": "x"}}'))).toContain("{time}");
   });
 });
 
@@ -77,14 +77,15 @@ describe("isLocale", () => {
     expect(Object.keys(ptBRCore).filter((key) => lazy.test(key))).toEqual([]);
   });
 
-  it("the public first-access texts never name where or on what the app runs (decision of 31/10/2026)", () => {
-    // The whole part ships with the public screen; the server's refusals (error.*, auth.*) show on it and on the sign-in.
-    const keys = [...Object.keys(ptBRSetup), ...Object.keys(ptBR).filter((key) => key.startsWith("error.") || key.startsWith("auth."))];
-    expect(keys.length).toBeGreaterThan(60);
+  it("the entry screens never name where or on what the app runs (decision of 31/10/2026)", () => {
+    // The whole part ships with the public screens; the server's refusals (error.*, auth.*) show on them, and the
+    // sign-in, the bot's confirmation and the screen that stopped share the same frame (S03 of the Sinal).
+    const keys = [...Object.keys(ptBRSetup), ...Object.keys(ptBR).filter((key) => /^(error|auth|web\.login|web\.approve|web\.crash)\./.test(key))];
+    expect(keys.length).toBeGreaterThan(150);
     for (const locale of LOCALES) {
       for (const key of keys) {
         const text = catalogs[locale][key as keyof typeof ptBR].toLowerCase();
-        for (const name of ["cloudflare", "worker", "turnstile", "wrangler", "durable", "setup_code", "secret"]) expect(text, `${locale} ${key}`).not.toContain(name);
+        for (const name of ["cloudflare", "worker", "turnstile", "wrangler", "durable", "setup_code", "secret", "captcha", "robot", "robô"]) expect(text, `${locale} ${key}`).not.toContain(name);
       }
     }
   });

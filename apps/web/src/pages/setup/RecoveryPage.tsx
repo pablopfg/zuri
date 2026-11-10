@@ -1,7 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  LOGIN_OPTIONS_PATH,
-  loginOptionsSchema,
   type MessageKey,
   PASSWORD_MIN_LENGTH,
   ptBRSetup,
@@ -10,11 +8,12 @@ import {
   recoveryLinkSchema,
   recoveryStatusSchema,
 } from "@zuri/shared";
-import { KeyRound, LockKeyhole, Mail, RotateCw } from "lucide-react";
+import { KeyRound, LockKeyhole, Mail } from "lucide-react";
 import { type FormEvent, type MouseEvent, useEffect, useRef, useState } from "react";
+import { EntryLayout } from "../../components/EntryLayout.tsx";
+import type { UseHumanCheck } from "../../components/HumanCheck.tsx";
 import { Logo } from "../../components/Logo.tsx";
-import { TurnstileWidget } from "../../components/TurnstileWidget.tsx";
-import { Button, ErrorNotice, Notice, PasswordField, Loading, TextField, useDocumentTitle } from "../../components/ui.tsx";
+import { Button, buttonClass, ErrorNotice, Notice, PasswordField, Loading, TextField, useDocumentTitle } from "../../components/ui.tsx";
 import { useSession } from "../../hooks/session.tsx";
 import { ApiError, api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
@@ -32,7 +31,6 @@ type Step =
 
 interface RefusalDetails {
   retryAfter?: number;
-  turnstileSiteKey?: string;
   fields?: string[];
 }
 
@@ -46,7 +44,7 @@ function readToken(): string | null {
  * it asks for the link; with one (from the e-mail) it sets the new password,
  * with a code when two-step sign-in is on. The server holds every rule.
  */
-export function RecoveryPage({ go }: { go: (path: string) => void }) {
+export function RecoveryPage({ go, useHuman }: { go: (path: string) => void; useHuman: UseHumanCheck }) {
   const { t } = useI18n();
   const { session, loading, retry } = useSession();
   const [step, setStep] = useState<Step>(() => {
@@ -87,22 +85,8 @@ export function RecoveryPage({ go }: { go: (path: string) => void }) {
     enabled: step.kind === "request",
     retry: 1,
   });
-  // The robot check, as on the sign-in form: only the request for a link needs it.
-  const options = useQuery({
-    queryKey: ["login-options"],
-    queryFn: async () => loginOptionsSchema.parse(await api<unknown>(LOGIN_OPTIONS_PATH.replace(/^\/api/, ""))),
-    staleTime: Number.POSITIVE_INFINITY,
-    enabled: step.kind === "request",
-    retry: 1,
-  });
-  const [refusedKey, setRefusedKey] = useState<string | null>(null);
-  const siteKey = refusedKey ?? options.data?.turnstileSiteKey ?? null;
-  const optionsPending = options.isPending && refusedKey === null;
-  const [humanToken, setHumanToken] = useState<string | null>(null);
-  const [humanRound, setHumanRound] = useState(0);
-  const [humanBroken, setHumanBroken] = useState(false);
-  const [humanNudge, setHumanNudge] = useState(false);
-  const [humanInteractive, setHumanInteractive] = useState(false);
+  // The security check, as on the sign-in form: only the request for a link needs it.
+  const human = useHuman(step.kind === "request");
 
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -165,16 +149,14 @@ export function RecoveryPage({ go }: { go: (path: string) => void }) {
   }
 
   function refused(err: unknown) {
-    setError(errorMessage(err));
-    if (!(err instanceof ApiError)) return;
-    const details = err.details as RefusalDetails;
-    if (err.code === "RATE_LIMITED" && typeof details.retryAfter === "number") setRetryAt(Date.now() + details.retryAfter * 1000);
-    if (typeof details.turnstileSiteKey === "string" && details.turnstileSiteKey && details.turnstileSiteKey !== siteKey) {
-      setHumanRound((n) => n + 1);
-      setHumanToken(null);
-      setRefusedKey(details.turnstileSiteKey);
-      setHumanNudge(false);
+    // A check the server refused, or a pause while asking for the link: the line above the button says it.
+    const paused = err instanceof ApiError && err.code === "RATE_LIMITED" && typeof (err.details as RefusalDetails).retryAfter === "number";
+    if (paused) {
+      // The clock is read again here: the last reading may be as old as the screen.
+      setNow(Date.now());
+      setRetryAt(Date.now() + ((err.details as RefusalDetails).retryAfter as number) * 1000);
     }
+    setError(human.refused(err) || (paused && step.kind === "request") ? null : errorMessage(err));
   }
 
   async function submitRequest(e: FormEvent) {
@@ -186,19 +168,11 @@ export function RecoveryPage({ go }: { go: (path: string) => void }) {
       emailRef.current?.focus();
       return;
     }
-    if (optionsPending || (siteKey !== null && !humanToken)) {
-      setHumanNudge(true);
-      return;
-    }
     setAttempted(false);
+    if (human.hold()) return;
     setPending(true);
     setError(null);
-    const token = humanToken;
-    if (siteKey !== null) {
-      // A token works once: a new widget for the next try.
-      setHumanToken(null);
-      setHumanRound((n) => n + 1);
-    }
+    const token = human.take();
     try {
       await api("/auth/recover/request", { method: "POST", body: { email: email.trim(), ...(token ? { turnstileToken: token } : {}) } });
       setStep({ kind: "sent" });
@@ -267,30 +241,22 @@ export function RecoveryPage({ go }: { go: (path: string) => void }) {
       {error}
     </p>
   );
-  const linkClass = "inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-fg hover:bg-accent-hover";
+  const linkClass = buttonClass("primary", "min-h-12 w-full");
   const heading = (key: MessageKey) => (
-    <h2 ref={headingRef} tabIndex={-1} className="text-lg font-semibold focus:outline-none">
+    <h1 ref={headingRef} tabIndex={-1}>
       {t(key)}
-    </h2>
+    </h1>
   );
 
   return (
-    <main className="flex min-h-full flex-col items-center px-4 py-8 sm:justify-center sm:px-6 sm:py-12">
-      <div className="w-full max-w-md space-y-6 motion-safe:animate-rise">
-        <header className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Logo className="h-9 w-9" working={pending || step.kind === "checking"} />
-            <span className="text-lg font-bold tracking-tight">{t("app.name")}</span>
-          </div>
-          {(step.kind === "request" || step.kind === "sent") && (
-            <div className="space-y-1.5">
-              <h1 className="text-[1.625rem] font-bold tracking-tight text-balance sm:text-[1.875rem]">{t("web.recovery.title")}</h1>
-              <p className="text-[0.9375rem] leading-6 text-fg-muted">{t("web.recovery.lead")}</p>
-            </div>
-          )}
-        </header>
-
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+    <EntryLayout working={pending || step.kind === "checking"}>
+      {step.kind === "request" && (
+        <div>
+          <h1>{t("web.recovery.title")}</h1>
+          <p>{t("web.recovery.lead")}</p>
+        </div>
+      )}
+      <div className="grid gap-5">
           {step.kind === "request" ? (
             status.isError ? (
               <ErrorNotice error={status.error} onRetry={() => void status.refetch()} />
@@ -304,12 +270,15 @@ export function RecoveryPage({ go }: { go: (path: string) => void }) {
                 </a>
               </div>
             ) : (
-              <form onSubmit={submitRequest} className="space-y-4" noValidate aria-describedby={error ? "recovery-error" : undefined}>
+              <form onSubmit={submitRequest} noValidate aria-describedby={error ? "recovery-error" : undefined}>
                 <TextField
                   ref={emailRef}
                   label={t("web.setup.email")}
                   type="email"
                   autoComplete="username"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   autoFocus
                   required
                   maxLength={254}
@@ -318,58 +287,31 @@ export function RecoveryPage({ go }: { go: (path: string) => void }) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
-                {optionsPending && humanNudge && (
-                  <p className="text-sm leading-6 text-danger" role="alert">
-                    {t("web.login.humanLoading")}
-                  </p>
-                )}
-                {siteKey !== null && (
-                  <div className={humanBroken || humanNudge || humanInteractive ? "space-y-1.5" : "!mt-0"}>
-                    {(humanBroken || humanNudge || humanInteractive) && (
-                      <p className={humanBroken || humanNudge ? "text-sm leading-6 text-danger" : "text-sm leading-6 text-fg-muted"} role={humanBroken || humanNudge ? "alert" : undefined}>
-                        {humanBroken ? t("web.login.humanBroken") : t("web.login.humanHint")}
-                      </p>
-                    )}
-                    {humanBroken && (
-                      <Button
-                        variant="secondary"
-                        className="w-full"
-                        onClick={() => {
-                          setHumanBroken(false);
-                          setHumanToken(null);
-                          setHumanRound((n) => n + 1);
-                        }}
-                      >
-                        <RotateCw className="h-4 w-4" aria-hidden />
-                        {t("web.login.humanRetry")}
-                      </Button>
-                    )}
-                    <TurnstileWidget
-                      key={`${siteKey}-${humanRound}`}
-                      siteKey={siteKey}
-                      onToken={(value) => {
-                        setHumanToken(value);
-                        if (value) {
-                          setHumanBroken(false);
-                          setHumanNudge(false);
-                        }
-                      }}
-                      onError={() => setHumanBroken(true)}
-                      onInteractive={setHumanInteractive}
-                    />
-                  </div>
-                )}
+                {human.line(waitSeconds)}
                 <Button type="submit" className="min-h-12 w-full" loading={pending} disabled={waitSeconds > 0}>
-                  {waitSeconds > 0 ? t("web.login.waitSeconds", { seconds: waitSeconds }) : t("web.recovery.send")}
+                  {waitSeconds > 0 ? human.wait(waitSeconds) : t("web.recovery.send")}
                 </Button>
                 {errorLine}
               </form>
             )
           ) : step.kind === "sent" ? (
-            <div className="space-y-4">
-              {heading("web.recovery.sentTitle")}
-              <Notice tone="success">{t("web.recovery.sentBody", { minutes })}</Notice>
-            </div>
+            <>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent-text" aria-hidden>
+                <Mail className="h-5 w-5" />
+              </span>
+              <div>
+                {heading("web.recovery.sentTitle")}
+                <p>{t("web.recovery.sentBody", { minutes })}</p>
+              </div>
+              <a href={LOGIN_PATH} onClick={(e) => follow(e, LOGIN_PATH)} className={buttonClass("secondary", "min-h-12 w-full")}>
+                {t("web.setup.backToLogin")}
+              </a>
+              <p className="text-center">
+                <button type="button" className="zuri-entry-link" onClick={() => setStep({ kind: "request" })}>
+                  {t("web.recovery.askAgain")}
+                </button>
+              </p>
+            </>
           ) : step.kind === "checking" ? (
             checkError ? (
               <ErrorNotice
@@ -383,10 +325,10 @@ export function RecoveryPage({ go }: { go: (path: string) => void }) {
               <Loading label={t("web.recovery.checking")} />
             )
           ) : step.kind === "link" ? (
-            <form onSubmit={submitPassword} className="space-y-4" noValidate aria-describedby={error ? "recovery-error" : undefined}>
-              <div className="space-y-1">
+            <form onSubmit={submitPassword} noValidate aria-describedby={error ? "recovery-error" : undefined}>
+              <div>
                 {heading("web.recovery.linkTitle")}
-                <p className="text-sm leading-6 text-fg-muted">{t("web.recovery.linkLead")}</p>
+                <p>{t("web.recovery.linkLead")}</p>
               </div>
               <PasswordField
                 ref={passwordRef}
@@ -430,7 +372,7 @@ export function RecoveryPage({ go }: { go: (path: string) => void }) {
                 />
               )}
               <Button type="submit" className="min-h-12 w-full" loading={pending} disabled={waitSeconds > 0}>
-                {waitSeconds > 0 ? t("web.login.waitSeconds", { seconds: waitSeconds }) : t("web.recovery.save")}
+                {waitSeconds > 0 ? human.wait(waitSeconds) : t("web.recovery.save")}
               </Button>
               {errorLine}
             </form>
@@ -457,16 +399,14 @@ export function RecoveryPage({ go }: { go: (path: string) => void }) {
               </a>
             </div>
           )}
-        </section>
-
-        {step.kind !== "done" && (
-          <p className="text-center text-sm">
-            <a href={LOGIN_PATH} onClick={(e) => follow(e, LOGIN_PATH)} className="inline-flex min-h-11 items-center font-medium text-accent-text underline-offset-4 hover:underline">
-              {t("web.setup.backToLogin")}
-            </a>
-          </p>
-        )}
       </div>
-    </main>
+      {step.kind !== "done" && step.kind !== "sent" && (
+        <p className="text-center">
+          <a href={LOGIN_PATH} onClick={(e) => follow(e, LOGIN_PATH)} className="zuri-entry-link">
+            {t("web.setup.backToLogin")}
+          </a>
+        </p>
+      )}
+    </EntryLayout>
   );
 }
