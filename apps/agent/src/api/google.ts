@@ -166,7 +166,7 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
   app.post("/google/contacts/sync", async () => {
     const { contacts } = deps();
     if (!contacts.enabled()) throw new AppError("CONFLICT", "error.googleContactsOff");
-    const outcome = await contacts.sync("owner");
+    const outcome = await contacts.syncNow();
     if (outcome === "busy") throw new AppError("CONFLICT", "error.googleContactsBusy");
     await deps().rearm();
     return Response.json({ ...contacts.status(), outcome });

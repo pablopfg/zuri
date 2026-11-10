@@ -301,6 +301,34 @@ describe("the sync", () => {
       expect(names(world)).toEqual(["Ana", "Bruno"]);
     }));
 
+  it("the owner's button copies the label saved while its sync waited for Google, in the same call (issue #264)", () =>
+    withChatWorld(async (world) => {
+      add(world, "c1", "Ana", [CLIENTS]);
+      add(world, "c2", "Bruno", [FAMILY]);
+      await turnOn(world);
+      world.clock.now += 3_600_000;
+      const restore = during(world, () => world.contacts.select([CLIENTS, FAMILY]));
+      expect(await world.contacts.syncNow()).toBe("ok");
+      restore();
+      expect(names(world)).toEqual(["Ana", "Bruno"]);
+      expect(world.contacts.status()).toMatchObject({ status: "ok", contacts: 2 });
+      expect(sync(world)).toMatchObject({ full_needed: 0, running_since: null });
+    }));
+
+  it("the owner's button stops for good when the contacts were turned off while its sync waited for Google", () =>
+    withChatWorld(async (world) => {
+      add(world, "c1", "Ana", [CLIENTS]);
+      await turnOn(world);
+      world.clock.now += 3_600_000;
+      const restore = during(world, () => world.contacts.disable());
+      const before = peopleCalls(world).length;
+      expect(await world.contacts.syncNow()).toBe("off");
+      restore();
+      // No second sync: only the read that was on its way reached Google.
+      expect(peopleCalls(world).length).toBe(before + 1);
+      expect(names(world)).toEqual([]);
+    }));
+
   it("a label removed while a full read waits for Google never comes back into the copy", () =>
     withChatWorld(async (world) => {
       add(world, "c1", "Ana", [CLIENTS]);

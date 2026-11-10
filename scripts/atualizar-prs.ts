@@ -322,6 +322,35 @@ export function pullRequestRuns(ctx: Pick<GitHub, "repository" | "exec">, sha: s
   return runs.filter((r) => r.event === "pull_request" && r.head_sha === sha && r.head_repository?.full_name === ctx.repository);
 }
 
+/**
+ * The runs of `sha` to approve. The listing by commit comes from GitHub's
+ * search and can leave a run out long after it exists (issue #253: the CI run,
+ * held from the second of the push, was still not listed 36 minutes later, so
+ * nobody approved it). A required workflow with no run there is read again
+ * from that workflow's own newest runs, which does not go through the search.
+ * That list is the same for every commit: `own` keeps it, by workflow file,
+ * for the callers that read several commits in a row.
+ */
+export function commitRuns(ctx: Pick<GitHub, "repository" | "exec">, sha: string, own = new Map<string, WorkflowRun[]>()): WorkflowRun[] {
+  const runs = pullRequestRuns(ctx, sha);
+  for (const [file, name] of Object.entries(PR_WORKFLOWS)) {
+    if (runs.some((r) => r.name === name)) continue;
+    let newest = own.get(file);
+    if (!newest) {
+      // A failed or odd answer here only leaves the workflow missing, as before: the next read may answer.
+      const read = tryRun(() => {
+        const out = ctx.exec("gh", ["api", `repos/${ctx.repository}/actions/workflows/${file}/runs?per_page=100`]);
+        return JSON.stringify((JSON.parse(out) as { workflow_runs?: WorkflowRun[] }).workflow_runs ?? []);
+      });
+      if (!read.ok) continue;
+      newest = JSON.parse(read.out) as WorkflowRun[];
+      own.set(file, newest);
+    }
+    runs.push(...newest.filter((r) => r.name === name && r.event === "pull_request" && r.head_sha === sha && r.head_repository?.full_name === ctx.repository));
+  }
+  return runs;
+}
+
 /** Runs GitHub holds for approval because this workflow's push (the bot) started them. */
 export const isHeldForBot = (run: WorkflowRun) => run.conclusion === "action_required" && run.actor?.login === BOT_LOGIN;
 
@@ -354,7 +383,7 @@ export function approveHeldRuns(
   let runs: WorkflowRun[] = [];
   for (let i = 0; i < attempts; i++) {
     if (i > 0) sleep(waitMs);
-    runs = pullRequestRuns(ctx, sha);
+    runs = commitRuns(ctx, sha);
     if (missingWorkflows(runs).length === 0) break;
   }
   return approveFound(ctx, sha, runs, { waitMs, sleep });
@@ -424,9 +453,11 @@ export function approveLateRuns(
   const results: (Approval | undefined)[] = late.map(() => undefined);
   const lastRuns: WorkflowRun[][] = late.map(() => []);
   for (;;) {
+    // Each workflow's own runs are read at most once per round, whatever the number of commits (hourly API limit).
+    const own = new Map<string, WorkflowRun[]>();
     for (const [i, commit] of late.entries()) {
       if (results[i]) continue;
-      const read = tryRun(() => JSON.stringify(pullRequestRuns(ctx, commit.sha)));
+      const read = tryRun(() => JSON.stringify(commitRuns(ctx, commit.sha, own)));
       // A failed read leaves the last list in place: the next read may answer.
       if (read.ok) lastRuns[i] = JSON.parse(read.out) as WorkflowRun[];
       const runs = lastRuns[i] ?? [];
@@ -458,7 +489,7 @@ function approveRun(
   { waitMs, sleep }: { waitMs: number; sleep: (ms: number) => unknown },
 ): { ok: boolean; out: string } {
   const held = () => {
-    const now = tryRun(() => JSON.stringify(pullRequestRuns(ctx, sha).find((r) => r.id === id) ?? null));
+    const now = tryRun(() => JSON.stringify(commitRuns(ctx, sha).find((r) => r.id === id) ?? null));
     // A failed read proves nothing: the run still counts as held.
     if (!now.ok) return true;
     const found = JSON.parse(now.out) as WorkflowRun | null;

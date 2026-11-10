@@ -234,9 +234,12 @@ describe("approveHeldRuns (fake gh)", () => {
    * Each read returns the next list (GitHub creates the runs a few seconds after the push).
    * `refuse` maps a run id to how many approval calls fail before one goes through (Infinity: all).
    */
-  const fake = (reads: WorkflowRun[][], refuse: number[] | Record<number, number> = []) => {
+  const fake = (reads: WorkflowRun[][], refuse: number[] | Record<number, number> = [], byWorkflow: Record<string, WorkflowRun[] | Error> = {}) => {
     const approved: number[] = [];
     const calls: number[] = [];
+    const asked: string[] = [];
+    /** A key present with no value: GitHub answers an object without the list. */
+    const answerMissing = (file: string) => file in byWorkflow && byWorkflow[file] === undefined;
     const refusals: Record<number, number> = Array.isArray(refuse)
       ? Object.fromEntries(refuse.map((id) => [id, Number.POSITIVE_INFINITY]))
       : { ...refuse };
@@ -254,10 +257,20 @@ describe("approveHeldRuns (fake gh)", () => {
         approved.push(id);
         return "";
       }
+      // The workflow's own newest runs, asked only for a workflow the commit's listing left out.
+      const own = path.match(/^repos\/dono\/zuri\/actions\/workflows\/([a-z-]+\.yml)\/runs\?per_page=100$/);
+      if (own) {
+        const file = own[1] ?? "";
+        asked.push(file);
+        if (answerMissing(file)) return "{}";
+        const answer = byWorkflow[file] ?? [];
+        if (answer instanceof Error) throw answer;
+        return JSON.stringify({ workflow_runs: answer });
+      }
       expect(path).toBe(`repos/dono/zuri/actions/runs?head_sha=${SHA}&event=pull_request&per_page=100`);
       return JSON.stringify({ workflow_runs: reads[Math.min(read++, reads.length - 1)] });
     };
-    return { ctx: { repository: "dono/zuri", exec }, approved, calls, reads: () => read };
+    return { ctx: { repository: "dono/zuri", exec }, approved, calls, asked, reads: () => read };
   };
   const all = () => Object.values(PR_WORKFLOWS).map((name, i) => run(i + 1, name));
   const noWait = { sleep: () => undefined };
@@ -281,6 +294,48 @@ describe("approveHeldRuns (fake gh)", () => {
       errors: [],
       missing: ["CodeQL", "Merge order"],
     });
+  });
+
+  it("finds a held run the commit's listing leaves out in that workflow's own runs (issue #253)", () => {
+    const listed = [run(2, "CodeQL"), run(3, "Merge order")];
+    const { ctx, approved, asked, reads } = fake([listed], [], { "ci.yml": [run(9, "CI", { head_sha: "b".repeat(40) }), run(1, "CI")] });
+    expect(approveHeldRuns(ctx, SHA, noWait)).toEqual({ approved: ["CodeQL", "Merge order", "CI"], failed: [], errors: [], missing: [] });
+    expect(approved).toEqual([2, 3, 1]);
+    // Only the workflow left out is asked, and the first read was enough.
+    expect(asked).toEqual(["ci.yml"]);
+    expect(reads()).toBe(1);
+  });
+
+  it("asks no workflow when the commit's listing has them all, and never takes another commit's, a fork's or a push run from there", () => {
+    const whole = fake([all()]);
+    approveHeldRuns(whole.ctx, SHA, noWait);
+    expect(whole.asked).toEqual([]);
+    const { ctx, approved } = fake([[run(2, "CodeQL"), run(3, "Merge order")]], [], {
+      "ci.yml": [
+        run(4, "CI", { head_sha: "b".repeat(40) }),
+        run(5, "CI", { head_repository: { full_name: "outra/zuri" } }),
+        run(6, "CI", { event: "push" }),
+        run(7, "CodeQL"),
+        run(8, "CI", { actor: { login: "outra-pessoa" } }),
+      ],
+    });
+    const result = approveHeldRuns(ctx, SHA, { attempts: 1 });
+    expect(approved).toEqual([2, 3]);
+    // Someone else's run on the same commit counts as present, and is never approved.
+    expect(result.missing).toEqual([]);
+    const none = fake([[run(2, "CodeQL"), run(3, "Merge order")]], [], { "ci.yml": [run(4, "CI", { head_sha: "b".repeat(40) }), run(6, "CI", { event: "push" })] });
+    expect(approveHeldRuns(none.ctx, SHA, { attempts: 1 }).missing).toEqual(["CI"]);
+  });
+
+  it("keeps the workflow as missing when its own runs come back without a list", () => {
+    const { ctx } = fake([[run(2, "CodeQL"), run(3, "Merge order")]], [], { "ci.yml": undefined as unknown as WorkflowRun[] });
+    expect(approveHeldRuns(ctx, SHA, { attempts: 1 }).missing).toEqual(["CI"]);
+  });
+
+  it("keeps the workflow as missing when its own runs can't be read", () => {
+    const { ctx, approved } = fake([[run(2, "CodeQL"), run(3, "Merge order")]], [], { "ci.yml": Object.assign(new Error("gh failed"), { stderr: "gh: Bad Gateway (HTTP 502)\n" }) });
+    expect(approveHeldRuns(ctx, SHA, { attempts: 1 })).toEqual({ approved: ["CodeQL", "Merge order"], failed: [], errors: [], missing: ["CI"] });
+    expect(approved).toEqual([2, 3]);
   });
 
   it("never approves a run someone else started, a fork's, another commit's or one already running", () => {
@@ -356,7 +411,7 @@ describe("approveLateRuns (fake gh)", () => {
   });
   const all = (sha: string, base: number) => Object.values(PR_WORKFLOWS).map((name, i) => run(base + i, name, sha));
   /** A clock the fake sleep moves forward; `reads[sha]` gives the list of each read of that commit. */
-  const fake = (reads: Record<string, WorkflowRun[][]>, failReads: Record<string, number> = {}) => {
+  const fake = (reads: Record<string, WorkflowRun[][]>, failReads: Record<string, number> = {}, own: WorkflowRun[] = []) => {
     let clock = 0;
     const approved: number[] = [];
     const count: Record<string, number> = {};
@@ -366,6 +421,11 @@ describe("approveLateRuns (fake gh)", () => {
       if (approve) {
         approved.push(Number(approve[1]));
         return "";
+      }
+      // A workflow's own newest runs (asked for one the commit's listing left out): none here.
+      if (path.includes("/actions/workflows/")) {
+        count.own = (count.own ?? 0) + 1;
+        return JSON.stringify({ workflow_runs: path.includes("/ci.yml/") ? own : [] });
       }
       const sha = path.match(/head_sha=([0-9a-f]{40})/)?.[1] ?? "";
       const n = count[sha] ?? 0;
@@ -390,6 +450,22 @@ describe("approveLateRuns (fake gh)", () => {
     expect(result).toEqual({ approved: ["CI", "CodeQL", "Merge order"], failed: [], errors: [], missing: [] });
     expect(approved).toEqual([1, 2, 3]);
     expect(opts.now()).toBe(9 * 60_000);
+  });
+
+  it("approves at the first read a run only its workflow's own runs show (issue #253)", () => {
+    const [ci, ...others] = all(SHA_A, 1);
+    const { ctx, approved, opts } = fake({ [SHA_A]: [others] }, {}, ci ? [ci] : []);
+    const [result] = approveLateRuns(ctx, [{ sha: SHA_A, pushedAt: 0, approved: ["CodeQL", "Merge order"] }], { deadline: RUN_BUDGET_MS, ...opts });
+    expect(result).toEqual({ approved: ["CodeQL", "Merge order", "CI"], failed: [], errors: [], missing: [] });
+    expect(approved).toEqual([2, 3, 1]);
+    expect(opts.now()).toBe(0);
+  });
+
+  it("reads each workflow's own runs once per round, however many commits wait (hourly API limit)", () => {
+    const { ctx, count, opts } = fake({ [SHA_A]: [[], all(SHA_A, 1)], [SHA_B]: [[], all(SHA_B, 11)] });
+    approveLateRuns(ctx, [SHA_A, SHA_B].map((sha) => ({ sha, pushedAt: 0, approved: [] })), { deadline: RUN_BUDGET_MS, ...opts });
+    // First round: nothing listed for either commit, so the three workflows are asked, once for both.
+    expect(count.own).toBe(Object.keys(PR_WORKFLOWS).length);
   });
 
   it("waits for several commits in the same loop and keeps what the first round approved", () => {

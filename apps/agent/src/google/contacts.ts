@@ -416,6 +416,16 @@ export class GoogleContacts {
     }
   }
 
+  /**
+   * The owner's button. A choice of labels saved while this sync waited for Google stops it before it
+   * writes ("off", with the contacts still on): the owner asked for a sync and would be told it was
+   * done with nothing copied (issue #264), so it runs once more, now reading the new choice.
+   */
+  async syncNow(): Promise<SyncOutcome> {
+    const outcome = await this.sync("owner");
+    return outcome === "off" && this.enabled() ? this.sync("owner") : outcome;
+  }
+
   /** Still this sync's turn: the owner didn't turn the contacts off (nor disconnect) meanwhile. */
   private mine(stamp: number): boolean {
     return this.db.one<{ ok: number }>(`SELECT 1 AS ok FROM zur_contact_sync WHERE id = 1 AND enabled = 1 AND running_since = ?`, stamp) !== null;

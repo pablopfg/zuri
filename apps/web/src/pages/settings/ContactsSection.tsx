@@ -45,6 +45,9 @@ export function ContactsSection() {
   const status = useQuery({ queryKey: CONTACTS_STATUS_KEY, queryFn: ({ signal }) => api<ContactsStatus>("/google/contacts", { signal }) });
   const [busy, setBusy] = useState<"enable" | "sync" | "disable" | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // A sync that reached the server before the labels on their way would copy the old choice and
+  // say it was done (issue #264): "Sync now" waits for the save.
+  const [savingLabels, setSavingLabels] = useState(false);
 
   const enable = async () => {
     setBusy("enable");
@@ -131,9 +134,9 @@ export function ContactsSection() {
               )}
             </div>
           )}
-          <LabelPicker status={data} />
+          <LabelPicker status={data} onSaving={setSavingLabels} />
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" onClick={() => void sync()} loading={busy === "sync"} disabled={data.problem === "reconnect"}>
+            <Button variant="secondary" onClick={() => void sync()} loading={busy === "sync"} disabled={data.problem === "reconnect" || savingLabels}>
               <RefreshCw className="h-4 w-4" aria-hidden />
               {t("web.contacts.card.sync")}
             </Button>
@@ -163,7 +166,7 @@ export function ContactsSection() {
 }
 
 /** The labels to copy, saved together (adding one asks for the password typed recently; the server says when). */
-function LabelPicker({ status }: { status: ContactsStatus }) {
+function LabelPicker({ status, onSaving }: { status: ContactsStatus; onSaving: (saving: boolean) => void }) {
   const { t, plural } = useI18n();
   const toast = useToast();
   const qc = useQueryClient();
@@ -178,6 +181,7 @@ function LabelPicker({ status }: { status: ContactsStatus }) {
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    onSaving(true);
     try {
       qc.setQueryData(CONTACTS_STATUS_KEY, await api<ContactsStatus>("/google/contacts/labels", { method: "PATCH", body: { selected: chosen } }));
       void qc.invalidateQueries({ queryKey: ["contacts", "list"] });
@@ -186,6 +190,7 @@ function LabelPicker({ status }: { status: ContactsStatus }) {
       toast(errorMessage(failure));
     } finally {
       setSaving(false);
+      onSaving(false);
     }
   };
 
