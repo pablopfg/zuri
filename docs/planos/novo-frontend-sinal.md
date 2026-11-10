@@ -175,7 +175,7 @@ No código e nos planos de servidor, "módulo" continua como nome interno (`modu
 ### Intervalo entre mensagens do Chatwoot (PR H e servidor das credenciais)
 
 - Na credencial do Chatwoot, o grupo **Intervalo entre mensagens** com "De" e "Até" (30 s a 1 min, que é também o padrão; pedidos do Pablo de 10/11, 03:01 e 03:22). "De" maior que "Até" não salva e o erro aparece no campo. Mudar o intervalo não pede a chave de novo.
-- Em CRM › Credenciais, a **Fila de envio** mostra a última enviada, a próxima e as que esperam, com o intervalo da credencial.
+- Em **CRM › Envios**, a fila de envio mostra a situação, a última enviada, a próxima, as que esperam e o histórico por período ([envios-monitoramento.md](envios-monitoramento.md)). Credenciais fica só com o resumo e o intervalo.
 - Cotas do plano grátis da Cloudflare (conferidas em 10/11 com `docs/arquitetura/orcamento-free-tier.md`): com o teto de 60 mensagens por dia, são no máximo uns 120 despertares do alarme único (0,1% das 100.000 requisições diárias do objeto), 4 a 7 subrequisições por envio (o teto é 44 por despertar) e algumas centenas de linhas gravadas (de 100.000). Entre um envio e outro o objeto dorme, então a duração quase não conta. O piso de 30 s não chega perto de nenhum limite da Cloudflare; quem limita o ritmo é o risco de bloqueio do número no WhatsApp não oficial.
 - A lógica no servidor (um relógio por credencial, próximo horário livre guardado no banco com atualização condicional, prioridade, mensagem que perderia a hora vira aviso) está em [modulos-crm.md](modulos-crm.md), seção 6, e vale para todos os módulos que usam a mesma credencial.
 

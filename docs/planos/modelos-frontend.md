@@ -154,6 +154,56 @@ O Sinal continua sendo o Sinal: a mesma marca (o ponto verde sobre a haste), a f
 - **Conversa do dia (03:12):** a conversa nova começa todo dia à 0:00, no fuso do dono, em vez de 24 h depois da primeira mensagem.
 - **Agenda (03:17):** abre no dia de hoje de verdade (o protótipo publicado usa a data do aparelho; as capturas ficam em 09/11 para não mudar), sem o título com a data da semana, e com a barra do celular em duas linhas arrumadas.
 
+### Revisão independente (10/11, 07:29)
+
+Pedido do Pablo: outro agente revisar o protótipo atrás de falhas, erros, vulnerabilidades e incoerências com o código, com mais contraste no tema claro e o celular conferido em detalhe. A revisão abriu as 62 vistas em três larguras (320, 390 e 1440 px) e nos dois temas, clicou em cada botão de 53 das 62 vistas (as últimas seções de Configurações ficaram de fora desse teste automático) e digitou código malicioso nos campos (pastas, tarefas, mensagens, notas, busca, eventos, fluxos, chaves e servidores).
+
+- **Tema claro com mais contraste:** o fundo ficou cinza claro (`#f1f1f3`) e os cartões continuam brancos, então cada bloco se destaca. As bordas passaram de 1,3:1 para 1,5:1 nos cartões e de 3,4:1 para 4,8:1 nos campos; o texto de apoio foi de 6,3:1 para 7,4:1 e o verde dos links de 5,0:1 para 7,1:1. Os fundos de aviso (verde, âmbar e vermelho) ficaram mais firmes. As cores do tema escuro não mudaram.
+- **Celular sem corte:** linhas de ajuste em que o botão espremia o texto numa coluna estreita (Sobre a Zuri, Passkeys, Agendas da conta, Catálogo de modelos, Falhas registradas) agora põem o botão na linha de baixo; campos em duas colunas viram uma (o endereço do Chatwoot aparecia cortado); o painel de avisos cabia 3 px para fora e, em 320 px, o X saía da tela; pastas e passos de fluxo tinham campo cortado; os dias da semana da rotina cabem numa linha; a barra da nota ficou alinhada; filtros de Avaliações não cortam mais o texto; abas e filtros têm 40 px de altura para o toque.
+- **Alinhamento:** o ponto verde das linhas "Google Contatos" e "Consultório Exemplo" alinha com o texto; botões só de texto ganharam contorno no celular, para não parecerem recuados em relação ao texto de cima; a lista de seções das Configurações perdeu o sublinhado de link.
+- **Menus iguais em todo lugar:** a folha "Mais" e a busca usavam nomes e ícones antigos ("Automações", ícones diferentes dos da lateral, sem CRM na busca). Agora saem da mesma lista do menu lateral. A folha "Mais" ganhou o X. O menu do perfil ganhou "Todas as configurações".
+- **Números iguais aos do código da develop:** rotinas ativas 50 (estava 20), chaves de API 20 com validade fixa de 90 dias (estava 10, com opção de 1 ano), memória de 2.000 caracteres (estava 500), limites de armazenamento (tarefas 20.000, notas 5.000, memórias 10.000, conversas 5.000), pedidos à IA 200 por dia, 6 ações por resposta e 6 rotinas da Zuri por dia, funil com até 12 etapas e saída automática dentro do que o servidor aceita (sem uso até 1 hora, sem aba aberta até 15 minutos, duração máxima até 24 horas; o protótipo oferecia 7 e 30 dias).
+- **Incoerências entre telas:** a rotina que espera aprovação tinha dois nomes e dois horários ("Revisão da semana", domingo, e "Revisão de sexta", sexta); as aprovações de rascunho apareciam como 7 de 10 numa tela e 4 de 10 em outra; uma resposta de exemplo falava em "plano", que a própria regra da tela proíbe.
+- **Textos:** diálogo fecha só no X (dois ainda tinham o botão "Fechar"); "Passe o mouse" virou "Toque numa barra"; a dica de Enter e Shift some no celular; "Lista de modelos da Cloudflare" virou "Catálogo de modelos" e "Neurons" ficou só na área de IA; "A cada 360 minutos" virou "A cada 6 horas"; "só POST, PUT e PATCH" virou "só envia e atualiza dados, nunca apaga"; "Marcar a antiga como passada".
+- **Segurança do protótipo:** nenhum campo executou o código digitado, nenhum parâmetro do endereço chega à tela sem passar por lista fechada, links de fora abrem com `noopener noreferrer` e não há chave, domínio real nem dado pessoal no arquivo. O exemplo de servidor MCP chamava "Prontuário" e virou "Planilhas".
+- **Como foi conferido:** depois dos ajustes, as 62 vistas passaram de novo nas três larguras e nos dois temas: nenhuma violação de contraste no axe, nenhuma vista com sobra para o lado e nenhum erro de script. O axe ainda aponta um aviso de regra experimental (o nome lido do botão da conta e dos dias da visão de mês difere do texto visível), que fica para a implementação. Também ficam para a implementação os alvos de toque menores que 44 px que são link de texto ("Esqueci minha senha", "Abrir agenda"). Capturas de antes e depois em `docs/capturas/pr/modelos-frontend-revisao/`.
+
+### Segunda passada (10/11, 09:45)
+
+Pedido do Pablo: revisar tudo de novo, tela por tela, menu por menu, no claro e no escuro, no celular e no computador. A primeira revisão tinha rodado só no arquivo das capturas; esta rodou também no arquivo do protótipo interativo, que é o que o Pablo abre. Foi assim que a lua apagada do seletor de tema do perfil passou: o defeito só existia no interativo (uma regra de cor do tema escuro pegava também o botão da lua).
+
+- **Como foi conferido:** 65 vistas do interativo em quatro larguras (320, 390, 820 e 1440 px) e nos dois temas, e as mesmas 65 do arquivo das capturas em três larguras; os 70 menus, folhas e diálogos abertos um a um no celular claro, no computador escuro e no celular pequeno escuro; e todas as vistas olhadas por inteiro, até o fim da rolagem, nas capturas de celular e computador dos dois temas.
+- **Alinhamento e cortes corrigidos:** a linha da verificação de segurança na tela de entrar (ícone e texto desalinhados quando o texto quebrava); a linha "Versão 3, salva em 08/11" e seus links em Avaliações; os botões da resposta de uma avaliação no celular (agora em grade); os passos numerados de "Como liberar o acesso no Google"; a lista do catálogo de modelos, as agendas da conta e as execuções de uma rotina no celular; as versões e o aviso de senha no painel de um agente; o endereço do Chatwoot, que dividia a linha meio a meio com o número da conta; a etiqueta do tipo na Lixeira; os ícones de "Onde o carregando aparece"; o botão desligado "Salvar e começar o ensaio", que parecia texto solto.
+- **Textos e exemplos:** as ferramentas do servidor de exemplo tinham nome de prontuário (`buscar_paciente`) num servidor chamado "Casa" e viraram `ver_temperatura`, `ligar_luz` e `apagar_cena`; o relato para o GitHub citava "automações" para uma falha de fluxo e um código com nome de infraestrutura; a Identidade visual mostrava as cores antigas do tema claro; o fuso aparecia sem o deslocamento; duas opções de lista eram longas demais para o campo no celular; "Marcar como passado" usava o ícone de histórico.
+- **Resultado depois dos ajustes:** nenhum erro de script, nenhuma vista com sobra para o lado, nenhum texto cortado fora dos resumos que cortam de propósito (prévia de avaliação, evento na grade da agenda) e nenhuma violação de contraste no axe, nos dois arquivos. Nenhum menu ou diálogo deixou de abrir. Continuam para a implementação o aviso experimental do axe e os alvos de toque pequenos já citados acima.
+
+### Ajustes do celular (10/11, 12:35)
+
+Pedido do Pablo depois de abrir o protótipo no celular. O que mudou nos dois arquivos:
+
+- **Perfil:** o item do menu passou a ser só "Configurações".
+- **Início:** "Seu dia" mostra das 08:00 às 18:00 do dia; o que cai fora fica numa linha no fim ("N fora das 08:00 às 18:00 · Mostrar"). A janela é a mesma de Configurações › Agenda.
+- **Tarefas e Notas:** no celular, Pastas, Lixeira e nova nota viram ícones no canto do título; a busca e a pasta dividem uma linha. No computador os botões continuam com texto.
+- **Agenda:** "Dia inteiro" e "Fora do horário" saíram da barra e ficam só em Configurações › Agenda. "Novo evento" já cria o evento no Google Agenda no código da `develop` (`POST /google/events`).
+- **Contatos:** as etiquetas aparecem uma vez só, num botão de filtro ao lado da busca, com a etiqueta ativa numa linha abaixo.
+- **Avaliações:** "Conferir agora" e "Pausar respostas" viram ícones; o período padrão é 30 dias; Ajustes ganhou "Pedidos e link", com o link de avaliação do perfil, o endereço curto, a mensagem e "Quando pedir". O que falta no código está em [link-de-avaliacao.md](link-de-avaliacao.md). O nome do perfil já vem do Google; "Consultório Exemplo" é dado de exemplo.
+- **CRM › Automações:** a base pronta e as dez automações na ordem do [plano dos módulos](https://github.com/pablopfg/zuri/pull/247), cada uma com a situação (pronta, próxima a chegar, em desenvolvimento) e a marca "Escreve a contatos".
+- **Configurações:** menu em cinco grupos (Você, A Zuri, Seu dia, Conexões, Sistema). Senha foi para Segurança, Telegram para Integrações, "A Zuri de olho" e "Prioridades" para a seção nova Assistente, e os pedidos de avaliação para Avaliações › Ajustes.
+- **Estados das telas e Identidade visual:** são páginas de referência do protótipo e não vão para o app.
+
+### Ajustes do computador (10/11, 13:07)
+
+- **Conversas:** saiu a linha "Todo dia, à 0:00, começa uma conversa nova" do pé da lista. A opção continua em Configurações.
+- **Memória:** busca e Lista/Mapa numa barra só, filtros em linha (situação e tipo) e o painel da memória ao lado. "Para revisar" virou uma faixa que abre quando o Pablo quer. A busca filtra de verdade.
+- **Mapa:** grafo como o do Obsidian. Os pontos se arrumam sozinhos, dá para arrastar um ponto (os vizinhos acompanham), aproximar com a rolagem ou os botões, mover o fundo e enquadrar tudo. Passar o ponteiro destaca as ligações. Tocar numa pasta, contato, nota ou evento mostra as memórias ligadas. No app o mapa precisa de uma rota com as ligações (elas saem do que já existe, sem IA) e entra como parte lazy, sem biblioteca nova.
+- **CRM › Envios:** a fila de envio saiu de Credenciais e ganhou área própria, com a situação (enviando, lenta, parada, pausada), a fila de agora, o que acontece em cada falha e o histórico por período com o detalhe de cada envio. O que muda no código está em [envios-monitoramento.md](envios-monitoramento.md).
+
+### Ajustes de 10/11, 14:35
+
+- **Notas:** microfone no texto da nota (o do título saiu a pedido do Pablo, 10/11 12:14). É viável sem serviço novo: a conversa já grava e transcreve (`apps/web/src/pages/chat/voice.ts` e `POST /api/chat/transcribe`), com trecho de até 60 segundos e 2 MB, 60 minutos de áudio por dia somando app e bot, e o áudio nunca é guardado. No código, o gancho `useVoice` sai da pasta da conversa para uma pasta comum e a tela de Notas ganha o botão no texto. Para ditar mais de um minuto, a pessoa grava de novo e o texto entra no fim.
+- **Avaliações:** "Conferir agora" e "Pausar respostas" ficam só com o ícone também no computador.
+- **Avaliações › Ajustes › Agente e segurança:** controles do agente que escreve (temperatura, top_p, tamanho, tentativas), o agente que confere, as sete travas de cada resposta, os controles do dono, a parada automática e o teste de segurança. Decisão do Pablo (12:02): temperatura 0,5, sem espera antes de publicar e sem amostra para conferir; o que passa nas travas é publicado na hora. O que já existe e o que é novo no código está em [avaliacoes-conexao-e-respostas.md](avaliacoes-conexao-e-respostas.md), seção 15.
+
 ### Recomendação
 
 Se o Pablo aprovar, o Sinal refinado vira o plano de [novo-frontend-sinal.md](novo-frontend-sinal.md): os tokens deste protótipo passam para o Tailwind do app, a Figtree entra como arquivo servido pelo Worker e a tela "Estados das telas" vira o padrão de carregando, vazio e erro de todas as telas.
@@ -423,3 +473,23 @@ Os três seguem a `baseline-ui` à risca: cores e sombras padrão do Tailwind, f
 ## 10. Próximo passo
 
 O Pablo aprova um dos modelos da rodada 4 (ou uma mistura, por exemplo "logomarca do Farol com a montagem do Norte"). Aí sai um plano de implementação pela skill `planejar`, com testes, axe, capturas antes e depois e o teto de JS conferido.
+
+### Ajustes de 10/11, 15:13
+
+- **Configurações › Segurança, "Atividade de acesso":** cada acesso mostra também o endereço IP, na lista e em "Todos os acessos". O registro já guarda esse dado (`apps/agent/src/auth/events.ts`), com detalhe por 90 dias; falta só a tela nova mostrar. Quando a conexão chega por IPv6, aparece o endereço IPv6, porque nesse acesso não existe IPv4. Os exemplos do protótipo usam faixas de documentação.
+- **Notas:** o microfone fica só no texto da nota.
+
+### Ajuste de 10/11, 15:34
+
+- **Avaliações, corte e faixa vazia:** em janela baixa, as duas colunas paravam antes do fim da moldura (colunas com teto pela altura da janela, moldura com mínimo fixo de 560 px) e sobrava uma faixa vazia embaixo. Moldura e colunas agora usam a mesma altura. Entre 821 e 1.100 px de largura (tablet e celular deitado), a tela passa a ter uma coluna só, com o "voltar" do celular, em vez de espremer o detalhe.
+
+### Funções do app que faltavam no protótipo (10/11, 16:15)
+
+A revisão cruzada do plano de implementação (`docs/planos/implementacao-frontend-sinal.md`, seção 4.1, PR #257) achou funções da `develop` sem lugar no protótipo. Entraram nos dois HTML, com os textos do catálogo do app:
+
+- **Conversa:** "Renomear" e "Apagar conversa" no ⋯ de cada linha da lista. A conversa em uso não é apagada.
+- **Configurações › Assistente:** cartão "Memória" com "Revisão de conflitos".
+- **Configurações › Avisos:** grupo "CRM" (retorno, aniversários, cliente novo vindo do n8n).
+- **CRM › Credenciais:** o cartão "n8n do consultório" mostra se os eventos estão ligados e o último recebido; no ⋯, "Trocar o segredo dos eventos" e "Desligar os eventos" (ou "Ligar"), com senha, e o endereço e o segredo aparecem uma única vez.
+- **CRM › Fluxos:** "Últimas execuções" embaixo da lista, com "Carregar mais".
+- **Avaliações:** o filtro da lista passou a funcionar e ganhou "Respondidas"; a resposta publicada tem ⋯ com "Apagar a resposta no Google".

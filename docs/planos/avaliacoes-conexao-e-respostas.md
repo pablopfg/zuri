@@ -176,3 +176,41 @@ Entra na linha 12 do cronograma do novo frontend (G2 · Avaliações), junto com
 ## 14. Entrevista com o Pablo
 
 Sem pergunta nova: o pedido das 02:45 decidiu o escopo. O Pablo confere no protótipo e pode pedir ajuste.
+
+## 15. Agente e segurança (pedido de 10/11, 11:35)
+
+Pedido do Pablo: a resposta é pública, então os ajustes do agente que escreve precisam estar em Avaliações, com temperatura e demais variáveis, guardrails e controles para nada errado ou inadequado sair. No protótipo isso virou a parte **Ajustes › Agente e segurança**.
+
+### O que já existe no código
+
+| Proteção | Onde |
+| --- | --- |
+| Temperatura (padrão 0,2), `top_p`, tamanho da escrita (200 a 600 tokens) e camada do dono com versões | `packages/shared/src/agents.ts` (`review_draft`), tabela `zur_agent_configs`; hoje só em Configurações › Modelos e limites |
+| Agente que confere com temperatura 0, sem ajuste | `review_check`, `apps/agent/src/reviews/responder.ts` (`secondRead`) |
+| Texto da avaliação como dado, resposta em formato fixo (Zod), agente sem ferramentas | `apps/agent/src/reviews/responder.ts` |
+| Conferência fixa: tamanho, idioma, contato, marcação, nome, cópia, palavras proibidas, assinatura, caractere escondido | `apps/agent/src/reviews/guard.ts` |
+| A nota decide; 1 a 3 estrelas nunca saem sozinhas | `apps/agent/src/reviews/triage.ts` |
+| Publicar sozinha só depois de 10 aprovações, 3 por leitura e 10 por dia; parada com 3 reprovações, recusa do Google ou resposta trocada | etapa 19d, migration 27 |
+
+### O que é novo
+
+| Mudança | Como |
+| --- | --- |
+| Os ajustes do agente aparecem em Avaliações | Mesma rota e mesma tabela de Configurações › Modelos; a tela de Avaliações só mostra o `review_draft` e o `review_check`. Nenhuma tabela nova |
+| Temperatura das respostas públicas em 0,5, que também é o teto | Padrão do `review_draft` passa de 0,2 para 0,5 e o perfil ganha `temperatureMax: 0.5` em `agents.ts`; o schema Zod recusa acima disso |
+| Assuntos que sempre passam pelo dono | Lista fechada em `packages/shared` (saúde, preço, jurídico fixos; nome de profissional, criança, outra empresa opcionais), conferida por palavras, sem IA, antes da segunda leitura |
+| Teste de segurança com 12 casos | Os casos saem do corpus de injeção de `scripts/avaliar-prompts.ts`; rota `POST /api/reviews/agent/test`, no máximo uma vez a cada 10 minutos, dentro do teto diário da IA |
+
+Tudo de acréscimo, na mesma migration desta parte. Nenhum recurso novo da Cloudflare. O teste de segurança gasta até 24 chamadas de IA por rodada e conta no limite diário.
+
+### Testes
+
+Unidade: teto de temperatura (0,50 passa, 0,55 não) e assuntos (cada um, com e sem acento). Integração: releitura que acha resposta de outra pessoa; resposta que passa nas travas é publicada na mesma leitura. Segurança: os 12 casos como teste fixo, com IA simulada. E2e da parte nova com axe.
+
+### Respostas do Pablo (10/11, 12:02)
+
+1. **Temperatura:** 0,5, não 0,7. Vale como padrão e como teto das respostas públicas.
+2. **Espera antes de publicar sozinha:** não. Resposta que passa nos guardrails e no protocolo de segurança é publicada na hora.
+3. **Amostra para o Pablo conferir:** não. O que passa nas travas não volta para conferência manual.
+
+A espera e a amostra saíram do protótipo e deste plano. Continuam valendo as travas fixas, os limites de 3 por leitura e 10 por dia e a parada automática.
