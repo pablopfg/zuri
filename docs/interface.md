@@ -161,6 +161,25 @@ Todas as cores da interface são variáveis em `apps/web/src/styles.css`; trocar
 a identidade é trocar esse bloco, o `Logo.tsx`, o `public/favicon.svg` e gerar
 os ícones de novo com `node scripts/gerar-icones.ts`.
 
+### Sinal refinado (cores, fonte e cantos)
+
+O acabamento aprovado pelo Pablo em 10/11/2026 (protótipo em
+`docs/planos/modelos-frontend/`, plano em
+`docs/planos/implementacao-frontend-sinal.md`):
+
+- **Cores:** neutros em zinco e o verde como única cor de ação. No tema claro
+  o fundo da página é cinza claro (`#f1f1f3`) e os cartões são brancos, para
+  cada bloco se destacar; no escuro o fundo é `#0c0c0e`, sem preto puro. A
+  borda de campos e controles tem contraste de 4,8:1 no claro.
+- **Fonte:** Figtree, um arquivo variável para todos os pesos
+  (`apps/web/src/fonts/`, licença SIL OFL junto). Ela sai do próprio endereço
+  da Zuri, com cache longo; nenhum serviço de fontes é chamado. Enquanto não
+  carrega, aparece a fonte do sistema.
+- **Cantos:** 8 px em controles pequenos, 10 px em botões e campos, 14 px em
+  cartões e 20 px em diálogos (`--radius-lg` a `--radius-3xl`).
+- **Tema:** a escolha mostra só os três ícones (como o sistema, claro e
+  escuro); o nome de cada um fica para o leitor de tela e na dica do ponteiro.
+
 Fora do app, a mesma identidade aparece no logo `docs/assets/zuri-logo.svg` e
 nos banners do README (`docs/assets/zuri-banner-claro.svg` e
 `zuri-banner-escuro.svg`), que seguem o tema do GitHub de quem lê.

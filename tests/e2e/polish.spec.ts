@@ -137,7 +137,35 @@ test.describe("on a phone-wide screen", () => {
   await expect(options).toHaveCount(3);
   const tops = await options.evaluateAll((labels) => labels.map((label) => Math.round(label.getBoundingClientRect().top)));
   expect(new Set(tops).size).toBe(1);
+  // Icons only (Sinal): each option keeps its name for screen readers and a touch target of 44 px.
+  for (const name of ["Como o sistema", "Claro", "Escuro"]) await expect(page.getByRole("group", { name: "Tema" }).getByRole("radio", { name, exact: true })).toHaveCount(1);
+  const sizes = await options.evaluateAll((labels) => labels.map((label) => [label.getBoundingClientRect().width, label.getBoundingClientRect().height]));
+  for (const [width = 0, height = 0] of sizes) {
+    expect(width).toBeGreaterThanOrEqual(44);
+    expect(height).toBeGreaterThanOrEqual(44);
+  }
 });
+});
+
+test("the interface's font comes from this same address, cached for good", async ({ page }) => {
+  const fonts: { url: string; type: string | undefined; cache: string | undefined }[] = [];
+  const outside: string[] = [];
+  page.on("response", (response) => {
+    const url = new URL(response.url());
+    if (url.origin !== new URL(page.url() === "about:blank" ? response.url() : page.url()).origin) outside.push(response.url());
+    if (url.pathname.endsWith(".woff2")) fonts.push({ url: url.pathname, type: response.headers()["content-type"], cache: response.headers()["cache-control"] });
+  });
+  await page.goto("/entrar");
+  await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toMatch(/^"?Figtree/);
+  expect(await page.evaluate(() => document.fonts.check('16px "Figtree"'))).toBe(true);
+  // Basic Latin only: the extended file stays on the server until a text needs it.
+  expect(fonts.map((font) => font.url)).toEqual([expect.stringMatching(/^\/assets\/figtree-latin-wght-normal-[\w-]+\.woff2$/)]);
+  expect(fonts[0]?.type).toBe("font/woff2");
+  expect(fonts[0]?.cache).toContain("immutable");
+  // No font service, nor any other address (rule 7, no telemetry). The fake check of the tests is routed locally.
+  expect(outside.filter((url) => !url.includes("challenges.cloudflare.com"))).toEqual([]);
 });
 
 test("the sign-in page breaks no rule of the content security policy", async ({ page }) => {

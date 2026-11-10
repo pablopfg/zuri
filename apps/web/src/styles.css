@@ -10,26 +10,27 @@
  * keep WCAG AA contrast in both themes (4.5:1 or more).
  */
 @theme {
-  --color-bg: #f6f7f9;
+  --color-bg: #f1f1f3;
   --color-surface: #ffffff;
-  --color-raised: #eef0f4;
-  /* The sidebar: a shade between the page and the cards. */
-  --color-subtle: #fbfcfd;
-  --color-fg: #0b0f19;
-  --color-fg-muted: #4b5563;
-  --color-border: #dde1e8;
-  --color-border-strong: #8b93a1;
+  --color-raised: #e8e8eb;
+  /* The sidebar: a shade darker than the page, so the cards and the content stand out. */
+  --color-subtle: #e9e9ec;
+  --color-fg: #0f0f12;
+  --color-fg-muted: #4d4d57;
+  --color-border: #d0d0d6;
+  /* Edges of fields and controls: 4.8:1 against the surface (WCAG 1.4.11 asks 3:1). */
+  --color-border-strong: #71717a;
   --color-accent: #15803d;
-  --color-accent-hover: #166534;
+  --color-accent-hover: #14532d;
   --color-accent-fg: #ffffff;
   --color-accent-soft: #dcfce7;
   --color-accent-text: #166534;
-  --color-danger: #b42318;
-  --color-danger-soft: #fdecea;
-  --color-success: #12703a;
-  --color-success-soft: #e3f6ea;
-  --color-warning: #8a4b00;
-  --color-warning-soft: #fdf1dc;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fee2e2;
+  --color-success: #166534;
+  --color-success-soft: #dcfce7;
+  --color-warning: #92400e;
+  --color-warning-soft: #fef3c7;
   --color-brand-tile: #0b0f19;
   --color-brand-mark: #f8fafc;
   --color-brand-signal: #22c55e;
@@ -41,7 +42,13 @@
   --color-chart-2: #9333ea;
   --color-chart-3: #c2410c;
   --color-chart-4: #0e7490;
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Figtree comes from this same address (the @font-face below); the system's font shows until it loads. */
+  --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* The Sinal radii: 8 px for small controls, 10 for fields and buttons, 14 for cards, 20 for dialogs. */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.625rem;
+  --radius-2xl: 0.875rem;
+  --radius-3xl: 1.25rem;
   /* The sign-in card rising into place (motion-safe only, where used). */
   --animate-rise: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 
@@ -64,32 +71,55 @@
 }
 
 .dark {
-  --color-bg: #0b0f19;
-  --color-surface: #121826;
-  --color-raised: #1a2233;
-  --color-subtle: #0f1420;
-  --color-fg: #e8ecf3;
-  --color-fg-muted: #a3acbd;
-  --color-border: #263043;
-  --color-border-strong: #56627a;
+  --color-bg: #0c0c0e;
+  --color-surface: #17171a;
+  --color-raised: #24242a;
+  --color-subtle: #08080a;
+  --color-fg: #f5f5f7;
+  --color-fg-muted: #b6b6bf;
+  --color-border: #303035;
+  --color-border-strong: #85858f;
   --color-accent: #4ade80;
   --color-accent-hover: #86efac;
   --color-accent-fg: #052e16;
-  --color-accent-soft: #0f2e1c;
-  --color-accent-text: #6ee7a0;
-  --color-danger: #ffb4ab;
-  --color-danger-soft: #3b1715;
-  --color-success: #86efac;
-  --color-success-soft: #10301d;
-  --color-warning: #fcd34d;
-  --color-warning-soft: #33270a;
+  --color-accent-soft: #143322;
+  --color-accent-text: #4ade80;
+  --color-danger: #fca5a5;
+  --color-danger-soft: #331616;
+  --color-success: #4ade80;
+  --color-success-soft: #143322;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #33270d;
   --color-chart-1: #60a5fa;
   --color-chart-2: #c084fc;
   --color-chart-3: #fb923c;
   --color-chart-4: #22d3ee;
   /* A step lighter than the page, so the tile still shows on it. */
-  --color-brand-tile: #1a2233;
+  --color-brand-tile: #2a2a30;
   color-scheme: dark;
+}
+
+/*
+ * Figtree (SIL Open Font License, fonts/LICENSE-Figtree.txt): one variable file
+ * for every weight, served by this same address, never by a font service. The
+ * second file only downloads when a text uses a letter outside basic Latin.
+ */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 900;
+  src: url("./fonts/figtree-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 900;
+  src: url("./fonts/figtree-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
 }
 
 :root {
@@ -116,8 +146,8 @@ body {
  */
 @media (prefers-color-scheme: dark) {
   :root:not(.dark):has(#boot) {
-    --color-bg: #0b0f19;
-    --color-brand-tile: #1a2233;
+    --color-bg: #0c0c0e;
+    --color-brand-tile: #2a2a30;
     color-scheme: dark;
   }
 }
