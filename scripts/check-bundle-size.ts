@@ -16,10 +16,14 @@ import { gzipSync } from "node:zlib";
 // 139.7 kB, with the owner's OK on 09/11/2026, for the dependency updates of
 // Dependabot PRs #208 and #209: vite 8.3.6 and @tanstack/react-query 5.105.3);
 // 139.9 kB, with the owner's OK on 09/11/2026 (PR #227, step 26b), for the close
-// button every dialog now carries and the session warning that can be put away.
+// button every dialog now carries and the session warning that can be put away;
+// 140.9 kB, with the owner's OK on 10/11/2026 (up to 141 kB), for the Sinal shell
+// (PR S02): the menu in three groups, the phone's bottom bar and "Mais" sheet, the
+// panels and the addresses that changed name. Its looks went to the stylesheet
+// (styles.css, .zuri-*) to stay under it.
 // Never raise it without the owner's OK; the ceiling of P11 is 160 kB and its
 // goal 150 kB.
-const BUDGET_KB = 139.9;
+const BUDGET_KB = 140.9;
 
 const dist = join(import.meta.dirname, "..", "apps", "web", "dist");
 const html = readFileSync(join(dist, "index.html"), "utf8");

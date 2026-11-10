@@ -6,7 +6,7 @@ import {
   ESCALATION,
   type Locale,
   type MessageKey,
-  NOTICE_LINKS,
+  noticePage,
   t,
   TELEGRAM_LIMITS,
   type TelegramNoticeAction,
@@ -104,7 +104,7 @@ export class TelegramChannel implements AlertChannel {
       );
       if (actions.includes("mute")) keyboard.push([{ text: t(locale, "telegram.notice.mute"), callback_data: data.mute }]);
     }
-    const page = notice.link && (NOTICE_LINKS as readonly string[]).includes(notice.link) ? notice.link : "/";
+    const page = noticePage(notice.link) ?? "/";
     keyboard.push([{ text: t(locale, "telegram.notice.open"), url: new URL(page, this.deps.origin()).href }]);
 
     const params: Record<string, unknown> = {

@@ -1,4 +1,4 @@
-import { type ChannelState, type Locale, NOTICE_LINKS, PUSH_LIMITS, type PushPayload, t } from "@zuri/shared";
+import { type ChannelState, type Locale, noticePage, PUSH_LIMITS, type PushPayload, t } from "@zuri/shared";
 import type { AlertChannel, AlertMessage, SendResult } from "../alerts/channels.ts";
 import { log } from "../log.ts";
 import type { PushDevices, PushTarget } from "./devices.ts";
@@ -73,7 +73,7 @@ export class PushChannel implements AlertChannel {
       id: notice.id,
       title: t(locale, "notice.push.discreet.title"),
       body: t(locale, urgent ? "notice.push.discreet.urgent" : "notice.push.discreet.body"),
-      link: notice.link && (NOTICE_LINKS as readonly string[]).includes(notice.link) ? notice.link : null,
+      link: noticePage(notice.link),
       sticky: notice.priority === "high" || notice.priority === "critical",
     };
     const urgency = notice.priority === "critical" || notice.priority === "high" ? "high" : notice.priority === "low" ? "low" : "normal";

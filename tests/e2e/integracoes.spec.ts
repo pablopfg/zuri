@@ -191,7 +191,7 @@ test("raises a tool that writes up to routines, with the warning, and sets the o
   expect(created.status()).toBe(201);
   const routineId = ((await created.json()) as { automation: { id: string } }).automation.id;
   try {
-    await page.goto("/automacoes");
+    await page.goto("/rotinas");
     const row = page.getByRole("listitem").filter({ hasText: routineName });
     await rowAction(row, page, "Editar");
     const edit = page.getByRole("dialog", { name: "Editar automação" });

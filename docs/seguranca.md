@@ -451,8 +451,8 @@ Testes: `apps/agent/test/live-channel.test.ts` e `tests/e2e/realtime.spec.ts`.
 
 ## Atividade de acesso
 
-A página **Acessos** (`/acessos`, na barra lateral; no celular, por
-Configurações > Segurança > Ver todos os acessos) lista cada tentativa de
+A página **Acessos** (`/acessos`, por Configurações > Segurança > Ver todos
+os acessos, ou pela paleta) lista cada tentativa de
 entrar, a mais nova primeiro, 50 por página: hora, o que aconteceu (login,
 senha ou código errado, bloqueio, verificação contra robôs recusada, eventos da
 conta), IP, cidade, região, país, rede (ASN) e navegador. Filtros: período (24

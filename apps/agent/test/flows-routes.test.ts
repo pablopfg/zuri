@@ -149,7 +149,7 @@ describe("/api/flows", () => {
 
     const notices = await kinds();
     expect(notices.map((notice) => notice.kind)).toEqual(expect.arrayContaining(["flow.notice", "flow.siteUp", "flow.failed", "flow.paused"]));
-    expect(notices.every((notice) => notice.link === "/automacoes/fluxos")).toBe(true);
+    expect(notices.every((notice) => notice.link === "/crm/fluxos")).toBe(true);
   });
 
   it("deletes a flow; an unknown id is not found", async () => {

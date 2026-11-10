@@ -37,9 +37,10 @@ test("the access log lists each try with its IP and filters by type and IP @mobi
     await page.goto("/configuracoes/seguranca");
     await page.getByRole("link", { name: "Ver todos os acessos" }).click();
   } else {
-    // The account menu at the foot of the sidebar.
-    const sidebar = await openAccountMenu(page);
-    await sidebar.getByRole("link", { name: "Acessos" }).click();
+    // The account panel leads to Segurança, which shows the last accesses and the way to all of them.
+    const panel = await openAccountMenu(page);
+    await panel.getByRole("link", { name: "Segurança" }).click();
+    await page.getByRole("link", { name: "Ver todos os acessos" }).click();
   }
   await expect(page).toHaveURL(/\/acessos$/);
   await expect(page.getByRole("heading", { level: 1, name: "Acessos" })).toBeVisible();

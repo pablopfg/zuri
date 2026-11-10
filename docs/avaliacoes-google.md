@@ -47,9 +47,10 @@ As regras da nota são fixas: a IA só consegue deixar uma avaliação mais
 cautelosa, nunca menos. Mais de 3 negativas numa leitura viram um aviso só, e
 5 negativas ou 10 avaliações novas numa hora geram um alerta de pico.
 
-### A aba Avaliações
+### A tela Avaliações
 
-Em **Contatos › Avaliações** (`/contatos/avaliacoes`) ficam os filtros
+Em **Avaliações** (`/avaliacoes`, no menu; o endereço antigo
+`/contatos/avaliacoes` leva para ela) ficam os filtros
 **Precisa de você**, **Respondidas**, **Publicadas sozinha** (quando o nível
 automático está ligado ou alguma resposta saiu assim) e **Todas**, e o filtro
 por nota. Cada

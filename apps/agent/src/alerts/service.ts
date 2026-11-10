@@ -15,7 +15,8 @@ import {
   type Locale,
   type MessageKey,
   type Notice,
-  NOTICE_LINKS,
+  type NoticeLink,
+  noticePage,
   type NoticeKind,
   type NoticeOrigin,
   type NoticePage,
@@ -44,7 +45,7 @@ export interface RaiseInput {
   params?: NoticeParams;
   /** Text the owner or the agent wrote (an automation's result); null for notices written from the catalog. */
   body?: string | null;
-  link?: (typeof NOTICE_LINKS)[number] | null;
+  link?: NoticeLink | null;
   /** While this key's wait lasts, the same notice is not created again. */
   dedupeKey?: string;
   dedupeMs?: number;
@@ -181,7 +182,7 @@ export class AlertService {
     const asked: AlertPriority = input.category === "security" ? "critical" : input.priority;
     const learnKey = this.learning.keyOf({ kind: input.kind, category: input.category, priority: asked, source: input.source });
     const priority = this.learning.adjust(learnKey, asked);
-    const link = input.link && (NOTICE_LINKS as readonly string[]).includes(input.link) ? input.link : null;
+    const link = noticePage(input.link);
     const body = input.body == null ? null : [...input.body].slice(0, BODY_MAX).join("");
     const row: NoticeRow = {
       id: crypto.randomUUID(),
@@ -514,7 +515,7 @@ export class AlertService {
         priority: row.priority,
         params,
         body: row.body,
-        link: (NOTICE_LINKS as readonly string[]).includes(row.link ?? "") ? (row.link as (typeof NOTICE_LINKS)[number]) : null,
+        link: noticePage(row.link),
         origin: row.origin,
         source: null,
       });
@@ -719,7 +720,8 @@ export class AlertService {
       category: row.category,
       priority: row.priority,
       ...noticeText(row, locale),
-      link: row.link,
+      // A notice saved under an old address goes out with today's (packages/shared/src/pages.ts).
+      link: noticePage(row.link),
       createdAt: row.created_at,
       readAt: row.read_at,
       escalation: row.escalation,

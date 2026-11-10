@@ -136,6 +136,7 @@ export * from "./chat.ts";
 export * from "./automations.ts";
 export * from "./schedule.ts";
 export * from "./alerts.ts";
+export * from "./pages.ts";
 export * from "./push.ts";
 export * from "./telegram.ts";
 export * from "./email.ts";

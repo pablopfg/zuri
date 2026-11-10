@@ -156,7 +156,7 @@ export const ptBRChat = {
   "web.chat.approval.cancel_automation": "Apagar a automação “{target}”. Ela para de rodar na hora.",
   "web.chat.approval.change_shared_calendar_event": "Mudar o evento “{target}” no Google Agenda. Os convidados e quem organiza veem a mudança, mas ninguém recebe e-mail.",
   "web.chat.approval.delete_calendar_event": "Apagar o evento “{target}” do Google Agenda. Ninguém convidado recebe e-mail.",
-  "web.chat.automationLink": "Revisar em Automações",
+  "web.chat.automationLink": "Revisar em Rotinas",
   "web.chat.tool.find_tools": "Procurar ferramenta externa",
   "web.chat.tool.list_calendar_events": "Consultar a agenda",
   "web.chat.tool.create_calendar_event": "Criar evento na agenda",

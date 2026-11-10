@@ -225,7 +225,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 
 | PR | Situação |
 | --- | --- |
-| S01 | em revisão |
+| S01 | mesclada (#261) |
+| S02 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 

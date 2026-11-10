@@ -73,7 +73,7 @@ export function ReviewsSection() {
           {t("web.reviews.card.title")}
         </h3>
         {data?.enabled && (
-          <Link to="/contatos/avaliacoes" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-accent-text hover:bg-raised">
+          <Link to="/avaliacoes" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-accent-text hover:bg-raised">
             <MessageSquareText className="h-4 w-4" aria-hidden />
             {t("web.reviews.card.open")}
           </Link>

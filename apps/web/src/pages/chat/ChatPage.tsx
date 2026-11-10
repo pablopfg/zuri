@@ -497,10 +497,13 @@ function Thread({
     if (!growth) return;
     const node = end.current;
     if (!node) return;
-    const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 240;
-    // To the page's very end, not the thread's: the composer sticks to the bottom and would cover the last card.
+    // Only the content scrolls (the shell's <main>), never the window: the menus stay put.
+    const scroller = node.closest("main");
+    if (!scroller) return;
+    const nearBottom = scroller.clientHeight + scroller.scrollTop >= scroller.scrollHeight - 240;
+    // To the content's very end, not the thread's: the composer sticks to the bottom and would cover the last card.
     if (nearBottom || growth.endsWith(":0:0:")) {
-      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     }
   }, [growth]);
 
@@ -698,7 +701,7 @@ function AssistantBody({
               {tool.automationId && (
                 <Link
                   // The anchor of lib/automations.ts, written out so the chat needs nothing from that screen.
-                  to={`/automacoes#automacao-${tool.automationId}`}
+                  to={`/rotinas#automacao-${tool.automationId}`}
                   className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-accent-text hover:bg-raised"
                 >
                   <Clock className="h-4 w-4" aria-hidden />
@@ -792,7 +795,7 @@ function Composer({
         event.preventDefault();
         if (!empty && !over && !streaming && !blocked) onSend();
       }}
-      className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 space-y-2 rounded-2xl border border-border-strong bg-surface p-2 shadow-lg md:bottom-4"
+      className="sticky bottom-3 z-10 space-y-2 rounded-2xl border border-border-strong bg-surface p-2 shadow-lg md:bottom-4"
     >
       {(recording || transcribing || voiceError) && (
         <div aria-live="polite" className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">

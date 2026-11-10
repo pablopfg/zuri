@@ -17,8 +17,7 @@ import {
   upcomingRuns,
 } from "@zuri/shared";
 import { AlarmClock, Bell, History, ListChecks, Pause, Pencil, Play, Plus, Trash2, WandSparkles, Zap } from "lucide-react";
-import { type FormEvent, lazy, type ReactNode, Suspense, useEffect, useId, useMemo, useState } from "react";
-import { Navigate, NavLink, useParams } from "react-router";
+import { type FormEvent, type ReactNode, useEffect, useId, useMemo, useState } from "react";
 import { useToast } from "../../components/Toaster.tsx";
 import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, PageHeader, SelectField, Loading, TextAreaField, TextField } from "../../components/ui.tsx";
 import { AUTOMATIONS_KEY, useAutomationRuns, useAutomations } from "../../hooks/automations.ts";
@@ -45,50 +44,12 @@ const NEW_AUTOMATION = "nova-automacao";
 type Editing = { mode: "new" } | { mode: "edit"; automation: Automation };
 
 /**
- * Automations (step 10): reminders, the task digest and Zuri's routines, all
- * in the owner's time zone. Routines Zuri proposed in the chat wait at the top
- * for approval; the history shows what each run delivered.
+ * Rotinas (step 10; its own address since the Sinal shell): reminders, the task
+ * digest and Zuri's routines, all in the owner's time zone. Routines Zuri
+ * proposed in the chat wait at the top for approval; the history shows what
+ * each run delivered. The flows moved to /crm/fluxos.
  */
 export function AutomationsPage() {
-  const { t } = useI18n();
-  const { aba } = useParams();
-  if (aba === undefined) return <RoutinesTab tabs={<Tabs />} />;
-  if (aba !== "fluxos") return <Navigate to="/automacoes" replace />;
-  return (
-    <>
-      <PageHeader title={t("web.automations.title")} description={t("web.automations.description")} />
-      <Tabs />
-      <Suspense fallback={<Loading />}>
-        <FlowsPanel />
-      </Suspense>
-    </>
-  );
-}
-
-// The Flows tab (step 22a) comes only when opened: its code and texts stay out of the routines' download (rule P11).
-const FlowsPanel = lazy(() => import("./flows/FlowsPanel.tsx").then((m) => ({ default: m.FlowsPanel })));
-
-/** Routines and Flows, as links: each tab has its address, so the back button and a shared link land on it. */
-function Tabs() {
-  const { t } = useI18n();
-  const tab = ({ isActive }: { isActive: boolean }) =>
-    cn(
-      "inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-medium transition-colors",
-      isActive ? "border-accent text-fg" : "border-transparent text-fg-muted hover:text-fg",
-    );
-  return (
-    <nav aria-label={t("web.automations.tabs")} className="flex gap-1 border-b border-border">
-      <NavLink to="/automacoes" end className={tab}>
-        {t("web.automations.tab.routines")}
-      </NavLink>
-      <NavLink to="/automacoes/fluxos" className={tab}>
-        {t("web.automations.tab.flows")}
-      </NavLink>
-    </nav>
-  );
-}
-
-function RoutinesTab({ tabs }: { tabs: ReactNode }) {
   const { t } = useI18n();
   const list = useAutomations();
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -133,7 +94,6 @@ function RoutinesTab({ tabs }: { tabs: ReactNode }) {
           </Button>
         }
       />
-      {tabs}
       {list.isPending ? (
         <Loading label={t("web.automations.loading")} />
       ) : list.isError ? (
