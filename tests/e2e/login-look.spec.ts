@@ -9,8 +9,8 @@ test.use({ locale: "pt-BR" });
 
 test("the mark is painted from the HTML alone, in the system's theme, before any JavaScript", async ({ browser, baseURL }) => {
   for (const [colorScheme, background] of [
-    ["dark", "rgb(11, 15, 25)"],
-    ["light", "rgb(246, 247, 249)"],
+    ["dark", "rgb(12, 12, 14)"],
+    ["light", "rgb(241, 241, 243)"],
   ] as const) {
     const context = await browser.newContext({ javaScriptEnabled: false, colorScheme, ...(baseURL ? { baseURL } : {}) });
     const page = await context.newPage();
@@ -91,7 +91,7 @@ test("the brand side stays dark in the light theme, beside the form on a compute
   expect(await brand.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(11, 15, 25)");
   expect(await headline.evaluate((el) => getComputedStyle(el).color)).toBe("rgb(232, 236, 243)");
   // The button keeps the page's ink: dark on the light theme.
-  expect(await page.getByRole("button", { name: "Entrar" }).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(11, 15, 25)");
+  expect(await page.getByRole("button", { name: "Entrar" }).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(15, 15, 18)");
 
   const brandBox = await brand.boundingBox();
   const formBox = await page.locator("form").boundingBox();
@@ -114,5 +114,5 @@ test("in the dark theme the brand side keeps its color and the button turns ligh
   const headline = page.getByText("Tudo o que importa, num só lugar.");
   const brand = page.locator("section").filter({ has: headline });
   expect(await brand.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(11, 15, 25)");
-  expect(await page.getByRole("button", { name: "Entrar" }).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(232, 236, 243)");
+  expect(await page.getByRole("button", { name: "Entrar" }).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(245, 245, 247)");
 });

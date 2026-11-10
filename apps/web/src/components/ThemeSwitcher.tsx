@@ -14,17 +14,18 @@ export function ThemeSwitcher() {
   return (
     <fieldset className="space-y-2">
       <legend className="text-sm font-medium">{t("web.theme.label")}</legend>
-      {/* Three equal columns on a phone, so no option drops to a line of its own. */}
-      <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+      {/* Icons only (Sinal): the name stays for screen readers and as the hint on hover. */}
+      <div className="inline-flex gap-1 rounded-xl border border-border bg-raised p-1">
         {THEMES.map((option) => {
           const Icon = ICONS[option];
           const checked = theme === option;
           return (
             <label
               key={option}
+              title={labels[option]}
               className={cn(
-                "flex min-h-11 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center text-sm sm:inline-flex sm:flex-row sm:gap-2 sm:px-3 sm:py-0 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent",
-                checked ? "border-accent bg-accent-soft font-semibold text-accent-text" : "border-border-strong hover:bg-raised",
+                "flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent",
+                checked ? "border border-accent bg-accent-soft text-accent-text" : "border border-transparent text-fg-muted hover:text-fg",
               )}
             >
               <input
@@ -38,8 +39,8 @@ export function ThemeSwitcher() {
                 }}
                 className="sr-only"
               />
-              <Icon className="h-4 w-4" aria-hidden />
-              {labels[option]}
+              <Icon className="h-5 w-5" aria-hidden />
+              <span className="sr-only">{labels[option]}</span>
             </label>
           );
         })}

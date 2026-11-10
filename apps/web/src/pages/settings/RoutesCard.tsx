@@ -51,7 +51,8 @@ export function RoutesCard({ settings }: { settings: Settings }) {
   return (
     <Card title={t("web.alerts.routes.title")} description={t("web.alerts.routes.description")}>
       <form onSubmit={submit} className="space-y-5">
-        <div className="-mx-1 overflow-x-auto px-1">
+        {/* relative: the checkboxes' screen-reader-only parts are absolute, and must scroll with the table instead of widening the page (#259). */}
+        <div className="relative -mx-1 overflow-x-auto px-1">
           <table className="w-full text-sm">
             <caption className="sr-only">{t("web.alerts.routes.title")}</caption>
             <thead>
