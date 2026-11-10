@@ -83,10 +83,39 @@ test("turns the contacts on, copies one label and searches the copy on the Conta
   await expect(page.getByText("Nenhum contato encontrado.")).toBeVisible();
 });
 
+test("\"Sync now\" waits for the labels being saved, then copies the new choice (issue #264)", async ({ page }) => {
+  const contacts = await turnOn(page);
+  // The save is held on its way: a sync sent now would reach the server first and copy the old choice.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/google/contacts/labels", async (route) => {
+    await held;
+    await route.continue();
+  });
+  const syncs: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/google/contacts/sync")) syncs.push(request.method());
+  });
+  await contacts.getByRole("checkbox", { name: /^Família/ }).check();
+  await contacts.getByRole("button", { name: "Salvar etiquetas" }).click();
+  const sync = contacts.getByRole("button", { name: "Sincronizar agora" });
+  await expect(sync).toBeDisabled();
+  expect(syncs).toEqual([]);
+  release();
+  await expect(page.getByRole("status").filter({ hasText: "Etiquetas salvas" })).toBeVisible();
+  await expect(sync).toBeEnabled();
+  await sync.click();
+  await expect(contacts.getByText(/· 2 contatos$/)).toBeVisible();
+  expect(syncs).toEqual(["POST"]);
+});
+
 test("turning the contacts off forgets the copy and keeps the calendar", async ({ page }) => {
   const contacts = await turnOn(page);
   await contacts.getByRole("checkbox", { name: /^Família/ }).check();
   await contacts.getByRole("button", { name: "Salvar etiquetas" }).click();
+  // The click waits for the button, which stays off until the labels are saved.
   await contacts.getByRole("button", { name: "Sincronizar agora" }).click();
   await expect(contacts.getByText(/· 2 contatos$/)).toBeVisible();
   await contacts.getByRole("button", { name: "Desligar contatos" }).click();

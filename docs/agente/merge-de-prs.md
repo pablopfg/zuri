@@ -142,6 +142,10 @@ base `develop` (menos rascunho, branch de fork e PR com o rótulo
    na #210) e sem passar de 12 minutos de rodada, para o job caber nos 20
    minutos do `timeout-minutes`. Aprovação recusada nessas PRs também é
    tentada de novo no fim.
+   A lista de execuções por commit vem da busca do GitHub e pode deixar uma
+   de fora muito depois de ela existir (na #253, a CI ficou 36 minutos parada
+   sem aparecer). Por isso, workflow exigido que não veio nessa lista é
+   procurado de novo nas execuções mais novas do próprio workflow.
    Aprovação que volta com erro é tentada até 3 vezes, 10 s entre elas, e antes
    de cada nova tentativa o script relê a execução: o GitHub às vezes responde
    erro para uma aprovação que aceitou (#166, #190) ou recusa uma que passa
