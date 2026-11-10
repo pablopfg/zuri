@@ -19,6 +19,14 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.41.1] - 2026-11-10
+
+Mesclada às 18:54 (UTC-3) · commit [`08e85fb`](https://github.com/pablopfg/Zuri/commit/08e85fb93b11803527afeda49dc0f0f118e66bf2) · PR [#247](https://github.com/pablopfg/Zuri/pull/247) · Planeja os módulos do CRM a partir dos fluxos do n8n
+
+### Alterado
+
+- Sem mudança visível: planeja os módulos do CRM a partir dos fluxos do n8n.
+
 ## [0.41.0] - 2026-11-10
 
 Mesclada às 17:40 (UTC-3) · commit [`c6ff653`](https://github.com/pablopfg/Zuri/commit/c6ff6537b47e66bcd6e01dd5da5cec7e26898a39) · PR [#265](https://github.com/pablopfg/Zuri/pull/265) · Casca do Sinal com menu em grupos, menu de baixo e rotas novas (S02)
@@ -2991,7 +2999,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.41.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.41.1...develop
+[0.41.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.41.1
 [0.41.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.41.0
 [0.40.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.40.1
 [0.40.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.40.0
