@@ -39,8 +39,9 @@ type Kind = (typeof KINDS)[number];
 
 /**
  * The patterns, in the order they are tried: a longer, more specific one first,
- * so a key is never read as a phone. Each one stops at a digit or letter on
- * either side, so a part of a longer number (a timestamp, an id) is left alone.
+ * so a key is never read as a phone. Each one stops at a digit, letter or
+ * hyphen on either side, so a part of a longer number or id (a timestamp, a
+ * UUID such as 8623c544-2436-4786-…) is left alone (#244).
  * A random Pix key looks like any other id (a UUID) and is not hidden; Pix keys
  * that are an e-mail, a phone or a CPF are.
  */
@@ -48,9 +49,9 @@ const PATTERNS: Readonly<Record<Kind, RegExp>> = {
   KEY: /(?<![\w-])(?:sk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,})(?![\w-])/g,
   EMAIL: /(?<![\w.+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63})*\.[A-Za-z]{2,24}(?![\w-])/g,
   IBAN: /(?<![A-Za-z0-9])[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?(?![A-Za-z0-9])/g,
-  CARD: /(?<![\d-])\d(?:[ -]?\d){12,18}(?![\d-])/g,
-  CPF: /(?<![\d.-])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![\d.-])/g,
-  PHONE: /(?<![\d+])(?:\+\d{1,3}[ .-]?)?(?:\(\d{2,3}\)|\d{2,3})[ .-]?9?\d{4}[ .-]?\d{4}(?!\d)/g,
+  CARD: /(?<![\w-])\d(?:[ -]?\d){12,18}(?![\w-])/g,
+  CPF: /(?<![\w.-])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![\w.-])/g,
+  PHONE: /(?<![\w+-])(?:\+\d{1,3}[ .-]?)?(?:\(\d{2,3}\)|\d{2,3})[ .-]?9?\d{4}[ .-]?\d{4}(?![\w-])/g,
 };
 
 /** A card number passes the Luhn check; any other run of digits is not a card. */
