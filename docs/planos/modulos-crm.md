@@ -1,6 +1,6 @@
 # Plano · Módulos do CRM a partir dos fluxos do n8n
 
-Situação: esperando o Pablo (perguntas da seção 14). Nada aqui foi implementado. Revisto em 10/11, 02:24: ordem de processamento, recebimento do e-mail do Webdiet e intervalo na credencial do Chatwoot.
+Situação: esperando o Pablo (perguntas da seção 14). Nada aqui foi implementado. Revisto em 10/11, 02:24 (ordem de processamento, recebimento do e-mail do Webdiet e intervalo na credencial do Chatwoot) e 03:01 (intervalo padrão de 30 s a 1 min).
 Origem: pedido do Pablo em 10/11/2026, 01:23 ("verifique quais são viáveis, a ordem correta e as credenciais").
 Dependências: plano da base dos módulos ([modulos.md](modulos.md)) e do envio pelo Chatwoot ([envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md)), os dois na PR #204; nova interface (casca e menu lateral "CRM").
 
@@ -37,7 +37,7 @@ Não existe na develop: calendário de feriados, fila de mensagens a contatos, c
 - 02/11: Google Contatos **só leitura**; a Zuri nunca altera contatos no Google.
 - 02/11: "CRM interno, atendimento no n8n". O atendimento por IA aos pacientes (a Athena) continua no n8n.
 - 03/11: respostas às avaliações começam em "Perguntar sempre"; automático só nas positivas depois de 10 aprovações sem edição.
-- 09/11, 19:34: exceção à regra "a Zuri não escreve a contatos", **só para o pedido de avaliação**, pelo Chatwoot self-hosted (última versão), caixa tipo API (WhatsApp não oficial, sem custo da Meta), 8 dias depois da consulta, só em dia útil, teto de 20 por dia, intervalo sorteado de 1 a 3 minutos. Parâmetros guardados uma vez em "Credenciais".
+- 09/11, 19:34: exceção à regra "a Zuri não escreve a contatos", **só para o pedido de avaliação**, pelo Chatwoot self-hosted (última versão), caixa tipo API (WhatsApp não oficial, sem custo da Meta), 8 dias depois da consulta, só em dia útil, teto de 20 por dia, intervalo sorteado de 1 a 3 minutos (trocado em 10/11, 03:01, por 30 s a 1 min na credencial). Parâmetros guardados uma vez em "Credenciais".
 - 09/11, 20:02: avaliação ↔ contato. O Google só entrega nome, foto ou "anônimo"; homônimos nunca se ligam sozinhos; ninguém recebe pedido até o Pablo escolher.
 - 10/11, 00:51: "Clientes" sai da tela e o CRM em segundo plano fica para depois. **Módulos** e **Credenciais** saem de Automações e vão para um menu lateral próprio, **CRM**. Todo módulo nasce desligado.
 
@@ -165,7 +165,7 @@ Os estados vazio, carregando e erro, o celular, o tema escuro, o teclado e o lei
 1. CRM › Credenciais › **Nova credencial** › Chatwoot.
 2. Endereço https do Chatwoot, número da conta e a chave do agente "Zuri" (um agente criado no Chatwoot só com acesso à caixa do WhatsApp). Pede a senha se passou de 15 minutos.
 3. **Testar**: a Zuri só lê. Mostra as caixas de entrada; o Pablo escolhe a do WhatsApp (tipo API).
-4. **Intervalo entre mensagens**: de quanto a quanto tempo a Zuri espera entre duas mensagens por esta caixa (padrão de 1 a 3 minutos, sorteado a cada envio). Vale para todos os módulos que usam a credencial (seção 6).
+4. **Intervalo entre mensagens**: de quanto a quanto tempo a Zuri espera entre duas mensagens por esta caixa (padrão de 30 segundos a 1 minuto, sorteado a cada envio). Vale para todos os módulos que usam a credencial (seção 6).
 5. A tela mostra o endereço do webhook da Zuri e pede para criá-lo no Chatwoot com os eventos `contact_updated`, `message_created` e `message_updated`. O segredo que o Chatwoot mostra ao criar o webhook é colado de volta na Zuri.
 6. **Enviar teste para mim**: manda uma mensagem ao próprio número do Pablo, de ponta a ponta, antes de qualquer paciente.
 
@@ -218,7 +218,7 @@ Valores do n8n (`docs/regras/horarios-e-execucoes.md`, confirmados pelo Pablo em
 | Tipo | Dias | Janela | Intervalo | Teto/dia | Feriado | Conversa em andamento |
 | --- | --- | --- | --- | --- | --- | --- |
 | Pedido de avaliação | seg a sex | 09:00 às 18:00 | da credencial | 20 | não sai | próximo dia útil |
-| Confirmação | seg a sáb | 07:00 às 07:30 | da credencial (5 a 15 s no n8n) | 10 com o padrão (abaixo) | não sai; a véspera confirma até o próximo dia de envio | espera 10 min; a partir de 07:28 sai |
+| Confirmação | seg a sáb | 07:00 às 07:30 | da credencial (5 a 15 s no n8n) | 30 | não sai; a véspera confirma até o próximo dia de envio | espera 10 min; a partir de 07:28 sai |
 | Aniversário | todo dia | 09:00 às 09:30 | da credencial | 20 | sai | próximo dia, só se ainda for o dia (senão expira) |
 | Recaptação | seg a sex | 10:00 às 10:30 | da credencial | 10 | não sai | próximo dia útil |
 | Plano liberado | seg a sáb | 07:00 às 18:00 | da credencial | 20 | sai | 10 min |
@@ -229,7 +229,7 @@ Valores do n8n (`docs/regras/horarios-e-execucoes.md`, confirmados pelo Pablo em
 
 Pedido do Pablo (10/11, 02:24): quando há várias mensagens para sair (confirmações, pedidos de avaliação e outras), a Zuri manda uma, espera o intervalo e só então manda a próxima. O intervalo fica na credencial do Chatwoot e o código o respeita sempre. É viável e já é como a fila funciona; o que muda é **onde** o intervalo mora e que ele vale para todos os módulos juntos.
 
-**Configuração.** Na credencial: "Intervalo entre mensagens, de X a Y". Padrão de 1 a 3 minutos (o da decisão de 09/11). Faixa permitida: mínimo de 30 segundos, máximo de 10 minutos, e X menor ou igual a Y. Fora disso, o servidor recusa com `VALIDATION_FAILED`. Mudar o intervalo não pede a senha de novo (não é segredo), mas fica no histórico.
+**Configuração.** Na credencial: "Intervalo entre mensagens, de X a Y". Padrão de **30 segundos a 1 minuto** (pedido do Pablo em 10/11, 03:01). Ele substitui o 1 a 3 minutos da decisão de 09/11 e vale também para o pedido de avaliação. Faixa permitida: mínimo de 30 segundos, máximo de 10 minutos, e X menor ou igual a Y. Fora disso, o servidor recusa com `VALIDATION_FAILED`. Mudar o intervalo não pede a senha de novo (não é segredo), mas fica no histórico.
 
 **Lógica, passo a passo:**
 
@@ -244,17 +244,29 @@ Pedido do Pablo (10/11, 02:24): quando há várias mensagens para sair (confirma
 9. **Pausar, bloqueio e volta.** Ao sair de "Pausar envios" ou do bloqueio, a primeira mensagem espera pelo menos X. Nada se acumula para sair de uma vez.
 10. **Janela fechando.** Se "próximo envio livre em" cai depois do fim da janela do tipo, o job espera a próxima janela do mesmo tipo, ou expira se o tipo vence (confirmação depois da consulta, aniversário depois do dia).
 
-**Capacidade da janela (aviso antes, não surpresa depois).** O produtor calcula quantas mensagens cabem: duração da janela ÷ Y (o pior caso do intervalo), menos o que outros tipos já reservaram para a mesma caixa na mesma hora. Se não cabe tudo, ele grava só o que cabe e avisa: "8 confirmações não cabem entre 07:00 e 07:30 com intervalo de 1 a 3 minutos". Com o padrão:
+**Capacidade da janela (aviso antes, não surpresa depois).** O produtor calcula quantas mensagens cabem: duração da janela ÷ Y (o pior caso do intervalo), menos o que outros tipos já reservaram para a mesma caixa na mesma hora. Se não cabe tudo, ele grava só o que cabe e avisa: "8 confirmações não cabem entre 07:00 e 07:30 com intervalo de 30 segundos a 1 minuto". Com o padrão:
 
-| Janela | Duração | Cabem (pior caso, Y = 3 min) |
+| Janela | Duração | Cabem (pior caso, Y = 1 min) |
 | --- | --- | --- |
-| Confirmação, 07:00 às 07:30 | 30 min | 10 |
-| Aniversário, 09:00 às 09:30 | 30 min | 10 |
-| Recaptação, 10:00 às 10:30 | 30 min | 10 |
-| Acompanhamento, 14:00 às 14:30 | 30 min | 10 |
-| Pedido de avaliação, 09:00 às 18:00 | 9 h | 180 (o teto de 20 vale antes) |
+| Confirmação, 07:00 às 07:30 | 30 min | 30 |
+| Aniversário, 09:00 às 09:30 | 30 min | 30 |
+| Recaptação, 10:00 às 10:30 | 30 min | 30 |
+| Acompanhamento, 14:00 às 14:30 | 30 min | 30 |
+| Pedido de avaliação, 09:00 às 18:00 | 9 h | 540 (o teto de 20 vale antes) |
 
-As janelas de 30 minutos do n8n foram feitas para intervalos de 5 a 25 segundos. Com 1 a 3 minutos, elas cabem pouco. Por isso a P1 (seção 14) pergunta também a janela da confirmação.
+Com o padrão de 30 s a 1 min, cada janela de 30 minutos do n8n garante 30 mensagens no pior caso (cerca de 40 na média de 45 s). Isso cobre os tetos da tabela acima, e a janela da confirmação pode ficar como no n8n, das 07:00 às 07:30. Se as janelas da mesma hora disputarem a mesma caixa (aniversário e pedido de avaliação começam às 09:00), a prioridade do passo 7 decide, e o que não couber vai para o aviso.
+
+**Cabe nos limites do plano gratuito da Cloudflare?** Sim, com folga. Conferido em `docs/arquitetura/orcamento-free-tier.md` e na [página de limites dos Durable Objects](https://developers.cloudflare.com/durable-objects/platform/limits/):
+
+| Limite | Valor no Free | Uso com 30 s a 1 min | Folga |
+| --- | --- | --- | --- |
+| Alarme do Durable Object | Um alarme por objeto, sem intervalo mínimo; cada `setAlarm` conta uma linha escrita e cada disparo conta uma requisição | Até 2 despertares por mensagem ("digitando" e envio) × 60 por dia = 120 | 0,1% das 100.000 requisições por dia |
+| Subrequisições por invocação | 50 (a Zuri reserva 44 por despertar) | 4 a 7 por envio | Cabe mesmo no despertar mais cheio; se faltar, a fila espera o próximo |
+| Linhas escritas | 100.000 por dia | ~5 por mensagem (reserva, situação, alarme, chave, contador) = ~300 | 0,3% |
+| CPU do Durable Object | 30 s por requisição | Poucos ms por envio, a espera é o alarme e não conta CPU | Folgada |
+| Mensagens por dia | — | Teto geral de 60 da Zuri | O limite real é o do WhatsApp, não o da Cloudflare |
+
+O que limita o intervalo para baixo não é a Cloudflare, é o risco de bloqueio do número. Por isso o piso da credencial continua em 30 segundos.
 
 **Testes do intervalo:** dois jobs devidos ao mesmo tempo saem com pelo menos X entre eles; reinício do objeto no meio não encurta; duas reservas concorrentes, só uma ganha; X = 30 s e Y = 10 min aceitos, 29 s e 10 min e 1 s recusados, X > Y recusado; erro e adiamento também esperam; janela que fecha no meio manda o resto para a próxima ou expira; duas credenciais não se atrasam uma à outra.
 
@@ -403,7 +415,7 @@ Uma PR por linha, cada uma mesclável sozinha e entregue **desligada**. Toda PR 
 | 2 | **Calendário**: feriados, dias úteis, dias sem expediente, janelas e fuso, com a tela de dias sem expediente | regras do MSG - 08 | 1 | Marcar dias sem expediente |
 | 3 | **Chatwoot e fila de saída**: credencial com teste e "Enviar teste para mim", webhook assinado, `crmBloqueado` e "não quer receber", fila com janelas, intervalo, digitando, conversa em andamento, tentativas e envio incerto | CFG - 04, MSG - 08, MSG - 09 | 1, 2 | Credencial do Chatwoot e webhook |
 | 4 | **Identidade do paciente**: evento da agenda → contato, com a lista "precisa de você" | regra do AGE - 12 e do ATD - 13 | 1 | — |
-| 5 | **Pedido de avaliação** (aprovado): 8 dias depois da consulta, 20 por dia, 1 a 3 min, lembrete único, link próprio com o primeiro clique, "Perguntar antes" | AVA - 19 | 3, 4 | Link do perfil no Google |
+| 5 | **Pedido de avaliação** (aprovado): 8 dias depois da consulta, 20 por dia, intervalo da credencial, lembrete único, link próprio com o primeiro clique, "Perguntar antes" | AVA - 19 | 3, 4 | Link do perfil no Google |
 | 6 | **Vínculo avaliação ↔ pedido**: nome exato e único liga; homônimo, parcial ou sem par vai para "precisa de você" | AVA - 21 | 5 | — |
 | 7 | **Confirmação de consulta** | ATD - 13 | 3, 4 | **P1** |
 | 8 | **Plano alimentar**: e-mail do Webdiet pelo Email Routing e aviso de plano liberado | PLA - 16, PLA - 17 | 3, 4 | **P2**, **P7** e a regra de encaminhamento |
@@ -515,7 +527,7 @@ Tudo guardado uma vez, cifrado, e reaproveitado pelo nome. Nada no repositório.
 
 | Credencial ou configuração | Onde fica | Quem usa | Como o Pablo consegue |
 | --- | --- | --- | --- |
-| Chatwoot: endereço https, conta, caixa, chave do agente "Zuri" e intervalo entre mensagens (padrão 1 a 3 min) | CRM › Credenciais (`chatwoot-v1`) | PRs 3, 5, 7, 8, 10, 12 | Criar o agente "Zuri" no Chatwoot com acesso só à caixa do WhatsApp e copiar a chave do perfil dele |
+| Chatwoot: endereço https, conta, caixa, chave do agente "Zuri" e intervalo entre mensagens (padrão 30 s a 1 min) | CRM › Credenciais (`chatwoot-v1`) | PRs 3, 5, 7, 8, 10, 12 | Criar o agente "Zuri" no Chatwoot com acesso só à caixa do WhatsApp e copiar a chave do perfil dele |
 | Segredo do webhook do Chatwoot | Na mesma credencial | PR 3 | Criar o webhook da conta com o endereço que a Zuri mostra; copiar o segredo |
 | Atributo `crmBloqueado` no contato do Chatwoot | No Chatwoot | PR 3 | Já existe pelo CFG - 04; se não, criar como atributo de contato do tipo caixa de seleção |
 | Google (Agenda, Contatos, Perfil da Empresa) | OAuth que já existe, tokens cifrados (`google-v1`) | PRs 4, 5, 6, 7, 9, 11 | Nada novo |
@@ -565,7 +577,7 @@ Para o pedido de avaliação, a diferença de regra (8 dias da consulta contra 2
 - O volume é de consultório: até 30 consultas por dia de envio, algumas dezenas de mensagens por dia.
 - A agenda do consultório é a mesma conta Google já ligada à Zuri.
 - Os nomes no Google Contatos seguem a regra do n8n (o nome completo é o que o paciente usa para avaliar).
-- Intervalo único por credencial do Chatwoot (padrão de 1 a 3 min, mínimo de 30 s), em vez dos 5 a 25 s por tipo do n8n: pedido do Pablo de 10/11 e menor risco de bloqueio. Ele pode baixar até 30 s na credencial.
+- Intervalo único por credencial do Chatwoot (padrão de 30 s a 1 min, piso de 30 s e teto de 10 min), em vez dos 5 a 25 s por tipo do n8n: pedidos do Pablo de 10/11 (02:24 e 03:01). O piso de 30 s é pelo risco de bloqueio do número, não por limite da Cloudflare.
 - O webhook do Chatwoot da versão do Pablo assina como o CTT - 07 confere hoje. Se a versão mudar a assinatura, a PR 3 trata.
 
 ## 14. Entrevista com o Pablo
@@ -580,7 +592,7 @@ Sem rodada ainda. As três primeiras perguntas (P1 a P3) vão na mensagem da thr
 
 Todas as que liberam mensagem a pacientes são exceção à regra de 02/11 e são decididas uma a uma (decisão de 09/11).
 
-1. **P1 · Confirmação de consulta (ATD - 13).** Recomendação: **sim**, depois do pedido de avaliação estar ligado de verdade há 2 semanas. É uma mensagem que o paciente espera e reduz faltas. Com o intervalo de 1 a 3 minutos, a janela de 07:00 às 07:30 do n8n só garante 10 confirmações. Recomendo abrir a janela para **07:00 às 09:00** (até 40), com o produtor às 06:50.
+1. **P1 · Confirmação de consulta (ATD - 13).** Recomendação: **sim**, depois do pedido de avaliação estar ligado de verdade há 2 semanas. É uma mensagem que o paciente espera e reduz faltas. Com o intervalo padrão de 30 s a 1 min, a janela de 07:00 às 07:30 do n8n garante 30 confirmações, então ela fica como está, com o produtor às 06:50 e teto de 30 por dia.
 2. **P2 · Aviso de plano alimentar liberado (PLA - 17).** Recomendação: **sim**. O paciente está esperando o link. Depende da P7.
 3. **P3 · "Perguntar se está a caminho" (GES - 28).** Recomendação: **não por ora**. Sem o painel da recepção, quem decide perguntar é o Pablo, e isso é atendimento em tempo real, que continua no n8n e no Chatwoot (decisão de 02/11).
 4. **P4 · Aniversário (ATD - 14).** Recomendação: **sim, depois**, com teto de 20 por dia, só para quem tem a etiqueta de paciente, e só depois de 30 dias sem bloqueio com as mensagens anteriores.
