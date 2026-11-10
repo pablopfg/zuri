@@ -1,12 +1,11 @@
 import type { startAuthentication as startAuthenticationFn } from "@simplewebauthn/browser";
-import { useQuery } from "@tanstack/react-query";
-import { LOGIN_OPTIONS_PATH, loginOptionsSchema, mfaRequiredSchema, type SessionState, sessionStateSchema } from "@zuri/shared";
-import { Fingerprint, LockKeyhole, Mail, RotateCw, ShieldCheck, Zap } from "lucide-react";
+import { mfaRequiredSchema, type SessionState, sessionStateSchema } from "@zuri/shared";
+import { Fingerprint, LockKeyhole, Mail } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
-import { Logo } from "../components/Logo.tsx";
+import { EntryLayout } from "../components/EntryLayout.tsx";
+import { useHumanCheck } from "../components/HumanCheck.tsx";
 import { SessionChecking } from "../components/RequireSession.tsx";
-import { TurnstileWidget } from "../components/TurnstileWidget.tsx";
 import { Button, Notice, PasswordField, TextField, useDocumentTitle } from "../components/ui.tsx";
 import { useSession } from "../hooks/session.tsx";
 import { useSetupStatus } from "../hooks/setup.ts";
@@ -19,7 +18,6 @@ type Step = { kind: "password" } | { kind: "code"; passkey: boolean; recovery: b
 /** The details a refusal of the sign-in may carry. */
 interface SignInDetails {
   retryAfter?: number;
-  turnstileSiteKey?: string;
   mfa?: "retry" | "expired";
   attemptsLeft?: number;
 }
@@ -41,25 +39,11 @@ export function LoginPage() {
   const [pending, setPending] = useState(false);
   const [retryAt, setRetryAt] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
-  // The robot check, on every try: its public key comes with the form's options
-  // (null only in local development without keys). A refusal may carry it too.
-  const options = useQuery({
-    queryKey: ["login-options"],
-    queryFn: async () => loginOptionsSchema.parse(await api<unknown>(LOGIN_OPTIONS_PATH.replace(/^\/api/, ""))),
-    staleTime: Number.POSITIVE_INFINITY,
-    retry: 1,
-  });
   // Asked only while signed out; the form shows meanwhile (an owner signs in far more often than a first access).
   const setup = useSetupStatus(!loading && !session);
-  const [refusedKey, setSiteKey] = useState<string | null>(null);
-  const siteKey = refusedKey ?? options.data?.turnstileSiteKey ?? null;
-  const [humanToken, setHumanToken] = useState<string | null>(null);
-  const [humanBroken, setHumanBroken] = useState(false);
-  const [humanNudge, setHumanNudge] = useState(false);
+  // The security check, on every try (components/HumanCheck.tsx).
+  const human = useHumanCheck();
   const [spoken, setSpoken] = useState({ text: "", n: 0 });
-  // Only when Cloudflare asks for a click does the box appear, with a line saying why.
-  const [humanInteractive, setHumanInteractive] = useState(false);
-  const [humanRound, setHumanRound] = useState(0);
   // Kept from when the screen opened, so the message doesn't vanish on the first keystroke.
   const [endedReason] = useState(ended);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -79,12 +63,10 @@ export function LoginPage() {
     if (offersPasskey) void import("@simplewebauthn/browser").catch(() => {});
   }, [offersPasskey]);
   const waitSeconds = retryAt ? Math.max(0, Math.ceil((retryAt - now) / 1000)) : 0;
-  // Without its token the server refuses the try anyway: a try without it is held back here.
-  const humanMissing = siteKey !== null && !humanToken;
-  // Until the options arrive the form can't know whether the check is on; if they fail, the server's refusal tells.
-  const optionsPending = options.isPending && refusedKey === null;
-
-  const emailMissing = attempted && step.kind === "password" && !email.trim();
+  // An address needs its three parts; the server has the last word on the rest.
+  const emailWrong = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  const emailProblem = t(email.trim() ? "web.login.emailInvalid" : "web.login.emailRequired");
+  const emailError = attempted && step.kind === "password" && emailWrong ? emailProblem : null;
   const passwordMissing = attempted && step.kind === "password" && !password;
   const codeMissing = attempted && step.kind === "code" && !code.trim();
 
@@ -99,15 +81,14 @@ export function LoginPage() {
   };
 
   function refused(err: unknown) {
-    setError(errorMessage(err));
-    if (!(err instanceof ApiError)) return;
-    const details = err.details as SignInDetails;
-    if (err.code === "RATE_LIMITED" && typeof details.retryAfter === "number") setRetryAt(Date.now() + details.retryAfter * 1000);
-    if (typeof details.turnstileSiteKey === "string" && details.turnstileSiteKey && details.turnstileSiteKey !== siteKey) {
-      setHumanRound((n) => n + 1);
-      setSiteKey(details.turnstileSiteKey);
-      setHumanNudge(false);
+    // A check the server refused, or a pause: the line above the button says it, with what to do.
+    const paused = err instanceof ApiError && err.code === "RATE_LIMITED" && typeof (err.details as SignInDetails).retryAfter === "number";
+    if (paused) {
+      // The clock is read again here: the last reading may be as old as the screen.
+      setNow(Date.now());
+      setRetryAt(Date.now() + ((err.details as SignInDetails).retryAfter as number) * 1000);
     }
+    setError(human.refused(err) || (paused && step.kind === "password") ? null : errorMessage(err));
   }
 
   /** Says a blocked try out loud: a new node each time, so a screen reader repeats it. */
@@ -118,30 +99,21 @@ export function LoginPage() {
   async function submitPassword(e: FormEvent) {
     e.preventDefault();
     if (pending || waitSeconds > 0) return;
-    if (!email.trim() || !password) {
+    if (emailWrong || !password) {
       setAttempted(true);
       setError(null);
-      announce(t(email.trim() ? "web.login.passwordRequired" : "web.login.emailRequired"));
+      announce(emailWrong ? emailProblem : t("web.login.passwordRequired"));
       // After the render, so the field already carries its message when it takes the focus.
-      requestAnimationFrame(() => (email.trim() ? passwordRef : emailRef).current?.focus());
-      return;
-    }
-    // The robot check comes first: its own line, right above, turns into the alert.
-    if (optionsPending || humanMissing) {
-      setHumanNudge(true);
-      announce(t(optionsPending ? "web.login.humanLoading" : "web.login.humanHint"));
+      requestAnimationFrame(() => (emailWrong ? emailRef : passwordRef).current?.focus());
       return;
     }
     setAttempted(false);
     setSpoken((last) => ({ text: "", n: last.n }));
+    // The security check comes first: its own line, right above the button, turns into the alert.
+    if (human.hold()) return;
     setPending(true);
     setError(null);
-    const token = humanToken;
-    if (siteKey !== null) {
-      // A token works once: a new widget for the next try.
-      setHumanToken(null);
-      setHumanRound((n) => n + 1);
-    }
+    const token = human.take();
     try {
       const answer = await api<unknown>("/auth/login", {
         method: "POST",
@@ -223,53 +195,20 @@ export function LoginPage() {
   }
 
   const errorLine = error && (
-    <p id="login-error" role="alert" className="text-center text-sm text-danger">
+    <p id="login-error" role="alert" className="text-sm text-danger">
       {error}
     </p>
   );
 
   return (
-    <main className="grid min-h-full grid-rows-[auto_1fr] bg-surface lg:grid-cols-2 lg:grid-rows-none lg:bg-bg">
-      {/* Always dark, whatever the theme: the brand side carries the mark's own colors. */}
-      <section className="login-brand flex flex-col gap-4 px-4 pt-10 pb-8 sm:px-8 lg:justify-between lg:gap-10 lg:p-14 xl:px-16">
-        <div className="flex items-center gap-3">
-          {/* The light pulses while the server checks: the logo is the sign of work. */}
-          <Logo className="h-9 w-9 lg:h-10 lg:w-10" working={pending} />
-          <h1 className="text-lg font-bold tracking-tight lg:text-xl">{t("app.name")}</h1>
-        </div>
-        <div className="max-w-md space-y-5">
-          <p className="text-[1.75rem] leading-tight font-bold tracking-tight text-balance lg:text-[2.75rem] lg:leading-[1.1]">{t("web.login.headline")}</p>
-          <p className="hidden text-base leading-relaxed text-fg-muted lg:block">{t("web.login.lead")}</p>
-          <ul className="hidden flex-col gap-3.5 pt-2 text-[0.9375rem] lg:flex">
-            <li className="flex items-center gap-3">
-              <ShieldCheck className="h-[1.125rem] w-[1.125rem] shrink-0 text-accent" aria-hidden />
-              {t("web.login.pointTwoStep")}
-            </li>
-            <li className="flex items-center gap-3">
-              <LockKeyhole className="h-[1.125rem] w-[1.125rem] shrink-0 text-accent" aria-hidden />
-              {t("web.login.pointPrivate")}
-            </li>
-            <li className="flex items-center gap-3">
-              <Zap className="h-[1.125rem] w-[1.125rem] shrink-0 text-accent" aria-hidden />
-              {t("web.login.pointFast")}
-            </li>
-          </ul>
-        </div>
-        <p className="hidden items-center gap-1.5 text-xs text-fg-muted lg:flex">
-          <LockKeyhole className="h-3.5 w-3.5" aria-hidden />
-          {t("web.login.secure")}
-        </p>
-      </section>
-      <div className="flex flex-col px-4 pt-7 pb-6 sm:px-8 lg:items-center lg:justify-center lg:border-l lg:border-border lg:p-12">
-        <div className="flex w-full max-w-sm flex-1 flex-col motion-safe:animate-rise sm:max-w-md lg:max-w-[22.5rem] lg:flex-none">
-        {step.kind === "password" && (
-          <div className="mb-5 space-y-1.5 lg:mb-6">
-            <h2 className="text-[1.375rem] font-bold tracking-tight lg:text-[1.75rem]">{t("web.login.submit")}</h2>
-            <p className="hidden text-sm text-fg-muted lg:block">{t("web.login.welcome")}</p>
-          </div>
-        )}
+    <EntryLayout working={pending}>
+      {pending && <div aria-hidden className="zuri-progress" />}
         {step.kind === "password" ? (
-          <form onSubmit={submitPassword} className="space-y-4" noValidate aria-describedby={error ? "login-error" : undefined}>
+          <form onSubmit={submitPassword} noValidate aria-describedby={error ? "login-error" : undefined}>
+            <div>
+              <h1>{t("web.login.submit")}</h1>
+              <p>{t("web.login.welcome")}</p>
+            </div>
             {endedReason && !error && <Notice>{endedReason === "idle" ? t("web.login.endedIdle") : t("web.login.ended")}</Notice>}
             <TextField
               label={t("web.login.email")}
@@ -280,7 +219,7 @@ export function LoginPage() {
               required
               maxLength={254}
               icon={<Mail aria-hidden />}
-              error={emailMissing ? t("web.login.emailRequired") : null}
+              error={emailError}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -294,76 +233,32 @@ export function LoginPage() {
               error={passwordMissing ? t("web.login.passwordRequired") : null}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-            />
-            <p className="!mt-1 text-right text-sm">
-              <a
-                href={RECOVERY_PATH}
-                onClick={(e) => {
-                  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                  e.preventDefault();
-                  navigate(RECOVERY_PATH);
-                }}
-                className="inline-flex min-h-11 items-center font-medium text-accent-text underline-offset-4 hover:underline"
-              >
-                {t("web.login.forgot")}
-              </a>
-            </p>
-            {optionsPending && humanNudge && (
-              <p className="text-sm leading-6 text-danger" role="alert">
-                {t("web.login.humanLoading")}
-              </p>
-            )}
-            {siteKey !== null && (
-              // Hidden while the check runs on its own: no gap where nothing shows.
-              <div className={humanBroken || humanNudge || humanInteractive ? "space-y-1.5" : "!mt-0"}>
-                {(humanBroken || humanNudge || humanInteractive) && (
-                  <p
-                    className={humanBroken || humanNudge ? "text-sm leading-6 text-danger" : "text-sm leading-6 text-fg-muted"}
-                    role={humanBroken || humanNudge ? "alert" : undefined}
-                  >
-                    {humanBroken ? t("web.login.humanBroken") : t("web.login.humanHint")}
-                  </p>
-                )}
-                {humanBroken && (
-                  <Button
-                    variant="secondary"
-                    className="w-full"
-                    onClick={() => {
-                      setHumanBroken(false);
-                      setHumanToken(null);
-                      setHumanRound((n) => n + 1);
-                    }}
-                  >
-                    <RotateCw className="h-4 w-4" aria-hidden />
-                    {t("web.login.humanRetry")}
-                  </Button>
-                )}
-                <TurnstileWidget
-                  key={`${siteKey}-${humanRound}`}
-                  siteKey={siteKey}
-                  onToken={(value) => {
-                    setHumanToken(value);
-                    if (value) {
-                      setHumanBroken(false);
-                      setHumanNudge(false);
-                    }
+              aside={
+                <a
+                  href={RECOVERY_PATH}
+                  onClick={(e) => {
+                    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                    e.preventDefault();
+                    navigate(RECOVERY_PATH);
                   }}
-                  onError={() => setHumanBroken(true)}
-                  onInteractive={setHumanInteractive}
-                />
-              </div>
-            )}
-            <Button type="submit" className="login-submit min-h-12 w-full" loading={pending} disabled={waitSeconds > 0}>
-              {/* The mark's green light, on the one button that matters here. */}
-              {!pending && waitSeconds === 0 && <span className="h-2 w-2 rounded-full bg-brand-signal" aria-hidden />}
-              {waitSeconds > 0 ? t("web.login.waitSeconds", { seconds: waitSeconds }) : t("web.login.submit")}
+                  className="zuri-entry-link"
+                >
+                  {t("web.login.forgot")}
+                </a>
+              }
+            />
+            {human.line(waitSeconds)}
+            <Button type="submit" className="min-h-12 w-full" loading={pending} disabled={waitSeconds > 0}>
+              {waitSeconds > 0 ? human.wait(waitSeconds) : t(pending ? "web.login.pending" : "web.login.submit")}
             </Button>
             {errorLine}
           </form>
         ) : (
-          <form onSubmit={submitCode} className="space-y-4" noValidate>
-            <h2 className="text-center text-lg font-semibold">{t("web.login.codeTitle")}</h2>
-            <p className="text-center text-sm leading-6 text-fg-muted">{step.recovery ? t("web.login.recoveryHint") : t("web.login.codeHint")}</p>
+          <form onSubmit={submitCode} noValidate>
+            <div>
+              <h1>{t("web.login.codeTitle")}</h1>
+              <p>{step.recovery ? t("web.login.recoveryHint") : t("web.login.codeHint")}</p>
+            </div>
             <TextField
               ref={codeRef}
               key={step.recovery ? "recovery" : "totp"}
@@ -371,14 +266,13 @@ export function LoginPage() {
               autoComplete="one-time-code"
               inputMode={step.recovery ? "text" : "numeric"}
               autoCapitalize="characters"
-              spellCheck={false}
               maxLength={step.recovery ? 40 : 8}
               autoFocus
               error={codeMissing ? t("web.login.codeRequired") : null}
               value={code}
               onChange={(e) => setCode(e.target.value)}
             />
-            <Button type="submit" className="w-full" loading={pending}>
+            <Button type="submit" className="min-h-12 w-full" loading={pending}>
               {t("web.login.verify")}
             </Button>
             {step.passkey && (
@@ -422,12 +316,6 @@ export function LoginPage() {
             {spoken.text}
           </span>
         )}
-        <p className="mt-auto flex items-center justify-center gap-1.5 pt-8 text-xs text-fg-muted lg:hidden">
-          <LockKeyhole className="h-3.5 w-3.5" aria-hidden />
-          {t("web.login.secure")}
-        </p>
-        </div>
-      </div>
-    </main>
+    </EntryLayout>
   );
 }

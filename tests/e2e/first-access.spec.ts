@@ -1,7 +1,7 @@
 import { totpCode, totpStep } from "@zuri/shared";
 import { expect, type Page, test } from "./fixtures.ts";
 import { E2E_SETUP_CODE, SETUP_BASE } from "./setup-server.ts";
-import { CSRF, expectAccessible, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, expectFits, tooSmallControls } from "./ui-helpers.ts";
 
 // The first access of a new installation, against its own Worker (playwright.config.ts):
 // no owner, only the installation code. The tests run in order and share that server:
@@ -84,6 +84,7 @@ test("creates the owner: password rules from the server, then only the second st
   await page.goto("/primeiro-acesso");
   await enterCode(page);
   await page.getByLabel("E-mail").fill(EMAIL);
+  await expectFits(page, "primeiro acesso, dados");
 
   // The name is optional, but a name a model could read as a tag never leaves the page.
   const name = page.getByLabel("Seu nome");
@@ -124,6 +125,7 @@ test("creates the owner: password rules from the server, then only the second st
   await expect(page).toHaveTitle(/Proteja a sua conta/);
   await expect(page.getByRole("list", { name: "Passos do primeiro acesso" }).locator('[aria-current="step"]')).toContainText("Segurança");
   await expectAccessible(page, "second step required");
+  await expectFits(page, "second step required");
   await page.goto("/tarefas");
   await expect(page.getByRole("heading", { level: 1, name: "Proteja a sua conta" })).toBeVisible();
   expect((await page.request.get("/api/tasks", { headers: CSRF })).status()).toBe(403);
@@ -178,6 +180,6 @@ test("once the owner exists, the page only recovers the access and the used code
   await enterCode(page);
   await expect(page.getByRole("alert")).toHaveText("Código inválido ou vencido.");
 
-  await page.getByRole("link", { name: "Voltar para a tela de entrada" }).click();
+  await page.getByRole("link", { name: "Voltar para entrar" }).click();
   await expect(page).toHaveURL(/\/entrar$/);
 });

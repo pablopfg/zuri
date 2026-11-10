@@ -52,6 +52,31 @@ export async function expectAccessible(page: Page, label: string) {
   expect(serious).toEqual([]);
 }
 
+/**
+ * Nothing of the entry frame is cut off or scrolls sideways, on the narrowest phone and on a wide
+ * computer. The window goes back to the size the test had.
+ */
+export async function expectFits(page: Page, label: string) {
+  const before = page.viewportSize();
+  for (const [width, height] of [
+    [320, 568],
+    [1440, 900],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const overflow = await page.evaluate(() => {
+      const root = document.documentElement;
+      const wide = [...document.querySelectorAll<HTMLElement>("main *")].filter((el) => {
+        const box = el.getBoundingClientRect();
+        return box.width > 0 && !el.closest(".zuri-entry-art, .sr-only") && (box.right > root.clientWidth + 1 || box.left < -1);
+      });
+      return { sideways: root.scrollWidth > root.clientWidth, wide: wide.map((el) => `${el.tagName}.${el.className}`) };
+    });
+    expect(overflow, `${label} at ${width}x${height}`).toEqual({ sideways: false, wide: [] });
+  }
+  if (before) await page.setViewportSize(before);
+}
+
 /** Visible controls under 44 px tall (the touch target the interface promises). */
 export function tooSmallControls(page: Page) {
   return page.evaluate(() =>

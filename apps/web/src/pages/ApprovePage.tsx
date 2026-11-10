@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type ApprovalPreview, type ApproveOptions, type ApproveResult, type MessageKey, ptBRApprove } from "@zuri/shared";
 import { CircleCheck, Fingerprint, LockKeyhole, TriangleAlert } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Logo } from "../components/Logo.tsx";
+import { EntryLayout } from "../components/EntryLayout.tsx";
 import { Button, ErrorNotice, Notice, Loading, useDocumentTitle } from "../components/ui.tsx";
 import { ApiError, api } from "../lib/api.ts";
 import { addMessages, useI18n } from "../lib/i18n.tsx";
@@ -220,24 +220,12 @@ export function ApprovePage() {
   );
 
   return (
-    <main className="flex min-h-full flex-col items-center px-4 py-8 sm:justify-center sm:px-6 sm:py-12">
-      <div className="w-full max-w-md space-y-6 motion-safe:animate-rise">
-        <header className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Logo className="h-9 w-9" working={step.kind === "loading" || step.kind === "working"} />
-            <span className="text-lg font-bold tracking-tight">{t("app.name")}</span>
-          </div>
-          <div className="space-y-1.5">
-            <h1 className="text-[1.625rem] font-bold tracking-tight text-balance sm:text-[1.875rem]">
-              {t(purpose === "approval" ? "web.approve.titleApproval" : purpose === "unlock" ? "web.approve.title" : "web.approve.titleGeneric")}
-            </h1>
-            <p className="text-[0.9375rem] leading-6 text-fg-muted">
-              {t(purpose === "approval" ? "web.approve.leadApproval" : purpose === "unlock" ? "web.approve.lead" : "web.approve.leadGeneric")}
-            </p>
-          </div>
-        </header>
-
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6" aria-live="polite">
+    <EntryLayout working={step.kind === "loading" || step.kind === "working"}>
+      <div>
+        <h1>{t(purpose === "approval" ? "web.approve.titleApproval" : purpose === "unlock" ? "web.approve.title" : "web.approve.titleGeneric")}</h1>
+        <p>{t(purpose === "approval" ? "web.approve.leadApproval" : purpose === "unlock" ? "web.approve.lead" : "web.approve.leadGeneric")}</p>
+      </div>
+      <section aria-live="polite">
           {step.kind === "loading" ? (
             <Loading label={t("web.approve.checking")} />
           ) : step.kind === "ready" || step.kind === "working" ? (
@@ -293,8 +281,7 @@ export function ApprovePage() {
               }}
             />
           )}
-        </section>
-      </div>
-    </main>
+      </section>
+    </EntryLayout>
   );
 }

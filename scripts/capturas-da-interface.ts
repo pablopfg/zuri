@@ -11,6 +11,10 @@
  * - `name=/path`: one screen per pair, saved as <name>-<device>-<scheme>.png.
  *   `entrar` is the sign-in screen, shot before signing in. Without pairs the
  *   script shoots the sign-in screen and home.
+ * - `entrar-<estado>=/entrar` (conferindo, pedir-clique, nao-carregou, nao-passou, espera): the
+ *   sign-in with the security check's line in that state.
+ * - `recuperar-senha=/recuperar-senha` and `aprovar=/aprovar`: shot signed out, like the sign-in
+ *   (the recovery as an installation with e-mail set up shows it).
  * - `name=/path>Region name`: the same, with that region (role region) scrolled to the top first.
  * - `painel-de-avisos=/`: the notice center, opened from the bell on that page.
  * - `painel-da-conta=/`: the account panel (a sheet on a phone), opened on that page.
@@ -46,6 +50,8 @@ const screens = (pairs.length > 0 ? pairs : ["entrar=/entrar", "inicio=/"]).map(
   if (!/^[a-z0-9-]+$/.test(name) || !path.startsWith("/")) throw new Error(`Invalid screen "${pair}": use name=/path`);
   return { name, path, region };
 });
+/** The screens outside the app: the sign-in (and the states of its security check), the recovery and the bot's confirmation. */
+const signedOut = (screen: { name: string }) => /^(entrar(-[a-z-]+)?|recuperar-senha|aprovar)$/.test(screen.name);
 mkdirSync(out, { recursive: true });
 
 const browser = await chromium.launch(
@@ -75,20 +81,48 @@ for (const [device, options] of [
       await page.screenshot({ path: join(out, `${name}-${device}-${scheme}.png`) });
     };
 
+    // The screens outside the app, shot before signing in.
+    for (const screen of screens.filter(signedOut)) {
+      const state = screen.name.startsWith("entrar-") ? screen.name.slice(7) : "";
+      await page.unrouteAll({ behavior: "wait" });
+      // The check as the test plays it: silent, or with the event of the state asked for.
+      const event = { "pedir-clique": "before-interactive-callback", "nao-carregou": "error-callback" }[state];
+      const silent = state === "conferindo" || event !== undefined;
+      if (silent)
+        await page.route("https://challenges.cloudflare.com/turnstile/**", (route) =>
+          route.fulfill({
+            contentType: "text/javascript",
+            body: `window.turnstile = { render(box, options) { ${event ? `setTimeout(() => options["${event}"](), 20);` : ""} return "w"; }, remove() {} };`,
+          }),
+        );
+      if (state === "nao-passou" || state === "espera")
+        await page.route("**/api/auth/login", (route) =>
+          route.fulfill({
+            status: state === "espera" ? 429 : 400,
+            json: { code: state === "espera" ? "RATE_LIMITED" : "TURNSTILE_REQUIRED", message: "A verificação de segurança não passou. Tente de novo.", details: state === "espera" ? { retryAfter: 892 } : {} },
+          }),
+        );
+      await page.route("**/api/auth/recover", (route) => route.fulfill({ json: { available: true } }));
+      await page.goto(BASE + screen.path);
+      await page.getByRole("heading", { level: 1 }).waitFor();
+      // The real check passes unseen (interaction-only); the fake one prints its key, so it leaves the shot.
+      if (!silent && screen.name !== "aprovar") await page.locator('[data-testid="turnstile"][data-solved="true"]').waitFor({ state: "attached" });
+      if (state === "nao-passou" || state === "espera") {
+        await page.getByLabel("E-mail").fill("dono@exemplo.com.br");
+        await page.getByLabel("Senha", { exact: true }).fill("senha de exemplo");
+        await page.getByRole("button", { name: "Entrar" }).click();
+        await page.getByRole("alert").waitFor();
+      }
+      // Through the element's own style: the page's policy takes no style sheet from outside its address.
+      await page.locator('[data-testid="turnstile"]').evaluateAll((boxes: HTMLElement[]) => {
+        for (const box of boxes) box.style.display = "none";
+      });
+      await shot(screen.name);
+    }
+    await page.unrouteAll({ behavior: "wait" });
     await page.goto(`${BASE}/entrar`);
     await page.getByRole("button", { name: "Entrar" }).waitFor();
-    if (screens.some((screen) => screen.name === "entrar")) {
-      // The real check passes unseen (interaction-only); the fake one prints its key, so it leaves the shot.
-      const check = page.locator('[data-testid="turnstile"][data-solved="true"]');
-      await check.evaluate((box: HTMLElement) => {
-        box.style.display = "none";
-      });
-      await shot("entrar");
-      await check.evaluate((box: HTMLElement) => {
-        box.style.display = "";
-      });
-    }
-    const signedIn = screens.filter((screen) => screen.name !== "entrar");
+    const signedIn = screens.filter((screen) => !signedOut(screen));
     if (signedIn.length > 0) {
       await signIn(page);
       await page.waitForURL((url) => !url.pathname.startsWith("/entrar"));

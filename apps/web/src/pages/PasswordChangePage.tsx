@@ -1,6 +1,6 @@
 import { ChangePasswordForm } from "../components/ChangePasswordForm.tsx";
-import { Logo } from "../components/Logo.tsx";
-import { Button, Card, useDocumentTitle } from "../components/ui.tsx";
+import { EntryLayout } from "../components/EntryLayout.tsx";
+import { Button, useDocumentTitle } from "../components/ui.tsx";
 import { useSession } from "../hooks/session.tsx";
 import { useI18n } from "../lib/i18n.tsx";
 import { LockdownPage } from "./LockdownPage.tsx";
@@ -22,18 +22,17 @@ function PasswordChange() {
   const { signOut } = useSession();
   useDocumentTitle(t("web.passwordRequired.title"));
   return (
-    <main className="flex min-h-full flex-col items-center justify-center gap-6 p-6">
-      <Logo className="h-12 w-12" />
-      <Card className="w-full max-w-lg">
-        <div className="mb-4 space-y-2">
-          <h1 className="text-xl font-bold">{t("web.passwordRequired.title")}</h1>
-          <p className="text-sm leading-6 text-fg-muted">{t("web.passwordRequired.body")}</p>
-        </div>
-        <ChangePasswordForm />
-      </Card>
-      <Button variant="ghost" onClick={() => void signOut("manual")}>
-        {t("web.nav.signOut")}
-      </Button>
-    </main>
+    <EntryLayout>
+      <div>
+        <h1>{t("web.passwordRequired.title")}</h1>
+        <p>{t("web.passwordRequired.body")}</p>
+      </div>
+      <ChangePasswordForm />
+      <div className="flex justify-center">
+        <Button variant="ghost" onClick={() => void signOut("manual")}>
+          {t("web.nav.signOut")}
+        </Button>
+      </div>
+    </EntryLayout>
   );
 }

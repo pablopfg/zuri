@@ -16,6 +16,8 @@ describe("RouteErrorPage", () => {
     vi.unstubAllGlobals();
     expect(html).toContain("Esta tela parou");
     expect(html).toContain("Recarregar");
+    // The same frame as the sign-in: the brand and its line.
+    expect(html).toContain("Sua agenda, suas tarefas e seus lembretes, em ordem.");
     expect(html).toContain('href="/"');
     expect(html).not.toMatch(/Unexpected Application Error|stack|Error:|exemplo/);
   });

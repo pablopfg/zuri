@@ -11,7 +11,7 @@ test("a private page sends to the sign-in with ?next= and opens after it @mobile
   await page.goto("/configuracoes/seguranca");
   await expect(page).toHaveURL(/\/entrar\?next=%2Fconfiguracoes%2Fseguranca$/);
   await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
-  await expect(page.getByRole("heading", { level: 1, name: "Zuri" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Entrar" })).toBeVisible();
 
   await signIn(page);
   await expect(page).toHaveURL(/\/configuracoes\/seguranca$/);

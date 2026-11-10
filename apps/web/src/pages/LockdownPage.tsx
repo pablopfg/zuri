@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type LockdownExit, lockdownStatusSchema, ptBRSetup, ptBRShell } from "@zuri/shared";
 import { ShieldAlert, Unlink } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { Logo } from "../components/Logo.tsx";
+import { EntryLayout } from "../components/EntryLayout.tsx";
 import { Button, Card, Dialog, ErrorNotice, Notice, PasswordField, Loading, TextField, useDocumentTitle } from "../components/ui.tsx";
 import { SESSION_KEY, useSession } from "../hooks/session.tsx";
 import { api, errorMessage, onRecentAuthRequired } from "../lib/api.ts";
@@ -55,18 +55,14 @@ export function LockdownPage() {
 
   const lockdown = status.data?.lockdown ?? null;
   return (
-    <main className="flex min-h-full flex-col items-center px-4 py-8 sm:justify-center sm:px-6 sm:py-12">
-      <div className="w-full max-w-xl space-y-6 motion-safe:animate-rise">
-        <header className="space-y-4">
-          <Logo className="h-9 w-9" />
-          <div className="flex items-start gap-3">
-            <ShieldAlert className="mt-1 h-6 w-6 shrink-0 text-danger" aria-hidden />
-            <div className="space-y-1.5">
-              <h1 className="text-[1.625rem] font-bold tracking-tight text-balance sm:text-[1.875rem]">{t("web.lockdown.title")}</h1>
-              <p className="text-[0.9375rem] leading-6 text-fg-muted">{t("web.lockdown.lead")}</p>
-            </div>
-          </div>
-        </header>
+    <EntryLayout wide>
+      <div className="flex items-start gap-3">
+        <ShieldAlert className="mt-1.5 h-6 w-6 shrink-0 text-danger" aria-hidden />
+        <div>
+          <h1>{t("web.lockdown.title")}</h1>
+          <p>{t("web.lockdown.lead")}</p>
+        </div>
+      </div>
         {status.isPending && <Loading />}
         {status.isError && <ErrorNotice error={status.error} onRetry={() => void status.refetch()} />}
         {status.data && (
@@ -133,9 +129,8 @@ export function LockdownPage() {
             {t("web.nav.signOut")}
           </Button>
         </div>
-      </div>
       <PasswordAgain />
-    </main>
+    </EntryLayout>
   );
 }
 

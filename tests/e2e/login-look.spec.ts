@@ -80,39 +80,33 @@ test("the sign-in form rises into place, and stays still when motion is reduced"
   expect(await card.evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
 });
 
-test("the brand side stays dark in the light theme, beside the form on a computer and above it on a phone @mobile", async ({ page }) => {
-  await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/entrar");
-  await expect(page.getByRole("heading", { level: 1, name: "Zuri" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Entrar" })).toBeVisible();
-  const headline = page.getByText("Tudo o que importa, num só lugar.");
-  await expect(headline).toBeVisible();
-  const brand = page.locator("section").filter({ has: headline });
-  expect(await brand.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(11, 15, 25)");
-  expect(await headline.evaluate((el) => getComputedStyle(el).color)).toBe("rgb(232, 236, 243)");
-  // The button keeps the page's ink: dark on the light theme.
-  expect(await page.getByRole("button", { name: "Entrar" }).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(15, 15, 18)");
-
-  const brandBox = await brand.boundingBox();
-  const formBox = await page.locator("form").boundingBox();
-  if (!brandBox || !formBox) throw new Error("the sign-in screen is not laid out");
-  const points = page.getByText("Suas informações, só para você");
-  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+test("the brand side stays dark in both themes, beside the form on a computer; a phone keeps only the mark @mobile", async ({ page }) => {
+  const wide = (page.viewportSize()?.width ?? 0) >= 1024;
+  for (const [colorScheme, art, button] of [
+    ["light", "rgb(24, 24, 27)", "rgb(21, 128, 61)"],
+    ["dark", "rgb(8, 8, 10)", "rgb(74, 222, 128)"],
+  ] as const) {
+    await page.emulateMedia({ colorScheme });
+    await page.goto("/entrar");
+    await expect(page.getByRole("heading", { level: 1, name: "Entrar" })).toBeVisible();
+    await expect(page.getByText("Entre para continuar de onde parou.")).toBeVisible();
+    const headline = page.getByText("Sua agenda, suas tarefas e seus lembretes, em ordem.");
+    // Green only on the main action.
+    expect(await page.getByRole("button", { name: "Entrar" }).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(button);
+    // The mark and the name show once, whatever the size.
+    await expect(page.locator(".zuri-entry-brand:visible")).toHaveCount(1);
+    await expect(page.locator(".zuri-entry-brand:visible")).toHaveText("Zuri");
+    if (!wide) {
+      await expect(headline).toBeHidden();
+      continue;
+    }
+    await expect(headline).toBeVisible();
+    const brand = headline.locator("..");
+    expect(await brand.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(art);
+    expect(await headline.evaluate((el) => getComputedStyle(el).color)).toBe("rgb(250, 250, 250)");
+    const brandBox = await brand.boundingBox();
+    const formBox = await page.locator("form").boundingBox();
+    if (!brandBox || !formBox) throw new Error("the sign-in screen is not laid out");
     expect(formBox.x).toBeGreaterThanOrEqual(brandBox.x + brandBox.width);
-    await expect(points).toBeVisible();
-  } else {
-    // On a phone the brand is a short block on top; the list waits for a wider screen.
-    expect(formBox.y).toBeGreaterThanOrEqual(brandBox.y + brandBox.height);
-    expect(formBox.y).toBeLessThan((page.viewportSize()?.height ?? 0) / 2);
-    await expect(points).toBeHidden();
   }
-});
-
-test("in the dark theme the brand side keeps its color and the button turns light", async ({ page }) => {
-  await page.emulateMedia({ colorScheme: "dark" });
-  await page.goto("/entrar");
-  const headline = page.getByText("Tudo o que importa, num só lugar.");
-  const brand = page.locator("section").filter({ has: headline });
-  expect(await brand.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(11, 15, 25)");
-  expect(await page.getByRole("button", { name: "Entrar" }).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(245, 245, 247)");
 });
