@@ -390,3 +390,23 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
   na décima recusa a rede fica bloqueada (proteção contra tentativa de token).
   Não é instabilidade. Repita em lotes de até 8 por subida do servidor
   (10/11/2026).
+- `[` sem barra dentro de uma classe de caracteres (`[^\s@[\]]`) num `.regex()` de
+  schema de ferramenta: o JavaScript aceita, a API da Anthropic recusa o pedido
+  inteiro com 400 ("JSON schema is invalid") e nenhum teste com IA simulada
+  percebe. Escreva `\[`. O teste "writes every pattern…" em
+  `apps/agent/test/chat-tools.test.ts` confere todas as ferramentas (10/11/2026).
+- Um padrão de dado pessoal (`apps/agent/src/ai/external.ts`) que proíbe `.`
+  logo depois do valor deixa passar o valor no fim da frase. Proíba só o ponto
+  seguido de letra ou número, e teste cada tipo com ponto final (10/11/2026).
+- Linha de sistema no fim das respostas anteriores do histórico (`[Tools called
+  in that turn: …]`): um modelo real copia a linha na resposta seguinte. Toda
+  nota nova posta no histórico do assistente precisa de um filtro na saída
+  (`ToolsNoteFilter` em `apps/agent/src/agent/context.ts`) e de uma rodada no
+  modelo real (10/11/2026).
+- Filtro que roda a cada pedaço do texto do modelo não pode reter sem limite
+  nem usar `\s*` solto: milhares de linhas em branco viravam segundos de CPU.
+  Retenha no máximo o tamanho do que procura e use quantificador com teto
+  (`ToolsNoteFilter`, 10/11/2026).
+- Termo com `*` no FTS5 é prefixo: `"gravida"*` casa "gravidade". Em lista
+  fixa de termos (`RESTRICTION_QUERY`), palavra inteira vai como frase, sem
+  `*`, e frase do dia a dia ("não posso") fica de fora (10/11/2026).

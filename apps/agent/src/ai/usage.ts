@@ -9,6 +9,8 @@ import {
   type ModelUsage,
   neuronsToUsd,
   paidUsd,
+  paidProviderOf,
+  ANTHROPIC_CACHE_RATES,
   type AiModel,
   type UsageHistory,
   type UsageHistoryDays,
@@ -74,9 +76,9 @@ export function stepNeurons(usage: StepUsage): number {
 }
 
 /** US$ of one step on a paid model (step 21); 0 for every other model. */
-export function stepUsd(usage: Pick<StepUsage, "model" | "input" | "output">): number {
+export function stepUsd(usage: Pick<StepUsage, "model" | "input" | "output" | "billedInput">): number {
   if (!isPaidModel(usage.model)) return 0;
-  return paidUsd(usage.model, usage.input.reported + usage.input.estimated, usage.output.reported + usage.output.estimated);
+  return paidUsd(usage.model, usage.billedInput ?? usage.input.reported + usage.input.estimated, usage.output.reported + usage.output.estimated);
 }
 
 export function audioNeurons(seconds: number): number {
@@ -177,7 +179,14 @@ export class UsageMeter {
       input: { reported: 0, estimated: call.inputTokens },
       output: { reported: 0, estimated: call.maxOutputTokens },
     });
-    const usd = stepUsd({ model: call.model, input: { reported: 0, estimated: call.inputTokens }, output: { reported: 0, estimated: call.maxOutputTokens } });
+    // The hold is the dearest the call can cost: on Anthropic the whole prompt may be written to the cache.
+    const cached = isPaidModel(call.model) && paidProviderOf(call.model) === "anthropic";
+    const usd = stepUsd({
+      model: call.model,
+      input: { reported: 0, estimated: call.inputTokens },
+      output: { reported: 0, estimated: call.maxOutputTokens },
+      ...(cached ? { billedInput: call.inputTokens * ANTHROPIC_CACHE_RATES.write } : {}),
+    });
     const day = this.today();
     const row = this.row(day);
     if (!force) {

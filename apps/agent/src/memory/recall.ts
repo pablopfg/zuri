@@ -9,6 +9,21 @@ import { anyWordQuery } from "./text.ts";
 export const MAX_RELEVANT_MEMORIES = 8;
 /** Recent preferences always offered, when there is room. */
 const ALWAYS_PREFERENCES = 4;
+/** Health and diet restrictions always offered: a miss here is the one that can hurt the owner. */
+const ALWAYS_RESTRICTIONS = 3;
+/**
+ * What a restriction looks like in a memory's text (pt-BR and en, folded as the index folds it): a
+ * fixed FTS5 expression of prefixes and short phrases, never the owner's text. "Sugira um jantar"
+ * shares no word with "É alérgico a camarão", so the keyword recall alone leaves the allergy out.
+ */
+export const RESTRICTION_QUERY = [
+  // pt-BR
+  ...["alerg", "intoler", "celiac", "diabet", "hipertens", "vegetarian", "vegan", "lactose", "gluten", "gravidez", "gestante", "asma", "contraindic"].map((term) => `"${term}"*`),
+  ...["gravida", "nao come", "nao como", "nao bebe", "nao bebo", "nao toma", "nao tomo"].map((phrase) => `"${phrase}"`),
+  // en
+  ...["allerg", "intoleran", "coeliac", "pregnan", "asthma"].map((term) => `"${term}"*`),
+  ...["does not eat", "doesn't eat", "cannot eat", "can't eat", "does not drink", "doesn't drink"].map((phrase) => `"${phrase}"`),
+].join(" OR ");
 /** Hard ceiling of prompt tokens for memories. */
 export const MEMORY_TOKEN_CEILING = 1_500;
 
@@ -21,7 +36,8 @@ export function memoryTokenBudget(maxContextTokens: number): number {
 }
 
 /**
- * Memories for a question: matches by keywords and, with the search by meaning
+ * Memories for a question: the owner's health and diet restrictions (up to 3, whatever the question),
+ * then matches by keywords and, with the search by meaning
  * on (step 17), the `meaning` ids closest to it, fused by rank; then a few
  * recent preferences. Past facts stay out unless the question is about the
  * past; then the versions before each match come too. A few index reads;
@@ -30,10 +46,15 @@ export function memoryTokenBudget(maxContextTokens: number): number {
 export function selectRelevantMemories(repo: MemoryRepository, query: string, meaning: readonly string[] = []): MemoryRow[] {
   const past = hasHistoricalIntent(query);
   const selected = new Map<string, MemoryRow>();
+  // First, so that eight keyword matches never crowd an allergy out.
+  // One marked "never send out" comes only when the question asks for it: in every turn, it would mark every answer as local too.
+  for (const m of repo.match(RESTRICTION_QUERY, { filter: "current", limit: MAX_RELEVANT_MEMORIES })) {
+    if (m.local_only !== 1 && selected.size < ALWAYS_RESTRICTIONS) selected.set(m.id, m);
+  }
   const match = anyWordQuery(query);
   const matched = match ? repo.match(match, { filter: past ? "all" : "current", limit: MAX_RELEVANT_MEMORIES }) : [];
   if (meaning.length === 0) {
-    for (const m of matched) selected.set(m.id, m);
+    for (const m of matched) if (selected.size < MAX_RELEVANT_MEMORIES) selected.set(m.id, m);
   } else {
     const known = new Map(matched.map((m) => [m.id, m]));
     const extra = meaning.filter((id) => !known.has(id)).slice(0, MAX_RELEVANT_MEMORIES);
