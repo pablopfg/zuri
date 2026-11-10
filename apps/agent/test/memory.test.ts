@@ -560,6 +560,52 @@ describe("search", () => {
 });
 
 describe("what the AI sees", () => {
+  it("always offers the owner's health and diet restrictions, whatever the question (found with a real model)", async () => {
+    await withWorld((w) => {
+      save(w, "É alérgico a camarão e não come carne de porco", "fact");
+      save(w, "Torce para o Bahia", "fact");
+      // No word in common: the keyword recall alone left the allergy out, and the model suggested ham.
+      expect(selectRelevantMemories(w.m.repo, "Sugira três opções de jantar para hoje").map((m) => m.content)).toEqual(["É alérgico a camarão e não come carne de porco"]);
+      // Without the accent, in a phrase, and in English.
+      save(w, "Nao bebe alcool", "fact");
+      save(w, "The owner is lactose intolerant", "fact");
+      expect(selectRelevantMemories(w.m.repo, "Qual o meu time?").map((m) => m.content).sort()).toEqual([
+        "Nao bebe alcool",
+        "The owner is lactose intolerant",
+        "É alérgico a camarão e não come carne de porco",
+      ].sort());
+      // Three at most (n+1), a past one never, and eight matches don't crowd them out.
+      const past = save(w, "Era vegetariano").memory.id;
+      w.m.setStatus(past, { status: "historical" });
+      save(w, "Tem diabetes tipo 2", "fact");
+      for (let i = 0; i < 9; i++) save(w, `Gosto de música número ${i}`);
+      const many = selectRelevantMemories(w.m.repo, "Que música eu gosto?");
+      expect(many).toHaveLength(8);
+      const restrictions = many.filter((m) => /alérgico|alcool|lactose|diabetes/.test(m.content));
+      expect(restrictions).toHaveLength(3);
+      expect(many.some((m) => m.id === past)).toBe(false);
+    });
+  });
+
+  it("keeps the restrictions' places for restrictions, and never offers a marked one in every turn", async () => {
+    await withWorld((w) => {
+      // Everyday sentences that only sound like a restriction took the three places from a real one.
+      for (const text of ["A gravidade do projeto X é alta", "Restrição de horário: reuniões só à tarde", "Não posso trabalhar às sextas", "Não pode estacionar na rua de casa", "The report must not be late"]) save(w, text, "fact");
+      save(w, "Depois de muitos exames e de uma longa conversa com a médica da família, ficou claro que tem alergia a amendoim", "fact");
+      save(w, "Está grávida de cinco meses", "fact");
+      expect(selectRelevantMemories(w.m.repo, "Sugira um lanche").map((m) => m.content).sort()).toEqual([
+        "Depois de muitos exames e de uma longa conversa com a médica da família, ficou claro que tem alergia a amendoim",
+        "Está grávida de cinco meses",
+      ]);
+      // Marked "never send out": in every turn it would mark every answer as local. It still comes when the question asks.
+      const marked = save(w, "É celíaco", "fact").memory.id;
+      w.m.setLocalOnly(marked, { localOnly: true });
+      expect(selectRelevantMemories(w.m.repo, "Sugira um lanche").some((m) => m.id === marked)).toBe(false);
+      expect(selectRelevantMemories(w.m.repo, "Sou celíaco?").some((m) => m.id === marked)).toBe(true);
+    });
+  });
+
+
   it("at most 8 memories, only current ones for a present question, plus recent preferences while there is room", async () => {
     await withWorld((w) => {
       save(w, "Prefiro respostas curtas", "preference");

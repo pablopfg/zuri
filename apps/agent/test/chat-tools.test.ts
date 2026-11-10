@@ -72,6 +72,38 @@ describe("the tool registry", () => {
     }
   });
 
+  it("writes every pattern so a strict regex reader takes it: no bare [ inside a character class", () => {
+    // Anthropic's API refuses the whole request (400, "JSON schema is invalid") when one tool's
+    // `pattern` has an unescaped "[" inside a class; JavaScript accepts it, so nothing else notices.
+    const bareBracketInClass = (pattern: string) => {
+      let inClass = false;
+      for (let i = 0; i < pattern.length; i++) {
+        const char = pattern[i];
+        if (char === "\\") i++;
+        else if (!inClass && char === "[") inClass = true;
+        else if (inClass && char === "]") inClass = false;
+        else if (inClass && char === "[") return true;
+      }
+      return false;
+    };
+    expect(bareBracketInClass("^[^\\s@[\\]]+$")).toBe(true);
+    expect(bareBracketInClass("^[^\\s@\\[\\]]+$")).toBe(false);
+    const patterns = (node: unknown): string[] => {
+      if (!node || typeof node !== "object") return [];
+      const own = typeof (node as { pattern?: unknown }).pattern === "string" ? [(node as { pattern: string }).pattern] : [];
+      return [...own, ...Object.values(node).flatMap(patterns)];
+    };
+    let seen = 0;
+    for (const tool of ALL_TOOLS) {
+      for (const pattern of patterns(z.toJSONSchema(tool.input))) {
+        seen++;
+        expect(bareBracketInClass(pattern), `${tool.name}: ${pattern}`).toBe(false);
+      }
+    }
+    // add_client and update_client carry the e-mail and phone patterns: the walk did find them.
+    expect(seen).toBeGreaterThan(2);
+  });
+
   it("stableStringify gives the same text for the same data, whatever the key order", () => {
     expect(stableStringify({ b: 1, a: [{ d: 2, c: null }], e: undefined })).toBe('{"a":[{"c":null,"d":2}],"b":1}');
     expect(stableStringify("x")).toBe('"x"');

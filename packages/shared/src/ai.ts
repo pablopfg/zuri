@@ -119,6 +119,12 @@ export const PAID_PROVIDERS = {
 
 export const PAID_TERMS_AS_OF = "2026-11-04";
 
+/**
+ * Anthropic's prompt cache, as multiples of the input price: writing a prefix to the cache costs a
+ * quarter more than sending it, reading it back costs a tenth (5-minute cache).
+ */
+export const ANTHROPIC_CACHE_RATES = { write: 1.25, read: 0.1 } as const;
+
 /** US$ of `inputTokens` in and `outputTokens` out on a paid model. */
 export function paidUsd(model: PaidModel, inputTokens: number, outputTokens: number): number {
   const rate = PAID_MODELS[model];

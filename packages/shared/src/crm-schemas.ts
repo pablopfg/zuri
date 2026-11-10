@@ -44,7 +44,7 @@ export const crmEmailSchema = /* @__PURE__ */ (() =>
     .string()
     .trim()
     .max(CRM_LIMITS.email)
-    .regex(/^[^\s@<>()[\]\\,;:"]+@[^\s@<>()[\]\\,;:"]+\.[^\s@<>()[\]\\,;:"]+$/)
+    .regex(/^[^\s@<>()\[\]\\,;:"]+@[^\s@<>()\[\]\\,;:"]+\.[^\s@<>()\[\]\\,;:"]+$/)
     // .toLowerCase() rather than a transform: the agent's tools turn this into JSON Schema.
     .toLowerCase())();
 
