@@ -65,11 +65,11 @@ describe("applyTheme", () => {
   it("sets the class and the theme color, and remembers the choice", () => {
     applyTheme("dark");
     expect(classes.has("dark")).toBe(true);
-    expect(meta.content).toBe("#0b0f19");
+    expect(meta.content).toBe("#0c0c0e");
     expect(store.get("zuri.theme")).toBe("dark");
     applyTheme("light");
     expect(classes.has("dark")).toBe(false);
-    expect(meta.content).toBe("#f6f7f9");
+    expect(meta.content).toBe("#f1f1f3");
   });
 
   it("follows the system while on system, and stops following once a fixed theme is chosen", () => {
