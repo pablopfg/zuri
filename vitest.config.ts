@@ -9,7 +9,8 @@ export default defineConfig({
     coverage: {
       provider: "istanbul",
       include: ["packages/shared/src/**", "packages/shared/i18n/**", "apps/agent/src/**", "apps/web/src/**"],
-      exclude: ["**/*.d.ts", "apps/web/src/main.tsx"],
+      // The font folder holds binaries, their licence and a note on where they came from: no code to measure.
+      exclude: ["**/*.d.ts", "apps/web/src/main.tsx", "apps/web/src/fonts/**"],
       reporter: ["text-summary", "json-summary", "html"],
       reportsDirectory: "coverage",
       // Floors, a little under what the suite reached (docs/qa/estrategia-de-testes.md).
