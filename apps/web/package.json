@@ -1,6 +1,6 @@
 {
   "name": "@zuri/web",
-  "version": "0.39.7",
+  "version": "0.40.0",
   "private": true,
   "type": "module",
   "scripts": {
