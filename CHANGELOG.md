@@ -19,6 +19,28 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.41.0] - 2026-11-10
+
+Mesclada às 17:40 (UTC-3) · commit [`c6ff653`](https://github.com/pablopfg/Zuri/commit/c6ff6537b47e66bcd6e01dd5da5cec7e26898a39) · PR [#265](https://github.com/pablopfg/Zuri/pull/265) · Casca do Sinal com menu em grupos, menu de baixo e rotas novas (S02)
+
+### Alterado
+
+- Menu novo no computador, em três grupos: Início e Conversa; em Organizar, Tarefas, Agenda, Notas, Memória e Rotinas; em Relacionamento, Contatos, Avaliações e CRM. O sino subiu para o topo do menu.
+- No celular, o menu fica embaixo, com Início, Conversa, Tarefas, Agenda e "Mais", que abre os outros lugares. A barra de cima some enquanto você desce a tela e volta quando sobe.
+- Só o conteúdo rola. Os menus ficam sempre no lugar.
+- A conta e os avisos abrem num painel ao lado do menu no computador e numa folha no celular. A conta leva a Conta e perfil, Segurança, Avisos e Configurações, mostra a versão em uso, o tema e Sair.
+- "Automações" passa a se chamar "Rotinas" no menu e fica em `/rotinas`. Os fluxos foram para "CRM" (`/crm/fluxos`) e as avaliações ganharam lugar próprio no menu (`/avaliacoes`). Os endereços antigos continuam funcionando e levam para os novos.
+- A busca (Ctrl/⌘ K) lista os mesmos lugares do menu, na mesma ordem.
+- Avisos, e-mails e mensagens do bot passam a citar "Rotinas" e "CRM › Fluxos".
+
+## [0.40.1] - 2026-11-10
+
+Mesclada às 16:54 (UTC-3) · commit [`db7db40`](https://github.com/pablopfg/Zuri/commit/db7db40286134f691718d8177d9e9e6982e44cde) · PR [#204](https://github.com/pablopfg/Zuri/pull/204) · Modelos de interface, Sinal refinado e plano do novo frontend
+
+### Alterado
+
+- Sem mudança visível: modelos de interface, Sinal refinado e plano do novo frontend.
+
 ## [0.40.0] - 2026-11-10
 
 Mesclada às 15:21 (UTC-3) · commit [`64b3762`](https://github.com/pablopfg/Zuri/commit/64b37620de89bcb13d6f47976682bb692d1395e8) · PR [#261](https://github.com/pablopfg/Zuri/pull/261) · Cores, fonte e cantos do Sinal refinado (S01)
@@ -2969,7 +2991,9 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.40.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.41.0...develop
+[0.41.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.41.0
+[0.40.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.40.1
 [0.40.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.40.0
 [0.39.7]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.7
 [0.39.6]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.6
