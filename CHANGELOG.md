@@ -19,6 +19,14 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.39.7] - 2026-11-10
+
+Mesclada às 14:39 (UTC-3) · commit [`cda406a`](https://github.com/pablopfg/Zuri/commit/cda406aa718b27fc6c92071d00551c3b5e32bdcd) · PR [#257](https://github.com/pablopfg/Zuri/pull/257) · Revisão cruzada do protótipo Sinal e plano de implementação
+
+### Alterado
+
+- Sem mudança visível: revisão cruzada do protótipo Sinal e plano de implementação.
+
 ## [0.39.6] - 2026-11-10
 
 Mesclada às 13:55 (UTC-3) · commit [`cdbf57b`](https://github.com/pablopfg/Zuri/commit/cdbf57b6d8bdb7d1753318567a0906b07aa8bd54) · PR [#255](https://github.com/pablopfg/Zuri/pull/255) · Conversa com modelo real da Anthropic, restrições de saúde na memória, busca por plural e cache de prompt
@@ -2947,7 +2955,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.6...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.39.7...develop
+[0.39.7]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.7
 [0.39.6]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.6
 [0.39.5]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.5
 [0.39.4]: https://github.com/pablopfg/Zuri/releases/tag/v0.39.4
