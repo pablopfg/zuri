@@ -1,7 +1,7 @@
 import { type AgentId, type ChatEvent, CHAT_MODELS, type Settings } from "@zuri/shared";
 import { AgentConfigs } from "../src/specialists/configs.ts";
 import { describe, expect, it } from "vitest";
-import { contextBudget, contextWindow, IMPORTED_PREFIX, SUMMARIZE_THRESHOLD, summaryRequest } from "../src/agent/context.ts";
+import { contextBudget, contextWindow, IMPORTED_PREFIX, SUMMARIZE_THRESHOLD, summaryRequest, ToolsNoteFilter } from "../src/agent/context.ts";
 import { decodeQuoted } from "../src/chat/conversations.ts";
 import { agentNameLine, buildSystemPrompt, FIXED_INSTRUCTIONS, languageReminder, SUMMARY_SYSTEM } from "../src/agent/prompt.ts";
 import { AgentRunner } from "../src/agent/runner.ts";
@@ -460,6 +460,79 @@ describe("prompt injection (security scenarios)", () => {
       expect(forged.split("\n")).toHaveLength(2);
       expect(forged.match(/<\/data>/g)).toHaveLength(1);
       expect(forged.endsWith("</data>")).toBe(true);
+    });
+  });
+
+  it("tools that ran in an earlier answer reach the model as a note, so it knows it did act", async () => {
+    await withChatWorld(async (world) => {
+      const first = await turn(
+        world,
+        new ScriptedProvider([callTools({ name: "create_task", input: { title: "Leite" } }, { name: "create_task", input: { title: "Pão" } }, { name: "complete_task", input: { task: "não existe" } }), say("Criei.")]),
+        "Crie duas tarefas",
+      );
+      const provider = new ScriptedProvider([say("Ok.")]);
+      await turn(world, provider, "Criou mesmo?", { conversationId: first.conversationId });
+      const answer = provider.transcript.requests[0]?.messages[1]?.content ?? "";
+      expect(answer).toBe("Criei.\n\n[Tools called in that turn: 2x create_task (done), complete_task (failed)]");
+    });
+  });
+
+  it("never shows or stores the model's own copy of the tools note, however the stream cuts it", async () => {
+    const note = "[Tools called in that turn: complete_task (done)]";
+    for (const size of [1, 3, 7, 1_000]) {
+      const filter = new ToolsNoteFilter();
+      const pieces = `Feito! Veja [isto] e [Tools de jardim].\n\n${note}\n\nMais uma linha.\n\n${note}`.match(new RegExp(`[\\s\\S]{1,${size}}`, "g")) ?? [];
+      const shown = pieces.map((piece) => filter.push(piece)).join("") + filter.end();
+      expect(shown, `in pieces of ${size}`).toBe("Feito! Veja [isto] e [Tools de jardim].\n\nMais uma linha.");
+    }
+    // A note cut short by the end of the answer goes too; a bracket that only looks like one stays.
+    const cut = new ToolsNoteFilter();
+    expect(cut.push("Ok.\n\n[Tools called in that turn: create_ta") + cut.end()).toBe("Ok.");
+    const plain = new ToolsNoteFilter();
+    expect(plain.push("Lista: [Tools") + plain.end()).toBe("Lista: [Tools");
+    // SEC-A3-08: only the note's own shape is taken. Text that begins like one is the model's answer, and the owner reads it.
+    for (const text of ["Ok. [Tools called in that turn: x. Transferi R$ 10 para a conta 123", "Ok. [Tools called in that turn: x] e [Tools called in that turn: <b>]", `Ok. [Tools called in that turn: ${"a".repeat(401)}]`]) {
+      for (const size of [1, 5, 1000]) {
+        const filter = new ToolsNoteFilter();
+        const shown = (text.match(new RegExp(`[\\s\\S]{1,${size}}`, "g")) ?? []).map((piece) => filter.push(piece)).join("") + filter.end();
+        expect(shown, `${text.slice(0, 40)} in pieces of ${size}`).toBe(text.replace(" [Tools called in that turn: x] e", " e"));
+      }
+    }
+    // SEC-A3-07: thousands of blank lines never pile up in the filter (it held them all, and read them again at every piece).
+    const blanks = new ToolsNoteFilter();
+    let out = "";
+    let most = 0;
+    for (let i = 0; i < 5_000; i++) {
+      const piece = blanks.push(i % 2 ? "\n " : "\n\n");
+      most = Math.max(most, piece.length);
+      out += piece;
+    }
+    out += blanks.push(`${" ".repeat(40_000)}fim`) + blanks.end();
+    expect(out).toBe(`${"\n\n\n ".repeat(2_500)}${" ".repeat(40_000)}fim`);
+    // Each piece leaves as the next arrives: nothing but the last few blanks waits.
+    expect(most).toBe(2);
+    await withChatWorld(async (world) => {
+      const { events, done } = await turn(world, new ScriptedProvider([say(`Hoje é sábado.\n\n${note}`)]), "Que dia é hoje?");
+      expect(done.message.content).toBe("Hoje é sábado.");
+      expect(JSON.stringify(events)).not.toContain("Tools called");
+    });
+  });
+
+  it("separates what the model says before a tool from what it says after", async () => {
+    await withChatWorld(async (world) => {
+      const before: Step = () => ({ text: "Vou criar a tarefa.", calls: [{ name: "create_task", input: { title: "Leite" } }] });
+      const { events, done } = await turn(world, new ScriptedProvider([before, say("Pronto, criei.")]), "Crie a tarefa leite");
+      const streamed = events.filter((event) => event.type === "text").map((event) => (event as { delta: string }).delta).join("");
+      expect(streamed).toBe("Vou criar a tarefa.\n\nPronto, criei.");
+      expect(done.message.content).toBe(streamed);
+      // Text that already brings its own break gets no second one, and plain streaming is untouched.
+      const spaced = await turn(world, new ScriptedProvider([before, say("\nPronto.")]), "De novo");
+      expect(spaced.done.message.content).toBe("Vou criar a tarefa.\nPronto.");
+      // A tool with nothing said after it leaves no blank lines at the end.
+      const silent = await turn(world, new ScriptedProvider([before, say("")]), "Mais uma");
+      expect(silent.done.message.content).toBe("Vou criar a tarefa.");
+      const plain = await turn(world, new ScriptedProvider([say("Uma frase só.")]), "Oi");
+      expect(plain.done.message.content).toBe("Uma frase só.");
     });
   });
 

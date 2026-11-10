@@ -1,5 +1,6 @@
 import { AI_LIMIT_RANGES, type AiModel, PAID_MODEL_IDS, PAID_MODELS, PAID_PROVIDERS, paidUsd, usageHistorySchema, usageReportSchema } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { CircuitBreaker, ProviderChain } from "../src/ai/chain.ts";
 import { chooseChain, chooseProvider } from "../src/ai/index.ts";
 import { MeteredAI } from "../src/ai/metered.ts";
@@ -36,11 +37,11 @@ function refusal(fn: () => unknown): AppError {
 const encoder = new TextEncoder();
 
 /** Anthropic's stream: one `data:` line per event, as the Messages API sends it. */
-function anthropicStream(text: string, usage: { input: number; output: number }): Response {
+function anthropicStream(text: string, usage: { input: number; output: number; written?: number; read?: number }): Response {
   const events = [
     {
       type: "message_start",
-      message: { id: "msg_1", type: "message", role: "assistant", model: "claude-haiku-5-5", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: usage.input, output_tokens: 1 } },
+      message: { id: "msg_1", type: "message", role: "assistant", model: "claude-haiku-5-5", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: usage.input, output_tokens: 1, ...(usage.written === undefined ? {} : { cache_creation_input_tokens: usage.written }), ...(usage.read === undefined ? {} : { cache_read_input_tokens: usage.read }) } },
     },
     { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
     ...[...text.matchAll(/.{1,4}/gs)].map(([piece]) => ({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: piece } })),
@@ -106,10 +107,10 @@ describe("US$ counted before the call and settled after it", () => {
   it("holds the estimate, then keeps what the company reported, on the day and on the model's line", async () => {
     await withAiWorld(({ meter, db }) => {
       const reservation = meter.reserveChat({ model: HAIKU, billable: false, inputTokens: 10_000, maxOutputTokens: 1_000 }, LIMITS);
-      // 10,000 × 0.10 + 1,000 × 0.50 per million.
-      expect(reservation.usd).toBeCloseTo(0.0015, 10);
+      // The hold is the dearest case, the whole prompt written to the cache: 10,000 × 1.25 × 0.10 + 1,000 × 0.50 per million.
+      expect(reservation.usd).toBeCloseTo(0.00175, 10);
       expect(reservation.neurons).toBe(0);
-      expect(db.one<{ paid_usd: number }>(`SELECT paid_usd FROM zur_usage_daily`)?.paid_usd).toBeCloseTo(0.0015, 10);
+      expect(db.one<{ paid_usd: number }>(`SELECT paid_usd FROM zur_usage_daily`)?.paid_usd).toBeCloseTo(0.00175, 10);
       meter.settle(reservation, used(HAIKU, 8_000, 200));
       const report = meter.report(LIMITS, "workers-ai", HAIKU);
       expect(report.today.paidUsd).toBeCloseTo(0.0009, 10);
@@ -150,8 +151,9 @@ describe("US$ counted before the call and settled after it", () => {
     await withAiWorld(({ meter }) => {
       const limits = { ...LIMITS, usdCentsPerDay: 3 };
       const call = { model: SONNET, billable: false, inputTokens: 1_000, maxOutputTokens: 1_000 };
-      meter.reserveChat(call, limits); // 0.012 (n−1)
-      meter.reserveChat({ ...call, maxOutputTokens: 1_600 }, limits); // 0.018: lands on 0.030 exactly (n)
+      // Each hold counts the prompt as a cache write: 1,000 × 1.25 × 2 per million = 0.0025.
+      meter.reserveChat(call, limits); // 0.0125 (n−1)
+      meter.reserveChat({ ...call, maxOutputTokens: 1_500 }, limits); // 0.0175: lands on 0.030 exactly (n)
       const error = refusal(() => meter.reserveChat({ ...call, inputTokens: 1, maxOutputTokens: 1 }, limits)); // n+1
       expect(error.code).toBe("AI_LIMIT_REACHED");
       expect(error.messageKey).toBe("error.aiLimit.usd");
@@ -217,6 +219,53 @@ describe("the paid provider", () => {
     // The company's own counts, never the estimate.
     expect(steps).toEqual([{ model: HAIKU, billable: false, input: { reported: 1_200, estimated: 0 }, output: { reported: 40, estimated: 0 } }]);
     expect(provider).toMatchObject({ id: "anthropic", external: true, billable: false });
+  });
+
+  it("caches Claude's prompt at the last tool and at the end, and prices a cache write and a cache read at their own rates", async () => {
+    const { fetcher, sent } = fakeFetch((_, index) =>
+      index === 0 ? anthropicStream("Oi.", { input: 200, output: 10, written: 10_000 }) : anthropicStream("Oi.", { input: 200, output: 10, read: 10_000 }),
+    );
+    const provider = new PaidProvider(HAIKU, "sk-ant-test-key-123456", fetcher);
+    const tool = (name: string) => ({ name, description: `The ${name} tool.`, inputSchema: z.object({}), execute: async () => ({}) });
+    const steps: StepUsage[] = [];
+    const request = {
+      system: "Be brief.",
+      messages: [{ role: "user" as const, content: "Oi" }],
+      maxOutputTokens: 300,
+      tools: [tool("first"), tool("last")],
+      maxIterations: 2,
+      toolBudgetExhausted: () => false,
+      onStepUsage: (u: StepUsage) => steps.push(u),
+    };
+    await collect(provider.generateWithTools(request));
+    await collect(provider.generateWithTools(request));
+    const body = sent[0]?.body as { cache_control?: unknown; tools: { name: string; cache_control?: unknown }[] };
+    // The tools come first on the wire and never change with the clock: the mark on the last one keeps them cached across turns.
+    expect(body.tools.map((item) => [item.name, item.cache_control])).toEqual([
+      ["first", undefined],
+      ["last", { type: "ephemeral" }],
+    ]);
+    expect(body.cache_control).toEqual({ type: "ephemeral" });
+    // The counts are the real prompt (cached part and all); the bill follows the cache's rates.
+    expect(steps.map((step) => [step.input.reported, step.billedInput])).toEqual([
+      [10_200, 200 + 10_000 * 1.25],
+      [10_200, 200 + 10_000 * 0.1],
+    ]);
+    expect(stepUsd(steps[0] as StepUsage)).toBeCloseTo(paidUsd(HAIKU, 12_700, 10), 12);
+    expect(stepUsd(steps[1] as StepUsage)).toBeCloseTo(paidUsd(HAIKU, 1_200, 10), 12);
+
+    // A tool that is off this turn (an MCP server not in use) is not sent: the mark goes on the last one that is.
+    await collect(provider.generateWithTools({ ...request, tools: [tool("first"), tool("middle"), tool("off")], activeTools: () => ["first", "middle"] }));
+    const filtered = sent[2]?.body as typeof body;
+    expect(filtered.tools.map((item) => [item.name, item.cache_control])).toEqual([
+      ["first", undefined],
+      ["middle", { type: "ephemeral" }],
+    ]);
+    // A single call (a summary) is never read again: no cache write to pay for.
+    // (The stand-in answers with a stream, which this call does not read; only what was sent matters here.)
+    await provider.generate({ system: "Summarize.", messages: [{ role: "user", content: "Oi" }], maxOutputTokens: 300 }).catch(() => undefined);
+    expect(sent).toHaveLength(4);
+    expect(sent[3]?.body).not.toHaveProperty("cache_control");
   });
 
   it("asks OpenAI to keep nothing (store: false), with reasoning off and no temperature", async () => {
