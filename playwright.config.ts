@@ -14,6 +14,8 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   forbidOnly: true,
+  // Names the files that take over a minute, slowest first: a test that got slow shows in the log before it costs a part its time limit.
+  reportSlowTests: { max: 10, threshold: 60_000 },
   // Fails the run when the Worker logged an uncaught error (tests/e2e/worker-log.ts).
   globalTeardown: "./tests/e2e/worker-log.ts",
   use: {

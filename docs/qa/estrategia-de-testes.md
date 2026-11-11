@@ -74,6 +74,17 @@ A mesclagem feita por um workflow (o PR `chore(release)` e o do README) não
 gera push, então depois dela não há execução na `develop`. O que garante o PR
 de versão é a comparação byte a byte acima, não uma execução posterior.
 
+O `e2e` roda em quatro partes ao mesmo tempo (jobs `e2e (parte N de 4)`), cada
+uma numa máquina, com o próprio Worker e o próprio banco. O Playwright divide
+por arquivo (`--shard=N/4`) e cada teste cai em exatamente uma parte. O check
+exigido continua sendo o `e2e`: ele espera as quatro partes e só fica verde se
+todas passaram; parte que falha, é cancelada ou estoura o tempo deixa o `e2e`
+vermelho. Um teste novo não pode depender do que um teste de outro arquivo
+deixou no banco, porque os dois podem cair em partes diferentes. Quando a
+suíte crescer, o caminho é mais uma parte (a matriz e o `/4` em `ci.yml`),
+nunca um limite de tempo maior. O log de cada parte lista os arquivos que
+passam de um minuto.
+
 O job continua aparecendo verde no PR nos dois casos, porque as rulesets
 exigem os checks `e2e` e `lighthouse`; o resumo do job diz se a suíte rodou e
 por quê. `typecheck`, `lint` (que confere os `.html` de `docs/`), `test`,

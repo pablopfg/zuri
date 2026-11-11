@@ -49,9 +49,12 @@ test("the access log lists each try with its IP and filters by type and IP @mobi
   await expect(list.first()).toBeVisible();
   await expect(list.first()).toContainText("127.0.0.1");
 
+  // A refusal of its own (the test above makes more, but it may run in another part of the suite, on another database).
+  const refused = await page.request.post("/api/auth/login", { headers: CSRF, data: { email: EMAIL, password: PASSWORD } });
+  expect(refused.status()).toBe(400);
   await page.getByLabel("Tipo").selectOption("robot");
   await expect(page).toHaveURL(/tipo=robot/);
-  // The refusals of the test above: every row shown is a refused robot check, none a sign-in.
+  // Every row shown is a refused robot check, none a sign-in.
   const robots = isMobile ? page.locator("ul li").filter({ hasText: "Lugar e rede" }) : page.getByRole("table").locator("tbody tr");
   await expect(robots.first()).toContainText("Verificação contra robôs recusada");
   for (const row of await robots.all()) await expect(row).toContainText("Verificação contra robôs recusada");

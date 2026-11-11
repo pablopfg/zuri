@@ -22,6 +22,8 @@ export interface Job {
   if?: string;
   needs?: unknown;
   "continue-on-error"?: unknown;
+  strategy?: { "fail-fast"?: boolean; matrix?: Record<string, unknown[]> };
+  "timeout-minutes"?: number;
   permissions?: unknown;
   environment?: unknown;
   steps?: Step[];
@@ -45,6 +47,9 @@ export const triggers = (wf: Workflow) =>
 
 /** The CI jobs that the develop and main rulesets require. */
 export const REQUIRED_CI_JOBS = ["typecheck", "lint", "test", "i18n", "build", "e2e", "audit", "lighthouse"];
+
+/** The CI jobs behind a required check that are not checks themselves: the parts the "e2e" job answers for. */
+export const CI_PART_JOBS = ["e2e-parte"];
 
 /** The check of merge-order.yml, also required by the rulesets. */
 export const REQUIRED_ORDER_CHECK = "merge-order";

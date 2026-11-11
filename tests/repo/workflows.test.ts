@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import {
+  CI_PART_JOBS,
   loadWorkflow,
   REQUIRED_CI_JOBS,
   REQUIRED_CODEQL_CHECKS,
@@ -108,10 +109,12 @@ describe("GitHub Actions workflows", () => {
 
   it("has one CI job per required check", () => {
     const ci = loadWorkflow(".github/workflows/ci.yml");
-    expect(Object.keys(ci.jobs).sort()).toEqual([...REQUIRED_CI_JOBS].sort());
+    expect(Object.keys(ci.jobs).sort()).toEqual([...REQUIRED_CI_JOBS, ...CI_PART_JOBS].sort());
     for (const [name, job] of Object.entries(ci.jobs)) {
       // The check context is the job name when set, otherwise the job id.
-      expect(job.name ?? name).toBe(name);
+      if (!CI_PART_JOBS.includes(name)) expect(job.name ?? name).toBe(name);
+      // A part never takes the name of a required check.
+      else expect(REQUIRED_CI_JOBS.some((required) => job.name === required)).toBe(false);
     }
   });
 
