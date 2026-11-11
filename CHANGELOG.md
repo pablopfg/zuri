@@ -19,6 +19,14 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.49.5] - 2026-11-11
+
+Mesclada às 18:34 (UTC-3) · commit [`82ce061`](https://github.com/pablopfg/Zuri/commit/82ce0618f9d4578080ea5029470557a95388710c) · PR [#305](https://github.com/pablopfg/Zuri/pull/305) · Relógio falso anda de segundo em segundo nas novas consultas dos contatos
+
+### Alterado
+
+- Sem mudança visível: relógio falso anda de segundo em segundo nas novas consultas dos contatos.
+
 ## [0.49.4] - 2026-11-11
 
 Mesclada às 18:12 (UTC-3) · commit [`3b73989`](https://github.com/pablopfg/Zuri/commit/3b739891e77f894c9f3de74ad2bfa4754f643c49) · PR [#302](https://github.com/pablopfg/Zuri/pull/302) · Tela CRM carrega só os textos de horário, e texto faltando não derruba a tela
@@ -3262,7 +3270,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.4...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.5...develop
+[0.49.5]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.5
 [0.49.4]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.4
 [0.49.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.3
 [0.49.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.2
