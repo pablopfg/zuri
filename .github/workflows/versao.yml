@@ -1,10 +1,13 @@
 name: Versão
 
-# Each merge into develop is a version (docs/agente/versionamento.md). This
-# workflow gives it the tag vX.Y.Z and a GitHub pre-release on the merge
-# commit, and keeps one pull request "chore(release): …" open that writes the
-# section into CHANGELOG.md from the file in changelog/nao-lancado/
-# (scripts/publicar-versao.ts). It never pushes to develop or main, never
+# A version comes out once 10 merges into develop wait for it, never one per
+# merge (docs/agente/versionamento.md; MERGES_PER_VERSION in scripts/versao.ts).
+# Until then a run changes nothing. With 10 or more, this workflow gives the
+# version the tag vX.Y.Z and a GitHub pre-release on the commit of its last
+# merge, and keeps one pull request "chore(release): …" open that writes the
+# section into CHANGELOG.md from the files in changelog/nao-lancado/
+# (scripts/publicar-versao.ts). Started by hand with "agora", it makes the
+# version with the merges that wait, however few (before develop goes to main). It never pushes to develop or main, never
 # deploys and never touches main. Nothing here costs: GITHUB_TOKEN only.
 # When the run fails, report-failure opens a standard issue (docs/agente/issues.md).
 on:
@@ -16,6 +19,11 @@ on:
   schedule:
     - cron: "17 * * * *"
   workflow_dispatch:
+    inputs:
+      agora:
+        description: "Criar a versão agora, mesmo com menos de 10 merges esperando"
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -49,6 +57,8 @@ jobs:
       - name: Tag, release and changelog
         env:
           GH_TOKEN: ${{ github.token }}
+          # Empty on push and schedule; the script takes only the literal "true".
+          VERSAO_AGORA: ${{ inputs.agora }}
         run: |
           git config core.hooksPath /dev/null
           git config user.name "github-actions[bot]"

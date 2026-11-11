@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   FIRST_TAGGED_VERSION,
   fetchReleaseBranch,
+  forcedByEnv,
   isSameRelease,
   RELEASE_BRANCH,
   parseLsRemoteTags,
@@ -19,6 +20,9 @@ import {
 } from "../../scripts/publicar-versao.ts";
 import {
   applyPlan,
+  batchBody,
+  batchMerges,
+  batchTitle,
   bumpVersion,
   type Changelog,
   compareBase,
@@ -26,7 +30,9 @@ import {
   computePlan,
   describeSubject,
   localTime,
+  localTags,
   type Merge,
+  MERGES_PER_VERSION,
   mergeBody,
   noMentions,
   parseChangelog,
@@ -91,7 +97,7 @@ describe("CHANGELOG.md in the repository", () => {
     expect(versionMismatches(root, APP_VERSION)).toEqual([]);
   });
 
-  it("has one section per merge, each with its own commit and tag", () => {
+  it("has one section per version, each with its own commit and tag", () => {
     const commits = changelog.versions.map((v) => v.commit);
     expect(new Set(commits).size).toBe(commits.length);
     const prs = changelog.versions.flatMap((v) => (v.pr === null ? [] : [v.pr]));
@@ -161,43 +167,96 @@ describe("planVersions", () => {
   const minor = { name: "etapa.md", text: "<!-- versao: minor -->\n### Adicionado\n\n- Etapa nova.\n" };
   const patch = { name: "ajuste.md", text: "### Corrigido\n\n- Um ajuste.\n" };
 
-  it("bumps the minor for an etapa and the patch for anything else", () => {
-    const plan = planVersions("0.17.0", [
-      merge({ commit: sha("1"), fragments: [patch] }),
-      merge({ commit: sha("2"), fragments: [minor] }),
-      merge({ commit: sha("3"), fragments: [] }),
-    ]);
-    expect(plan.map((v) => v.version)).toEqual(["0.17.1", "0.18.0", "0.18.1"]);
-    expect(plan.map((v) => v.commit)).toEqual([sha("1"), sha("2"), sha("3")]);
+  const many = (n: number, over: (i: number) => Partial<Merge> = () => ({})) =>
+    Array.from({ length: n }, (_, i) => merge({ commit: sha((i + 1).toString(16)), subject: `fix: ajuste ${i + 1} (#${100 + i})`, ...over(i) }));
+
+  it("waits for 10 merges before making a version", () => {
+    expect(MERGES_PER_VERSION).toBe(10);
+    expect(planVersions("0.17.0", many(9))).toEqual([]);
+    expect(batchMerges(many(9)).waiting).toHaveLength(9);
+    const plan = planVersions("0.17.0", many(10));
+    expect(plan.map((v) => [v.version, v.commit])).toEqual([["0.17.1", sha("a")]]);
+    expect(batchMerges(many(10)).waiting).toEqual([]);
+    // Everything that waits goes into the same version, not only the first ten.
+    expect(planVersions("0.17.0", many(11)).map((v) => [v.version, v.commit])).toEqual([["0.17.1", sha("b")]]);
   });
 
-  it("never gives the README workflow's pull request a version of its own", async () => {
+  it("makes one version on the last merge, with every pull request in the title and every fragment in the body", () => {
+    const merges = many(10, (i) => (i === 2 ? { fragments: [patch] } : i === 7 ? { fragments: [{ name: "novo.md", text: "### Adicionado\n\n- Novo.\n" }] } : {}));
+    merges[9] = merge({ commit: sha("a"), committedAt: "2026-11-03T02:30:00Z", subject: "ci: sem número" });
+    const [v, ...rest] = planVersions("0.17.0", merges);
+    expect(rest).toEqual([]);
+    expect(v).toMatchObject({ version: "0.17.1", commit: sha("a"), pr: null, date: "2026-11-02", time: "23:30" });
+    expect(v?.title).toBe("Reúne 10 mudanças (#100, #101, #102, #103, #104, #105, #106, #107, #108)");
+    expect(v?.body).toBe("### Adicionado\n\n- Novo.\n\n### Corrigido\n\n- Um ajuste.");
+    // Its section reads back the same, and its notes say there is no single pull request.
+    expect(parseChangelog(renderChangelog({ intro: "I", versions: [v as Version] })).versions).toEqual([v]);
+    expect(releaseNotes(v as Version, null)).toContain("## Reúne 10 mudanças (#100,");
+    expect(releaseNotes(v as Version, null)).toContain("| sem PR |");
+  });
+
+  it("bumps the minor when one etapa is among the merges and the patch otherwise", () => {
+    expect(planVersions("0.17.4", many(10, (i) => (i === 3 ? { fragments: [minor] } : { fragments: [] })))[0]?.version).toBe("0.18.0");
+    expect(planVersions("0.17.4", many(10))[0]?.version).toBe("0.17.5");
+  });
+
+  it("makes the version below the count only when forced, and never an empty one", () => {
+    expect(planVersions("0.17.0", many(3), new Map(), { force: true }).map((v) => [v.version, v.commit])).toEqual([["0.17.1", sha("3")]]);
+    expect(planVersions("0.17.0", [], new Map(), { force: true })).toEqual([]);
+    expect(planVersions("0.17.0", [merge({ subject: "chore(release): versão 0.17.0 (#90)" })], new Map(), { force: true })).toEqual([]);
+    // A single merge keeps its own title and pull request.
+    expect(planVersions("0.17.0", [merge()], new Map(), { force: true })[0]).toMatchObject({ pr: 73, title: "Envia avisos com botões" });
+  });
+
+  it("says when none of the merges changed anything visible, and reads a fragment added twice once", () => {
+    expect(batchTitle(many(2))).toBe("Reúne 2 mudanças (#100, #101)");
+    expect(batchBody(many(2))).toBe("### Alterado\n\n- Sem mudança visível: reúne 2 mudanças (#100, #101).");
+    expect(batchTitle([merge({ subject: "a" }), merge({ subject: "b" })])).toBe("Reúne 2 mudanças");
+    expect(batchBody(many(2, () => ({ fragments: [patch] })))).toBe("### Corrigido\n\n- Um ajuste.");
+  });
+
+  it("never counts the README workflow's pull request", async () => {
     const { README_TITLE } = await import("../../scripts/readme.ts");
-    const plan = planVersions("0.17.0", [merge({ subject: `${README_TITLE} (#91)` }), merge({ commit: sha("4") })]);
+    const readme = merge({ subject: `${README_TITLE} (#91)` });
+    expect(planVersions("0.17.0", [...many(9), readme])).toEqual([]);
+    const plan = planVersions("0.17.0", [readme, merge({ commit: sha("4") })], new Map(), { force: true });
     expect(plan).toHaveLength(1);
     expect(plan[0]).toMatchObject({ version: "0.17.1", commit: sha("4") });
-    // A person's README pull request is a version like any other.
-    expect(planVersions("0.17.0", [merge({ subject: "docs(readme): troca as capturas (#92)" })])).toHaveLength(1);
+    // A person's README pull request counts like any other.
+    expect(planVersions("0.17.0", [...many(9), merge({ subject: "docs(readme): troca as capturas (#92)" })])).toHaveLength(1);
     // Borrowing the title does not hide a change that brings a fragment.
-    const borrowed = planVersions("0.17.0", [merge({ subject: `${README_TITLE} (#93)`, fragments: [patch] })]);
-    expect(borrowed).toHaveLength(1);
+    expect(planVersions("0.17.0", [...many(9), merge({ subject: `${README_TITLE} (#93)`, fragments: [patch] })])).toHaveLength(1);
   });
 
-  it("never gives the release pull request a version of its own", () => {
-    const plan = planVersions("0.17.0", [merge({ subject: "chore(release): versão 0.17.1 (#90)" }), merge({ commit: sha("4") })]);
+  it("never counts the release pull request", () => {
+    const release = merge({ subject: "chore(release): versão 0.17.1 (#90)" });
+    expect(planVersions("0.17.0", [...many(9), release])).toEqual([]);
+    const plan = planVersions("0.17.0", [release, merge({ commit: sha("4") })], new Map(), { force: true });
     expect(plan).toHaveLength(1);
     expect(plan[0]).toMatchObject({ version: "0.17.1", commit: sha("4"), pr: 73, title: "Envia avisos com botões", time: "09:20" });
   });
 
-  it("keeps the number of a merge that already has a tag, even if its fragment changed later", () => {
-    // A was tagged 0.17.1 as a patch; a later fix added the minor marker to its fragment.
+  it("keeps the number of a version that already has a tag, even if a fragment changed later", () => {
+    // 1 was tagged 0.17.1 as a patch; a later fix added the minor marker to its fragment.
     const tagged = new Map([[sha("1"), "0.17.1"], [sha("2"), "0.18.0"]]);
-    const plan = planVersions(
-      "0.17.0",
-      [merge({ commit: sha("1"), fragments: [minor] }), merge({ commit: sha("2"), fragments: [minor] }), merge({ commit: sha("3") })],
-      tagged,
-    );
-    expect(plan.map((v) => v.version)).toEqual(["0.17.1", "0.18.0", "0.18.1"]);
+    const merges = [merge({ commit: sha("1"), fragments: [minor] }), merge({ commit: sha("2"), fragments: [minor] }), merge({ commit: sha("3") })];
+    // The merge after the last tag waits for nine more.
+    expect(planVersions("0.17.0", merges, tagged).map((v) => v.version)).toEqual(["0.17.1", "0.18.0"]);
+    expect(batchMerges(merges, tagged).waiting.map((m) => m.commit)).toEqual([sha("3")]);
+  });
+
+  it("closes a tagged version on its commit and counts the merges after it for the next one", () => {
+    // The version was tagged on the 10th merge; two more landed before its pull request merged.
+    const tagged = new Map([[sha("a"), "0.17.1"]]);
+    const plan = planVersions("0.17.0", many(12), tagged);
+    expect(plan.map((v) => [v.version, v.commit])).toEqual([["0.17.1", sha("a")]]);
+    expect(plan[0]?.title).toMatch(/^Reúne 10 mudanças \(#100, .*#109\)$/);
+    expect(batchMerges(many(12), tagged).waiting.map((m) => m.commit)).toEqual([sha("b"), sha("c")]);
+    // Ten more after the tag: the next version, numbered from the frozen one.
+    expect(planVersions("0.17.0", many(20), tagged).map((v) => [v.version, v.commit])).toEqual([
+      ["0.17.1", sha("a")],
+      ["0.17.2", sha("14")],
+    ]);
   });
 
   it("stops when a tag would make the versions go backwards", () => {
@@ -232,7 +291,7 @@ describe("parseChangelog", () => {
   });
 
   it.each([
-    ["an entry under Não lançado", text.replace("até o workflow de versão escrever a seção.", "x\n\n### Adicionado\n\n- Escrito à mão."), /must stay empty/],
+    ["an entry under Não lançado", text.replace("quando o workflow de versão escreve a seção.", "x\n\n### Adicionado\n\n- Escrito à mão."), /must stay empty/],
     ["a heading without date", text.replace("## [0.1.1] - 2026-11-02", "## [0.1.1]"), /bad version heading/],
     ["a version without the merge line", text.replace(/^Mesclada às .*commit\/c{40}.*$/m, ""), /no "Mesclada às/],
     ["versions out of order", renderChangelog({ intro: "I", versions: [version(), version({ version: "0.1.1", commit: sha("c") })] }), /out of order/],
@@ -559,37 +618,80 @@ describe("computePlan and applyPlan on a real repository", () => {
     write(dir, "changelog/nao-lancado/.gitkeep", "");
     write(dir, "packages/shared/src/version.ts", renderVersionFile("0.0.0"));
     write(dir, "package.json", '{\n  "name": "zuri",\n  "version": "0.0.0"\n}\n');
-    const first = commit(dir, "chore: prepara o repositório (#1)", "2026-10-30T22:15:05-03:00");
+    commit(dir, "chore: prepara o repositório (#1)", "2026-10-30T22:15:05-03:00");
     write(dir, "changelog/nao-lancado/etapa-1.md", "<!-- versao: minor -->\n### Adicionado\n\n- Worker.\n");
-    const second = commit(dir, "feat: cria o Worker (#6)", "2026-10-31T01:46:24Z");
+    commit(dir, "feat: cria o Worker (#6)", "2026-10-31T01:46:24Z");
     // A later fix to the same file is part of the same entry: the newest text wins.
     write(dir, "changelog/nao-lancado/etapa-1.md", "<!-- versao: minor -->\n### Adicionado\n\n- Worker com portões.\n");
     write(dir, "src.ts", "x\n");
     const third = commit(dir, "fix: corrige o texto (#8)", "2026-10-31T12:00:00Z");
 
-    const plan = computePlan(dir);
-    expect(plan.pending.map((v) => [v.version, v.commit, v.pr])).toEqual([
-      ["0.0.1", first, 1],
-      ["0.1.0", second, 6],
-      ["0.1.1", third, 8],
-    ]);
-    expect(plan.pending[1]?.body).toBe("### Adicionado\n\n- Worker com portões.");
-    expect(plan.pending[1]).toMatchObject({ date: "2026-10-30", time: "22:46", offset: "UTC-3" });
+    // Three merges are fewer than the rule asks for: nothing is written and the file stays.
+    const waiting = computePlan(dir, undefined, "HEAD", new Map(), { threshold: 4 });
+    expect(waiting).toMatchObject({ pending: [], consumed: [], waiting: 3 });
+    expect(computePlan(dir)).toMatchObject({ pending: [], consumed: [], waiting: 3 });
+
+    const plan = computePlan(dir, undefined, "HEAD", new Map(), { threshold: 3 });
+    expect(plan.pending.map((v) => [v.version, v.commit, v.pr])).toEqual([["0.1.0", third, null]]);
+    expect(plan.pending[0]?.title).toBe("Reúne 3 mudanças (#1, #6, #8)");
+    expect(plan.pending[0]?.body).toBe("### Adicionado\n\n- Worker com portões.");
+    expect(plan.pending[0]).toMatchObject({ date: "2026-10-31", time: "09:00", offset: "UTC-3" });
     expect(plan.consumed).toEqual(["changelog/nao-lancado/etapa-1.md"]);
+    expect(plan.waiting).toBe(0);
 
     applyPlan(dir, plan);
     expect(existsSync(join(dir, "changelog/nao-lancado/etapa-1.md"))).toBe(false);
-    expect(readFileSync(join(dir, "packages/shared/src/version.ts"), "utf8")).toBe(renderVersionFile("0.1.1"));
-    expect(readFileSync(join(dir, "package.json"), "utf8")).toBe('{\n  "name": "zuri",\n  "version": "0.1.1"\n}\n');
+    expect(readFileSync(join(dir, "packages/shared/src/version.ts"), "utf8")).toBe(renderVersionFile("0.1.0"));
+    expect(readFileSync(join(dir, "package.json"), "utf8")).toBe('{\n  "name": "zuri",\n  "version": "0.1.0"\n}\n');
     const written = parseChangelog(readFileSync(join(dir, "CHANGELOG.md"), "utf8"));
-    expect(written.versions.map((v) => v.version)).toEqual(["0.1.1", "0.1.0", "0.0.1"]);
+    expect(written.versions.map((v) => v.version)).toEqual(["0.1.0"]);
 
-    // The release pull request merges; the next merge continues from its sections.
-    commit(dir, "chore(release): versões 0.0.1 a 0.1.1 (#9)", "2026-10-31T12:10:00Z");
-    expect(computePlan(dir).pending).toEqual([]);
+    // The release pull request merges; the next merges wait for the next version.
+    commit(dir, "chore(release): versão 0.1.0 (#9)", "2026-10-31T12:10:00Z");
+    expect(computePlan(dir, undefined, "HEAD", new Map(), { threshold: 1 })).toMatchObject({ pending: [], waiting: 0 });
     write(dir, "changelog/nao-lancado/ajuste.md", "### Corrigido\n\n- Ajuste.\n");
     const fourth = commit(dir, "fix: ajuste (#10)", "2026-10-31T13:00:00Z");
-    expect(computePlan(dir).pending.map((v) => [v.version, v.commit])).toEqual([["0.1.2", fourth]]);
+    expect(computePlan(dir, undefined, "HEAD", new Map(), { threshold: 2 })).toMatchObject({ pending: [], consumed: [], waiting: 1 });
+    // Started by hand with "agora": the version comes out with the one merge that waits.
+    const forced = computePlan(dir, undefined, "HEAD", new Map(), { force: true });
+    expect(forced.pending.map((v) => [v.version, v.commit, v.pr])).toEqual([["0.1.1", fourth, 10]]);
+    expect(forced.consumed).toEqual(["changelog/nao-lancado/ajuste.md"]);
+  });
+
+  it("keeps the files of the merges that wait when a tagged version is written", () => {
+    const dir = mkdtempSync(join(tmpdir(), "versao-"));
+    dirs.push(dir);
+    git(dir, "init", "-q", "-b", "develop");
+    write(dir, "CHANGELOG.md", renderChangelog({ intro: "I.", versions: [] }));
+    write(dir, "packages/shared/src/version.ts", renderVersionFile("0.0.0"));
+    write(dir, "changelog/nao-lancado/a.md", "### Corrigido\n\n- A.\n");
+    commit(dir, "fix: a (#2)", "2026-10-30T22:15:05-03:00");
+    write(dir, "changelog/nao-lancado/b.md", "### Adicionado\n\n- B antes.\n");
+    const b = commit(dir, "feat: b (#3)", "2026-10-30T23:15:05-03:00");
+    // After the tag: a new entry, and a fix to an entry of the tagged version.
+    write(dir, "changelog/nao-lancado/c.md", "<!-- versao: minor -->\n### Adicionado\n\n- C.\n");
+    write(dir, "changelog/nao-lancado/b.md", "### Adicionado\n\n- B depois.\n");
+    commit(dir, "feat: c (#4)", "2026-10-31T00:15:05-03:00");
+    const plan = computePlan(dir, undefined, "HEAD", new Map([["v0.0.1", b]]));
+    expect(plan.pending.map((v) => [v.version, v.commit, v.title])).toEqual([["0.0.1", b, "Reúne 2 mudanças (#2, #3)"]]);
+    // The text at the tag, the same as the notes of its pre-release.
+    expect(plan.pending[0]?.body).toBe("### Adicionado\n\n- B antes.\n\n### Corrigido\n\n- A.");
+    expect(plan.waiting).toBe(1);
+    expect(plan.consumed).toEqual(["changelog/nao-lancado/a.md", "changelog/nao-lancado/b.md"]);
+
+    // A waiting merge removes a file of the tagged version and another adds one with the same name: it is theirs now.
+    rmSync(join(dir, "changelog/nao-lancado/a.md"));
+    commit(dir, "chore: tira a (#5)", "2026-10-31T01:15:05-03:00");
+    write(dir, "changelog/nao-lancado/a.md", "### Corrigido\n\n- Outro A.\n");
+    commit(dir, "fix: outro a (#6)", "2026-10-31T02:15:05-03:00");
+    const later = computePlan(dir, undefined, "HEAD", new Map([["v0.0.1", b]]));
+    expect(later.pending[0]?.body).toBe("### Adicionado\n\n- B antes.\n\n### Corrigido\n\n- A.");
+    expect(later.waiting).toBe(3);
+    expect(later.consumed).toEqual(["changelog/nao-lancado/b.md"]);
+    applyPlan(dir, later);
+    expect(existsSync(join(dir, "changelog/nao-lancado/c.md"))).toBe(true);
+    expect(readFileSync(join(dir, "changelog/nao-lancado/a.md"), "utf8")).toContain("Outro A");
+    expect(existsSync(join(dir, "changelog/nao-lancado/b.md"))).toBe(false);
   });
 
   it("freezes a tagged version and reads its fragment as it was merged", () => {
@@ -600,13 +702,15 @@ describe("computePlan and applyPlan on a real repository", () => {
     write(dir, "changelog/nao-lancado/a.md", "### Corrigido\n\n- Antes.\n");
     const a = commit(dir, "fix: a (#2)", "2026-10-30T22:15:05-03:00");
     write(dir, "changelog/nao-lancado/a.md", "<!-- versao: minor -->\n### Corrigido\n\n- Depois.\n");
-    const c = commit(dir, "fix: c (#3)", "2026-10-30T23:15:05-03:00");
+    commit(dir, "fix: c (#3)", "2026-10-30T23:15:05-03:00");
     const plan = computePlan(dir, undefined, "HEAD", new Map([["v0.0.1", a]]));
-    expect(plan.pending.map((v) => [v.version, v.commit])).toEqual([
-      ["0.0.1", a],
-      ["0.0.2", c],
-    ]);
+    expect(plan.pending.map((v) => [v.version, v.commit])).toEqual([["0.0.1", a]]);
     expect(plan.pending[0]?.body).toBe("### Corrigido\n\n- Antes.");
+    expect(plan.waiting).toBe(1);
+    // The command line reads the tags of the clone, so it closes the version where the workflow does.
+    git(dir, "tag", "v0.0.1", a);
+    git(dir, "tag", "-a", "-m", "x", "outra", a);
+    expect(localTags((...args) => git(dir, ...args))).toEqual(new Map([["outra", a], ["v0.0.1", a]]));
   });
 
   it("tells a release branch that already holds the same result from one that changed", () => {
@@ -721,6 +825,19 @@ describe("versao.yml", () => {
     expect(wf.permissions).toEqual({});
     expect(job.permissions).toEqual({ contents: "write", "pull-requests": "write", actions: "write" });
     expect(job.environment).toBeUndefined();
+  });
+
+  it("makes a version below the count only from its own boolean input", () => {
+    const dispatch = (wf.on as { workflow_dispatch: { inputs: Record<string, { type: string; default: unknown }> } }).workflow_dispatch;
+    expect(Object.keys(dispatch.inputs)).toEqual(["agora"]);
+    expect(dispatch.inputs.agora).toMatchObject({ type: "boolean", default: false });
+    const step = job.steps?.find((s) => s.run?.includes("node scripts/publicar-versao.ts"));
+    // Through the environment, never pasted into the shell.
+    expect(step?.env?.VERSAO_AGORA).toBe("${{ inputs.agora }}");
+    expect(step?.run).not.toContain("${{");
+    expect(forcedByEnv({ VERSAO_AGORA: "true" })).toBe(true);
+    for (const value of ["", "false", "TRUE", "1", " true", undefined]) expect(forcedByEnv({ VERSAO_AGORA: value })).toBe(false);
+    expect(readText("scripts/publicar-versao.ts")).toContain("force = forcedByEnv(process.env)");
   });
 
   it("runs the script from develop without installing anything", () => {
