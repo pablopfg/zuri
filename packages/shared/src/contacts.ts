@@ -20,10 +20,10 @@ export const CONTACT_LIMITS = {
   /** The alarm reads Google this often until the owner picks another interval (Settings, 11/11/2026). */
   syncEveryMs: 5 * 60_000,
   /**
-   * The interval the owner may pick, in minutes. Five is the floor: the reviews' check waits two and a
-   * half minutes after a contacts' sync, so a shorter one would leave it no wake of its own.
+   * The interval the owner may pick, in minutes (from one, the owner's call of 11/11/2026). Under five,
+   * the times a day it takes come out of DAY_BUDGET, shared with the reviews' check and the flows.
    */
-  syncEveryMinMinutes: 5,
+  syncEveryMinMinutes: 1,
   syncEveryMaxMinutes: 1_440,
   /** "Sync now" at most once a minute. */
   syncNowEveryMs: 60_000,

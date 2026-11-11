@@ -41,8 +41,8 @@ etiquetas**:
 
 A cópia é atualizada a cada 5 minutos, e só com o que mudou desde a última vez
 (o Google entrega só as diferenças). Você escolhe esse intervalo no campo
-**Sincronizar a cada (minutos)**, de 5 a 1.440 (um dia); o cartão mostra a
-hora da próxima leitura. **Sincronizar agora** faz a mesma coisa
+**Sincronizar a cada (minutos)**, de 1 a 1.440 (um dia); o cartão mostra a
+hora da próxima leitura. Abaixo de 5 minutos, a leitura divide a conta do dia com a outra sincronização e com os fluxos ligados: as duas não cabem a cada minuto ao mesmo tempo (1 minuto numa pede 4 ou mais na outra), e a tela avisa quando o intervalo não cabe. **Sincronizar agora** faz a mesma coisa
 na hora, no máximo uma vez por minuto. Uma mudança feita no Google pode levar
 alguns minutos para chegar.
 
@@ -223,7 +223,13 @@ Os mesmos secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   falha mantém a hora dela, e a espera entre falhas continua dobrando a partir
   de 5 minutos, qualquer que seja o intervalo. Tudo pelo alarme único. A
   conferência das avaliações nunca divide o despertar com os contatos: se as
-  duas vencem juntas, a das avaliações espera 2 min 30 s.
+  duas vencem juntas, a das avaliações espera 2 min 30 s, ou metade do
+  intervalo dos contatos quando ele é menor que 5 minutos (30 s com os
+  contatos a cada minuto). Intervalo abaixo de 5 minutos é pago pela conta do
+  dia (`DAY_BUDGET`, `apps/agent/src/db/day-slots.ts`): uma leitura pesa 3 e um
+  horário de fluxo pesa 2, num total de 5.728; o que não cabe responde 409
+  `error.syncSlotsLimit`. Intervalo guardado fora da faixa (linha danificada)
+  vale o padrão, nunca o mínimo.
 - Campos: `PERSON_FIELDS` e `FIELDS_VERSION` em
   `apps/agent/src/google/contacts.ts`. O `syncToken` do Google vale para um
   conjunto de campos e um contato que não mudou mantém o `etag`; por isso,

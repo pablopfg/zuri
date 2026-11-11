@@ -1,4 +1,4 @@
-import { type AgentCallSettings, FLOW_LIMITS, type FlowDefinition, type FlowNode, type FlowPriority, type FlowRunProblem } from "@zuri/shared";
+import { type AgentCallSettings, FLOW_LIMITS, type FlowDefinition, type FlowNode, type FlowPriority, type FlowRunProblem, type FlowSettings } from "@zuri/shared";
 import { dataLine } from "../agent/data.ts";
 import type { MeteredAI } from "../ai/metered.ts";
 import { AppError } from "../http/errors.ts";
@@ -49,8 +49,10 @@ export interface EngineDeps {
   notify: (notice: { title: string; body: string; priority: FlowPriority }) => void;
   /** A site went up or down. */
   siteChanged: (change: SiteChange) => void;
-  /** Neurons the flows still have today (of the 3,000). */
+  /** Neurons the flows still have today (of the owner's number, 3,000 at most). */
   neuronsLeft: () => number;
+  /** The owner's numbers for a run: calls in all and tries of a call that failed for a passing reason. */
+  limits: Pick<FlowSettings, "callsPerRun" | "attempts">;
   lockdown: () => boolean;
   clock: () => number;
   /** The Google calendar and contacts (step 22c). */
@@ -94,8 +96,8 @@ export async function advance(definition: FlowDefinition, start: RunState, deps:
       next = result.items;
     } catch (error) {
       if (error instanceof FlowStepError) {
-        if (error.problem === "calls_limit" && state.calls < FLOW_LIMITS.callsPerRun) return later(deps.clock() + MINUTE);
-        if (error.transient && state.attempt + 1 < FLOW_LIMITS.attempts) {
+        if (error.problem === "calls_limit" && state.calls < deps.limits.callsPerRun) return later(deps.clock() + MINUTE);
+        if (error.transient && state.attempt + 1 < deps.limits.attempts) {
           state.attempt += 1;
           return later(deps.clock() + (FLOW_LIMITS.retryMinutes[state.attempt - 1] ?? 5) * MINUTE);
         }
@@ -139,9 +141,9 @@ async function step(node: FlowNode, state: RunState, deps: EngineDeps, wake: Wak
     case "monitor":
       return monitor(node, state, deps, wake);
     case "calendar":
-      return { kind: "items", items: await readCalendar(node, state, deps.google, wake.meter, deps.clock()) };
+      return { kind: "items", items: await readCalendar(node, state, deps.google, wake.meter, deps.clock(), deps.limits.callsPerRun) };
     case "calendar_create":
-      return { kind: "items", items: await createEvents(node, state, deps.google, wake.meter, deps.flowId) };
+      return { kind: "items", items: await createEvents(node, state, deps.google, wake.meter, deps.flowId, deps.limits.callsPerRun) };
     case "contacts":
       return { kind: "items", items: searchContacts(node, state, deps.google) };
   }
@@ -157,8 +159,8 @@ function segment(value: string): string {
   return encodeURIComponent(value);
 }
 
-function takeCall(state: RunState, wake: Wake): void {
-  if (state.calls >= FLOW_LIMITS.callsPerRun) throw new FlowStepError("calls_limit");
+function takeCall(state: RunState, wake: Wake, callsPerRun: number): void {
+  if (state.calls >= callsPerRun) throw new FlowStepError("calls_limit");
   if (!wake.meter.room(REQUEST_ROOM)) throw new FlowStepError("calls_limit");
   state.calls += 1;
 }
@@ -175,7 +177,7 @@ async function request(node: Extract<FlowNode, { type: "request" }>, state: RunS
     );
   };
   if (!node.each) {
-    takeCall(state, wake);
+    takeCall(state, wake, deps.limits.callsPerRun);
     const answer = await call(state.items[0] ?? newItem());
     return { kind: "items", items: itemsOf(answer.body, node.itemsPath) };
   }
@@ -183,7 +185,7 @@ async function request(node: Extract<FlowNode, { type: "request" }>, state: RunS
   const partial = state.partial ?? { done: 0, out: [] };
   state.partial = partial;
   while (partial.done < state.items.length) {
-    takeCall(state, wake);
+    takeCall(state, wake, deps.limits.callsPerRun);
     const item = state.items[partial.done] as Item;
     const answer = await call(item);
     const out = newItem({ ...item });
@@ -336,7 +338,7 @@ async function monitor(node: Extract<FlowNode, { type: "monitor" }>, state: RunS
     return !seen || (state.attempt > 0 && !seen.ok);
   });
   for (const url of pending) {
-    if (state.calls >= FLOW_LIMITS.callsPerRun) throw new FlowStepError("calls_limit");
+    if (state.calls >= deps.limits.callsPerRun) throw new FlowStepError("calls_limit");
     if (!wake.meter.room(REQUEST_ROOM) || deps.clock() >= wake.deadline) {
       state.checks = [...checks.values()];
       return { kind: "wait", at: deps.clock() + MINUTE };

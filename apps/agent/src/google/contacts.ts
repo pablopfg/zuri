@@ -21,6 +21,7 @@ import {
   zonedTimeToUtc,
 } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
+import { checkSyncSlots, syncMinutes } from "../db/day-slots.ts";
 import { AppError } from "../http/errors.ts";
 import { log } from "../log.ts";
 import { findCpf, maskCpf, nameParts, photoUrl, splitName } from "./contact-name.ts";
@@ -297,10 +298,14 @@ export class GoogleContacts {
     return this.onRow() !== null && this.deps.google.connected() && this.deps.google.granted(CONTACTS_SCOPE);
   }
 
-  /** The owner's interval between two reads, in ms; a value out of the allowed range (a restored row) is brought into it. */
+  /** The owner's interval between two reads, in ms; a value out of the allowed range (a damaged row) never reads more often than the default. */
   private every(row: SyncRow | null): number {
-    const minutes = row?.sync_every_min ?? CONTACT_LIMITS.syncEveryMs / 60_000;
-    return Math.min(CONTACT_LIMITS.syncEveryMaxMinutes, Math.max(CONTACT_LIMITS.syncEveryMinMinutes, Math.trunc(minutes) || 0)) * 60_000;
+    return syncMinutes(row?.sync_every_min, CONTACT_LIMITS.syncEveryMs / 60_000, CONTACT_LIMITS.syncEveryMinMinutes, CONTACT_LIMITS.syncEveryMaxMinutes) * 60_000;
+  }
+
+  /** The owner's interval between two reads, in ms (the alarm spaces the reviews' check by it). */
+  everyMs(): number {
+    return this.every(this.row());
   }
 
   /** Contacts in the copy, kept on the sync's row: counting the table would read every contact. */
@@ -445,8 +450,11 @@ export class GoogleContacts {
     set("days_ahead", patch.daysAhead);
     set("date_match", patch.match === undefined ? undefined : cleanText(patch.match, CONTACT_LIMITS.matchMax));
     set("on_added", patch.onAdded);
+    const every = patch.syncEveryMinutes;
+    // Checked before anything is written: a shorter read must fit in the day next to the reviews' check and the flows on.
+    if (every !== undefined && every * 60_000 < this.every(before)) checkSyncSlots(this.db, { contacts: every });
     if (sets.length) this.db.run(`UPDATE zur_contact_sync SET ${sets.join(", ")} WHERE id = 1`, ...values);
-    if (patch.syncEveryMinutes !== undefined && patch.syncEveryMinutes * 60_000 !== this.every(before)) this.setEvery(before, patch.syncEveryMinutes);
+    if (every !== undefined && every * 60_000 !== this.every(before)) this.setEvery(before, every);
     this.planReminder();
     return this.status();
   }

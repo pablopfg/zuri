@@ -212,6 +212,20 @@ Os textos de cada tela entram no plano da PR dela, em pt-BR e en, no catálogo (
 | Bloqueio | Modo de bloqueio ou `/bloquear` | Nada sai |
 | Ponto | Cada módulo grava a última execução boa | Ligado e sem bater o ponto há 2 janelas: aviso no Telegram |
 
+### Tudo o que é horário ou teto se ajusta na tela
+
+Pedido do Pablo (11/11/2026): nenhum fluxo do CRM com sincronização ou horário fica com o tempo preso no código. Vale para todo módulo desta lista:
+
+- Cada módulo mostra em **CRM › Automações**, na própria linha, um botão **Configurar** com os campos dele: dias, janela (começo e fim), horário do produtor, intervalo de leitura quando o módulo lê algo de tempos em tempos, teto do dia e a política de conversa em andamento.
+- Os valores das tabelas abaixo são o **padrão** de cada campo, não constantes. O servidor confere a faixa de cada um e recusa com `VALIDATION_FAILED` o que sair dela; a tela mostra a faixa embaixo do campo.
+- Faixas: janela entre 06:00 e 21:00 com pelo menos 15 minutos; teto do dia de 1 até o teto geral de 60; intervalo de leitura de 5 a 1.440 minutos (o mesmo das sincronizações do Google, PR #289); intervalo entre mensagens de 30 segundos a 1 minuto, na credencial.
+- O teto geral (60 mensagens por dia) e as tentativas (3) também vão para a tela, com o valor de hoje como máximo: o dono só pode baixar. É a mesma regra da cota usada nos fluxos (decisão de 11/11/2026): o que gasta cota ou aumenta o risco de bloqueio do número só desce.
+- Não é configuração, porque é regra de segurança e não número: o disjuntor, "não quer receber", a conferência de `crmBloqueado` e as chaves únicas.
+- Mudar um campo vale a partir da próxima janela, nunca reabre uma janela que já fechou no dia e fica no histórico do módulo. Salvar o mesmo valor não grava nada.
+- Testes de cada módulo: n−1, n e n+1 de cada faixa; mudança no meio da janela; valor igual sem gravação; banco existente com os padrões depois da migration.
+
+A parte que já existe na Zuri segue a mesma regra desde a PR do plano [crm-e-fluxos-na-tela.md](crm-e-fluxos-na-tela.md): hora do aviso de aniversários e, nos fluxos, intervalos mínimos, execuções por dia, chamadas, Neurons, tentativas e falhas até pausar.
+
 ### Janelas, intervalos e tetos por tipo
 
 Valores do n8n (`docs/regras/horarios-e-execucoes.md`, confirmados pelo Pablo em 21/10/2026), menos o pedido de avaliação, que segue a decisão de 09/11.
