@@ -92,6 +92,10 @@ describe("notes and projects", () => {
     expect(noteCreateSchema.safeParse({ title: "x", content: "a".repeat(NOTE_CONTENT_MAX + 1) }).success).toBe(false);
     expect(noteCreateSchema.safeParse({ title: "x", content: "bell\u0007" }).success).toBe(false);
     expect(noteUpdateSchema.safeParse({}).success).toBe(false);
+    // The version a save started from is not a change by itself.
+    expect(noteUpdateSchema.safeParse({ ifUpdatedAt: "2026-11-09T11:12:00.000Z" }).success).toBe(false);
+    expect(noteUpdateSchema.safeParse({ content: "a", ifUpdatedAt: "2026-11-09T11:12:00.000Z" }).success).toBe(true);
+    expect(noteUpdateSchema.safeParse({ content: "a", ifUpdatedAt: "9 de novembro" }).success).toBe(false);
   });
 
   it("projects have a name and a known status", () => {

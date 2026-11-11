@@ -1,14 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { PROJECT_NAME_MAX, type Project, type TrashItem } from "@zuri/shared";
-import { FolderKanban } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button, Dialog, EmptyState, ErrorNotice, Loading, TextField } from "../../components/ui.tsx";
 import { NOTES_KEY, PROJECTS_KEY, TASKS_KEY, useProjects } from "../../hooks/productivity.ts";
 import { api, errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
-import { TrashedNotice } from "./shared.tsx";
+import { FolderIcon as Folder, TrashedNotice } from "./shared.tsx";
 
-/** Create, rename and delete projects. A deleted project leaves its tasks and notes, outside any project. */
+/** Create, rename and delete folders ("projects" in the code). A deleted folder leaves its tasks and notes, outside any folder. */
 export function ProjectsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -83,7 +82,7 @@ export function ProjectsDialog({ open, onClose }: { open: boolean; onClose: () =
       ) : projects.isError ? (
         <ErrorNotice error={projects.error} onRetry={() => void projects.refetch()} />
       ) : projects.data.projects.length === 0 ? (
-        <EmptyState icon={<FolderKanban className="h-6 w-6" />} title={t("web.projects.empty")} />
+        <EmptyState icon={<Folder className="h-6 w-6" />} title={t("web.projects.empty")} />
       ) : (
         <ul className="max-h-80 divide-y divide-border overflow-y-auto rounded-xl border border-border">
           {projects.data.projects.map((project) =>

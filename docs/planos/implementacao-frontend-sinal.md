@@ -230,7 +230,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S03 | mesclada (#267) |
 | S04 | mesclada (#270) |
 | S05 | mesclada (#273) |
-| S06 | em revisão |
+| S06 | mesclada (#275) |
+| S07 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -303,3 +304,17 @@ Diferenças da S06 para o que as tabelas previam:
 
 1. Ordem da seção 11? Recomendação: como está, telas que já existem primeiro (S01 a S08) e as novidades depois. As S01 a S08 não dependem de nenhuma outra resposta.
 2. As que já estavam abertas e só travam da S18 em diante: lista e ordem dos fluxos do n8n, aprovação de cada automação que escreve a pacientes, ensaio de 3 dias úteis, e as três de `link-de-avaliacao.md` e de `envios-monitoramento.md`.
+
+Diferenças da S07 para o que as tabelas previam:
+
+- "Duplicar" do menu da nota não entrou. A cópia de uma nota marcada como "nunca enviar para fora" precisa nascer já marcada, e hoje isso são duas chamadas (criar e marcar); entre uma e outra a cópia ficaria desprotegida. Entra quando o servidor criar a nota com a marca num passo só.
+- A nota salva 2,5 s depois da última tecla e, sem pausa, a cada 30 s (o protótipo não fixa o tempo). O número vem da regra P4: cada salvamento grava 6 linhas.
+- O servidor passou a recusar o salvamento de uma nota que mudou em outro lugar (`ifUpdatedAt`, resposta 409). Sem isso, o salvamento automático passava por cima da outra versão antes de a tela saber dela.
+- Nota sem título é salva como "Nota sem título" (o servidor exige título). Nota vazia não é criada.
+- A linha "Salva às 08:12" não é anunciada pelo leitor de tela a cada salvamento; só a falha é (`role="alert"`). Anunciar a cada 2,5 s atrapalharia quem dita ou digita.
+- "Nunca enviar para fora" continua com a linha de explicação visível, e a dica da busca fica só para o leitor de tela.
+- Em Tarefas, a visão Concluídas continua existindo e a prioridade aparece em todas as linhas (o protótipo mostra só a alta). O prazo continua como data ("10/11/2026 às 18:00"); "Ontem, 18:00" fica para quando a Agenda (S08) trouxer o texto relativo comum.
+- O microfone é um componente só, em `components/voice/`, para a Conversa, o Início e a nota. Na nota ele fica no corpo; título e busca não têm (decisão de 10/11).
+- O ícone de pasta sai de `pages/productivity/shared.tsx` e o estado "esperando sua escolha" usa o ícone de histórico: um ícone que só duas telas sob demanda dividem vira um pedaço novo e pesa no primeiro carregamento (regra P11).
+- O alvo de toque dos botões é de 44 px (critério 5), maior que o do protótipo.
+- Achados da revisão de QA e da auditoria, corrigidos nesta PR: "Manter a minha" grava a versão inteira da tela (SEC-S07-01); o editor fechado não navega nem salva um ditado que termina depois; a lixeira não recebe a nota quando o salvamento pendente falha. Ficou aberto (baixo): nota apagada em outro lugar com o editor aberto deixa só "Tentar de novo" e sair sem salvar.

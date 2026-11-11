@@ -80,9 +80,9 @@ for (const scheme of ["light", "dark"] as const) {
         await expectAccessible(page, path);
       }
       await page.goto("/tarefas");
-      await page.getByRole("button", { name: "Projetos" }).click();
-      await expect(page.getByRole("dialog", { name: "Projetos" })).toBeVisible();
-      await expectAccessible(page, "projetos");
+      await page.getByRole("button", { name: "Pastas" }).click();
+      await expect(page.getByRole("dialog", { name: "Pastas" })).toBeVisible();
+      await expectAccessible(page, "pastas");
       await page.keyboard.press("Escape");
       await page.goto("/notas/nova");
       await expect(page.getByLabel("Texto da nota")).toBeVisible();

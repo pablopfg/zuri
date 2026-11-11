@@ -126,7 +126,7 @@ export const ptBRSecurity = {
   "web.remote.name": "Nome do token",
   "web.remote.nameHint": "Por exemplo: n8n ou Home Assistant.",
   "web.remote.scope": "O que ele pode fazer",
-  "web.remote.scope.read": "Só ler tarefas, notas, projetos, memórias e automações",
+  "web.remote.scope.read": "Só ler tarefas, notas, pastas, memórias e automações",
   "web.remote.scope.write": "Ler e escrever: cria e muda tarefas, notas, memórias e lembretes",
   "web.remote.scope.events": "Só enviar eventos, que viram avisos na categoria Eventos",
   "web.remote.scopeShort.read": "Só ler",
