@@ -19,6 +19,28 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.47.0] - 2026-11-11
+
+Mesclada às 07:37 (UTC-3) · commit [`9c41583`](https://github.com/pablopfg/Zuri/commit/9c41583c99d12effa2c8b7fe970afcc9376b1a2e) · PR [#282](https://github.com/pablopfg/Zuri/pull/282) · Agenda do Sinal com semana em grade e Configurações › Agenda (S08)
+
+### Adicionado
+
+- **Configurações › Agenda**: horário de trabalho, a visão que abre (dia, semana ou mês), se a semana começa no domingo ou na segunda, dias de trabalho e se os eventos de dia inteiro e fora do horário aparecem.
+- O que uma opção esconde aparece contado embaixo da Agenda ("2 eventos fora das 08:00 às 18:00"), com **Mostrar** ao lado.
+
+### Alterado
+
+- A semana da Agenda virou uma grade com o seu horário de trabalho: cada evento na altura da hora dele, uma linha para os de dia inteiro, as linhas "Antes" e "Depois" para o que cai fora do horário e a linha de agora.
+- O dia mostra a semana numa faixa de sete dias, com a lista do dia escolhido embaixo. No celular a Agenda abre no dia.
+- "Hoje" na Agenda é o dia do seu fuso e muda sozinho à meia-noite, com a tela aberta.
+- "Seu dia", no Início, usa o horário de trabalho escolhido em Configurações › Agenda.
+- Em Tarefas, o prazo perto de hoje aparece como "Ontem, 18:00", "Hoje" ou "Amanhã, 09:30".
+- O backup leva as preferências da agenda e a importação traz de volta.
+
+### Corrigido
+
+- Fechar um evento da Agenda devolve o foco ao evento de onde ele abriu.
+
 ## [0.46.3] - 2026-11-11
 
 Mesclada às 07:19 (UTC-3) · commit [`28b98c2`](https://github.com/pablopfg/Zuri/commit/28b98c2083319694fb280be54d6b13a123e35413) · PR [#283](https://github.com/pablopfg/Zuri/pull/283) · E2e em quatro partes paralelas, com o check e2e respondendo por todas
@@ -3107,7 +3129,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.46.3...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.47.0...develop
+[0.47.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.47.0
 [0.46.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.3
 [0.46.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.2
 [0.46.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.1
