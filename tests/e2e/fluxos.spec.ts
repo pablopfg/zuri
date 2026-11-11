@@ -262,6 +262,51 @@ test("a flow at a time of day shows its schedule when the CRM is the first scree
   }
 });
 
+test("flows with a daily, weekly or hourly schedule read on the CRM opened directly, and the editor shows the week (#297)", async ({ page }) => {
+  const id = tag();
+  const schedules = [
+    { name: `Alguns dias ${id}`, schedule: { type: "weekly", days: [1, 3], time: "10:15" }, reads: "Segunda e quarta, às 10:15 · 1 passo" },
+    { name: `Fim de semana ${id}`, schedule: { type: "weekly", days: [0, 6], time: "08:00" }, reads: "Sábado e domingo às 08:00 · 1 passo" },
+    { name: `Diário ${id}`, schedule: { type: "daily", time: "07:30" }, reads: "Todo dia às 07:30 · 1 passo" },
+    { name: `De hora em hora ${id}`, schedule: { type: "interval", minutes: 60 }, reads: "A cada hora · 1 passo" },
+    { name: `A cada duas horas ${id}`, schedule: { type: "interval", minutes: 120 }, reads: "A cada 2 horas · 1 passo" },
+  ];
+  await openFlows(page);
+  const ids: string[] = [];
+  try {
+    for (const { name, schedule } of schedules) {
+      const definition = { version: 1, trigger: { type: "schedule", schedule }, nodes: [{ type: "notify", title: "Aviso", body: "Hora de olhar.", priority: "normal", each: false }] };
+      const created = await page.request.post("/api/flows", { headers: CSRF, data: { name, definition } });
+      expect(created.status(), name).toBe(201);
+      ids.push(((await created.json()) as { flow: { id: string } }).flow.id);
+    }
+
+    // A fresh load of the CRM, never through Rotinas: the schedule's words must come with this screen.
+    for (const address of ["/crm", "/crm/fluxos"]) {
+      await page.goto(address);
+      await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
+      for (const { name, reads } of schedules) await expect(flowRow(page, name).getByText(reads), `${address}: ${name}`).toBeVisible();
+      await expect(page.getByText("Esta tela parou")).toHaveCount(0);
+      // A text that did not come with the screen would show as its key.
+      await expect(page.getByText(/\bweb\.[a-z]+\./i), address).toHaveCount(0);
+    }
+
+    // The editor of a weekly flow names the days of the week.
+    const weekly = schedules[0] as (typeof schedules)[number];
+    await rowAction(flowRow(page, weekly.name), page, "Editar");
+    const edit = page.getByRole("dialog", { name: "Editar fluxo" });
+    await expect(edit.getByLabel("Quando roda")).toHaveValue("weekly");
+    const days = edit.getByRole("group", { name: "Dias" });
+    await expect(days.getByRole("button")).toHaveText(["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]);
+    await expect(days.getByRole("button", { pressed: true })).toHaveText(["Seg", "Qua"]);
+    await expect(edit.getByText(/\bweb\.[a-z]+\./i)).toHaveCount(0);
+    await expectAccessible(page, "editar fluxo semanal");
+    await edit.getByRole("button", { name: "Cancelar" }).click();
+  } finally {
+    for (const flow of ids) await page.request.delete(`/api/flows/${flow}`, { headers: CSRF });
+  }
+});
+
 test("loading, empty and error states of the tab", async ({ page }) => {
   let answer: "slow" | "empty" | "error" = "slow";
   let release: () => void = () => undefined;
