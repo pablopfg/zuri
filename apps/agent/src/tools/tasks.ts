@@ -234,7 +234,7 @@ export const taskTools = [
 export const projectTools = [
   defineTool({
     name: "list_projects",
-    description: "List the owner's projects.",
+    description: "List the owner's projects. The owner sees them as folders (\"pastas\" in Portuguese): call them that when you talk to the owner.",
     permission: "read",
     maxCallsPerTurn: 2,
     input: z.object({}).strict(),
@@ -247,7 +247,7 @@ export const projectTools = [
   }),
   defineTool({
     name: "create_project",
-    description: "Create a project to group tasks and notes. An existing project with the same name is reused.",
+    description: "Create a project to group tasks and notes. An existing project with the same name is reused. The owner sees projects as folders (\"pastas\" in Portuguese): call them that when you talk to the owner.",
     permission: "write",
     maxCallsPerTurn: 2,
     input: z

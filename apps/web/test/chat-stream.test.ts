@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { markUse } from "../src/lib/activity.ts";
 import { ApiError } from "../src/lib/api.ts";
 import { createEventParser, streamChat } from "../src/pages/chat/stream.ts";
-import { blobToBase64 } from "../src/pages/chat/voice.ts";
+import { blobToBase64 } from "../src/components/voice/voice.ts";
 
 afterEach(() => {
   vi.unstubAllGlobals();

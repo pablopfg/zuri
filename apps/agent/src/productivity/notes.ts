@@ -166,13 +166,16 @@ export class NoteRepository {
   update(id: string, input: NoteUpdate | Untrusted): Note {
     const patch = parse(noteUpdateSchema, input);
     const current = this.row(id);
+    // The editor saves by itself: it never writes over a version it has not seen (the object runs one request at a time).
+    if (patch.ifUpdatedAt !== undefined && patch.ifUpdatedAt !== current.updated_at) throw new AppError("CONFLICT", "error.noteChanged");
     if (patch.projectId !== undefined) assertProject(this.db, patch.projectId);
     const next: NoteRow = {
       ...current,
       ...(patch.title !== undefined ? { title: patch.title } : {}),
       ...(patch.content !== undefined ? { content: patch.content } : {}),
       ...(patch.projectId !== undefined ? { project_id: patch.projectId } : {}),
-      updated_at: new Date(this.#clock()).toISOString(),
+      // Always later than the version it replaces, even within the same millisecond: `ifUpdatedAt` tells versions apart by it.
+      updated_at: new Date(Math.max(this.#clock(), Date.parse(current.updated_at) + 1)).toISOString(),
     };
     // A longer text at the database ceiling is refused; other edits still work (rule 9, SEC-6-01).
     this.deps.storage.assertEditFits([current.title, current.content], [next.title, next.content]);

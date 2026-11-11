@@ -27,8 +27,8 @@ import { dayOffset, groupRecents } from "../../lib/recents.ts";
 import { ApprovalCard, PlanCard } from "./cards.tsx";
 import { TOOL_LABEL, TOOL_STATUS_LABEL } from "./labels.ts";
 import { streamChat } from "./stream.ts";
-import { VoiceButton, VoiceStatus } from "./VoiceInput.tsx";
-import { useVoice } from "./voice.ts";
+import { VoiceButton, VoiceStatus } from "../../components/voice/VoiceInput.tsx";
+import { useVoice } from "../../components/voice/voice.ts";
 import { clock, messageDay, rowWhen, shortDate } from "./when.ts";
 
 // This screen's pt-BR texts travel with its code, not in the first bundle (rule P11).

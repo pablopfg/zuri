@@ -22,9 +22,9 @@ export function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
- * Voice input for the composer: one clip at a time, at most 60 s (it stops on
+ * Voice input for a text field: one clip at a time, at most 60 s (it stops on
  * its own there) and 2 MB. The audio goes to the server to become text, which
- * lands in the composer for the owner to read and send; it is never stored.
+ * `onText` puts in the field for the owner to read; it is never stored.
  */
 export function useVoice(onText: (text: string) => void) {
   const [state, setState] = useState<VoiceState>({ phase: "idle" });
@@ -58,7 +58,7 @@ export function useVoice(onText: (text: string) => void) {
   const start = useCallback(async () => {
     setError(null);
     if (!voiceSupported()) {
-      setError({ key: "web.chat.voice.unsupported" });
+      setError({ key: "web.voice.unsupported" });
       return;
     }
     let stream: MediaStream;
@@ -66,7 +66,7 @@ export function useVoice(onText: (text: string) => void) {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (failure) {
       const denied = failure instanceof DOMException && (failure.name === "NotAllowedError" || failure.name === "SecurityError");
-      setError({ key: denied ? "web.chat.voice.denied" : "web.chat.voice.failed" });
+      setError({ key: denied ? "web.voice.denied" : "web.voice.failed" });
       return;
     }
     const mimeType = TYPES.find((type) => MediaRecorder.isTypeSupported(type));
@@ -75,7 +75,7 @@ export function useVoice(onText: (text: string) => void) {
       media = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: 32_000 });
     } catch {
       for (const track of stream.getTracks()) track.stop();
-      setError({ key: "web.chat.voice.failed" });
+      setError({ key: "web.voice.failed" });
       return;
     }
     const chunks: Blob[] = [];
@@ -91,12 +91,12 @@ export function useVoice(onText: (text: string) => void) {
       const blob = new Blob(chunks, { type: media.mimeType || "audio/webm" });
       if (blob.size === 0) {
         setState({ phase: "idle" });
-        setError({ key: "web.chat.voice.empty" });
+        setError({ key: "web.voice.empty" });
         return;
       }
       if (blob.size > VOICE_LIMITS.maxClipBytes) {
         setState({ phase: "idle" });
-        setError({ key: "web.chat.voice.failed" });
+        setError({ key: "web.voice.failed" });
         return;
       }
       setState({ phase: "transcribing" });
@@ -105,7 +105,7 @@ export function useVoice(onText: (text: string) => void) {
         .then(
           (result) => {
             if (result.text.trim()) onText(result.text.trim());
-            else setError({ key: "web.chat.voice.empty" });
+            else setError({ key: "web.voice.empty" });
           },
           (failure: unknown) => setError({ message: errorMessage(failure) }),
         )

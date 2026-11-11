@@ -24,6 +24,7 @@
  * - `conversa-anterior=/conversa`: the same, as if it had last been used yesterday (the notice under its messages).
  * - `memoria-painel=/memoria`: a sample memory chosen, with its links in the panel.
  * - `memoria-mapa=/memoria`: the map (on a computer, with the same memory chosen).
+ * - `nota-aberta=/notas`: the sample note ("Lista da mudança de apartamento"), open in the editor.
  * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
@@ -167,6 +168,12 @@ for (const [device, options] of [
               json: { ...body, ...(body.conversations ? { conversations: body.conversations.map(aged) } : {}), ...(body.conversation ? { conversation: aged(body.conversation), messages: body.messages.map(aged) } : {}) },
             });
           });
+      }
+      if (screen.name === "nota-aberta") {
+        const list = (await (await page.request.get(`${BASE}/api/notes`, { headers: CSRF })).json()) as { notes: { id: string; title: string }[] };
+        const sample = list.notes.find((note) => note.title === "Lista da mudança de apartamento");
+        if (!sample) throw new Error("nota-aberta needs --exemplos");
+        path = `/notas/${sample.id}`;
       }
       await page.goto(BASE + path);
       await page.getByRole("heading", { level: 1 }).first().waitFor();

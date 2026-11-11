@@ -134,26 +134,50 @@ test("a note changed elsewhere while being edited keeps what was typed and offer
   expect(made.status()).toBe(201);
   const { note } = (await made.json()) as { note: Note };
   await page.goto(`/notas/${note.id}`);
-  await page.getByRole("tab", { name: "Escrever" }).click();
   const editor = page.getByLabel("Texto da nota");
-  await editor.fill("o que eu escrevi");
+  await expect(editor).toHaveValue("primeira versão");
+  const saves: number[] = [];
+  page.on("response", (response) => {
+    if (response.request().method() === "PATCH") saves.push(response.status());
+  });
 
+  // The other device saves first; this one types and its own save, a moment later, is refused (Sinal, PR S07).
   const changed = await page.request.patch(`/api/notes/${note.id}`, { headers: CSRF, data: { content: "versão do outro aparelho" } });
   expect(changed.status()).toBe(200);
-  await nextHeartbeat(page);
+  await editor.fill("o que eu escrevi");
+  await page.clock.runFor(5_000);
   await expect(page.getByText("Esta nota mudou em outro aparelho enquanto você editava.")).toBeVisible();
+  expect(saves).toEqual([409]);
   await expect(editor).toHaveValue("o que eu escrevi");
+  // Nothing saves itself over the other version while the owner has not chosen.
+  await expect(page.getByText("Ainda não salva: escolha qual versão fica")).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.clock.runFor(90_000);
+  expect(saves).toEqual([409]);
+  expect(((await (await page.request.get(`/api/notes/${note.id}`, { headers: CSRF })).json()) as { note: Note }).note.content).toBe("versão do outro aparelho");
   await expectAccessible(page, "nota mudou em outro aparelho");
 
+  // "Manter a minha" saves the owner's text at once.
   await page.getByRole("button", { name: "Manter a minha" }).click();
   await expect(page.getByText("Esta nota mudou em outro aparelho enquanto você editava.")).toHaveCount(0);
   await expect(editor).toHaveValue("o que eu escrevi");
+  await expect(page.getByText(/^Salva às \d{2}:\d{2}$/)).toBeVisible();
+  expect(saves).toEqual([409, 200]);
 
-  // Again, and this time the new version is taken.
+  // Again, and this time the new version is taken: nothing of this editor is saved over it.
   await page.request.patch(`/api/notes/${note.id}`, { headers: CSRF, data: { content: "terceira versão" } });
-  await nextHeartbeat(page);
+  await editor.fill("o que eu escrevi depois");
+  await page.clock.runFor(5_000);
   await page.getByRole("button", { name: "Ver a versão nova" }).click();
   await expect(editor).toHaveValue("terceira versão");
+  await page.clock.runFor(90_000);
+  expect(saves).toEqual([409, 200, 409]);
+
+  // An untouched editor simply shows what changed elsewhere, at the next beat.
+  await page.request.patch(`/api/notes/${note.id}`, { headers: CSRF, data: { content: "quarta versão" } });
+  await nextHeartbeat(page);
+  await expect(editor).toHaveValue("quarta versão");
+  await expect(page.getByText("Esta nota mudou em outro aparelho enquanto você editava.")).toHaveCount(0);
 });
 
 test("a task the chat creates updates the side menu's count right away, without the heartbeat", async ({ page }) => {

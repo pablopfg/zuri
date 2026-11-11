@@ -13,9 +13,9 @@ test("a dialog closes from the X in the corner or with Esc, and opens on its fir
   await signIn(page);
   await expect(page.getByRole("heading", { level: 1, name: "Tarefas" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Projetos" }).click();
-  const dialog = page.getByRole("dialog", { name: "Projetos" });
-  await expect(dialog.getByLabel("Nome do projeto")).toBeFocused();
+  await page.getByRole("button", { name: "Pastas" }).click();
+  const dialog = page.getByRole("dialog", { name: "Pastas" });
+  await expect(dialog.getByLabel("Nome da pasta")).toBeFocused();
 
   // One close button, an icon with its name, in the top right corner.
   const close = dialog.getByRole("button", { name: "Fechar" });
@@ -32,9 +32,9 @@ test("a dialog closes from the X in the corner or with Esc, and opens on its fir
 
   await close.click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("button", { name: "Projetos" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Pastas" })).toBeFocused();
 
-  await page.getByRole("button", { name: "Projetos" }).click();
+  await page.getByRole("button", { name: "Pastas" }).click();
   await expect(dialog).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
@@ -44,10 +44,10 @@ test("the X stays in view while a long dialog scrolls", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 360 });
   await page.goto("/tarefas");
   await signIn(page);
-  await page.getByRole("button", { name: "Projetos" }).click();
-  const dialog = page.getByRole("dialog", { name: "Projetos" });
+  await page.getByRole("button", { name: "Pastas" }).click();
+  const dialog = page.getByRole("dialog", { name: "Pastas" });
   // Enough projects that the list runs past the short screen.
-  const name = dialog.getByLabel("Nome do projeto");
+  const name = dialog.getByLabel("Nome da pasta");
   for (let i = 1; i <= 6; i++) {
     await name.fill(`Rolagem ${test.info().project.name} ${i}`);
     await dialog.getByRole("button", { name: "Criar" }).click();
@@ -56,9 +56,9 @@ test("the X stays in view while a long dialog scrolls", async ({ page }) => {
   await dialog.evaluate((element) => element.scrollTo(0, element.scrollHeight));
   expect(await dialog.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   await expect(dialog.getByRole("button", { name: "Fechar" })).toBeInViewport();
-  await expect(dialog.getByRole("heading", { name: "Projetos" })).toBeInViewport();
+  await expect(dialog.getByRole("heading", { name: "Pastas" })).toBeInViewport();
   // In view is not enough: nothing that scrolled under them may paint on top.
-  for (const target of [dialog.getByRole("heading", { name: "Projetos" }), dialog.getByRole("button", { name: "Fechar" })]) {
+  for (const target of [dialog.getByRole("heading", { name: "Pastas" }), dialog.getByRole("button", { name: "Fechar" })]) {
     const covered = await target.evaluate((element) => {
       const box = element.getBoundingClientRect();
       const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);

@@ -150,7 +150,7 @@ describe("tasks", () => {
     });
     expect((await refusal(await api("GET", "/tasks?view=today&view=all"), 400)).details).toEqual({ fields: ["view"] });
     const missing = await refusal(await api("POST", "/tasks", { title: "x", projectId: MISSING }), 400);
-    expect(missing).toMatchObject({ details: { fields: ["projectId"] }, message: "Este projeto não existe mais. Escolha outro." });
+    expect(missing).toMatchObject({ details: { fields: ["projectId"] }, message: "Esta pasta não existe mais. Escolha outra." });
   });
 
   it("answers 404 for ids that aren't the server's, and for ones that are gone", async () => {
@@ -201,6 +201,32 @@ describe("notes", () => {
     await json(await api("POST", `/trash/${trashItem.id}/restore`), 200);
     expect((await json<{ notes: NoteSummary[] }>(await api("GET", "/notes?q=acucar"), 200)).notes.map((n) => n.id)).toEqual([note.id]);
     expect((await refusal(await api("POST", `/trash/${trashItem.id}/restore`), 404)).message).toBe("Este item não está mais na lixeira.");
+  });
+
+  it("a save that says which version it started from is refused when the note changed since (Sinal, PR S07)", async () => {
+    const { note } = await json<{ note: Note }>(await api("POST", "/notes", { title: "Vistoria", content: "um" }), 201);
+    // Another device (or Zuri) changes the note.
+    const theirs = await json<{ note: Note }>(await api("PATCH", `/notes/${note.id}`, { content: "dois" }), 200);
+    expect(theirs.note.updatedAt > note.updatedAt).toBe(true);
+    // The editor that still has the first version is told, and nothing is written.
+    const stale = await refusal(await api("PATCH", `/notes/${note.id}`, { content: "três", ifUpdatedAt: note.updatedAt }), 409);
+    expect(stale).toMatchObject({ code: "CONFLICT", message: "Esta nota mudou em outro lugar. Veja a versão nova antes de salvar." });
+    expect((await json<{ note: Note }>(await api("GET", `/notes/${note.id}`), 200)).note).toEqual(theirs.note);
+    // With the version it has now, the same save goes through; without the field, as before, the last one wins.
+    const mine = await json<{ note: Note }>(await api("PATCH", `/notes/${note.id}`, { content: "três", ifUpdatedAt: theirs.note.updatedAt }), 200);
+    expect(mine.note.content).toBe("três");
+    expect((await json<{ note: Note }>(await api("PATCH", `/notes/${note.id}`, { title: "Vistoria de segunda" }), 200)).note.content).toBe("três");
+    // The version alone changes nothing, and it is a date, never free text.
+    await refusal(await api("PATCH", `/notes/${note.id}`, { ifUpdatedAt: mine.note.updatedAt }), 400);
+    for (const bad of ["", "ontem", "2026-11-09", 5, null, "2026-11-09T11:12:00.000Z".padEnd(41, " ")]) {
+      await refusal(await api("PATCH", `/notes/${note.id}`, { content: "x", ifUpdatedAt: bad }), 400);
+    }
+  });
+
+  it("two saves from the same version at once: one is saved, the other is told (Sinal, PR S07)", async () => {
+    const { note } = await json<{ note: Note }>(await api("POST", "/notes", { title: "Corrida", content: "" }), 201);
+    const both = await Promise.all(["a", "b"].map((content) => api("PATCH", `/notes/${note.id}`, { content, ifUpdatedAt: note.updatedAt })));
+    expect(both.map((res) => res.status).sort()).toEqual([200, 409]);
   });
 
   it("takes a note of 200,000 characters and refuses a longer one", async () => {

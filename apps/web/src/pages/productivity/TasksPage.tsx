@@ -12,22 +12,26 @@ import {
   type TaskView,
   type TrashItem,
 } from "@zuri/shared";
-import { CalendarDays, CheckCircle2, ChevronDown, Circle, CircleDot, Flag, FolderKanban, Plus, Search, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Circle, CircleDot, Flag, Plus, Search, Trash2, TriangleAlert } from "lucide-react";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, cn, Dialog, EmptyState, ErrorNotice, fieldClass, PageHeader, SelectField, Loading, TextAreaField, TextField } from "../../components/ui.tsx";
+import { Button, buttonClass, cn, Dialog, EmptyState, ErrorNotice, fieldClass, PageHeader, SelectField, Loading, TextAreaField, TextField } from "../../components/ui.tsx";
 import { PROJECTS_KEY, TASKS_KEY, useProjects, useTasks } from "../../hooks/productivity.ts";
 import { useTaskCounts } from "../../hooks/task-counts.ts";
 import { api, errorMessage } from "../../lib/api.ts";
 import { FlashStatus, flashClass, useDebounced, useFlash } from "../../lib/lists.tsx";
 import { dueFromInputs, dueInputs, formatDue, quickAddDue } from "../../lib/due.ts";
 import { useI18n } from "../../lib/i18n.tsx";
+import { groupTasks } from "./task-groups.ts";
 import { ProjectsDialog } from "./ProjectsDialog.tsx";
-import { PRIORITY_LABEL, ProjectOptions, STATUS_LABEL, TrashedNotice, VIEW_EMPTY, VIEW_LABEL } from "./shared.tsx";
+import { FolderIcon as Folder, PRIORITY_LABEL, ProjectOptions, STATUS_LABEL, TrashedNotice, VIEW_EMPTY, VIEW_LABEL } from "./shared.tsx";
 
-/** Tasks: views by deadline, a project filter, search, quick add, completion and an editor (layout after the Talorys list). */
+/**
+ * Tasks: quick add, views by deadline, search, a folder filter, the list under its headings (late first) and an
+ * editor. The arrangement is the Sinal one (PR S07); "project" is the name in the code of what the owner sees as a folder.
+ */
 export function TasksPage() {
-  const { t } = useI18n();
+  const { t, timeZone } = useI18n();
   const [view, setView] = useState<TaskView>("today");
   const [projectId, setProjectId] = useState("");
   const [query, setQuery] = useState("");
@@ -59,6 +63,53 @@ export function TasksPage() {
     navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
   }, [location.key]);
 
+  // Marking a task moves its row to another heading (and back, when the server refuses), so what the row
+  // would lose on the way lives here: the wait, the reason of a refusal and the focus.
+  const qc = useQueryClient();
+  const [marking, setMarking] = useState<ReadonlySet<string>>(new Set());
+  const [refused, setRefused] = useState<Record<string, string>>({});
+  const follow = useRef<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: after every drawing, while a marked task is being followed.
+  useEffect(() => {
+    if (follow.current && (document.activeElement === document.body || document.activeElement === null)) {
+      document.querySelector<HTMLElement>(`input[data-task="${follow.current}"]:not(:disabled)`)?.focus();
+    }
+  });
+
+  async function toggle(task: Task) {
+    const status = task.status === "done" ? "todo" : "done";
+    const waiting = (on: boolean) =>
+      setMarking((current) => {
+        const next = new Set(current);
+        if (on) next.add(task.id);
+        else next.delete(task.id);
+        return next;
+      });
+    follow.current = task.id;
+    waiting(true);
+    setRefused(({ [task.id]: _gone, ...rest }) => rest);
+    // The mark changes at once (in this same click) in every list that shows the task; a refusal puts the lists back as they were.
+    // A fetch in flight would land after the mark and undo it.
+    await qc.cancelQueries({ queryKey: TASKS_KEY });
+    const before = qc.getQueriesData({ queryKey: TASKS_KEY });
+    qc.setQueriesData<{ tasks: Task[] }>({ queryKey: TASKS_KEY }, (list) =>
+      list?.tasks ? { ...list, tasks: list.tasks.map((item) => (item.id === task.id ? { ...item, status } : item)) } : list,
+    );
+    try {
+      await api(`/tasks/${task.id}`, { method: "PATCH", body: { status } });
+    } catch (err) {
+      for (const [key, data] of before) qc.setQueryData(key, data);
+      setRefused((current) => ({ ...current, [task.id]: errorMessage(err) }));
+    } finally {
+      waiting(false);
+      await qc.invalidateQueries({ queryKey: TASKS_KEY });
+      // The lists are as the server has them: the row is where it stays, and the focus is the owner's again.
+      setTimeout(() => {
+        if (follow.current === task.id) follow.current = null;
+      }, 0);
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -66,11 +117,11 @@ export function TasksPage() {
         description={t("web.tasks.description")}
         actions={
           <>
-            <Button variant="ghost" onClick={() => setProjectsOpen(true)}>
-              <FolderKanban className="h-4 w-4" aria-hidden />
+            <Button variant="secondary" className="min-w-11 px-3" onClick={() => setProjectsOpen(true)}>
+              <Folder className="h-4 w-4" aria-hidden />
               <span className="sr-only sm:not-sr-only">{t("web.projects.manage")}</span>
             </Button>
-            <Link to="/configuracoes/dados?tipo=tarefas" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium hover:bg-raised">
+            <Link to="/configuracoes/dados?tipo=tarefas" className={buttonClass("secondary", "min-w-11 px-3")}>
               <Trash2 className="h-4 w-4" aria-hidden />
               <span className="sr-only sm:not-sr-only">{t("web.trash.open")}</span>
             </Link>
@@ -80,8 +131,12 @@ export function TasksPage() {
 
       {trashed && <TrashedNotice item={trashed} message={t("web.tasks.trashed")} onDone={() => setTrashed(null)} />}
 
-      {/* Sized by their labels; on a narrow phone the row scrolls sideways instead of squeezing them (stage 26c). */}
-      <fieldset className="flex min-w-0 gap-1 overflow-x-auto rounded-xl bg-raised p-1">
+      <div className="space-y-4">
+        {/* A task added here would not show up in Completed or Overdue, so those views have no quick add. */}
+        {view !== "completed" && view !== "overdue" && <NewTask projects={projectList} forToday={view === "today"} focusSignal={focusNew} />}
+
+        {/* Sized by their labels; on a narrow phone they wrap into rows, nothing hides off the side (Sinal). */}
+        <fieldset className="flex min-w-0 flex-wrap gap-1 rounded-xl bg-raised p-1 sm:w-fit">
         <legend className="sr-only">{t("web.tasks.viewLabel")}</legend>
         {TASK_VIEWS.map((item) => (
           <button
@@ -90,7 +145,7 @@ export function TasksPage() {
             aria-pressed={view === item}
             onClick={() => setView(item)}
             className={cn(
-              "min-h-11 flex-auto shrink-0 whitespace-nowrap rounded-lg px-3 text-sm font-medium transition-colors",
+              "min-h-11 flex-auto whitespace-nowrap rounded-lg px-3.5 text-sm font-medium transition-colors",
               view === item ? "bg-surface text-fg shadow-sm ring-1 ring-border-strong" : "text-fg-muted hover:text-fg",
             )}
           >
@@ -99,12 +154,8 @@ export function TasksPage() {
         ))}
       </fieldset>
 
-      <div className="space-y-4">
-        {/* A task added here would not show up in Completed or Overdue, so those views have no quick add. */}
-        {view !== "completed" && view !== "overdue" && <NewTask projects={projectList} forToday={view === "today"} focusSignal={focusNew} />}
-
         <section aria-label={t("web.tasks.listLabel")} className="space-y-3">
-          <div className="grid grid-cols-[minmax(0,1fr)_9rem] gap-2 sm:grid-cols-[1fr_14rem]">
+          <div className="grid grid-cols-[minmax(0,1fr)_11rem] gap-2 sm:grid-cols-[1fr_14rem]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" aria-hidden />
               <input
@@ -138,11 +189,27 @@ export function TasksPage() {
               {!q && view === "all" && t("web.tasks.emptyBody.all")}
             </EmptyState>
           ) : (
-            <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
-              {tasks.data.tasks.map((task) => (
-                <TaskRow key={task.id} task={task} projects={projectList} glow={flashClass(flash.glowing, task.id)} onOpen={() => setEditing(task)} />
-              ))}
-            </ul>
+            groupTasks(tasks.data.tasks, new Date(), timeZone).map(({ group, tasks: rows }) => (
+              <section key={group} aria-labelledby={`tasks-${group}`} className="space-y-2">
+                <h2 id={`tasks-${group}`} className="pt-1 text-sm font-semibold">
+                  {t(VIEW_LABEL[group])} <span className="ml-1 font-normal tabular-nums text-fg-muted">{rows.length}</span>
+                </h2>
+                <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+                  {rows.map((task) => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      projects={projectList}
+                      glow={flashClass(flash.glowing, task.id)}
+                      onOpen={() => setEditing(task)}
+                      pending={marking.has(task.id)}
+                      error={refused[task.id]}
+                      onToggle={() => void toggle(task)}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))
           )}
           <FlashStatus count={flash.remote} />
         </section>
@@ -282,89 +349,81 @@ function NewTask({ projects, forToday, focusSignal }: { projects: Project[]; for
   );
 }
 
-function TaskRow({ task, projects, glow, onOpen }: { task: Task; projects: Project[]; glow: string; onOpen: () => void }) {
+function TaskRow({
+  task,
+  projects,
+  glow,
+  onOpen,
+  pending,
+  error,
+  onToggle,
+}: { task: Task; projects: Project[]; glow: string; onOpen: () => void; pending: boolean; error: string | undefined; onToggle: () => void }) {
   const { t, locale, timeZone, dateTime } = useI18n();
-  const qc = useQueryClient();
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const done = task.status === "done";
   const overdue = !done && task.dueAt !== null && Date.parse(task.dueAt) < Date.now();
   const project = projects.find((item) => item.id === task.projectId);
   const flagged = !done && (task.priority === "high" || task.priority === "urgent");
 
-  async function toggle() {
-    const status = done ? "todo" : "done";
-    setPending(true);
-    setError(null);
-    // The mark changes at once (in this same click) in every list that shows the task; a refusal puts the lists back as they were.
-    // A fetch in flight would land after the mark and undo it.
-    await qc.cancelQueries({ queryKey: TASKS_KEY });
-    const before = qc.getQueriesData({ queryKey: TASKS_KEY });
-    qc.setQueriesData<{ tasks: Task[] }>({ queryKey: TASKS_KEY }, (list) =>
-      list?.tasks ? { ...list, tasks: list.tasks.map((item) => (item.id === task.id ? { ...item, status } : item)) } : list,
-    );
-    try {
-      await api(`/tasks/${task.id}`, { method: "PATCH", body: { status } });
-    } catch (err) {
-      for (const [key, data] of before) qc.setQueryData(key, data);
-      setError(errorMessage(err));
-    } finally {
-      setPending(false);
-      void qc.invalidateQueries({ queryKey: TASKS_KEY });
-    }
-  }
-
   const Mark = done ? CheckCircle2 : task.status === "in_progress" ? CircleDot : Circle;
+  const due = task.dueAt ? formatDue(task.dueAt, locale, timeZone, dateTime) : "";
   return (
-    <li className={cn("flex items-start gap-1 px-2 py-1.5 transition-colors hover:bg-raised/60", glow)}>
+    <li className={cn("grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-1 px-2 py-1.5 transition-colors hover:bg-raised/60 sm:grid-cols-[2.75rem_minmax(0,1fr)_auto]", glow)}>
       {/* A real checkbox, drawn as a 44 px round mark: the icon shows the state, the input takes the touch. */}
-      <span className={cn("relative flex h-11 w-11 shrink-0 items-center justify-center", done ? "text-accent-text" : "text-fg-muted")}>
+      <span className={cn("relative row-span-2 flex h-11 w-11 shrink-0 items-center justify-center sm:row-span-1", done ? "text-accent-text" : "text-fg-muted")}>
         <input
           type="checkbox"
           checked={done}
           disabled={pending}
-          onChange={() => void toggle()}
+          data-task={task.id}
+          onChange={onToggle}
           aria-label={t(done ? "web.tasks.reopen" : "web.tasks.complete", { title: task.title })}
           className="peer absolute inset-0 h-11 w-11 cursor-pointer appearance-none rounded-xl disabled:cursor-wait"
         />
         <Mark className="pointer-events-none relative h-5 w-5 peer-hover:text-accent-text" aria-hidden />
       </span>
-      <div className="min-w-0 flex-1 py-1">
+      <div className="min-w-0">
         <button
           type="button"
           onClick={onOpen}
-          className={cn("min-h-11 w-full rounded-lg px-1 text-left text-[15px] leading-6 hover:underline", done && "text-fg-muted line-through")}
+          className={cn("min-h-11 w-full rounded-lg px-1 text-left text-[15px] leading-6 font-medium break-words hover:underline", done && "font-normal text-fg-muted line-through")}
         >
           {task.title}
         </button>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs text-fg-muted">
-          {task.dueAt && (
-            <span className={cn("inline-flex items-center gap-1", overdue && "font-medium text-danger")}>
-              <CalendarDays className="h-3 w-3" aria-hidden />
-              {overdue ? t("web.tasks.overdueAt", { date: formatDue(task.dueAt, locale, timeZone, dateTime) }) : t("web.tasks.dueAt", { date: formatDue(task.dueAt, locale, timeZone, dateTime) })}
-            </span>
-          )}
-          {project && <span>{project.name}</span>}
-          {task.status === "in_progress" && <span>{t(STATUS_LABEL.in_progress)}</span>}
-          {task.description && <span className="max-w-[16rem] truncate">{task.description}</span>}
-        </div>
+        {(project || task.status === "in_progress" || task.description) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 pb-1 text-sm text-fg-muted">
+            {project && (
+              <span className="inline-flex min-w-0 items-center gap-1">
+                <Folder className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{project.name}</span>
+              </span>
+            )}
+            {task.status === "in_progress" && <span className="rounded-full bg-raised px-2 py-0.5 text-xs font-medium text-fg">{t(STATUS_LABEL.in_progress)}</span>}
+            {task.description && <span className="max-w-[16rem] truncate">{task.description}</span>}
+          </div>
+        )}
         {error && (
           <p role="alert" className="px-1 text-sm text-danger">
             {error}
           </p>
         )}
       </div>
-      {flagged && (
-        <span
-          className={cn(
-            "mt-2.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-            task.priority === "urgent" ? "bg-danger-soft text-danger" : "bg-warning-soft text-warning",
-          )}
-        >
-          <Flag className="h-3 w-3" aria-hidden />
+      {/* Deadline and priority: at the right on a wide screen, under the title on a phone. */}
+      <div className="col-start-2 flex flex-wrap items-center gap-x-3 gap-y-1 px-1 pb-1.5 text-sm tabular-nums text-fg-muted sm:col-start-3 sm:flex-col sm:items-end sm:justify-center sm:py-1.5 sm:pr-3">
+        {due &&
+          (overdue ? (
+            <span className="inline-flex items-center gap-1 font-medium text-danger">
+              <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {t("web.tasks.overdueAt", { date: due })}
+            </span>
+          ) : (
+            <span>{due}</span>
+          ))}
+        <span className={cn("inline-flex items-center gap-1", flagged && "font-medium", flagged && (task.priority === "urgent" ? "text-danger" : "text-warning"))}>
+          <Flag className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="sr-only">{t("web.tasks.field.priority")}: </span>
           {t(PRIORITY_LABEL[task.priority])}
         </span>
-      )}
+      </div>
     </li>
   );
 }

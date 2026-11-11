@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type MessageKey, type Project, ptBRProductivity, type TaskPriority, type TaskStatus, type TaskView, type TrashItem } from "@zuri/shared";
-import { X } from "lucide-react";
+import { FolderClosed, X } from "lucide-react";
 import { useState } from "react";
 import { Button, Notice } from "../../components/ui.tsx";
 import { NOTES_KEY, PROJECTS_KEY, TASKS_KEY, TRASH_KEY } from "../../hooks/productivity.ts";
@@ -10,6 +10,12 @@ import { addMessages, useI18n } from "../../lib/i18n.tsx";
 // Every screen with tasks, notes, projects or the trash imports this module: their pt-BR texts
 // arrive with it, not in the first bundle (rule P11).
 addMessages(ptBRProductivity);
+
+/**
+ * The folder icon of tasks and notes, handed out from here, and not the one the Memory screen draws: an icon
+ * two on-demand screens import becomes a chunk of its own, whose name weighs on the first load (rule P11).
+ */
+export const FolderIcon = FolderClosed;
 
 export const VIEW_LABEL: Record<TaskView, MessageKey> = {
   today: "web.tasks.view.today",
