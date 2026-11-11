@@ -1,15 +1,18 @@
 // Version of the system in development (docs/agente/versionamento.md).
 //
-// Every pull request merged into develop is one version. CHANGELOG.md keeps a
-// section per version, newest first, with the merge time in UTC-3, the merge
-// commit and the pull request. This script finds the merges on develop that
-// have no section yet, numbers them (an etapa bumps the minor, anything else
-// the patch, SemVer 0.x until the first release on main), writes their
-// sections from their files in changelog/nao-lancado/, removes those files and
-// writes the version into every file that carries it (versionFiles: version.ts,
-// each package.json of the workspace and package-lock.json).
+// A version gathers the pull requests merged into develop since the one before
+// it, and only comes out once MERGES_PER_VERSION of them are waiting (Pablo,
+// 11/11/2026). CHANGELOG.md keeps a section per version, newest first, with the
+// time in UTC-3 and the commit of its last merge. This script finds the merges
+// on develop that have no section yet, groups them into versions (an etapa
+// among them bumps the minor, anything else the patch, SemVer 0.x until the
+// first release on main), writes their sections from their files in
+// changelog/nao-lancado/, removes those files and writes the version into every
+// file that carries it (versionFiles: version.ts, each package.json of the
+// workspace and package-lock.json).
 //
-//   node scripts/versao.ts              prints the versions still to write
+//   node scripts/versao.ts              prints the versions still to write and how many merges wait
+//   node scripts/versao.ts --agora      counts the waiting merges as a version even below MERGES_PER_VERSION
 //   node scripts/versao.ts --gravar     writes them (the versao.yml workflow does this)
 //   node scripts/versao.ts --conferir   fails when a file carries a version other than CHANGELOG.md's (npm run lint)
 //   node scripts/versao.ts --sincronizar writes CHANGELOG.md's version into those files
@@ -26,6 +29,8 @@ export const TIME_ZONE = "America/Sao_Paulo";
 export const UNRELEASED = "## [Não lançado]";
 export const VERSION_FILE = "packages/shared/src/version.ts";
 export const LOCK_FILE = "package-lock.json";
+/** Merges on develop a version waits for. Merges made by the workflows themselves never count (isAutomaticMerge). */
+export const MERGES_PER_VERSION = 10;
 /** The squash title of the pull request the workflow opens: never a version of its own. */
 export const RELEASE_SUBJECT = /^chore\(release\):/;
 /** The squash title of the README workflow's pull request (scripts/readme.ts): only the stage map, never a version. */
@@ -50,10 +55,11 @@ export interface Version {
   time: string;
   /** Offset of TIME_ZONE at that moment, as "UTC-3". */
   offset: string;
-  /** The merge commit on develop (40 hex). */
+  /** The commit on develop of the last merge the version gathers (40 hex). */
   commit: string;
+  /** The pull request, when the version is a single merge; null when it gathers several (their numbers are in the title). */
   pr: number | null;
-  /** What the merge did, in pt-BR (the pull request title without its type). */
+  /** What the merge did, in pt-BR (the pull request title without its type), or how many merges the version gathers. */
   title: string;
   /** "### Group" sections with "- " entries. */
   body: string;
@@ -136,7 +142,7 @@ export function renderChangelog(changelog: Changelog): string {
     `[Não lançado]: ${latest ? `${REPO_URL}/compare/v${latest}...${BASE_BRANCH}` : `${REPO_URL}/commits/${BASE_BRANCH}`}`,
     ...changelog.versions.map((v) => `[${v.version}]: ${REPO_URL}/releases/tag/v${v.version}`),
   ];
-  const unreleased = `${UNRELEASED}\n\nO que já entrou na \`${BASE_BRANCH}\` e ainda não ganhou número fica em [\`${FRAGMENT_DIR}/\`](${FRAGMENT_DIR}/) por alguns minutos, até o workflow de versão escrever a seção.\n`;
+  const unreleased = `${UNRELEASED}\n\nO que já entrou na \`${BASE_BRANCH}\` e ainda não ganhou número fica em [\`${FRAGMENT_DIR}/\`](${FRAGMENT_DIR}/) até juntar ${MERGES_PER_VERSION} merges, quando o workflow de versão escreve a seção.\n`;
   return ["# Changelog\n", `${changelog.intro.trim()}\n`, unreleased, ...changelog.versions.map(renderVersion), `${links.join("\n")}\n`].join("\n");
 }
 
@@ -210,30 +216,81 @@ export function mergeBody(merge: Merge): string {
   return `### Alterado\n\n- Sem mudança visível: ${title.charAt(0).toLowerCase()}${title.slice(1)}.`;
 }
 
+export interface VersionRule {
+  /** Merges a version waits for (MERGES_PER_VERSION). */
+  threshold?: number;
+  /** Closes a version with the merges that wait, however few (the "agora" input of the workflow). */
+  force?: boolean;
+}
+
 /**
- * Numbers the merges after `last`, oldest first. Returns them oldest first too.
- * A merge that already has a tag (`tagged`, by commit) keeps that number: a
- * version is public once its tag exists, and a later edit to a fragment never
- * renumbers it. The next merges count on from it.
+ * Groups the merges, oldest first, into the versions they form. A merge that already has a tag closes a
+ * version there, with every merge before it: a version is public once its tag exists. The merges after the
+ * last tag form one more version only when `threshold` of them wait (or with `force`); otherwise they wait.
  */
-export function planVersions(last: string, merges: Merge[], tagged: ReadonlyMap<string, string> = new Map()): Version[] {
+export function batchMerges(
+  merges: Merge[],
+  tagged: ReadonlyMap<string, string> = new Map(),
+  { threshold = MERGES_PER_VERSION, force = false }: VersionRule = {},
+): { batches: Merge[][]; waiting: Merge[] } {
+  const batches: Merge[][] = [];
+  let open: Merge[] = [];
+  for (const merge of merges) {
+    if (isAutomaticMerge(merge)) continue;
+    open.push(merge);
+    if (tagged.has(merge.commit)) {
+      batches.push(open);
+      open = [];
+    }
+  }
+  if (open.length > 0 && (force || open.length >= threshold)) {
+    batches.push(open);
+    open = [];
+  }
+  return { batches, waiting: open };
+}
+
+/** The title of a version that gathers several merges: how many, and their pull requests. */
+export function batchTitle(batch: Merge[]): string {
+  const prs = batch.flatMap((merge) => {
+    const pr = pullRequestNumber(merge.subject);
+    return pr === null ? [] : [`#${pr}`];
+  });
+  return `Reúne ${batch.length} mudanças${prs.length > 0 ? ` (${prs.join(", ")})` : ""}`;
+}
+
+/** The section of a version that gathers several merges: every fragment joined, or one line when none changed anything visible. */
+export function batchBody(batch: Merge[]): string {
+  // A fragment removed and added again by a later merge is still one entry.
+  const fragments = new Map(batch.flatMap((merge) => merge.fragments).map((f) => [f.name, f] as const));
+  const groups = mergeGroups(new Map(), ...[...fragments.values()].map((f) => parseGroups(f.text).groups));
+  if (groups.size > 0) return renderGroups(groups).trim();
+  return `### Alterado\n\n- Sem mudança visível: ${batchTitle(batch).replace(/^R/, "r")}.`;
+}
+
+/**
+ * Numbers the versions the merges after `last` form (batchMerges), oldest first. Each version sits on its
+ * last merge; one etapa among its merges bumps the minor. A version that already has a tag (`tagged`, by
+ * commit) keeps that number: a later edit to a fragment never renumbers it. The next ones count on from it.
+ */
+export function planVersions(last: string, merges: Merge[], tagged: ReadonlyMap<string, string> = new Map(), rule: VersionRule = {}): Version[] {
   let current = last;
-  return merges
-    .filter((merge) => !isAutomaticMerge(merge))
-    .map((merge) => {
-      const bump: Bump = merge.fragments.some((f) => fragmentBump(f.text) === "minor") ? "minor" : "patch";
-      const frozen = tagged.get(merge.commit);
-      if (frozen && compareVersions(frozen, current) <= 0) throw new Error(`tag v${frozen} of ${merge.commit.slice(0, 7)} is not after ${current}`);
-      current = frozen ?? bumpVersion(current, bump);
-      return {
-        version: current,
-        ...localTime(merge.committedAt),
-        commit: merge.commit,
-        pr: pullRequestNumber(merge.subject),
-        title: describeSubject(merge.subject),
-        body: mergeBody(merge),
-      };
-    });
+  return batchMerges(merges, tagged, rule).batches.map((batch) => {
+    const merge = batch.at(-1) as Merge;
+    const bump: Bump = batch.some((m) => m.fragments.some((f) => fragmentBump(f.text) === "minor")) ? "minor" : "patch";
+    const frozen = tagged.get(merge.commit);
+    if (frozen && compareVersions(frozen, current) <= 0) throw new Error(`tag v${frozen} of ${merge.commit.slice(0, 7)} is not after ${current}`);
+    current = frozen ?? bumpVersion(current, bump);
+    const single = batch.length === 1;
+    return {
+      version: current,
+      ...localTime(merge.committedAt),
+      commit: merge.commit,
+      pr: single ? pullRequestNumber(merge.subject) : null,
+      title: single ? describeSubject(merge.subject) : batchTitle(batch),
+      body: single ? mergeBody(merge) : batchBody(batch),
+    };
+  });
 }
 
 /** The "workspaces" paths of the root package.json, as written (empty without one). */
@@ -390,6 +447,20 @@ export function releaseName(v: Pick<Version, "version">): string {
 
 type Git = (...args: string[]) => string;
 
+/** The tags of this clone as `name → commit` (annotated tags peeled), for the command line: the workflow reads GitHub's. */
+export function localTags(git: Git): Map<string, string> {
+  const out = git("for-each-ref", "--format=%(refname:short)%09%(objectname)%09%(*objectname)", "refs/tags").trim();
+  return new Map(
+    out
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [name = "", commit = "", peeled = ""] = line.split("\t");
+        return [name, peeled || commit] as const;
+      }),
+  );
+}
+
 export function gitIn(root: string): Git {
   return (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 }
@@ -399,15 +470,25 @@ export function mergesSince(git: Git, since: string | null, ref = "HEAD", tagged
   const range = since ? `${since}..${ref}` : ref;
   const out = git("log", "--first-parent", "--reverse", "--format=%H%x09%cI%x09%s", range).trim();
   if (!out) return [];
-  return out.split("\n").map((line) => {
+  const lines = out.split("\n");
+  // The tag that closes the version of each merge: its own, or the next one after it on the line.
+  const closedBy = new Map<string, string>();
+  let tag: string | null = null;
+  for (const line of [...lines].reverse()) {
+    const commit = line.split("\t", 1)[0] ?? "";
+    if (tagged.has(commit)) tag = commit;
+    if (tag) closedBy.set(commit, tag);
+  }
+  return lines.map((line) => {
     const [commit = "", committedAt = "", ...rest] = line.split("\t");
     const names = git("diff-tree", "--no-commit-id", "-r", "--name-only", "--diff-filter=A", "--root", "--first-parent", "-m", commit, "--", `${FRAGMENT_DIR}/`)
       .split("\n")
       .filter((path) => path.endsWith(".md"));
     const fragments = [...new Set(names)].map((path) => {
       // Until the version is tagged, the text on the branch now wins (a later fix is part of the same entry);
-      // once tagged, the text of the merge itself, the same as the notes of its pre-release.
-      const at = !tagged.has(commit) && git("ls-tree", ref, "--", path).trim() ? ref : commit;
+      // once tagged, the text at the tag, the same as the notes of its pre-release.
+      const frozen = closedBy.get(commit) ?? ref;
+      const at = git("ls-tree", frozen, "--", path).trim() ? frozen : commit;
       // Read from git, never from disk, and only regular files: a symlink would pull a file of the runner into public notes.
       const mode = git("ls-tree", at, "--", path).split(/\s/, 1)[0];
       if (mode !== "100644" && mode !== "100755") throw new Error(`${path}: only regular files can be changelog fragments`);
@@ -422,6 +503,8 @@ export interface Plan {
   pending: Version[];
   /** Fragment paths that the pending versions consume. */
   consumed: string[];
+  /** Merges that still wait for a version: fewer than the rule asks for. Their fragments stay. */
+  waiting: number;
 }
 
 /** The newest version tag of each commit, from tags as `name → commit` (only vX.Y.Z names count). */
@@ -436,7 +519,13 @@ export function versionsByCommit(tags: ReadonlyMap<string, string>): Map<string,
   return out;
 }
 
-export function computePlan(root: string, git: Git = gitIn(root), ref = "HEAD", tags: ReadonlyMap<string, string> = new Map()): Plan {
+export function computePlan(
+  root: string,
+  git: Git = gitIn(root),
+  ref = "HEAD",
+  tags: ReadonlyMap<string, string> = new Map(),
+  rule: VersionRule = {},
+): Plan {
   const changelog = parseChangelog(readFileSync(join(root, "CHANGELOG.md"), "utf8"));
   const latest = changelog.versions[0];
   // Every section must name a merge on the main line of this branch: a tag is never made for code that was not merged.
@@ -448,16 +537,19 @@ export function computePlan(root: string, git: Git = gitIn(root), ref = "HEAD", 
   const merges = mergesSince(git, latest?.commit ?? null, ref, tagged);
   const problems = fragmentProblems(merges.flatMap((m) => m.fragments));
   if (problems.length > 0) throw new Error(problems.join("\n"));
-  const pending = planVersions(latest?.version ?? "0.0.0", merges, tagged);
+  const pending = planVersions(latest?.version ?? "0.0.0", merges, tagged, rule);
+  const { batches, waiting } = batchMerges(merges, tagged, rule);
+  // A file a waiting merge added again (same name) is its entry now: it stays for that merge's version.
+  const kept = new Set(waiting.flatMap((m) => m.fragments.map((f) => f.name)));
   const consumed = [
     ...new Set(
-      merges
-        .filter((m) => !isAutomaticMerge(m))
-        .flatMap((m) => m.fragments.map((f) => `${FRAGMENT_DIR}/${f.name}`))
+      batches
+        .flat()
+        .flatMap((m) => m.fragments.filter((f) => !kept.has(f.name)).map((f) => `${FRAGMENT_DIR}/${f.name}`))
         .filter((path) => existsSync(join(root, path))),
     ),
   ];
-  return { changelog, pending, consumed };
+  return { changelog, pending, consumed, waiting: waiting.length };
 }
 
 /** Writes the pending versions into CHANGELOG.md and every version file and removes their fragments. */
@@ -493,9 +585,11 @@ if (import.meta.main) {
     }
     process.stdout.write(releaseNotes(found, versions[versions.indexOf(found) + 1] ?? null));
   } else {
-    const plan = computePlan(root);
+    // With the tags, like the workflow: a tag is where a version closes.
+    const plan = computePlan(root, undefined, "HEAD", localTags(gitIn(root)), { force: process.argv.includes("--agora") });
     for (const v of plan.pending) console.log(`${v.version}  ${v.commit.slice(0, 7)}  ${v.date} ${v.time} (${v.offset})  ${v.title}`);
     if (plan.pending.length === 0) console.log(`versao: nothing to write, current ${plan.changelog.versions[0]?.version ?? "none"}`);
+    if (plan.waiting > 0) console.log(`versao: ${plan.waiting} of ${MERGES_PER_VERSION} merges waiting for the next version`);
     if (process.argv.includes("--gravar") && plan.pending.length > 0) {
       applyPlan(root, plan);
       console.log(`versao: wrote ${plan.pending.length} version(s), removed ${plan.consumed.length} fragment(s)`);

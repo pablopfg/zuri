@@ -37,7 +37,7 @@ export function planPublish(
   // the changelog says, and publishing the older version as "Latest" would be wrong.
   const pending = subjectsSince(tag).filter((subject) => !RELEASE_SUBJECT.test(subject) && !README_SUBJECT.test(subject));
   if (pending.length > 0) {
-    return { ok: false, error: `the version after ${tag} is not written yet (${pending.length} merge(s)); merge the chore(release) pull request into develop and send develop to main again` };
+    return { ok: false, error: `the version after ${tag} is not written yet (${pending.length} merge(s)); run the Versão workflow on develop with "agora", merge its chore(release) pull request and send develop to main again` };
   }
   return { ok: true, plan: { tag, title: releaseName(current), notes: releaseNotes(current, versions[1] ?? null, true) } };
 }

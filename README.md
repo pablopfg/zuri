@@ -213,7 +213,7 @@ Antes do primeiro `npm run dev`, crie o `apps/agent/.dev.vars` como explica [doc
 
 ## 🛠️ Desenvolvimento
 
-O desenvolvimento acontece na branch [`develop`](https://github.com/pablopfg/Zuri/tree/develop); a `main` só recebe releases. Leia o [CONTRIBUTING.md](https://github.com/pablopfg/Zuri/blob/develop/CONTRIBUTING.md) e o [AGENTS.md](https://github.com/pablopfg/Zuri/blob/develop/AGENTS.md). Cada etapa passa por testes com matriz de rastreabilidade, revisão de QA e auditoria de segurança ([estratégia de testes](https://github.com/pablopfg/Zuri/blob/develop/docs/qa/estrategia-de-testes.md)); a auditoria final ligou cada critério de aceite ao seu teste na [matriz final](https://github.com/pablopfg/Zuri/blob/develop/docs/qa/matriz-final.md), e cada merge na `develop` vira uma versão 0.x com pré-release ([versionamento](https://github.com/pablopfg/Zuri/blob/develop/docs/agente/versionamento.md)).
+O desenvolvimento acontece na branch [`develop`](https://github.com/pablopfg/Zuri/tree/develop); a `main` só recebe releases. Leia o [CONTRIBUTING.md](https://github.com/pablopfg/Zuri/blob/develop/CONTRIBUTING.md) e o [AGENTS.md](https://github.com/pablopfg/Zuri/blob/develop/AGENTS.md). Cada etapa passa por testes com matriz de rastreabilidade, revisão de QA e auditoria de segurança ([estratégia de testes](https://github.com/pablopfg/Zuri/blob/develop/docs/qa/estrategia-de-testes.md)); a auditoria final ligou cada critério de aceite ao seu teste na [matriz final](https://github.com/pablopfg/Zuri/blob/develop/docs/qa/matriz-final.md), e a cada 10 merges na `develop` sai uma versão 0.x com pré-release ([versionamento](https://github.com/pablopfg/Zuri/blob/develop/docs/agente/versionamento.md)).
 
 ### 🗺️ Mapa das etapas
 

@@ -89,9 +89,10 @@ Quando o resultado muda:
 
 ## 4. Depois de cada merge
 
-O workflow `Versão` (`.github/workflows/versao.yml`) dá o número da versão ao
-merge, cria a tag e a pré-release e abre ou refaz a PR `chore(release):` com
-as seções do `CHANGELOG.md`. Essa PR tem auto-merge e o rótulo
+O workflow `Versão` (`.github/workflows/versao.yml`) conta os merges que esperam
+uma versão. Com 10 ou mais, dá o número, cria a tag e a pré-release e abre ou
+refaz a PR `chore(release):` com a seção do `CHANGELOG.md`; com menos, não muda
+nada. Essa PR tem auto-merge e o rótulo
 `sem-atualizacao-automatica`; trate-a como qualquer outra PR verde e nunca
 edite a branch `chore/versao` à mão (`docs/agente/versionamento.md`).
 
@@ -212,7 +213,7 @@ teste de i18n). As causas que deu para tirar:
 
 - Changelog em arquivos por PR (`changelog/nao-lancado/<assunto>.md`). O
   `CHANGELOG.md` só muda pela PR `chore(release):` que o workflow `Versão`
-  abre depois de cada merge (`docs/agente/versionamento.md`).
+  abre a cada 10 merges (`docs/agente/versionamento.md`).
 - Registro das partes do catálogo uma por linha, e o teste de i18n confere as
   partes exportadas sem lista própria (`.claude/rules/i18n.md`).
 - Itens novos de listas e tabelas numa linha nova, sem reescrever a vizinha
