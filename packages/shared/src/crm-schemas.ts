@@ -133,7 +133,12 @@ export const crmStagesSchema = /* @__PURE__ */ (() =>
 
 export const crmSettingsSchema = /* @__PURE__ */ (() =>
   z
-    .object({ followUps: z.boolean(), birthdays: z.boolean(), newClients: z.boolean() })
+    .object({
+      followUps: z.boolean(),
+      birthdays: z.boolean(),
+      newClients: z.boolean(),
+      birthdayTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    })
     .partial()
     .strict()
     .refine((value) => Object.keys(value).length > 0))();

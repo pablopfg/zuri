@@ -16,7 +16,7 @@ export const REVIEW_LIMITS = {
   /** How often the alarm reads the reviews until the owner picks another interval (Settings, 11/11/2026). */
   checkEveryMs: 10 * 60_000,
   /** The interval the owner may pick, in minutes (the same floor and ceiling as the contacts'). */
-  checkEveryMinMinutes: 5,
+  checkEveryMinMinutes: 1,
   checkEveryMaxMinutes: 1_440,
   /** "Check now" at most once a minute. */
   checkNowEveryMs: 60_000,

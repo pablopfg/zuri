@@ -25,6 +25,7 @@ import {
   type AgentCallSettings,
 } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
+import { checkSyncSlots, syncMinutes } from "../db/day-slots.ts";
 import { cleanBlock, cleanText } from "../google/events.ts";
 import { type GoogleCalendar, GoogleError, GoogleMeter, GOOGLE_ACCOUNTS_API, GOOGLE_LOCATIONS_API, GOOGLE_REVIEWS_API } from "../google/service.ts";
 import { AppError } from "../http/errors.ts";
@@ -220,10 +221,9 @@ export class ReviewService {
     return this.db.one<SettingsRow>(`SELECT * FROM zur_review_settings WHERE id = 1`);
   }
 
-  /** The owner's interval between two checks, in ms; a value out of the allowed range (a restored row) is brought into it. */
+  /** The owner's interval between two checks, in ms; a value out of the allowed range (a damaged row) never checks more often than the default. */
   private every(row: SettingsRow | null): number {
-    const minutes = row?.check_every_min ?? REVIEW_LIMITS.checkEveryMs / 60_000;
-    return Math.min(REVIEW_LIMITS.checkEveryMaxMinutes, Math.max(REVIEW_LIMITS.checkEveryMinMinutes, Math.trunc(minutes) || 0)) * 60_000;
+    return syncMinutes(row?.check_every_min, REVIEW_LIMITS.checkEveryMs / 60_000, REVIEW_LIMITS.checkEveryMinMinutes, REVIEW_LIMITS.checkEveryMaxMinutes) * 60_000;
   }
 
   /**
@@ -234,6 +234,8 @@ export class ReviewService {
   setInterval(minutes: number): ReviewsStatus {
     const before = this.settings();
     if (minutes * 60_000 === this.every(before)) return this.status();
+    // A shorter check must fit in the day next to the contacts' sync and the flows on.
+    if (minutes * 60_000 < this.every(before)) checkSyncSlots(this.db, { reviews: minutes });
     const now = this.clock();
     const last = Math.max(before.checked_at ?? 0, before.last_ok_at ?? 0) || now;
     this.db.run(`UPDATE zur_review_settings SET check_every_min = ? WHERE id = 1`, minutes);

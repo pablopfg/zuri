@@ -1,8 +1,9 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FLOW_LIMITS, type Flow, type FlowConnection, type FlowDraft, type FlowList, type FlowRun, type FlowRunPage, type FlowSite, ptBRFlows, type Schedule } from "@zuri/shared";
+import { FLOW_LIMITS, FLOW_SETTING_RANGES, type Flow, type FlowConnection, type FlowDraft, type FlowList, type FlowRun, type FlowRunPage, type FlowSettings, type FlowSite, type MessageKey, ptBRAutomations, ptBRFlows, type Schedule } from "@zuri/shared";
 import { History, KeyRound, Pause, Pencil, Play, Plus, Trash2, Radar, Workflow, Zap } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { ActionsMenu } from "../../../components/ActionsMenu.tsx";
+import { NumbersForm } from "../../../components/NumbersForm.tsx";
 import { useToast } from "../../../components/Toaster.tsx";
 import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, Loading } from "../../../components/ui.tsx";
 import { api, errorMessage } from "../../../lib/api.ts";
@@ -16,6 +17,9 @@ import { capitalizeFirst, PROBLEM_LABEL, RUN_STATUS_LABEL, RUN_TRIGGER_LABEL, SI
 
 // The tab's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRFlows);
+// A flow at a time of day is described with the routines' words (lib/automations.ts). The CRM opens this
+// panel without the Routines screen, so its texts come along: without them a daily or weekly flow broke the screen.
+addMessages(ptBRAutomations);
 
 /** Everything about flows starts with this key: the live channel's "flows" area refreshes it (lib/versions.ts). */
 export const FLOWS_KEY = ["flows"] as const;
@@ -141,6 +145,7 @@ export function FlowsPanel() {
                     <FlowRow
                       key={flow.id}
                       flow={flow}
+                      failuresToPause={data.settings.failuresToPause}
                       glow={flashClass(flash.glowing, flow.id)}
                       onEdit={() => setEditing({ mode: "edit", flow })}
                       onDelete={() => setRemoving({ kind: "flow", flow })}
@@ -157,14 +162,61 @@ export function FlowsPanel() {
               onEdit={(item) => setConnection({ mode: "edit", connection: item })}
               onDelete={(item) => setRemoving({ kind: "connection", connection: item })}
             />
+            <FlowSettingsCard settings={data.settings} slots={data.counts.slots} slotsLimit={data.counts.slotsLimit} />
             <RunHistory />
           </>
         )
       )}
-      {editing && data && <FlowEditor editing={editing} connections={data.connections} google={data.google} onClose={() => setEditing(null)} />}
+      {editing && data && <FlowEditor editing={editing} connections={data.connections} google={data.google} settings={data.settings} onClose={() => setEditing(null)} />}
       {connection && data && <ConnectionDialog editing={connection} credentialsAvailable={data.credentialsAvailable} onClose={() => setConnection(null)} />}
       <RemoveDialog removing={removing} onClose={() => setRemoving(null)} />
     </div>
+  );
+}
+
+const SETTING_LABEL: Record<keyof FlowSettings, MessageKey> = {
+  minIntervalMinutes: "web.flows.settings.minInterval",
+  aiMinIntervalMinutes: "web.flows.settings.aiMinInterval",
+  runsPerDay: "web.flows.settings.runs",
+  callsPerRun: "web.flows.settings.calls",
+  neuronsPerDay: "web.flows.settings.neurons",
+  attempts: "web.flows.settings.attempts",
+  failuresToPause: "web.flows.settings.failures",
+};
+
+/**
+ * What holds for every flow. Each number has limits that fit the free plan, shown under its field; the
+ * scheduled times a day of the flows turned on are counted against their own ceiling.
+ */
+function FlowSettingsCard({ settings, slots, slotsLimit }: { settings: FlowSettings; slots: number; slotsLimit: number }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const fields = (Object.keys(SETTING_LABEL) as (keyof FlowSettings)[]).map((key) => ({
+    key,
+    label: t(SETTING_LABEL[key]),
+    hint: t("web.flows.settings.range", { min: FLOW_SETTING_RANGES[key].min, max: FLOW_SETTING_RANGES[key].max }),
+    min: FLOW_SETTING_RANGES[key].min,
+    max: FLOW_SETTING_RANGES[key].max,
+  }));
+  return (
+    <Card title={t("web.flows.settings.title")} description={t("web.flows.settings.body")}>
+      <div className="space-y-3">
+        <NumbersForm
+          fields={fields}
+          values={settings}
+          saveLabel={t("web.flows.settings.save")}
+          savedLabel={t("web.flows.settings.saved")}
+          onSave={async (changed) => {
+            try {
+              await api("/flows/settings", { method: "PATCH", body: changed });
+            } finally {
+              await qc.invalidateQueries({ queryKey: FLOWS_KEY });
+            }
+          }}
+        />
+        <p className="text-xs leading-5 text-fg-muted">{t("web.flows.settings.slots", { slots, max: slotsLimit })}</p>
+      </div>
+    </Card>
   );
 }
 
@@ -206,11 +258,11 @@ function Drafts({ drafts, full, onReview }: { drafts: FlowDraft[]; full: boolean
   );
 }
 
-function FlowRow({ flow, glow, onEdit, onDelete }: { flow: Flow; glow: string; onEdit: () => void; onDelete: () => void }) {
+function FlowRow({ flow, failuresToPause, glow, onEdit, onDelete }: { flow: Flow; failuresToPause: number; glow: string; onEdit: () => void; onDelete: () => void }) {
   const { t, plural, dateTime, timeZone } = useI18n();
   const { busy, act } = useFlowAction();
   const titleId = useId();
-  const tripped = !flow.enabled && flow.failures >= FLOW_LIMITS.failuresToPause;
+  const tripped = !flow.enabled && flow.failures >= failuresToPause;
   const runText = (run: FlowRun) => {
     const reason = run.problem ? t(PROBLEM_LABEL[run.problem]) : "";
     if (run.status === "waiting" && run.resumeAt) return t("web.flows.ranWaiting", { when: dateTime(run.resumeAt) });

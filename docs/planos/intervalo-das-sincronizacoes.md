@@ -74,3 +74,4 @@ Entrada validada com Zod (inteiro, faixa fechada, corpo estrito). O intervalo n�
 
 - Outra PR pegar a migration 33 antes: renumerar antes do merge.
 - O Pablo querer menos de 5 minutos: pede mudar a regra dos 2 min 30 s entre as duas leituras; fica como pergunta, com a recomendação de manter 5.
+- Resposta do Pablo (11/11/2026, 16:44 UTC): mínimo de 1 minuto. Feito na PR das configurações do CRM e dos fluxos, com a conta do dia que mantém a cota (`docs/planos/crm-e-fluxos-na-tela.md`, regra 4). Onde este plano diz "de 5 a 1.440", vale "de 1 a 1.440".

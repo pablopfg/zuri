@@ -9,4 +9,4 @@
 
 ### Atualização
 
-- Migration 34: um índice novo na cópia das avaliações, pela data em que cada uma foi escrita. Nenhum dado muda e não há nada a fazer.
+- Migration 35: um índice novo na cópia das avaliações, pela data em que cada uma foi escrita. Nenhum dado muda e não há nada a fazer.

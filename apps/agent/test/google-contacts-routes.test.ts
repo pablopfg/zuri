@@ -119,17 +119,17 @@ describe("/api/google/contacts", () => {
     expect((await errorBody(res)).code).toBe("CONFLICT");
   });
 
-  it("saves the owner's interval between two reads, within 5 minutes and a day, and plans the next read by it", async () => {
+  it("saves the owner's interval between two reads, within a minute and a day, and plans the next read by it", async () => {
     const on = await turnOn();
     expect(on.syncEveryMinutes).toBe(5);
-    for (const body of [{ syncEveryMinutes: 4 }, { syncEveryMinutes: 1_441 }, { syncEveryMinutes: 7.5 }, { syncEveryMinutes: "15" }, { syncEveryMinutes: null }, { syncEveryMs: 60_000 }]) {
+    for (const body of [{ syncEveryMinutes: 0 }, { syncEveryMinutes: -1 }, { syncEveryMinutes: 1_441 }, { syncEveryMinutes: 7.5 }, { syncEveryMinutes: "15" }, { syncEveryMinutes: null }, { syncEveryMs: 60_000 }]) {
       const res = await api("PATCH", "/google/contacts/settings", body);
       expect(res.status, JSON.stringify(body)).toBe(400);
       expect((await errorBody(res)).code).toBe("VALIDATION_FAILED");
     }
     // Nothing of a refused body was kept.
     expect(((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).syncEveryMinutes).toBe(5);
-    for (const minutes of [5, 1_440, 15]) {
+    for (const minutes of [1, 5, 1_440, 15]) {
       const res = await api("PATCH", "/google/contacts/settings", { syncEveryMinutes: minutes });
       expect(res.status).toBe(200);
       const status = (await res.json()) as ContactsStatus;

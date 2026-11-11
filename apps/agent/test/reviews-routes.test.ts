@@ -144,16 +144,26 @@ describe("/api/reviews", () => {
     expect(((await (await api("POST", "/reviews/resume")).json()) as ReviewsStatus).paused).toBe(false);
   });
 
-  it("saves the owner's interval between two checks, within 5 minutes and a day, and plans the next check by it", async () => {
+  it("saves the owner's interval between two checks, within a minute and a day, and plans the next check by it", async () => {
     const on = await turnOn();
     expect(on.syncEveryMinutes).toBe(10);
-    for (const body of [{}, { syncEveryMinutes: 4 }, { syncEveryMinutes: 1_441 }, { syncEveryMinutes: 7.5 }, { syncEveryMinutes: "15" }, { syncEveryMinutes: 15, level: "auto" }]) {
+    for (const body of [{}, { syncEveryMinutes: 0 }, { syncEveryMinutes: -1 }, { syncEveryMinutes: 1_441 }, { syncEveryMinutes: 7.5 }, { syncEveryMinutes: "15" }, { syncEveryMinutes: 15, level: "auto" }]) {
       const res = await api("PATCH", "/reviews/interval", body);
       expect(res.status, JSON.stringify(body)).toBe(400);
       expect((await errorBody(res)).code).toBe("VALIDATION_FAILED");
     }
     expect(((await (await api("GET", "/reviews/status")).json()) as ReviewsStatus).syncEveryMinutes).toBe(10);
-    for (const minutes of [5, 1_440, 15]) {
+    // A minute next to the contacts' own minute doesn't fit in the day: 409 with the count, and the interval kept.
+    await inOwner((agent) => {
+      agent.store.db.run(`INSERT INTO zur_contact_sync (id) VALUES (1) ON CONFLICT (id) DO NOTHING`);
+      agent.store.db.run(`UPDATE zur_contact_sync SET sync_every_min = 1 WHERE id = 1`);
+    });
+    const full = await api("PATCH", "/reviews/interval", { syncEveryMinutes: 1 });
+    expect(full.status).toBe(409);
+    expect(await errorBody(full)).toMatchObject({ code: "CONFLICT", details: { limit: 5_728, cost: 8_640 } });
+    expect(((await (await api("GET", "/reviews/status")).json()) as ReviewsStatus).syncEveryMinutes).toBe(10);
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET sync_every_min = 5 WHERE id = 1`));
+    for (const minutes of [1, 5, 1_440, 15]) {
       const res = await api("PATCH", "/reviews/interval", { syncEveryMinutes: minutes });
       expect(res.status).toBe(200);
       const status = (await res.json()) as ReviewsStatus;

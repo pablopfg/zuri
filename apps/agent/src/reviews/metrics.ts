@@ -5,7 +5,7 @@ import type { Database } from "../db/database.ts";
  * The overview of the reviews (PR S11): how many of each rating, the
  * recommendation estimate by week or month, how many were answered and how
  * long the answers took. Read from the copy Zuri already keeps, through an
- * index made for it (migration 34), in the owner's time zone. Numbers only:
+ * index made for it (migration 35), in the owner's time zone. Numbers only:
  * no name, text or id of a review leaves through here.
  */
 
@@ -94,7 +94,7 @@ export function summarize(period: ReviewMetricPeriod, window: MetricWindow, rows
   return { period, from: new Date(window.from).toISOString(), unit: window.unit, ratings, buckets, replied, medianReplyMinutes: median(waits), requests: null, partial };
 }
 
-/** The same text as migration 34's index, so the read never touches the table (rule P2). */
+/** The same text as migration 35's index, so the read never touches the table (rule P2). */
 export const METRICS_SQL = `SELECT created_at, rating, replied_at, reply IS NOT NULL AS answered FROM zur_reviews
   WHERE created_at >= ? AND state != 'removed' AND rating BETWEEN 1 AND 5 ORDER BY created_at DESC LIMIT ?`;
 
