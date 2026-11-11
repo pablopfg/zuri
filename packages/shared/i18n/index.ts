@@ -29,6 +29,7 @@ import { ptBRUsage } from "./pt-BR-usage.ts";
 import { ptBRBackup } from "./pt-BR-backup.ts";
 import { ptBRMenu } from "./pt-BR-menu.ts";
 import { ptBRVoice } from "./pt-BR-voice.ts";
+import { ptBRSchedule } from "./pt-BR-schedule.ts";
 
 export type MessageKey = keyof typeof ptBR;
 export type Messages = Record<MessageKey, string>;
@@ -77,6 +78,7 @@ export {
   ptBRBackup,
   ptBRMenu,
   ptBRVoice,
+  ptBRSchedule,
 };
 
 export type Params = Record<string, string | number>;
@@ -105,7 +107,9 @@ export function createTranslator<K extends string>(
    * "__proto__" key in parsed JSON never fills one.
    */
   function t(locale: string, key: K, params: Params = {}): string {
-    const template = catalogFor(locale)[key] ?? sources[fallback][key];
+    // A key without text anywhere (a screen's part that did not load) shows as the key:
+    // one odd label, never a screen that stops.
+    const template: string = catalogFor(locale)[key] ?? sources[fallback][key] ?? key;
     return template.replace(/\{(\w+)\}/g, (match, name: string) =>
       Object.hasOwn(params, name) ? String(params[name]) : match,
     );
