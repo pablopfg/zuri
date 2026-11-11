@@ -27,16 +27,15 @@ import { AppError } from "../http/errors.ts";
 /**
  * The internal CRM (step 22b): the owner's clients, the funnel's stages, the
  * history and the follow-ups, in Zuri's own database. The screen, the chat
- * (add_client, update_client) and n8n's signed events all write through
- * here, so the limits and the history hold whoever writes. Clients' data may
+ * (add_client, update_client) both write through here, so the limits and
+ * the history hold whoever writes. Clients' data may
  * be sensitive: nothing here logs a name, a phone, an e-mail or a text.
  */
 
 export type CrmNotice =
   | { kind: "crm.followUp"; clientId: string; name: string; note: string }
   | { kind: "crm.followUps"; count: number }
-  | { kind: "crm.birthdays"; names: string; more: number; day: string }
-  | { kind: "crm.newClient"; clientId: string; name: string };
+  | { kind: "crm.birthdays"; names: string; more: number; day: string };
 
 export interface CrmDeps {
   db: Database;
@@ -48,8 +47,8 @@ export interface CrmDeps {
   assertBytes?: () => void;
 }
 
-/** Who made a change: the history says it the same way, but a client from n8n is marked so. */
-export type CrmWriter = "app" | "chat" | "n8n";
+/** Who made a change: the history says it the same way. */
+export type CrmWriter = "app" | "chat";
 
 export interface ClientInput {
   name: string;
@@ -87,11 +86,8 @@ interface ClientRow {
 }
 
 interface SettingsRow {
-  events_key: string | null;
-  last_event_at: string | null;
   follow_ups: number;
   birthdays: number;
-  new_clients: number;
   next_reminder: number | null;
   reminder_time: string;
   /** The owner's day ("2026-11-11") of the last birthday notice's turn: a time changed later the same day doesn't tell it twice. */
@@ -223,8 +219,8 @@ export class CrmService {
     return this.db.one<ClientRow>(`SELECT ${COLUMNS} FROM zur_crm_clients WHERE id = ?`, id);
   }
 
-  /** A client by n8n's id for it. */
-  byRef(ref: string): ClientRow | null {
+  /** A client by its id in another system: only clients that came from outside have one, and a backup brings it back. */
+  private byRef(ref: string): ClientRow | null {
     return this.db.one<ClientRow>(`SELECT ${COLUMNS} FROM zur_crm_clients WHERE ref = ?`, ref);
   }
 
@@ -270,8 +266,8 @@ export class CrmService {
     if (distinct + fresh.length > CRM_LIMITS.distinctTags) throw new AppError("STORAGE_LIMIT_REACHED", "error.crmTagLimit");
   }
 
-  /** Adds a client. `ref` only from n8n's events. */
-  create(input: ClientInput, writer: CrmWriter, ref: string | null = null): CrmClientDetail {
+  /** Adds a client. Whoever writes, it is the owner's own client: stored as made in the app. */
+  create(input: ClientInput, _writer: CrmWriter): CrmClientDetail {
     this.ensure();
     if (this.count() >= CRM_LIMITS.clients) throw new AppError("STORAGE_LIMIT_REACHED", "error.crmClientLimit");
     this.deps.assertBytes?.();
@@ -286,7 +282,7 @@ export class CrmService {
         `INSERT INTO zur_crm_clients (id, ref, name, search_name, phone, phone_digits, email, birthday, birthday_md, stage_id, notes, follow_up_at, follow_up_note, source, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         id,
-        ref,
+        null,
         input.name,
         searchText(input.name),
         input.phone ?? null,
@@ -298,7 +294,7 @@ export class CrmService {
         input.notes ?? "",
         input.followUp?.at ?? null,
         input.followUp?.note ?? "",
-        writer === "n8n" ? "n8n" : "app",
+        "app",
         at,
         at,
       );
@@ -464,8 +460,8 @@ export class CrmService {
     });
   }
 
-  /** A line in a client's history; `touch` moves the last activity (an event from n8n). */
-  note(id: string, kind: CrmHistoryKind, text: string, touch = false): CrmHistoryEntry {
+  /** A line in a client's history. */
+  note(id: string, kind: CrmHistoryKind, text: string): CrmHistoryEntry {
     const row = this.row(id);
     if (!row) throw new AppError("NOT_FOUND", "error.crmClientNotFound");
     this.deps.assertBytes?.();
@@ -474,7 +470,7 @@ export class CrmService {
     let entry: CrmHistoryEntry | undefined;
     this.atomic(() => {
       entry = this.history(id, kind, clean, at);
-      this.db.run(`UPDATE zur_crm_clients SET updated_at = ?${touch ? ", last_activity_at = ?" : ""} WHERE id = ?`, at, ...(touch ? [at] : []), id);
+      this.db.run(`UPDATE zur_crm_clients SET updated_at = ? WHERE id = ?`, at, id);
     });
     return entry as CrmHistoryEntry;
   }
@@ -575,12 +571,9 @@ export class CrmService {
 
   settingsRow(): SettingsRow {
     return (
-      this.db.one<SettingsRow>(`SELECT events_key, last_event_at, follow_ups, birthdays, new_clients, next_reminder, reminder_time, reminded_day FROM zur_crm_settings WHERE id = 1`) ?? {
-        events_key: null,
-        last_event_at: null,
+      this.db.one<SettingsRow>(`SELECT follow_ups, birthdays, next_reminder, reminder_time, reminded_day FROM zur_crm_settings WHERE id = 1`) ?? {
         follow_ups: 1,
         birthdays: 1,
-        new_clients: 1,
         next_reminder: null,
         reminder_time: CRM_BIRTHDAY_TIME,
         reminded_day: null,
@@ -593,7 +586,6 @@ export class CrmService {
     return {
       followUps: row.follow_ups === 1,
       birthdays: row.birthdays === 1,
-      newClients: row.new_clients === 1,
       birthdayTime: reminderTime(row),
     };
   }
@@ -603,7 +595,6 @@ export class CrmService {
     const map = [
       ["followUps", "follow_ups"],
       ["birthdays", "birthdays"],
-      ["newClients", "new_clients"],
     ] as const;
     const changed: string[] = [];
     for (const [key, column] of map) {
@@ -729,17 +720,5 @@ export class CrmService {
     const total = this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_crm_clients WHERE birthday_md IN (${marks})`, ...keys)?.n ?? 0;
     const shown = people.slice(0, CRM_LIMITS.namesPerNotice).map((person) => cleanText(person.name, 60));
     this.deps.notify({ kind: "crm.birthdays", names: shown.join(", "), more: Math.max(0, total - shown.length), day: today });
-  }
-
-  /** A client n8n added: a notice, at most the owner's number a day (20 unless they picked fewer), while they want them. */
-  announceNew(client: { id: string; name: string }): void {
-    if (this.settingsRow().new_clients !== 1) return;
-    // The owner's day, not UTC's: in São Paulo the count would start over at 21 h.
-    const parts = zonedParts(new Date(this.clock()), this.deps.timeZone());
-    const bucket = `n:${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
-    const n = this.db.one<{ n: number }>(`SELECT n FROM zur_crm_counts WHERE bucket = ?`, bucket)?.n ?? 0;
-    if (n >= CRM_LIMITS.newClientNoticesPerDay) return;
-    this.db.run(`INSERT INTO zur_crm_counts (bucket, n) VALUES (?, 1) ON CONFLICT (bucket) DO UPDATE SET n = n + 1`, bucket);
-    this.deps.notify({ kind: "crm.newClient", clientId: client.id, name: cleanText(client.name, 60) });
   }
 }

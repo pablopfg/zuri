@@ -106,7 +106,7 @@ O código do formato está em `packages/shared/src/backup-file.ts`.
 | `conversations` | título e mensagens (papel, texto, estado e a marca do modelo reserva) | sem o resumo interno, as ferramentas e os trechos citados do Telegram; caracteres de controle saem do texto e uma mensagem acima de 64.000 caracteres é cortada |
 | `automations` | nome, tipo, instrução, horário, vigia e prioridade, sempre com `paused: true` | sem histórico de execuções |
 | `alertLearning` | o que a prioridade dos avisos aprendeu | |
-| `crm` | etapas do funil, clientes com etiquetas e histórico, e os interruptores dos avisos | nunca a chave dos eventos do n8n |
+| `crm` | etapas do funil, clientes com etiquetas e histórico, e os interruptores dos avisos | |
 
 Nunca vão: senha, segredo do 2FA, códigos de recuperação, passkeys, sessões,
 aparelhos, tokens de acesso remoto, vínculo e estado do Telegram, servidores MCP
@@ -159,7 +159,7 @@ Um arquivo de backup é entrada não confiável (regra 8 de
   teto do banco, nada fica gravado (507 `STORAGE_LIMIT_REACHED`).
 - Dois registros com o mesmo id na mesma seção recusam o arquivo.
 - Tudo entra com id novo, ao lado do que já existe. Importar o mesmo arquivo
-  duas vezes duplica os itens; um cliente do CRM com o mesmo `ref` do n8n é o
+  duas vezes duplica os itens; um cliente do CRM com o mesmo `ref` (o id dele em outro sistema, de quando a Zuri recebia eventos) é o
   mesmo cliente e não se repete.
 - Nada liga sozinho: automações chegam pausadas, rotinas com IA esperam a sua
   aprovação em Automações (com a senha, se alguma ferramenta MCP roda em

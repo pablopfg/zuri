@@ -6,7 +6,6 @@ import { ProviderChain } from "../src/ai/chain.ts";
 import { MeteredAI } from "../src/ai/metered.ts";
 import { MockAIProvider } from "../src/ai/mock.ts";
 import { MockTranscriber } from "../src/ai/transcription.ts";
-import { crmSignature } from "../src/gates/crm-events.ts";
 import { telegramWebhookSecret } from "../src/gates/telegram.ts";
 import { MockEmbedder } from "../src/semantic/embedder.ts";
 import { VectorStore } from "../src/semantic/store.ts";
@@ -1251,31 +1250,10 @@ describe("the CRM (step 22b)", () => {
       expect(changed.status).toBe(200);
       expect(changed.read).toBeLessThanOrEqual(150);
       expect(changed.written).toBeLessThanOrEqual(40);
-      // A signed event from n8n on a client it knows: a line in the history, the limits and the repeat check.
-      const opened = await runInDurableObject(owner(), async (agent: ZuriAgent) => {
-        const { db } = agent.store;
-        db.run(`UPDATE zur_crm_clients SET ref = 'cw-1' WHERE id = ?`, first);
-        return agent.store.crmEvents.enable();
-      });
-      const event = JSON.stringify({ id: "evt-budget", type: "client.activity", data: { ref: "cw-1", kind: "message_in", text: "Oi" } });
-      const timestamp = String(Math.floor(Date.now() / 1000));
-      const usage = () => runInDurableObject(owner(), (agent: ZuriAgent) => ({ ...agent.store.db.usage }));
-      const before = await usage();
-      const res = await call(opened.url, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-zuri-timestamp": timestamp, "x-zuri-signature": await crmSignature(opened.secret, timestamp, event) },
-        body: event,
-      });
-      expect(res.status).toBe(200);
-      await res.arrayBuffer();
-      const after = await usage();
-      expect(after.rowsRead - before.rowsRead).toBeLessThanOrEqual(60);
-      expect(after.rowsWritten - before.rowsWritten).toBeLessThanOrEqual(20);
     } finally {
       await runInDurableObject(owner(), (agent: ZuriAgent) => {
         const { db } = agent.store;
-        for (const table of ["zur_crm_tags", "zur_crm_history", "zur_crm_clients", "zur_crm_tag_counts", "zur_crm_inbox", "zur_crm_counts"]) db.run(`DELETE FROM ${table}`);
-        agent.store.crmEvents.disable();
+        for (const table of ["zur_crm_tags", "zur_crm_history", "zur_crm_clients", "zur_crm_tag_counts"]) db.run(`DELETE FROM ${table}`);
       });
     }
   });

@@ -1,24 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { catalogs } from "../i18n/index.ts";
 import {
+  AUTH_EVENT_KINDS,
   birthdayMonthDay,
   birthdaySchema,
-  CRM_EVENTS_KEY,
   CRM_LIMITS,
   crmClientCreateSchema,
   crmClientsQuerySchema,
   crmClientUpdateSchema,
   crmEmailSchema,
-  crmEventSchema,
   crmNoteSchema,
   crmPhoneSchema,
   crmSettingsSchema,
   crmStagesSchema,
   crmTagSchema,
+  NOTICE_KINDS,
   phoneDigits,
 } from "../src/index.ts";
 
-// Step 22b: what the Clients tab, the chat and n8n may send to the CRM, at the exact limits.
+// Step 22b: what the screen and the chat may send to the CRM, at the exact limits.
 
 const ok = (schema: z.ZodType, value: unknown) => schema.safeParse(value).success;
 
@@ -120,37 +121,27 @@ describe("the Clients tab's bodies", () => {
   });
 });
 
-describe("n8n's events", () => {
-  const upsert = (data: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({ id: "evt-1", type: "client.upsert", data: { ref: "cw-1", ...data }, ...extra });
-
-  it("three closed types, each with its own data; nothing else is read", () => {
-    expect(ok(crmEventSchema, upsert({ name: "Ana", phone: "+55 11 98888-7777", tagsAdd: ["Lead"] }))).toBe(true);
-    expect(ok(crmEventSchema, { id: "evt-2", type: "client.activity", data: { ref: "cw-1", kind: "message_in", text: "Oi" } })).toBe(true);
-    expect(ok(crmEventSchema, { id: "evt-3", type: "client.follow_up", data: { ref: "cw-1", followUp: null } })).toBe(true);
-    expect(ok(crmEventSchema, { id: "evt-4", type: "client.delete", data: { ref: "cw-1" } })).toBe(false);
-    expect(ok(crmEventSchema, upsert({}, { extra: true }))).toBe(false);
-    expect(ok(crmEventSchema, upsert({ owner: "x" }))).toBe(false);
-    expect(ok(crmEventSchema, { id: "evt-5", type: "client.activity", data: { ref: "cw-1", kind: "shell" } })).toBe(false);
+describe("no door for other systems", () => {
+  it("the package exports nothing of the signed events n8n used to send (owner's decision of 11/11/2026)", async () => {
+    const shared = (await import("../src/index.ts")) as Record<string, unknown>;
+    for (const name of ["crmEventSchema", "CRM_EVENTS_PATH", "CRM_EVENTS_KEY", "CRM_SIGNATURE_HEADER", "CRM_TIMESTAMP_HEADER", "CRM_ACTIVITY_KINDS"]) expect(shared[name], name).toBeUndefined();
+    for (const limit of ["eventsPerHour", "eventsPerDay", "eventBodyBytes", "eventId", "signatureWindowMs", "dedupeMs", "newClientNoticesPerDay"]) expect(limit in CRM_LIMITS, limit).toBe(false);
   });
 
-  it("an id up to 100 and a ref up to 100 printable characters without spaces", () => {
-    expect(ok(crmEventSchema, upsert({}, { id: "a".repeat(CRM_LIMITS.eventId) }))).toBe(true);
-    expect(ok(crmEventSchema, upsert({}, { id: "a".repeat(CRM_LIMITS.eventId + 1) }))).toBe(false);
-    expect(ok(crmEventSchema, upsert({ ref: "a".repeat(CRM_LIMITS.ref) }))).toBe(true);
-    expect(ok(crmEventSchema, upsert({ ref: "a".repeat(CRM_LIMITS.ref + 1) }))).toBe(false);
-    for (const ref of ["a b", "", "ç", "a‮"]) expect(ok(crmEventSchema, upsert({ ref })), JSON.stringify(ref)).toBe(false);
+  it("records from when the events existed still read: their kinds and their texts stay, in both languages", () => {
+    expect(NOTICE_KINDS).toContain("crm.newClient");
+    expect(AUTH_EVENT_KINDS).toContain("crm_events_key");
+    for (const locale of ["pt-BR", "en"] as const) {
+      for (const key of ["notice.crm.newClient.title", "notice.crm.newClient.body", "notice.security.crm_events_key.title", "notice.security.crm_events_key.body", "web.activity.kind.crm_events_key"]) {
+        const text = (catalogs[locale] as Record<string, string>)[key];
+        expect(text, `${locale} ${key}`).toBeTruthy();
+        expect(text, `${locale} ${key}`).not.toMatch(/n8n/i);
+      }
+    }
   });
 
-  it("an activity's text up to 500 characters", () => {
-    const activity = (text: string) => ({ id: "e", type: "client.activity", data: { ref: "r", kind: "note", text } });
-    expect(ok(crmEventSchema, activity("a".repeat(CRM_LIMITS.historyText)))).toBe(true);
-    expect(ok(crmEventSchema, activity("a".repeat(CRM_LIMITS.historyText + 1)))).toBe(false);
-  });
-
-  it("the events' key: exactly 22 base64url characters", () => {
-    expect(CRM_EVENTS_KEY.test("A".repeat(22))).toBe(true);
-    expect(CRM_EVENTS_KEY.test("A".repeat(21))).toBe(false);
-    expect(CRM_EVENTS_KEY.test("A".repeat(23))).toBe(false);
-    expect(CRM_EVENTS_KEY.test(`${"A".repeat(21)}/`)).toBe(false);
+  it("the notices' settings take only the two notices left", () => {
+    expect(ok(crmSettingsSchema, { followUps: false, birthdays: true })).toBe(true);
+    expect(ok(crmSettingsSchema, { newClients: false })).toBe(false);
   });
 });
