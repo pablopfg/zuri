@@ -646,7 +646,7 @@ describe("the fields Zuri started to keep", () => {
     expect(readPerson({ resourceName: "people/c1", phoneNumbers: [{ value: "(11) 99999-0001" }] }).display).toBe("(11) 99999-0001");
     const empty = readPerson({ resourceName: "people/c1" });
     expect(empty.display).toBe("");
-    expect(empty.data).toEqual({ given: "", middle: "", family: "", nickname: "", phones: [], emails: [], birthday: null, dates: [], organization: "", jobTitle: "", notes: "", fields: [], addresses: [], urls: [], relations: [], chats: [], more: {} });
+    expect(empty.data).toEqual({ given: "", middle: "", family: "", nickname: "", phones: [], emails: [], birthday: null, dates: [], organization: "", jobTitle: "", notes: "", fields: [], addresses: [], urls: [], relations: [], chats: [], more: {}, note: "", cpf: "", photo: "" });
   });
 
   it("QA-S09-05: cuts an address at 300 characters and drops a site past 200 (n - 1, n, n + 1)", () => {
@@ -698,7 +698,7 @@ describe("the fields Zuri started to keep", () => {
       add(world, "c2", "Bia", [CLIENTS]);
       await turnOn(world);
       const list = world.contacts.search({ limit: 5 }).contacts;
-      expect(Object.keys(list[0] ?? {}).sort()).toEqual(["birthday", "email", "id", "labels", "name", "phone"]);
+      expect(Object.keys(list[0] ?? {}).sort()).toEqual(["birthday", "birthdayFull", "cpf", "email", "id", "labels", "name", "note", "phone", "photo"]);
       const ana = world.contacts.get(list[0]?.id ?? "");
       expect(ana).toMatchObject({
         given: "Ana",

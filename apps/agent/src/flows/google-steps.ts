@@ -228,12 +228,15 @@ export function searchContacts(node: Extract<FlowNode, { type: "contacts" }>, st
     const query = [...fill(node.query, item).trim()].slice(0, FLOW_LIMITS.contactsQuery).join("");
     // "One per item" with nothing to look for finds nobody rather than the first name of the list.
     if (!query && node.each && node.query) return [];
-    return contacts.search({
-      limit,
-      ...(query ? { query } : {}),
-      ...(node.label ? { label: node.label } : {}),
-      ...(node.birthday ? { birthday: node.birthday } : {}),
-    }).contacts;
+    // What a flow gets of a contact is this and no more: the photo's address and the CPF never travel in a flow.
+    return contacts
+      .search({
+        limit,
+        ...(query ? { query } : {}),
+        ...(node.label ? { label: node.label } : {}),
+        ...(node.birthday ? { birthday: node.birthday } : {}),
+      })
+      .contacts.map(({ id, name, labels, phone, email, birthday }) => ({ id, name, labels, phone, email, birthday }));
   };
   if (!node.each) return find(state.items[0] ?? newItem(), node.limit).map((contact) => plain(contact) as Item);
   return state.items.map((item) => {

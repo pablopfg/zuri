@@ -27,8 +27,11 @@
  * - `memoria-painel=/memoria`: a sample memory chosen, with its links in the panel.
  * - `memoria-mapa=/memoria`: the map (on a computer, with the same memory chosen).
  * - `nota-aberta=/notas`: the sample note ("Lista da mudança de apartamento"), open in the editor.
- * - `contatos=/contatos`, `contato-ficha=/contatos` and `contatos-etiquetas=/contatos`: the list with the sample
- *   contacts copied, the card of one of them ("Ana Souza") and the label filter open (need --exemplos).
+ * - `contatos=/contatos`, `contato-ficha=/contatos`, `contato-homonimo=/contatos` and `contatos-etiquetas=/contatos`:
+ *   the list with the sample contacts copied, the card of one of them (Beatriz, with her appointments), the card of
+ *   one of two people with the same name, and the label filter open (need --exemplos).
+ * - `integracoes-sem-etiqueta=/configuracoes/integracoes>Contatos`: the contacts just turned on, with the labels
+ *   to choose and nobody copied yet (needs --exemplos; run it apart, on a database of its own: it empties the copy).
  * - `crm-avisos=/crm`: the CRM screen scrolled to its notices' card, under the flows.
  * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
@@ -184,14 +187,26 @@ for (const [device, options] of [
       }
       if (/^contatos?(-|$)/.test(screen.name)) {
         await seedContacts(page, BASE);
-        if (screen.name === "contato-ficha") {
-          const found = (await (await page.request.get(`${BASE}/api/contacts?q=Ana`, { headers: CSRF })).json()) as { contacts: { id: string }[] };
-          if (!found.contacts[0]) throw new Error("contato-ficha needs --exemplos");
+        // "contato-ficha": Beatriz, with the note after her name and her appointments; "contato-homonimo": one of the two Marcos.
+        const who = screen.name === "contato-ficha" ? "Beatriz" : screen.name === "contato-homonimo" ? "Marcos" : "";
+        if (who) {
+          const found = (await (await page.request.get(`${BASE}/api/contacts?q=${who}`, { headers: CSRF })).json()) as { contacts: { id: string }[] };
+          if (!found.contacts[0]) throw new Error(`${screen.name} needs --exemplos`);
           path = `/contatos/${found.contacts[0].id}`;
+        }
+      }
+      if (screen.name === "integracoes-sem-etiqueta") {
+        // The first setup: the contacts on, the labels read and none chosen yet (shoot it apart: it empties the copy).
+        await seedContacts(page, BASE);
+        const status = (await (await page.request.get(`${BASE}/api/google/contacts`, { headers: CSRF })).json()) as { labels: { selected: boolean }[] };
+        if (status.labels.some((label) => label.selected)) {
+          const none = await page.request.patch(`${BASE}/api/google/contacts/labels`, { headers: CSRF, data: { selected: [] } });
+          if (!none.ok()) throw new Error(`/api/google/contacts/labels: ${none.status()}`);
         }
       }
       await page.goto(BASE + path);
       await page.getByRole("heading", { level: 1 }).or(page.getByRole("heading", { level: 2 })).first().waitFor();
+      if (/^contato-(ficha|homonimo)$/.test(screen.name)) await page.getByRole("region", { name: "Atendimentos" }).locator("dl").waitFor();
       if (screen.name === "contatos-etiquetas") {
         await page.getByRole("button", { name: "Filtrar por etiqueta" }).click();
         await page.getByRole("dialog", { name: "Filtrar por etiqueta" }).getByText("Todas as etiquetas").waitFor();
@@ -245,7 +260,7 @@ for (const [device, options] of [
         await title.evaluate((box: HTMLElement) => box.scrollIntoView({ block: "center" }));
       }
       if (screen.region) {
-        const region = page.getByRole("region", { name: screen.region });
+        const region = page.getByRole("region", { name: screen.region, exact: true });
         await region.waitFor();
         await region.evaluate((box: HTMLElement) => box.scrollIntoView({ block: "start" }));
       }

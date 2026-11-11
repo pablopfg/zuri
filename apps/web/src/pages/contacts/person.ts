@@ -145,3 +145,37 @@ export function countdown(msLeft: number): string {
 
 /** A contact's id as the address carries it. */
 export const isContactId = (value: string): boolean => /^[0-9a-f-]{36}$/.test(value);
+
+/**
+ * The contacts of a list whose name another one in it also has. Two people
+ * with one name are two people, never a duplicate: their lines show the
+ * birthday and the CPF besides the phone, so the owner tells them apart.
+ */
+export function sameNamed<T extends Pick<ContactSummary, "id" | "name" | "phone" | "email">>(contacts: T[]): Set<string> {
+  const byName = new Map<string, string[]>();
+  for (const contact of contacts) {
+    if (!isNamed(contact)) continue;
+    const key = contact.name.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const ids = byName.get(key);
+    if (ids) ids.push(contact.id);
+    else byName.set(key, [contact.id]);
+  }
+  return new Set([...byName.values()].filter((ids) => ids.length > 1).flat());
+}
+
+/** "há 3 semanas", "em 5 dias", "hoje": how far a day is from today, both as the owner's calendar days. */
+export function daysApart(day: string, today: string, locale: string): string {
+  const days = Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+  if (!Number.isFinite(days)) return "";
+  const format = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  const size = Math.abs(days);
+  if (size < 14) return format.format(days, "day");
+  if (size < 60) return format.format(Math.trunc(days / 7), "week");
+  if (size < 730) return format.format(Math.trunc(days / 30), "month");
+  return format.format(Math.trunc(days / 365), "year");
+}
+
+/** The calendar day ("YYYY-MM-DD") an instant falls on in a time zone. */
+export function localDay(at: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
+}

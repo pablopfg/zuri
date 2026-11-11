@@ -403,6 +403,15 @@ sair). Restringir a origem ao `/entrar` quebraria o widget nesses casos. O
 risco aceito é pequeno: a origem é da própria Cloudflare, e a interface não
 tem HTML vindo de fora (`dangerouslySetInnerHTML` não é usado).
 
+A CSP também deixa a interface carregar imagens de
+`lh3.googleusercontent.com` a `lh6.googleusercontent.com`, e só imagens: é de
+onde vem a foto dos contatos do Google ([Google Contatos](google-contatos.md)).
+O servidor só guarda um endereço `https` desses quatro hosts, sem usuário,
+porta ou fragmento; a tela confere de novo e pede a imagem sem `Referer`.
+Nenhum script, estilo ou conexão sai para lá. Dois efeitos aceitos: a foto
+pode ser a que o próprio contato pôs no perfil dele do Google, e o navegador
+do dono fala direto com o Google ao abrir a lista.
+
 ## CSRF
 
 Toda rota da API, menos `GET /api/health`, exige:
