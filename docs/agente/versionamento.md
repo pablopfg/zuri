@@ -1,18 +1,39 @@
 # Versões, changelog e pré-releases
 
-Cada PR mesclada na `develop` vira uma versão do Zuri. Ninguém precisa lembrar
-de subir número, editar o `CHANGELOG.md` ou criar tag: o workflow
-[`versao.yml`](../../.github/workflows/versao.yml) faz isso logo depois do
-merge. Decisão do Pablo de 02/11/2026 (`.claude/memoria/decisoes.md`).
+Uma versão do Zuri sai a cada 10 PRs mescladas na `develop` e reúne todas elas.
+Ninguém precisa lembrar de subir número, editar o `CHANGELOG.md` ou criar tag:
+o workflow [`versao.yml`](../../.github/workflows/versao.yml) conta os merges
+e faz isso quando o décimo entra. Decisões do Pablo de 02/11/2026 (versões
+automáticas) e de 11/11/2026 (só a cada 10 merges, em vez de uma por merge),
+em `.claude/memoria/decisoes.md`.
+
+## Quando sai uma versão
+
+- Contam os merges da linha principal da `develop` depois da última versão.
+  Com squash, cada PR mesclada é um merge. Os merges do próprio workflow
+  (`chore(release):`) e os do workflow `README` não contam.
+- Com menos de 10 esperando, o workflow roda e não muda nada: sem tag, sem
+  pré-release, sem PR. Os arquivos de `changelog/nao-lancado/` ficam onde estão.
+- Com 10 ou mais, sai **uma** versão com todos os que esperam, com a tag e a
+  pré-release no commit do último deles.
+- Para fechar a versão antes (por exemplo, antes de mandar a `develop` para a
+  `main`): **Actions > Versão > Run workflow**, marcando **Criar a versão
+  agora**. Ela sai com os merges que estiverem esperando, mesmo que seja um só.
+  Confira que o run terminou e que a PR `chore(release):` abriu: o GitHub guarda
+  só um run do workflow na fila, e um merge que entre nesse meio tempo troca o
+  seu pedido por um run comum, que não fecha a versão. Se isso acontecer, rode
+  de novo.
+- O número 10 é a constante `MERGES_PER_VERSION` de `scripts/versao.ts`.
+  `node scripts/versao.ts` mostra quantos merges esperam.
 
 ## Numeração
 
 [SemVer](https://semver.org/lang/pt-BR/) para software em desenvolvimento:
 
-| Merge | Sobe | Exemplo |
+| Merges da versão | Sobe | Exemplo |
 | --- | --- | --- |
-| Conclui uma etapa ou subetapa da especificação (11a, 19b, 22c…) | o número do meio | 0.17.4 → 0.18.0 |
-| Qualquer outro (ajuste, correção, docs, CI, dependência) | o último | 0.18.0 → 0.18.1 |
+| Pelo menos um conclui uma etapa ou subetapa da especificação (11a, 19b, 22c…) | o número do meio | 0.17.4 → 0.18.0 |
+| Nenhum conclui etapa (ajustes, correções, docs, CI, dependências) | o último | 0.18.0 → 0.18.1 |
 | Primeiro lançamento na `main` | o primeiro, uma vez, com o OK do Pablo | 0.x.y → 1.0.0 |
 
 Enquanto o primeiro número for 0, tudo é desenvolvimento. A 1.0.0 é decisão do
@@ -32,7 +53,7 @@ A versão é a mesma em todos estes lugares (o `npm run lint` roda
   (`packages/shared`, `apps/agent`, `apps/web`, lidos do campo `workspaces`);
 - o `package-lock.json`: o `version` do topo, de `packages[""]` e de cada
   workspace;
-- a tag `vX.Y.Z` no commit do merge, com a pré-release do GitHub (a partir da
+- a tag `vX.Y.Z` no commit do último merge da versão, com a pré-release do GitHub (a partir da
   0.15.5; veja "Histórico").
 
 Os outros arquivos não guardam versão: o `wrangler.jsonc` não tem esse campo
@@ -45,8 +66,8 @@ Se algo ficar fora de sincronia (por exemplo, depois de resolver um conflito na
 mão), `node scripts/versao.ts --sincronizar` escreve a versão do `CHANGELOG.md`
 em todos os arquivos.
 
-Esses arquivos só mudam quando a PR `chore(release):` mescla, minutos depois do
-merge. Por isso o build do commit marcado com `vX.Y.Z` ainda mostra a versão
+Esses arquivos só mudam quando a PR `chore(release):` mescla, minutos depois de
+a versão sair. Por isso o build do commit marcado com `vX.Y.Z` ainda mostra a versão
 anterior; o build da `develop` depois da PR de versão mostra a certa. Um deploy
 sempre parte da `develop` (ou da `main`) em dia, nunca de uma tag solta.
 
@@ -68,14 +89,17 @@ Escreve a sua parte do changelog num arquivo novo
 - …
 ```
 
-Sem a linha, o merge sobe o último número. Não existe `major`: a 1.0.0 é do
+Basta um arquivo com a linha entre os merges da versão para ela subir o número
+do meio; sem nenhum, sobe o último. Não existe `major`: a 1.0.0 é do
 Pablo. Confira o arquivo com `node scripts/changelog.ts`, que mostra o tipo de
 cada um.
 
 PR sem mudança visível (CI, docs internas, dependências) pode ficar sem arquivo
-(rótulo `sem-changelog`): a versão sai do mesmo jeito, com a linha "Sem mudança
-visível: <título da PR>". Por isso o título da PR importa: ele vira o título da
-versão no `CHANGELOG.md` e nas notas da pré-release.
+(rótulo `sem-changelog`): ela conta para os 10 do mesmo jeito e aparece no
+título da versão, que lista as PRs reunidas ("Reúne 10 mudanças (#290, #291,
+…)"). Se nenhuma PR da versão trouxer arquivo, a seção fica com a linha "Sem
+mudança visível". Versão de um merge só (fechada à mão com "Criar a versão
+agora") leva o título da própria PR.
 
 Nunca edite o `CHANGELOG.md`, o `version.ts` nem o `version` dos `package.json` e do `package-lock.json` à mão. "## [Não lançado]" fica
 sempre vazio; o teste do repositório falha se alguém escrever ali.
@@ -86,9 +110,10 @@ sempre vazio; o teste do repositório falha se alguém escrever ali.
    hora e por `workflow_dispatch`).
 2. `scripts/publicar-versao.ts` lê o `CHANGELOG.md` e acha os merges da
    `develop` depois da versão mais nova (só a linha principal, `--first-parent`).
-   Cada merge ganha um número, na ordem, pelos arquivos que ele acrescentou em
-   `changelog/nao-lancado/` (`scripts/versao.ts`).
-3. Cada versão sem tag ganha a tag `vX.Y.Z` no commit do merge (por `git push`:
+   Com menos de 10 (e sem "Criar a versão agora"), o run termina aqui. Com 10
+   ou mais, eles formam uma versão, com os arquivos que acrescentaram em
+   `changelog/nao-lancado/` juntos numa seção só (`scripts/versao.ts`).
+3. A versão sem tag ganha a tag `vX.Y.Z` no commit do último merge (por `git push`:
    a API de releases recusa ao `GITHUB_TOKEN` criar tag num commit cujos
    workflows diferem dos da `develop`) e uma
    **pré-release** no GitHub, com o título só "vX.Y.Z" (pedido do Pablo) e as
@@ -102,8 +127,9 @@ sempre vazio; o teste do repositório falha se alguém escrever ali.
    ela, com o rótulo `sem-atualizacao-automatica` (o Update PRs não mexe nela)
    e auto-merge por squash. A CI que o push do bot dispara é aprovada pelo
    próprio workflow, como no Update PRs.
-5. Se outra PR entrar antes, o próximo run refaz a branch e a mesma PR passa
-   a cobrir as duas versões. Quando ela mescla, o merge dela não vira versão
+5. Se outra PR entrar antes de ela mesclar, o próximo run refaz a branch a
+   partir da `develop`. A versão continua fechada no commit da tag: a PR nova
+   já conta para a versão seguinte e o arquivo de changelog dela fica. Quando a PR de versão mescla, o merge dela não vira versão
    (título `chore(release):`), e o `CHANGELOG.md` fica em dia. A branch
    `chore/versao` é apagada em até 10 minutos pelo workflow `Branches`
    (`scripts/limpar-branches.ts`): o "Automatically delete head branches" do
@@ -119,13 +145,14 @@ Cada seção traz:
 ```markdown
 ## [0.17.0] - 2026-11-02
 
-Mesclada às 09:20 (UTC-3) · commit [`d61079a`](…/commit/…) · PR [#73](…/pull/73) · Envia avisos com botões (etapa 13)
+Mesclada às 09:20 (UTC-3) · commit [`d61079a`](…/commit/…) · Reúne 10 mudanças (#64, #65, …, #73)
 
 ### Adicionado
 …
 ```
 
-A data e a hora são as do merge no fuso `America/Sao_Paulo`; o deslocamento
+As versões de antes de 11/11/2026 (uma por merge) e as de um merge só trazem
+também "· PR [#73](…)" e o título da PR. A data e a hora são as do último merge da versão no fuso `America/Sao_Paulo`; o deslocamento
 (`UTC-3`) é lido do fuso, não fixado. No pé do arquivo ficam os links de cada
 versão para a pré-release e de "Não lançado" para a comparação com a `develop`.
 
@@ -156,6 +183,8 @@ Pré-release de desenvolvimento da `develop`, não é deploy. Todas as versões 
 - Os grupos ganham um ícone fixo, sempre na mesma ordem: ✨ Adicionado,
   🔄 Alterado, 🐛 Corrigido, 🔒 Segurança, ⬆️ Atualização. O `CHANGELOG.md`
   fica com os títulos sem ícone.
+- Numa versão que reúne várias PRs, a coluna "Pull request" diz "sem PR" e os
+  números ficam no título.
 - "Histórico completo" compara a versão com a anterior. A 0.15.5 compara com
   o commit da 0.15.4, que não tem tag (veja "Histórico", abaixo).
 - Mudou o formato: o próximo run do workflow reescreve as notas de todas as
@@ -170,12 +199,15 @@ A pré-release é da `develop` e não é deploy. Quando a `develop` vai para a
 se o deploy e as conferências passarem, o job `release` roda
 `scripts/deploy/publicar-release.ts`:
 
+- antes de abrir a PR `develop → main`, feche a versão com **Actions > Versão >
+  Run workflow > Criar a versão agora** e espere a PR `chore(release):`
+  mesclar, para nenhum merge ir para a `main` sem versão;
 - a versão é a seção mais nova do `CHANGELOG.md` da `main`;
 - a tag `vX.Y.Z` já existe (criada aqui, na `develop`) e precisa estar no
   histórico da `main`; sem ela, o job falha e não cria nem move tag nenhuma;
 - se a `main` tem merges depois da tag que não são `chore(release)` nem o do
-  README (a `develop` foi para a `main` antes de a PR `chore(release)`
-  mesclar), o job falha em vez de publicar uma versão antiga como *Latest*;
+  README (a `develop` foi para a `main` com merges esperando versão, ou antes
+  de a PR `chore(release)` mesclar), o job falha em vez de publicar uma versão antiga como *Latest*;
 - a pré-release vira release, marcada como *Latest*, com as mesmas notas em
   pt-BR e a última linha trocada para "Versão publicada pela `main`.". O
   `versao.yml` conhece as duas formas e não desfaz a troca.
@@ -189,10 +221,18 @@ A 1.0.0 continua sendo decisão do Pablo, no primeiro release para a `main`.
   PR. Nunca empurra para `develop` ou `main` e nunca apaga tag; de uma
   pré-release que já existe, só acerta o título para "vX.Y.Z" e as notas
   para o formato atual, com o mesmo conteúdo.
+- "Criar a versão agora" é uma caixa do próprio workflow (`workflow_dispatch`),
+  que só quem tem escrita no repositório roda. O valor chega ao script por
+  variável de ambiente e só o texto exato `true` vale; nada mais muda no run.
 - O número de uma versão com tag fica congelado: se um fragmento for
-  corrigido depois (por exemplo, o marcador `minor` esquecido), aquele merge
-  mantém o número e os merges seguintes contam a partir dele. As notas acompanham
+  corrigido depois (por exemplo, o marcador `minor` esquecido), aquela versão
+  mantém o número, os merges até a tag continuam nela e os seguintes contam
+  para a próxima. As notas acompanham
   a seção do `CHANGELOG.md`: uma correção nela chega à pré-release no run seguinte.
+- Depois que a versão ganha a tag, o texto dela é o dos arquivos naquele
+  commit. Até a PR `chore(release):` mesclar, uma PR nova não acrescenta item a
+  um arquivo de `changelog/nao-lancado/` que já existia: a mudança se perderia
+  quando o arquivo for apagado. Cada PR cria o seu arquivo.
 - Tag que já aponta para outro commit para o workflow antes de mexer na PR de
   versão, em vez de ser movida, e ele abre a issue padrão de falha
   (`docs/agente/issues.md`).
@@ -220,8 +260,11 @@ A 1.0.0 continua sendo decisão do Pablo, no primeiro release para a `main`.
 | "vX.Y.Z points to …" | alguém criou a tag na mão | apague a tag errada (Pablo) ou corrija a seção, e rode de novo |
 | A PR `chore(release):` parada com checks esperando | a aprovação da CI do bot falhou | aprove as execuções na aba Actions ou rode o workflow de novo |
 | `node scripts/versao.ts` mostra versões pendentes há mais de uma hora | o workflow não rodou | abra Actions > Versão > Run workflow |
+| Dez merges entraram e nenhuma versão saiu | algum é `chore(release):` ou do `README`, que não contam | `node scripts/versao.ts` diz quantos esperam; para não esperar, rode com "Criar a versão agora" |
 
-Localmente: `node scripts/versao.ts` mostra o que falta escrever,
+Localmente: `node scripts/versao.ts` mostra o que falta escrever e quantos
+merges esperam (`--agora` mostra a versão que sairia já). Ele lê as tags do seu
+clone, então rode `git fetch --tags` antes.
 `node scripts/versao.ts --notas 0.17.0` mostra as notas de uma versão.
 
 ## Histórico
@@ -230,6 +273,9 @@ O `CHANGELOG.md` foi refeito em 02/11/2026 a partir das 69 PRs mescladas na
 `develop` até a #73: cada item do changelog antigo e de `changelog/nao-lancado/`
 voltou para a PR que o escreveu, as etapas 0 a 13 subiram o número do meio e o
 resto o último.
+
+Até a 0.49.4 (11/11/2026) cada merge era uma versão; essas seções, tags e
+pré-releases ficam como estão.
 
 As tags e pré-releases começam na **0.15.5** (#68), constante
 `FIRST_TAGGED_VERSION` de `scripts/versao.ts`. O GitHub não deixa o

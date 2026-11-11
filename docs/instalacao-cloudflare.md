@@ -196,9 +196,9 @@ conferências mostram só códigos HTTP.
 O deploy roda quando a `main` recebe a `develop`.
 
 1. Em **Pull requests > New pull request**, escolha **base: `main`** e
-   **compare: `develop`**. Antes, confira que **não** há PR `chore(release)`
-   aberta para a `develop` (ela escreve a versão no changelog minutos depois de
-   cada merge). Título: `chore(release): publica a versão X.Y.Z`. O número
+   **compare: `develop`**. Antes, em **Actions > Versão > Run workflow**, marque
+   **Criar a versão agora** (a versão só sai sozinha a cada 10 merges) e espere
+   a PR `chore(release)` que ele abre mesclar na `develop`. Título: `chore(release): publica a versão X.Y.Z`. O número
    segue o da `develop` (0.x); a 1.0.0 é sua decisão e sai por uma PR na
    `develop` antes, que você pede ao agente
    ([versionamento.md](agente/versionamento.md)).

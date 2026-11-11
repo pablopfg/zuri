@@ -287,6 +287,8 @@ test("Esqueci minha senha sits on the password's line and opens the recovery, wi
   await page.goto("/entrar");
   const link = page.getByRole("link", { name: "Esqueci minha senha" });
   const label = page.locator("label", { hasText: "Senha" });
+  // Measured only with the web font in: with the fallback font the label is taller and the line sits half a pixel off.
+  await page.evaluate(() => document.fonts.ready);
   const [linkBox, labelBox, fieldBox] = await Promise.all([link.boundingBox(), label.boundingBox(), page.getByLabel("Senha", { exact: true }).boundingBox()]);
   if (!linkBox || !labelBox || !fieldBox) throw new Error("the password field is not laid out");
   // Same line as the label, at the far end, above the field.
