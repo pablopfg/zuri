@@ -7,7 +7,7 @@ import { MockAIProvider } from "../src/ai/mock.ts";
 import type { AIProvider } from "../src/ai/provider.ts";
 import { MockTranscriber, type Transcriber } from "../src/ai/transcription.ts";
 import { ScriptedProvider } from "./chat-world.ts";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // The chat through the Worker, as the interface calls it.
 
@@ -75,7 +75,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 });
 
 afterEach(async () => {

@@ -6,8 +6,7 @@ import { createApi } from "../src/api/app.ts";
 import { TURNSTILE_VERIFY_URL } from "../src/auth/turnstile.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { Database } from "../src/db/database.ts";
-import { RemoteTokens } from "../src/remote/tokens.ts";
-import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Its own file: it changes the owner's password.
 
@@ -33,7 +32,9 @@ const json = (ip: string, token: string | null, body: unknown) => ({
 async function signIn(ip: string, password = TEST_PASSWORD): Promise<string> {
   const res = await call(`${ORIGIN}/api/auth/login`, json(ip, null, { email: TEST_EMAIL, password, turnstileToken: HUMAN_TOKEN }));
   expect(res.status).toBe(200);
-  return res.headers.getSetCookie()[0]?.split(";")[0]?.split("=")[1] ?? "";
+  // The session's token followed by the device cookie, so `__Host-zuri_session=${token}` is what the browser sends:
+  // a session cookie alone opens nothing.
+  return signedCookies(res).replace("__Host-zuri_session=", "");
 }
 
 /** Have I Been Pwned, faked: the test says whether the password is in it, or that the network is down. */
@@ -166,18 +167,24 @@ describe("POST /api/auth/password", () => {
     });
   });
 
+  it("refuses a request that carries Authorization, even with a live session: there is no access by token", async () => {
+    const token = await signIn("192.0.2.48");
+    const session = (extra: Record<string, string>) => call(`${ORIGIN}/api/auth/session`, { headers: { ...CSRF, "cf-connecting-ip": "192.0.2.48", cookie: `__Host-zuri_session=${token}`, ...extra } });
+    expect((await session({})).status).toBe(200);
+    for (const authorization of ["Bearer zur_pat_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "Bearer x", "Basic ZG9ubzpzZW5oYQ==", ""]) {
+      const res = await session({ authorization });
+      expect(res.status, authorization).toBe(401);
+      expect(((await res.json()) as { code: string }).code).toBe("UNAUTHORIZED");
+    }
+    // The cookie itself was never the problem: the session is still there.
+    expect((await session({})).status).toBe(200);
+    expect((await call(`${ORIGIN}/api/remote`, { headers: { ...CSRF, "cf-connecting-ip": "192.0.2.48", cookie: `__Host-zuri_session=${token}` } })).status).toBe(404);
+  });
+
   it("changes it: every old session ends, this browser gets a new cookie, and the new password signs in", async () => {
     const ip = "192.0.2.43";
     const other = await signIn("192.0.2.44");
     const token = await signIn(ip);
-    // A remote token made under the old password (step 20).
-    const pat = await inOwner((state, db) => {
-      const tokens = new RemoteTokens({ db, state, secret: () => testEnv.SESSION_SECRET });
-      tokens.setEnabled(true);
-      return tokens.create({ name: "n8n", scope: "read" });
-    });
-    const tasks = () => call(`${ORIGIN}/api/tasks`, { headers: { authorization: `Bearer ${pat.secret}`, "cf-connecting-ip": "192.0.2.47" } });
-    expect((await tasks()).status).toBe(200);
     const breach = fakeBreachApi("clean");
     const res = await call(`${ORIGIN}/api/auth/password`, json(ip, token, { currentPassword: TEST_PASSWORD, newPassword: NEW_PASSWORD }));
     expect(res.status).toBe(200);
@@ -185,16 +192,15 @@ describe("POST /api/auth/password", () => {
     vi.restoreAllMocks();
     const fresh = res.headers.getSetCookie()[0]?.split(";")[0]?.split("=")[1] ?? "";
     expect(fresh).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(fresh).not.toBe(token);
-    const session = (t: string) => call(`${ORIGIN}/api/auth/session`, { headers: { ...CSRF, cookie: `__Host-zuri_session=${t}` } });
+    expect(token.startsWith(`${fresh};`)).toBe(false);
+    const device = token.slice(token.indexOf(";"));
+    const session = (t: string) => call(`${ORIGIN}/api/auth/session`, { headers: { ...CSRF, "cf-connecting-ip": ip, cookie: `__Host-zuri_session=${t}` } });
     expect((await session(token)).status).toBe(401);
     expect((await session(other)).status).toBe(401);
-    expect((await session(fresh)).status).toBe(200);
+    expect((await session(`${fresh}${device}`)).status).toBe(200);
+    // The new cookie alone, without this browser's device cookie, opens nothing.
+    expect((await session(fresh)).status).toBe(401);
     expect((await call(`${ORIGIN}/api/auth/login`, json("192.0.2.45", null, { email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }))).status).toBe(401);
     await signIn("192.0.2.46", NEW_PASSWORD);
-    // The new password revoked every remote token: the old one opens nothing.
-    expect(await inOwner((_s, db) => db.all(`SELECT id FROM zur_remote_tokens`))).toEqual([]);
-    expect((await tasks()).status).toBe(401);
-    await inOwner((state) => state.delete("remote_enabled"));
   });
 });

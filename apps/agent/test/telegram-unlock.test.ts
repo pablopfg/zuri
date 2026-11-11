@@ -6,7 +6,7 @@ import { MockAIProvider, type RecordedPrompt } from "../src/ai/mock.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { telegramWebhookSecret } from "../src/gates/telegram.ts";
 import startCode from "./fixtures/telegram/start-code.json?raw";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 import { type SoftPasskey, softPasskey } from "./soft-passkey.ts";
 
 // Step 15a: the bot's read lock, /destravar (a passkey on /aprovar or a code by
@@ -228,7 +228,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 });
 
 describe("the read lock", () => {

@@ -1,7 +1,9 @@
 import {
   GLOBAL_FAILURES_HARD,
   GLOBAL_FAILURES_SOFT,
+  LOGIN_DAY_MS,
   LOGIN_WINDOW_MS,
+  MAX_DAILY_FAILURES_PER_NETWORK,
   MAX_FAILURES_PER_NETWORK,
   MAX_TURNSTILE_FAILURES_PER_NETWORK,
   TRUSTED_NETWORK_MS,
@@ -25,7 +27,7 @@ const FAILURES = [FAILURE, TRUSTED_FAILURE] as const;
  */
 const MAX_TRUSTED_FAILURES = MAX_FAILURES_PER_NETWORK;
 /** Failures and refused checks matter for a day; successes as long as they mark one of the owner's networks. */
-const FAILURE_KEEP_MS = 24 * 3600_000;
+const FAILURE_KEEP_MS = LOGIN_DAY_MS;
 
 /** The expired-row cleanup runs at most this often: a flood of refusals must not cost a DELETE each. */
 const CLEANUP_INTERVAL_MS = 60_000;
@@ -53,6 +55,9 @@ export interface LimitContext {
  *
  * - 3 wrong passwords from one network in 15 minutes: that network waits
  *   (RATE_LIMITED with Retry-After) until the oldest one leaves the window.
+ * - 5 wrong passwords from one network in 24 hours: it waits until the oldest
+ *   of them is a day old. Only a network without a recent sign-in: the owner
+ *   mistyping at home is never locked out for a day.
  * - A distributed guess: past GLOBAL_FAILURES_SOFT refusals (wrong passwords
  *   and refused robot checks) across all networks, a network without a recent
  *   sign-in gets one try per window; past GLOBAL_FAILURES_HARD, none. The
@@ -110,6 +115,19 @@ export class LoginLimiter {
     return row?.n ?? 0;
   }
 
+  /** One network's wrong passwords in the last day and, of those, in the window: one indexed read for both limits. */
+  private networkFailures(network: string): { day: number; window: number } {
+    const now = this.clock();
+    const row = this.db.one<{ day: number; recent: number | null }>(
+      `SELECT count(*) AS day, sum(at > ?) AS recent FROM zur_login_attempts WHERE network = ? AND at > ? AND outcome IN (${FAILURES.map(() => "?").join(", ")})`,
+      now - LOGIN_WINDOW_MS,
+      network,
+      now - LOGIN_DAY_MS,
+      ...FAILURES,
+    );
+    return { day: row?.day ?? 0, window: row?.recent ?? 0 };
+  }
+
   private insert(network: string, outcome: number): number {
     const at = this.clock();
     const row = this.db.one<{ id: number }>(
@@ -152,7 +170,10 @@ export class LoginLimiter {
   /** Throws RATE_LIMITED, with the seconds until the network may try again, when it must wait. */
   assertAllowed(network: string, context: LimitContext = {}): void {
     this.cleanup();
-    const failures = this.failures(network);
+    const { day, window: failures } = this.networkFailures(network);
+    // The day's cap first: its wait is the longer one, and the screen shows the one it is told. Only a
+    // network without a recent sign-in, and only one at the cap costs that second read.
+    if (day >= MAX_DAILY_FAILURES_PER_NETWORK && !this.isTrusted(network)) throw this.waitDaily(network);
     if (failures >= MAX_FAILURES_PER_NETWORK) throw this.wait(FAILURES, network);
     const robots = this.count([TURNSTILE_FAILED], network);
     if (robots >= MAX_TURNSTILE_FAILURES_PER_NETWORK) throw this.wait([TURNSTILE_FAILED], network);
@@ -230,6 +251,21 @@ export class LoginLimiter {
     return this.retryAt(oldest?.at ?? now);
   }
 
+  /** RATE_LIMITED until the day holds fewer than the cap: when the 5th newest wrong password is a day old. */
+  private waitDaily(network: string): AppError {
+    const now = this.clock();
+    const row = this.db.one<{ at: number }>(
+      `SELECT at FROM zur_login_attempts WHERE network = ? AND at > ? AND outcome IN (${FAILURES.map(() => "?").join(", ")}) ORDER BY at DESC, id DESC LIMIT 1 OFFSET ?`,
+      network,
+      now - LOGIN_DAY_MS,
+      ...FAILURES,
+      MAX_DAILY_FAILURES_PER_NETWORK - 1,
+    );
+    const error = this.retryAt(row?.at ?? now, LOGIN_DAY_MS);
+    // Told apart from the 15-minute wait: the access log names the day's cap.
+    return new AppError("RATE_LIMITED", undefined, { ...error.details, daily: true });
+  }
+
   /** RATE_LIMITED until the oldest refusal of all leaves the window and the total drops under the hard limit. */
   private waitGlobal(): AppError {
     const list = this.refusals();
@@ -237,9 +273,9 @@ export class LoginLimiter {
     return this.retryAt(list[list.length - GLOBAL_FAILURES_HARD]?.at ?? now);
   }
 
-  private retryAt(oldest: number): AppError {
+  private retryAt(oldest: number, windowMs = LOGIN_WINDOW_MS): AppError {
     const now = this.clock();
-    const retryAfter = Math.max(1, Math.ceil((oldest + LOGIN_WINDOW_MS - now) / 1000));
+    const retryAfter = Math.max(1, Math.ceil((oldest + windowMs - now) / 1000));
     return new AppError("RATE_LIMITED", undefined, { retryAfter });
   }
 }

@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AgentRunner } from "../src/agent/runner.ts";
 import type { AIProvider } from "../src/ai/provider.ts";
-import { RemoteTokens } from "../src/remote/tokens.ts";
-import { InternalState } from "../src/db/internal-state.ts";
 import { type ChatWorld, collect, ScriptedProvider, type Step, withChatWorld } from "./chat-world.ts";
 import { testEnv } from "./helpers.ts";
 import { mcpFixture, searchTool } from "./mcp-fixture.ts";
@@ -10,7 +8,7 @@ import { mcpFixture, searchTool } from "./mcp-fixture.ts";
 // Step 25, item D10 of docs/planos/troca-de-provedores-e-protecao-de-dados.md:
 // the canary over every origin that reaches a model through a tool (D9). One
 // turn reads the MCP server, the Google Calendar, the Google contacts and the
-// CRM, with marked credentials planted in each and in the remote tokens. The
+// CRM, with marked credentials planted in each. The
 // turn runs on the owner's account (Workers AI) and on an external company's
 // model. Neither sees a credential; each origin's content arrives inside its
 // own <data> line; the external one gets the D3 to D5 profile (no marked
@@ -76,24 +74,17 @@ async function plant(world: ChatWorld): Promise<{ canaries: string[]; clientId: 
   // CRM (22b): a client with an e-mail.
   const client = world.crm.create({ name: `Bia ${VISIBLE}`, email: CLIENT_EMAIL }, "app");
 
-  // Remote access (20): a live token. Remote events only ever become notices, never a prompt.
-  const tokens = new RemoteTokens({ db: world.db, state: new InternalState(world.db), secret: () => testEnv.SESSION_SECRET });
-  tokens.setEnabled(true);
-  const pat = await tokens.create({ name: "n8n", scope: "events" });
-
   // A memory marked "never send out" (D3).
   const marked = world.memories.create({ content: `O cofre abre com ${LOCAL_ONLY}`, category: "fact" }).memory;
   world.memories.setLocalOnly(marked.id, { localOnly: true });
 
   const stored = world.db
     .all<Record<string, unknown>>(`SELECT * FROM zur_mcp_servers`)
-    .concat(world.db.all<Record<string, unknown>>(`SELECT * FROM zur_remote_tokens`))
     .flatMap((row) => Object.values(row).filter((v): v is string => typeof v === "string" && v.length >= 24 && !v.includes(" ")))
     // ids and dates are not secrets; what is left is ciphertext and hashes.
     .filter((v) => !/^[0-9a-f-]{36}$/.test(v) && !/^\d{4}-\d\d-\d\dT/.test(v) && !v.startsWith("https://"));
   const canaries = [
     MCP_TOKEN,
-    pat.secret,
     testEnv.MCP_CREDENTIAL_KEY,
     testEnv.GOOGLE_CLIENT_SECRET,
     testEnv.SESSION_SECRET,
@@ -126,7 +117,7 @@ async function turnOn(world: ChatWorld, provider: ScriptedProvider): Promise<str
 }
 
 describe("the canary over every origin (D10)", () => {
-  it("lets no credential reach a model from MCP, the calendar, the contacts, the CRM or the remote tokens, on the account's model or an external one", async () => {
+  it("lets no credential reach a model from MCP, the calendar, the contacts or the CRM, on the account's model or an external one", async () => {
     await withChatWorld(async (world) => {
       const { canaries, clientId } = await plant(world);
       expect(canaries.length).toBeGreaterThanOrEqual(8);

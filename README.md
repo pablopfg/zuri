@@ -130,7 +130,7 @@ de um Durable Object e conversa com você pelo navegador e pelo Telegram.
 | 🔔 | **Avisos** | Central com sino, notificação no aparelho, e-mail e Telegram, prioridade que aprende e Diagnóstico das falhas dos últimos 30 dias. |
 | 🤖 | **Bot do Telegram** | Só a sua conta: avisos com botões, conversa por texto e voz, comandos rápidos sem IA, trava de leitura, aprovações com passkey ou código e modo de bloqueio para emergências. |
 | 📅 | **Google** | Agenda (ver, criar e editar, em tempo real, com a semana no seu horário de trabalho), Contatos só para leitura por etiqueta, com ficha em grupos e atalhos para ligar e escrever, atualizados no intervalo que você escolher (5 minutos por padrão), e Avaliações do Perfil da Empresa com rascunho, conferência e publicação aprovada. |
-| 🔌 | **Integrações** | Servidores MCP com aprovação por chamada, CRM interno com eventos assinados do n8n e tokens de acesso remoto com escopo, prazo e teto diário. |
+| 🔌 | **Integrações** | Servidores MCP com aprovação por chamada, CRM interno com eventos assinados do n8n. Não há acesso por token: só o navegador com a sessão do dono entra. |
 | 💾 | **Dados** | Exportar e importar em JSON, uso do armazenamento e backup automático diário cifrado no R2 (opcional ⚠️), com 7 cópias. |
 | 🚀 | **Deploy** | Cada merge na `main` roda a CI, espera a sua aprovação e publica o Worker só no seu domínio, com release e changelog em pt-BR. |
 
@@ -209,7 +209,7 @@ Antes do primeiro `npm run dev`, crie o `apps/agent/.dev.vars` como explica [doc
 | Instalar e manter | [Instalação](docs/instalacao-cloudflare.md) · [Configurar a Cloudflare](docs/configuracao-cloudflare.md) · [Configurar o GitHub](docs/configuracao-github.md) · [Solução de problemas](docs/solucao-de-problemas.md) |
 | Entender | [Arquitetura](docs/arquitetura.md) · [Segurança](docs/seguranca.md) · [Interface](docs/interface.md) |
 | Usar | [Conversa](docs/chat.md) · [Tarefas e notas](docs/produtividade.md) · [Memória](docs/memoria.md) · [Busca por significado](docs/semantic-recall.md) · [IA e uso](docs/ia.md) · [Automações](docs/automacoes.md) · [Fluxos](docs/fluxos.md) · [Avisos](docs/avisos.md) · [Telegram](docs/telegram.md) · [Backup](docs/backup.md) |
-| Integrar | [MCP](docs/mcp.md) · [Google Agenda](docs/google-agenda.md) · [Google Contatos](docs/google-contatos.md) · [Avaliações do Google](docs/avaliacoes-google.md) · [CRM e n8n](docs/crm.md) · [Acesso remoto](docs/acesso-remoto.md) |
+| Integrar | [MCP](docs/mcp.md) · [Google Agenda](docs/google-agenda.md) · [Google Contatos](docs/google-contatos.md) · [Avaliações do Google](docs/avaliacoes-google.md) · [CRM e n8n](docs/crm.md) |
 
 ## 🛠️ Desenvolvimento
 

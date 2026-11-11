@@ -6,7 +6,7 @@ import { McpCredentials } from "../src/mcp/credentials.ts";
 import { type DevOAuth, devOAuth, signInRequired } from "../src/mcp/dev-oauth.ts";
 import type { OAuthRecord } from "../src/mcp/oauth.ts";
 import type { McpNetwork } from "../src/mcp/service.ts";
-import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 import { type McpFixture, mcpFixture, searchTool } from "./mcp-fixture.ts";
 
 // Step 18b: MCP servers that sign in with OAuth (PKCE, dynamic registration), through the Worker.
@@ -75,7 +75,7 @@ async function signIn(): Promise<string> {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  return res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  return signedCookies(res);
 }
 
 beforeAll(async () => {

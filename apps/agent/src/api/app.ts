@@ -67,17 +67,14 @@ import { registerReviewRoutes } from "./reviews.ts";
 import { type FlowRouteDeps, registerFlowRoutes } from "./flows.ts";
 import { type CrmRouteDeps, registerCrmEvents, registerCrmRoutes } from "./crm.ts";
 import { registerTelegramRoutes, registerTelegramWebhook, type TelegramDeps } from "./telegram.ts";
-import { type RemoteRouteDeps, registerRemoteGate, registerRemoteRoutes } from "./remote.ts";
 import { type BackupRouteDeps, registerBackupRoutes } from "./backup.ts";
-import type { RemoteCaller } from "../remote/tokens.ts";
 import { log, rayOf, routeLabel } from "../log.ts";
 import type { AgentConfigs } from "../specialists/configs.ts";
 import { registerAgentRoutes } from "./agents.ts";
 
 export interface ApiEnv {
   Bindings: WorkerEnv;
-  /** `remote`: set only by the Bearer gate, for a token it validated (step 20); then there is no session. */
-  Variables: { session: SessionRow; remote?: RemoteCaller };
+  Variables: { session: SessionRow };
 }
 
 /** What the API needs from the Durable Object that runs it. */
@@ -120,8 +117,6 @@ export interface ApiDeps {
   crm?(): CrmRouteDeps;
   /** Storage use, the export and the import (step 23). Absent only in tests of other routes. */
   backup?(): BackupRouteDeps;
-  /** Remote access tokens and the events they send (step 20). Absent: every Bearer token is refused. */
-  remote?(): RemoteRouteDeps;
   /** Each agent's settings on the AI screen (guardrails, PR 2). Absent only in tests of other routes. */
   agents?(): AgentConfigs;
   /** The number of each screen area, sent with the session check and the heartbeat (nova UI, PR 2). Absent only in tests of other routes. */
@@ -189,9 +184,12 @@ export function createApi(deps: ApiDeps) {
 
   const client = (c: Context<ApiEnv>): ClientInfo => clientInfo(c.req.raw, deps.development());
 
-  // Gate 5 for a Bearer token (step 20), before every route: a request with Authorization reaches only
-  // the routes its token's scope allows, without CSRF or a session, and a bad token never falls back to the cookie.
-  registerRemoteGate(app, deps, client);
+  // No access by token: the Worker refuses Authorization before the object; here too, in case a request
+  // ever arrives another way. It never falls back to the cookie.
+  app.use("*", async (c, next) => {
+    if (c.req.header("authorization") !== undefined) throw new AppError("UNAUTHORIZED");
+    await next();
+  });
 
   // Public: says only whether the Worker is up and configured. Never data, never
   // which setting is missing (the Worker's log says that).
@@ -215,8 +213,7 @@ export function createApi(deps: ApiDeps) {
   if (crm) registerCrmEvents(app, () => crm());
 
   app.use("*", async (c, next) => {
-    // A validated token comes from a server, not a browser: there is no cookie for a forged request to ride on.
-    if (!c.get("remote")) checkCsrf(c.req.raw, deps.origin());
+    checkCsrf(c.req.raw, deps.origin());
     await next();
   });
 
@@ -358,13 +355,12 @@ export function createApi(deps: ApiDeps) {
   if (telegram) registerApprovalRoutes(app, () => telegram(), client);
 
   app.use("*", async (c, next) => {
-    // A validated token passed its own gate; only its allowed routes are left, none of which reads the session.
-    if (c.get("remote")) return next();
     const token = readSessionCookie(c.req.raw);
     // Without a cookie there is nothing to look up: the database is not needed to say no.
     if (token === null) throw new AppError("UNAUTHORIZED");
     const auth = deps.auth();
-    const session = await auth.validate(token, c.req.header(ACTIVITY_HEADER) === "1");
+    // Where the request comes from is compared with where the session was opened (a copied cookie alone opens nothing).
+    const session = await auth.validate(token, c.req.header(ACTIVITY_HEADER) === "1", { client: client(c), device: readDeviceCookie(c.req.raw) });
     if (!session) {
       const response = errorResponse(new AppError("UNAUTHORIZED"), deps.locale());
       // A cookie that opens nothing goes, so the browser stops sending it.
@@ -543,8 +539,6 @@ export function createApi(deps: ApiDeps) {
   if (crm) registerCrmRoutes(app, () => crm(), client);
   const backup = deps.backup;
   if (backup) registerBackupRoutes(app, () => backup(), client);
-  const remote = deps.remote;
-  if (remote) registerRemoteRoutes(app, () => remote(), () => deps.auth(), client);
 
   // Step 8: what the AI used today and the last 7 days. Read only: the limits change through /settings.
   app.get("/usage", () => Response.json(deps.aiUsage()));

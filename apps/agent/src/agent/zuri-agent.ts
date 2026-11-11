@@ -64,9 +64,7 @@ import { developmentFlowNetwork } from "../flows/dev-flows.ts";
 import { SiteStates } from "../flows/monitor.ts";
 import { type FlowNotice, FlowService } from "../flows/service.ts";
 import { CrmEvents } from "../crm/events.ts";
-import { RemoteEvents } from "../remote/events.ts";
 import { AgentConfigs } from "../specialists/configs.ts";
-import { RemoteTokens } from "../remote/tokens.ts";
 import { type CrmNotice, CrmService } from "../crm/service.ts";
 import { McpCredentials } from "../mcp/credentials.ts";
 import { dohResolver } from "../mcp/url.ts";
@@ -139,9 +137,6 @@ interface Store {
   /** The internal CRM (step 22b) and n8n's signed events. */
   crm: CrmService;
   crmEvents: CrmEvents;
-  /** Remote access tokens and the events they send (step 20). */
-  remoteTokens: RemoteTokens;
-  remoteEvents: RemoteEvents;
   /** Each agent's settings on the AI screen (guardrails, PR 2). */
   agents: AgentConfigs;
   /** The automatic backup to BACKUP_BUCKET (step 23b). */
@@ -187,6 +182,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     versions: () => readAreaVersions(this.store.db, this.store.usage.version),
     origin: () => this.publicUrl().origin,
     locale: () => this.locale(),
+    development: () => this.development(),
   });
   readonly #api = createApi({
     locale: () => this.locale(),
@@ -232,7 +228,6 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     mcp: () => ({ service: this.store.mcp, auth: this.store.auth, automations: this.store.automations }),
     flows: () => ({ flows: this.store.flows, connections: this.store.flows.connections, auth: this.store.auth, development: () => this.development() }),
     crm: () => ({ crm: this.store.crm, events: this.store.crmEvents, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
-    remote: () => ({ tokens: this.store.remoteTokens, events: this.store.remoteEvents }),
     backup: () => {
       const { db, settings, productivity, crm, auth, automations } = this.store;
       let zoneBefore: string | null = null;
@@ -609,12 +604,9 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       // Each agent's settings: read once per wake, then from memory on every model call.
       const agents = new AgentConfigs(db);
       const env = this.env;
-      // Remote access tokens (step 20): the lockdown suspends them and a new password revokes them, through the auth.
-      const remoteTokens = new RemoteTokens({ db, state: new InternalState(db), secret: () => env.SESSION_SECRET });
       const auth = new AuthService({
         db,
         state: new InternalState(db),
-        remoteTokens,
         settings,
         secrets: {
           sessionSecret: env.SESSION_SECRET,
@@ -861,8 +853,6 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       if (this.development()) flows.network = developmentFlowNetwork(flows.network);
       // The internal CRM (step 22b): its notices go to the center; nothing in it ever reaches a log.
       const crm = new CrmService({ db, timeZone: () => settings.field("timeZone"), locale: () => this.locale(), notify: (notice) => crmNotice(alerts, notice), assertBytes: () => productivity.storage.assertBytes() });
-      // Events from n8n and other systems with an events token (step 20): notices in the "events" category.
-      const remoteEvents = new RemoteEvents({ db, state, alerts, agentName: () => env.AGENT_NAME });
       const crmEvents = new CrmEvents({
         db,
         crm,
@@ -968,7 +958,6 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       // The security commands and the lockdown (step 16b): no AI, so they work with it down.
       const telegramSecurity = new TelegramSecurity({
         auth,
-        tokens: remoteTokens,
         automations,
         buttons: commandButtons,
         locale: () => this.locale(),
@@ -1023,7 +1012,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         },
         telegram: { chat: () => telegram.ownerChat(), client: (options) => telegram.client(options) },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmEvents, remoteTokens, remoteEvents, agents, backupAuto };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmEvents, agents, backupAuto };
     }
     return this.#store;
   }

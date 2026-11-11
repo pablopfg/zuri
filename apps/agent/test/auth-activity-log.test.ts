@@ -206,9 +206,10 @@ describe("GET /api/auth/activity's query", () => {
     ["an unknown parameter", "?limit=100000"],
   ])("refuses %s with 400 VALIDATION_FAILED, naming the parameter and never echoing it", async (_label, query) => {
     await withAuth("log-route", async (h) => {
-      const token = (await h.auth.login(right(), client("192.0.2.90"), noCookies)).token;
+      const signed = await h.auth.login(right(), client("192.0.2.90"), noCookies);
+      const cookie = `__Host-zuri_session=${signed.token}; __Host-zuri_device=${signed.deviceToken}`;
       const res = await api(h.service).fetch(
-        new Request(`${ORIGIN}/api/auth/activity${query}`, { headers: { ...CSRF, cookie: `__Host-zuri_session=${token}` } }),
+        new Request(`${ORIGIN}/api/auth/activity${query}`, { headers: { ...CSRF, cookie, "cf-connecting-ip": "192.0.2.90" } }),
         testEnv,
       );
       expect(res.status).toBe(400);
@@ -227,10 +228,11 @@ describe("GET /api/auth/activity's query", () => {
 
   it("answers a filtered page in the shared schema", async () => {
     await withAuth("log-route-ok", async (h) => {
-      const token = (await h.auth.login(right(), client("192.0.2.91"), noCookies)).token;
+      const signed = await h.auth.login(right(), client("192.0.2.91"), noCookies);
+      const cookie = `__Host-zuri_session=${signed.token}; __Host-zuri_device=${signed.deviceToken}`;
       const res = await api(h.service).fetch(
         new Request(`${ORIGIN}/api/auth/activity?days=7&group=success&ip=192.0.2.91`, {
-          headers: { ...CSRF, cookie: `__Host-zuri_session=${token}` },
+          headers: { ...CSRF, cookie, "cf-connecting-ip": "192.0.2.91" },
         }),
         testEnv,
       );

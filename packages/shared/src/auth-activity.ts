@@ -21,6 +21,8 @@ export const AUTH_EVENT_KINDS = [
   "login_attack",
   "logout",
   "session_ended",
+  "session_blocked",
+  "session_network_changed",
   "confirm_success",
   "confirm_failure",
   "password_changed",
@@ -62,13 +64,6 @@ export const AUTH_EVENT_KINDS = [
   "access_recovered",
   "recovery_requested",
   "password_recovered",
-  "remote_enabled",
-  "remote_disabled",
-  "remote_token_created",
-  "remote_token_revoked",
-  "remote_token_rejected",
-  "remote_write",
-  "telegram_token_revoked",
   "backup_exported",
   "backup_imported",
   "backup_key_set",
@@ -82,7 +77,7 @@ export const AUTH_ACTIVITY_LIMIT = 50;
 /** The access log's filters other than "account", as the screen groups the kinds. */
 const REFUSAL_GROUPS = {
   success: ["login_success"],
-  failure: ["login_failure", "confirm_failure", "password_change_failure", "mfa_failure", "setup_failure", "remote_token_rejected"],
+  failure: ["login_failure", "confirm_failure", "password_change_failure", "mfa_failure", "setup_failure"],
   blocked: ["login_rate_limited", "login_attack", "setup_locked"],
   robot: ["login_turnstile"],
 } as const satisfies Record<string, readonly AuthEventKind[]>;

@@ -16,6 +16,8 @@ export const KIND_LABEL: Record<AuthEventKind, MessageKey> = {
   login_attack: "web.activity.kind.login_attack",
   logout: "web.activity.kind.logout",
   session_ended: "web.activity.kind.session_ended",
+  session_blocked: "web.activity.kind.session_blocked",
+  session_network_changed: "web.activity.kind.session_network_changed",
   confirm_success: "web.activity.kind.confirm_success",
   confirm_failure: "web.activity.kind.confirm_failure",
   password_changed: "web.activity.kind.password_changed",
@@ -60,14 +62,7 @@ export const KIND_LABEL: Record<AuthEventKind, MessageKey> = {
   access_recovered: "web.activity.kind.access_recovered",
   recovery_requested: "web.activity.kind.recovery_requested",
   password_recovered: "web.activity.kind.password_recovered",
-  remote_enabled: "web.activity.kind.remote_enabled",
-  remote_disabled: "web.activity.kind.remote_disabled",
-  remote_token_created: "web.activity.kind.remote_token_created",
   agent_settings_changed: "web.activity.kind.agent_settings_changed",
-  remote_token_revoked: "web.activity.kind.remote_token_revoked",
-  remote_token_rejected: "web.activity.kind.remote_token_rejected",
-  remote_write: "web.activity.kind.remote_write",
-  telegram_token_revoked: "web.activity.kind.telegram_token_revoked",
 };
 
 /** The filter groups, as the access log's select names them. */
@@ -91,6 +86,9 @@ const REASON_LABEL: Record<string, MessageKey> = {
   passkey: "web.accessLog.reason.passkey",
   idle: "web.accessLog.reason.idle",
   daily_cap: "web.accessLog.reason.daily_cap",
+  other_browser: "web.accessLog.reason.other_browser",
+  other_country: "web.accessLog.reason.other_country",
+  too_many_networks: "web.accessLog.reason.too_many_networks",
   recovery: "web.accessLog.reason.recovery",
   wrong_email: "web.accessLog.reason.wrong_email",
   email_off: "web.accessLog.reason.email_off",

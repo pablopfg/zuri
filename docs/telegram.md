@@ -294,7 +294,6 @@ guardou. Todos contam nos 60 comandos por hora.
 | `/acessos` | Os 10 acessos mais recentes, com cidade, rede resumida (`189.40.x.x`) e aparelho | sim |
 | `/sessoes` | Sessões abertas no app, com **Encerrar** em cada uma | sim |
 | `/encerrar_sessoes` | Encerra todas as sessões do app, depois de **Encerrar todas** | não |
-| `/tokens` | Tokens de acesso remoto ativos (até 10), com **Revogar** em cada um | sim |
 | `/pausar_rotinas` | Pausa as rotinas com IA e as sentinelas, depois de **Pausar todas** | não |
 | `/bloquear` | Liga o modo de bloqueio, depois de **Bloquear agora** | não |
 | `/ajuda` | Lista os comandos | não |
@@ -338,7 +337,6 @@ canais, que o bot não reconhece: ele só para de insistir quando você toca em
 `/bloquear` faz, de uma vez:
 
 - encerra todas as sessões do app;
-- suspende os tokens de acesso remoto (eles voltam ao sair);
 - para as rotinas com IA enquanto durar (a lista de execuções mostra
   "Pulada: modo de bloqueio"); lembretes e alertas de segurança continuam;
 - recusa conversa, aprovações (botão, `/aprovar`, código por e-mail e a
@@ -364,7 +362,7 @@ não deixa você fora indefinidamente.
 
 ### O que nunca é feito pelo bot
 
-Trocar senha ou e-mail, desligar o 2FA, criar token remoto, ligar modelo pago
+Trocar senha ou e-mail, desligar o 2FA, ligar modelo pago
 ou subir o teto em US$, conectar um MCP ou trocar a URL dele, importar
 backup, sair do modo de bloqueio e desvincular o próprio Telegram: para essas
 o bot sempre manda abrir o app, mesmo com passkey ou código por e-mail. Só as

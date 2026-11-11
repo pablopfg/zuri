@@ -16,7 +16,7 @@ import memberRemoved from "./fixtures/telegram/my-chat-member-removed.json?raw";
 import ownerText from "./fixtures/telegram/owner-text.json?raw";
 import startCode from "./fixtures/telegram/start-code.json?raw";
 import stranger from "./fixtures/telegram/stranger.json?raw";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // The bot's foundation (step 12), through the Worker as Telegram and the interface call it.
 // The Bot API answers here (fake), never on the network.
@@ -145,7 +145,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 });
 
 describe("the webhook's gates", () => {
@@ -294,7 +294,6 @@ describe("linking the owner's account", () => {
         { command: "acessos", description: "Últimos acessos ao app" },
         { command: "sessoes", description: "Sessões abertas no app" },
         { command: "encerrar_sessoes", description: "Encerrar todas as sessões do app" },
-        { command: "tokens", description: "Tokens de acesso remoto" },
         { command: "pausar_rotinas", description: "Pausar as rotinas da Zuri" },
         { command: "bloquear", description: "Modo de bloqueio de emergência" },
         { command: "ajuda", description: "O que eu faço por aqui" },

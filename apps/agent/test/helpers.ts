@@ -26,6 +26,18 @@ export function call(url: string, init: RequestInit = {}, overrides: Partial<Rec
   return worker.fetch(request, { ...testEnv, ...overrides } as WorkerEnv);
 }
 
+/**
+ * The cookies a browser sends back after signing in, as a `cookie` header: the
+ * session and the device cookie it is tied to (a session cookie alone opens nothing).
+ */
+export function signedCookies(response: Response): string {
+  return response.headers
+    .getSetCookie()
+    .map((c) => c.split(";")[0] ?? "")
+    .filter((c) => c.startsWith("__Host-zuri_session=") || c.startsWith("__Host-zuri_device="))
+    .join("; ");
+}
+
 /** The header every API request but the health check carries (CSRF). */
 export const CSRF = { "x-zuri-request": "1" } as const;
 

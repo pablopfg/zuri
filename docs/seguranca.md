@@ -209,6 +209,32 @@ e o e-mail do dono); sem ele, a página aponta para o código de instalação.
   máximo uma vez por minuto (gravações contam no plano Free); por isso o fim
   por falta de uso ou de aba pode chegar até 1 minuto antes do prazo. O fim fica na
   atividade de acesso com o motivo (`idle`, `presence`, `max`).
+- **Presa a onde foi aberta** (decisão do Pablo, 11/11/2026). Copiar o cookie
+  da sessão não basta. A cada pedido o servidor compara:
+  - **O navegador.** A sessão guarda o HMAC do cookie de aparelho
+    (`__Host-zuri_device`) do navegador que entrou. Pedido sem esse cookie, ou
+    com outro, encerra a sessão para todos e gera o alerta "Sessão encerrada por
+    segurança" (`session_blocked`, motivo `other_browser`).
+  - **O país.** País diferente do país do login (os dois vindos da borda da
+    Cloudflare) encerra do mesmo jeito (`other_country`). Sem país num dos
+    lados, não compara.
+  - **A rede.** Rede diferente não encerra: o celular sai do Wi-Fi o tempo
+    todo. A sessão segue, a Atividade de acesso ganha "Sessão usada em outra
+    rede" (`session_network_changed`, uma linha por rede nova) e, se a rede não
+    é uma das do dono (sem login nos últimos 30 dias), sai um alerta. A sessão
+    aceita até 5 redes (a do login e mais 4); a sexta encerra
+    (`too_many_networks`).
+  - **A senha recente vale só na rede em que foi digitada.** Em outra rede a
+    janela de 15 minutos aparece fechada (`recentAuthUntil: null`) e as ações
+    sensíveis respondem 403 `RECENT_AUTH_REQUIRED` até a senha ser digitada
+    ali. Um cookie copiado e usado em outro lugar nunca herda a janela.
+
+  O que isso não cobre: quem copia os dois cookies e usa da mesma rede e do
+  mesmo país do dono. Para esse caso ficam os prazos curtos da sessão, a senha
+  pedida de novo nas ações sensíveis e o alerta de rede nova. Sessões abertas
+  antes da migration 34 não têm o que comparar e terminam sozinhas em até 24 h.
+  Sem `CF-Connecting-IP` (só fora da Cloudflare), um pedido com sessão recebe
+  503, como o login. Trocar a senha mantém a sessão nova no mesmo navegador.
 - Entrar encerra a sessão que o navegador já tinha: um cookie plantado antes do
   login não pega carona. No máximo 20 sessões ficam abertas; passou disso, sai a
   menos usada.
@@ -339,6 +365,15 @@ chega na etapa 5). Recomendado ligar logo depois do primeiro login.
   falha mais antiga sair da janela. Login, confirmação de senha e troca de senha
   usam o mesmo contador. Um acerto não zera as falhas da janela: a regra é
   literal, 3 erros em 15 minutos.
+- **5 falhas por rede em 24 horas** (decisão do Pablo, 11/11/2026): a rede
+  espera até a mais antiga das cinco completar um dia (429 `RATE_LIMITED` com
+  `Retry-After` e `details.daily: true`; na Atividade de acesso, "limite diário
+  atingido"). Sem esse teto, uma rede que respeitasse os 15 minutos teria 288
+  chutes por dia. Vale para login, confirmação e troca de senha. As redes do
+  dono (login com sucesso nos últimos 30 dias) ficam de fora e mantêm só a regra
+  dos 15 minutos: errar a senha em casa nunca tranca o dono por um dia. O cookie
+  de aparelho não dá essa isenção. Não existe bloqueio da conta inteira por
+  senha errada: qualquer pessoa poderia trancar o dono de propósito.
 - **Ataque distribuído.** Com 25 recusas somando todas as redes na janela
   (senhas erradas e verificações Turnstile recusadas), uma rede que não entrou
   com sucesso nos últimos 30 dias tem uma tentativa só, gasta na senha ou no
@@ -604,8 +639,7 @@ Desde 04/11/2026 (`docs/planos/guardrails-especialistas-ia.md`):
   mudança de prompt visível no diff.
 - A camada do dono e os parâmetros de cada agente mudam só pela tela
   (Configurações › Modelos e limites › Agentes): senha digitada nos últimos 15 minutos, fora do
-  modo de bloqueio (as rotas `/api/ai/agents` respondem 423 nele), fora dos
-  tokens remotos e sem ferramenta, comando do bot, MCP ou fluxo que as alcance.
+  modo de bloqueio (as rotas `/api/ai/agents` respondem 423 nele) e sem ferramenta, comando do bot, MCP ou fluxo que as alcance.
   O servidor recusa `<`, `>` (e sinais parecidos), caracteres invisíveis e mais
   de 2.000 caracteres; os verificadores não aceitam camada nenhuma, e a
   temperatura e o top_p deles ficam fixos (só o tamanho da resposta muda). Cada
@@ -809,7 +843,7 @@ então o servidor externo é tratado como não confiável em tudo:
   segue; a proposta vale 24 horas e fica presa ao hash. No máximo 3 propostas
   por execução, e as rotinas de um despertar do alarme dividem 12
   subrequisições externas (regra P9). Risco aceito: numa rotina, texto de
-  terceiros lido por uma ferramenta da Zuri (agenda, eventos remotos) não
+  terceiros lido por uma ferramenta da Zuri (agenda) não
   conta como "outro servidor respondeu"; os tetos de 1.000 e 4.000 caracteres
   continuam valendo.
 - **Credencial cifrada.** AES-256-GCM com chave derivada do segredo
@@ -947,67 +981,24 @@ que a Zuri lê. O que protege:
   Desligar as avaliações ou desconectar o Google apaga a cópia guardada; no
   Google nada muda.
 
-## Acesso remoto por token
+## Sem acesso por token
 
-Etapa 20. Guia do dono e de quem integra em
-[acesso-remoto.md](acesso-remoto.md).
+Decisão do Pablo (11/11/2026): a Zuri não tem API para outros sistemas. O
+acesso remoto por token da etapa 20 (tokens `zur_pat_`, `POST /api/remote/events`,
+o cartão em Configurações › Segurança e o `/tokens` do bot) saiu do código.
 
-- **Token.** `zur_pat_` mais 32 bytes aleatórios em base64url (256 bits). O
-  banco guarda só `HMAC(SESSION_SECRET, token)` e os 4 últimos caracteres para
-  reconhecer; o token aparece uma vez, no diálogo da criação. Vale 90 dias.
-  Até 20. Sem `SESSION_SECRET` de 32 caracteres ou mais, criar responde
-  `NOT_CONFIGURED`.
-- **Desligado por padrão.** Ligar e criar pedem a senha digitada nos últimos
-  15 minutos e geram um alerta de segurança em todos os canais
-  (`remote_enabled`, `remote_token_created`). Desligar suspende todos (401) sem
-  apagar.
-- **Porteiro Bearer.** Registrado antes de tudo em `createApi`. Com
-  `Authorization`, na ordem: limite de falhas da rede, formato
-  `Bearer zur_pat_…`, token válido (ligado, não suspenso, não vencido), limite
-  por token, escopo e lista de rotas. Qualquer falha termina ali (401 ou 403);
-  o pedido nunca cai para o cookie de sessão. Só o chamador aprovado pula o
-  CSRF e a sessão, porque um Bearer não vai sozinho pelo navegador e a Zuri não
-  libera CORS.
-- **Negado por padrão.** `remoteAllowed(escopo, método, caminho)` compara o
-  caminho como chegou (um UUID no último segmento vira `:id`; `%`, barras
-  dobradas ou no fim e `:` são recusados, nunca decodificados). Um teste
-  percorre todas as rotas registradas e confere que nenhum token chega a
-  autenticação, Telegram, aprovações, planos, bloqueio, conversa, fluxos, CRM,
-  MCP, Google, configurações ou à tela de tokens, e que o escopo `read` recebe
-  403 em toda escrita. Token não apaga memória nem automação e não cria nem muda
-  rotina com IA (`agent_prompt`, 403 `remote.agentPrompt`). Não reescreve memória
-  (a edição não guarda histórico) e a memória que cria fica com autor `agent`,
-  marcada no prompt como não confirmada. Automação criada por token fica em
-  prioridade baixa ou normal (403 `remote.highPriority`).
-- **Força bruta e excesso.** 10 tokens recusados por rede (o endereço no IPv4,
-  `/64` no IPv6) em 15 minutos seguram a rede com 429, até com o token certo;
-  120 pedidos por minuto por token (contador na memória do objeto, zera quando
-  ele reinicia); 10.000 pedidos e 1.000 escritas por dia somando todos os
-  tokens (gravado no estado no máximo uma vez por minuto), para a cota diária do
-  Free não acabar. Com o acesso desligado, uma tentativa não grava nada; ligado,
-  no máximo 200 tentativas recusadas contadas de todas as redes em 15 minutos, e
-  depois disso a recusa não grava nada. Cabeçalho fora do formato
-  `Bearer zur_pat_` + 43 caracteres para no Worker, sem pedido ao objeto. Tokens recusados e escritas por token vão para a Atividade de
-  acesso agrupados por rede e motivo.
-- **Eventos.** `POST /api/remote/events` só com token `events` (a sessão e os
-  outros escopos recebem 403). 60 por hora e 100 por dia somando todos, corpo
-  até 2 KB, `critical` recusado, só a categoria `events`. O corpo perde
-  caracteres invisíveis e de direção; a central guarda no máximo 250 eventos. O aviso leva a origem no título, numa linha,
-  com links desarmados; uma origem com "zuri" ou o nome da agente aparece como
-  `remote`. O texto é dado guardado: nunca entra como instrução. Eventos usam
-  no máximo metade do limite de cada canal e no máximo 3 insistem ao mesmo
-  tempo.
-- **Criação.** A conferência final roda na mesma transação do INSERT: um
-  bloqueio, uma senha nova ou uma sessão encerrada enquanto o hash era feito
-  recusam o token (nunca sobra um token vivo depois deles).
-- **Revogação.** Tela (um ou todos), `/tokens` do bot (alerta
-  `telegram_token_revoked`, que só o app reconhece), troca de senha,
-  recuperação e redefinição das credenciais revogam; o bloqueio suspende e a
-  saída devolve.
-- **Cloudflare Access.** Sem exceção para Bearer: com o Access ligado, o
-  cliente remoto manda também um service token do Access.
-- **Nunca no log.** Token, corpo e query não vão para log, Atividade nem
-  aviso; só o nome do token e o escopo.
+- **Só a sessão do navegador entra.** Um pedido com o cabeçalho `Authorization`
+  recebe 401 `UNAUTHORIZED` no Worker, antes do objeto, e de novo na API. Ele
+  nunca cai para o cookie: nem com uma sessão válida junto.
+- **As tabelas ficam.** `zur_remote_tokens` e `zur_remote_failures` continuam
+  no banco (migrations só acrescentam), mas nenhum código as lê. Um token antigo
+  não abre nada.
+- **O que continua de fora para dentro:** o webhook do Telegram (segredo no
+  cabeçalho), os avisos do Google Agenda (token do canal) e a volta do OAuth do
+  Google. Cada um tem a sua seção.
+
+Testes: `apps/agent/test/auth-password-route.test.ts` ("refuses a request that
+carries Authorization"), `agent.test.ts` e `gates.test.ts`.
 
 ## Modelos pagos e dados que saem da conta
 
@@ -1288,8 +1279,7 @@ Etapa 12, fundação. O bot obedece a uma conta só, no chat privado
   (`telegram_sessions_ended`, `telegram_routines_paused`, `telegram_lockdown`)
   e um alerta de origem `bot` em todos os canais. `/bloquear`, numa
   transação, grava `lockdown_until` (fim da primeira hora) e
-  `lockdown_source` em `zur_settings`, apaga todas as sessões e suspende os
-  tokens remotos pelo `RemoteTokenHook` (etapa 20: voltam ao sair). Enquanto
+  `lockdown_source` em `zur_settings`, apaga todas as sessões. Enquanto
   durar: a API responde 423 `LOCKDOWN_ACTIVE` a tudo fora da lista curta
   (sessão, sair, confirmar senha, `GET /api/lockdown`,
   `POST /api/lockdown/exit`, `GET /api/settings`, `GET` e `DELETE

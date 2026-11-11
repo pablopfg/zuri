@@ -130,7 +130,7 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
 
   // ---------- Google Contacts (step 19b) ----------
   // Only these routes, with the owner's session, turn the contacts on, pick the labels or change the
-  // notices: no tool, no command of the bot and no remote token reaches them.
+  // notices: no tool and no command of the bot reaches them.
 
   app.get("/google/contacts", () => Response.json(deps().contacts.status()));
 

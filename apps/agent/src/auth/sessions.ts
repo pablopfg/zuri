@@ -1,4 +1,4 @@
-import { hmacSha256Hex, MAX_SESSIONS, randomToken, SESSION_TOUCH_INTERVAL_MS, type SessionDeadlines, STEP_UP_WINDOW_MS } from "@zuri/shared";
+import { hmacSha256Hex, MAX_SESSION_NETWORKS, MAX_SESSIONS, randomToken, SESSION_TOUCH_INTERVAL_MS, type SessionDeadlines, STEP_UP_WINDOW_MS } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
 
 /** The three limits, from the settings (5–60 min, 3–15 min, 1–24 h). */
@@ -20,7 +20,26 @@ export interface SessionRow {
   /** When the password was last typed in this session (sign-in or confirm). */
   confirmed_at: number | null;
   user_agent: string;
+  /** The network it signed in on. */
   network: string;
+  /** The browser it was opened in: the HMAC of its device cookie. Null only for a session from before migration 34. */
+  device: string | null;
+  /** The edge's country at sign-in; empty when the edge gave none. */
+  country: string;
+  /** Every network it was used from, one per line, the sign-in's first. Empty only before migration 34. */
+  networks: string;
+  /** The network the password was last typed on: the 15-minute window holds only there. */
+  confirmed_network: string | null;
+  /** Not stored: the network of the request being answered (AuthService.validate sets it). */
+  seen_network?: string | undefined;
+}
+
+/** Where a session is opened: what a later request is compared with. */
+export interface SessionOrigin {
+  userAgent: string;
+  network: string;
+  device: string | null;
+  country: string;
 }
 
 /** Why a session ended on its own. */
@@ -49,7 +68,7 @@ export class Sessions {
   }
 
   /** A new session, already confirmed (the password was just typed). The token goes to the cookie only. */
-  async create(client: { userAgent: string; network: string }): Promise<{ token: string; row: SessionRow }> {
+  async create(client: SessionOrigin): Promise<{ token: string; row: SessionRow }> {
     const token = randomToken(32);
     const id = await this.idFor(token);
     const now = this.clock();
@@ -62,10 +81,14 @@ export class Sessions {
       confirmed_at: now,
       user_agent: client.userAgent,
       network: client.network,
+      device: client.device,
+      country: client.country,
+      networks: client.network,
+      confirmed_network: client.network,
     };
     this.db.run(
-      `INSERT INTO zur_sessions (id, created_at, last_seen_at, last_presence_at, expires_at, confirmed_at, user_agent, network)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO zur_sessions (id, created_at, last_seen_at, last_presence_at, expires_at, confirmed_at, user_agent, network, device, country, networks, confirmed_network)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       row.id,
       row.created_at,
       row.last_seen_at,
@@ -74,6 +97,10 @@ export class Sessions {
       row.confirmed_at,
       row.user_agent,
       row.network,
+      row.device,
+      row.country,
+      row.networks,
+      row.confirmed_network,
     );
     // Past MAX_SESSIONS, the least recently used go.
     this.db.run(`DELETE FROM zur_sessions WHERE id NOT IN (SELECT id FROM zur_sessions ORDER BY last_seen_at DESC, created_at DESC LIMIT ?)`, MAX_SESSIONS);
@@ -142,14 +169,39 @@ export class Sessions {
     };
   }
 
-  /** Opens the 15-minute window for sensitive actions. */
-  confirm(id: string): void {
-    this.db.run(`UPDATE zur_sessions SET confirmed_at = ? WHERE id = ?`, this.clock(), id);
+  /** Opens the 15-minute window for sensitive actions, on the network the password was typed on. */
+  confirm(id: string, network: string): void {
+    this.db.run(`UPDATE zur_sessions SET confirmed_at = ?, confirmed_network = ? WHERE id = ?`, this.clock(), network, id);
   }
 
-  /** Until when sensitive actions work without the password again; null when the window is closed. */
+  /** The networks this session was used from; a session from before migration 34 has only the sign-in's. */
+  networksOf(row: SessionRow): string[] {
+    return row.networks ? row.networks.split("\n") : [row.network];
+  }
+
+  /**
+   * Notes one more network for the session. "known": it was there already;
+   * "added": it is new and there was room (written only if no request added it
+   * meanwhile); "full": MAX_SESSION_NETWORKS were used already.
+   */
+  noteNetwork(row: SessionRow, network: string): "known" | "added" | "full" {
+    const seen = this.networksOf(row);
+    if (seen.includes(network)) return "known";
+    if (seen.length >= MAX_SESSION_NETWORKS) return "full";
+    const next = [...seen, network].join("\n");
+    const written = this.db.all(`UPDATE zur_sessions SET networks = ? WHERE id = ? AND networks = ? RETURNING id`, next, row.id, row.networks);
+    // Another request of the same moment wrote first: this one adds nothing and tells nobody twice.
+    return written.length > 0 ? "added" : "known";
+  }
+
+  /**
+   * Until when sensitive actions work without the password again; null when
+   * the window is closed. It holds only on the network the password was typed
+   * on: a copied cookie used elsewhere never inherits it.
+   */
   recentAuthUntil(row: SessionRow): number | null {
     if (row.confirmed_at === null) return null;
+    if (row.seen_network !== undefined && row.confirmed_network !== null && row.seen_network !== row.confirmed_network) return null;
     const until = row.confirmed_at + STEP_UP_WINDOW_MS;
     return until > this.clock() ? until : null;
   }

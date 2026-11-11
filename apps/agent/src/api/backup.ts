@@ -26,8 +26,8 @@ export interface BackupRouteDeps {
 /**
  * Settings › Data (step 23): storage use, the export and the import. Export
  * and import are sensitive (spec rule 7): the password typed in the last 15
- * minutes, and an alert on every channel. Not in WHILE_LOCKDOWN nor in the
- * remote tokens' list: a lockdown answers 423 and a token 403.
+ * minutes, and an alert on every channel. Not in WHILE_LOCKDOWN:
+ * a lockdown answers 423.
  */
 export function registerBackupRoutes(app: Hono<ApiEnv>, deps: () => BackupRouteDeps, client: (c: Context<ApiEnv>) => ClientInfo): void {
   app.get("/storage", () => {

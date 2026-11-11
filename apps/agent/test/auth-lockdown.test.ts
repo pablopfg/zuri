@@ -154,26 +154,23 @@ describe("SEC-16b-B4: a session opened in the first hour", () => {
   });
 });
 
-describe("the remote tokens' hook", () => {
-  it("suspends them once on entering, and brings them back once on leaving, by the screen or by a recovery code", async () => {
-    const calls = { suspend: 0, resume: 0 };
-    const remoteTokens = { suspendAll: () => ++calls.suspend, resumeAll: () => ++calls.resume, active: () => 0, revokeAll: () => 0 };
+describe("entering and leaving, twice", () => {
+  it("leaves by a recovery code at sign-in, or by the screen with the app's code once the first hour is over", async () => {
     await withAuth(
       "lockdown-tokens",
       async (h) => {
         const { secret, codes } = await turnOn(h);
         h.service.enterLockdown(LINK);
-        h.service.enterLockdown(LINK);
-        expect(calls).toEqual({ suspend: 1, resume: 0 });
+        expect(h.service.lockdown.active()).toBe(true);
         // Out through the sign-in with a recovery code.
         const mfa = await challenge(h);
         await h.service.completeMfa(mfa.token, codes[4] ?? "", client(NET), noCookies);
-        expect(calls).toEqual({ suspend: 1, resume: 1 });
+        expect(h.service.lockdown.active()).toBe(false);
 
         // Out through the screen, with the app's code, once the first hour is over (and not a millisecond before).
         h.clock.advance(LOCKDOWN_RELOCK_MS);
         h.service.enterLockdown("link-3");
-        expect(calls.suspend).toBe(2);
+        expect(h.service.lockdown.active()).toBe(true);
         h.clock.advance(LOCKDOWN_STRICT_MS - 1);
         const second = await challenge(h);
         expect(await outcome(h.service.completeMfa(second.token, await code(h, secret), client(NET), noCookies))).toBe("LOCKDOWN_ACTIVE");
@@ -183,9 +180,7 @@ describe("the remote tokens' hook", () => {
         h.clock.advance(30_000);
         expect(await outcome(h.service.exitLockdown(row, { totp: await code(h, secret) }, client(NET)))).toBe("ok");
         expect(h.service.lockdown.active()).toBe(false);
-        expect(calls).toEqual({ suspend: 2, resume: 2 });
       },
-      { remoteTokens },
     );
   });
 });

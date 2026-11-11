@@ -1,7 +1,7 @@
 import { hashPassword, isPasswordHash } from "@zuri/shared";
 import { describe, expect, it, vi } from "vitest";
 import type { AppError } from "../src/http/errors.ts";
-import { client, HOUR, live, MINUTE, noCookies, outcome, pushCount, rawRebuild, rebuild, remoteTokensSpy, right, seedPush, TEST_PASSWORD, withAuth } from "./auth-harness.ts";
+import { client, HOUR, live, MINUTE, noCookies, outcome, pushCount, rebuild, right, seedPush, TEST_PASSWORD, withAuth } from "./auth-harness.ts";
 import { testEnv } from "./helpers.ts";
 
 const NET = "203.0.113.7";
@@ -170,6 +170,136 @@ describe("session lifetime", () => {
       auth.logout(await live(auth, second.token), client(NET), "browser-here");
       expect(events().at(-1)).toMatchObject({ kind: "logout" });
       expect(pushCount(db)).toBe(1);
+    });
+  });
+});
+
+describe("a session stays where it was opened", () => {
+  const OTHER = "198.51.100.40";
+  const from = (network: string, device: string | null, country = "BR") => ({
+    client: client(network, { geo: { country, region: "", city: "", asn: 64500, colo: "GRU" } }),
+    device,
+  });
+
+  it("goes on from the same browser and network, without a write or an event", async () => {
+    await withAuth("bound-same", async ({ auth, events }) => {
+      const signed = await auth.login(right(), client(NET), noCookies);
+      const before = events().length;
+      for (let i = 0; i < 3; i++) expect(await auth.validate(signed.token, false, from(NET, signed.deviceToken))).not.toBeNull();
+      expect(events()).toHaveLength(before);
+    });
+  });
+
+  it("a copied session cookie alone opens nothing: without the browser's device cookie, or with another one, the session ends and the owner is told", async () => {
+    for (const [name, device] of [["none", null], ["other", "B".repeat(43)], ["malformed", "x"]] as const) {
+      await withAuth(`bound-device-${name}`, async ({ auth, events }) => {
+        const signed = await auth.login(right(), client(NET), noCookies);
+        expect(await auth.validate(signed.token, true, from(NET, device))).toBeNull();
+        // Ended for the owner's browser too: a stolen session is closed, not shared.
+        expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken))).toBeNull();
+        expect(events().filter((e) => e.kind === "session_blocked")).toMatchObject([{ reason: "other_browser", alert_pending: 1, network: NET }]);
+      });
+    }
+  });
+
+  it("the device cookie of another sign-in of the owner's doesn't open this session either", async () => {
+    await withAuth("bound-device-own", async ({ auth }) => {
+      const first = await auth.login(right(), client(NET), noCookies);
+      const second = await auth.login(right(), client(NET), noCookies);
+      expect(second.deviceToken).not.toBe(first.deviceToken);
+      expect(await auth.validate(first.token, true, from(NET, second.deviceToken))).toBeNull();
+      expect(await auth.validate(second.token, true, from(NET, second.deviceToken))).not.toBeNull();
+    });
+  });
+
+  it("another country ends it; a request the edge gave no country for is not compared", async () => {
+    await withAuth("bound-country", async ({ auth, events }) => {
+      const signed = await auth.login(right(), client(NET), noCookies);
+      expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken, ""))).not.toBeNull();
+      expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken, "PT"))).toBeNull();
+      expect(events().filter((e) => e.kind === "session_blocked")).toMatchObject([{ reason: "other_country", alert_pending: 1 }]);
+      expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken))).toBeNull();
+    });
+  });
+
+  it("another network keeps the session, shows in the access log once and alerts when the network isn't one of the owner's", async () => {
+    await withAuth("bound-network", async ({ auth, events }) => {
+      // The owner signed in from OTHER before: moving there is no alert.
+      await auth.login(right(), client(OTHER), noCookies);
+      const signed = await auth.login(right(), client(NET), noCookies);
+      expect(await auth.validate(signed.token, true, from(OTHER, signed.deviceToken))).not.toBeNull();
+      expect(await auth.validate(signed.token, true, from("192.0.2.77", signed.deviceToken))).not.toBeNull();
+      // Back and forth between networks it already used: nothing more is written.
+      for (const net of [NET, OTHER, "192.0.2.77", NET]) expect(await auth.validate(signed.token, true, from(net, signed.deviceToken))).not.toBeNull();
+      expect(events().filter((e) => e.kind === "session_network_changed").map((e) => [e.network, e.reason, e.alert_pending])).toEqual([
+        [OTHER, "", 0],
+        ["192.0.2.77", "new_network", 1],
+      ]);
+    });
+  });
+
+  it("the password's 15-minute window holds only on the network it was typed on", async () => {
+    await withAuth("bound-step-up", async ({ auth }) => {
+      const signed = await auth.login(right(), client(NET), noCookies);
+      const home = await live(auth, signed.token);
+      expect(auth.state(home).recentAuthUntil).not.toBeNull();
+      const away = await auth.validate(signed.token, true, from(OTHER, signed.deviceToken));
+      if (!away) throw new Error("expected a live session");
+      expect(auth.state(away).recentAuthUntil).toBeNull();
+      expect(() => auth.requireRecentAuth(away)).toThrowError(expect.objectContaining({ code: "RECENT_AUTH_REQUIRED" }));
+      // Back on the network of the sign-in, the window is still there.
+      const back = await auth.validate(signed.token, true, from(NET, signed.deviceToken));
+      if (!back) throw new Error("expected a live session");
+      expect(() => auth.requireRecentAuth(back)).not.toThrow();
+      // Typed again on the other network, it moves there.
+      await auth.confirm(away, { password: TEST_PASSWORD }, client(OTHER));
+      const confirmed = await auth.validate(signed.token, true, from(OTHER, signed.deviceToken));
+      if (!confirmed) throw new Error("expected a live session");
+      expect(() => auth.requireRecentAuth(confirmed)).not.toThrow();
+      const home2 = await auth.validate(signed.token, true, from(NET, signed.deviceToken));
+      if (!home2) throw new Error("expected a live session");
+      expect(() => auth.requireRecentAuth(home2)).toThrowError(expect.objectContaining({ code: "RECENT_AUTH_REQUIRED" }));
+    });
+  });
+
+  it("the 5th network still works (n) and the 6th ends the session (n+1)", async () => {
+    await withAuth("bound-networks", async ({ auth, events }) => {
+      const signed = await auth.login(right(), client(NET), noCookies);
+      for (let i = 1; i <= 4; i++) expect(await auth.validate(signed.token, true, from(`192.0.2.${i}`, signed.deviceToken))).not.toBeNull();
+      expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken))).not.toBeNull();
+      expect(await auth.validate(signed.token, true, from("192.0.2.5", signed.deviceToken))).toBeNull();
+      expect(events().filter((e) => e.kind === "session_blocked")).toMatchObject([{ reason: "too_many_networks", alert_pending: 1 }]);
+      expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken))).toBeNull();
+    });
+  });
+
+  it("requests of the same moment from a new network write one event, and a session ended twice alerts once", async () => {
+    await withAuth("bound-race", async ({ auth, events }) => {
+      const signed = await auth.login(right(), client(NET), noCookies);
+      await Promise.all(Array.from({ length: 5 }, () => auth.validate(signed.token, false, from(OTHER, signed.deviceToken))));
+      expect(events().filter((e) => e.kind === "session_network_changed")).toHaveLength(1);
+      await Promise.all(Array.from({ length: 5 }, () => auth.validate(signed.token, false, from(OTHER, null))));
+      expect(events().filter((e) => e.kind === "session_blocked")).toHaveLength(1);
+    });
+  });
+
+  it("a new password keeps this browser's new session in the same browser", async () => {
+    await withAuth("bound-password", async ({ auth }) => {
+      const signed = await auth.login(right(), client(NET), noCookies);
+      const row = await live(auth, signed.token);
+      const changed = await auth.changePassword(row, { currentPassword: TEST_PASSWORD, newPassword: NEW_PASSWORD }, client(NET));
+      expect(await auth.validate(changed.token, true, from(NET, signed.deviceToken))).not.toBeNull();
+      expect(await auth.validate(changed.token, true, from(NET, null))).toBeNull();
+    });
+  });
+
+  it("a session opened before the binding existed is not compared, and ends by its own limits", async () => {
+    await withAuth("bound-legacy", async ({ auth, db, clock }) => {
+      const signed = await auth.login(right(), client(NET), noCookies);
+      db.run(`UPDATE zur_sessions SET device = NULL, country = '', networks = '', confirmed_network = NULL`);
+      expect(await auth.validate(signed.token, true, from(NET, null))).not.toBeNull();
+      clock.advance(6 * HOUR);
+      expect(await auth.validate(signed.token, true, from(NET, null))).toBeNull();
     });
   });
 });
@@ -404,8 +534,7 @@ describe("weak current password", () => {
 });
 
 describe("reset from the Cloudflare panel", () => {
-  it("a new OWNER_PASSWORD_HASH discards the stored password, ends every session and revokes the remote tokens", async () => {
-    const tokens = remoteTokensSpy();
+  it("a new OWNER_PASSWORD_HASH discards the stored password, and ends every session", async () => {
     await withAuth("reset-hash", async (h) => {
       const signed = await h.auth.login(right(), client(NET), noCookies);
       const row = await live(h.auth, signed.token);
@@ -413,8 +542,6 @@ describe("reset from the Cloudflare panel", () => {
       // The same secrets again: nothing happens.
       const same = rebuild(h, {});
       expect(await same.validate(changed.token, true)).not.toBeNull();
-      // The password change revoked once; the same secrets again revoke nothing more.
-      expect(tokens.revoked).toBe(1);
 
       seedPush(h.db, "browser-a");
       const resetTo = "nova senha do painel bem longa";
@@ -424,25 +551,8 @@ describe("reset from the Cloudflare panel", () => {
       expect(await outcome(after.login(right({ password: NEW_PASSWORD }), client("198.51.100.5"), noCookies))).toBe("INVALID_CREDENTIALS");
       expect(await outcome(after.login(right({ password: resetTo }), client("198.51.100.6"), noCookies))).toBe("ok");
       expect(h.events().find((e) => e.kind === "credentials_reset")).toMatchObject({ alert_pending: 1 });
-      expect(tokens.revoked).toBe(2);
       expect(pushCount(h.db)).toBe(0);
-    }, { remoteTokens: tokens });
-  });
-
-  it("SEC-A3-02 the remote token's gate checks for a reset first: a token is revoked before any sign-in happens", async () => {
-    const tokens = remoteTokensSpy();
-    await withAuth("reset-token-first", async (h) => {
-      await h.auth.login(right(), client(NET), noCookies);
-      const revokedBefore = tokens.revoked;
-      const after = rawRebuild(h, { passwordHash: await hashPassword("outra senha do painel bem longa", testEnv.PASSWORD_PEPPER) });
-      // The first request on the new object is a remote token's: nothing else ran yet.
-      await after.ensureSynced();
-      expect(tokens.revoked).toBe(revokedBefore + 1);
-      expect(h.events().find((e) => e.kind === "credentials_reset")).toMatchObject({ alert_pending: 1 });
-      // Once per object.
-      await after.ensureSynced();
-      expect(tokens.revoked).toBe(revokedBefore + 1);
-    }, { remoteTokens: tokens });
+    });
   });
 
   it("SEC-3-01: the old password can't sign in even as the first request after the reset", async () => {

@@ -1,4 +1,4 @@
-import { type AuthActivityEvent, describeUserAgent, type Locale, type MessageKey, type RemoteTokenInfo, t } from "@zuri/shared";
+import { type AuthActivityEvent, describeUserAgent, type Locale, type MessageKey, t } from "@zuri/shared";
 import type { AuthService } from "../auth/service.ts";
 import type { AutomationService } from "../automations/service.ts";
 import { log } from "../log.ts";
@@ -7,7 +7,7 @@ import { disarm } from "./channel.ts";
 import { type Button, type Out, type TapOutcome, withoutButton } from "./commands.ts";
 
 /** The security commands (step 16b, spec "Comandos"). */
-export const SECURITY_COMMANDS = ["acessos", "sessoes", "encerrar_sessoes", "tokens", "pausar_rotinas", "bloquear"] as const;
+export const SECURITY_COMMANDS = ["acessos", "sessoes", "encerrar_sessoes", "pausar_rotinas", "bloquear"] as const;
 export type SecurityCommand = (typeof SECURITY_COMMANDS)[number];
 
 /**
@@ -16,16 +16,9 @@ export type SecurityCommand = (typeof SECURITY_COMMANDS)[number];
  */
 export const OPEN_SECURITY_COMMANDS: readonly SecurityCommand[] = ["encerrar_sessoes", "pausar_rotinas", "bloquear"];
 
-/** Their buttons: confirmations, Encerrar under /sessoes and Revogar under /tokens. Each acts once and works with reading locked. */
-export const SECURITY_ACTIONS = ["session_end", "sessions_end", "routines_pause", "lockdown", "sec_cancel", "token_revoke"] as const;
+/** Their buttons: confirmations and Encerrar under /sessoes. Each acts once and works with reading locked. */
+export const SECURITY_ACTIONS = ["session_end", "sessions_end", "routines_pause", "lockdown", "sec_cancel"] as const;
 export type SecurityAction = (typeof SECURITY_ACTIONS)[number];
-
-/** How /tokens names each scope. */
-const SCOPE_LABEL: Record<RemoteTokenInfo["scope"], MessageKey> = {
-  read: "telegram.seg.tokens.escopo.read",
-  write: "telegram.seg.tokens.escopo.write",
-  events: "telegram.seg.tokens.escopo.events",
-};
 
 /** A confirmation (and the list's Encerrar) works for 10 minutes. */
 const CONFIRM_TTL_MS = 10 * 60_000;
@@ -33,8 +26,6 @@ const LIST_MAX = 10;
 
 export interface SecurityDeps {
   auth: Pick<AuthService, "events" | "openSessions" | "endSessions" | "enterLockdown" | "lockdown">;
-  /** The remote access tokens (step 20). Absent: /tokens shows the empty state. */
-  tokens?: { list(): RemoteTokenInfo[]; revoke(id: string): RemoteTokenInfo | null; enabled(): boolean };
   automations: AutomationService;
   buttons: CommandButtons;
   locale(): Locale;
@@ -60,7 +51,7 @@ export function isSecurityAction(name: string | undefined): name is SecurityActi
 
 /**
  * The bot's security commands: who got in (/acessos), the web sessions
- * (/sessoes, /encerrar_sessoes), remote tokens (/tokens, each with Revogar),
+ * (/sessoes, /encerrar_sessoes),
  * pausing the routines with AI and the lockdown. None calls the AI, so they
  * work with it down. The three that act ask for one tap on a button, never a
  * passkey or e-mail (spec), and each one is a security alert only the app
@@ -81,8 +72,6 @@ export class TelegramSecurity {
         return this.#sessions();
       case "encerrar_sessoes":
         return this.#endAllAsk();
-      case "tokens":
-        return this.#tokens();
       case "pausar_rotinas":
         return this.#pauseAsk();
       case "bloquear":
@@ -131,32 +120,6 @@ export class TelegramSecurity {
     return { text: `${this.#t("telegram.seg.sessoes.titulo")}\n\n${lines.join("\n")}\n\n${this.#t("telegram.seg.sessoes.dica")}`, keyboard };
   }
 
-  /**
-   * /tokens: the tokens that would be accepted now, each with Revogar (one
-   * tap, like Encerrar: it only takes access away). Suspended or expired ones
-   * and remote access turned off show only in the app.
-   */
-  #tokens(): Out {
-    const tokens = this.deps.tokens;
-    const nowMs = Date.now();
-    const active = tokens?.enabled() ? tokens.list().filter((token) => !token.suspended && Date.parse(token.expiresAt) > nowMs) : [];
-    if (active.length === 0) return { text: this.#t("telegram.seg.tokens.vazio") };
-    const shown = active.slice(0, LIST_MAX);
-    const lines = shown.map((token, i) =>
-      this.#t("telegram.seg.tokens.item", {
-        n: i + 1,
-        // The owner typed the name; it still never becomes a link or a command here.
-        nome: disarm(token.name),
-        escopo: this.#t(SCOPE_LABEL[token.scope]),
-        uso: token.lastUsedAt ? this.#when(token.lastUsedAt) : this.#t("telegram.seg.tokens.nuncaUsado"),
-      }),
-    );
-    const keyboard: Button[][] = shown.map((token, i) => [
-      { text: this.#t("telegram.seg.tokens.revogar", { n: i + 1 }), callback_data: this.deps.buttons.create("token_revoke", token.id, CONFIRM_TTL_MS) },
-    ]);
-    return { text: `${this.#t("telegram.seg.tokens.titulo")}\n\n${lines.join("\n")}\n\n${this.#t("telegram.seg.tokens.dica")}`, keyboard };
-  }
-
   // --- Asking first ------------------------------------------------------------
 
   #endAllAsk(): Out {
@@ -179,7 +142,7 @@ export class TelegramSecurity {
     return this.#ask(this.#t("telegram.seg.bloquear.pergunta"), "lockdown", "telegram.seg.bloquear.botao");
   }
 
-  #ask(text: string, action: Exclude<SecurityAction, "sec_cancel" | "session_end" | "token_revoke">, button: MessageKey): Out {
+  #ask(text: string, action: Exclude<SecurityAction, "sec_cancel" | "session_end">, button: MessageKey): Out {
     // Both buttons point to the same question: whichever is tapped first uses up the other.
     const question = questionId();
     return {
@@ -206,7 +169,7 @@ export class TelegramSecurity {
       return { answer: this.#t(key), ...(found.status === "unknown" ? {} : { keyboard: without }) };
     }
     const targetId = found.targetId;
-    if (found.action !== "session_end" && found.action !== "token_revoke") this.deps.buttons.retire(targetId);
+    if (found.action !== "session_end") this.deps.buttons.retire(targetId);
     try {
       switch (found.action) {
         case "sec_cancel":
@@ -214,11 +177,6 @@ export class TelegramSecurity {
         case "session_end": {
           const ended = this.deps.auth.endSessions(targetId);
           return { answer: this.#t(ended > 0 ? "telegram.seg.sessoes.encerrada" : "telegram.seg.sessoes.jaEncerrada"), keyboard: without };
-        }
-        case "token_revoke": {
-          const revoked = this.deps.tokens?.revoke(targetId) ?? null;
-          if (revoked) this.deps.auth.events.record("telegram_token_revoked", null, { reason: revoked.scope, alert: true });
-          return { answer: this.#t(revoked ? "telegram.seg.tokens.revogado" : "telegram.seg.tokens.jaRevogado"), keyboard: without };
         }
         case "sessions_end": {
           const ended = this.deps.auth.endSessions(null);

@@ -60,7 +60,7 @@ Cada linha é um requisito. A coluna da direita aponta onde o agente estuda a re
 | Google Agenda | Leitura e escrita de eventos, rotinas do dia com a agenda | `calendar/`, `docs/google-calendar.md` |
 | Google Contatos | Cópia só leitura dos contatos das etiquetas escolhidas, busca na tela e na conversa, avisos de aniversário e datas, fonte de dados dos workflows (novo no Zuri, etapa 19b) | `google/contacts.ts`, `docs/google-contatos.md`, `docs/planos/google-contatos.md` |
 | Avaliações do Google | Leitura das avaliações do perfil da empresa (Business Profile), aviso das negativas à equipe pelo Telegram, rascunhos de resposta no padrão do dono com verificador e aprovação, resposta automática só das positivas (novo no Zuri, etapas 19c e 19d) | `docs/planos/google-business-profile.md` |
-| Acesso remoto | Tokens pessoais com escopo `read` ou `write`, 90 dias, só hash; eventos de entrada do n8n | `remote/`, `docs/remote-access.md` |
+| Acesso remoto | **Removido em 11/11/2026 (decisão do dono):** a Zuri não tem acesso por token nem recebe eventos por API; só a sessão do navegador entra | — |
 | Fluxos | Motor de fluxos e monitor de sites no Durable Object, no alarme único (estado durável e novas tentativas entre despertares); sem Cloudflare Workflows (etapa 22a) | `flows/`, `docs/fluxos.md` |
 | Modelos de IA | Workers AI por padrão; Anthropic e OpenAI opcionais, com teto diário em US$ opcional (desligado por padrão) e fallback | `ai/`, `docs/ia.md` |
 | Segurança de acesso | Senha forte (15+ caracteres, HIBP), e-mail do dono, 2FA TOTP, códigos de recuperação, passkeys, recuperação por e-mail, Turnstile em todo login, atividade de acesso, sessão com expiração por inatividade | `auth/`, `docs/security.md` |
@@ -370,7 +370,7 @@ Aceito: "hoje", "amanhã", "depois de amanhã", dias da semana com ou sem "-feir
 - **Cartão do Telegram:** não configurado (sem token), pronto para conectar, aguardando `/start`, aguardando confirmação no app, vinculado, webhook com erro (último erro de `getWebhookInfo`), suspenso.
 - **Página `/aprovar`:** estados listados na seção do bot.
 - **Sair do bloqueio:** origem do bloqueio, hora, botão Sair (2FA ou código de recuperação), botão Não fui eu: desvincular o Telegram.
-- **Configurações:** Conta (nome, e-mail, senha, idioma, fuso), Segurança (2FA, passkeys, sessões, acessos, acesso remoto, bloqueio), IA (modelos, limites, busca semântica, memória), Avisos (push, Telegram, e-mail, categorias, prioridades), Integrações (MCP, Google Agenda e Contatos), Dados (backup, armazenamento, lixeira).
+- **Configurações:** Conta (nome, e-mail, senha, idioma, fuso), Segurança (2FA, passkeys, sessões, acessos, bloqueio), IA (modelos, limites, busca semântica, memória), Avisos (push, Telegram, e-mail, categorias, prioridades), Integrações (MCP, Google Agenda e Contatos), Dados (backup, armazenamento, lixeira).
 
 Cada estado tem chave de i18n e teste e2e.
 
@@ -520,7 +520,7 @@ O comportamento completo está na seção "Bot do Telegram do administrador"; aq
 **Etapa 16 · Aprovações seguras e modo de bloqueio** (`feat(telegram): aprova ações com 2FA e adiciona o modo de bloqueio`)
 
 - Aprovações no bot confirmadas por passkey (página /aprovar com token de uso único) ou por código de 6 dígitos enviado ao e-mail (não basta tocar no botão), validade de 5 min, vinculadas ao mesmo hash da proposta do app. Depende das etapas 4 (passkeys) e 11 (e-mail). Ações que nunca saem do app ficam listadas na seção do bot.
-- Comandos de segurança: `/acessos`, `/sessoes`, `/encerrar_sessoes`, `/tokens`, `/pausar_rotinas`, `/bloquear`.
+- Comandos de segurança: `/acessos`, `/sessoes`, `/encerrar_sessoes`, `/pausar_rotinas`, `/bloquear`.
 - Modo de bloqueio conforme a seção do bot (tokens suspensos e não revogados, login só com código de recuperação na primeira hora, tela Sair do bloqueio, rebloqueio em 24 h suspende o vínculo) e reconhecimento cruzado dos alertas de segurança.
 - Aceite: 5 falhas de confirmação travam aprovações pelo bot por 1 h e geram alerta; token da página /aprovar e código por e-mail não servem duas vezes nem para outra proposta; `/bloquear` funciona mesmo com a IA fora do ar; login durante o bloqueio é recusado com 2FA e aceito com código de recuperação; rebloqueio em 24 h suspende o vínculo; tokens suspensos voltam ao sair; alerta causado pelo bot não se reconhece pelo bot; a prévia de aprovação vem do banco, nunca do texto do modelo.
 - Dividida em duas PRs (02/11/2026, plano `docs/planos/etapa-16-aprovacoes-telegram.md`): **16a** entrega as aprovações pelo bot (botão **Aprovar** com a prévia do servidor, `/aprovar`, confirmação por passkey ou e-mail presa à proposta e ao hash, `TARGET_CHANGED`, alerta `telegram_approved`); **16b** entrega os comandos de segurança, o modo de bloqueio com a tela **Sair do bloqueio** e o reconhecimento no app dos alertas causados pelo bot.
@@ -539,7 +539,7 @@ O comportamento completo está na seção "Bot do Telegram do administrador"; aq
 
 **Etapa 19d · Resposta automática das avaliações** (`feat: responde sozinha as avaliações positivas`) — nível "Sem perguntar para positivas" liberado depois de 10 aprovações sem edição, com senha recente e alerta de segurança; até 10 respostas automáticas por dia; disjuntor (3 reprovações seguidas, recusa do Google ou resposta apagada pelo dono) que volta a "Perguntar sempre"; lista do que saiu sozinho com **Apagar resposta**.
 
-**Etapa 20 · Acesso remoto e eventos** (`feat: adiciona tokens de acesso remoto e eventos de entrada`) — tokens `zur_pat_` com escopo, 90 dias, só hash, lista de rotas permitidas; `POST /api/remote/events` para n8n e outros (60 por hora, 100 por dia, metade dos limites de canal). Tokens nunca alcançam `/api/telegram`, aprovações nem planos.
+**Etapa 20 · Acesso remoto e eventos** — *removida do produto em 11/11/2026 por decisão do dono (sem acesso por token); o texto abaixo fica como histórico.* (`feat: adiciona tokens de acesso remoto e eventos de entrada`) — tokens `zur_pat_` com escopo, 90 dias, só hash, lista de rotas permitidas; `POST /api/remote/events` para n8n e outros (60 por hora, 100 por dia, metade dos limites de canal). Tokens nunca alcançam `/api/telegram`, aprovações nem planos.
 
 **Etapa 21 · Modelos pagos** (`feat: adiciona Anthropic e OpenAI com teto de gasto`) — só modelos com preço conhecido, fallback quando o principal falha antes de responder, teto diário em US$ (padrão 2, máximo 50), escolher pago pede senha recente. **Só implementar com OK do Pablo** (gera cobrança).
 
@@ -617,7 +617,6 @@ Todos os textos em pt-BR, do catálogo de i18n. Comandos não gastam pedido de I
 | `/acessos` | Últimos 10 eventos de acesso (rede resumida, sem IP completo) | não | nenhuma | sim |
 | `/sessoes` | Sessões abertas, com botão Encerrar | sim (encerrar) | botão | sim |
 | `/encerrar_sessoes` | Encerra todas as sessões web | sim | botão | não |
-| `/tokens` | Tokens remotos ativos, com botão Revogar | sim (revogar) | botão | sim |
 | `/pausar_rotinas` | Pausa todas as rotinas de IA e sentinelas | sim | botão | não |
 | `/bloquear` | Modo de bloqueio de emergência (abaixo) | sim | botão | não |
 
