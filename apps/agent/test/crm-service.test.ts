@@ -350,7 +350,7 @@ describe("notices", () => {
   it("tells the birthdays at the time the owner picked, from the same day on when it is still ahead", () =>
     withCrm(({ crm, clock, notices }) => {
       crm.create({ name: "Ana", birthday: "11-03" }, "app");
-      expect(crm.settings()).toEqual({ followUps: true, birthdays: true, newClients: true, birthdayTime: "09:00" });
+      expect(crm.settings()).toEqual({ followUps: true, birthdays: true, birthdayTime: "09:00" });
       // 03/11 12:00 in São Paulo: 9 h is gone, so the plan is the 4th. With 15:30 picked, it is today again.
       expect(crm.nextDue()).toBe(Date.parse("2026-11-04T12:00:00.000Z"));
       expect(crm.updateSettings({ birthdayTime: "15:30" })).toMatchObject({ birthdayTime: "15:30" });
@@ -425,9 +425,9 @@ describe("notices", () => {
   it("SEC-A1-01: a change of settings goes to the activity log with the names of the fields, and the same values leave nothing", () =>
     withCrm(({ crm, db }) => {
       const trail = () => db.all<{ detail: string }>(`SELECT detail FROM zur_activity WHERE kind = 'crm.settings' ORDER BY id`).map((row) => JSON.parse(row.detail));
-      crm.updateSettings({ birthdayTime: "10:15", newClients: false, followUps: true });
-      expect(trail()).toEqual([{ fields: ["newClients", "birthdayTime"] }]);
-      crm.updateSettings({ birthdayTime: "10:15", newClients: false, followUps: true });
+      crm.updateSettings({ birthdayTime: "10:15", birthdays: false, followUps: true });
+      expect(trail()).toEqual([{ fields: ["birthdays", "birthdayTime"] }]);
+      crm.updateSettings({ birthdayTime: "10:15", birthdays: false, followUps: true });
       expect(trail()).toHaveLength(1);
     }));
 
@@ -449,21 +449,10 @@ describe("notices", () => {
       expect(notices[0]).toMatchObject({ names: "P0, P1, P2, P3, P4", more: 2 });
     }));
 
-  it("tells up to 20 new clients from n8n a day, and none while off", () =>
-    withCrm(({ crm, notices, clock }) => {
-      // The owner's day: 20 at 20:30 in São Paulo, and none more at 21:30 (already the next day in UTC).
-      clock.now = Date.parse("2026-11-03T23:30:00.000Z");
-      for (let i = 0; i < 20; i++) crm.announceNew({ id: `id${i}`, name: `N${i}` });
-      clock.now = Date.parse("2026-11-04T00:30:00.000Z");
-      for (let i = 20; i < 22; i++) crm.announceNew({ id: `id${i}`, name: `N${i}` });
-      expect(notices).toHaveLength(CRM_LIMITS.newClientNoticesPerDay);
-      clock.now = Date.parse("2026-11-04T03:30:00.000Z");
-      crm.announceNew({ id: "next-day", name: "Amanhã" });
-      expect(notices).toHaveLength(CRM_LIMITS.newClientNoticesPerDay + 1);
-      notices.length = CRM_LIMITS.newClientNoticesPerDay;
-      crm.updateSettings({ newClients: false });
-      notices.length = 0;
-      crm.announceNew({ id: "x", name: "x" });
-      expect(notices).toEqual([]);
+  it("makes every client the owner's own: no writer marks one as come from outside", () =>
+    withCrm(({ crm }) => {
+      expect(crm.create({ name: "Ana" }, "app").source).toBe("app");
+      expect(crm.create({ name: "Bia" }, "chat").source).toBe("app");
+      expect(crm.settings()).toEqual({ followUps: true, birthdays: true, birthdayTime: "09:00" });
     }));
 });

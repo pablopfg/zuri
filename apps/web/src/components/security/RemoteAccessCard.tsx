@@ -301,7 +301,7 @@ function TokenRow({
 /** A ready command for the token's scope, with the token as a variable: never pasted into a shell's history. */
 function example(scope: RemoteScope, origin: string): string {
   if (scope === "events") {
-    return `curl -X POST "${origin}/api/remote/events" \\\n  -H "Authorization: Bearer $ZURI_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"title":"Backup falhou","source":"n8n"}'`;
+    return `curl -X POST "${origin}/api/remote/events" \\\n  -H "Authorization: Bearer $ZURI_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"title":"Backup falhou","source":"monitor"}'`;
   }
   return `curl "${origin}/api/tasks" \\\n  -H "Authorization: Bearer $ZURI_TOKEN"`;
 }

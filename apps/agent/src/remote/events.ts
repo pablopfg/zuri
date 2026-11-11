@@ -6,7 +6,7 @@ import { AppError } from "../http/errors.ts";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
-/** What the title may grow to with the origin in front ("n8n: " + 120 characters). */
+/** What the title may grow to with the origin in front ("monitor: " + 120 characters). */
 const TITLE_MAX = 170;
 
 export interface RemoteEventDeps {
@@ -19,7 +19,7 @@ export interface RemoteEventDeps {
 }
 
 /**
- * Events from outside systems (n8n, a script, a monitor), sent with an
+ * Events from outside systems (a script, a monitor), sent with an
  * `events` token (step 20). Each one becomes a notice in the "events"
  * category, never critical; the notice center gives events at most half of
  * each channel's limit and lets only a few insist at once. All of it is a

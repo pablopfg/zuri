@@ -5,7 +5,7 @@ import { z } from "zod";
 
 /*
  * Remote access (step 20): personal access tokens for clients on a server
- * (n8n, Home Assistant, a script) and the events they send. Only the lazy
+ * (Home Assistant, a script) and the events they send. Only the lazy
  * Settings screen reads the types; the schemas run on the server.
  */
 
@@ -104,7 +104,7 @@ export const remoteTokenCreateSchema = /* @__PURE__ */ z
   .strict();
 export type RemoteTokenCreate = z.input<typeof remoteTokenCreateSchema>;
 
-/** A name such as "n8n" or "backup-failed": letters, digits, dot, dash and underscore. */
+/** A name such as "monitor" or "backup-failed": letters, digits, dot, dash and underscore. */
 const eventSlug = /* @__PURE__ */ z.string().trim().min(1).max(40).regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*$/);
 
 const eventId = /* @__PURE__ */ z.string().trim().min(1).max(100).regex(/^[A-Za-z0-9_.:-]+$/);
@@ -119,7 +119,7 @@ export const remoteEventSchema = /* @__PURE__ */ z
     title: z.string().trim().min(1).max(120),
     body: z.string().trim().max(1000).optional(),
     priority: z.enum(["low", "normal", "high"]).optional(),
-    /** The system that sent it, e.g. "n8n". */
+    /** The system that sent it, e.g. "monitor". */
     source: eventSlug.optional(),
     /** What kind of event, e.g. "backup-failed": its priority is learned per source and kind. */
     kind: eventSlug.optional(),
