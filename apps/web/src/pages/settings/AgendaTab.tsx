@@ -54,7 +54,7 @@ function Choice<V extends string | number | boolean>({
           <label
             key={String(option.value)}
             className={cn(
-              "flex min-h-9 cursor-pointer items-center rounded-lg px-3 text-sm font-medium has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent",
+              "flex min-h-11 cursor-pointer items-center rounded-lg px-3 text-sm font-medium has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent",
               value === option.value ? "bg-surface text-fg shadow-sm" : "text-fg-muted hover:text-fg",
             )}
           >
@@ -124,7 +124,7 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
           </SelectField>
           {!standard && (
             <Button variant="ghost" onClick={() => set(STANDARD_HOURS)}>
-              {t("web.agendaPrefs.hours.reset")}
+              {t("web.agendaPrefs.hours.reset", { from: hour(STANDARD_HOURS.from), to: hour(STANDARD_HOURS.to) })}
             </Button>
           )}
         </fieldset>
@@ -169,6 +169,7 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
                   type="checkbox"
                   className="sr-only"
                   checked={on}
+                  aria-disabled={(on && draft.workDays.length === 1) || undefined}
                   // The last working day stays: a week with none would show nothing.
                   onChange={() => (on ? draft.workDays.length > 1 && set({ workDays: draft.workDays.filter((each) => each !== day) }) : set({ workDays: [...draft.workDays, day].sort((a, b) => a - b) }))}
                 />

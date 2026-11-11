@@ -200,9 +200,9 @@ export type DayPrefs = Pick<AgendaPrefs, "from" | "to" | "allDay" | "outside">;
 
 /**
  * The shortest block the week draws, in minutes of its scale: a 5-minute event is still a button
- * the owner can hit (28 px at 48 px an hour).
+ * the owner can hit (44.8 px at the week's 56 px an hour).
  */
-export const BLOCK_MIN = 35;
+export const BLOCK_MIN = 48;
 
 export interface DayBlock {
   event: AgendaEvent;

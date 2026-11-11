@@ -318,7 +318,7 @@ export const en: Messages = {
   "web.agendaPrefs.hours.range": "{from} to {to}",
   "web.agendaPrefs.hours.bar.one": "From {from} to {to}, {count} hour",
   "web.agendaPrefs.hours.bar.other": "From {from} to {to}, {count} hours",
-  "web.agendaPrefs.hours.reset": "Back to 08:00 to 18:00",
+  "web.agendaPrefs.hours.reset": "Back to {from} to {to}",
   "web.agendaPrefs.view.title": "On opening, show",
   "web.agendaPrefs.view.hint": "On a phone, the calendar always opens on the day.",
   "web.agendaPrefs.view.day": "Day",

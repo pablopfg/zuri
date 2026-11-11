@@ -118,7 +118,11 @@ export function arrangeDay(items: readonly DayItem[], options: { now: Date; time
     const [from, to] = [window.from * 60, window.to * 60];
     const start = minute(item.at);
     // An event counts while any part of it is inside: one that began at 07:30 and is under way at 08:15 shows.
-    if (item.until !== null && item.until > item.at) return start <= to && minute(item.until) > from;
+    // One that begins as the hours end is after them: the rule of the Agenda's week (outsideHours, S08).
+    if (item.kind === "event") {
+      const end = minute(item.until ?? item.at);
+      return !((end <= from && start < from) || start >= to);
+    }
     return start >= from && start <= to;
   };
   const view: DayView = { gone: [], pending: [], rest: [], outside: 0, now: label };

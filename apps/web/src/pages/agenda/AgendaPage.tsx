@@ -44,8 +44,8 @@ const MONTH_SHOWN = 3;
 const TICK_MS = 30_000;
 /** Where the week fits as a grid of hours (Tailwind's lg); below it the week is a strip of days over one day's list. */
 const WIDE = "(min-width: 64rem)";
-/** The height of one hour in the week's grid. */
-const HOUR_REM = 3;
+/** The height of one hour in the week's grid: 56 px, so the shortest block (BLOCK_MIN) is a 44 px target. */
+const HOUR_REM = 3.5;
 
 type T = ReturnType<typeof useI18n>["t"];
 const VIEW_TEXT: Record<AgendaView, Parameters<T>[0]> = { day: "web.agenda.view.day", week: "web.agenda.view.week", month: "web.agenda.view.month" };
@@ -119,6 +119,12 @@ export function AgendaPage() {
   const [reveal, setReveal] = useState<Reveal>({ allDay: false, outside: false, daysOff: false });
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const [open, setOpen] = useState<AgendaEvent | null>(null);
+  // Counts the openings: each one gets a fresh dialog, and closing keeps it, so the focus goes back to where it came from.
+  const [opening, setOpening] = useState(0);
+  const show = (event: AgendaEvent) => {
+    setOpening((count) => count + 1);
+    setOpen(event);
+  };
   const [editing, setEditing] = useState<Editing | null>(null);
 
   const ready = !!status.data?.connected && !status.data.problem && status.data.calendars.some((c) => c.mode !== "off");
@@ -213,7 +219,8 @@ export function AgendaPage() {
   const columns = grid ? shownDays(week, { workDays: prefs.workDays, daysOff: prefs.daysOff || reveal.daysOff }) : [anchor];
   const left = { allDay: new Set<string>(), outside: 0, daysOff: new Set<string>() };
   if (view !== "month") {
-    for (const day of grid ? shownDays(week, prefs) : [anchor]) {
+    // Counted over the days on screen: a day off just shown brings its own all-day and out-of-hours events to these lines (QA-S08-01).
+    for (const day of columns) {
       for (const event of eventsOn(shown, day, timeZone)) if (event.allDay && !prefs.allDay) left.allDay.add(eventKey(event));
       left.outside += dayEvents(shown, day, prefs, timeZone).outside;
     }
@@ -247,13 +254,13 @@ export function AgendaPage() {
       ) : !events.data ? (
         <Loading rows={4} />
       ) : view === "month" ? (
-        <MonthView anchor={anchor} from={from} to={to} today={today} events={shown} calendars={byId} onOpen={setOpen} onDay={openDay} />
+        <MonthView anchor={anchor} from={from} to={to} today={today} events={shown} calendars={byId} onOpen={show} onDay={openDay} />
       ) : grid ? (
-        <WeekGrid days={columns} today={today} now={now} hours={prefs} see={see} events={shown} calendars={byId} onOpen={setOpen} onDay={openDay} />
+        <WeekGrid days={columns} today={today} now={now} hours={prefs} see={see} events={shown} calendars={byId} onOpen={show} onDay={openDay} />
       ) : (
         <>
           <DayStrip days={week} day={anchor} today={today} onDay={go} />
-          <DayList day={anchor} events={dayEvents(shown, anchor, see, timeZone).events} calendars={byId} onOpen={setOpen} />
+          <DayList day={anchor} events={dayEvents(shown, anchor, see, timeZone).events} calendars={byId} onOpen={show} />
         </>
       )}
       {view !== "month" && events.data && (
@@ -276,8 +283,8 @@ export function AgendaPage() {
         </Link>
       </div>
       <EventDialog
-        // A fresh dialog per event: a delete half-confirmed never carries over.
-        key={open ? eventKey(open) : "none"}
+        // A fresh dialog per opening: a delete half-confirmed never carries over.
+        key={opening}
         event={open}
         calendar={open ? byId.get(open.calendarId) : undefined}
         onClose={() => setOpen(null)}
@@ -311,7 +318,7 @@ function Toolbar({
   const label = rangeLabel(view, from, to, locale);
   return (
     // On a phone the period has its own line, then the arrows on the left and the views on the right (one under the other on the narrowest).
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
       {/* Read when the period changes, and while a new one is on its way. The week shows its days right below, so its period is spoken, not drawn. */}
       <h2 aria-live="polite" aria-busy={loading || undefined} className={cn("basis-full text-base font-semibold first-letter:uppercase lg:mr-auto lg:basis-auto", view === "week" && "sr-only")}>
         {label}
@@ -333,7 +340,7 @@ function Toolbar({
           <label
             key={option}
             className={cn(
-              "flex min-h-9 cursor-pointer items-center rounded-lg px-3 text-sm font-medium has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent",
+              "flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg px-2.5 text-sm font-medium has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent sm:px-3",
               view === option ? "bg-surface text-fg shadow-sm" : "text-fg-muted hover:text-fg",
             )}
           >
@@ -409,7 +416,6 @@ function LeftOut({
             <span>{text}</span>
             <button
               type="button"
-              aria-pressed={reveal[row.key]}
               onClick={() => onFlip(row.key)}
               className="min-h-11 rounded-xl px-2 font-semibold text-accent-text hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
@@ -439,8 +445,14 @@ function useWhen() {
   };
 }
 
-/** An event as a small chip (the month, and the week's rows around the hours) or as a block of the week's grid. */
-function EventButton({ event, calendar, onOpen, block = false }: { event: AgendaEvent; calendar?: GoogleCalendarInfo | undefined; onOpen: (event: AgendaEvent) => void; block?: boolean }) {
+/** An event as a small line of the month, as a chip of the week's rows around the hours (a 44 px target) or as a block of the week's grid. */
+function EventButton({
+  event,
+  calendar,
+  onOpen,
+  block = false,
+  chip = false,
+}: { event: AgendaEvent; calendar?: GoogleCalendarInfo | undefined; onOpen: (event: AgendaEvent) => void; block?: boolean; chip?: boolean }) {
   const { t } = useI18n();
   const when = useWhen()(event);
   return (
@@ -449,7 +461,7 @@ function EventButton({ event, calendar, onOpen, block = false }: { event: Agenda
       onClick={() => onOpen(event)}
       className={cn(
         "block w-full min-w-0 overflow-hidden rounded-lg border-l-4 bg-accent-soft px-1.5 text-left text-xs hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:hover:brightness-125",
-        block ? "h-full py-0.5" : "min-h-7 py-1",
+        block ? "h-full py-0.5" : chip ? "min-h-11 py-1" : "min-h-7 py-1",
       )}
       style={{ borderLeftColor: calendar?.color ?? "var(--color-accent)" }}
     >
@@ -605,7 +617,7 @@ function WeekGrid({
       <ul className={CHIPS}>
         {list.map((event) => (
           <li key={eventKey(event)}>
-            <EventButton event={event} calendar={calendars.get(event.calendarId)} onOpen={onOpen} />
+            <EventButton event={event} calendar={calendars.get(event.calendarId)} onOpen={onOpen} chip />
           </li>
         ))}
       </ul>

@@ -219,8 +219,14 @@ describe("how the day is arranged", () => {
       "2026-11-09T06:00:00",
       { all: false },
     );
-    expect(edges.outside).toBe(2);
-    expect(edges.rest.map((row) => ("now" in row ? "NOW" : row.key))).toEqual(["NOW", "at"]);
+    // S08: one that begins as the window closes is after it, the same answer the Agenda gives.
+    expect(edges.outside).toBe(3);
+    expect(edges.rest.map((row) => ("now" in row ? "NOW" : row.key))).toEqual(["NOW"]);
+    const last = arrange([item("last", "event", "2026-11-09T17:59:00", "2026-11-09T19:00:00"), item("point", "event", "2026-11-09T18:00:00", "2026-11-09T18:00:00")], "2026-11-09T06:00:00", { all: false });
+    expect(last.rest.flatMap((row) => ("now" in row ? [] : [row.key]))).toEqual(["last"]);
+    expect(last.outside).toBe(1);
+    // With no length: the first minute of the window is inside, the minute before it is not.
+    expect(arrange([item("open", "event", "2026-11-09T08:00:00", "2026-11-09T08:00:00"), item("early", "event", "2026-11-09T07:59:00", "2026-11-09T07:59:00")], "2026-11-09T06:00:00", { all: false }).outside).toBe(1);
   });
 
   it("QA-2: a task past its hour is pending at any hour, never hidden by the window nor counted outside it", () => {

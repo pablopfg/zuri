@@ -165,6 +165,8 @@ describe("the Agenda under the owner's preferences (Sinal S08)", () => {
     expect(out("17:59", "19:00")).toBe(false);
     expect(out("18:00", "19:00")).toBe(true); // starts as they end
     expect(out("08:00", "08:00")).toBe(false); // no length, on the first minute
+    expect(out("18:00", "18:00")).toBe(true); // no length, as the hours end: after them
+    expect(out("17:59", "17:59")).toBe(false);
     expect(out("07:59", "07:59")).toBe(true);
     expect(outsideHours(event({ allDay: true, start: DAY, end: "2026-11-10" }), DAY, HOURS, SP)).toBe(false);
     // The whole day as working hours leaves nothing outside.
@@ -230,7 +232,10 @@ describe("the Agenda under the owner's preferences (Sinal S08)", () => {
     expect(planDay([at("09:00", "09:05"), at("09:10", "09:15")], DAY, HOURS, SP).blocks.map((b) => b.lanes)).toEqual([2, 2]);
     // Working hours of a single hour still fit the block.
     const [only] = planDay([at("09:00", "09:05")], DAY, { from: 9, to: 10 }, SP).blocks;
-    expect(only?.height).toBeLessThanOrEqual(1);
+    expect(only).toMatchObject({ top: 0, height: BLOCK_MIN / 60 });
+    // Working hours shorter than the shortest block cannot exist (whole hours), and the block never passes the grid.
+    const [end] = planDay([at("09:58", "10:00")], DAY, { from: 9, to: 10 }, SP).blocks;
+    expect((end?.top ?? 0) + (end?.height ?? 0)).toBeCloseTo(1);
   });
 
   it("finds the line of now inside the working hours of today only", () => {
@@ -248,5 +253,19 @@ describe("the Agenda under the owner's preferences (Sinal S08)", () => {
     // New York leaves daylight saving on 1 November 2026: 09:00 there is 14:00Z after the change.
     const morning = event({ start: "2026-11-01T14:00:00Z", end: "2026-11-01T15:00:00Z" });
     expect(planDay([morning], "2026-11-01", HOURS, NY).blocks[0]).toMatchObject({ top: 0.1, height: 0.1 });
+    // The 25-hour day, across the hour that repeats: 00:30 EDT to 03:00 EST is drawn by the clock on the wall.
+    const DAY_HOURS = { from: 0, to: 24 };
+    const back = event({ start: "2026-11-01T04:30:00Z", end: "2026-11-01T08:00:00Z" });
+    const [long] = planDay([back], "2026-11-01", DAY_HOURS, NY).blocks;
+    expect(long?.top).toBeCloseTo(30 / 1440);
+    expect((long?.top ?? 0) + (long?.height ?? 0)).toBeCloseTo(180 / 1440);
+    expect(outsideHours(back, "2026-11-01", HOURS, NY)).toBe(true);
+    // The 23-hour day, across the hour that does not exist: 01:30 EST to 03:30 EDT.
+    const forward = event({ start: "2026-03-08T06:30:00Z", end: "2026-03-08T07:30:00Z" });
+    const [short] = planDay([forward], "2026-03-08", DAY_HOURS, NY).blocks;
+    expect(short?.top).toBeCloseTo(90 / 1440);
+    expect((short?.top ?? 0) + (short?.height ?? 0)).toBeCloseTo(210 / 1440);
+    // Either day still ends at its own midnight: nothing of the next day is counted in it.
+    expect(dayEvents([back, forward], "2026-11-02", { ...HOURS, allDay: true, outside: true }, NY).events).toEqual([]);
   });
 });

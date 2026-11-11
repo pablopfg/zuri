@@ -288,6 +288,23 @@ describe("import", () => {
     expect(task?.project_id).toBeNull();
   });
 
+  it("SEC-S08-01: the Agenda's preferences go in the file and come back, and a bad one is refused whole", async () => {
+    const agenda = { from: 7, to: 20, view: "day", weekStart: 0, workDays: [1, 2, 3], daysOff: false, allDay: false, outside: false };
+    const before = await inOwner((agent) => agent.store.settings.get().agenda);
+    try {
+      await inOwner((agent) => agent.store.settings.update({ agenda: agenda as typeof before }));
+      expect((JSON.parse(await exported()) as { data: { settings: { agenda: unknown } } }).data.settings.agenda).toEqual(agenda);
+      await inOwner((agent) => agent.store.settings.update({ agenda: before }));
+      await ok(session("POST", "/backup/import", backup({ settings: { agenda } })));
+      expect(await inOwner((agent) => agent.store.settings.get().agenda)).toEqual(agenda);
+      const bad = await session("POST", "/backup/import", backup({ settings: { agenda: { ...agenda, from: 20, to: 7 } } }));
+      expect(bad.status).toBe(400);
+      expect(await inOwner((agent) => agent.store.settings.get().agenda)).toEqual(agenda);
+    } finally {
+      await inOwner((agent) => agent.store.settings.update({ agenda: before }));
+    }
+  });
+
   it("sets only the safe settings", async () => {
     await ok(session("POST", "/backup/import", backup({ settings: { ownerName: "Pablo", digestTime: "07:30" } })));
     const settings = await ok<{ ownerName: string; digestTime: string }>(session("GET", "/settings"));

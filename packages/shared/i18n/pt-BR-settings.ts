@@ -17,7 +17,7 @@ export const ptBRSettings = {
   "web.agendaPrefs.hours.range": "{from} até {to}",
   "web.agendaPrefs.hours.bar.one": "Das {from} às {to}, {count} hora",
   "web.agendaPrefs.hours.bar.other": "Das {from} às {to}, {count} horas",
-  "web.agendaPrefs.hours.reset": "Voltar para 08:00 até 18:00",
+  "web.agendaPrefs.hours.reset": "Voltar para {from} até {to}",
   "web.agendaPrefs.view.title": "Ao abrir, mostrar",
   "web.agendaPrefs.view.hint": "No celular, a agenda abre sempre no dia.",
   "web.agendaPrefs.view.day": "Dia",

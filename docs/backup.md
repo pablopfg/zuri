@@ -100,7 +100,7 @@ O código do formato está em `packages/shared/src/backup-file.ts`.
 
 | Seção | O que vai | Observação |
 | --- | --- | --- |
-| `settings` | idioma, fuso, revisão de conflitos da memória, como você quer ser chamado, resumo do dia e hora, vigias, canais e limites dos avisos, prioridade que aprende | modelo de IA, limites de IA, teto em US$, limites da sessão e "Texto completo" do Telegram ficam de fora |
+| `settings` | idioma, fuso, revisão de conflitos da memória, como você quer ser chamado, resumo do dia e hora, vigias, canais e limites dos avisos, prioridade que aprende, preferências da agenda (horário e dias de trabalho, o que ela mostra) | modelo de IA, limites de IA, teto em US$, limites da sessão e "Texto completo" do Telegram ficam de fora |
 | `projects`, `tasks`, `notes` | tudo, com `localOnly` das notas | itens da lixeira não vão |
 | `memories` | texto, categoria, estado, substituição, datas citadas, autor e `localOnly` | |
 | `conversations` | título e mensagens (papel, texto, estado e a marca do modelo reserva) | sem o resumo interno, as ferramentas e os trechos citados do Telegram; caracteres de controle saem do texto e uma mensagem acima de 64.000 caracteres é cortada |
