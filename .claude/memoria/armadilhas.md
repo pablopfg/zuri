@@ -525,3 +525,4 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
 - A barra de uma tela testada só no Pixel 7 (412 px) pode quebrar em 390 px.
   Teste de layout de celular fixa a janela em 390 px com `test.use` em vez de
   pular fora do projeto `mobile` (S08).
+- Grupos do menu (11/11/2026): lugar dobrado fica com `visibility: hidden`, e o `getByRole("listitem")` do Playwright não o acha mais; para medir a altura use `locator("li")`. As classes das partes do menu saíram do `Sidebar.tsx` para `.zuri-menu …` em `styles.css` (por posição): foi o que pagou os bytes do botão novo (140.860 B com teto de 140.900 B).

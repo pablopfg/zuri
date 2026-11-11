@@ -1,9 +1,10 @@
 import { ChevronDown, PanelLeft, Search, Settings as SettingsIcon, SquarePen } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link, NavLink } from "react-router";
 import { useTaskCounts } from "../../hooks/task-counts.ts";
 import { useI18n } from "../../lib/i18n.tsx";
 import { NAV } from "../../lib/nav.ts";
+import { flipGroup, readClosedGroups } from "../../lib/sidebar.ts";
 import { Logo } from "../Logo.tsx";
 import { NotificationCenter } from "../NotificationCenter.tsx";
 
@@ -21,9 +22,11 @@ export function Avatar({ initial }: { initial: string | undefined }) {
 /**
  * The menu of a computer (Sinal): the mark, the bell and the toggle on top,
  * "Nova conversa", the search, the places in three groups (lib/nav.ts) and the
- * account at the foot. Collapsed, it is a rail of icons: every control keeps
+ * account at the foot. A group's title is a button that closes and opens it,
+ * remembered on this device; a closed group still shows the place in view, so
+ * the owner never loses where they are. Collapsed, it is a rail of icons: every control keeps
  * its name for screen readers and shows it beside the icon on hover and on
- * keyboard focus. A phone never draws it: it has the bottom bar (TabBar.tsx).
+ * keyboard focus, and the rail shows every place, whatever group is closed. A phone never draws it: it has the bottom bar (TabBar.tsx).
  * Its looks are in styles.css (.zuri-menu-*), to keep the first load light.
  */
 export function Sidebar({
@@ -47,6 +50,13 @@ export function Sidebar({
   const [tipsHidden, setTipsHidden] = useState(false);
   // Today's tasks beside Tarefas; kept fresh by the areas' numbers (lib/versions.ts).
   const today = useTaskCounts().data?.counts.today;
+  const [closed, setClosed] = useState(readClosedGroups);
+  useEffect(() => {
+    // Another tab changed it: follow, so every tab looks the same.
+    const onStorage = () => setClosed(readClosedGroups());
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
   const tip = (label: string) => (collapsed ? label : null);
   const rail = collapsed || undefined;
   const hide = collapsed ? "sr-only" : "truncate";
@@ -54,12 +64,11 @@ export function Sidebar({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: listens only, to hide the rail's names (WCAG 1.4.13); every control inside is a real button or link.
     <div
-      className="flex min-h-0 w-full flex-col p-3"
       onKeyDown={(event) => event.key === "Escape" && setTipsHidden(true)}
       onFocus={() => setTipsHidden(false)}
       onMouseLeave={() => setTipsHidden(false)}
     >
-      <div className={collapsed ? "flex flex-col items-center" : "flex items-center gap-0.5"}>
+      <div>
         <Tip label={tip(t("app.name"))} quiet={tipsHidden} className={collapsed ? "" : "mr-auto min-w-0"}>
           <NavLink to="/" className="flex min-h-11 min-w-0 items-center gap-2.5 rounded-xl px-1" aria-label={t("web.nav.homeLink")}>
             <Logo />
@@ -74,7 +83,7 @@ export function Sidebar({
           </button>
         </Tip>
       </div>
-      <div className="mt-2 space-y-2">
+      <div>
         <Tip label={tip(t("web.nav.newChat"))} quiet={tipsHidden}>
           <Link to={NEW_CHAT} aria-keyshortcuts="Control+Shift+O Meta+Shift+O" data-rail={rail} className="zuri-menu-row zuri-menu-field font-semibold text-fg">
             <SquarePen className="h-5 w-5 shrink-0 text-accent-text" aria-hidden />
@@ -88,16 +97,17 @@ export function Sidebar({
           </button>
         </Tip>
       </div>
-      <nav aria-label={t("web.nav.main")} className={`${collapsed ? "mt-2" : "mt-4"} min-h-0 flex-1 overflow-y-auto overscroll-contain`}>
-        {NAV.map((group, index) => (
-          <div key={group.heading ?? "top"} className={index === 0 ? "" : collapsed ? "mt-1 border-t border-border pt-1" : "mt-4"}>
-            {group.heading && (
-              <p id={`nav-${index}`} className={collapsed ? "hidden" : "zuri-menu-heading"}>
-                {t(group.heading)}
-              </p>
+      <nav aria-label={t("web.nav.main")}>
+        {NAV.map(({ heading, items }, index) => (
+          <div key={heading ?? "top"}>
+            {heading && (
+              <button type="button" id={`nav-${index}`} aria-expanded={!closed.includes(heading)} onClick={() => setClosed(flipGroup(closed, heading))} className="zuri-menu-heading">
+                {t(heading)}
+                <ChevronDown aria-hidden />
+              </button>
             )}
-            <ul aria-labelledby={group.heading ? `nav-${index}` : undefined} className="space-y-0.5">
-              {group.items.map(({ id, to, label, icon: Icon }) => {
+            <ul aria-labelledby={heading ? `nav-${index}` : undefined}>
+              {items.map(({ id, to, label, icon: Icon }) => {
                 const count = id === "tasks" ? today : undefined;
                 return (
                   <li key={id}>
@@ -106,7 +116,7 @@ export function Sidebar({
                         <Icon aria-hidden />
                         <span className={hide}>{t(label)}</span>
                         {/* Read with the name, like a mail app's inbox: "Tarefas 3". */}
-                        {!!count && <span className={collapsed ? "sr-only" : "ml-auto text-xs font-medium text-fg-muted tabular-nums"}> {count}</span>}
+                        {!!count && <small> {count}</small>}
                       </NavLink>
                     </Tip>
                   </li>

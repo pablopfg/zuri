@@ -20,6 +20,8 @@
  * - `painel-da-conta=/`: the account panel (a sheet on a phone), opened on that page.
  * - `folha-mais=/`: the "Mais" sheet of the phone's bottom bar (phone only).
  * - `menu-recolhido=/`: the side menu as a rail of icons, with one name showing (computer only).
+ * - `menu-grupo-fechado=/…`: the side menu with the group "Organizar" closed by its title
+ *   (computer only); at an address inside the group, the place in view stays.
  * - `conversa-aberta=/conversa`: the sample conversation ("Organizar a mudança"), open.
  * - `conversa-anterior=/conversa`: the same, as if it had last been used yesterday (the notice under its messages).
  * - `memoria-painel=/memoria`: a sample memory chosen, with its links in the panel.
@@ -148,7 +150,7 @@ for (const [device, options] of [
     for (const screen of signedIn) {
       // Shots that exist on one size only.
       if (screen.name === "folha-mais" && device !== "celular") continue;
-      if (screen.name === "menu-recolhido" && device !== "computador") continue;
+      if (/^menu-(recolhido|grupo-fechado)/.test(screen.name) && device !== "computador") continue;
       if (screen.name === "conversas" && device !== "celular") continue;
       let path = screen.path;
       if (screen.name === "conversa-menu" && device !== "computador") continue;
@@ -195,6 +197,11 @@ for (const [device, options] of [
         await page.getByRole("button", { name: "Recolher menu" }).click();
         await page.locator("aside").getByRole("link", { name: "Agenda", exact: true }).hover();
       }
+      const group = page.locator("aside").getByRole("button", { name: "Organizar", exact: true });
+      if (screen.name.startsWith("menu-grupo-fechado")) {
+        await group.click();
+        await page.locator("aside").getByRole("link", { name: "Notas", exact: true }).waitFor({ state: "hidden" });
+      }
       if (/^memoria-(painel|mapa)$/.test(screen.name)) {
         const sample = "Está organizando a mudança para um apartamento novo.";
         // On a phone the panel takes the map's place: there the map is shown with nothing chosen.
@@ -226,6 +233,7 @@ for (const [device, options] of [
       if (screen.name === "conversa-anterior") await page.unrouteAll({ behavior: "wait" });
       // The rail is remembered on the device: the next shots get the wide menu back.
       if (screen.name === "menu-recolhido") await page.getByRole("button", { name: "Expandir menu" }).click();
+      if (screen.name.startsWith("menu-grupo-fechado")) await group.click();
     }
     await context.close();
   }

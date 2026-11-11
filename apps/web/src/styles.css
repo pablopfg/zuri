@@ -406,8 +406,77 @@ dialog::backdrop {
     @apply absolute inset-y-2.5 left-0 hidden w-[3px] rounded-r bg-accent dark:block;
     content: "";
   }
+  /*
+   * The parts of the menu (shell/Sidebar.tsx), styled from here by where they
+   * sit, to keep the first load light: the mark's row, the two actions, the
+   * places and the account.
+   */
+  .zuri-menu > div {
+    @apply flex min-h-0 w-full flex-col p-3;
+  }
+  .zuri-menu > div > div:first-child {
+    @apply flex items-center gap-0.5;
+  }
+  .zuri-menu[data-collapsed="true"] > div > div:first-child {
+    @apply flex-col gap-0;
+  }
+  .zuri-menu > div > div:nth-child(2) {
+    @apply mt-2 space-y-2;
+  }
+  /* Today's count beside Tarefas; on the rail only screen readers get it. */
+  .zuri-menu-place > small {
+    @apply ml-auto text-xs font-medium text-fg-muted tabular-nums;
+  }
+  .zuri-menu-place[data-rail] > small {
+    @apply sr-only;
+  }
+  /* The places, in groups: the only part of the menu that scrolls. */
+  .zuri-menu nav {
+    @apply mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain;
+  }
+  .zuri-menu nav > div + div {
+    @apply mt-2;
+  }
+  /* A group's title: a button that closes and opens the group. */
   .zuri-menu-heading {
-    @apply px-3 pb-1 text-xs font-semibold tracking-wide text-fg-muted uppercase;
+    @apply flex min-h-11 w-full items-center justify-between rounded-xl px-3 text-xs font-semibold tracking-wide text-fg-muted uppercase transition-colors hover:bg-raised hover:text-fg;
+  }
+  .zuri-menu-heading > svg {
+    @apply h-4 w-4 shrink-0 motion-safe:transition-transform motion-safe:duration-200;
+  }
+  .zuri-menu-heading[aria-expanded="false"] > svg {
+    @apply -rotate-90;
+  }
+  /*
+   * Each place is a one-row grid, so a closed group can fold it to nothing and
+   * back with a transition (a height of "auto" has none). The padding and the
+   * negative margin leave room for the focus ring inside the clipped box.
+   */
+  .zuri-menu nav li {
+    @apply grid grid-rows-[1fr] motion-safe:transition-[grid-template-rows,visibility] motion-safe:duration-200;
+  }
+  .zuri-menu nav li + li {
+    @apply mt-0.5;
+  }
+  .zuri-menu nav li > div {
+    @apply -my-1 min-h-0 overflow-hidden py-1;
+  }
+  /*
+   * Closed: every place folds away but the one in view, so the owner never loses
+   * where they are. The folded ones leave the keyboard and screen readers too.
+   */
+  .zuri-menu[data-collapsed="false"] .zuri-menu-heading[aria-expanded="false"] + ul > li:not(:has([aria-current="page"])) {
+    @apply invisible mt-0 grid-rows-[0fr];
+  }
+  /* The rail has no titles, only a line between the groups, and shows every place. */
+  .zuri-menu[data-collapsed="true"] nav {
+    @apply mt-2;
+  }
+  .zuri-menu[data-collapsed="true"] nav > div + div {
+    @apply mt-1 border-t border-border pt-1;
+  }
+  .zuri-menu[data-collapsed="true"] .zuri-menu-heading {
+    @apply hidden;
   }
 
   /* The name of a rail icon, beside it (shell/Sidebar.tsx, Tip). */
