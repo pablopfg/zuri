@@ -669,7 +669,8 @@ export class CrmService {
     let at = row.birthdays === 1 ? nextRun(schedule, this.deps.timeZone(), new Date(now)) : null;
     if (at) {
       const today = this.localDay(now);
-      const pendingToday = row.next_reminder !== null && row.next_reminder > now && this.localDay(row.next_reminder) === today;
+      // Due and not yet told counts too: a save in the seconds before the alarm must not send today's to tomorrow.
+      const pendingToday = row.next_reminder !== null && this.localDay(row.next_reminder) === today;
       if (this.localDay(at.getTime()) === today) {
         if (row.reminded_day === today) at = nextRun(schedule, this.deps.timeZone(), at);
       } else if (pendingToday && row.reminded_day !== today) {

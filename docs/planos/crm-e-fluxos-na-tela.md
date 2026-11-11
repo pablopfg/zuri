@@ -142,7 +142,7 @@ Nenhum recurso novo. Salvar grava 1 a 3 linhas; salvar o mesmo valor, nenhuma. `
 
 ## 9. Segurança e privacidade
 
-As duas rotas ficam atrás da sessão, do CSRF e da origem do dono, com corpo de 1 KB e schema estrito. Nenhum campo novo aceita texto livre além da hora, conferida por expressão regular ancorada. Os CHECKs do banco repetem as faixas. Nenhuma ferramenta do agente, comando do bot ou token remoto alcança as rotas. Nada novo no log.
+As duas rotas ficam atrás da sessão, do CSRF e da origem do dono, com corpo de 1 KB e schema estrito. Nenhum campo novo aceita texto livre além da hora, conferida por expressão regular ancorada. Os CHECKs do banco repetem as faixas. Nenhuma ferramenta do agente, comando do bot ou token remoto alcança as rotas. Nada novo no log. Como as duas rotas não pedem senha, cada mudança grava no registro de atividade os nomes dos campos alterados (`flow.settings` e `crm.settings`, achado SEC-A1-01 da auditoria), nunca os valores.
 
 ## 10. Testes
 

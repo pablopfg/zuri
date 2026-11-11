@@ -80,7 +80,7 @@ export const ptBRFlows = {
   "web.flows.problem.busy": "a execução anterior ainda estava rodando",
   "web.flows.problem.lockdown": "o bloqueio estava ligado",
   "web.flows.problem.runs_limit": "acabaram as execuções do dia",
-  "web.flows.problem.calls_limit": "passou de 40 chamadas numa execução",
+  "web.flows.problem.calls_limit": "passou do limite de chamadas numa execução",
   "web.flows.problem.items_limit": "passou de 200 itens",
   "web.flows.problem.too_large": "a resposta passou de 256 KB",
   "web.flows.problem.ai_limit": "acabou o limite de IA dos fluxos hoje",

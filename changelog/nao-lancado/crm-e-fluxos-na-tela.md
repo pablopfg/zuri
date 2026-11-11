@@ -9,11 +9,16 @@
 
 - Cada dia tem um aviso de aniversários só, mesmo que a hora mude no meio do dia.
 - O que gasta cota (execuções, chamadas, uso de IA, tentativas, eventos) tem como máximo o valor que já era fixo. Você pode baixar, nunca passar dele.
+- O selo "Desligado por falhas" de um fluxo segue o número de falhas que você escolheu.
 - O backup leva a hora do aviso de aniversários e o número de avisos de cliente novo. Um backup antigo não mexe neles.
 
 ### Corrigido
 
 - A tela CRM › Fluxos parava ("Esta tela parou") quando era a primeira tela aberta e havia um fluxo com horário diário ou semanal. Os textos do horário agora chegam junto com a tela.
+
+### Segurança
+
+- Cada mudança nessas configurações fica no registro de atividade, com os nomes dos campos alterados.
 
 ### Atualização
 

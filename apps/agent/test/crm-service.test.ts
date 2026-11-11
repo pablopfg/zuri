@@ -400,12 +400,25 @@ describe("notices", () => {
       expect(notices.at(-1)).toMatchObject({ names: "Bia", day: "2026-11-05" });
     }));
 
+  it("never loses a day: a time moved to earlier while today's notice is due and the alarm has not run yet still tells today", () =>
+    withCrm(({ crm, clock, notices }) => {
+      crm.create({ name: "Ana", birthday: "11-04" }, "app");
+      clock.now = Date.parse("2026-11-04T11:00:00.000Z");
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-04T12:00:00.000Z"));
+      // 09:00:20, the alarm late: the owner picks 08:00.
+      clock.now = Date.parse("2026-11-04T12:00:20.000Z");
+      crm.updateSettings({ birthdayTime: "08:00" });
+      crm.tick();
+      expect(notices).toEqual([{ kind: "crm.birthdays", names: "Ana", more: 0, day: "2026-11-04" }]);
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-05T11:00:00.000Z"));
+    }));
+
   it("writes nothing when the time and the number saved are the ones already there", () =>
     withCrm(({ crm, db }) => {
       crm.create({ name: "Ana", birthday: "11-04" }, "app");
-      crm.updateSettings({ birthdayTime: "10:15", newClientNoticesPerDay: 7 });
+      crm.updateSettings({ birthdayTime: "10:15", newClientNoticesPerDay: 7, eventsPerHour: 20, eventsPerDay: 60 });
       const usage = db.usage.rowsWritten;
-      expect(crm.updateSettings({ birthdayTime: "10:15", newClientNoticesPerDay: 7 })).toMatchObject({ birthdayTime: "10:15", newClientNoticesPerDay: 7 });
+      expect(crm.updateSettings({ birthdayTime: "10:15", newClientNoticesPerDay: 7, eventsPerHour: 20, eventsPerDay: 60 })).toMatchObject({ birthdayTime: "10:15", newClientNoticesPerDay: 7, eventsPerHour: 20, eventsPerDay: 60 });
       expect(db.usage.rowsWritten).toBe(usage);
     }));
 

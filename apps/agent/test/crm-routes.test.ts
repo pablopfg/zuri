@@ -185,6 +185,10 @@ describe("/api/crm", () => {
       const refused = await api("PATCH", "/crm/settings", body);
       expect(refused.status, JSON.stringify(body)).toBe(400);
     }
+    // A body past 1 KB is refused before it is read, whatever it holds.
+    const big = await call(`${ORIGIN}/api/crm/settings`, { method: "PATCH", headers: headers(true), body: `{"newClientNoticesPerDay":9${" ".repeat(1_024)}}` });
+    expect(big.status).toBe(400);
+    expect(await errorBody(big)).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["_body"] } });
     expect((await overview()).settings).toMatchObject({ birthdayTime: "07:45", newClientNoticesPerDay: 5, eventsPerHour: 300, eventsPerDay: 1_000 });
     expect((await api("PATCH", "/crm/settings", { eventsPerHour: 60, eventsPerDay: 100 })).status).toBe(200);
     const over = await api("PATCH", "/crm/settings", { eventsPerHour: 101 });

@@ -197,7 +197,9 @@ describe("/api/flows", () => {
       expect((await errorBody(refused)).code).toBe("VALIDATION_FAILED");
     }
     // A body past 1 KB is refused before it is read as JSON.
-    expect((await api("PATCH", "/flows/settings", { runsPerDay: 100, pad: "x".repeat(2_000) })).status).toBe(400);
+    const big = await call(`${ORIGIN}/api/flows/settings`, { method: "PATCH", headers: headers(true), body: `{"runsPerDay":100${" ".repeat(1_024)}}` });
+    expect(big.status).toBe(400);
+    expect(await errorBody(big)).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["_body"] } });
     expect((await api("PATCH", "/flows/settings", { runsPerDay: 100 }, false)).status).toBe(401);
     expect(((await (await api("GET", "/flows")).json()) as FlowList).settings).toEqual({ ...START, failuresToPause: 3, runsPerDay: 10 });
   });

@@ -287,6 +287,43 @@ test("loading, empty and error states of the tab", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Tentar de novo" })).toBeVisible();
 });
 
+test("the row says a flow was turned off by failures at the owner's number, not at 5", async ({ page }) => {
+  const flow = (name: string, failures: number) => ({
+    id: `f${failures}`,
+    name,
+    definition: { version: 1, trigger: { type: "manual" }, nodes: [{ type: "wait", minutes: 1 }] },
+    enabled: false,
+    usesAi: false,
+    nextRunAt: null,
+    lastRunAt: null,
+    lastRunStatus: null,
+    lastProblem: null,
+    failures,
+    sites: [],
+    createdAt: "2026-11-01T12:00:00.000Z",
+    updatedAt: "2026-11-01T12:00:00.000Z",
+  });
+  await page.route("**/api/flows", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        flows: [flow("Parou em duas", 2), flow("Desligado à mão", 1)],
+        drafts: [],
+        connections: [],
+        counts: { flows: 2, enabled: 0, connections: 0, sites: 0, runsToday: 0, neuronsToday: 0, slots: 0 },
+        settings: { ...START, failuresToPause: 2 },
+        credentialsAvailable: false,
+      }),
+    }),
+  );
+  await page.goto("/crm/fluxos");
+  await signIn(page);
+  await expect(page.getByRole("listitem").filter({ hasText: "Parou em duas" }).getByText("Desligado por falhas", { exact: true })).toBeVisible();
+  const byHand = page.getByRole("listitem").filter({ hasText: "Desligado à mão" });
+  await expect(byHand.getByText("Desligado", { exact: true })).toBeVisible();
+  await expect(byHand.getByText("Desligado por falhas", { exact: true })).toHaveCount(0);
+});
+
 test("a flow the chat suggests waits on the tab; saved by the owner, it starts off (step 22b)", async ({ page }) => {
   const name = `Sugerido ${tag()}`;
   await page.goto("/conversa");

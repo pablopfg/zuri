@@ -145,6 +145,7 @@ export function FlowsPanel() {
                     <FlowRow
                       key={flow.id}
                       flow={flow}
+                      failuresToPause={data.settings.failuresToPause}
                       glow={flashClass(flash.glowing, flow.id)}
                       onEdit={() => setEditing({ mode: "edit", flow })}
                       onDelete={() => setRemoving({ kind: "flow", flow })}
@@ -257,11 +258,11 @@ function Drafts({ drafts, full, onReview }: { drafts: FlowDraft[]; full: boolean
   );
 }
 
-function FlowRow({ flow, glow, onEdit, onDelete }: { flow: Flow; glow: string; onEdit: () => void; onDelete: () => void }) {
+function FlowRow({ flow, failuresToPause, glow, onEdit, onDelete }: { flow: Flow; failuresToPause: number; glow: string; onEdit: () => void; onDelete: () => void }) {
   const { t, plural, dateTime, timeZone } = useI18n();
   const { busy, act } = useFlowAction();
   const titleId = useId();
-  const tripped = !flow.enabled && flow.failures >= FLOW_LIMITS.failuresToPause;
+  const tripped = !flow.enabled && flow.failures >= failuresToPause;
   const runText = (run: FlowRun) => {
     const reason = run.problem ? t(PROBLEM_LABEL[run.problem]) : "";
     if (run.status === "waiting" && run.resumeAt) return t("web.flows.ranWaiting", { when: dateTime(run.resumeAt) });

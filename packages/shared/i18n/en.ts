@@ -2490,7 +2490,7 @@ export const en: Messages = {
   "web.flows.problem.busy": "the previous run was still going",
   "web.flows.problem.lockdown": "the lockdown was on",
   "web.flows.problem.runs_limit": "the day's runs ran out",
-  "web.flows.problem.calls_limit": "it went past 40 calls in one run",
+  "web.flows.problem.calls_limit": "it went past the calls allowed in one run",
   "web.flows.problem.items_limit": "it went past 200 items",
   "web.flows.problem.too_large": "the answer was over 256 KB",
   "web.flows.problem.ai_limit": "the flows' AI allowance for today ran out",

@@ -660,6 +660,21 @@ describe("the schedule", () => {
     });
   });
 
+  it("takes the day's 2,000th scheduled time and refuses the 2,001st (n, n+1)", async () => {
+    await withFlowWorld(async (world) => {
+      world.flows.updateSettings({ minIntervalMinutes: 5 });
+      const ping = (minutes: number) => every(minutes, [{ type: "wait", minutes: 1 }]);
+      // 6 × 288 + 240 + 32 = 2,000.
+      for (const minutes of [5, 5, 5, 5, 5, 5, 6, 45]) {
+        const flow = await world.flows.create({ name: `F${minutes}`, definition: ping(minutes) });
+        await world.flows.update(flow.id, { enabled: true });
+      }
+      expect(world.flows.list().counts.slots).toBe(FLOW_LIMITS.slotsPerDay);
+      const daily = await world.flows.create({ name: "Diário", definition: { version: 1, trigger: { type: "schedule", schedule: { type: "daily", time: "09:00" } }, nodes: [{ type: "wait", minutes: 1 }] } });
+      expect(await refusal(world.flows.update(daily.id, { enabled: true }))).toMatchObject({ code: "CONFLICT", details: { limit: 2_000, slots: 2_001 } });
+    });
+  });
+
   it("stops a run at the owner's calls when they picked fewer than 40", async () => {
     await withFlowWorld(async (world) => {
       world.flows.updateSettings({ callsPerRun: 5 });
