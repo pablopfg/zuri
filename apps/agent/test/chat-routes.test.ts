@@ -357,6 +357,28 @@ describe("conversations", () => {
     expect((await refusal(await api("DELETE", `/conversations/${id}`), 404)).code).toBe("NOT_FOUND");
   });
 
+  it("renaming is not using: updatedAt and the place in the list stay with the last message (#272)", async () => {
+    await useProvider(new MockAIProvider());
+    const old = startOf(await chat("conversa de ontem")).conversation.id;
+    const recent = startOf(await chat("conversa de hoje")).conversation.id;
+    const lastUse = "2026-01-01T12:00:00.000Z";
+    await inAgent((agent) => agent.store.db.run(`UPDATE zur_conversations SET updated_at = ? WHERE id = ?`, lastUse, old));
+
+    const renamed = await json<{ conversation: Conversation }>(await api("PATCH", `/conversations/${old}`, { title: "Nome novo" }), 200);
+    expect(renamed.conversation).toMatchObject({ id: old, title: "Nome novo", updatedAt: lastUse });
+    const list = await json<{ conversations: Conversation[] }>(await api("GET", "/conversations"), 200);
+    expect(list.conversations.map((c) => [c.id, c.title, c.updatedAt])).toEqual([
+      [recent, expect.any(String), expect.any(String)],
+      [old, "Nome novo", lastUse],
+    ]);
+
+    // A new message is use: the conversation goes back to the top.
+    await chat("mais uma", old);
+    const after = await json<{ conversations: Conversation[] }>(await api("GET", "/conversations"), 200);
+    expect(after.conversations.map((c) => c.id)).toEqual([old, recent]);
+    expect((after.conversations[0]?.updatedAt ?? "") > lastUse).toBe(true);
+  });
+
   it("pages the list and the messages with a cursor, and refuses a malformed one", async () => {
     await useProvider(new MockAIProvider());
     const ids: string[] = [];

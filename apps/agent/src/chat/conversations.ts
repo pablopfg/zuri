@@ -187,7 +187,8 @@ export class ConversationRepository {
 
   rename(id: string, title: string): Conversation {
     this.row(id);
-    this.db.run(`UPDATE zur_conversations SET title = ?, updated_at = ? WHERE id = ?`, title, now(), id);
+    // Renaming is not using: `updated_at` follows the messages only, since the list orders and dates each row by it.
+    this.db.run(`UPDATE zur_conversations SET title = ? WHERE id = ?`, title, id);
     return this.get(id);
   }
 
