@@ -355,6 +355,23 @@ dialog::backdrop {
  * A utility on the element still wins (this layer comes before the utilities).
  */
 @layer components {
+  /* The home page's column, and the greeting's placeholder: the day, the title and the line, at the greeting's sizes. */
+  .zuri-home {
+    @apply mx-auto max-w-190 md:pt-6;
+  }
+  .zuri-home-slot {
+    @apply mb-5 space-y-2.5;
+  }
+  .zuri-home-slot > i {
+    @apply block h-5 w-40 max-w-full rounded-lg bg-border/60;
+  }
+  .zuri-home-slot > i:nth-child(2) {
+    @apply h-9 w-56 md:h-10;
+  }
+  .zuri-home-slot > i:nth-child(3) {
+    @apply h-7 w-72;
+  }
+
   /* A square button with only an icon: the bell, the toggle, the search, a panel's X. */
   .zuri-icon-button {
     @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg-muted hover:bg-raised hover:text-fg;

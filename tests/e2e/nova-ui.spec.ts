@@ -3,7 +3,7 @@ import { expect, type Page, test } from "./fixtures.ts";
 import { CSRF, expectAccessible, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // The new interface, part 1 (docs/planos/nova-ui.md): the home page with the
-// field to write to Zuri and the two cards, the recent conversations by day
+// field to write to Zuri (its day is in inicio.spec.ts), the recent conversations by day
 // with their own search, the palette's new options and the loading look.
 
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
@@ -16,17 +16,6 @@ async function openHome(page: Page) {
   await signIn(page);
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
 }
-
-/** A deadline `days` from today at `time` in São Paulo (the owner's zone). */
-function atHour(days: number, time: string): string {
-  const day = new Date(Date.now() + days * 86_400_000);
-  const local = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(day);
-  return new Date(`${local}T${time}:00-03:00`).toISOString();
-}
-
-/** A deadline `days` from today at 23:00 in São Paulo. */
-const dueIn = (days: number) => atHour(days, "23:00");
-
 
 test("the home page sends what is written to a new conversation, once @mobile", async ({ page }) => {
   const word = tag();
@@ -59,51 +48,6 @@ test("an idea on the home page starts a conversation with it", async ({ page }) 
   await ideas.getByRole("button", { name: "O que tenho amanhã?" }).click();
   await expect(page).toHaveURL(/\/conversa\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("log").getByText("O que tenho amanhã?", { exact: true })).toBeVisible();
-});
-
-test.describe("with the device in another zone", () => {
-  // The owner's zone (São Paulo) decides "today", never the device's (Tokyo is 12 h ahead).
-  test.use({ timezoneId: "Asia/Tokyo" });
-
-  test("the home cards show what is due today and in the next days, with the late ones marked @mobile", async ({ page }) => {
-  const word = tag();
-  await page.goto("/entrar");
-  await signIn(page);
-  await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
-  for (const [title, dueAt] of [
-    [`Hoje ${word}`, atHour(0, "23:59")],
-    // A minute ago: late by the hour, even when today has just begun.
-    [`Cedo ${word}`, new Date(Date.now() - 60_000).toISOString()],
-    [`Ontem ${word}`, dueIn(-1)],
-    [`Amanhã ${word}`, dueIn(1)],
-  ] as const) {
-    expect((await page.request.post("/api/tasks", { headers: CSRF, data: { title, dueAt } })).status()).toBe(201);
-  }
-  await page.reload();
-  // Other tests leave tasks for today too, and the card lists the first five: compare with the server's list.
-  const { tasks } = (await (await page.request.get("/api/tasks?view=today", { headers: CSRF })).json()) as { tasks: { title: string; dueAt: string | null }[] };
-  const now = Date.now();
-  const late = tasks.filter((task) => task.dueAt !== null && Date.parse(task.dueAt) < now).length;
-  const today = page.getByRole("region", { name: "Hoje" });
-  const count = `${tasks.length} ${tasks.length === 1 ? "tarefa" : "tarefas"}`;
-  await expect(today.getByText(`${count}, ${late} ${late === 1 ? "atrasada" : "atrasadas"}`, { exact: true })).toBeVisible();
-  expect(late).toBeGreaterThanOrEqual(2);
-  const rows = today.getByRole("listitem");
-  await expect(rows).toHaveCount(Math.min(tasks.length, 5));
-  for (const [index, task] of tasks.slice(0, 5).entries()) {
-    await expect(rows.nth(index)).toContainText(task.title);
-    if (task.dueAt !== null && Date.parse(task.dueAt) < now) await expect(rows.nth(index)).toContainText("Atrasada");
-    else await expect(rows.nth(index)).not.toContainText("Atrasada");
-  }
-  // Tomorrow by the owner's clock (São Paulo), with the device 12 h ahead in Tokyo.
-  const next = page.getByRole("region", { name: "Próximos dias" });
-  await expect(next.getByRole("heading", { name: "Amanhã", exact: true })).toBeVisible();
-  await today.getByRole("link", { name: "Ver tarefas" }).click();
-  await expect(page).toHaveURL(/\/tarefas$/);
-  await page.goBack();
-  await expect(page.getByRole("region", { name: "Hoje" })).toBeVisible();
-  await expectAccessible(page, "início com cartões");
-});
 });
 
 test("recent conversations come by day and the list has its own search", async ({ page }) => {

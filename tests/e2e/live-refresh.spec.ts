@@ -160,11 +160,11 @@ test("a task the chat creates updates the side menu's count right away, without 
   await page.goto("/conversa");
   const counted = page.waitForResponse((r) => r.url().endsWith("/api/tasks/counts"));
   await signIn(page);
-  await counted;
+  // The count as the server sent it, and on the screen before the task is made: read from the link alone, a menu
+  // drawn before the answer arrived read as zero and the test compared with the wrong number.
+  const before = ((await (await counted).json()) as { counts: { today: number } }).counts.today;
   const sidebar = page.locator("aside");
-  const tasksLink = sidebar.getByRole("link", { name: /^Tarefas/ });
-  await expect(tasksLink).toBeVisible();
-  const before = Number((await tasksLink.textContent())?.replace(/\D/g, "") || "0");
+  await expect(sidebar.getByRole("link", { name: before > 0 ? `Tarefas ${before}` : "Tarefas", exact: true })).toBeVisible();
   const field = page.getByRole("textbox", { name: "Mensagem" });
   await field.fill(`call create_task {"title":"Pagar a luz ${tag()}","due":"${localToday()}"}`);
   await field.press("Enter");
