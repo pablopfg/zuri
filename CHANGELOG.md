@@ -19,6 +19,14 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.49.1] - 2026-11-11
+
+Mesclada às 16:24 (UTC-3) · commit [`b5dc752`](https://github.com/pablopfg/Zuri/commit/b5dc7527a80adf1a5ac823a114793e0db03b9678) · PR [#292](https://github.com/pablopfg/Zuri/pull/292) · Títulos dos grupos do menu lateral recolhem e exibem o grupo
+
+### Adicionado
+
+- No menu lateral, os títulos **Organizar** e **Relacionamento** agora são botões: um clique recolhe o grupo e outro exibe de novo. A tela em que você está continua aparecendo mesmo com o grupo recolhido, a escolha fica guardada no aparelho e as outras abas acompanham. Funciona pelo teclado e com leitor de tela. No menu só de ícones e no celular todos os lugares continuam à vista.
+
 ## [0.49.0] - 2026-11-11
 
 Mesclada às 14:03 (UTC-3) · commit [`b0467e3`](https://github.com/pablopfg/Zuri/commit/b0467e3a247872136dd3aea2acd83676d047f5c2) · PR [#291](https://github.com/pablopfg/Zuri/pull/291) · Tela de Contatos do Sinal, com ficha em grupos e filtro de etiqueta (S10)
@@ -3188,7 +3196,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.1...develop
+[0.49.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.1
 [0.49.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.0
 [0.48.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.48.1
 [0.48.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.48.0
