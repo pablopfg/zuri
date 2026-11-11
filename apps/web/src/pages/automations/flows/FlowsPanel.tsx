@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FLOW_LIMITS, FLOW_SETTING_RANGES, type Flow, type FlowConnection, type FlowDraft, type FlowList, type FlowRun, type FlowRunPage, type FlowSettings, type FlowSite, type MessageKey, ptBRAutomations, ptBRFlows, type Schedule } from "@zuri/shared";
+import { FLOW_LIMITS, FLOW_SETTING_RANGES, type Flow, type FlowConnection, type FlowDraft, type FlowList, type FlowRun, type FlowRunPage, type FlowSettings, type FlowSite, type MessageKey, ptBRFlows, ptBRSchedule, type Schedule } from "@zuri/shared";
 import { History, KeyRound, Pause, Pencil, Play, Plus, Trash2, Radar, Workflow, Zap } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { ActionsMenu } from "../../../components/ActionsMenu.tsx";
@@ -17,9 +17,10 @@ import { capitalizeFirst, PROBLEM_LABEL, RUN_STATUS_LABEL, RUN_TRIGGER_LABEL, SI
 
 // The tab's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRFlows);
-// A flow at a time of day is described with the routines' words (lib/automations.ts). The CRM opens this
-// panel without the Routines screen, so its texts come along: without them a daily or weekly flow broke the screen.
-addMessages(ptBRAutomations);
+// A flow's schedule reads as a routine's does (describeSchedule), and the editor names the
+// days of the week: those words come with this screen too, or opening the CRM without
+// having passed through Rotinas has no text for them (#297).
+addMessages(ptBRSchedule);
 
 /** Everything about flows starts with this key: the live channel's "flows" area refreshes it (lib/versions.ts). */
 export const FLOWS_KEY = ["flows"] as const;
