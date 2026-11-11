@@ -49,6 +49,7 @@ test("no page breaks the Content Security Policy @mobile", async ({ page }) => {
     ["/configuracoes/ia", settingsHasTabs(page) ? "Configurações" : "Uso da IA"],
     ["/configuracoes/modelos", settingsHasTabs(page) ? "Configurações" : "Modelos e limites"],
     ["/configuracoes/dados", settingsHasTabs(page) ? "Configurações" : "Dados"],
+    ["/configuracoes/agenda", settingsHasTabs(page) ? "Configurações" : "Agenda"],
     ["/configuracoes/avisos", settingsHasTabs(page) ? "Configurações" : "Avisos"],
     ["/configuracoes/diagnostico", settingsHasTabs(page) ? "Configurações" : "Diagnóstico"],
   ] as const;

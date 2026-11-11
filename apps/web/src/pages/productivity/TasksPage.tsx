@@ -20,7 +20,7 @@ import { PROJECTS_KEY, TASKS_KEY, useProjects, useTasks } from "../../hooks/prod
 import { useTaskCounts } from "../../hooks/task-counts.ts";
 import { api, errorMessage } from "../../lib/api.ts";
 import { FlashStatus, flashClass, useDebounced, useFlash } from "../../lib/lists.tsx";
-import { dueFromInputs, dueInputs, formatDue, quickAddDue } from "../../lib/due.ts";
+import { dueFromInputs, dueInputs, formatDue, quickAddDue, relativeDue } from "../../lib/due.ts";
 import { useI18n } from "../../lib/i18n.tsx";
 import { groupTasks } from "./task-groups.ts";
 import { ProjectsDialog } from "./ProjectsDialog.tsx";
@@ -365,7 +365,7 @@ function TaskRow({
   const flagged = !done && (task.priority === "high" || task.priority === "urgent");
 
   const Mark = done ? CheckCircle2 : task.status === "in_progress" ? CircleDot : Circle;
-  const due = task.dueAt ? formatDue(task.dueAt, locale, timeZone, dateTime) : "";
+  const due = task.dueAt ? relativeDue(task.dueAt, new Date(), locale, timeZone, dateTime) : "";
   return (
     <li className={cn("grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-1 px-2 py-1.5 transition-colors hover:bg-raised/60 sm:grid-cols-[2.75rem_minmax(0,1fr)_auto]", glow)}>
       {/* A real checkbox, drawn as a 44 px round mark: the icon shows the state, the input takes the touch. */}

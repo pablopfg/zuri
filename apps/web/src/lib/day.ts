@@ -11,8 +11,8 @@ import { dayOffset } from "./recents.ts";
  * no request of its own.
  */
 
-/** The hours the list shows until asked for the rest. Fixed until the Agenda settings bring the owner's own (S08). */
-export const DAY_WINDOW = { from: 8, to: 18 } as const;
+/** The hours the list shows until asked for the rest: the working hours of Configurações › Agenda (S08), these until the owner changes them. */
+export const DAY_WINDOW: { from: number; to: number } = { from: 8, to: 18 };
 
 export type DayKind = "task" | "event" | "routine" | "approval";
 
@@ -100,7 +100,7 @@ function byTime(a: DayItem, b: DayItem): number {
   return b.daysLate - a.daysLate || (a.at ?? 0) - (b.at ?? 0);
 }
 
-export function arrangeDay(items: readonly DayItem[], options: { now: Date; timeZone: string; all: boolean; done: ReadonlySet<string> }): DayView {
+export function arrangeDay(items: readonly DayItem[], options: { now: Date; timeZone: string; all: boolean; done: ReadonlySet<string>; window?: { from: number; to: number } }): DayView {
   const { timeZone } = options;
   const now = options.now.getTime();
   const today = localDate(now, timeZone);
@@ -114,10 +114,15 @@ export function arrangeDay(items: readonly DayItem[], options: { now: Date; time
   };
   const inWindow = (item: DayItem) => {
     if (item.at === null || item.daysLate > 0) return true;
-    const [from, to] = [DAY_WINDOW.from * 60, DAY_WINDOW.to * 60];
+    const window = options.window ?? DAY_WINDOW;
+    const [from, to] = [window.from * 60, window.to * 60];
     const start = minute(item.at);
     // An event counts while any part of it is inside: one that began at 07:30 and is under way at 08:15 shows.
-    if (item.until !== null && item.until > item.at) return start <= to && minute(item.until) > from;
+    // One that begins as the hours end is after them: the rule of the Agenda's week (outsideHours, S08).
+    if (item.kind === "event") {
+      const end = minute(item.until ?? item.at);
+      return !((end <= from && start < from) || start >= to);
+    }
     return start >= from && start <= to;
   };
   const view: DayView = { gone: [], pending: [], rest: [], outside: 0, now: label };

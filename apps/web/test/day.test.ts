@@ -1,5 +1,7 @@
 import type { AgendaEvent, Automation, Task } from "@zuri/shared";
+import { DEFAULT_AGENDA_PREFS } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
+import { STANDARD_HOURS } from "../src/pages/settings/AgendaTab.tsx";
 import { arrangeDay, DAY_WINDOW, type DayItem, dayItems } from "../src/lib/day.ts";
 
 const SP = "America/Sao_Paulo";
@@ -169,7 +171,9 @@ describe("how the day is arranged", () => {
   });
 
   it("shows only the working hours until asked, counting what was left out; what has no hour always shows", () => {
-    expect(DAY_WINDOW).toEqual({ from: 8, to: 18 });
+    // The hours before the owner picks any are the ones a new installation saves.
+    expect(DAY_WINDOW).toEqual({ from: DEFAULT_AGENDA_PREFS.from, to: DEFAULT_AGENDA_PREFS.to });
+    expect(STANDARD_HOURS).toEqual(DAY_WINDOW);
     const day = arrange(items, "2026-11-09T08:12:00", { all: false });
     expect(day.outside).toBe(2);
     expect(keys(day.gone)).toEqual([]);
@@ -188,6 +192,21 @@ describe("how the day is arranged", () => {
     expect(day.outside).toBe(inside ? 0 : 1);
   });
 
+  it.each([
+    ["06:59", false],
+    ["07:00", true],
+    ["20:00", true],
+    ["20:01", false],
+  ])("S08: the window follows the owner's working hours (07:00 to 20:00): %s", (time, inside) => {
+    const day = arrangeDay([item("edge", "routine", `2026-11-09T${time}:00`)], { now: sp("2026-11-09T06:00:00"), timeZone: SP, all: false, done: new Set(), window: { from: 7, to: 20 } });
+    expect(day.outside).toBe(inside ? 0 : 1);
+  });
+
+  it("S08: working hours of the whole day leave nothing outside", () => {
+    const edges = ["00:00", "23:59"].map((time) => item(time, "routine", `2026-11-09T${time}:00`));
+    expect(arrangeDay(edges, { now: sp("2026-11-09T06:00:00"), timeZone: SP, all: false, done: new Set(), window: { from: 0, to: 24 } }).outside).toBe(0);
+  });
+
   it("QA-1: an event shows while any part of it is inside the window, even begun before it or on the day before", () => {
     const under = arrange([item("meeting", "event", "2026-11-09T07:30:00", "2026-11-09T09:00:00")], "2026-11-09T08:15:00", { all: false });
     expect(under.outside).toBe(0);
@@ -200,8 +219,14 @@ describe("how the day is arranged", () => {
       "2026-11-09T06:00:00",
       { all: false },
     );
-    expect(edges.outside).toBe(2);
-    expect(edges.rest.map((row) => ("now" in row ? "NOW" : row.key))).toEqual(["NOW", "at"]);
+    // S08: one that begins as the window closes is after it, the same answer the Agenda gives.
+    expect(edges.outside).toBe(3);
+    expect(edges.rest.map((row) => ("now" in row ? "NOW" : row.key))).toEqual(["NOW"]);
+    const last = arrange([item("last", "event", "2026-11-09T17:59:00", "2026-11-09T19:00:00"), item("point", "event", "2026-11-09T18:00:00", "2026-11-09T18:00:00")], "2026-11-09T06:00:00", { all: false });
+    expect(last.rest.flatMap((row) => ("now" in row ? [] : [row.key]))).toEqual(["last"]);
+    expect(last.outside).toBe(1);
+    // With no length: the first minute of the window is inside, the minute before it is not.
+    expect(arrange([item("open", "event", "2026-11-09T08:00:00", "2026-11-09T08:00:00"), item("early", "event", "2026-11-09T07:59:00", "2026-11-09T07:59:00")], "2026-11-09T06:00:00", { all: false }).outside).toBe(1);
   });
 
   it("QA-2: a task past its hour is pending at any hour, never hidden by the window nor counted outside it", () => {

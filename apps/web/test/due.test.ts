@@ -1,6 +1,6 @@
 import { formatDateTime } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { dueFromInputs, dueInputs, formatDue, quickAddDue } from "../src/lib/due.ts";
+import { dueFromInputs, dueInputs, formatDue, quickAddDue, relativeDue } from "../src/lib/due.ts";
 
 const SP = "America/Sao_Paulo";
 
@@ -29,6 +29,45 @@ describe("task deadlines in the owner's zone", () => {
   it("shows the day alone or the day and the time", () => {
     expect(formatDue("2026-11-06T02:59:00.000Z", "pt-BR", SP, (iso) => formatDateTime(iso, "pt-BR", SP))).toBe("05/11/2026");
     expect(formatDue("2026-11-05T12:30:00.000Z", "pt-BR", SP, (iso) => formatDateTime(iso, "pt-BR", SP))).toBe("05/11/2026 às 09:30");
+  });
+});
+
+describe("a deadline beside today (S08)", () => {
+  const now = new Date("2026-11-10T12:00:00-03:00");
+  const due = (iso: string, zone = SP, locale: "pt-BR" | "en" = "pt-BR") => relativeDue(iso, now, locale, zone, (value) => formatDateTime(value, locale, zone));
+
+  it("says Ontem, Hoje and Amanhã, with the hour when there is one", () => {
+    expect(due("2026-11-09T18:00:00-03:00")).toBe("Ontem, 18:00");
+    expect(due("2026-11-10T09:30:00-03:00")).toBe("Hoje, 09:30");
+    expect(due("2026-11-11T09:30:00-03:00")).toBe("Amanhã, 09:30");
+    // A day-only deadline (23:59) is the day alone.
+    expect(due("2026-11-10T23:59:00-03:00")).toBe("Hoje");
+    expect(due("2026-11-09T23:59:00-03:00")).toBe("Ontem");
+    expect(due("2026-11-09T18:00:00-03:00", SP, "en")).toBe("Yesterday, 18:00");
+  });
+
+  it("goes back to the date two days away, on either side", () => {
+    expect(due("2026-11-08T18:00:00-03:00")).toBe("08/11/2026 às 18:00");
+    expect(due("2026-11-12T23:59:00-03:00")).toBe("12/11/2026");
+    expect(due("2025-11-10T12:00:00-03:00")).toBe("10/11/2025 às 12:00");
+  });
+
+  it("counts days in the owner's zone at the edges of the day", () => {
+    // 00:00 and 23:58 of the same day are both today; one minute before midnight of the day before is yesterday.
+    expect(due("2026-11-10T00:00:00-03:00")).toBe("Hoje, 00:00");
+    expect(due("2026-11-10T23:58:00-03:00")).toBe("Hoje, 23:58");
+    expect(due("2026-11-09T23:58:00-03:00")).toBe("Ontem, 23:58");
+    // Now is already the 11th in Tokyo (12 hours ahead): this morning in São Paulo was yesterday there.
+    expect(due("2026-11-10T10:00:00-03:00")).toBe("Hoje, 10:00");
+    expect(due("2026-11-10T10:00:00-03:00", "Asia/Tokyo")).toBe("Ontem, 22:00");
+  });
+
+  it("a day of 23 or 25 hours is still one day", () => {
+    // New York leaves daylight saving on 1 November 2026.
+    const at = new Date("2026-11-01T12:00:00-05:00");
+    const ny = (iso: string) => relativeDue(iso, at, "pt-BR", "America/New_York", (value) => formatDateTime(value, "pt-BR", "America/New_York"));
+    expect(ny("2026-10-31T10:00:00-04:00")).toBe("Ontem, 10:00");
+    expect(ny("2026-11-02T10:00:00-05:00")).toBe("Amanhã, 10:00");
   });
 });
 

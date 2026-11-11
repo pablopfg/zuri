@@ -126,6 +126,15 @@ export async function seed(page: Page, base: string): Promise<{ conversationId: 
     const opened = await page.request.patch(`${base}/api/google/calendars/${encodeURIComponent(id)}`, { headers: CSRF, data: { mode } });
     if (!opened.ok()) throw new Error(`/api/google/calendars: ${opened.status()}`);
   }
+  // Two events outside the working hours (Sinal S08): the week's "Antes" and "Depois" rows and the
+  // count of what "Seu dia" leaves out. São Paulo is UTC-3 all year.
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  for (const [title, start, end] of [
+    ["Corrida no parque", "07:00", "07:45"],
+    ["Aula de fotografia", "19:00", "20:30"],
+  ] as const) {
+    await post("/api/google/events", { calendarId: "dono@exemplo.com.br", title, allDay: false, start: `${today}T${start}`, end: `${today}T${end}`, location: "", description: "" });
+  }
   // Google reviews (step 19c): the sample profile of the same simulator. Saving makes the first read
   // (two old reviews, kept as history); "Check now" brings the three that arrive after it.
   const listed = await page.request.get(`${base}/api/reviews/locations`, { headers: CSRF });

@@ -66,6 +66,7 @@ export const BACKUP_SETTINGS = [
   "alertPerHour",
   "alertPerDay",
   "alertLearning",
+  "agenda",
 ] as const;
 export type BackupSetting = (typeof BACKUP_SETTINGS)[number];
 

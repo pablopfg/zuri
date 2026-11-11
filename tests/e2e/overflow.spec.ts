@@ -29,6 +29,7 @@ const SCREENS = [
   "/configuracoes/seguranca",
   "/configuracoes/ia",
   "/configuracoes/modelos",
+  "/configuracoes/agenda",
   "/configuracoes/avisos",
   "/configuracoes/integracoes",
   "/configuracoes/dados",

@@ -116,8 +116,8 @@ menus nunca saem da tela.
   à direita), numa coluna de até 5xl. No celular, ações só de ícone ficam ao
   lado do título; as largas descem para a linha de baixo. Dentro de uma seção
   das Configurações, no celular, o título é o da seção, com "Todas as
-  configurações" acima. São oito seções: Conta, Segurança, Uso da IA, Modelos
-  e limites, Avisos, Integrações, Dados e Diagnóstico.
+  configurações" acima. São nove seções: Conta, Segurança, Uso da IA, Modelos
+  e limites, Agenda, Avisos, Integrações, Dados e Diagnóstico.
 - **Lixeira:** o botão de Tarefas e o de Notas abrem Configurações › Dados com
   `?tipo=tarefas` ou `?tipo=notas`: só aquele tipo, "Voltar para…" e "Ver
   tudo". "Esvaziar a lixeira" aparece só sem filtro.
@@ -152,9 +152,9 @@ menus nunca saem da tela.
   demanda, num pedaço só (`pages/home/HomeBody.tsx`, `pt-BR-home.ts`).
 - **Seu dia:** as tarefas de hoje, os eventos do Google Agenda (quando
   conectado) e as rotinas do dia numa lista só, em volta da linha de agora
-  (`lib/day.ts`, `pages/home/DayCard.tsx`). Mostra das 08:00 às 18:00; o resto
-  fica atrás de "N fora das 08:00 às 18:00 · Mostrar" (a janela passa a vir de
-  Configurações › Agenda na S08). O que já passou e não pede nada vai para a
+  (`lib/day.ts`, `pages/home/DayCard.tsx`). Mostra o horário de trabalho de
+  Configurações › Agenda (08:00 às 18:00 até o dono mudar); o resto fica atrás
+  de "N fora das 08:00 às 18:00 · Mostrar". O que já passou e não pede nada vai para a
   cortina "N já passaram", fechada até alguém abrir. Tarefa que passou da
   hora, tarefa atrasada de outros dias (as três mais antigas, com "Mais N em
   Tarefas") e rotina esperando aprovação ficam em cima, com o contador "N

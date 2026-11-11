@@ -45,6 +45,7 @@ export {
   ptBRVoice,
   t,
 } from "../i18n/index.ts";
+export { AGENDA_VIEWS, type AgendaPrefs, type AgendaView, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
 export { AGENT_INSTANCE_NAME } from "./constants.ts";
 export {
   API_ERROR_CODES,
@@ -57,6 +58,7 @@ export {
 } from "./errors.ts";
 export { formatDateTime, formatDateTimeParts, formatUsd } from "./format.ts";
 export {
+  agendaPrefsSchema,
   DEFAULT_SETTINGS,
   DEFAULT_TIME_ZONE,
   isOwnerName,

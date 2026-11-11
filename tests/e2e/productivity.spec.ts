@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, openPlace, signIn, signOutFromMenu, tooSmallControls } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, openPlace, signIn, signOutFromMenu, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // Tasks, notes, folders ("projects" in the code) and the trash against the real Worker (step 6):
 // create, edit, complete, delete and restore. pt-BR, the owner in São Paulo.
@@ -434,5 +434,40 @@ test.describe("a device in another zone than the owner's", () => {
     await page.getByRole("button", { name: /^Próximas \d+$/ }).click();
     await expect(page.getByRole("region", { name: "Lista de tarefas" }).getByText("10/12/2099 às 18:30")).toBeVisible();
     expect((await page.request.delete(`/api/tasks/${task.id}`, { headers: CSRF })).status()).toBe(200);
+  });
+
+  test("S08: a deadline around today reads Ontem, Hoje or Amanhã by the owner's day, and the date beyond that", async ({ page }) => {
+    // Frozen at the instant the days are counted from: the device (Tokyo) may already be on the next day.
+    const now = new Date();
+    await page.clock.setFixedTime(now);
+    const SP = "America/Sao_Paulo";
+    const day = (days: number) => new Intl.DateTimeFormat("en-CA", { timeZone: SP }).format(new Date(now.getTime() + days * 86_400_000));
+    const tag = uniqueTag("prazo");
+    await openSignedIn(page, "/tarefas");
+    const ids: string[] = [];
+    try {
+      for (const [name, dueAt] of [
+        ["ontem", `${day(-1)}T18:00:00-03:00`],
+        ["hoje", `${day(0)}T23:59:00-03:00`],
+        ["amanha", `${day(1)}T09:30:00-03:00`],
+        ["depois", `${day(2)}T09:30:00-03:00`],
+      ] as const) {
+        const res = await page.request.post("/api/tasks", { headers: CSRF, data: { title: `${tag} ${name}`, dueAt } });
+        expect(res.status()).toBe(201);
+        ids.push(((await res.json()) as { task: { id: string } }).task.id);
+      }
+      await page.reload();
+      await page.getByRole("button", { name: /^Todas \d+$/ }).click();
+      const row = (name: string) => page.getByRole("region", { name: "Lista de tarefas" }).getByRole("listitem").filter({ hasText: `${tag} ${name}` });
+      await expect(row("ontem")).toContainText("Ontem, 18:00");
+      // A deadline of the day alone (23:59) is the day alone.
+      await expect(row("hoje")).toContainText(/Hoje(?!,)/);
+      await expect(row("amanha")).toContainText("Amanhã, 09:30");
+      const [, month, date] = day(2).split("-");
+      await expect(row("depois")).toContainText(`${date}/${month}`);
+      await expect(row("depois")).not.toContainText(/Amanhã|Hoje|Ontem/);
+    } finally {
+      for (const id of ids) await page.request.delete(`/api/tasks/${id}`, { headers: CSRF });
+    }
   });
 });

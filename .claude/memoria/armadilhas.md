@@ -509,3 +509,19 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
   teste fica instável. Espere "Gravando: 1 s" antes de parar (S07).
 - `Button` com largura fixa e padding espreme o ícone (`svg` encolhe em
   flex). Ícone dentro de botão quadrado leva `shrink-0` (S07, microfone).
+- Tela sob demanda que importa `hooks/settings.ts` (o `useMutation` dele) ou um
+  valor de `packages/shared/src/agenda-prefs.ts` cria um pedaço comum novo e
+  estoura o JS inicial. Leia as configurações com `useQuery` e `SETTINGS_KEY`
+  de `hooks/session.tsx` e importe do pacote comum só os tipos (S08).
+- `npm run size` mede o `dist` que estiver lá: se o build falhou (erro de
+  TypeScript), a medida é do build anterior. Confira a saída do build antes de
+  ler o tamanho (S08).
+- `Dialog` com `key` que muda ao fechar (`key={open ? id : "none"}`) é
+  desmontado em vez de fechado, e o navegador não devolve o foco. Troque a
+  chave só ao abrir (S08, contador `opening` em `AgendaPage.tsx`).
+- No Playwright, `aria-disabled="true"` conta como desabilitado: `click()` no
+  rótulo espera para sempre. Use o teclado (foco e Espaço) para provar que o
+  controle não muda (S08).
+- A barra de uma tela testada só no Pixel 7 (412 px) pode quebrar em 390 px.
+  Teste de layout de celular fixa a janela em 390 px com `test.use` em vez de
+  pular fora do projeto `mobile` (S08).

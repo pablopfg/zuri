@@ -119,6 +119,24 @@ describe("SettingsRepository", () => {
     });
   });
 
+  it("saves the Agenda's preferences whole in one row, and reads a stored one that no longer fits as the default", async () => {
+    await withRepository("agenda", (settings, db) => {
+      const agenda = { from: 7, to: 20, view: "day" as const, weekStart: 0 as const, workDays: [6, 1, 1], daysOff: false, allDay: false, outside: false };
+      expect(settings.update({ agenda }).agenda).toEqual({ ...agenda, workDays: [1, 6] });
+      expect(db.all(`SELECT key FROM zur_settings`)).toEqual([{ key: "agenda" }]);
+      // The same card saved again writes nothing.
+      const before = db.all(`SELECT * FROM zur_activity`).length;
+      settings.update({ agenda: { ...agenda, workDays: [1, 6] } });
+      expect(db.all(`SELECT * FROM zur_activity`)).toHaveLength(before);
+      for (const patch of [{ ...agenda, from: 20, to: 20 }, { ...agenda, to: 25 }, { ...agenda, workDays: [] }, { from: 9 }, { ...agenda, more: 1 }]) {
+        expect(() => settings.update({ agenda: patch } as never), JSON.stringify(patch)).toThrow(AppError);
+      }
+      // Hours a hand-edited row left upside down never reach the screen.
+      db.run(`UPDATE zur_settings SET value = ? WHERE key = 'agenda'`, JSON.stringify({ ...agenda, from: 22, to: 3 }));
+      expect(settings.get().agenda).toEqual(DEFAULT_SETTINGS.agenda);
+    });
+  });
+
   it("reads a corrupt or no longer valid stored value as the default", async () => {
     await withRepository("corrupt", (settings, db) => {
       db.run(`INSERT INTO zur_settings (key, value, updated_at) VALUES ('language', '"fr"', 'x'), ('time_zone', '{not json', 'x')`);
