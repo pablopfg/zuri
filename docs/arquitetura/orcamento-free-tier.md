@@ -187,7 +187,7 @@ Como cheguei nos números:
   intervalo dos contatos, o que for menor. Com os contatos a cada minuto, a
   conferência das avaliações fica com o despertar em que vence e os contatos
   esperam o seguinte, então o dia nunca passa de 1.440 despertares. Pedir o
-  alarme de novo (salvar um ajuste, um evento chegando) não adia um despertar
+  alarme de novo (salvar um ajuste) não adia um despertar
   que já espera dentro do próximo minuto. As 19 linhas de uma leitura sem
   novidade são medidas em `apps/agent/test/alarm-two-reads.test.ts`. A
   conferir no painel depois do deploy: com um despertar por minuto o objeto

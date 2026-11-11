@@ -770,8 +770,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           const floor = new Date(now + RETRY_FLOOR_MS).toISOString();
           // ISO strings in UTC sort as times.
           if (due >= floor) return due;
-          // An alarm already waiting inside that minute stays where it is: asking again (saving a setting,
-          // an event coming in) never pushes it further out, or asking every 50 s would hold every wake off.
+          // An alarm already waiting inside that minute stays where it is: asking again (saving a setting)
+          // never pushes it further out, or asking every 50 s would hold every wake off.
           const waiting = automations.alarmAt();
           return waiting !== null && waiting > new Date(now).toISOString() && waiting <= floor ? waiting : floor;
         },
