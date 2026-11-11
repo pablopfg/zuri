@@ -19,6 +19,24 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.46.0] - 2026-11-11
+
+Mesclada às 04:25 (UTC-3) · commit [`4c7598c`](https://github.com/pablopfg/Zuri/commit/4c7598c7d5b2b4f3c512e22b1d983d216317bdc9) · PR [#277](https://github.com/pablopfg/Zuri/pull/277) · Tarefas e Notas do Sinal, com nota que salva sozinha (S07)
+
+### Adicionado
+
+- A nota **salva sozinha** enquanto você escreve e ao sair dela. A linha no alto diz "Salvando…" ou "Salva às 08:12"; se não der para salvar, ela diz o motivo e oferece **Tentar de novo**.
+- **Ditar na nota**: o microfone escreve o que você disse no fim do texto. O campo do Início ganhou o mesmo microfone.
+- **Baixar em Markdown** no menu "Mais opções" da nota.
+- Se a nota mudou em outro lugar enquanto você escrevia, a Zuri para de salvar e pergunta: **Ver a versão nova** ou **Manter a minha**.
+
+### Alterado
+
+- Notas com o desenho novo: lista com a hora da mudança e o começo do texto, e o editor sem moldura, com a pasta, Escrever/Prévia e "Nunca enviar para fora" numa barra.
+- Tarefas com o desenho novo: a lista vem em grupos (Atrasadas, Hoje, Próximas, Concluídas) com a contagem, e cada linha mostra a pasta, o prazo e a prioridade.
+- "Projetos" passaram a se chamar **Pastas** em todos os textos, também nas mensagens do bot e nos erros.
+- "Sair sem salvar?" só aparece quando a nota não pôde ser salva.
+
 ## [0.45.0] - 2026-11-11
 
 Mesclada às 02:30 (UTC-3) · commit [`da0c597`](https://github.com/pablopfg/Zuri/commit/da0c59779ae568754c48b0968c0af501385731e4) · PR [#275](https://github.com/pablopfg/Zuri/pull/275) · Memória do Sinal com painel de ligações e Mapa (S06)
@@ -3065,7 +3083,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.45.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.46.0...develop
+[0.46.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.0
 [0.45.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.45.0
 [0.44.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.44.0
 [0.43.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.43.0
