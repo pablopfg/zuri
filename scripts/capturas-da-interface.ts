@@ -29,7 +29,7 @@
  *   the list with the sample contacts copied, the card of one of them (Beatriz, with her appointments), the card of
  *   one of two people with the same name, and the label filter open (need --exemplos).
  * - `integracoes-sem-etiqueta=/configuracoes/integracoes>Contatos`: the contacts just turned on, with the labels
- *   to choose and nobody copied yet (needs --exemplos; run it apart, since it empties the copy).
+ *   to choose and nobody copied yet (needs --exemplos; run it apart, on a database of its own: it empties the copy).
  * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
  * - `agenda-dia=/agenda` and `agenda-mes=/agenda`: the Agenda in that view (plain `agenda=/agenda` is the
@@ -195,8 +195,11 @@ for (const [device, options] of [
       if (screen.name === "integracoes-sem-etiqueta") {
         // The first setup: the contacts on, the labels read and none chosen yet (shoot it apart: it empties the copy).
         await seedContacts(page, BASE);
-        const none = await page.request.patch(`${BASE}/api/google/contacts/labels`, { headers: CSRF, data: { selected: [] } });
-        if (!none.ok()) throw new Error(`/api/google/contacts/labels: ${none.status()}`);
+        const status = (await (await page.request.get(`${BASE}/api/google/contacts`, { headers: CSRF })).json()) as { labels: { selected: boolean }[] };
+        if (status.labels.some((label) => label.selected)) {
+          const none = await page.request.patch(`${BASE}/api/google/contacts/labels`, { headers: CSRF, data: { selected: [] } });
+          if (!none.ok()) throw new Error(`/api/google/contacts/labels: ${none.status()}`);
+        }
       }
       await page.goto(BASE + path);
       await page.getByRole("heading", { level: 1 }).or(page.getByRole("heading", { level: 2 })).first().waitFor();
@@ -244,7 +247,7 @@ for (const [device, options] of [
         await page.getByRole("link", { name: /Organizar a mudança/ }).waitFor();
       }
       if (screen.region) {
-        const region = page.getByRole("region", { name: screen.region });
+        const region = page.getByRole("region", { name: screen.region, exact: true });
         await region.waitFor();
         await region.evaluate((box: HTMLElement) => box.scrollIntoView({ block: "start" }));
       }

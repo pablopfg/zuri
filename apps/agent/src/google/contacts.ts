@@ -350,7 +350,8 @@ export class GoogleContacts {
       nextSyncAt: enabled && problem !== "reconnect" && typeof row?.next_sync === "number" ? new Date(row.next_sync).toISOString() : null,
       lastResult: enabled && row?.last_result && RESULTS.has(row.last_result) ? (row.last_result as ContactSyncResult) : null,
       refreshing: enabled && problem === null && row?.full_needed === 1 && labels.some((label) => label.selected),
-      labelsRead: enabled && row?.labels_read_at != null,
+      // Saving a choice asks for the labels again on the next read (labels_read_at goes back to NULL): the ones kept still count as read.
+      labelsRead: enabled && (row?.labels_read_at != null || labels.length > 0),
       syncEveryMinutes: this.every(row) / 60_000,
       contacts: enabled ? this.count() : 0,
       labels,

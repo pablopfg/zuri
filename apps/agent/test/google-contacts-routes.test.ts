@@ -397,6 +397,10 @@ describe("the owner's way of naming, the first setup and two people with one nam
     // Only the chosen label's contacts come.
     await choose(CLIENTS);
     expect((await list()).map((contact) => contact.name)).toEqual(["Ana Souza"]);
+    // Unchoosing everything right after is still "the labels are here, choose": never "reading" or "failed" again.
+    const none = await api("PATCH", "/google/contacts/labels", { selected: [] });
+    expect(none.status).toBe(200);
+    expect((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).toMatchObject({ labelsRead: true, contacts: 0 });
   });
 
   it("Google failing when the owner comes back still turns the contacts on; the labels come with the next read", async () => {
