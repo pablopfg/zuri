@@ -7,6 +7,7 @@ import { useToast } from "../../components/Toaster.tsx";
 import { Button, Dialog, ErrorNotice, Loading, Notice, SelectField, TextAreaField, TextField } from "../../components/ui.tsx";
 import { ApiError, api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
+import { SyncIntervalForm } from "./SyncIntervalForm.tsx";
 import { guardTexts, REVIEW_BREAKER_TEXT, REVIEW_PROBLEM_TEXT, REVIEWS_KEY, REVIEWS_STATUS_KEY } from "../../lib/reviews.ts";
 
 // The section's pt-BR texts travel with its code, loaded only with the Google card (rule P11).
@@ -103,6 +104,18 @@ export function ReviewsSection() {
           {data.problem && <Notice tone="warning">{t(REVIEW_PROBLEM_TEXT[data.problem])}</Notice>}
           {data.breaker && <Notice tone="warning">{t(REVIEW_BREAKER_TEXT[data.breaker.reason], { when: dateTime(data.breaker.at) })}</Notice>}
           <SettingsForm status={data} />
+          {data.enabled && (
+            <SyncIntervalForm
+              label="web.reviews.card.every"
+              minutes={data.syncEveryMinutes}
+              min={REVIEW_LIMITS.checkEveryMinMinutes}
+              max={REVIEW_LIMITS.checkEveryMaxMinutes}
+              nextAt={data.nextSyncAt}
+              onSave={async (minutes) => {
+                qc.setQueryData(REVIEWS_STATUS_KEY, await api<ReviewsStatus>("/reviews/interval", { method: "PATCH", body: { syncEveryMinutes: minutes } }));
+              }}
+            />
+          )}
           {data.enabled && (
             <div className="flex justify-end">
               <Button variant="danger" onClick={() => setConfirming(true)}>

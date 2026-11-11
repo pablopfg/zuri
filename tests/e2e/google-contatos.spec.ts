@@ -110,6 +110,37 @@ test("\"Sync now\" waits for the labels being saved, then copies the new choice 
   expect(syncs).toEqual(["POST"]);
 });
 
+test("the owner picks how often the contacts are read, within 5 minutes and a day; accessible @mobile", async ({ page }) => {
+  const contacts = await turnOn(page);
+  // The interval outlives turning the contacts off: whatever an earlier run left, this one starts from 5.
+  expect((await page.request.patch("/api/google/contacts/settings", { headers: CSRF, data: { syncEveryMinutes: 5 } })).status()).toBe(200);
+  await page.reload();
+  const every = contacts.getByRole("spinbutton", { name: "Sincronizar a cada (minutos)" });
+  await expect(every).toHaveValue("5");
+  const save = contacts.getByRole("button", { name: "Salvar intervalo" });
+  await expect(every).toBeVisible();
+  await expect(contacts.getByText("De 5 a 1440 minutos. Quando nada mudou no Google, nada é regravado aqui.")).toBeVisible();
+  // Out of the range (n - 1 and n + 1), empty or not whole: nothing to save.
+  for (const value of ["4", "1441", "", "7.5"]) {
+    await every.fill(value);
+    await expect(save).toBeDisabled();
+  }
+  await every.fill("45");
+  await save.click();
+  await expect(page.getByRole("status").filter({ hasText: "Intervalo salvo" })).toBeVisible();
+  // The same value again is nothing to save, and the next read is told.
+  await expect(save).toBeDisabled();
+  await expect(contacts.getByText(/^Próxima leitura: /)).toBeVisible();
+  await expectAccessible(page, "integracoes-contatos-intervalo");
+  // Kept by the server: there after a reload.
+  await page.reload();
+  await expect(every).toHaveValue("45");
+  // Back to where an installation starts, for the tests that follow.
+  await every.fill("5");
+  await save.click();
+  await expect(page.getByRole("status").filter({ hasText: "Intervalo salvo" })).toBeVisible();
+});
+
 test("turning the contacts off forgets the copy and keeps the calendar", async ({ page }) => {
   const contacts = await turnOn(page);
   await contacts.getByRole("checkbox", { name: /^Família/ }).check();

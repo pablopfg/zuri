@@ -44,6 +44,28 @@ async function turnOn(): Promise<ContactsStatus> {
   return (await synced.json()) as ContactsStatus;
 }
 
+/** How many times the alarm was set again while `work` ran (the routes that move a time must do it). */
+async function countRearms(work: () => Promise<unknown>): Promise<number> {
+  let count = 0;
+  const real = await inOwner((agent) => {
+    const { automations } = agent.store;
+    const original = automations.rearm;
+    automations.rearm = (...args: Parameters<typeof original>) => {
+      count++;
+      return original.apply(automations, args);
+    };
+    return original;
+  });
+  try {
+    await work();
+  } finally {
+    await inOwner((agent) => {
+      agent.store.automations.rearm = real;
+    });
+  }
+  return count;
+}
+
 beforeAll(async () => {
   const res = await call(`${ORIGIN}/api/auth/login`, {
     method: "POST",
@@ -74,6 +96,8 @@ afterEach(async () => {
     const { db } = agent.store;
     const state = new InternalState(db);
     state.delete("lockdown_until");
+    // The owner's interval outlives turning off: each test starts from the installation's.
+    db.run(`UPDATE zur_contact_sync SET sync_every_min = 5`);
     state.delete("google_oauth_pending");
     agent.store.contacts.disable();
     for (const table of ["zur_google_calendars", "zur_google_account", "zur_auth_events", "zur_notices"]) db.run(`DELETE FROM ${table}`);
@@ -93,6 +117,36 @@ describe("/api/google/contacts", () => {
     const res = await api("POST", "/google/contacts/connect");
     expect(res.status).toBe(409);
     expect((await errorBody(res)).code).toBe("CONFLICT");
+  });
+
+  it("saves the owner's interval between two reads, within 5 minutes and a day, and plans the next read by it", async () => {
+    const on = await turnOn();
+    expect(on.syncEveryMinutes).toBe(5);
+    for (const body of [{ syncEveryMinutes: 4 }, { syncEveryMinutes: 1_441 }, { syncEveryMinutes: 7.5 }, { syncEveryMinutes: "15" }, { syncEveryMinutes: null }, { syncEveryMs: 60_000 }]) {
+      const res = await api("PATCH", "/google/contacts/settings", body);
+      expect(res.status, JSON.stringify(body)).toBe(400);
+      expect((await errorBody(res)).code).toBe("VALIDATION_FAILED");
+    }
+    // Nothing of a refused body was kept.
+    expect(((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).syncEveryMinutes).toBe(5);
+    for (const minutes of [5, 1_440, 15]) {
+      const res = await api("PATCH", "/google/contacts/settings", { syncEveryMinutes: minutes });
+      expect(res.status).toBe(200);
+      const status = (await res.json()) as ContactsStatus;
+      expect(status.syncEveryMinutes).toBe(minutes);
+      expect(Date.parse(status.nextSyncAt ?? "") - Date.parse(status.lastSyncAt ?? "")).toBe(minutes * 60_000);
+    }
+    const status = (await (await api("GET", "/google/contacts")).json()) as ContactsStatus;
+    expect(await inOwner((agent) => agent.store.contacts.nextDue())).toBe(Date.parse(status.nextSyncAt ?? ""));
+    // The alarm itself is set again by the route, so a shorter interval doesn't wait for the old wake.
+    const rearmed = await countRearms(() => api("PATCH", "/google/contacts/settings", { syncEveryMinutes: 5 }));
+    expect(rearmed).toBe(1);
+    const alarm = await runInDurableObject(owner(), (_agent: ZuriAgent, state) => state.storage.getAlarm());
+    const short = (await (await api("GET", "/google/contacts")).json()) as ContactsStatus;
+    expect(alarm ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(Date.parse(short.nextSyncAt ?? ""));
+    // Without a session, nothing.
+    expect((await api("PATCH", "/google/contacts/settings", { syncEveryMinutes: 30 }, false)).status).toBe(401);
+    expect(((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).syncEveryMinutes).toBe(5);
   });
 
   it("asks for the password typed recently to turn the contacts on, to add a label and to turn them off", async () => {
@@ -194,7 +248,7 @@ describe("/api/google/contacts", () => {
     expect(status).toMatchObject({ status: "ok", lastResult: "changed", refreshing: false });
     const wait = Date.parse(status.nextSyncAt ?? "") - Date.parse(status.lastSyncAt ?? "");
     expect(wait).toBe(5 * 60_000);
-    expect(Object.keys(status).sort()).toEqual(["connected", "contacts", "enabled", "labels", "lastResult", "lastSyncAt", "nextSyncAt", "onAdded", "outcome", "problem", "refreshing", "reminders", "status"]);
+    expect(Object.keys(status).sort()).toEqual(["connected", "contacts", "enabled", "labels", "lastResult", "lastSyncAt", "nextSyncAt", "onAdded", "outcome", "problem", "refreshing", "reminders", "status", "syncEveryMinutes"]);
     expect(JSON.stringify(status)).not.toMatch(/sync\.\d|people_sync_token|page_token/);
   });
 

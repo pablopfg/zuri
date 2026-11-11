@@ -115,6 +115,7 @@ interface SyncRow {
   labels_read_at: number | null;
   labels_asked_at: number | null;
   synced_now_at: number | null;
+  sync_every_min: number;
   fields_version: number;
 }
 
@@ -259,6 +260,12 @@ export class GoogleContacts {
     return this.onRow() !== null && this.deps.google.connected() && this.deps.google.granted(CONTACTS_SCOPE);
   }
 
+  /** The owner's interval between two reads, in ms; a value out of the allowed range (a restored row) is brought into it. */
+  private every(row: SyncRow | null): number {
+    const minutes = row?.sync_every_min ?? CONTACT_LIMITS.syncEveryMs / 60_000;
+    return Math.min(CONTACT_LIMITS.syncEveryMaxMinutes, Math.max(CONTACT_LIMITS.syncEveryMinMinutes, Math.trunc(minutes) || 0)) * 60_000;
+  }
+
   /** Contacts in the copy, kept on the sync's row: counting the table would read every contact. */
   count(): number {
     return this.row()?.copied ?? 0;
@@ -306,6 +313,7 @@ export class GoogleContacts {
       nextSyncAt: enabled && problem !== "reconnect" && typeof row?.next_sync === "number" ? new Date(row.next_sync).toISOString() : null,
       lastResult: enabled && row?.last_result && RESULTS.has(row.last_result) ? (row.last_result as ContactSyncResult) : null,
       refreshing: enabled && problem === null && row?.full_needed === 1 && labels.some((label) => label.selected),
+      syncEveryMinutes: this.every(row) / 60_000,
       contacts: enabled ? this.count() : 0,
       labels,
       reminders,
@@ -381,8 +389,10 @@ export class GoogleContacts {
   }
 
   /** The notices' choices; a new time or zone plans the next notice from it. */
-  configure(patch: { [K in keyof (ContactReminders & { onAdded: ContactOnAdded })]?: (ContactReminders & { onAdded: ContactOnAdded })[K] | undefined }): ContactsStatus {
-    this.ensureRow();
+  configure(
+    patch: { [K in keyof (ContactReminders & { onAdded: ContactOnAdded; syncEveryMinutes: number })]?: (ContactReminders & { onAdded: ContactOnAdded; syncEveryMinutes: number })[K] | undefined },
+  ): ContactsStatus {
+    const before = this.ensureRow();
     const sets: string[] = [];
     const values: (string | number)[] = [];
     const set = (column: string, value: string | number | undefined) => {
@@ -397,8 +407,27 @@ export class GoogleContacts {
     set("date_match", patch.match === undefined ? undefined : cleanText(patch.match, CONTACT_LIMITS.matchMax));
     set("on_added", patch.onAdded);
     if (sets.length) this.db.run(`UPDATE zur_contact_sync SET ${sets.join(", ")} WHERE id = 1`, ...values);
+    if (patch.syncEveryMinutes !== undefined && patch.syncEveryMinutes * 60_000 !== this.every(before)) this.setEvery(before, patch.syncEveryMinutes);
     this.planReminder();
     return this.status();
+  }
+
+  /**
+   * The owner's new interval. The read already planned moves to the last one plus the new interval
+   * (never into the past), so a shorter interval is felt at once and a longer one doesn't read early.
+   * A sync waiting for something else (a retry after a failure, a problem that needs the owner, the next
+   * pages of a read cut in wakes) keeps its time: the interval counts from its next good end.
+   */
+  private setEvery(before: SyncRow, minutes: number): void {
+    const now = this.clock();
+    const last = Math.max(before.checked_at ?? 0, before.last_ok_at ?? 0) || now;
+    this.db.run(`UPDATE zur_contact_sync SET sync_every_min = ? WHERE id = 1`, minutes);
+    this.db.run(
+      `UPDATE zur_contact_sync SET next_sync = ?
+       WHERE id = 1 AND enabled = 1 AND next_sync IS NOT NULL AND next_sync > ? AND failures = 0 AND problem IS NULL AND page_mode IS NULL`,
+      Math.max(now, last + minutes * 60_000),
+      now,
+    );
   }
 
   /** The next notice of birthdays and dates, at the chosen time in the owner's zone; none while both are off. */
@@ -671,7 +700,7 @@ export class GoogleContacts {
       FIELDS_VERSION,
       now,
       moved ? "changed" : "unchanged",
-      now + CONTACT_LIMITS.syncEveryMs,
+      now + this.every(this.row()),
       stamp,
     );
     this.db.run(
@@ -758,7 +787,10 @@ export class GoogleContacts {
         continue;
       }
       const person = parsed.data;
-      const existing = this.db.one<{ id: string; etag: string; data: string }>(`SELECT id, etag, data FROM zur_contacts WHERE resource_name = ?`, person.resourceName);
+      const existing = this.db.one<{ id: string; etag: string; data: string; display_name: string }>(
+        `SELECT id, etag, data, display_name FROM zur_contacts WHERE resource_name = ?`,
+        person.resourceName,
+      );
       if (person.metadata?.deleted) {
         if (existing) {
           removeContact(this.db, existing.id);
@@ -793,6 +825,15 @@ export class GoogleContacts {
       }
       if (!existing && counter.total >= CONTACT_LIMITS.maxContacts) throw new TooMany();
       const before = existing ? this.db.all<{ label: string }>(`SELECT label FROM zur_contact_memberships WHERE contact_id = ?`, existing.id).map((row) => row.label) : [];
+      // A new etag isn't always a change Zuri keeps: Google moves it for a photo, a label Zuri doesn't
+      // offer, a field out of PERSON_FIELDS. What is kept is compared (the name shown, the data, which
+      // holds the e-mails and the dates the other tables are made of, the phones' search keys and the
+      // labels); when it is the same, only the etag is written, so the next read knows the contact at
+      // once, and the screens aren't told of a change that isn't one (rule P4).
+      if (existing && etag && sameSet(before, labels) && this.sameKept(existing, readPerson(person))) {
+        this.db.run(`UPDATE zur_contacts SET etag = ?, synced_at = ? WHERE id = ?`, etag, stamp, existing.id);
+        continue;
+      }
       const id = existing?.id ?? crypto.randomUUID();
       this.store(id, person, etag, labels, stamp);
       counter.changed = true;
@@ -803,6 +844,13 @@ export class GoogleContacts {
       }
     }
     if (ignored) log("warn", "contacts_ignored", { count: ignored });
+  }
+
+  /** What Zuri keeps of the contact is what this read of Google would store again. */
+  private sameKept(existing: { id: string; data: string; display_name: string }, read: ReturnType<typeof readPerson>): boolean {
+    if (existing.display_name !== read.display || JSON.stringify(parseData(existing.data)) !== JSON.stringify(read.data)) return false;
+    const keys = this.db.all<{ kind: string; value: string }>(`SELECT kind, value FROM zur_contact_keys WHERE contact_id = ?`, existing.id).map((key) => `${key.kind}\n${key.value}`);
+    return sameSet(keys, [...new Set(read.keys.map((key) => `${key.kind}\n${key.value}`))]);
   }
 
   private nameOf(id: string): string {
@@ -871,7 +919,8 @@ export class GoogleContacts {
     // 429, 5xx, a timeout or an answer out of shape: try again later, waiting longer each time.
     const row = this.row() as SyncRow;
     const failures = row.failures + 1;
-    // 5, 10, 20, 40 minutes…: the wait doubles from the sync's own interval, up to 6 hours.
+    // 5, 10, 20, 40 minutes…: the wait doubles from the default interval, up to 6 hours, whatever the
+    // owner's interval: a failing Google is asked again soon, and the notice still comes in about an hour.
     const wait = Math.min(BACKOFF_MAX_MS, CONTACT_LIMITS.syncEveryMs * 2 ** Math.min(failures - 1, 20));
     this.db.run(`UPDATE zur_contact_sync SET failures = ?, next_sync = ?, last_result = 'failed' WHERE id = 1`, failures, now + wait);
     log("warn", "contacts_sync_failed", { error, count: failures });
@@ -1073,6 +1122,11 @@ function pairs(value: unknown): { label: string; value: string }[] {
 }
 
 /** What was stored, with every field present: a copy read before a field existed has it empty. */
+/** The same labels, whatever the order. */
+function sameSet(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((item) => b.includes(item));
+}
+
 function parseData(raw: string): ContactData {
   let value: Partial<ContactData> = {};
   try {
