@@ -22,6 +22,7 @@ describe("the alarm's two Google reads", () => {
         order.push("contacts");
         return true;
       });
+      vi.spyOn(agent.store.contacts, "readGoogle", "get").mockReturnValue(true);
       vi.spyOn(agent.store.reviews, "holdOff").mockImplementation((ms) => {
         order.push(`hold ${ms}`);
       });
@@ -31,6 +32,18 @@ describe("the alarm's two Google reads", () => {
       });
       await agent.runAutomations(null);
       expect(order).toEqual(["contacts", "hold 150000", "reviews"]);
+    });
+  });
+
+  it("CF-S09-03: a wake where the contacts only sent the notice of the day, or found the sync busy, holds nothing", async () => {
+    await inOwner(async (agent) => {
+      vi.spyOn(agent.store.contacts, "tick").mockResolvedValue(true);
+      vi.spyOn(agent.store.contacts, "readGoogle", "get").mockReturnValue(false);
+      const hold = vi.spyOn(agent.store.reviews, "holdOff");
+      const check = vi.spyOn(agent.store.reviews, "tick").mockResolvedValue(false);
+      await agent.runAutomations(null);
+      expect(hold).not.toHaveBeenCalled();
+      expect(check).toHaveBeenCalledTimes(1);
     });
   });
 

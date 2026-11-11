@@ -912,6 +912,14 @@ describe("Google contacts (step 19b)", () => {
       // Ten changed contacts of a normal day: about 13 rows each (measured 128).
       expect(busy.written).toBeLessThanOrEqual(140);
       expect(busy.read).toBeLessThanOrEqual(200);
+      // The label picker's refresh (POST /api/google/contacts/labels/refresh): the labels from Google, a few rows.
+      world.clock.now += CONTACT_LIMITS.syncNowEveryMs;
+      const picker = { ...world.db.usage };
+      const asked = world.googleSim.seen.length;
+      await world.contacts.refreshLabels();
+      expect(world.googleSim.seen.length - asked).toBe(1);
+      expect(world.db.usage.rowsRead - picker.rowsRead).toBeLessThanOrEqual(15);
+      expect(world.db.usage.rowsWritten - picker.rowsWritten).toBeLessThanOrEqual(4);
       // A search on the screen reads the copy, never Google.
       const before = { ...world.db.usage };
       const calls = world.googleSim.seen.length;

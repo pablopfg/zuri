@@ -151,6 +151,49 @@ describe("the contacts every five minutes", () => {
     }));
 });
 
+describe("what the alarm is told", () => {
+  it("CF-S09-01: without the contacts' permission no sync is due, so the alarm isn't woken every minute; the notice of the day still is", () =>
+    withChatWorld(async (world) => {
+      add(world, "c1", "Ana", [CLIENTS]);
+      await turnOn(world);
+      world.contacts.configure({ birthdays: true, time: "08:00" });
+      const reminder = row(world).next_reminder as number;
+      // The owner connected again and left the contacts out.
+      world.db.run(`UPDATE zur_google_account SET scopes = 'https://www.googleapis.com/auth/calendar.events'`);
+      world.clock.now += EVERY;
+      expect(row(world).next_sync as number).toBeLessThanOrEqual(world.clock.now);
+      expect(world.contacts.nextDue()).toBe(reminder);
+      const calls = world.googleSim.seen.length;
+      expect(await world.contacts.tick()).toBe(false);
+      expect(world.contacts.readGoogle).toBe(false);
+      expect(world.googleSim.seen.length).toBe(calls);
+    }));
+
+  it("CF-S09-03: says whether the tick's sync went to Google: yes when it ran or failed there, no when busy or when only the notice went out", () =>
+    withChatWorld(async (world) => {
+      add(world, "c1", "Ana", [CLIENTS]);
+      await turnOn(world);
+      world.clock.now += EVERY;
+      expect(await world.contacts.tick()).toBe(true);
+      expect(world.contacts.readGoogle).toBe(true);
+      // Another sync holds the lock.
+      world.clock.now += EVERY;
+      world.db.run(`UPDATE zur_contact_sync SET running_since = ?`, world.clock.now - 1_000);
+      expect(await world.contacts.tick()).toBe(true);
+      expect(world.contacts.readGoogle).toBe(false);
+      world.db.run(`UPDATE zur_contact_sync SET running_since = NULL`);
+      // Google fails: it was reached.
+      world.googleSim.people.failure = { status: 503, body: { error: { code: 503 } } };
+      expect(await world.contacts.tick()).toBe(true);
+      expect(world.contacts.readGoogle).toBe(true);
+      world.googleSim.people.failure = null;
+      // Only the notice of the day is due.
+      world.db.run(`UPDATE zur_contact_sync SET next_sync = ?, next_reminder = ?`, world.clock.now + HOUR, world.clock.now);
+      expect(await world.contacts.tick()).toBe(true);
+      expect(world.contacts.readGoogle).toBe(false);
+    }));
+});
+
 describe("the labels once an hour", () => {
   it("reads the list of labels once an hour, not on every sync", () =>
     withChatWorld(async (world) => {
@@ -351,6 +394,32 @@ describe("the fields Zuri started to keep", () => {
       expect(await world.contacts.sync("alarm")).toBe("ok");
       expect(new URL(peopleCalls(world).at(-1)?.url ?? "").searchParams.get("syncToken")).toMatch(/^sync\.\d+$/);
       expect(area(world)).toBe(after);
+    }));
+
+  it("CF-S09-04: the read for the new fields stores again only the contacts that have something in them", () =>
+    withChatWorld(async (world) => {
+      add(world, "c1", "Ana", [CLIENTS], { addresses: [{ formattedValue: "Rua A, 1" }], phoneNumbers: [{ value: "(11) 99999-0001" }] });
+      for (let i = 2; i <= 40; i++) add(world, `c${i}`, `Pessoa ${i}`, [CLIENTS], { phoneNumbers: [{ value: `(11) 99999-00${String(i).padStart(2, "0")}` }], emailAddresses: [{ value: `p${i}@exemplo.com.br` }] });
+      await turnOn(world);
+      // The copy as the version before left it: no key for the new fields in any contact.
+      for (const item of copy(world)) {
+        const { middle: _m, addresses: _a, urls: _u, relations: _r, chats: _c, more: _o, ...old } = JSON.parse(item.data) as Record<string, unknown>;
+        world.db.run(`UPDATE zur_contacts SET data = ? WHERE id = ?`, JSON.stringify(old), item.id);
+      }
+      world.db.run(`UPDATE zur_contact_sync SET fields_version = 1`);
+      const before = new Map(copy(world).map((item) => [item.id, item.data]));
+      world.clock.now += EVERY;
+      const usage = { ...world.db.usage };
+      expect(await world.contacts.sync("alarm")).toBe("ok");
+      const rewritten = copy(world).filter((item) => item.data !== before.get(item.id));
+      // Ana has an address now; the other 39 were only marked as seen.
+      expect(rewritten).toHaveLength(1);
+      expect(JSON.parse(rewritten[0]?.data ?? "{}")).toMatchObject({ addresses: [{ label: "", value: "Rua A, 1" }] });
+      expect(copy(world).every((item) => item.synced_at === world.clock.now)).toBe(true);
+      // One row for each contact seen and a dozen for the one stored, not a dozen for each (40 × 12 = 480).
+      expect(world.db.usage.rowsWritten - usage.rowsWritten).toBeLessThanOrEqual(70);
+      expect(row(world)).toMatchObject({ fields_version: FIELDS_VERSION, last_result: "changed" });
+      expect(world.contacts.count()).toBe(40);
     }));
 
   it("goes on with a full read for the new fields across wakes, without starting it again", () =>

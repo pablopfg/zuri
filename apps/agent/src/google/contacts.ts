@@ -225,6 +225,7 @@ export class GoogleContacts {
   private knownOff = false;
   /** Groups a read of the labels showed not to be the owner's: a contact in one of them is no reason to read the labels again. */
   private readonly notLabels = new Set<string>(SYSTEM_GROUPS);
+  private reached = false;
 
   constructor(private readonly deps: ContactsDeps) {
     this.clock = deps.clock ?? Date.now;
@@ -411,8 +412,15 @@ export class GoogleContacts {
   nextDue(): number | null {
     const row = this.onRow();
     if (!row || !this.deps.google.connected()) return null;
-    const due = [row.next_sync, row.next_reminder].filter((at): at is number => typeof at === "number");
+    // Without the contacts' permission (the owner left it out when connecting again) no sync is due:
+    // sync() would only answer "off", and a time in the past would wake the alarm every minute (CF-S09-01).
+    const due = [this.deps.google.granted(CONTACTS_SCOPE) ? row.next_sync : null, row.next_reminder].filter((at): at is number => typeof at === "number");
     return due.length ? Math.min(...due) : null;
+  }
+
+  /** The last tick's sync went to Google (it ended, well or not): the alarm keeps the reviews' check out of that wake. */
+  get readGoogle(): boolean {
+    return this.reached;
   }
 
   /** From the alarm: the sync when it is due, then the notice of the day. True when it did either (the times moved). */
@@ -421,8 +429,11 @@ export class GoogleContacts {
     if (!row || !this.deps.google.connected()) return false;
     const now = this.clock();
     let worked = false;
-    if (row.next_sync !== null && row.next_sync <= now) {
-      await this.sync("alarm");
+    this.reached = false;
+    if (row.next_sync !== null && row.next_sync <= now && this.deps.google.granted(CONTACTS_SCOPE)) {
+      const outcome = await this.sync("alarm");
+      // "busy" (another sync holds the lock) and "off" never left for Google.
+      this.reached = outcome !== "busy" && outcome !== "off";
       worked = true;
     }
     if (row.next_reminder !== null && row.next_reminder <= now) {
@@ -729,7 +740,7 @@ export class GoogleContacts {
         continue;
       }
       const person = parsed.data;
-      const existing = this.db.one<{ id: string; etag: string }>(`SELECT id, etag FROM zur_contacts WHERE resource_name = ?`, person.resourceName);
+      const existing = this.db.one<{ id: string; etag: string; data: string }>(`SELECT id, etag, data FROM zur_contacts WHERE resource_name = ?`, person.resourceName);
       if (person.metadata?.deleted) {
         if (existing) {
           removeContact(this.db, existing.id);
@@ -754,8 +765,10 @@ export class GoogleContacts {
         continue;
       }
       const etag = person.etag ?? "";
-      // The same etag is the same contact at Google; a read for new fields stores it anyway.
-      if (existing && etag && existing.etag === etag && !refresh) {
+      // The same etag is the same contact at Google. A read for new fields stores it again only when what
+      // Zuri keeps of it came out different: a contact with nothing in the new fields costs one row, not
+      // a dozen (CF-S09-04: 5,000 contacts stored whole would take over half a day's writes).
+      if (existing && etag && existing.etag === etag && (!refresh || JSON.stringify(parseData(existing.data)) === JSON.stringify(readPerson(person).data))) {
         // Unchanged: a full read only marks it seen.
         if (mode === "full") this.db.run(`UPDATE zur_contacts SET synced_at = ? WHERE id = ?`, stamp, existing.id);
         continue;

@@ -389,8 +389,9 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       // The alarm was set by `wake` while this work was still due (a retry a minute out):
       // set again from the times the sync and the notice just moved, so no empty wake follows.
       if (await this.store.contacts.tick()) {
-        // The reviews' check never shares a wake with the contacts' sync: it waits two and a half minutes.
-        this.store.reviews.holdOff(SYNC_GAP_MS);
+        // The reviews' check never shares a wake with a contacts' sync that went to Google: it waits two
+        // and a half minutes. A wake that only sent the notice of the day, or found the sync busy, holds nothing.
+        if (this.store.contacts.readGoogle) this.store.reviews.holdOff(SYNC_GAP_MS);
         await automations.rearm();
       }
     } catch (error) {

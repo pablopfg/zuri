@@ -162,11 +162,23 @@ Como cheguei nos números:
   0,4% das 100.000 requisições. Uma leitura sem novidade grava 3 linhas do
   Zuri (a trava, o resultado e a soltura), lê umas 22 nos contatos e umas 125
   nas avaliações, e faz 1 chamada ao Google: cerca de 1.300 linhas gravadas e
-  24.000 lidas por dia. O Agents SDK soma de 4 a 5 gravações por disparo do
-  alarme (umas 2.000 por dia). Ao todo, perto de 3,5% da cota de escrita e
-  0,5% da de leitura. As duas leituras nunca dividem um despertar (2 min 30 s
-  de diferença), então cada um fica em até 14 chamadas ao Google. A leitura
-  sem novidade não sobe o número da área, e a tela não recarrega.
+  24.000 lidas por dia, medidas no teste de orçamento. Fora dessa medida, cada
+  despertar tem um custo fixo: o Agents SDK (0.32.0) grava o ciclo do alarme e
+  cada `rearm` (cada `setAlarm` conta uma linha), e o Zuri guarda a chave do
+  alarme e lê o que as outras áreas têm vencido. Pela leitura do código, um
+  despertar inteiro grava perto de 19 linhas e lê umas 100: uns 8.200
+  gravadas (8% da cota) e 46.000 lidas (0,9%) por dia. É estimativa; o painel
+  da Cloudflare dá o número real depois do deploy. As duas leituras não
+  dividem um despertar (2 min 30 s de diferença), então cada um fica em até 14
+  chamadas ao Google. A leitura sem novidade não sobe o número da área, e a
+  tela não recarrega. Sem a permissão dos contatos no Google, nenhuma
+  sincronização fica vencida (não há despertar por minuto à toa).
+- **Leitura inteira por campo novo (PR S09).** Na primeira leitura depois da
+  atualização, todos os contatos são lidos de novo, uma vez. Só é regravado
+  inteiro (umas 12 linhas) o contato que tem algo nos campos novos; os outros
+  custam 1 linha, como em qualquer leitura inteira. No teto de 5.000 contatos
+  são de 5.000 a 60.000 gravações nesse dia, conforme quantos têm endereço,
+  site, relação ou chat.
 - **Busca por significado (etapa 17, opcional).** Desligada, custa zero.
   Ligada, o preparo usa no máximo 2.000 textos e metade do teto de Neurons por
   dia: com 150 tokens por item, uns 320 Neurons por dia nos dias de preparo

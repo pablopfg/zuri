@@ -10,4 +10,8 @@
 ### Atualização
 
 - Migration 32: colunas novas em `zur_contact_sync` e `zur_review_settings`. Ela é aplicada sozinha na primeira requisição, sem nada a fazer.
-- Na primeira leitura depois da atualização, a Zuri lê todos os contatos de novo, uma única vez, para trazer os campos novos. Com muitos contatos, isso leva alguns minutos.
+- Na primeira leitura depois da atualização, a Zuri lê todos os contatos de novo, uma única vez, para trazer os campos novos. Com muitos contatos, isso leva alguns minutos. Só é regravado o contato que tem algo nesses campos.
+
+### Corrigido
+
+- Quem reconectava o Google sem a permissão dos contatos deixava a Zuri tentando sincronizar a cada minuto. Agora ela espera a permissão voltar.
