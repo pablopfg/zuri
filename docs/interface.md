@@ -116,8 +116,8 @@ menus nunca saem da tela.
   à direita), numa coluna de até 5xl. No celular, ações só de ícone ficam ao
   lado do título; as largas descem para a linha de baixo. Dentro de uma seção
   das Configurações, no celular, o título é o da seção, com "Todas as
-  configurações" acima. São oito seções: Conta, Segurança, Uso da IA, Modelos
-  e limites, Avisos, Integrações, Dados e Diagnóstico.
+  configurações" acima. São nove seções: Conta, Segurança, Uso da IA, Modelos
+  e limites, Agenda, Avisos, Integrações, Dados e Diagnóstico.
 - **Lixeira:** o botão de Tarefas e o de Notas abrem Configurações › Dados com
   `?tipo=tarefas` ou `?tipo=notas`: só aquele tipo, "Voltar para…" e "Ver
   tudo". "Esvaziar a lixeira" aparece só sem filtro.
