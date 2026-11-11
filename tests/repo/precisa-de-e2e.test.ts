@@ -361,7 +361,9 @@ describe("the browser jobs of ci.yml", () => {
       env: { EVENT_NAME: "${{ github.event_name }}", BASE_REF: "${{ github.base_ref }}" },
     });
     const after = steps.slice(at + 1);
-    expect(after.map((step) => step.run)).toEqual(["npm ci", "npx playwright install --with-deps chromium", command]);
+    // The browser alone, without `--with-deps`: apt (nine font packages the suite does not need)
+    // took the job down whenever the runner could not reach the Ubuntu mirrors.
+    expect(after.map((step) => step.run)).toEqual(["npm ci", "npx playwright install chromium", command]);
     // Anything but an explicit "false" (an empty output included) runs the suite.
     for (const step of after) expect(step.if).toBe(GUARD);
   });
