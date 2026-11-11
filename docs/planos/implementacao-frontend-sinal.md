@@ -295,9 +295,12 @@ Diferenças da S08 para o que as tabelas previam:
 - A semana em grade existe a partir de 1.024 px. Abaixo disso, "Semana" é a faixa de sete dias com a lista do dia, andando de semana em semana, como no protótipo do celular.
 - O dia e a semana leem a semana inteira de uma vez: trocar de dia na faixa não faz pedido novo.
 - O evento que atravessa a borda do horário aparece na grade, cortado nela (o das 07:30 às 09:00 começa na linha das 08:00). Só vai para "Antes" ou "Depois" o que fica inteiro fora.
-- Evento curto tem altura mínima de 28 px na grade (35 minutos na escala), e dois curtos seguidos ficam lado a lado em vez de um sobre o outro.
+- Cada hora da grade tem 56 px, e o evento curto tem altura mínima de 44,8 px (48 minutos na escala), o toque mínimo que a interface promete. Dois curtos seguidos ficam lado a lado em vez de um sobre o outro.
 - A tela e o "Seu dia" não importam os valores padrão do pacote comum: um pedaço novo dividido entre telas sob demanda passava o JS inicial do teto. As telas esperam as configurações que a sessão já leu; `STANDARD_HOURS` (o "Voltar para 08:00 até 18:00") e `DAY_WINDOW` têm teste que os mantém iguais ao padrão do servidor.
 - O prazo relativo das tarefas ("Ontem, 18:00") saiu em `lib/due.ts`, com as palavras do próprio navegador (`Intl.RelativeTimeFormat`), sem texto novo no catálogo.
+- Revisão de QA (S08), corrigido na própria PR: o dia de folga mostrado com "Mostrar" passa pelas mesmas preferências dos outros dias, então o que ele traz de dia inteiro ou fora do horário entra na contagem (QA-S08-01); fechar um evento devolve o foco ao bloco de onde ele abriu (o diálogo era desmontado ao fechar); o Início e a Agenda dão a mesma resposta para o evento que começa na hora em que o horário termina (fica "Depois"); a barra do celular cabe numa linha a partir de 390 px.
+- Auditoria (S08): nenhum achado alto ou médio. SEC-S08-01 (baixo), corrigido: as preferências da agenda entram no backup e voltam na importação, com a mesma validação.
+- Ficou para depois (baixo): em Tarefas, "Hoje" e "Ontem" do prazo só mudam à meia-noite quando a lista é desenhada de novo, como os grupos da S07; a virada da semana (domingo para segunda) com a tela aberta tem teste só da virada do dia.
 - A preferência de visão guardada no navegador (`zuri.agenda.view`) saiu: quem manda é "Ao abrir, mostrar", igual em todos os aparelhos.
 
 ## 12. Riscos

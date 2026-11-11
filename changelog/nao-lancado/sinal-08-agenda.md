@@ -11,3 +11,8 @@
 - "Hoje" na Agenda é o dia do seu fuso e muda sozinho à meia-noite, com a tela aberta.
 - "Seu dia", no Início, usa o horário de trabalho escolhido em Configurações › Agenda.
 - Em Tarefas, o prazo perto de hoje aparece como "Ontem, 18:00", "Hoje" ou "Amanhã, 09:30".
+- O backup leva as preferências da agenda e a importação traz de volta.
+
+### Corrigido
+
+- Fechar um evento da Agenda devolve o foco ao evento de onde ele abriu.
