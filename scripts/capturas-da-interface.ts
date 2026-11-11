@@ -27,6 +27,7 @@
  * - `nota-aberta=/notas`: the sample note ("Lista da mudança de apartamento"), open in the editor.
  * - `contatos=/contatos`, `contato-ficha=/contatos` and `contatos-etiquetas=/contatos`: the list with the sample
  *   contacts copied, the card of one of them ("Ana Souza") and the label filter open (need --exemplos).
+ * - `crm-avisos=/crm`: the CRM screen scrolled to its notices' card, under the flows.
  * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
  * - `agenda-dia=/agenda` and `agenda-mes=/agenda`: the Agenda in that view (plain `agenda=/agenda` is the
@@ -230,6 +231,11 @@ for (const [device, options] of [
       if (screen.name === "conversas") {
         await page.getByRole("button", { name: "Ver conversas" }).click();
         await page.getByRole("link", { name: /Organizar a mudança/ }).waitFor();
+      }
+      if (screen.name === "crm-avisos") {
+        const title = page.getByText("Avisos do CRM", { exact: true });
+        await title.waitFor();
+        await title.evaluate((box: HTMLElement) => box.scrollIntoView({ block: "center" }));
       }
       if (screen.region) {
         const region = page.getByRole("region", { name: screen.region });
