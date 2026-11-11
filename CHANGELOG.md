@@ -19,6 +19,27 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.48.0] - 2026-11-11
+
+Mesclada às 09:57 (UTC-3) · commit [`7e299c9`](https://github.com/pablopfg/Zuri/commit/7e299c9d7a34196ebe0912336c80d3166201ab31) · PR [#286](https://github.com/pablopfg/Zuri/pull/286) · Contatos a cada 5 min e avaliações a cada 10, sem recarregar a tela à toa (S09)
+
+### Alterado
+
+- Os contatos do Google passam a ser lidos a cada 5 minutos (antes, de hora em hora) e as avaliações a cada 10 (antes, 15). Uma leitura sem novidade não regrava nada e não faz a tela recarregar.
+- "Sincronizar agora", nos contatos, vale uma vez por minuto, como o "Conferir agora" das avaliações.
+- A Zuri guarda mais do que o Google tem de cada contato: nome do meio, endereços, sites, relações e nomes de usuário em aplicativos de conversa. Na conversa, ela já responde com esses dados; a ficha completa chega com a tela nova de Contatos.
+- Cada contato guarda até 10 telefones, 10 e-mails e 10 datas (antes, 5 de cada).
+- Quando o Google fica fora do ar, a Zuri tenta de novo mais cedo (a partir de 5 minutos nos contatos e de 10 nas avaliações) e avisa depois de pouco mais de uma hora de falhas.
+
+### Corrigido
+
+- Quem reconectava o Google sem a permissão dos contatos deixava a Zuri tentando sincronizar a cada minuto. Agora ela espera a permissão voltar.
+
+### Atualização
+
+- Migration 32: colunas novas em `zur_contact_sync` e `zur_review_settings`. Ela é aplicada sozinha na primeira requisição, sem nada a fazer.
+- Na primeira leitura depois da atualização, a Zuri lê todos os contatos de novo, uma única vez, para trazer os campos novos. Com muitos contatos, isso leva alguns minutos. Só é regravado o contato que tem algo nesses campos.
+
 ## [0.47.0] - 2026-11-11
 
 Mesclada às 07:37 (UTC-3) · commit [`9c41583`](https://github.com/pablopfg/Zuri/commit/9c41583c99d12effa2c8b7fe970afcc9376b1a2e) · PR [#282](https://github.com/pablopfg/Zuri/pull/282) · Agenda do Sinal com semana em grade e Configurações › Agenda (S08)
@@ -3129,7 +3150,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.47.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.48.0...develop
+[0.48.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.48.0
 [0.47.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.47.0
 [0.46.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.3
 [0.46.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.2
