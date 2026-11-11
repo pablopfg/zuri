@@ -39,12 +39,17 @@ etiquetas**:
 ### Sincronização
 
 A cópia é atualizada a cada 5 minutos, e só com o que mudou desde a última vez
-(o Google entrega só as diferenças). **Sincronizar agora** faz a mesma coisa
+(o Google entrega só as diferenças). Você escolhe esse intervalo no campo
+**Sincronizar a cada (minutos)**, de 5 a 1.440 (um dia); o cartão mostra a
+hora da próxima leitura. **Sincronizar agora** faz a mesma coisa
 na hora, no máximo uma vez por minuto. Uma mudança feita no Google pode levar
 alguns minutos para chegar.
 
 Uma leitura que não acha novidade não regrava contato nenhum e não faz a tela
-recarregar: a Zuri guarda só a hora em que conferiu e a hora da próxima. A
+recarregar: a Zuri guarda só a hora em que conferiu e a hora da próxima. Quando
+o Google marca um contato como alterado por algo que a Zuri não guarda (a foto,
+um grupo do próprio Google), ela compara o que veio com o que já tem, vê que é
+igual e não regrava o contato. A
 lista de etiquetas (nomes e contagens) vem do Google uma vez por hora, ao
 salvar uma escolha e ao abrir a escolha de etiquetas. Um contato que entra numa
 etiqueta criada há pouco faz a Zuri buscar a lista na mesma leitura.
@@ -160,14 +165,23 @@ Os mesmos secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   vencido (o Google guarda 7 dias, `EXPIRED_SYNC_TOKEN`) recomeça uma vez como
   leitura inteira. As etiquetas vêm de `GET contactGroups`, só
   `USER_CONTACT_GROUP`, uma vez por hora (`CONTACT_LIMITS.labelsEveryMs`).
-- Intervalo: `CONTACT_LIMITS.syncEveryMs` (5 minutos), pelo alarme único. A
+- Intervalo: o do dono, na coluna `sync_every_min` de `zur_contact_sync`
+  (migration 33; padrão 5, de `syncEveryMinMinutes` a `syncEveryMaxMinutes`
+  em `CONTACT_LIMITS`), salvo por `PATCH /api/google/contacts/settings` com
+  `syncEveryMinutes`. Trocar o intervalo move a próxima leitura para a última
+  mais o intervalo novo, nunca para o passado; uma nova tentativa depois de
+  falha mantém a hora dela, e a espera entre falhas continua dobrando a partir
+  de 5 minutos, qualquer que seja o intervalo. Tudo pelo alarme único. A
   conferência das avaliações nunca divide o despertar com os contatos: se as
   duas vencem juntas, a das avaliações espera 2 min 30 s.
 - Campos: `PERSON_FIELDS` e `FIELDS_VERSION` em
   `apps/agent/src/google/contacts.ts`. O `syncToken` do Google vale para um
   conjunto de campos e um contato que não mudou mantém o `etag`; por isso,
   quem acrescentar um campo sobe o `FIELDS_VERSION`, e a leitura seguinte é
-  inteira. Ela regrava só o contato cujos dados guardados mudaram. O custo é
+  inteira. Ela regrava só o contato cujos dados guardados mudaram. O mesmo
+  vale para um `etag` novo em qualquer leitura: nome, dados, chaves de busca
+  e etiquetas são comparados com a cópia, e, se forem iguais, só o `etag` é
+  gravado (uma linha, sem subir o número da tela). O custo é
   de uma vez: uma chamada ao Google a cada 1.000 contatos, até 10 por
   despertar, e perto de uma linha lida por contato.
 - Sem etiqueta escolhida não há contato a ler: a Zuri só pede as etiquetas

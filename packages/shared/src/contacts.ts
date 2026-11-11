@@ -17,8 +17,14 @@ export const CONTACT_LIMITS = {
   /** Pages of 1,000 read per wake (10,000 contacts at Google): a large account ends on the next wake. */
   pagesPerWake: 10,
   pageSize: 1_000,
-  /** The alarm reads Google this often (the owner's decision, 09/11/2026); not a setting. */
+  /** The alarm reads Google this often until the owner picks another interval (Settings, 11/11/2026). */
   syncEveryMs: 5 * 60_000,
+  /**
+   * The interval the owner may pick, in minutes. Five is the floor: the reviews' check waits two and a
+   * half minutes after a contacts' sync, so a shorter one would leave it no wake of its own.
+   */
+  syncEveryMinMinutes: 5,
+  syncEveryMaxMinutes: 1_440,
   /** "Sync now" at most once a minute. */
   syncNowEveryMs: 60_000,
   /** The list of labels is read from Google at most this often by the alarm (the picker reads it on opening). */
@@ -108,6 +114,8 @@ export interface ContactsStatus {
   lastResult: ContactSyncResult | null;
   /** Every contact is being read again (a label added, the first read, fields Zuri started to keep). */
   refreshing: boolean;
+  /** Minutes between two reads by itself, as the owner chose. */
+  syncEveryMinutes: number;
   contacts: number;
   labels: ContactLabel[];
   reminders: ContactReminders;

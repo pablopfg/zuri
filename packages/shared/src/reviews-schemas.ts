@@ -47,6 +47,14 @@ export const reviewSettingsSchema = /* @__PURE__ */ (() =>
     })
     .strict())();
 
+/** Settings › Integrations › Google › Reviews: how often Zuri checks the reviews by itself. */
+export const reviewIntervalSchema = /* @__PURE__ */ (() =>
+  z
+    .object({
+      syncEveryMinutes: z.number().int().min(REVIEW_LIMITS.checkEveryMinMinutes).max(REVIEW_LIMITS.checkEveryMaxMinutes),
+    })
+    .strict())();
+
 /** "Approve and publish": the text as the owner left it, tied to the version of the review they saw. */
 export const reviewApproveSchema = /* @__PURE__ */ (() =>
   z

@@ -43,6 +43,7 @@ export const contactSettingsSchema = /* @__PURE__ */ (() =>
         .max(CONTACT_LIMITS.matchMax)
         .refine((value) => !/[\p{Cc}\p{Cf}]/u.test(value)),
       onAdded: z.enum(CONTACT_ON_ADDED),
+      syncEveryMinutes: z.number().int().min(CONTACT_LIMITS.syncEveryMinMinutes).max(CONTACT_LIMITS.syncEveryMaxMinutes),
     })
     .partial()
     .strict()

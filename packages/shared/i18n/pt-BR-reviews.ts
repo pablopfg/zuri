@@ -134,6 +134,7 @@ export const ptBRReviews = {
   "web.reviews.card.level.hint": "Só as avaliações de 4 e 5 estrelas cujo rascunho passou nas duas conferências, até 3 por leitura e 10 por dia. Ligar pede a sua senha e manda um alerta de segurança.",
   "web.reviews.card.save": "Salvar avaliações",
   "web.reviews.card.saved": "Avaliações salvas",
+  "web.reviews.card.every": "Conferir a cada (minutos)",
   "web.reviews.card.disable": "Desligar avaliações",
   "web.reviews.card.disableTitle": "Desligar as avaliações?",
   "web.reviews.card.disableBody": "A Zuri para de ler e apaga a cópia das avaliações, os rascunhos e o histórico. No Google nada muda.",

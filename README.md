@@ -129,7 +129,7 @@ de um Durable Object e conversa com você pelo navegador e pelo Telegram.
 | ⏰ | **Rotinas e fluxos** | Lembretes e rotinas no seu fuso, fluxos com passos (serviços seus, filtros, agenda, contatos, resumo por IA) e monitor de sites. Tudo nasce desligado e ligar pede a senha. |
 | 🔔 | **Avisos** | Central com sino, notificação no aparelho, e-mail e Telegram, prioridade que aprende e Diagnóstico das falhas dos últimos 30 dias. |
 | 🤖 | **Bot do Telegram** | Só a sua conta: avisos com botões, conversa por texto e voz, comandos rápidos sem IA, trava de leitura, aprovações com passkey ou código e modo de bloqueio para emergências. |
-| 📅 | **Google** | Agenda (ver, criar e editar, em tempo real, com a semana no seu horário de trabalho), Contatos só para leitura por etiqueta, com ficha em grupos e atalhos para ligar e escrever, atualizados a cada poucos minutos, e Avaliações do Perfil da Empresa com rascunho, conferência e publicação aprovada. |
+| 📅 | **Google** | Agenda (ver, criar e editar, em tempo real, com a semana no seu horário de trabalho), Contatos só para leitura por etiqueta, com ficha em grupos e atalhos para ligar e escrever, atualizados no intervalo que você escolher (5 minutos por padrão), e Avaliações do Perfil da Empresa com rascunho, conferência e publicação aprovada. |
 | 🔌 | **Integrações** | Servidores MCP com aprovação por chamada, CRM interno com eventos assinados do n8n e tokens de acesso remoto com escopo, prazo e teto diário. |
 | 💾 | **Dados** | Exportar e importar em JSON, uso do armazenamento e backup automático diário cifrado no R2 (opcional ⚠️), com 7 cópias. |
 | 🚀 | **Deploy** | Cada merge na `main` roda a CI, espera a sua aprovação e publica o Worker só no seu domínio, com release e changelog em pt-BR. |

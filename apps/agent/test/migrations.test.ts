@@ -113,6 +113,7 @@ describe("the migration list", () => {
       30: "9438daaa32e658a73c3b370095cb63f27d70e4786ec82d9998650e78b77dd827",
       31: "7dab5e6e1796d31319943db97241b717fb87bdfd1abb91687b0c6a6a6b6fe320",
       32: "9e9ed87e486bc2a912d17a1f4386d26696c0cb7c46728087e1866f49930292fe",
+      33: "b281d8f2f11df4452a26166f2f4d1368e5bc09a0a16fb72f8171a377c991048d",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -128,7 +129,7 @@ describe("migrate", () => {
       expect(zurObjects(db)).toEqual([]);
 
       expect(migrate(db)).toBe(LATEST_SCHEMA_VERSION);
-      expect(schemaVersion(db)).toBe(32);
+      expect(schemaVersion(db)).toBe(33);
       // FTS5 keeps shadow tables of its own (zur_notes_fts_data and others): only ours are listed.
       expect(zurObjects(db).filter((name) => !/^table:zur_(notes|memories)_fts_/.test(name))).toEqual([
         "table:zur_activity",
@@ -1257,7 +1258,7 @@ describe("migrate", () => {
       expect(migrate(db, MIGRATIONS.slice(0, 31))).toBe(31);
       db.run(`INSERT INTO zur_contact_sync (id, enabled, status, people_sync_token, full_needed, last_ok_at, next_sync, copied, reminder_time) VALUES (1, 1, 'ok', 'sync.7', 0, 1000, 2000, 12, '07:30')`);
       db.run(`INSERT INTO zur_review_settings (id, enabled, signature, last_ok_at, next_check) VALUES (1, 1, 'Equipe Exemplo', 1000, 2000)`);
-      expect(migrate(db)).toBe(32);
+      expect(migrate(db, MIGRATIONS.slice(0, 32))).toBe(32);
       expect(db.one(`SELECT enabled, status, people_sync_token, full_needed, last_ok_at, next_sync, copied, reminder_time, checked_at, last_result, dirty, labels_read_at, labels_asked_at, synced_now_at, fields_version FROM zur_contact_sync`)).toEqual({
         enabled: 1,
         status: "ok",
@@ -1285,6 +1286,33 @@ describe("migrate", () => {
       db.run(`UPDATE zur_contact_sync SET last_ok_at = 3000`);
       db.run(`UPDATE zur_review_settings SET last_ok_at = 3000`);
       expect(db.one(`SELECT contacts, reviews FROM zur_area_versions WHERE id = 1`)).not.toEqual(before);
+    });
+  });
+
+  it("upgrades a database at version 32 to 33: each sync keeps its interval of before (5 and 10 minutes), and a new one doesn't move the screens' numbers", async () => {
+    await withEmptyDatabase("from-32", (db) => {
+      expect(migrate(db, MIGRATIONS.slice(0, 32))).toBe(32);
+      db.run(`INSERT INTO zur_contact_sync (id, enabled, status, people_sync_token, last_ok_at, next_sync, copied) VALUES (1, 1, 'ok', 'sync.7', 1000, 2000, 12)`);
+      db.run(`INSERT INTO zur_review_settings (id, enabled, signature, last_ok_at, next_check) VALUES (1, 1, 'Equipe Exemplo', 1000, 2000)`);
+      expect(migrate(db)).toBe(33);
+      expect(db.one(`SELECT enabled, status, people_sync_token, last_ok_at, next_sync, copied, sync_every_min FROM zur_contact_sync`)).toEqual({
+        enabled: 1,
+        status: "ok",
+        people_sync_token: "sync.7",
+        last_ok_at: 1000,
+        next_sync: 2000,
+        copied: 12,
+        sync_every_min: 5,
+      });
+      expect(db.one(`SELECT enabled, signature, last_ok_at, next_check, check_every_min FROM zur_review_settings`)).toEqual({ enabled: 1, signature: "Equipe Exemplo", last_ok_at: 1000, next_check: 2000, check_every_min: 10 });
+      // A row made after the migration starts at the same intervals.
+      db.run(`DELETE FROM zur_contact_sync`);
+      db.run(`INSERT INTO zur_contact_sync (id) VALUES (1)`);
+      expect(db.one(`SELECT sync_every_min FROM zur_contact_sync`)).toEqual({ sync_every_min: 5 });
+      const before = db.one(`SELECT contacts, reviews FROM zur_area_versions WHERE id = 1`);
+      db.run(`UPDATE zur_contact_sync SET sync_every_min = 30`);
+      db.run(`UPDATE zur_review_settings SET check_every_min = 30`);
+      expect(db.one(`SELECT contacts, reviews FROM zur_area_versions WHERE id = 1`)).toEqual(before);
     });
   });
 });

@@ -913,6 +913,22 @@ describe("Google contacts (step 19b)", () => {
       // Ten changed contacts of a normal day: about 13 rows each (measured 128).
       expect(busy.written).toBeLessThanOrEqual(140);
       expect(busy.read).toBeLessThanOrEqual(200);
+      // Ten contacts whose etag moved for something Zuri doesn't keep (a photo): compared with the copy and
+      // only the etag written, one row each instead of 13, with the screens' number where it was.
+      const quietNumber = world.db.one(`SELECT contacts FROM zur_area_versions WHERE id = 1`);
+      for (let i = 0; i < 10; i++) world.googleSim.people.update(`people/c${i}`, { photos: [{ url: "https://exemplo.com.br/foto.jpg" }] });
+      world.clock.now += CONTACT_LIMITS.syncEveryMs;
+      const same = await measure();
+      expect(same.calls).toBe(1);
+      expect(same.written).toBeLessThanOrEqual(13);
+      expect(same.read).toBeLessThanOrEqual(120);
+      expect(world.db.one(`SELECT contacts FROM zur_area_versions WHERE id = 1`)).toEqual(quietNumber);
+      // The owner's interval (PATCH /api/google/contacts/settings): the interval, the next read and the notice's time.
+      const interval = { ...world.db.usage };
+      world.contacts.configure({ syncEveryMinutes: 30 });
+      expect(world.db.usage.rowsWritten - interval.rowsWritten).toBeLessThanOrEqual(3);
+      expect(world.db.usage.rowsRead - interval.rowsRead).toBeLessThanOrEqual(20);
+      world.contacts.configure({ syncEveryMinutes: 5 });
       // The label picker's refresh (POST /api/google/contacts/labels/refresh): the labels from Google, a few rows.
       world.clock.now += CONTACT_LIMITS.syncNowEveryMs;
       const picker = { ...world.db.usage };
@@ -978,6 +994,13 @@ describe("Google reviews (step 19c)", () => {
       // Five reviews stored, triaged, drafted and audited, with their indexes, counters and the area's number (measured 80 and 217).
       expect(busy.written).toBeLessThanOrEqual(100);
       expect(busy.read).toBeLessThanOrEqual(250);
+      // The owner's interval (PATCH /api/reviews/interval): the interval and the next check; the same one again, nothing.
+      const interval = { ...world.db.usage };
+      world.reviews.setInterval(30);
+      expect(world.db.usage.rowsWritten - interval.rowsWritten).toBeLessThanOrEqual(2);
+      expect(world.db.usage.rowsRead - interval.rowsRead).toBeLessThanOrEqual(25);
+      world.reviews.setInterval(30);
+      expect(world.db.usage.rowsWritten - interval.rowsWritten).toBeLessThanOrEqual(2);
       const before = { ...world.db.usage };
       const calls = world.sim.seen.length;
       await world.reviews.list({ tab: "all" });

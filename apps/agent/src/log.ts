@@ -130,6 +130,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "agents", "versions",
   // The automatic backup (step 23b).
   "auto", "key", "copies",
+  // How often the reviews are checked (the owner's interval).
+  "interval",
 ]);
 const MAX_SEGMENTS = 8;
 

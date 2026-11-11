@@ -9,6 +9,7 @@ import { Button, Dialog, ErrorNotice, Loading, Notice, SelectField, TextField } 
 import { api, errorMessage } from "../../lib/api.ts";
 import { CONTACTS_STATUS_KEY } from "../../lib/contacts.ts";
 import { useI18n } from "../../lib/i18n.tsx";
+import { SyncIntervalForm } from "./SyncIntervalForm.tsx";
 
 type T = ReturnType<typeof useI18n>["t"];
 
@@ -142,6 +143,16 @@ export function ContactsSection() {
             </Button>
           </div>
           <p className="text-xs text-fg-muted">{t("web.contacts.card.delay")}</p>
+          <SyncIntervalForm
+            label="web.contacts.card.every"
+            minutes={data.syncEveryMinutes}
+            min={CONTACT_LIMITS.syncEveryMinMinutes}
+            max={CONTACT_LIMITS.syncEveryMaxMinutes}
+            nextAt={data.nextSyncAt}
+            onSave={async (minutes) => {
+              qc.setQueryData(CONTACTS_STATUS_KEY, await api<ContactsStatus>("/google/contacts/settings", { method: "PATCH", body: { syncEveryMinutes: minutes } }));
+            }}
+          />
           <NoticeSettings reminders={data.reminders} onAdded={data.onAdded} />
           <div className="flex justify-end">
             <Button variant="danger" onClick={() => setConfirming(true)}>
