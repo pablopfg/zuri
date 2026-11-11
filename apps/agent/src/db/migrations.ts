@@ -1570,6 +1570,17 @@ export const MIGRATIONS: readonly Migration[] = [
       `INSERT INTO zur_flow_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
     ],
   },
+  {
+    version: 35,
+    name: "review_metrics",
+    statements: [
+      // The overview of the reviews (PR S11) reads a period by the day each review was written, and
+      // nothing else had an index on it. Everything the numbers need is in the index (the last item with
+      // the same text as the query in reviews/metrics.ts), so the read never touches the table nor a
+      // review's text. No new data: the copy of the reviews stays out of the backup as before.
+      `CREATE INDEX IF NOT EXISTS zur_reviews_metrics ON zur_reviews (created_at, rating, state, replied_at, (reply IS NOT NULL))`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

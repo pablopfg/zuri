@@ -1,4 +1,4 @@
-import { reviewApproveSchema, reviewIntervalSchema, reviewSettingsSchema, reviewsQuerySchema } from "@zuri/shared";
+import { reviewApproveSchema, reviewIntervalSchema, reviewMetricsQuerySchema, reviewSettingsSchema, reviewsQuerySchema } from "@zuri/shared";
 import type { Context, Hono } from "hono";
 import type { ClientInfo } from "../auth/client.ts";
 import { toAppError } from "../google/errors.ts";
@@ -110,6 +110,17 @@ export function registerReviewRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     const query = reviewsQuerySchema.safeParse({ tab: c.req.query("tab") || undefined, rating: c.req.query("rating") || undefined, cursor: c.req.query("cursor") || undefined });
     if (!query.success) throw new AppError("VALIDATION_FAILED");
     return Response.json(await deps().reviews.list(query.data));
+  });
+
+  /**
+   * The overview's numbers (PR S11): ratings, the recommendation estimate by week or month, replies and
+   * how long they took. Numbers only, read from Zuri's copy: Google is never asked.
+   */
+  app.get("/reviews/metrics", (c) => {
+    const query = reviewMetricsQuerySchema.safeParse(c.req.query());
+    // A period written twice is refused too, never the first one taken.
+    if (!query.success || (c.req.queries("period")?.length ?? 0) > 1) throw new AppError("VALIDATION_FAILED");
+    return Response.json(deps().reviews.metrics(query.data.period));
   });
 
   app.post("/reviews/:id/draft", async (c) => Response.json({ review: await owner(() => deps().reviews.redraft(reviewId(c))) }));
