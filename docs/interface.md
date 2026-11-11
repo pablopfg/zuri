@@ -89,6 +89,18 @@ menus nunca saem da tela.
   no controle para leitores de tela, e o Tab percorre tudo na mesma ordem. A
   escolha fica em `localStorage` (`zuri.sidebar`), só neste navegador, e as
   outras abas acompanham.
+- **Grupos que recolhem:** os títulos **Organizar** e **Relacionamento** são
+  botões. Um clique (ou Enter/Espaço) recolhe o grupo, outro exibe; a seta ao
+  lado mostra o estado e o leitor de tela anuncia "recolhido" ou "expandido".
+  Com o grupo recolhido, a tela em que você está continua aparecendo, sozinha,
+  para você não perder onde está. Os lugares recolhidos saem também do caminho
+  do Tab. Início e Conversa não têm título e ficam sempre à vista. No menu só
+  de ícones todos os lugares aparecem, e a escolha volta quando o menu abre de
+  novo. No celular nada recolhe: o menu de baixo e a folha "Mais" não têm
+  grupos. A escolha fica em `localStorage` (`zuri.sidebar.groups`), só neste
+  navegador, e as outras abas acompanham. A animação é curta e some para quem
+  pede menos movimento ao sistema. A aparência das partes do menu fica em
+  `styles.css` (`.zuri-menu …`), para não pesar no primeiro carregamento.
 - **Celular:** barra de cima com a marca, a busca, o sino e a conta; ela some
   enquanto o conteúdo desce e volta ao subir ou ao trocar de lugar. Embaixo, o
   menu com Início, Conversa, Tarefas, Agenda e **Mais**, que abre uma folha com
