@@ -233,6 +233,37 @@ test("a conversation of another day with none today has the notice without a lin
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });
 
+test("a conversation that grows after it is drawn stays at the end, unless the owner went up to read (#287)", async ({ page }) => {
+  const word = tag();
+  await openChat(page);
+  const long = Array.from({ length: 60 }, (_, line) => `linha ${line}`).join("\n");
+  const id = await converse(page, `Cresce ${word}\n${long}`);
+  await page.request.post("/api/chat", { headers: CSRF, data: { message: long, conversationId: id } });
+  await page.goto(`/conversa/${id}`);
+  await expect(page.getByRole("log").getByText(/^\(IA simulada\)/).last()).toBeVisible();
+  const fromEnd = () =>
+    page.evaluate(() => {
+      const messages = document.querySelector("[data-chat-scroll]") as HTMLElement;
+      return messages.scrollHeight - messages.clientHeight - messages.scrollTop;
+    });
+  await expect.poll(fromEnd).toBeLessThan(4);
+
+  // The messages get taller without a new one arriving, as when the formatting lands late.
+  const pad = (px: string) =>
+    page.evaluate((value) => {
+      for (const item of document.querySelectorAll<HTMLElement>("[data-chat-scroll] li")) item.style.paddingBottom = value;
+    }, px);
+  await pad("24px");
+  await expect.poll(fromEnd).toBeLessThan(4);
+
+  // Up reading, nothing pulls the owner back down.
+  await pad("");
+  await page.evaluate(() => (document.querySelector("[data-chat-scroll]") as HTMLElement).scrollTo(0, 0));
+  await expect.poll(fromEnd).toBeGreaterThan(240);
+  await pad("24px");
+  await expect.poll(() => page.evaluate(() => (document.querySelector("[data-chat-scroll]") as HTMLElement).scrollTop)).toBe(0);
+});
+
 test("only the messages scroll: the list, the title and the field to write stay on screen", async ({ page }) => {
   const word = tag();
   await openChat(page);

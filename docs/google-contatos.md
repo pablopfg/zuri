@@ -60,19 +60,33 @@ seu projeto do Google Cloud, o cartão diz o que fazer.
 
 ### Tela Contatos
 
-No menu lateral (e na paleta Ctrl/⌘K), **Contatos** lista a cópia em ordem de
-nome, de 50 em 50. A busca acha pelo nome, apelido, um pedaço do telefone
-(digitado de qualquer jeito, com ou sem DDD e +55) ou o e-mail, e dá para
-filtrar por etiqueta. Tocar num contato abre os telefones, os e-mails, o
-aniversário, as datas especiais, a empresa, as observações e os campos
-personalizados, com o atalho **Abrir no Google Contatos** para mudar algo lá.
+No menu lateral (e na paleta Ctrl/⌘K), **Contatos** mostra a lista de um lado
+e a ficha do outro. No celular, a ficha toma o lugar da lista e **Contatos**
+volta.
 
-A Zuri também guarda o nome em partes (nome, nome do meio e sobrenome), os
-endereços, os sites, as relações ("Mãe", "Sócio") e os nomes de usuário em
-aplicativos de conversa. Cada lista guarda até 10 itens (20 nos campos
-personalizados) e conta o que o Google tem além disso. Site só entra se for
-um endereço `http` ou `https`. A ficha que mostra esses campos chega com a
-tela nova de Contatos.
+- **Lista.** Em ordem de nome, separada por letra, de 50 em 50. Quem não tem
+  nome no Google aparece pelo telefone, ou pelo e-mail, no grupo "#", no fim.
+  A busca acha pelo nome, apelido, um pedaço do telefone (digitado de qualquer
+  jeito, com ou sem DDD e +55) ou o e-mail.
+- **Filtrar por etiqueta.** Abre a lista das etiquetas escolhidas, com busca e
+  a contagem de cada uma. **Falta alguma? Escolher etiquetas** abre a mesma
+  escolha de Configurações > Integrações, já com as etiquetas que o Google tem
+  agora; salvar sincroniza na hora.
+- **Sincronização.** A linha no alto diz quando foi a última conferência e
+  conta o tempo até a próxima. **Sincronizar agora** vale uma vez por minuto.
+- **Ficha.** Quatro atalhos: **Perguntar à Zuri** (abre a Conversa com a
+  pergunta escrita; você envia), **Ligar**, **WhatsApp** e **E-mail**. O
+  WhatsApp só aparece para celular do Brasil; telefone fixo mostra "Sem
+  celular". Abaixo, **O que a Zuri sabe** traz até três memórias que citam o
+  nome, e **Dados** mostra o que o Google tem, em grupos: nome, telefone,
+  e-mail, endereço, aniversário, datas, relações, empresa, site, mensageiro,
+  etiquetas, campos personalizados e observações. Os grupos sem nada aparecem
+  numa linha só ("Vazio no Google: …"). **Abrir no Google Contatos** leva à
+  ficha de lá, onde se muda qualquer coisa.
+
+Cada lista guarda até 10 itens (20 nos campos personalizados) e a ficha diz
+quantos o Google tem além disso. Site só vira link se for um endereço `http`
+ou `https`. Nome, observações e campos do Google aparecem sempre como texto.
 
 ### Avisos
 

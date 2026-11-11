@@ -153,7 +153,7 @@ export const MEMORY_GRAPH_HUBS_MAX = 40;
 /** Every node of the map: memories and hubs together. */
 export const MEMORY_GRAPH_NODES_MAX = MEMORY_GRAPH_MEMORIES_MAX + MEMORY_GRAPH_HUBS_MAX;
 
-export const MEMORY_HUB_KINDS = ["folder", "conversation", "task", "note"] as const;
+export const MEMORY_HUB_KINDS = ["folder", "conversation", "task", "note", "contact"] as const;
 export type MemoryHubKind = (typeof MEMORY_HUB_KINDS)[number];
 /** "version": one replaced the other; "review": a conflict waiting; "near": words in common; "hub": a memory and a hub. */
 export const MEMORY_LINK_KINDS = ["version", "review", "near", "hub"] as const;

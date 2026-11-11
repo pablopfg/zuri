@@ -233,7 +233,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S06 | mesclada (#275) |
 | S07 | mesclada (#277) |
 | S08 | mesclada (#282) |
-| S09 | em revisão |
+| S09 | mesclada (#286) |
+| S10 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -319,6 +320,20 @@ Diferenças da S09 (servidor da sincronização), para a S10 e a S12 não as des
 - Endereço é cortado em 300 caracteres (o plano dizia 200 para os demais campos; um endereço completo passa disso). Site com mais de 200 caracteres fica de fora inteiro, porque um link cortado levaria a outro lugar, e não entra na conta do "e mais N no Google".
 - `lastResult` é `changed` também quando só as etiquetas mudaram (nova, renomeada, apagada ou com outra contagem), porque a lista da tela recarrega nesses casos.
 - Sem nenhuma etiqueta escolhida, a Zuri só fala com o Google para ler as etiquetas, uma vez por hora.
+
+Diferenças da S10 (Contatos), para as PRs seguintes não as desfazerem:
+
+- Ficam de fora os blocos do protótipo que pedem dado que o servidor ainda não tem: "Próximos com…", "Onde aparece", "Avaliação no Google", o favorito, a descrição debaixo do nome e o "Mudou lá em". A linha da lista mostra telefone e e-mail.
+- No computador, nenhum contato abre sozinho: a coluna da direita diz "Escolha um contato". Cada coluna rola por conta própria, como na Conversa. No celular, a ficha toma o lugar da lista e "Contatos" volta.
+- Contato sem nome no Google aparece pelo telefone, ou pelo e-mail, e fica no grupo "#", no fim. O servidor nunca manda nome vazio (manda o primeiro e-mail ou telefone no lugar); a tela reconhece isso em `pages/contacts/person.ts`. "Perguntar à Zuri" some para quem não tem nome.
+- As quatro portas da ficha: "Perguntar à Zuri" (abre a Conversa com "O que você sabe sobre {nome}?" escrito, sem enviar), "Ligar", "WhatsApp" e "E-mail". WhatsApp só para celular do Brasil (DDD e nove dígitos começando em 9); telefone fixo mostra "Sem celular". O ícone é o balão de conversa do conjunto de ícones, sem marca.
+- Site e "Abrir no Google Contatos" só viram link se forem `http` ou `https`, com domínio e sem usuário e senha, conferidos de novo na tela (`siteHref`), com `rel="noopener noreferrer"`. O e2e `contatos.spec.ts` cobre nome, observação, site, e-mail e endereço do Google hostis.
+- A escolha de etiquetas também abre de dentro de Contatos ("Falta alguma? Escolher etiquetas", no filtro). Ao abrir, pede as etiquetas ao Google (`labels/refresh`); ao salvar, sincroniza. A de Configurações > Integrações continua.
+- A contagem regressiva sai do `nextSyncAt`. Ao chegar a zero, a tela pede o estado de novo depois de 3 s, 15 s e 30 s, no máximo três vezes, e para. Ela fica fora de região viva, para o leitor de tela não ler a cada segundo.
+- A aba Clientes saiu. `/contatos/clientes` leva a Contatos e os avisos novos do CRM apontam para `/crm`. Os dois controles que só existiam na aba ("Avisos do CRM" e "Eventos do n8n") moram em `/crm`, abaixo dos fluxos, até a S15: sem eles o dono não teria como calar os avisos nem revogar o segredo do n8n. A lista de clientes, o funil e a edição ficam sem tela; as rotas `/api/crm/*`, as cinco ferramentas da conversa e os dados continuam.
+- Contatos na Memória (pendência da S06): só no painel de uma memória e no mapa "em volta" dela, nunca no mapa inteiro, que mudaria de desenho a cada clique. A regra é de texto, sem IA: o nome inteiro do contato aparece na memória, ou só o primeiro nome quando um único contato começa por ele. A busca é pelo começo do nome guardado, então "Dra. Helena" não é achada por "Helena". Até 8 palavras da memória são procuradas, 4 linhas cada, e até 3 contatos aparecem.
+- "O que a Zuri sabe", na ficha, é a busca de memórias pelo nome do contato (as três primeiras), com link para a Memória já buscando (`/memoria#busca=`).
+- A issue #287 (conversa longa abria antes do fim) é corrigida nesta PR: de longe, a Conversa pula para o fim em vez de deslizar, e acompanha o conteúdo que cresce depois de desenhado enquanto o dono está no fim.
 
 ## 12. Riscos
 

@@ -162,7 +162,7 @@ export function App() {
           }
         />
         <Route
-          path="contatos/:aba?"
+          path="contatos/:id?"
           element={
             <Suspense fallback={<ScreenLoading />}>
               <ContactsPage />
@@ -196,6 +196,7 @@ export function App() {
         {/* Old addresses, for good: saved notices and Telegram messages still carry them. */}
         <Route path="automacoes/*" element={<Moved />} />
         <Route path="contatos/avaliacoes" element={<Moved />} />
+        <Route path="contatos/clientes" element={<Moved />} />
         <Route
           path="memoria"
           element={

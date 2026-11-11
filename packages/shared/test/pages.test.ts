@@ -17,6 +17,11 @@ describe("addresses that changed name with the Sinal shell", () => {
     expect(movedTo("/automacoes/qualquer/coisa")).toBe("/rotinas");
   });
 
+  it("the Clients tab, gone from Contacts, leads to Contacts", () => {
+    expect(movedTo("/contatos/clientes")).toBe("/contatos");
+    expect(movedTo("/contatos/clientes/")).toBe("/contatos");
+  });
+
   it("minds no case, as the router does", () => {
     expect(movedTo("/Automacoes")).toBe("/rotinas");
     expect(movedTo("/AUTOMACOES/Fluxos")).toBe("/crm/fluxos");
@@ -32,7 +37,7 @@ describe("addresses that changed name with the Sinal shell", () => {
   });
 
   it("leaves alone what never moved, a look-alike and a name of Object's own", () => {
-    for (const path of ["/", "/rotinas", "/crm/fluxos", "/contatos", "/contatos/clientes", "/automacoesx", "/x/automacoes", "/constructor", "/__proto__", ""]) {
+    for (const path of ["/", "/rotinas", "/crm/fluxos", "/contatos", "/contatos/clientesx", "/automacoesx", "/x/automacoes", "/constructor", "/__proto__", ""]) {
       expect(movedTo(path), path).toBeNull();
     }
   });

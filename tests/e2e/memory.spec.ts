@@ -344,7 +344,7 @@ test("memory: the panel shows what a memory is linked to, and each link opens @m
   await expect(side.getByRole("link", { name: `Tarefa “Encaixotar os livros da mudança ${tag}”` })).toBeVisible();
   await expect(side.getByRole("link", { name: `Nota “Lista da mudança ${tag}”` })).toHaveAttribute("href", `/notas/${note}`);
   await expect(side.getByRole("heading", { level: 3, name: "Memórias próximas" })).toBeVisible();
-  await expect(side.getByText("A Zuri liga pelo nome da pasta e pelas palavras em comum, sem IA.")).toBeVisible();
+  await expect(side.getByText("A Zuri liga pelo nome da pasta, pelo nome do contato e pelas palavras em comum, sem IA.")).toBeVisible();
   await expectAccessible(page, "memória com painel");
   expect(await tooSmallControls(page), "every control of the panel is a 44 px target").toEqual([]);
 

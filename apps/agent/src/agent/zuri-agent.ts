@@ -1130,13 +1130,13 @@ function crmNotice(alerts: AlertService, notice: CrmNotice): void {
         priority: "normal",
         params: { name: notice.name },
         body: notice.note || null,
-        link: "/contatos/clientes",
+        link: "/crm",
         dedupeKey: `crm-follow-up-${notice.clientId}`,
         dedupeMs: 3_600_000,
       });
       return;
     case "crm.followUps":
-      alerts.raise({ kind: notice.kind, category: "reminders", priority: "normal", params: { count: notice.count }, link: "/contatos/clientes" });
+      alerts.raise({ kind: notice.kind, category: "reminders", priority: "normal", params: { count: notice.count }, link: "/crm" });
       return;
     case "crm.birthdays":
       alerts.raise({
@@ -1144,13 +1144,13 @@ function crmNotice(alerts: AlertService, notice: CrmNotice): void {
         category: "reminders",
         priority: "normal",
         params: { names: notice.more > 0 ? `${notice.names} (+${notice.more})` : notice.names },
-        link: "/contatos/clientes",
+        link: "/crm",
         dedupeKey: `crm-birthdays-${notice.day}`,
         dedupeMs: 36 * 3_600_000,
       });
       return;
     case "crm.newClient":
-      alerts.raise({ kind: notice.kind, category: "reminders", priority: "normal", params: { name: notice.name }, link: "/contatos/clientes" });
+      alerts.raise({ kind: notice.kind, category: "reminders", priority: "normal", params: { name: notice.name }, link: "/crm" });
       return;
   }
 }

@@ -47,7 +47,7 @@ async function turnOn(page: Page) {
 test("turns the contacts on, copies one label and searches the copy on the Contacts screen; accessible @mobile", async ({ page }) => {
   const contacts = await turnOn(page);
   // Google's own groups ("myContacts") are never offered; nothing is copied before a label is chosen.
-  await expect(contacts.getByRole("checkbox")).toHaveCount(3);
+  await expect(contacts.getByRole("checkbox")).toHaveCount(4);
   await expect(contacts.getByText("myContacts")).toHaveCount(0);
   await expect(contacts.getByText(/· nenhum contato copiado ainda$/)).toBeVisible();
   await contacts.getByRole("checkbox", { name: /^Clientes/ }).check();
@@ -60,27 +60,16 @@ test("turns the contacts on, copies one label and searches the copy on the Conta
   await contacts.getByRole("link", { name: "Abrir Contatos" }).click();
   await expect(page).toHaveURL(/\/contatos$/);
   await expect(page.getByRole("heading", { level: 1, name: "Contatos" })).toBeVisible();
-  const list = page.getByRole("list").filter({ hasText: "Ana Souza" });
-  await expect(list.getByRole("button")).toHaveCount(4);
+  const list = page.getByRole("region", { name: "Lista de contatos" });
+  await expect(list.locator("[data-contact]")).toHaveCount(4);
   // A contact of a label left out never reaches Zuri.
   await expect(page.getByText("Conceição Alves")).toHaveCount(0);
-  await expectAccessible(page, "contatos");
-  expect(await tooSmallControls(page), "every control of the screen is a 44 px target").toEqual([]);
 
-  // By a piece of the phone, typed the way the owner writes it.
+  // By a piece of the phone, typed the way the owner writes it. The screen itself is walked in contatos.spec.ts.
   await page.getByRole("searchbox", { name: "Buscar por nome, telefone ou e-mail" }).fill("99999");
-  await expect(list.getByRole("button")).toHaveCount(1);
-  await list.getByRole("button", { name: /Ana Souza/ }).click();
-  const dialog = page.getByRole("dialog", { name: "Ana Souza" });
-  await expect(dialog.getByText("Padaria Central · Gerente")).toBeVisible();
-  await expect(dialog.getByText("Prefere contato por mensagem à tarde.")).toBeVisible();
-  await expect(dialog.getByRole("link", { name: "Abrir no Google Contatos" })).toHaveAttribute("rel", "noopener noreferrer");
-  await expectAccessible(page, "contatos-detalhe");
-  await dialog.getByRole("button", { name: "Fechar" }).click();
-
-  // A search with no match says so.
-  await page.getByRole("searchbox", { name: "Buscar por nome, telefone ou e-mail" }).fill("ninguém com esse nome");
-  await expect(page.getByText("Nenhum contato encontrado.")).toBeVisible();
+  await expect(list.locator("[data-contact]")).toHaveCount(1);
+  await list.getByRole("link", { name: /Ana Souza/ }).click();
+  await expect(page.getByRole("region", { name: "Contato", exact: true }).getByRole("heading", { level: 2, name: "Ana Souza" })).toBeVisible();
 });
 
 test("\"Sync now\" waits for the labels being saved, then copies the new choice (issue #264)", async ({ page }) => {
