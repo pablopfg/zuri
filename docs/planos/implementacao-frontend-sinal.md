@@ -228,7 +228,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S01 | mesclada (#261) |
 | S02 | mesclada (#265) |
 | S03 | mesclada (#267) |
-| S04 | em revisão |
+| S04 | mesclada (#270) |
+| S05 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -252,6 +253,19 @@ Diferenças da S04 para o que as tabelas previam:
 - A rotina do dia aparece até rodar. Depois disso o servidor já aponta a próxima execução e ela sai da lista, sem passar pela cortina (o histórico fica em Rotinas).
 - O evento aparece enquanto um pedaço dele cai entre 08:00 e 18:00, e o que está pendente aparece a qualquer hora (achados da revisão de QA): a regra do protótipo, só pela hora de início, escondia a reunião em andamento que começou às 07:30.
 - O alvo de toque das marcas, das ideias e dos botões da lista é de 44 px (critério 5), maior que o do protótipo.
+
+Diferenças da S05 para o que as tabelas previam:
+
+- O selo "Em uso" e o "nova conversa à 0:00" do título dependem da conversa do dia (P7) e entram com a S05b. Até lá o título mostra só "Desde hoje, 08:12", e o aviso de conversa anterior aponta para a conversa usada hoje mais recente.
+- O grupo da lista continua "Últimos 7 dias" (o protótipo diz "Esta semana"): a conta é de sete dias corridos, e na segunda-feira "esta semana" seria falso.
+- O menu "Mais opções" da linha abre como o das outras listas (`ActionsMenu`, junto do botão), e não como janela no meio da tela.
+- No celular a lista entra no lugar da conversa, como no protótipo, mas sem endereço próprio: Esc e a seta voltam para a conversa que estava aberta.
+- A tela não usa mais a rolagem do conteúdo (`main`): a lista e as mensagens rolam cada uma na sua área. Por isso a barra de cima do celular não some ao descer dentro da Conversa.
+- "Um componente de gravação" é `pages/chat/VoiceInput.tsx` (botão e linha de estado). Hoje só a Conversa tem microfone; a S07 leva o componente e o `useVoice` para uma pasta comum e liga a nota e o Início nele.
+- O cartão do plano e os cartões de aprovação ficaram como estavam; só os balões mudaram (o do dono cinza, a resposta da Zuri sem moldura, com a marca e a hora).
+- O alvo de toque dos botões é de 44 px (critério 5), maior que o do protótipo.
+- O menu ao lado do título se chama só "Mais opções"; o da linha leva o nome da conversa. Dois botões com o mesmo nome confundiam o leitor de tela.
+- Para a S05b: a tela lê "hoje" quando desenha, então fica parada se atravessar a 0:00 aberta e sem uso; a troca da conversa do dia precisa redesenhar a lista e o título. E renomear uma conversa ainda conta como uso no servidor (issue aberta nesta PR).
 
 ## 12. Riscos
 

@@ -1,4 +1,4 @@
-import { type InfiniteData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type InfiniteData, type UseInfiniteQueryResult, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CHAT_MESSAGE_MAX,
   type ChatEvent,
@@ -12,20 +12,24 @@ import {
   type ToolActivity,
   type ToolName,
 } from "@zuri/shared";
-import { Check, CircleAlert, Clock, History, LifeBuoy, LoaderCircle, Mic, Pencil, Plus, Search, SendHorizontal, Sparkles, Square, Trash2, X } from "lucide-react";
-import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from "react";
+import { ArrowLeft, ArrowUp, Check, CircleAlert, Clock, History, LifeBuoy, LoaderCircle, MessagesSquare, Pencil, Search, Sparkles, Square, SquarePen, Trash2, X } from "lucide-react";
+import { type FormEvent, type KeyboardEvent, type RefObject, useCallback, useEffect, useId, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link, NavLink, useLocation, useNavigate, useParams } from "react-router";
+import { ActionsMenu, type MenuAction } from "../../components/ActionsMenu.tsx";
 import { Logo } from "../../components/Logo.tsx";
 import { Markdown } from "../../components/Markdown.tsx";
 import { useToast } from "../../components/Toaster.tsx";
-import { Button, cn, Dialog, EmptyState, ErrorNotice, Notice, PageHeader, Loading, TextField } from "../../components/ui.tsx";
+import { Button, cn, Dialog, EmptyState, ErrorNotice, Loading, Notice, TextField, useDocumentTitle } from "../../components/ui.tsx";
 import { api, ApiError, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
-import { groupRecents } from "../../lib/recents.ts";
+import { dayOffset, groupRecents } from "../../lib/recents.ts";
 import { ApprovalCard, PlanCard } from "./cards.tsx";
 import { TOOL_LABEL, TOOL_STATUS_LABEL } from "./labels.ts";
 import { streamChat } from "./stream.ts";
-import { useVoice, voiceSupported } from "./voice.ts";
+import { VoiceButton, VoiceStatus } from "./VoiceInput.tsx";
+import { useVoice } from "./voice.ts";
+import { clock, messageDay, rowWhen, shortDate } from "./when.ts";
 
 // This screen's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRChat);
@@ -54,28 +58,54 @@ function upsert<T extends { id: string }>(items: T[], item: T): T[] {
   return items.some((current) => current.id === item.id) ? items.map((current) => (current.id === item.id ? item : current)) : [...items, item];
 }
 
+type ConversationList = InfiniteData<{ conversations: Conversation[]; nextCursor: string | null }>;
+/** What the owner asked to do with a conversation, from its row or from the top of the open one. */
+type Change = { mode: "rename" | "delete"; conversation: Conversation };
+
+const ICON_BUTTON = "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg-muted hover:bg-raised hover:text-fg";
+
 /**
- * The chat at /conversa (a new conversation) and /conversa/:id. On a wide
- * screen the conversations stay at the side; on a narrow one they open in a
- * dialog. Answers stream in as they are written; anything that deletes or
- * rewrites comes as a card the owner approves, and a plan creates nothing
- * until confirmed.
+ * The chat at /conversa (a new conversation) and /conversa/:id (Sinal). On a
+ * wide screen the conversations stay in a column beside the open one; on a
+ * narrow one they take its place while the owner picks. Only the messages
+ * scroll: the title and the field to write never leave the screen. Answers
+ * stream in as they are written; anything that deletes or rewrites comes as a
+ * card the owner approves, and a plan creates nothing until confirmed.
  */
 export function ChatPage() {
   const { id } = useParams();
-  const { t } = useI18n();
+  const { t, locale, timeZone } = useI18n();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [live, setLive] = useState<LiveTurn | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [listOpen, setListOpen] = useState(false);
+  const [change, setChange] = useState<Change | null>(null);
+  // The menu button a rename or a delete came from: the focus returns to it when the dialog leaves.
+  const changeFrom = useRef<HTMLElement | null>(null);
+  const openChange = (next: Change) => {
+    changeFrom.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setChange(next);
+  };
+  const closeChange = () => {
+    flushSync(() => setChange(null));
+    if (changeFrom.current?.isConnected) changeFrom.current.focus();
+  };
   const controller = useRef<AbortController | null>(null);
+  const listButton = useRef<HTMLButtonElement>(null);
+  const listTitle = useRef<HTMLHeadingElement>(null);
   const page = useQuery({
     queryKey: pageKey(id ?? ""),
     // Encoded: an address like /conversa/..%2Fusage must stay one id, never another API path.
     queryFn: ({ signal }) => api<ConversationPage>(`/conversations/${encodeURIComponent(id ?? "")}`, { signal }),
     enabled: Boolean(id),
+  });
+  const list = useInfiniteQuery({
+    queryKey: LIST_KEY,
+    queryFn: ({ pageParam, signal }) => api<{ conversations: Conversation[]; nextCursor: string | null }>(`/conversations${pageParam ? `?before=${pageParam}` : ""}`, { signal }),
+    initialPageParam: "",
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
   const conversation = page.data?.conversation;
   const streamingHere = live !== null && live.conversationId === (id ?? null);
@@ -193,190 +223,284 @@ export function ChatPage() {
     await api("/chat/cancel", { method: "POST", body: { conversationId } }).catch(() => controller.current?.abort());
   }
 
+  // A move that came from outside the list (the palette asking a question, say) brings the conversation back.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the address is the trigger
+  useEffect(() => setListOpen(false), [location.key]);
+
+  // The phone's list takes the conversation's place: the focus goes with it, and comes back.
+  const showList = () => {
+    flushSync(() => setListOpen(true));
+    listTitle.current?.focus();
+  };
+  const hideList = (focus = true) => {
+    flushSync(() => setListOpen(false));
+    if (focus) listButton.current?.focus();
+  };
+
   const title = id ? (conversation?.title ?? t("web.chat.title")) : t("web.chat.title");
+  useDocumentTitle(title);
+  const now = new Date();
+  const items = list.data?.pages.flatMap((p) => p.conversations) ?? [];
+  // Last used on a day before today, in the owner's zone: the notice under its messages says so.
+  const previous = conversation && !streamingHere && dayOffset(conversation.updatedAt, now, timeZone) < 0;
+  // The list comes newest first: its head is today's conversation, when there is one.
+  const todays = previous ? items.find((item) => item.id !== id && dayOffset(item.updatedAt, now, timeZone) >= 0) : undefined;
+  // "Desde hoje, 08:12": when the open conversation began.
+  const began = conversation ? { days: -dayOffset(conversation.createdAt, now, timeZone), time: clock(conversation.createdAt, locale, timeZone) } : null;
+  const since = !began || !conversation
+    ? ""
+    : began.days <= 0
+      ? t("web.chat.since.today", { time: began.time })
+      : began.days === 1
+        ? t("web.chat.since.yesterday", { time: began.time })
+        : t("web.chat.since.date", { date: shortDate(conversation.createdAt, now, locale, timeZone), time: began.time });
+  const menu = (item: Conversation): MenuAction[] => [
+    { label: t("web.chat.rename"), icon: <Pencil className="h-4 w-4" />, onSelect: () => openChange({ mode: "rename", conversation: item }), disabled: live?.conversationId === item.id },
+    { label: t("web.chat.delete"), icon: <Trash2 className="h-4 w-4" />, onSelect: () => openChange({ mode: "delete", conversation: item }), danger: true, disabled: live?.conversationId === item.id },
+  ];
 
   return (
-    <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-6">
-      <aside aria-label={t("web.chat.list")} className="sticky top-8 hidden max-h-[calc(100dvh-4rem)] overflow-y-auto lg:block">
-        <ConversationList activeId={id} />
+    <div className="zuri-chat flex min-h-0 flex-1">
+      <aside
+        aria-label={t("web.chat.list")}
+        onKeyDown={(event) => {
+          // Only where the list replaced the conversation (a phone), and never under an open menu or dialog.
+          if (event.key === "Escape" && listOpen && !event.defaultPrevented) hideList();
+        }}
+        className={cn("min-h-0 w-full flex-col lg:flex lg:w-72 lg:shrink-0 lg:border-r lg:border-border", listOpen ? "flex" : "hidden")}
+      >
+        <ConversationRows
+          list={list}
+          items={items}
+          activeId={id}
+          now={now}
+          menu={menu}
+          titleRef={listTitle}
+          onBack={() => hideList()}
+          onPick={() => hideList(false)}
+        />
       </aside>
-      <div className="min-w-0 space-y-5">
-        <PageHeader
-          title={title}
-          documentTitle={id ? title : t("web.chat.title")}
-          description={id ? undefined : t("web.chat.description")}
-          actions={
-            <>
-              <Button variant="secondary" className="lg:hidden" onClick={() => setListOpen(true)} aria-haspopup="dialog">
-                <History className="h-4 w-4" aria-hidden />
-                <span className="sr-only sm:not-sr-only">{t("web.chat.listOpen")}</span>
+      <div className={cn("min-w-0 flex-1 flex-col lg:flex", listOpen ? "hidden" : "flex")}>
+        <div className="flex min-h-16 flex-none items-center gap-1 border-b border-border px-2 lg:px-6">
+          <Link to="/" aria-label={t("web.chat.home")} title={t("web.chat.home")} className={cn(ICON_BUTTON, "lg:hidden")}>
+            <ArrowLeft className="h-5 w-5" aria-hidden />
+          </Link>
+          <div className="min-w-0 flex-1 py-2">
+            <h1 className="truncate text-base font-semibold leading-6">{title}</h1>
+            <p className="truncate text-xs leading-5 text-fg-muted">{id ? since : t("web.chat.description")}</p>
+          </div>
+          <button ref={listButton} type="button" onClick={showList} aria-label={t("web.chat.listOpen")} title={t("web.chat.listOpen")} className={cn(ICON_BUTTON, "lg:hidden")}>
+            <MessagesSquare className="h-5 w-5" aria-hidden />
+          </button>
+          {/* Without the name: the title is right beside it, and the row's menu in the list already carries the name. */}
+          {id && conversation && <ActionsMenu actions={menu(conversation)} />}
+        </div>
+
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling area must take the keyboard's focus to scroll with the arrows. */}
+        <section aria-label={t("web.chat.messages")} tabIndex={0} data-chat-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent">
+          <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-5 lg:px-6">
+            {id && page.isPending ? (
+              <Loading label={t("web.chat.loading")} />
+            ) : id && page.isError ? (
+              <ErrorNotice error={page.error} onRetry={() => void page.refetch()} />
+            ) : (
+              <Thread
+                key={id ?? "new"}
+                page={id ? page.data : undefined}
+                live={streamingHere ? live : null}
+                onAction={(action) => {
+                  if (streamingHere) setLive((current) => (current ? { ...current, actions: upsert(current.actions, action) } : current));
+                  patchPage(action.conversationId, (current) => ({ ...current, actions: upsert(current.actions, action) }));
+                }}
+                onPlan={(plan) => {
+                  if (streamingHere) setLive((current) => (current ? { ...current, plans: upsert(current.plans, plan) } : current));
+                  patchPage(plan.conversationId, (current) => ({ ...current, plans: upsert(current.plans, plan) }));
+                }}
+                onSuggestion={(text) => void send(text)}
+              />
+            )}
+            {previous && (
+              <p role="note" className="flex items-start gap-2 rounded-xl border border-dashed border-border-strong px-4 py-3 text-sm leading-6 text-fg-muted">
+                <History className="mt-1 h-4 w-4 shrink-0" aria-hidden />
+                <span className="min-w-0 break-words">
+                  {t("web.chat.previous")}
+                  {todays && (
+                    <>
+                      {" "}
+                      <Link to={`/conversa/${todays.id}`} className="font-semibold text-fg underline underline-offset-2 hover:text-accent-text">
+                        {t("web.chat.previousToday", { title: todays.title })}
+                      </Link>
+                    </>
+                  )}
+                </span>
+              </p>
+            )}
+            {page.data?.streaming && !streamingHere && <Notice>{t("web.chat.streamingElsewhere")}</Notice>}
+          </div>
+        </section>
+
+        <div className="mx-auto w-full max-w-3xl flex-none space-y-2 px-4 pb-3 lg:px-6">
+          {sendError && (
+            <div role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-danger/40 bg-danger-soft p-3 text-sm">
+              <p className="flex items-start gap-2">
+                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-danger" aria-hidden />
+                {sendError}
+              </p>
+              <Button variant="ghost" className="h-11 w-11 px-0" aria-label={t("web.close")} onClick={() => setSendError(null)}>
+                <X className="h-4 w-4" aria-hidden />
               </Button>
-              {id && conversation && <ConversationOptions conversation={conversation} disabled={streamingHere} />}
-              {/* On a computer the list beside the page already starts a new one: one "Nova conversa" (stage 26c). */}
-              {id && (
-                <Link
-                  to="/conversa"
-                  className="inline-flex min-h-11 lg:hidden items-center justify-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-fg hover:bg-accent-hover"
-                >
-                  <Plus className="h-4 w-4" aria-hidden />
-                  <span className="sr-only sm:not-sr-only">{t("web.chat.new")}</span>
-                </Link>
-              )}
-            </>
-          }
-        />
-        <Dialog open={listOpen} onClose={() => setListOpen(false)} title={t("web.chat.list")}>
-          <div className="max-h-[60dvh] overflow-y-auto">
-            <ConversationList activeId={id} onPick={() => setListOpen(false)} />
-          </div>
-        </Dialog>
-
-        {id && page.isPending ? (
-          <Loading label={t("web.chat.loading")} />
-        ) : id && page.isError ? (
-          <ErrorNotice error={page.error} onRetry={() => void page.refetch()} />
-        ) : (
-          <Thread
-            key={id ?? "new"}
-            page={id ? page.data : undefined}
-            live={streamingHere ? live : null}
-            onAction={(action) => {
-              if (streamingHere) setLive((current) => (current ? { ...current, actions: upsert(current.actions, action) } : current));
-              patchPage(action.conversationId, (current) => ({ ...current, actions: upsert(current.actions, action) }));
-            }}
-            onPlan={(plan) => {
-              if (streamingHere) setLive((current) => (current ? { ...current, plans: upsert(current.plans, plan) } : current));
-              patchPage(plan.conversationId, (current) => ({ ...current, plans: upsert(current.plans, plan) }));
-            }}
-            onSuggestion={(text) => void send(text)}
+            </div>
+          )}
+          <Composer
+            value={draft}
+            onChange={setDraft}
+            onSend={() => void send(draft)}
+            onStop={() => void stop()}
+            streaming={streamingHere}
+            blocked={busy && !streamingHere}
+            disabled={Boolean(id) && !page.data}
           />
-        )}
-
-        {page.data?.streaming && !streamingHere && <Notice>{t("web.chat.streamingElsewhere")}</Notice>}
-        {sendError && (
-          <div role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-danger/40 bg-danger-soft p-3 text-sm">
-            <p className="flex items-start gap-2">
-              <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-danger" aria-hidden />
-              {sendError}
-            </p>
-            <Button variant="ghost" className="h-11 w-11 px-0" aria-label={t("web.close")} onClick={() => setSendError(null)}>
-              <X className="h-4 w-4" aria-hidden />
-            </Button>
-          </div>
-        )}
-        <Composer
-          value={draft}
-          onChange={setDraft}
-          onSend={() => void send(draft)}
-          onStop={() => void stop()}
-          streaming={streamingHere}
-          blocked={busy && !streamingHere}
-          disabled={Boolean(id) && !page.data}
-        />
+        </div>
       </div>
+      {change && (
+        <ConversationChange
+          key={`${change.mode}:${change.conversation.id}`}
+          change={change}
+          onClose={closeChange}
+          onDeleted={(deleted) => {
+            if (deleted === id) navigate("/conversa", { replace: true });
+            // The row and its menu are gone: the focus waits on the list's search (or, with the list away, on its button).
+            const search = document.getElementById(SEARCH_ID);
+            (search?.offsetParent ? search : listButton.current)?.focus();
+          }}
+        />
+      )}
     </div>
   );
+
 }
 
+const SEARCH_ID = "buscar-conversas";
+
 /** The conversations, newest first, a page at a time, by day (in the owner's zone) and with a search of their titles. */
-function ConversationList({ activeId, onPick }: { activeId: string | undefined; onPick?: () => void }) {
-  const { t, timeZone } = useI18n();
+function ConversationRows({
+  list,
+  items,
+  activeId,
+  now,
+  menu,
+  titleRef,
+  onBack,
+  onPick,
+}: {
+  list: UseInfiniteQueryResult<ConversationList>;
+  items: Conversation[];
+  activeId: string | undefined;
+  now: Date;
+  menu: (conversation: Conversation) => MenuAction[];
+  titleRef: RefObject<HTMLHeadingElement | null>;
+  onBack: () => void;
+  onPick: () => void;
+}) {
+  const { t, locale, timeZone } = useI18n();
   const [query, setQuery] = useState("");
-  const list = useInfiniteQuery({
-    queryKey: LIST_KEY,
-    queryFn: ({ pageParam, signal }) =>
-      api<{ conversations: Conversation[]; nextCursor: string | null }>(`/conversations${pageParam ? `?before=${pageParam}` : ""}`, { signal }),
-    initialPageParam: "",
-    getNextPageParam: (last) => last.nextCursor ?? undefined,
-  });
-  const items = list.data?.pages.flatMap((p) => p.conversations) ?? [];
-  const groups = groupRecents(items, query, new Date(), timeZone);
+  const groups = groupRecents(items, query, now, timeZone);
   const labels = { today: t("web.chat.group.today"), yesterday: t("web.chat.group.yesterday"), week: t("web.chat.group.week"), older: t("web.chat.group.older") } as const;
   return (
-    <nav aria-label={t("web.chat.list")} className="space-y-3">
-      <Link
-        to="/conversa"
-        onClick={onPick}
-        className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-accent px-3 text-sm font-semibold text-accent-fg shadow-sm hover:bg-accent-hover"
-      >
-        <Plus className="h-4 w-4" aria-hidden />
-        {t("web.chat.new")}
-      </Link>
-      <label className="flex min-h-11 items-center gap-2 rounded-xl border border-border-strong bg-surface px-3 text-fg-muted focus-within:border-accent">
-        <Search className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="sr-only">{t("web.chat.search")}</span>
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t("web.chat.search")}
-          className="min-h-11 min-w-0 flex-1 bg-transparent text-[15px] text-fg placeholder:text-fg-muted focus:outline-none"
-        />
-      </label>
-      {list.isPending ? (
-        <Loading />
-      ) : list.isError ? (
-        <ErrorNotice error={list.error} onRetry={() => void list.refetch()} />
-      ) : items.length === 0 ? (
-        <p className="px-3 py-2 text-sm text-fg-muted">{t("web.chat.listEmpty")}</p>
-      ) : groups.length === 0 ? (
-        <p role="status" className="px-3 py-2 text-sm text-fg-muted">
-          {t("web.chat.searchEmpty")}
-        </p>
-      ) : (
-        groups.map(({ group, items: inGroup }) => (
-          <section key={group} aria-labelledby={`recentes-${group}`}>
-            <h3 id={`recentes-${group}`} className="px-3 pb-1 pt-2 text-xs font-semibold text-fg-muted">
-              {labels[group]}
-            </h3>
-            <ul className="space-y-0.5">
-              {inGroup.map((item) => (
-                <li key={item.id}>
-                  <NavLink
-                    to={`/conversa/${item.id}`}
-                    onClick={onPick}
-                    aria-current={item.id === activeId ? "page" : undefined}
-                    className={cn(
-                      "flex min-h-11 items-center rounded-xl px-3 py-2 text-sm",
-                      item.id === activeId ? "bg-accent-soft font-semibold text-accent-text" : "text-fg hover:bg-raised",
-                    )}
-                  >
-                    <span className="truncate">{item.title}</span>
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
-      )}
-      {list.hasNextPage && (
-        <Button variant="ghost" className="w-full" loading={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>
-          {t("web.chat.loadMore")}
-        </Button>
-      )}
+    <nav aria-label={t("web.chat.list")} className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-16 flex-none items-center gap-1 border-b border-border pl-2 pr-3 lg:pl-4">
+        <button type="button" onClick={onBack} aria-label={t("web.chat.back")} title={t("web.chat.back")} className={cn(ICON_BUTTON, "lg:hidden")}>
+          <ArrowLeft className="h-5 w-5" aria-hidden />
+        </button>
+        <h2 ref={titleRef} tabIndex={-1} className="min-w-0 flex-1 truncate text-base font-semibold focus:outline-none">
+          {t("web.chat.list")}
+        </h2>
+        <Link
+          to="/conversa"
+          onClick={onPick}
+          aria-label={t("web.chat.new")}
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border-strong bg-surface px-3.5 text-sm font-semibold text-fg shadow-sm hover:bg-raised"
+        >
+          <SquarePen className="h-4 w-4" aria-hidden />
+          {t("web.chat.newShort")}
+        </Link>
+      </div>
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3">
+        <label className="flex min-h-11 items-center gap-2 rounded-xl border border-border-strong bg-surface px-3 text-fg-muted focus-within:border-accent">
+          <Search className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="sr-only">{t("web.chat.search")}</span>
+          <input
+            id={SEARCH_ID}
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t("web.chat.searchShort")}
+            className="min-h-11 min-w-0 flex-1 bg-transparent text-[15px] text-fg placeholder:text-fg-muted focus:outline-none"
+          />
+        </label>
+        {list.isPending ? (
+          <Loading />
+        ) : list.isError ? (
+          <ErrorNotice error={list.error} onRetry={() => void list.refetch()} />
+        ) : items.length === 0 ? (
+          <p className="px-2 py-2 text-sm text-fg-muted">{t("web.chat.listEmpty")}</p>
+        ) : groups.length === 0 ? (
+          <p role="status" className="px-2 py-2 text-sm text-fg-muted">
+            {list.hasNextPage ? t("web.chat.searchMore") : t("web.chat.searchEmpty")}
+          </p>
+        ) : (
+          groups.map(({ group, items: inGroup }) => (
+            <section key={group} aria-labelledby={`recentes-${group}`}>
+              <h3 id={`recentes-${group}`} className="px-2 pb-1 pt-2 text-xs font-semibold text-fg-muted">
+                {labels[group]}
+              </h3>
+              <ul className="space-y-0.5">
+                {inGroup.map((item) => (
+                  <li key={item.id} className="flex items-center gap-0.5">
+                    <NavLink
+                      to={`/conversa/${item.id}`}
+                      onClick={onPick}
+                      aria-current={item.id === activeId ? "page" : undefined}
+                      className={cn(
+                        "block min-h-11 min-w-0 flex-1 rounded-xl border px-2.5 py-1.5",
+                        item.id === activeId ? "border-border bg-surface shadow-sm" : "border-transparent hover:bg-raised",
+                      )}
+                    >
+                      <span className={cn("block truncate text-sm leading-5 text-fg", item.id === activeId ? "font-semibold" : "font-medium")}>{item.title}</span>
+                      <time dateTime={item.updatedAt} className="block text-xs leading-5 text-fg-muted">
+                        {rowWhen(item.updatedAt, now, locale, timeZone)}
+                      </time>
+                    </NavLink>
+                    <ActionsMenu name={item.title} actions={menu(item)} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        )}
+        {list.hasNextPage && (
+          <Button variant="ghost" className="w-full" loading={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>
+            {t("web.chat.loadMore")}
+          </Button>
+        )}
+      </div>
     </nav>
   );
 }
 
-/** Rename and delete for the open conversation. */
-function ConversationOptions({ conversation, disabled }: { conversation: Conversation; disabled: boolean }) {
+/** Rename or delete one conversation: the dialog a "Mais opções" menu opens (line C1 of the Sinal plan). */
+function ConversationChange({ change, onClose, onDeleted }: { change: Change; onClose: () => void; onDeleted: (id: string) => void }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const toast = useToast();
-  const [mode, setMode] = useState<"rename" | "delete" | null>(null);
+  const { mode, conversation } = change;
   const [name, setName] = useState(conversation.title);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const close = () => {
-    setMode(null);
-    setError(null);
-  };
-
   async function rename(event: FormEvent) {
     event.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || pending) return;
     setPending(true);
     try {
       const result = await api<{ conversation: Conversation }>(`/conversations/${conversation.id}`, { method: "PATCH", body: { title: name } });
@@ -384,59 +508,59 @@ function ConversationOptions({ conversation, disabled }: { conversation: Convers
       // with the old title and undo it on screen: drop those before writing the new one.
       await qc.cancelQueries({ queryKey: LIST_KEY });
       qc.setQueryData<ConversationPage>(pageKey(conversation.id), (current) => (current ? { ...current, conversation: result.conversation } : current));
-      qc.setQueryData<InfiniteData<{ conversations: Conversation[] }>>(LIST_KEY, (current) =>
+      qc.setQueryData<ConversationList>(LIST_KEY, (current) =>
         current
           ? { ...current, pages: current.pages.map((p) => ({ ...p, conversations: p.conversations.map((c) => (c.id === conversation.id ? result.conversation : c)) })) }
           : current,
       );
       // Read again what was dropped (a list that missed a new conversation, say); these reads leave after the rename.
       void qc.invalidateQueries({ queryKey: LIST_KEY });
-      close();
+      onClose();
       toast(t("web.chat.renamed"));
     } catch (failure) {
+      if (gone(failure)) return left();
       setError(errorMessage(failure));
-    } finally {
       setPending(false);
     }
+  }
+
+  /** Deleted already, in another tab or by the bot: the server says it does not exist. */
+  const gone = (failure: unknown) => failure instanceof ApiError && failure.code === "NOT_FOUND";
+
+  /** The conversation is no more, deleted here or elsewhere: its row leaves at once and the page moves on. */
+  async function left() {
+    qc.removeQueries({ queryKey: pageKey(conversation.id) });
+    // Out of the list at once: the row must not wait for the next read to leave.
+    await qc.cancelQueries({ queryKey: LIST_KEY });
+    qc.setQueryData<ConversationList>(LIST_KEY, (current) =>
+      current ? { ...current, pages: current.pages.map((p) => ({ ...p, conversations: p.conversations.filter((c) => c.id !== conversation.id) })) } : current,
+    );
+    void qc.invalidateQueries({ queryKey: LIST_KEY });
+    // The dialog closes first; the row and its menu are gone, so the page says where the focus goes next.
+    onClose();
+    onDeleted(conversation.id);
+    toast(t("web.chat.deleted"));
   }
 
   async function remove() {
     setPending(true);
     try {
       await api(`/conversations/${conversation.id}`, { method: "DELETE" });
-      qc.removeQueries({ queryKey: pageKey(conversation.id) });
-      void qc.invalidateQueries({ queryKey: LIST_KEY });
-      close();
-      navigate("/conversa", { replace: true });
-      toast(t("web.chat.deleted"));
+      await left();
     } catch (failure) {
+      if (gone(failure)) return left();
       setError(errorMessage(failure));
-    } finally {
       setPending(false);
     }
   }
 
-  return (
-    <>
-      <Button
-        variant="secondary"
-        aria-label={t("web.chat.rename")}
-        disabled={disabled}
-        onClick={() => {
-          setName(conversation.title);
-          setMode("rename");
-        }}
-      >
-        <Pencil className="h-4 w-4" aria-hidden />
-      </Button>
-      <Button variant="secondary" aria-label={t("web.chat.delete")} disabled={disabled} onClick={() => setMode("delete")}>
-        <Trash2 className="h-4 w-4" aria-hidden />
-      </Button>
-      <Dialog open={mode === "rename"} onClose={close} title={t("web.chat.rename")}>
+  if (mode === "rename")
+    return (
+      <Dialog open onClose={onClose} title={t("web.chat.rename")}>
         <form onSubmit={(e) => void rename(e)} className="space-y-4">
           <TextField label={t("web.chat.renameLabel")} value={name} maxLength={CONVERSATION_TITLE_MAX} required error={error} onChange={(e) => setName(e.target.value)} />
           <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="ghost" onClick={close}>
+            <Button variant="ghost" onClick={onClose}>
               {t("web.chat.cancel")}
             </Button>
             <Button type="submit" loading={pending} disabled={!name.trim()}>
@@ -445,23 +569,25 @@ function ConversationOptions({ conversation, disabled }: { conversation: Convers
           </div>
         </form>
       </Dialog>
-      <Dialog open={mode === "delete"} onClose={close} title={t("web.chat.deleteTitle")}>
-        <p className="text-sm leading-6 text-fg-muted">{t("web.chat.deleteBody")}</p>
-        {error && (
-          <p role="alert" className="text-sm text-danger">
-            {error}
-          </p>
-        )}
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="ghost" onClick={close}>
-            {t("web.chat.cancel")}
-          </Button>
-          <Button variant="danger" loading={pending} onClick={() => void remove()}>
-            {t("web.chat.delete")}
-          </Button>
-        </div>
-      </Dialog>
-    </>
+    );
+  return (
+    <Dialog open onClose={onClose} title={t("web.chat.deleteTitle")}>
+      <p className="break-words text-sm font-medium">{t("web.chat.deleteName", { title: conversation.title })}</p>
+      <p className="text-sm leading-6 text-fg-muted">{t("web.chat.deleteBody")}</p>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="ghost" onClick={onClose}>
+          {t("web.chat.cancel")}
+        </Button>
+        <Button variant="danger" loading={pending} onClick={() => void remove()}>
+          {t("web.chat.delete")}
+        </Button>
+      </div>
+    </Dialog>
   );
 }
 
@@ -480,11 +606,13 @@ function Thread({
   onPlan: (plan: TaskPlan) => void;
   onSuggestion: (text: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale, timeZone } = useI18n();
   const [older, setOlder] = useState<{ messages: ChatMessage[]; hasMore: boolean } | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [olderError, setOlderError] = useState<unknown>(null);
   const end = useRef<HTMLDivElement>(null);
+  /** How far from the end the owner was when older messages were asked for: they come in above, and the place stays. */
+  const fromEnd = useRef<number | null>(null);
   const messages = [...(older?.messages ?? []), ...(page?.messages ?? [])];
   const hasMore = older ? older.hasMore : (page?.hasMore ?? false);
   const actions = new Map([...(page?.actions ?? []), ...(live?.actions ?? [])].map((a) => [a.id, a]));
@@ -497,11 +625,15 @@ function Thread({
     if (!growth) return;
     const node = end.current;
     if (!node) return;
-    // Only the content scrolls (the shell's <main>), never the window: the menus stay put.
-    const scroller = node.closest("main");
+    // Only the messages scroll: the title above and the field to write below stay put.
+    const scroller = node.closest("[data-chat-scroll]");
     if (!scroller) return;
+    if (fromEnd.current !== null) {
+      scroller.scrollTop = scroller.scrollHeight - fromEnd.current;
+      fromEnd.current = null;
+      return;
+    }
     const nearBottom = scroller.clientHeight + scroller.scrollTop >= scroller.scrollHeight - 240;
-    // To the content's very end, not the thread's: the composer sticks to the bottom and would cover the last card.
     if (nearBottom || growth.endsWith(":0:0:")) {
       scroller.scrollTo({ top: scroller.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     }
@@ -514,6 +646,8 @@ function Thread({
     setOlderError(null);
     try {
       const result = await api<ConversationPage>(`/conversations/${page.conversation.id}?before=${first.id}`);
+      const scroller = end.current?.closest("[data-chat-scroll]");
+      if (scroller) fromEnd.current = scroller.scrollHeight - scroller.scrollTop;
       setOlder({ messages: [...result.messages, ...(older?.messages ?? [])], hasMore: result.hasMore });
     } catch (failure) {
       setOlderError(failure);
@@ -544,7 +678,7 @@ function Thread({
   }
 
   return (
-    <section aria-label={t("web.chat.messages")} className="space-y-5">
+    <div className="space-y-5">
       {hasMore && (
         <div className="flex flex-col items-center gap-2">
           <Button variant="ghost" loading={loadingOlder} onClick={() => void loadOlder()}>
@@ -555,22 +689,38 @@ function Thread({
       )}
       <div role="log" aria-relevant="additions">
         <ol className="space-y-5">
-        {/* One keyed list with the live turn under the ids its stored messages will carry: when the turn
+          {/* One keyed list with the live turn under the ids its stored messages will carry: when the turn
             ends and they take over, React keeps these items, so a plan the owner is editing keeps its
-            edits instead of mounting again (#223). */}
-        {[
-          ...shown.map((message) => <MessageItem key={message.id} message={message} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} />),
-          ...(live
-            ? [
-                <MessageItem key={live.userMessageId ?? "live-user"} message={liveMessage("user", live.user)} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} />,
-                <MessageItem key={live.assistantId ?? "live-assistant"} message={liveMessage("assistant", live.text)} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} live={live} />,
-              ]
-            : []),
-        ]}
+            edits instead of mounting again (#223). A line with the day comes before the first message
+            of each day, in the owner's zone. */}
+          {(() => {
+            const now = new Date();
+            let last: number | null = null;
+            const line = (createdAt: string) => {
+              const day = messageDay(createdAt, now, locale, timeZone);
+              if (day.offset === last) return [];
+              last = day.offset;
+              return [
+                <li key={`day:${day.offset}`} className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-fg-muted before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+                  {day.offset === 0 ? t("web.chat.group.today") : day.offset === -1 ? t("web.chat.group.yesterday") : day.date}
+                </li>,
+              ];
+            };
+            return [
+              ...shown.flatMap((message) => [...line(message.createdAt), <MessageItem key={message.id} message={message} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} />]),
+              ...(live
+                ? [
+                    ...line(""),
+                    <MessageItem key={live.userMessageId ?? "live-user"} message={liveMessage("user", live.user)} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} />,
+                    <MessageItem key={live.assistantId ?? "live-assistant"} message={liveMessage("assistant", live.text)} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} live={live} />,
+                  ]
+                : []),
+            ];
+          })()}
         </ol>
       </div>
       <div ref={end} />
-    </section>
+    </div>
   );
 }
 
@@ -592,20 +742,21 @@ function MessageItem({
   /** The answer still streaming: the same element tree as the stored answer that replaces it. */
   live?: LiveTurn;
 }) {
-  const { t } = useI18n();
+  const { t, locale, timeZone } = useI18n();
+  const time = clock(message.createdAt, locale, timeZone);
   if (message.role === "user") {
     return (
       <li className="flex flex-col items-end gap-1">
-        <span className="sr-only">{t("web.chat.you")}:</span>
+        <span className="sr-only">{time ? t("web.chat.youAt", { time }) : `${t("web.chat.you")}:`}</span>
         {message.quoted?.map((item) => (
           // Someone else's text the owner sent along from Telegram: shown apart from their own words.
-          <figure key={`${item.kind}:${item.text.slice(0, 64)}`} className="max-w-[85%] rounded-2xl rounded-br-md border border-border bg-raised px-4 py-2.5 text-sm text-fg">
+          <figure key={`${item.kind}:${item.text.slice(0, 64)}`} className="max-w-[85%] rounded-2xl border border-border bg-surface px-4 py-2.5 text-sm text-fg">
             <figcaption className="mb-1 text-xs font-medium text-fg-muted">{t(QUOTED_LABEL[item.kind])}</figcaption>
             <blockquote className="whitespace-pre-wrap break-words">{item.text}</blockquote>
           </figure>
         ))}
         {message.content && (
-          <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-[15px] leading-6 text-accent-fg shadow-sm">{message.content}</div>
+          <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl bg-raised px-4 py-2.5 text-[15px] leading-6 text-fg">{message.content}</div>
         )}
         {message.source === "import" && <span className="text-xs text-fg-muted">{t("web.chat.restored")}</span>}
         {message.source === "telegram" && <span className="text-xs text-fg-muted">{t("web.chat.viaTelegram")}</span>}
@@ -622,7 +773,7 @@ function MessageItem({
   }
   return (
     <li className="space-y-3">
-      <AssistantBody text={message.content} tools={message.tools} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} />
+      <AssistantBody text={message.content} tools={message.tools} actions={actions} plans={plans} onAction={onAction} onPlan={onPlan} time={time} />
       {message.fallback && (
         <p className="flex items-center gap-1.5 text-xs text-fg-muted">
           <LifeBuoy className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -653,6 +804,7 @@ function AssistantBody({
   onAction,
   onPlan,
   streaming = false,
+  time = "",
 }: {
   text: string;
   tools: ToolActivity[];
@@ -661,16 +813,21 @@ function AssistantBody({
   onAction: (action: PendingAction) => void;
   onPlan: (plan: TaskPlan) => void;
   streaming?: boolean;
+  /** The hour the answer was stored; an answer still being written has none. */
+  time?: string;
 }) {
   const { t } = useI18n();
   const cards = tools.filter((tool) => tool.actionId || tool.planId || tool.automationId);
   return (
     <div className="flex items-start gap-3">
-      <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-text" aria-hidden>
-        <Sparkles className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1 space-y-3">
-        <span className="sr-only">{t("app.name")}:</span>
+      <Logo className="hidden sm:block" />
+      <div className="min-w-0 flex-1 space-y-2.5">
+        <p className="flex min-h-8 items-center gap-2 text-sm">
+          <Logo className="h-6 w-6 sm:hidden" />
+          <span className="font-semibold">{t("app.name")}</span>
+          <span className="sr-only">:</span>
+          {time && <span className="text-xs text-fg-muted">{time}</span>}
+        </p>
         {tools.length > 0 && (
           <ul className="flex flex-wrap gap-1.5" aria-label={t("web.chat.toolsLabel")}>
             {tools.map((tool) => (
@@ -679,13 +836,13 @@ function AssistantBody({
           </ul>
         )}
         {text ? (
-          <div className="rounded-2xl rounded-tl-md border border-border bg-surface px-4 py-3 text-[15px] shadow-sm">
+          <div className="text-[15px]">
             <Markdown content={text} showDestination />
           </div>
         ) : (
           streaming &&
           tools.every((tool) => tool.status !== "running") && (
-            <p className="inline-flex items-center gap-2.5 rounded-2xl rounded-tl-md border border-border bg-surface py-2 pl-2 pr-4 text-sm text-fg-muted shadow-sm">
+            <p className="inline-flex items-center gap-2.5 rounded-2xl border border-border bg-surface py-2 pl-2 pr-4 text-sm text-fg-muted shadow-sm">
               <Logo className="h-7 w-7" working />
               {t("web.chat.thinking")}
             </p>
@@ -786,93 +943,58 @@ function Composer({
   }
 
   const recording = voice.state.phase === "recording";
-  const transcribing = voice.state.phase === "transcribing";
-  const voiceError = voice.error ? ("key" in voice.error ? t(voice.error.key) : voice.error.message) : null;
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!empty && !over && !streaming && !blocked) onSend();
-      }}
-      className="sticky bottom-3 z-10 space-y-2 rounded-2xl border border-border-strong bg-surface p-2 shadow-lg md:bottom-4"
-    >
-      {(recording || transcribing || voiceError) && (
-        <div aria-live="polite" className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-          {recording && voice.state.phase === "recording" && (
-            <span className="inline-flex items-center gap-2 font-medium text-danger">
-              <span className="h-2 w-2 rounded-full bg-danger motion-safe:animate-pulse" aria-hidden />
-              {t("web.chat.voice.recording", { seconds: voice.state.seconds, max: 60 })}
-            </span>
-          )}
-          {transcribing && (
-            <span className="inline-flex items-center gap-2 text-fg-muted">
-              <LoaderCircle className="h-4 w-4 motion-safe:animate-spin" aria-hidden />
-              {t("web.chat.voice.transcribing")}
-            </span>
-          )}
-          {voiceError && !recording && !transcribing && (
-            <span role="alert" className="flex-1 text-danger">
-              {voiceError}
-            </span>
-          )}
-          {voiceError && (
-            <Button variant="ghost" className="h-11 w-11 px-0" aria-label={t("web.close")} onClick={voice.clearError}>
-              <X className="h-4 w-4" aria-hidden />
+    <>
+      <form
+        aria-label={t("web.chat.composer")}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!empty && !over && !streaming && !blocked) onSend();
+        }}
+        className="space-y-1 rounded-3xl border border-border-strong bg-surface p-1.5 shadow-md focus-within:border-accent"
+      >
+        <VoiceStatus voice={voice} />
+        <div className="flex items-end gap-1.5">
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">{t("web.chat.messageLabel")}</span>
+            <textarea
+              ref={ref}
+              rows={1}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder={t("web.chat.placeholder")}
+              aria-describedby={`${hintId}${showCounter ? ` ${counterId}` : ""}`}
+              aria-invalid={over || undefined}
+              disabled={disabled}
+              className="block max-h-[33dvh] min-h-11 w-full resize-none bg-transparent px-3.5 py-2.5 text-[15px] leading-6 text-fg placeholder:text-fg-muted focus:outline-none"
+            />
+          </label>
+          <VoiceButton voice={voice} disabled={disabled || streaming} />
+          {streaming ? (
+            <Button variant="secondary" className="h-11 shrink-0 rounded-2xl" onClick={onStop}>
+              <Square className="h-4 w-4 fill-current" aria-hidden />
+              {t("web.chat.stop")}
+            </Button>
+          ) : (
+            <Button type="submit" className="h-11 w-11 shrink-0 rounded-2xl px-0" aria-label={t("web.chat.send")} disabled={disabled || blocked || empty || over || recording}>
+              <ArrowUp className="h-5 w-5" aria-hidden />
             </Button>
           )}
         </div>
-      )}
-      <div className="flex items-end gap-2">
-        <label className="min-w-0 flex-1">
-          <span className="sr-only">{t("web.chat.messageLabel")}</span>
-          <textarea
-            ref={ref}
-            rows={1}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={t("web.chat.placeholder")}
-            aria-describedby={`${hintId}${showCounter ? ` ${counterId}` : ""}`}
-            aria-invalid={over || undefined}
-            disabled={disabled}
-            className="block max-h-[33dvh] min-h-11 w-full resize-none bg-transparent px-3 py-2.5 text-[15px] leading-6 text-fg placeholder:text-fg-muted focus:outline-none"
-          />
-        </label>
-        {voiceSupported() && (
-          <Button
-            variant="ghost"
-            className="h-11 w-11 shrink-0 px-0"
-            aria-label={recording ? t("web.chat.voice.stop") : t("web.chat.voice.start")}
-            aria-pressed={recording}
-            disabled={disabled || transcribing || streaming}
-            onClick={() => (recording ? voice.stop() : void voice.start())}
-          >
-            {recording ? <Square className="h-4 w-4 fill-current text-danger" aria-hidden /> : <Mic className="h-5 w-5" aria-hidden />}
-          </Button>
-        )}
-        {streaming ? (
-          <Button variant="secondary" className="h-11 shrink-0" onClick={onStop}>
-            <Square className="h-4 w-4 fill-current" aria-hidden />
-            {t("web.chat.stop")}
-          </Button>
-        ) : (
-          <Button type="submit" className="h-11 w-11 shrink-0 px-0" aria-label={t("web.chat.send")} disabled={disabled || blocked || empty || over || recording}>
-            <SendHorizontal className="h-5 w-5" aria-hidden />
-          </Button>
-        )}
-      </div>
-      <div className="flex items-center justify-between gap-2 px-3 pb-1 text-xs text-fg-muted">
+      </form>
+      <div className="flex min-h-5 items-center justify-center gap-3 px-3 text-xs text-fg-muted">
         <span id={hintId} className="hidden sm:inline">
           {t("web.chat.hint")}
         </span>
         {showCounter && (
-          <span id={counterId} className={cn("ml-auto tabular-nums", over && "font-semibold text-danger")}>
+          <span id={counterId} className={cn("tabular-nums", over && "font-semibold text-danger")}>
             {t("web.chat.counter", { used: length, max: CHAT_MESSAGE_MAX })}
           </span>
         )}
       </div>
-    </form>
+    </>
   );
 }
 

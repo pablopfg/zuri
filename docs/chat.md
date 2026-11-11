@@ -6,6 +6,34 @@ ferramentas da tabela abaixo e tudo o que apaga ou reescreve vira um cartão que
 o dono aprova. Um plano de tarefas também só cria alguma coisa depois que o
 dono confirma.
 
+## A tela
+
+Desde a PR S05 do novo frontend (`docs/planos/implementacao-frontend-sinal.md`)
+a tela ocupa a área inteira e só as mensagens rolam.
+
+- **Lista de conversas.** No computador fica numa coluna ao lado da conversa.
+  No celular o botão **Ver conversas** troca a conversa pela lista, e a seta,
+  o Esc ou a escolha de uma linha trazem a conversa de volta. A lista tem a
+  busca pelo nome e os grupos Hoje, Ontem, Últimos 7 dias e Mais antigas, no
+  fuso do dono. Cada linha mostra quando a conversa foi usada: a hora, o dia
+  da semana com a hora ou a data.
+- **Renomear e Apagar conversa.** Ficam no menu **Mais opções** (⋯) de cada
+  linha e ao lado do título da conversa aberta. Dá para renomear ou apagar uma
+  conversa sem abri-la. Apagar a que está aberta leva a uma conversa nova.
+  Enquanto a Zuri escreve numa conversa, os dois itens dela ficam desligados.
+- **Conversa aberta.** O título, "Desde hoje, 08:12" (ou "Desde ontem" e
+  "Desde 02/11") e as mensagens, com uma linha a cada dia. Cada resposta leva
+  a marca da Zuri e a hora.
+- **Conversa anterior.** Uma conversa usada pela última vez antes de hoje
+  mostra, embaixo das mensagens, "Conversa anterior. Escrever aqui continua
+  esta conversa." e, quando existe uma conversa de hoje, o link para ela. O
+  aviso só explica: o campo continua funcionando.
+- **Campo de escrever.** Texto, microfone (onde o navegador grava) e
+  **Enviar**. Não há anexo de arquivo. O botão do microfone e a linha
+  "Gravando: 3 s de 60 s" vêm de um componente só
+  (`apps/web/src/pages/chat/VoiceInput.tsx`), para a gravação ser igual em
+  todo campo que aceitar voz.
+
 ## Um turno, do começo ao fim
 
 `apps/agent/src/agent/runner.ts` faz um turno inteiro:
@@ -180,6 +208,9 @@ essas rotas: só o navegador do dono.
   com um modelo roteirizado que obedece ao texto injetado.
 - `apps/agent/test/chat-routes.test.ts` e `ai-transcription.test.ts`: as rotas
   e a voz. `free-tier-budget.test.ts` mede as linhas lidas por rota.
+- `tests/e2e/conversa.spec.ts`: a lista, o menu de cada linha pelo teclado, o
+  aviso de conversa anterior, a lista no celular e o que rola na tela.
+  `apps/web/test/chat-when.test.ts`: as horas e as datas no fuso do dono.
 - `tests/e2e/chat.spec.ts` e `chat-voice.spec.ts`: a tela no navegador, com o
   modelo simulado (`call <ferramenta> {json}` chama uma ferramenta de verdade, e
   uma mensagem que começa com `slow ` volta uma palavra a cada 200 ms, para
