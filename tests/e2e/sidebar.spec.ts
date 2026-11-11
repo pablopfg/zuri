@@ -388,6 +388,8 @@ test("the groups fold with a short transition, and with none for who asks for le
       .locator("li, button[aria-expanded] > svg")
       .evaluateAll((items) => [...new Set(items.filter((item) => item.closest("nav")).map((item) => getComputedStyle(item).transitionDuration))]);
   expect(await durations()).toEqual(["0.2s"]);
+  // What moves is the row's height, with the place leaving sight at the end of it.
+  expect(await sidebar(page).locator("nav li").first().evaluate((item) => getComputedStyle(item).transitionProperty)).toBe("grid-template-rows, visibility");
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(await durations()).toEqual(["0s"]);
   await group(page, "Organizar").click();
