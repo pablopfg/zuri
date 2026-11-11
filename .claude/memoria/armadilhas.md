@@ -441,3 +441,18 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
 - Termo com `*` no FTS5 é prefixo: `"gravida"*` casa "gravidade". Em lista
   fixa de termos (`RESTRICTION_QUERY`), palavra inteira vai como frase, sem
   `*`, e frase do dia a dia ("não posso") fica de fora (10/11/2026).
+- Início do Sinal (S04): tirar os quatro ícones do `Greeting.tsx` (sob
+  demanda) fez o empacotador separar `createLucideIcon` do pacote inicial e o
+  JS inicial subir 0,3 kB. Saiu juntando o cumprimento ao `HomeBody.tsx` (um
+  `lazy()` só no `HomePage.tsx`). Antes de culpar o código novo, compare a
+  lista de pedaços do `dist/assets` com a da `develop`. A coluna do Início e
+  o espaço reservado do cumprimento são `.zuri-home*` no `styles.css`; a S04
+  fechou em 140.859 B (teto 140.900 B).
+- Relógio falso em tela com sessão: um salto de mais de uns 15 minutos sem
+  tecla nem toque encerra a sessão por falta de uso (o `SessionGuard` usa o
+  mesmo relógio). Dê saltos curtos e use o teclado entre eles (S04,
+  `inicio.spec.ts`).
+- Item que some de uma consulta ao mudar de estado (tarefa feita sai da lista
+  "hoje"): guarde a cópia local até a consulta refeita trazê-lo de volta ao
+  desmarcar. Sem isso a linha sumia por um instante e o foco ia embora (S04,
+  `DayCard.tsx`).

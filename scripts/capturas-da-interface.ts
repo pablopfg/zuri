@@ -20,6 +20,8 @@
  * - `painel-da-conta=/`: the account panel (a sheet on a phone), opened on that page.
  * - `folha-mais=/`: the "Mais" sheet of the phone's bottom bar (phone only).
  * - `menu-recolhido=/`: the side menu as a rail of icons, with one name showing (computer only).
+ * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
+ *   page's day and its line of now come out the same at any hour the script runs).
  * - `--exemplos`: fills the empty database with the sample data of
  *   dados-de-exemplo.ts first, so lists are not empty.
  */
@@ -38,7 +40,8 @@ if (!out) {
   process.exit(1);
 }
 const withSamples = args.includes("--exemplos");
-const pairs = args.filter((arg) => arg.includes("="));
+const clock = args.find((arg) => /^--relogio=\d\d:\d\d$/.test(arg))?.slice(10);
+const pairs = args.filter((arg) => arg.includes("=") && !arg.startsWith("--"));
 const screens = (pairs.length > 0 ? pairs : ["entrar=/entrar", "inicio=/"]).map((pair) => {
   // Split at the first "=" only: a path may carry a query (`lixeira=/configuracoes/dados?tipo=tarefas`).
   const at = pair.indexOf("=");
@@ -131,6 +134,8 @@ for (const [device, options] of [
         seeded = true;
       }
     }
+    // São Paulo is UTC-3 all year. Set after signing in: the session's own clocks started on the real hour.
+    if (clock && signedIn.length > 0) await page.clock.setFixedTime(new Date(`${new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })}T${clock}:00-03:00`));
     for (const screen of signedIn) {
       // Shots that exist on one size only.
       if (screen.name === "folha-mais" && device !== "celular") continue;

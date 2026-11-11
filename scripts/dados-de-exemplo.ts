@@ -29,6 +29,9 @@ export async function seed(page: Page, base: string): Promise<{ conversationId: 
   const projectId = created.project?.id ?? created.id;
   await post("/api/projects", { name: "Curso de fotografia" });
   await post("/api/tasks", { title: "Pagar a conta de luz", priority: "high", dueAt: dueIn(0) });
+  // For the home page's day: one late since yesterday and one with an hour in the afternoon.
+  await post("/api/tasks", { title: "Enviar documentos para a imobiliária", dueAt: `${dayIn(-1)}T21:00:00.000Z`, projectId });
+  await post("/api/tasks", { title: "Ligar para a transportadora", dueAt: `${dayIn(0)}T18:00:00.000Z`, projectId });
   await post("/api/tasks", { title: "Agendar a revisão do carro", dueAt: dueIn(2) });
   await post("/api/tasks", { title: "Pedir orçamento da mudança", priority: "urgent", dueAt: dueIn(1), projectId });
   await post("/api/tasks", { title: "Separar livros para doação", priority: "low", projectId, status: "in_progress" });

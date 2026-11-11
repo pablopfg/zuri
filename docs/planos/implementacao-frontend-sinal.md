@@ -227,7 +227,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | --- | --- |
 | S01 | mesclada (#261) |
 | S02 | mesclada (#265) |
-| S03 | em revisão |
+| S03 | mesclada (#267) |
+| S04 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -239,6 +240,18 @@ Diferenças da S03 para o que as tabelas previam, registradas aqui para as PRs s
 - Os textos da linha não são os da tabela do protótipo palavra por palavra: passaram pelo lint de microcopy e pelo glossário ("Recarregar a verificação", "Verificação de segurança concluída").
 - A aba do navegador da tela de erro diz "Esta tela parou", o mesmo do título. "Algo deu errado" é barrado pelo lint de microcopy.
 - Pausa de uma hora ou mais mostra horas ("23:59:59"). Um leitor de tela ouve a pausa uma vez, com o tempo do início; a contagem na tela anda em silêncio.
+
+Diferenças da S04 para o que as tabelas previam:
+
+- A frase sob o cumprimento continua sendo a da Zuri, que muda a cada dia (decisão de 31/10). O resumo do dia do protótipo ("Quatro tarefas hoje, uma delas atrasada") depende do servidor da S22 e entra com ela.
+- As três ideias sob o campo continuam fixas até a S22. O microfone do campo entra na S07, quando o `useVoice` vai para uma pasta comum.
+- "Precisa de você" não entrou: a lista de planos esperando revisão não tem rota. A rotina que espera aprovação aparece em "Seu dia", como a primeira das pendentes, com "Revisar".
+- O nome da pasta sob a tarefa não aparece (custaria mais uma leitura ao abrir o Início). O evento mostra o lugar.
+- Das tarefas atrasadas de outros dias aparecem as três mais antigas, com "Mais N em Tarefas": uma fila longa não empurra o dia de hoje para baixo. As pendentes de hoje aparecem todas.
+- O cumprimento e o resto do Início passaram a vir num pedaço só. Com dois, tirar os ícones do cumprimento fazia o empacotador separar a fábrica de ícones do pacote inicial (mais 0,3 kB).
+- A rotina do dia aparece até rodar. Depois disso o servidor já aponta a próxima execução e ela sai da lista, sem passar pela cortina (o histórico fica em Rotinas).
+- O evento aparece enquanto um pedaço dele cai entre 08:00 e 18:00, e o que está pendente aparece a qualquer hora (achados da revisão de QA): a regra do protótipo, só pela hora de início, escondia a reunião em andamento que começou às 07:30.
+- O alvo de toque das marcas, das ideias e dos botões da lista é de 44 px (critério 5), maior que o do protótipo.
 
 ## 12. Riscos
 

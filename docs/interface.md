@@ -145,11 +145,24 @@ menus nunca saem da tela.
   "Cancelar", também nas confirmações que abrem no lugar, sem diálogo. Essas
   ficam num `fieldset` ligado à pergunta, para o leitor de tela dizer a
   pergunta junto com os botões.
-- **Início:** abaixo do cumprimento, um campo "Escreva para a Zuri" (abre
-  uma conversa nova com o texto, que vai uma vez só pelo `state` da
-  navegação), três ideias para começar e dois cartões: Hoje (com as
-  atrasadas marcadas) e Próximos dias (agrupados por dia no fuso do dono).
-  Tudo isso vem sob demanda (`pages/home/HomeBody.tsx`, `pt-BR-home.ts`).
+- **Início:** numa coluna estreita, o dia por extenso e o cumprimento, um
+  campo "Escreva para a Zuri" (abre uma conversa nova com o texto, que vai uma
+  vez só pelo `state` da navegação; Enter envia, Shift+Enter quebra a linha),
+  três ideias para começar, "Seu dia" e "Próximos dias". Tudo isso vem sob
+  demanda, num pedaço só (`pages/home/HomeBody.tsx`, `pt-BR-home.ts`).
+- **Seu dia:** as tarefas de hoje, os eventos do Google Agenda (quando
+  conectado) e as rotinas do dia numa lista só, em volta da linha de agora
+  (`lib/day.ts`, `pages/home/DayCard.tsx`). Mostra das 08:00 às 18:00; o resto
+  fica atrás de "N fora das 08:00 às 18:00 · Mostrar" (a janela passa a vir de
+  Configurações › Agenda na S08). O que já passou e não pede nada vai para a
+  cortina "N já passaram", fechada até alguém abrir. Tarefa que passou da
+  hora, tarefa atrasada de outros dias (as três mais antigas, com "Mais N em
+  Tarefas") e rotina esperando aprovação ficam em cima, com o contador "N
+  pendentes". O evento em andamento ganha "Agora". Marcar uma tarefa salva na
+  hora e a leva para a cortina como "Feito"; desmarcar desfaz. A lista se
+  refaz a cada 30 segundos só com o relógio do navegador, sem chamar a API, e
+  devolve o foco à linha em que ele estava; se a linha foi para trás da
+  cortina fechada, o foco vai para o botão da cortina.
 - **Cumprimento no Início:** no lugar do `PageHeader`, a Zuri cumprimenta pelo
   horário do fuso das configurações (nunca o do aparelho): bom dia das 5h às
   12h, boa tarde até 18h e boa noite depois, com frases próprias de madrugada.

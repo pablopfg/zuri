@@ -54,7 +54,7 @@ de um Durable Object e conversa com você pelo navegador e pelo Telegram.
     <td width="50%" valign="top">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/capturas/inicio-computador-escuro.png">
-        <img src="docs/capturas/inicio-computador-claro.png" alt="Início da Zuri no computador, com o cumprimento pelo horário, a barra lateral e os cartões do dia">
+        <img src="docs/capturas/inicio-computador-claro.png" alt="Início da Zuri no computador, com o cumprimento pelo horário, a barra lateral e o seu dia">
       </picture>
       <p align="center"><b>Início</b></p>
     </td>
@@ -122,7 +122,7 @@ de um Durable Object e conversa com você pelo navegador e pelo Telegram.
 | | Área | O que faz |
 | :---: | --- | --- |
 | 🔑 | **Entrar e proteger a conta** | Primeiro acesso com código de instalação, senha forte, Turnstile em todo login, 2FA (autenticador e 10 códigos de recuperação), passkeys, sessões que expiram, "Esqueci minha senha" por e-mail e a página **Acessos**, com cada tentativa de entrar. |
-| 🧭 | **Interface** | PWA em pt-BR e inglês, tema claro, escuro ou do sistema, menu lateral recolhível em três grupos, menu de baixo no celular, paleta de comandos (Ctrl/⌘ K) e atualização em tempo real do que muda em qualquer aparelho. O Início cumprimenta pelo horário do seu fuso. |
+| 🧭 | **Interface** | PWA em pt-BR e inglês, tema claro, escuro ou do sistema, menu lateral recolhível em três grupos, menu de baixo no celular, paleta de comandos (Ctrl/⌘ K) e atualização em tempo real do que muda em qualquer aparelho. O Início cumprimenta pelo horário do seu fuso e mostra "Seu dia": tarefas, eventos e rotinas de hoje em volta da linha de agora. |
 | 💬 | **Conversa com ferramentas** | A Zuri cria e organiza tarefas, notas, memórias e eventos; o que apaga ou reescreve vira um cartão para você aprovar. Entende datas como "sexta que vem" e aceita voz. |
 | ✅ | **Tarefas, notas e memória** | Tarefas com prazo e prioridade, notas em Markdown com busca sem acento, memória com histórico e fila de conflitos, lixeira de 30 dias e busca pelo significado opcional. |
 | 📊 | **IA sob controle** | Workers AI com teto de 9.000 Neurons por dia, modelo reserva grátis e agentes com regras fixas de segurança. Claude ou GPT só com a sua chave, senha e teto em US$ ⚠️. |
