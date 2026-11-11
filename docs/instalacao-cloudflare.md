@@ -254,7 +254,6 @@ e-mail. É gratuito para até 50 pessoas.
    | --- | --- | --- |
    | `api/telegram/webhook` | o Telegram (bot) | cabeçalho secreto derivado do `SESSION_SECRET`, só POST, sem cookie |
    | `api/google/push` | o Google (agenda em tempo real) | token do canal derivado do `SESSION_SECRET`, sem cookie |
-   | `api/crm/events/*` | o n8n (eventos do CRM) | assinatura HMAC do corpo e do instante |
 
    O caminho mais específico vence: o resto da Zuri continua atrás do Access.
    Crie só os que você usa. O `/aprovar` do bot **não** ganha exceção.
@@ -264,7 +263,7 @@ e-mail. É gratuito para até 50 pessoas.
 5. Rode o deploy. Numa janela anônima, `https://zuri.exemplo.com.br` deve
    pedir o seu e-mail antes de mostrar a Zuri.
 
-Scripts e o n8n com tokens de acesso remoto também passam pelo Access, com um
+Scripts com tokens de acesso remoto também passam pelo Access, com um
 *Service Token*: [acesso-remoto.md](acesso-remoto.md).
 
 ### Bot do Telegram

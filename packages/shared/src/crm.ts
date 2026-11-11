@@ -1,18 +1,17 @@
 /**
  * The internal CRM (step 22b): the owner's clients with tags, a stage of the
- * funnel, notes, a history and a follow-up, fed by the screen, the chat and
- * the events n8n signs and sends. No Zod here: the interface imports this file
+ * funnel, notes, a history and a follow-up, fed by the screen and the chat.
+ * No Zod here: the interface imports this file
  * and Zod stays out of its first load (rule P11); the schemas are in
  * crm-schemas.ts.
  *
  * Clients' data may be sensitive (health, under the LGPD): it never goes to a
  * log, reaches the model only inside `<data source="crm">`, and Zuri never
- * sends a client anything (messages stay in n8n, the owner's decision of
- * 02/11/2026).
+ * sends a client anything (the owner's decision of 02/11/2026).
  */
 
 export const CRM_LIMITS = {
-  /** Clients kept; one more is refused (screen, chat and events alike). */
+  /** Clients kept; one more is refused (screen and chat alike). */
   clients: 5_000,
   name: 120,
   phone: 32,
@@ -31,25 +30,13 @@ export const CRM_LIMITS = {
   historyPerClient: 100,
   historyText: 500,
   followUpNote: 200,
-  /** The client's id in the system n8n talks to (a Chatwoot contact id, say). */
+  /** A client's id in another system: only kept by clients that came from outside (a backup brings it back). */
   ref: 100,
-  /** One event's body, as signed. */
-  eventBodyBytes: 16 * 1024,
-  eventId: 100,
-  /** Events accepted per UTC hour and per UTC day. */
-  eventsPerHour: 300,
-  eventsPerDay: 1_000,
-  /** How far the signature's time may be from Zuri's clock. */
-  signatureWindowMs: 5 * 60_000,
-  /** How long an event's id is remembered, so a repeat writes nothing. */
-  dedupeMs: 7 * 24 * 3_600_000,
   /** A page of the clients' list. */
   page: 50,
   query: 100,
   /** Follow-up notices per wake of the alarm; the rest go in one notice. */
   followUpsPerWake: 10,
-  /** Notices of new clients from n8n per day; the rest only show on the screen. */
-  newClientNoticesPerDay: 20,
   /** Names in one birthday notice. */
   namesPerNotice: 5,
   /** Results of search_clients and history entries get_client shows. */
@@ -59,12 +46,6 @@ export const CRM_LIMITS = {
   drafts: 5,
   draftMs: 7 * 24 * 3_600_000,
 } as const;
-
-/** Where the signed events arrive: the key (16 random bytes, base64url) follows. Not secret; the HMAC is. */
-export const CRM_EVENTS_PATH = "/api/crm/events/";
-export const CRM_EVENTS_KEY = /^[A-Za-z0-9_-]{22}$/;
-export const CRM_TIMESTAMP_HEADER = "x-zuri-timestamp";
-export const CRM_SIGNATURE_HEADER = "x-zuri-signature";
 
 /** What fills a client's history. */
 export const CRM_HISTORY_KINDS = [
@@ -80,10 +61,6 @@ export const CRM_HISTORY_KINDS = [
   "appointment",
 ] as const;
 export type CrmHistoryKind = (typeof CRM_HISTORY_KINDS)[number];
-
-/** What an `activity` event may say happened. */
-export const CRM_ACTIVITY_KINDS = ["message_in", "message_out", "conversation_opened", "conversation_closed", "appointment", "note"] as const;
-export type CrmActivityKind = (typeof CRM_ACTIVITY_KINDS)[number];
 
 export const CRM_FOLLOW_UP_FILTERS = ["overdue", "today", "week", "any"] as const;
 export type CrmFollowUpFilter = (typeof CRM_FOLLOW_UP_FILTERS)[number];
@@ -109,7 +86,7 @@ export interface CrmClientSummary {
   phone: string | null;
   email: string | null;
   followUp: CrmFollowUp | null;
-  /** "app" or "n8n": who made it. */
+  /** Who made it. "n8n" only on clients kept from before 11/11/2026, when Zuri still took n8n's events. */
   source: "app" | "n8n";
   lastActivityAt: string | null;
   updatedAt: string;
@@ -150,16 +127,6 @@ export interface CrmSettings {
   /** Notices of follow-ups that come due. */
   followUps: boolean;
   birthdays: boolean;
-  /** A notice for each client n8n adds (up to 20 a day). */
-  newClients: boolean;
-}
-
-export interface CrmEventsStatus {
-  enabled: boolean;
-  /** The address n8n posts to (PUBLIC_URL + path + key), when on. */
-  url: string | null;
-  lastEventAt: string | null;
-  today: number;
 }
 
 export interface CrmOverview {
@@ -167,14 +134,7 @@ export interface CrmOverview {
   tags: string[];
   summary: CrmSummary;
   settings: CrmSettings;
-  events: CrmEventsStatus;
   limits: { clients: number };
-}
-
-/** What turning the events on answers: the secret shows this once, never again. */
-export interface CrmEventsKey {
-  url: string;
-  secret: string;
 }
 
 /** A flow the chat suggested (step 22b), waiting for the owner on the Flows tab. */

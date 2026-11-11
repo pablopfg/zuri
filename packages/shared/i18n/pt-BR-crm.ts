@@ -1,28 +1,8 @@
-// The pt-BR texts of the internal CRM's two cards on the CRM page (step 22b; the Clients tab
-// left with the Sinal, S10): its notices and n8n's events. They come with the page, on demand (rule P11).
+// The pt-BR texts of the internal CRM's card on the CRM page (step 22b; the Clients tab
+// left with the Sinal, S10): its notices. They come with the page, on demand (rule P11).
 export const ptBRCrm = {
   "web.crm.settings.title": "Avisos do CRM",
   "web.crm.settings.body": "O que a Zuri avisa sobre os seus clientes, pelos canais da central de avisos.",
   "web.crm.settings.followUps": "Quando chegar a hora de um retorno",
   "web.crm.settings.birthdays": "Aniversários de clientes, às 9 h",
-  "web.crm.settings.newClients": "Cliente novo vindo do n8n (até 20 por dia)",
-  "web.crm.events.title": "Eventos do n8n",
-  "web.crm.events.body": "O n8n manda à Zuri clientes novos, mensagens, agendamentos e retornos, cada evento assinado com um segredo. Até 300 por hora e 1.000 por dia.",
-  "web.crm.events.off": "Desligados. Ao ligar, a Zuri mostra o endereço e o segredo uma única vez.",
-  "web.crm.events.turnOn": "Ligar eventos",
-  "web.crm.events.turnOff": "Desligar",
-  "web.crm.events.turnedOff": "Eventos do n8n desligados",
-  "web.crm.events.rotate": "Trocar segredo",
-  "web.crm.events.url": "Endereço",
-  "web.crm.events.last": "Último evento {when} · {count} hoje",
-  "web.crm.events.none": "Nenhum evento recebido ainda.",
-  "web.crm.events.passwordNote": "Ligar e trocar o segredo pedem a sua senha se você não a digitou nos últimos 15 minutos.",
-  "web.crm.events.secretTitle": "Endereço e segredo do n8n",
-  "web.crm.events.secretOnce": "Guarde agora: o segredo não aparece de novo. O anterior, se havia um, parou de valer.",
-  "web.crm.events.secret": "Segredo",
-  "web.crm.events.copyUrl": "Copiar endereço",
-  "web.crm.events.copySecret": "Copiar segredo",
-  "web.crm.events.copied": "Copiado",
-  "web.crm.events.howTo": "No n8n, assine cada evento com HMAC SHA-256 e mande os cabeçalhos X-Zuri-Timestamp e X-Zuri-Signature. O passo a passo está no guia do CRM, em docs/crm.md.",
-  "web.crm.events.done": "Já guardei",
 } as const;

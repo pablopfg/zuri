@@ -357,21 +357,10 @@ describe("notices", () => {
       expect(notices[0]).toMatchObject({ names: "P0, P1, P2, P3, P4", more: 2 });
     }));
 
-  it("tells up to 20 new clients from n8n a day, and none while off", () =>
-    withCrm(({ crm, notices, clock }) => {
-      // The owner's day: 20 at 20:30 in São Paulo, and none more at 21:30 (already the next day in UTC).
-      clock.now = Date.parse("2026-11-03T23:30:00.000Z");
-      for (let i = 0; i < 20; i++) crm.announceNew({ id: `id${i}`, name: `N${i}` });
-      clock.now = Date.parse("2026-11-04T00:30:00.000Z");
-      for (let i = 20; i < 22; i++) crm.announceNew({ id: `id${i}`, name: `N${i}` });
-      expect(notices).toHaveLength(CRM_LIMITS.newClientNoticesPerDay);
-      clock.now = Date.parse("2026-11-04T03:30:00.000Z");
-      crm.announceNew({ id: "next-day", name: "Amanhã" });
-      expect(notices).toHaveLength(CRM_LIMITS.newClientNoticesPerDay + 1);
-      notices.length = CRM_LIMITS.newClientNoticesPerDay;
-      crm.updateSettings({ newClients: false });
-      notices.length = 0;
-      crm.announceNew({ id: "x", name: "x" });
-      expect(notices).toEqual([]);
+  it("makes every client the owner's own: no writer marks one as come from outside", () =>
+    withCrm(({ crm }) => {
+      expect(crm.create({ name: "Ana" }, "app").source).toBe("app");
+      expect(crm.create({ name: "Bia" }, "chat").source).toBe("app");
+      expect(crm.settings()).toEqual({ followUps: true, birthdays: true });
     }));
 });

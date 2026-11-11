@@ -353,7 +353,7 @@ function registeredRoutes(): string[] {
 const NEVER = ["/api/auth", "/api/setup", "/api/telegram", "/api/approvals", "/api/lockdown", "/api/actions", "/api/plans", "/api/chat", "/api/flows", "/api/crm", "/api/remote/tokens", "/api/backup", "/api/mcp", "/api/google", "/api/reviews", "/api/settings", "/api/trash", "/api/alerts", "/api/semantic", "/api/search", "/api/ai"];
 
 /** Paths the Worker answers before the object (src/index.ts): a token there never reaches the API. */
-const WORKER_ANSWERS = ["/api/google/push", "/api/crm/events/"];
+const WORKER_ANSWERS = ["/api/google/push"];
 
 describe("the walk over every registered route", () => {
   it("no token reaches the forbidden areas, read gets 403 on every write, and only the allowed routes run", async () => {
@@ -386,13 +386,9 @@ describe("the walk over every registered route", () => {
         }
         const res = await bearer(token, method, concrete, method === "GET" || method === "HEAD" ? undefined : {});
         if (WORKER_ANSWERS.some((prefix) => concrete.startsWith(prefix))) {
-          // The Worker answers these itself and never forwards a token: Google's push gets an empty 200, n8n's events their own 404.
-          if (concrete.startsWith("/api/google/push")) {
-            expect(res.status, `${scope} ${route}`).toBe(200);
-            expect(await res.text(), `${scope} ${route}`).toBe("");
-          } else {
-            expect(res.status, `${scope} ${route}`).toBe(404);
-          }
+          // The Worker answers these itself and never forwards a token: Google's push gets an empty 200.
+          expect(res.status, `${scope} ${route}`).toBe(200);
+          expect(await res.text(), `${scope} ${route}`).toBe("");
           continue;
         }
         if (remoteAllowed(scope, method, concrete)) {
