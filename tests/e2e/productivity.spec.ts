@@ -310,9 +310,17 @@ test("a note that could not be saved says so, keeps the text, asks before leavin
   await page.route(`**/api/notes/${note.id}`, (route) => (route.request().method() === "PATCH" ? route.abort() : route.fallback()));
   await page.getByLabel("Texto da nota").fill("isto se perde");
   await page.locator("aside").getByRole("link", { name: "Tarefas" }).click();
+  await expect(leave).toBeVisible();
+  // The network is back before the choice: thrown away means no last try when the editor closes.
+  await page.unroute(`**/api/notes/${note.id}`);
+  let late = 0;
+  page.on("request", (request) => {
+    if (request.method() === "PATCH" && request.url().endsWith(`/api/notes/${note.id}`)) late += 1;
+  });
   await leave.getByRole("button", { name: "Sair sem salvar" }).click();
   await expect(page).toHaveURL(/\/tarefas$/);
-  await page.unroute(`**/api/notes/${note.id}`);
+  await page.clock.runFor(35_000);
+  expect(late).toBe(0);
   const kept = (await (await page.request.get(`/api/notes/${note.id}`, { headers: CSRF })).json()) as { note: { content: string } };
   expect(kept.note.content).toBe("ideia que ainda não foi salva");
 });

@@ -68,3 +68,41 @@ test("a note takes dictation at the end of its text, wherever the cursor is, and
   expect(((await saved).request().postDataJSON() as { content: string }).content).toMatch(/Segunda linha\.\n\n\(Transcrição simulada\)/);
   await expect(page.getByText(/^Salva às \d{2}:\d{2}$/)).toBeVisible();
 });
+
+test("a dictation that ends after the owner left the note is dropped: nothing is saved behind their back", async ({ page }) => {
+  await page.goto("/notas");
+  await signIn(page);
+  await expect(page.getByRole("heading", { level: 1, name: "Notas" })).toBeVisible();
+  const made = await page.request.post("/api/notes", { headers: CSRF, data: { title: `Ditado tardio ${Date.now()}`, content: "Só isto." } });
+  const { note } = (await made.json()) as { note: { id: string } };
+  await page.goto(`/notas/${note.id}`);
+  await expect(page.getByLabel("Texto da nota")).toHaveValue("Só isto.");
+  // The transcription is held until the owner is on another screen.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/transcribe", async (route) => {
+    await held;
+    await route.fallback();
+  });
+  let saves = 0;
+  page.on("request", (request) => {
+    if (request.method() === "PATCH" && request.url().endsWith(`/api/notes/${note.id}`)) saves += 1;
+  });
+  await page.getByRole("button", { name: "Ditar na nota" }).click();
+  await expect(page.getByText(/Gravando: [12] s de 60 s/)).toBeVisible();
+  await page.getByRole("button", { name: "Parar e transcrever" }).click();
+  await expect(page.getByText("Transcrevendo")).toBeVisible();
+  // Inside the app (a reload would cancel the request by itself).
+  await page.getByRole("link", { name: "Tarefas" }).filter({ visible: true }).first().click();
+  await expect(page.getByRole("heading", { level: 1, name: "Tarefas" })).toBeVisible();
+  const transcribed = page.waitForResponse((r) => r.url().endsWith("/api/transcribe")).catch(() => null);
+  release();
+  await transcribed;
+  await page.waitForTimeout(4_000);
+  expect(saves).toBe(0);
+  await expect(page).toHaveURL(/\/tarefas$/);
+  const kept = (await (await page.request.get(`/api/notes/${note.id}`, { headers: CSRF })).json()) as { note: { content: string } };
+  expect(kept.note.content).toBe("Só isto.");
+});

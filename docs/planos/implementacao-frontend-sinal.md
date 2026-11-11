@@ -317,3 +317,4 @@ Diferenças da S07 para o que as tabelas previam:
 - O microfone é um componente só, em `components/voice/`, para a Conversa, o Início e a nota. Na nota ele fica no corpo; título e busca não têm (decisão de 10/11).
 - O ícone de pasta sai de `pages/productivity/shared.tsx` e o estado "esperando sua escolha" usa o ícone de histórico: um ícone que só duas telas sob demanda dividem vira um pedaço novo e pesa no primeiro carregamento (regra P11).
 - O alvo de toque dos botões é de 44 px (critério 5), maior que o do protótipo.
+- Achados da revisão de QA e da auditoria, corrigidos nesta PR: "Manter a minha" grava a versão inteira da tela (SEC-S07-01); o editor fechado não navega nem salva um ditado que termina depois; a lixeira não recebe a nota quando o salvamento pendente falha. Ficou aberto (baixo): nota apagada em outro lugar com o editor aberto deixa só "Tentar de novo" e sair sem salvar.

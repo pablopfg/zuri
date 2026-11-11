@@ -34,6 +34,8 @@ export function NotesPage() {
   const { t } = useI18n();
   const [dirty, setDirty] = useState(false);
   const guard: Guard = useRef(null);
+  // "Sair sem salvar" was chosen: the editor that closes next throws its pending text away instead of trying once more.
+  const dropped = useRef(false);
   const blocker = useBlocker(({ currentLocation, nextLocation }) => shouldAskBeforeLeaving(dirty, currentLocation, nextLocation));
   // The way out is held only while the pending text is saved; the question shows when that save was refused.
   const [stuck, setStuck] = useState(false);
@@ -41,6 +43,7 @@ export function NotesPage() {
   useEffect(() => {
     if (blocker.state !== "blocked") {
       setStuck(false);
+      dropped.current = false;
       return;
     }
     let current = true;
@@ -82,7 +85,7 @@ export function NotesPage() {
             {/* Alone on a narrow screen the editor is the page; beside the list, the list's heading is. */}
             <h1 className="sr-only lg:hidden">{heading}</h1>
             <h2 className="sr-only hidden lg:block">{heading}</h2>
-            <NoteSlot key={slot} id={id === "nova" ? undefined : id} onDirty={setDirty} onBorn={onBorn} guard={guard} />
+            <NoteSlot key={slot} id={id === "nova" ? undefined : id} onDirty={setDirty} onBorn={onBorn} guard={guard} dropped={dropped} />
           </>
         ) : (
           <EmptyState icon={<NotebookPen className="h-6 w-6" />} title={t("web.notes.selectTitle")}>
@@ -96,7 +99,13 @@ export function NotesPage() {
           <Button variant="secondary" onClick={() => blocker.reset?.()}>
             {t("web.notes.keepEditing")}
           </Button>
-          <Button variant="danger" onClick={() => blocker.proceed?.()}>
+          <Button
+            variant="danger"
+            onClick={() => {
+              dropped.current = true;
+              blocker.proceed?.();
+            }}
+          >
             {t("web.notes.discard")}
           </Button>
         </div>
@@ -215,6 +224,7 @@ interface EditorProps {
   onDirty: (dirty: boolean) => void;
   onBorn: (id: string) => void;
   guard: Guard;
+  dropped: { current: boolean };
 }
 
 /** The editor of one address. A new note starts at once; a saved one waits for its text. */
@@ -236,7 +246,7 @@ interface Draft {
 const draftOf = (note?: Note): Draft => ({ title: note?.title ?? "", content: note?.content ?? "", projectId: note?.projectId ?? "" });
 const sameDraft = (a: Draft, b: Draft) => a.title === b.title && a.content === b.content && a.projectId === b.projectId;
 
-function NoteEditor({ note, onDirty, onBorn, guard }: EditorProps & { note: Note | undefined }) {
+function NoteEditor({ note, onDirty, onBorn, guard, dropped }: EditorProps & { note: Note | undefined }) {
   const { t, locale, timeZone, dateTime } = useI18n();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -260,6 +270,8 @@ function NoteEditor({ note, onDirty, onBorn, guard }: EditorProps & { note: Note
   const untitled = t("web.notes.untitled");
 
   // One save: the first creates the note, the next ones send only what changed. Kept in a ref so the saver always calls the newest.
+  // The editor closed: a save or a dictation that ends later moves nothing on the screen the owner went to.
+  const gone = useRef(false);
   const save = useRef(async (_next: Draft) => {});
   save.current = async (next) => {
     // A note needs a title on the server; an empty field is saved under a plain one and stays empty here.
@@ -289,7 +301,7 @@ function NoteEditor({ note, onDirty, onBorn, guard }: EditorProps & { note: Note
       if (creating) {
         onBorn(saved.id);
         // The address follows the note, unless the owner is already on the way out.
-        if (!leaving.current) navigate(`/notas/${saved.id}`, { replace: true, state: EDITOR_DONE });
+        if (!leaving.current && !gone.current) navigate(`/notas/${saved.id}`, { replace: true, state: EDITOR_DONE });
       }
     } catch (failure) {
       inFlight.current = false;
@@ -361,11 +373,15 @@ function NoteEditor({ note, onDirty, onBorn, guard }: EditorProps & { note: Note
       if (document.visibilityState === "hidden") void saver.flush();
     };
     document.addEventListener("visibilitychange", hidden);
+    gone.current = false;
     return () => {
       document.removeEventListener("visibilitychange", hidden);
-      void saver.flush();
+      gone.current = true;
+      // Thrown away on purpose ("Sair sem salvar"): no last try. Otherwise one.
+      if (dropped.current) saver.dispose();
+      else void saver.flush();
     };
-  }, [saver]);
+  }, [saver, dropped]);
 
   // Closing the tab with text that has not been saved yet asks first.
   useEffect(() => {
@@ -379,6 +395,8 @@ function NoteEditor({ note, onDirty, onBorn, guard }: EditorProps & { note: Note
   const voice = useVoice(
     useCallback(
       (said: string) => {
+        // A transcription that ends after the owner left this note is dropped: nobody would see where it went.
+        if (gone.current) return;
         change({ content: appendDictation(latest.current.content, said) });
         setTab("write");
         setDictated((count) => count + 1);
@@ -397,7 +415,11 @@ function NoteEditor({ note, onDirty, onBorn, guard }: EditorProps & { note: Note
     setDeleting(true);
     setError(null);
     // The trash keeps the note as it is on the screen; after that nothing more is saved.
-    await saver.flush();
+    if (!(await saver.flush())) {
+      // The save was refused (the line above says why): the note stays, so the trash never keeps an older text.
+      setDeleting(false);
+      return;
+    }
     saver.hold(true);
     try {
       const { trashItem } = await api<{ trashItem: TrashItem }>(`/notes/${id}`, { method: "DELETE" });
@@ -449,6 +471,8 @@ function NoteEditor({ note, onDirty, onBorn, guard }: EditorProps & { note: Note
               variant="ghost"
               onClick={() => {
                 // The owner's text stays: it is saved now, over the version they chose not to take.
+                // The next save is compared with what the server has now, so every field of this version goes, not only the one typed here (SEC-S07-01).
+                sent.current = draftOf(newer);
                 version.current = newer.updatedAt;
                 setBase(newer.updatedAt);
                 saver.hold(false);

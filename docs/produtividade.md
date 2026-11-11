@@ -170,13 +170,19 @@ Não existe botão Salvar. A regra fica em `apps/web/src/lib/autosave.ts`
 - Se a nota mudou em outro lugar enquanto o dono digitava, o servidor recusa
   (`409`, acima), o salvamento automático para e a tela oferece **Ver a
   versão nova** ou **Manter a minha**. Nada é sobrescrito sem essa escolha.
+  "Manter a minha" grava a versão inteira da tela (título, texto e pasta), não
+  só o campo digitado.
+- "Sair sem salvar" joga fora o que estava pendente: o editor que fecha não
+  tenta de novo. Mover para a lixeira salva antes; se esse salvamento falhar,
+  a nota não vai para a lixeira e a linha de estado diz o motivo.
 - Custo (regra P4): cada salvamento grava 6 linhas (7 ao criar), medido em
   `free-tier-budget.test.ts`. Digitando sem parar por uma hora, são no máximo
   1.440 salvamentos pela espera de 2,5 s; no uso comum, bem menos.
 
 O microfone da nota (**Ditar na nota**) usa o mesmo componente da Conversa e
 do Início (`components/voice/`). O que foi dito entra no fim do texto, numa
-linha nova, e é salvo como qualquer digitação. Título e busca não têm
+linha nova, e é salvo como qualquer digitação. Se a transcrição termina
+depois que o dono saiu da nota, o texto é descartado. Título e busca não têm
 microfone (decisão de 10/11/2026). O menu "Mais opções" baixa a nota em
 Markdown (arquivo montado no navegador) e move para a lixeira.
 

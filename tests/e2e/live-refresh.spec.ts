@@ -142,7 +142,7 @@ test("a note changed elsewhere while being edited keeps what was typed and offer
   });
 
   // The other device saves first; this one types and its own save, a moment later, is refused (Sinal, PR S07).
-  const changed = await page.request.patch(`/api/notes/${note.id}`, { headers: CSRF, data: { content: "versão do outro aparelho" } });
+  const changed = await page.request.patch(`/api/notes/${note.id}`, { headers: CSRF, data: { title: `${title} de fora`, content: "versão do outro aparelho" } });
   expect(changed.status()).toBe(200);
   await editor.fill("o que eu escrevi");
   await page.clock.runFor(5_000);
@@ -163,6 +163,9 @@ test("a note changed elsewhere while being edited keeps what was typed and offer
   await expect(editor).toHaveValue("o que eu escrevi");
   await expect(page.getByText(/^Salva às \d{2}:\d{2}$/)).toBeVisible();
   expect(saves).toEqual([409, 200]);
+  // SEC-S07-01: all of this editor's version stays, the title the other device changed too, not only the field typed here.
+  const kept = ((await (await page.request.get(`/api/notes/${note.id}`, { headers: CSRF })).json()) as { note: Note }).note;
+  expect([kept.title, kept.content]).toEqual([title, "o que eu escrevi"]);
 
   // Again, and this time the new version is taken: nothing of this editor is saved over it.
   await page.request.patch(`/api/notes/${note.id}`, { headers: CSRF, data: { content: "terceira versão" } });
