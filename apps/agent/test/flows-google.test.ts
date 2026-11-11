@@ -403,6 +403,25 @@ describe("finding contacts", () => {
     });
   });
 
+  it("QA-CN-08: a flow gets the six fields of a contact and nothing else: no CPF, photo or note", async () => {
+    await withFlowWorld(async (world) => {
+      // Sorts first in the label, and has all a flow must not see.
+      world.googleSim.people.add({
+        resourceName: "people/c0",
+        names: [{ displayName: "Aline Prado / Paciente" }],
+        phoneNumbers: [{ value: "(11) 99999-0001" }],
+        birthdays: [{ date: { year: 1990, month: 4, day: 2 } }],
+        userDefined: [{ key: "CPF", value: "529.982.247-25" }],
+        photos: [{ url: "https://lh3.googleusercontent.com/contacts/aline" }],
+        memberships: [{ contactGroupMembership: { contactGroupResourceName: CLIENTS } }],
+      });
+      await contactsOn(world);
+      const flow = await world.flows.create({ name: "Campos", definition: manual([search({ label: CLIENTS, limit: 1 }), tell("{{name}}", "[{{cpf}}{{photo}}{{note}}{{birthdayFull}}] {{phone}}")]) });
+      await world.flows.runNow(flow.id);
+      expect(world.notices[0]).toMatchObject({ title: "Aline Prado", body: "[] (11) 99999-0001" });
+    });
+  });
+
   it("stops when the contacts are off", async () => {
     await withFlowWorld(async (world) => {
       const flow = await world.flows.create({ name: "Desligado", definition: manual([search()]) });

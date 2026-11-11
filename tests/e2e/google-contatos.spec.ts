@@ -39,17 +39,20 @@ async function turnOn(page: Page) {
   await expect(page.getByRole("status").filter({ hasText: "Contatos ligados." })).toBeVisible();
   // The code never stays in the address or the history.
   await expect(page).toHaveURL(/\/configuracoes\/integracoes$/);
-  await contacts.getByRole("button", { name: "Sincronizar agora" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Contatos sincronizados" })).toBeVisible();
+  // The first setup: the labels come from Google at once, and nothing is copied (nor is there anything
+  // to sync) before the owner chooses.
+  await expect(contacts.getByText("Escolha abaixo as etiquetas que a Zuri copia. Nenhum contato é copiado antes disso.")).toBeVisible();
+  await expect(contacts.getByRole("button", { name: "Sincronizar agora" })).toBeDisabled();
   return contacts;
 }
 
 test("turns the contacts on, copies one label and searches the copy on the Contacts screen; accessible @mobile", async ({ page }) => {
   const contacts = await turnOn(page);
   // Google's own groups ("myContacts") are never offered; nothing is copied before a label is chosen.
-  await expect(contacts.getByRole("checkbox")).toHaveCount(4);
+  await expect(contacts.getByRole("checkbox")).toHaveCount(5);
+  await expect(contacts.getByRole("checkbox", { checked: true })).toHaveCount(0);
   await expect(contacts.getByText("myContacts")).toHaveCount(0);
-  await expect(contacts.getByText(/· nenhum contato copiado ainda$/)).toBeVisible();
+  expect(((await (await page.request.get("/api/contacts", { headers: CSRF })).json()) as { contacts: unknown[] }).contacts).toEqual([]);
   await contacts.getByRole("checkbox", { name: /^Clientes/ }).check();
   await contacts.getByRole("button", { name: "Salvar etiquetas" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Etiquetas salvas" })).toBeVisible();
@@ -103,6 +106,8 @@ test("the owner picks how often the contacts are read, within 5 minutes and a da
   const contacts = await turnOn(page);
   // The interval outlives turning the contacts off: whatever an earlier run left, this one starts from 5.
   expect((await page.request.patch("/api/google/contacts/settings", { headers: CSRF, data: { syncEveryMinutes: 5 } })).status()).toBe(200);
+  // A first read (with no label chosen it copies nobody), so there is a next one to tell of.
+  expect((await page.request.post("/api/google/contacts/sync", { headers: CSRF, data: {} })).status()).toBe(200);
   await page.reload();
   const every = contacts.getByRole("spinbutton", { name: "Sincronizar a cada (minutos)" });
   await expect(every).toHaveValue("5");
@@ -128,6 +133,26 @@ test("the owner picks how often the contacts are read, within 5 minutes and a da
   await every.fill("5");
   await save.click();
   await expect(page.getByRole("status").filter({ hasText: "Intervalo salvo" })).toBeVisible();
+});
+
+test("QA-CN-03: when Google doesn't hand the labels over, the card says so and offers to try again", async ({ page }) => {
+  const contacts = await turnOn(page);
+  // As it is right after the owner came back from Google with the labels' read failed.
+  let failing = true;
+  await page.route("**/api/google/contacts", async (route) => {
+    if (!failing || route.request().method() !== "GET") return route.continue();
+    const response = await route.fetch();
+    await route.fulfill({ response, json: { ...((await response.json()) as object), labelsRead: false, labels: [] } });
+  });
+  await page.route("**/api/google/contacts/labels/refresh", (route) => (failing ? route.fulfill({ status: 503, json: { code: "SERVICE_UNAVAILABLE", message: "x" } }) : route.continue()));
+  await page.reload();
+  await expect(contacts.getByText("Não deu para buscar as etiquetas no Google. Espere um minuto e tente de novo.")).toBeVisible();
+  await expect(contacts.getByRole("checkbox")).toHaveCount(0);
+  await expect(contacts.getByRole("button", { name: "Sincronizar agora" })).toBeDisabled();
+  failing = false;
+  await contacts.getByRole("button", { name: "Tentar de novo" }).click();
+  await expect(contacts.getByText("Escolha abaixo as etiquetas que a Zuri copia. Nenhum contato é copiado antes disso.")).toBeVisible();
+  await expect(contacts.getByRole("checkbox")).toHaveCount(5);
 });
 
 test("turning the contacts off forgets the copy and keeps the calendar", async ({ page }) => {

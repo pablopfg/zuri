@@ -1,6 +1,6 @@
 import type { ContactDetail } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { byLetter, countdown, dayText, dialNumber, emptyGroups, fileLetter, initials, isContactId, isNamed, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "../src/pages/contacts/person.ts";
+import { byLetter, countdown, daysApart, dayText, dialNumber, emptyGroups, fileLetter, initials, isContactId, isNamed, localDay, sameNamed, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "../src/pages/contacts/person.ts";
 
 const contact = (over: Partial<ContactDetail> = {}): ContactDetail => ({
   id: "0f8fad5b-d9cb-469f-a165-70867728950e",
@@ -9,6 +9,10 @@ const contact = (over: Partial<ContactDetail> = {}): ContactDetail => ({
   phone: null,
   email: null,
   birthday: null,
+  note: "",
+  cpf: null,
+  photo: null,
+  sameName: 0,
   given: "",
   middle: "",
   family: "",
@@ -209,5 +213,38 @@ describe("isContactId", () => {
   it("a contact with no name, phone or e-mail shows nothing, and the screen names it", () => {
     expect(shownName(contact())).toBe("");
     expect(isNamed(contact())).toBe(false);
+  });
+});
+
+describe("two people with one name", () => {
+  const person = (id: string, name: string, phone: string | null = "1") => ({ id, name, phone, email: null });
+  it("marks the contacts whose name another one has, whatever the case, the accents or the spaces", () => {
+    const ids = sameNamed([person("a", "Marcos Vieira Lopes"), person("b", "MARCOS  vieira  lopes"), person("c", "Márcos Vieira Lopes"), person("d", "Marcos Vieira Lopes Filho"), person("e", "Ana Souza")]);
+    expect([...ids].sort()).toEqual(["a", "b", "c"]);
+  });
+  it("marks nobody in a list of different names, an empty list or the nameless", () => {
+    expect(sameNamed([person("a", "Ana"), person("b", "Bia")]).size).toBe(0);
+    expect(sameNamed([]).size).toBe(0);
+    // Two contacts Google has no name for (shown by the same phone) are not namesakes.
+    expect(sameNamed([person("a", "(41) 99999-0001", "(41) 99999-0001"), person("b", "(41) 99999-0001", "(41) 99999-0001"), person("c", "", null), person("d", "", null)]).size).toBe(0);
+  });
+});
+
+describe("how far a day is", () => {
+  it("counts in days, weeks, months and years from the owner's today", () => {
+    expect(daysApart("2026-11-11", "2026-11-11", "pt-BR")).toBe("hoje");
+    expect(daysApart("2026-11-10", "2026-11-11", "pt-BR")).toBe("ontem");
+    expect(daysApart("2026-11-12", "2026-11-11", "pt-BR")).toBe("amanhã");
+    expect(daysApart("2026-11-18", "2026-11-11", "pt-BR")).toBe("em 7 dias");
+    expect(daysApart("2026-10-29", "2026-11-11", "pt-BR")).toBe("há 13 dias");
+    expect(daysApart("2026-10-28", "2026-11-11", "pt-BR")).toBe("há 2 semanas");
+    expect(daysApart("2026-09-11", "2026-11-11", "pt-BR")).toBe("há 2 meses");
+    expect(daysApart("2024-11-10", "2026-11-11", "pt-BR")).toBe("há 2 anos");
+    expect(daysApart("2026-12-25", "2026-11-11", "en")).toBe("in 6 weeks");
+    expect(daysApart("nunca", "2026-11-11", "pt-BR")).toBe("");
+  });
+  it("names the day an instant falls on in the owner's zone, not the device's", () => {
+    expect(localDay(new Date("2026-11-12T01:30:00Z"), "America/Sao_Paulo")).toBe("2026-11-11");
+    expect(localDay(new Date("2026-11-12T01:30:00Z"), "Asia/Tokyo")).toBe("2026-11-12");
   });
 });

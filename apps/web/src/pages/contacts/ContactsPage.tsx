@@ -9,8 +9,9 @@ import { ApiError, api, errorMessage } from "../../lib/api.ts";
 import { CONTACTS_STATUS_KEY, contactsListKey } from "../../lib/contacts.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { useDebounced } from "../../lib/lists.tsx";
+import { Avatar } from "./Avatar.tsx";
 import { ContactCard } from "./ContactCard.tsx";
-import { byLetter, countdown, initials, isContactId, isNamed, shownName } from "./person.ts";
+import { byLetter, countdown, dayText, isContactId, isNamed, sameNamed, shownName } from "./person.ts";
 
 // This screen's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRContacts);
@@ -59,7 +60,7 @@ function Screen({ id }: { id: string | null }) {
 }
 
 function Book({ id, status, checkedAt, onDue }: { id: string | null; status: ContactsStatus; checkedAt: number; onDue: () => void }) {
-  const { t, plural } = useI18n();
+  const { t, plural, locale } = useI18n();
   const toast = useToast();
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
@@ -117,6 +118,7 @@ function Book({ id, status, checkedAt, onDue }: { id: string | null; status: Con
 
   const contacts = list.data?.pages.flatMap((page) => page.contacts) ?? [];
   const filtered = !!q || !!active;
+  const twins = sameNamed(contacts);
   return (
     <div className="zuri-contacts" data-open={id ? "" : undefined}>
       <section aria-label={t("web.contacts.listLabel")} className="zuri-contacts-list">
@@ -177,8 +179,8 @@ function Book({ id, status, checkedAt, onDue }: { id: string | null; status: Con
           filtered ? (
             <p className="px-1 py-6 text-center text-sm text-fg-muted">{t("web.contacts.empty")}</p>
           ) : (
-            <EmptyState icon={<Search className="h-6 w-6" />} title={t("web.contacts.emptyAll")}>
-              <p>{t("web.contacts.emptyAll.body")}</p>
+            <EmptyState icon={<Search className="h-6 w-6" />} title={t(chosen.length === 0 ? "web.contacts.first" : "web.contacts.emptyAll")}>
+              <p>{t(chosen.length === 0 ? "web.contacts.first.body" : "web.contacts.emptyAll.body")}</p>
               <Button className="mt-4" aria-haspopup="dialog" onClick={() => setDialog("pick")}>
                 {t("web.contacts.filter.choose")}
               </Button>
@@ -197,12 +199,22 @@ function Book({ id, status, checkedAt, onDue }: { id: string | null; status: Con
                     return (
                       <li key={contact.id}>
                         <Link to={`/contatos/${contact.id}`} data-contact={contact.id} aria-current={contact.id === id ? "true" : undefined} className="zuri-contact-row">
-                          <span aria-hidden className="zuri-contact-mark">
-                            {(named && initials(contact.name)) || "?"}
-                          </span>
+                          <Avatar name={named ? contact.name : null} photo={contact.photo} />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium">{shownName(contact) || t("web.contacts.noName")}</span>
-                            <span className="block truncate text-xs text-fg-muted">{named ? [contact.phone, contact.email].filter(Boolean).join(" · ") : shownName(contact) && t("web.contacts.noName")}</span>
+                            {/* Only the phone under the name; two people with one name also show what tells them apart. */}
+                            <span className="block truncate text-xs text-fg-muted">
+                              {named
+                                ? [
+                                    contact.phone,
+                                    ...(twins.has(contact.id)
+                                      ? [contact.birthdayFull && t("web.contacts.born", { data: dayText(contact.birthdayFull, locale) }), contact.cpf && t("web.contacts.cpf", { cpf: contact.cpf })]
+                                      : []),
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")
+                                : shownName(contact) && t("web.contacts.noName")}
+                            </span>
                           </span>
                         </Link>
                       </li>

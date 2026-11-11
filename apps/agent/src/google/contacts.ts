@@ -23,6 +23,7 @@ import {
 import type { Database } from "../db/database.ts";
 import { AppError } from "../http/errors.ts";
 import { log } from "../log.ts";
+import { findCpf, maskCpf, nameParts, photoUrl, splitName } from "./contact-name.ts";
 import { forgetContacts, removeContact } from "./contacts-store.ts";
 import { cleanBlock, cleanText } from "./events.ts";
 import { type GoogleCalendar, GoogleError, GoogleMeter } from "./service.ts";
@@ -54,12 +55,12 @@ export const SYNC_BUDGET = 14;
 const LABELS_BUDGET = 3;
 /** The fields Zuri reads; the same on every page and every incremental read (Google requires it). */
 export const PERSON_FIELDS =
-  "names,nicknames,phoneNumbers,emailAddresses,birthdays,events,organizations,memberships,biographies,userDefined,addresses,urls,relations,imClients,metadata";
+  "names,nicknames,phoneNumbers,emailAddresses,birthdays,events,organizations,memberships,biographies,userDefined,addresses,urls,relations,imClients,photos,metadata";
 /**
  * The number of PERSON_FIELDS' set. Google's sync token is tied to the fields asked, and a contact that
  * didn't change keeps its etag: when the set grows, raise this and every contact is read once more.
  */
-export const FIELDS_VERSION = 2;
+export const FIELDS_VERSION = 3;
 /** Google's own groups, never offered as labels; the ones a fresh read of the labels shows join them in memory. */
 const SYSTEM_GROUPS = ["myContacts", "starred", "friends", "family", "coworkers", "all", "blocked", "chatBuddies"].map((id) => `contactGroups/${id}`);
 
@@ -146,6 +147,29 @@ interface ContactData {
   relations: { label: string; value: string }[];
   chats: { label: string; value: string }[];
   more: Partial<Record<ContactList, number>>;
+  /** What the owner wrote after the name at Google ("Paciente" of "Ana Souza / Paciente"). */
+  note: string;
+  /** Eleven digits, when Google has a valid one in a custom field or in the notes. */
+  cpf: string;
+  /** The address of the contact's photo at Google; the image itself is never kept. */
+  photo: string;
+}
+
+/** What in an event's text or guests says it is this contact's. */
+export interface ContactProof {
+  /** Digits only, eight or more. */
+  phones: string[];
+  emails: string[];
+  cpf: string;
+  /** "YYYY-MM-DD", or "" without the year. */
+  birthday: string;
+}
+
+export interface ContactIdentity {
+  name: string;
+  proof: ContactProof;
+  /** The other contacts with the same name. */
+  others: ContactProof[];
 }
 
 interface Joined {
@@ -159,6 +183,19 @@ const ON_ADDED = new Set<string>(["off", "notice", "task"]);
 const RESULTS = new Set<string>(["unchanged", "changed", "failed"]);
 
 class TooMany extends Error {}
+
+/**
+ * Divides the name from the nickname and the note in `search_name`. It sorts before a space, so every
+ * contact called "Ana Paula" (with or without a note) comes together and before "Ana Paula Souza": the
+ * list stays in the order of the names, and the people with one name are one short range of the index.
+ */
+const SEARCH_BREAK = "\u0001";
+
+/** What a contact is found and ordered by: the name, then the nickname and the note. */
+function searchKey(display: string, data: { nickname: string; note: string }): string {
+  const rest = searchText([data.nickname, data.note].filter(Boolean).join(" "));
+  return `${searchText(display)}${rest ? SEARCH_BREAK + rest : ""}`;
+}
 
 /** Lower case without accents or marks: "Conceição" and "conceicao" find each other. */
 export function searchText(value: string): string {
@@ -313,6 +350,7 @@ export class GoogleContacts {
       nextSyncAt: enabled && problem !== "reconnect" && typeof row?.next_sync === "number" ? new Date(row.next_sync).toISOString() : null,
       lastResult: enabled && row?.last_result && RESULTS.has(row.last_result) ? (row.last_result as ContactSyncResult) : null,
       refreshing: enabled && problem === null && row?.full_needed === 1 && labels.some((label) => label.selected),
+      labelsRead: enabled && row?.labels_read_at != null,
       syncEveryMinutes: this.every(row) / 60_000,
       contacts: enabled ? this.count() : 0,
       labels,
@@ -555,6 +593,14 @@ export class GoogleContacts {
     }
   }
 
+  /**
+   * The read of the labels made as the owner came back from Google's page failed: the screen's own
+   * request, sent as it opens, is let through at once instead of waiting out the minute (QA-CN-03).
+   */
+  labelsFailed(): void {
+    this.db.run(`UPDATE zur_contact_sync SET labels_asked_at = NULL WHERE id = 1 AND labels_read_at IS NULL`);
+  }
+
   /** Still this sync's turn: the owner didn't turn the contacts off (nor disconnect) meanwhile. */
   private mine(stamp: number): boolean {
     return this.db.one<{ ok: number }>(`SELECT 1 AS ok FROM zur_contact_sync WHERE id = 1 AND enabled = 1 AND running_since = ?`, stamp) !== null;
@@ -787,8 +833,8 @@ export class GoogleContacts {
         continue;
       }
       const person = parsed.data;
-      const existing = this.db.one<{ id: string; etag: string; data: string; display_name: string }>(
-        `SELECT id, etag, data, display_name FROM zur_contacts WHERE resource_name = ?`,
+      const existing = this.db.one<{ id: string; etag: string; data: string; display_name: string; search_name: string }>(
+        `SELECT id, etag, data, display_name, search_name FROM zur_contacts WHERE resource_name = ?`,
         person.resourceName,
       );
       if (person.metadata?.deleted) {
@@ -818,7 +864,7 @@ export class GoogleContacts {
       // The same etag is the same contact at Google. A read for new fields stores it again only when what
       // Zuri keeps of it came out different: a contact with nothing in the new fields costs one row, not
       // a dozen (CF-S09-04: 5,000 contacts stored whole would take over half a day's writes).
-      if (existing && etag && existing.etag === etag && (!refresh || JSON.stringify(parseData(existing.data)) === JSON.stringify(readPerson(person).data))) {
+      if (existing && etag && existing.etag === etag && (!refresh || this.sameKept(existing, readPerson(person)))) {
         // Unchanged: a full read only marks it seen.
         if (mode === "full") this.db.run(`UPDATE zur_contacts SET synced_at = ? WHERE id = ?`, stamp, existing.id);
         continue;
@@ -847,8 +893,8 @@ export class GoogleContacts {
   }
 
   /** What Zuri keeps of the contact is what this read of Google would store again. */
-  private sameKept(existing: { id: string; data: string; display_name: string }, read: ReturnType<typeof readPerson>): boolean {
-    if (existing.display_name !== read.display || JSON.stringify(parseData(existing.data)) !== JSON.stringify(read.data)) return false;
+  private sameKept(existing: { id: string; data: string; display_name: string; search_name: string }, read: ReturnType<typeof readPerson>): boolean {
+    if (existing.display_name !== read.display || existing.search_name !== searchKey(read.display, read.data) || JSON.stringify(parseData(existing.data)) !== JSON.stringify(read.data)) return false;
     const keys = this.db.all<{ kind: string; value: string }>(`SELECT kind, value FROM zur_contact_keys WHERE contact_id = ?`, existing.id).map((key) => `${key.kind}\n${key.value}`);
     return sameSet(keys, [...new Set(read.keys.map((key) => `${key.kind}\n${key.value}`))]);
   }
@@ -868,7 +914,7 @@ export class GoogleContacts {
       person.resourceName,
       etag || "-",
       display,
-      searchText([display, data.nickname].filter(Boolean).join(" ")),
+      searchKey(display, data),
       birthday,
       JSON.stringify(data),
       cleanText(person.metadata?.sources?.[0]?.updateTime ?? "", 40) || null,
@@ -1017,6 +1063,10 @@ export class GoogleContacts {
       phone: data.phones[0]?.value ?? null,
       email: data.emails[0]?.value ?? null,
       birthday: row.birthday_md,
+      birthdayFull: data.birthday,
+      note: data.note,
+      cpf: maskCpf(data.cpf) || null,
+      photo: data.photo || null,
     };
   }
 
@@ -1078,6 +1128,40 @@ export class GoogleContacts {
     };
   }
 
+  /**
+   * Other contacts with this very name (two people, never a duplicate to merge): what tells them apart
+   * is the phone, the e-mail, the birthday and the CPF. Read by the name's index; at most twenty.
+   */
+  sameName(id: string, name: string): { id: string; data: ContactData }[] {
+    const key = searchText(name);
+    if (!key) return [];
+    return this.db
+      .all<{ id: string; display_name: string; data: string }>(
+        // The name alone, or the name and what follows SEARCH_BREAK: never "Ana Paula Souza" for "Ana Paula" (SEC-CN-01).
+        `SELECT id, display_name, data FROM zur_contacts WHERE search_name >= ? AND search_name < ? AND id != ? ORDER BY search_name, id LIMIT 60`,
+        key,
+        `${key}\u0002`,
+        id,
+      )
+      .filter((row) => searchText(row.display_name) === key)
+      .slice(0, 20)
+      .map((row) => ({ id: row.id, data: parseData(row.data) }));
+  }
+
+  /** What the calendar needs of one contact to find its events: the name, what proves who it is, the others with the name. */
+  identity(id: string): ContactIdentity | null {
+    if (!this.enabled() || !/^[0-9a-f-]{36}$/.test(id)) return null;
+    const row = this.db.one<ContactRow>(`SELECT id, resource_name, display_name, birthday_md, data FROM zur_contacts WHERE id = ?`, id);
+    if (!row) return null;
+    const proof = (data: ContactData): ContactProof => ({
+      phones: data.phones.map((phone) => phone.value.replace(/\D/g, "")).filter((digits) => digits.length >= 8),
+      emails: data.emails.map((email) => email.value),
+      cpf: data.cpf,
+      birthday: /^\d{4}-\d{2}-\d{2}$/.test(data.birthday ?? "") ? (data.birthday as string) : "",
+    });
+    return { name: row.display_name, proof: proof(parseData(row.data)), others: this.sameName(row.id, row.display_name).map((other) => proof(other.data)) };
+  }
+
   /** One contact, whole; null when it is not in the copy. */
   get(id: string): ContactDetail | null {
     if (!this.enabled() || !/^[0-9a-f-]{36}$/.test(id)) return null;
@@ -1092,7 +1176,6 @@ export class GoogleContacts {
       nickname: data.nickname,
       phones: data.phones,
       emails: data.emails,
-      birthdayFull: data.birthday,
       dates: data.dates,
       organization: data.organization,
       jobTitle: data.jobTitle,
@@ -1103,6 +1186,7 @@ export class GoogleContacts {
       relations: data.relations,
       chats: data.chats,
       more: data.more,
+      sameName: this.sameName(row.id, row.display_name).length,
       googleUrl: `https://contacts.google.com/person/${row.resource_name.slice("people/".length)}`,
     };
   }
@@ -1161,6 +1245,9 @@ function parseData(raw: string): ContactData {
     relations: pairs(value.relations),
     chats: pairs(value.chats),
     more,
+    note: text(value.note),
+    cpf: /^\d{11}$/.test(text(value.cpf)) ? text(value.cpf) : "",
+    photo: text(value.photo),
   };
 }
 
@@ -1200,7 +1287,9 @@ export function siteUrl(value: unknown): string {
  * What Zuri keeps of a person: the fields of the plans (google-contatos.md and
  * sincronizacao-contatos-avaliacoes.md), cut to their limits (with "…"), values
  * out of shape left out, each list up to its ceiling with the rest counted in
- * `more`. Never the photo nor social profiles.
+ * `more`. The name loses the note the owner writes after it ("Ana Souza /
+ * Paciente"), kept apart. Of the photo only its address at Google; never
+ * social profiles.
  */
 export function readPerson(person: GooglePerson): {
   display: string;
@@ -1265,11 +1354,12 @@ export function readPerson(person: GooglePerson): {
     return value ? { label: cleanText(chat.formattedProtocol || chat.protocol || "", 60), value } : null;
   });
   const organization = person.organizations?.[0];
-  const given = cleanText(name?.givenName, CONTACT_LIMITS.name);
-  const middle = cleanText(name?.middleName, CONTACT_LIMITS.name);
-  const family = cleanText(name?.familyName, CONTACT_LIMITS.name);
-  const display =
-    cleanText(name?.displayName, CONTACT_LIMITS.name) || cleanText([given, middle, family].filter(Boolean).join(" "), CONTACT_LIMITS.name) || nickname || emails[0]?.value || phones[0]?.value || "";
+  const parts = [name?.givenName, name?.middleName, name?.familyName].map((part) => cleanText(part, CONTACT_LIMITS.name));
+  // The note after the name ("Ana Souza / Paciente") leaves the name and every part of it Google filed it under.
+  const written = splitName(cleanText(name?.displayName, CONTACT_LIMITS.name) || parts.filter(Boolean).join(" "), CONTACT_LIMITS.name);
+  const [given = "", middle = "", family = ""] = written.note ? nameParts(written.name, parts) : parts;
+  const display = written.name || nickname || emails[0]?.value || phones[0]?.value || "";
+  const notes = cleanBlock(person.biographies?.[0]?.value, CONTACT_LIMITS.notes);
   return {
     display,
     birthday: birthday?.md ?? null,
@@ -1286,13 +1376,16 @@ export function readPerson(person: GooglePerson): {
       dates: events.map((event) => ({ label: event.label, date: event.date.full })),
       organization: cleanText(organization?.name, CONTACT_LIMITS.organization),
       jobTitle: cleanText(organization?.title, CONTACT_LIMITS.organization),
-      notes: cleanBlock(person.biographies?.[0]?.value, CONTACT_LIMITS.notes),
+      notes,
       fields,
       addresses,
       urls,
       relations,
       chats,
       more,
+      note: written.note,
+      cpf: findCpf(fields, notes),
+      photo: photoUrl(person.photos),
     },
   };
 }
