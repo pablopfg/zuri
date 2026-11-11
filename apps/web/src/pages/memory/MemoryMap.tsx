@@ -133,7 +133,7 @@ export default function MemoryMap({ graph, selected, dimmed, onSelect, texts }: 
   }, [size.w, size.h]);
 
   /**
-   * The point under the pointer: the nearest one within a fingertip (22 px, a 44 px target).
+   * The point under the pointer: the nearest one within a fingertip (22 px on the screen at any zoom, a 44 px target).
    * Worked out from the positions, so a crowded map never hands the touch to the point drawn on top.
    */
   function nearest(event: { clientX: number; clientY: number }): string | undefined {
@@ -141,7 +141,7 @@ export default function MemoryMap({ graph, selected, dimmed, onSelect, texts }: 
     const x = (p.x - view.x) / view.k;
     const y = (p.y - view.y) / view.k;
     let found: string | undefined;
-    let best = 22;
+    let best = 22 / view.k;
     for (const node of nodes) {
       const c = at(node.id);
       const d = Math.hypot(c.x - x, c.y - y);

@@ -500,4 +500,12 @@ test("memory map: a point can be dragged, a failure offers a retry, and too many
   await page.getByRole("group", { name: "Mapa das memórias" }).getByRole("button", { name: `Está cuidando da mudança ${tag} para o apartamento novo` }).locator(".dot").click();
   await expect(page.getByText("O mapa mostra a memória escolhida e o que se liga a ela.")).toBeVisible();
   await expect(page.getByRole("group", { name: "Mapa das memórias" }).getByRole("button", { name: `Prefere chá ${tag}` })).toHaveCount(0);
+
+  // A folder picked on that smaller map opens its panel and keeps the map (QA M2: it used to leave an empty panel).
+  const folder = page.getByRole("group", { name: "Mapa das memórias" }).getByRole("button", { name: `Pasta “Mudança ${tag}”` });
+  await folder.locator(".dot").scrollIntoViewIfNeeded();
+  await folder.locator(".dot").click();
+  await expect(panel(page).getByRole("heading", { name: `Mudança ${tag}` })).toBeVisible();
+  await expect(page.getByText("O mapa mostra a memória escolhida e o que se liga a ela.")).toBeVisible();
+  await expect(folder).toHaveAttribute("aria-pressed", "true");
 });

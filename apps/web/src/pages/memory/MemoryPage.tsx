@@ -68,6 +68,8 @@ export function MemoryPage() {
   const [view, setView] = useState<ViewMode>("list");
   /** A memory's id, or a hub's ("note:<id>") picked on the map. */
   const [selected, setSelected] = useState<string | null>(null);
+  // The last memory chosen: the map around it stays while one of its folders or notes is looked at.
+  const [center, setCenter] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState(false);
   // A memory found in the command palette opens here with that search (revisão de design, D1).
   useEffect(
@@ -96,7 +98,7 @@ export function MemoryPage() {
   const whole = useMemoryMap(view === "map");
   const selectedMemory = selected !== null && !selected.includes(":") ? selected : null;
   // More memories than the map draws: with one chosen, the map is that memory and what touches it.
-  const around = useMemoryLinks(view === "map" && whole.data?.truncated ? selectedMemory : null);
+  const around = useMemoryLinks(view === "map" && whole.data?.truncated ? (selectedMemory ?? center) : null);
   const graph = around.data ?? whole.data;
   const hub = selected?.includes(":") ? graph?.hubs.find((h) => h.id === selected) : undefined;
   const filtered = filter !== "all" || category !== "" || q !== "";
@@ -117,11 +119,15 @@ export function MemoryPage() {
     if (selected === null) opener.current = document.activeElement as HTMLElement | null;
     focusPanel.current = !window.matchMedia("(min-width: 1024px)").matches;
     setSelected(id);
+    if (!id.includes(":")) setCenter(id);
   }
   function back() {
     const from = opener.current;
     focusPanel.current = false;
-    flushSync(() => setSelected(null));
+    flushSync(() => {
+      setSelected(null);
+      setCenter(null);
+    });
     opener.current = null;
     if (from?.isConnected) from.focus();
     else document.querySelector<HTMLElement>(".zuri-memory-main button")?.focus();
@@ -177,7 +183,7 @@ export function MemoryPage() {
         </section>
       )}
 
-      <div className="zuri-memory" data-open={selected !== null || undefined}>
+      <div className="zuri-memory" data-open={selectedMemory !== null || hub !== undefined || undefined}>
         <section aria-label={t("web.memory.listLabel")} className="zuri-memory-main space-y-3">
           <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
             <div className="relative min-w-0">

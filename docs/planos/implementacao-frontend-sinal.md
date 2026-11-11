@@ -278,6 +278,7 @@ Diferenças da S06 para o que as tabelas previam:
 - As ações da memória (Editar e "Mais opções") saíram da linha da lista e ficam só no painel, como no protótipo. O botão principal continua "Editar"; "Atualizar este fato" segue no menu, como hoje.
 - No celular o painel entra no lugar da lista, com "Voltar", como a lista da Conversa na S05. O foco vai para o título do painel e volta para a linha.
 - "Para revisar" é uma faixa fechada com o botão "Revisar". A frase da faixa é a contagem ("1 memória nova pode mudar uma antiga…"), e não o motivo do primeiro conflito: a fila só é buscada quando o dono abre a faixa.
+- No computador o painel não tem botão para desfazer a escolha (o "Voltar" é do celular): escolher outra memória troca o painel. No mapa, o tipo da memória aparece pela cor do ponto e por escrito no painel.
 - O mapa vem junto com a tela da Memória, que já é carregada sob demanda, e não num pedaço próprio: como pedaço separado ele fazia o empacotador tirar do primeiro carregamento uma parte comum (ícones, textos ou o `jsx-runtime`) e o JS inicial passava do teto.
 - No mapa, o toque acha o ponto mais próximo num raio de 22 px (alvo de 44 px), calculado pelas posições. Assim um ponto desenhado por cima não rouba o toque do vizinho.
 - A chave "Revisão de conflitos" continua no fim da tela até a S16 (linha C2).

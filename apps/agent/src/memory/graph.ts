@@ -22,6 +22,8 @@ import { anyWordQuery, tokens } from "./text.ts";
  * - a conversation, a task or a note is a hub of the memories that share two words with its title.
  *
  * Every read is bounded (rule P2): one page of memories and one of each hub kind.
+ * The folders have no index by status: that read walks at most the table's own
+ * ceiling (STORAGE_LIMITS.projects) when most of them are archived.
  */
 
 /** Newest rows of each hub kind looked at. */
@@ -31,6 +33,8 @@ const SHARED_MIN = 2;
 /** Links kept per memory, strongest first: a common word must not draw a hairball. */
 const NEAR_PER_MEMORY = 5;
 const HUBS_PER_MEMORY = 6;
+/** Words of one memory that count (SEC-A13-01): 160 long texts with the same words must not hold the object's only thread. */
+export const WORDS_PER_MEMORY = 40;
 /** Full-text matches looked at around one memory. */
 const AROUND_CANDIDATES = 30;
 /** Newest matches ranked for them: a word in every memory must not cost a read of 200 of them at each click. */
@@ -47,7 +51,7 @@ interface HubRow {
 function loadHubs(db: Database): HubRow[] {
   const rows = (kind: MemoryHubKind, sql: string) => db.all<{ id: string; label: string }>(sql, HUB_ROWS).map((row) => ({ kind, id: row.id, label: row.label }));
   return [
-    ...rows("folder", `SELECT id, name AS label FROM zur_projects WHERE status != 'archived' LIMIT ?`),
+    ...rows("folder", `SELECT id, name AS label FROM zur_projects WHERE status != 'archived' ORDER BY id LIMIT ?`),
     ...rows("conversation", `SELECT id, title AS label FROM zur_conversations ORDER BY updated_at DESC, id DESC LIMIT ?`),
     // Open tasks, by the partial index of the deadline: the ones with a date first.
     ...rows("task", `SELECT id, title AS label FROM zur_tasks WHERE status != 'done' ORDER BY due_at DESC LIMIT ?`),
@@ -64,7 +68,7 @@ const shared = (a: Set<string>, b: Set<string>): number => {
 /** The links among these memories and hubs. Pure: the same rows always give the same map. */
 export function linkMemories(memories: MemoryRow[], hubs: HubRow[], reviews: { memory_id: string; other_id: string }[]): { hubs: MemoryHub[]; links: MemoryLink[] } {
   const ids = new Set(memories.map((m) => m.id));
-  const words = new Map(memories.map((m) => [m.id, tokens(m.content)]));
+  const words = new Map(memories.map((m) => [m.id, new Set([...tokens(m.content)].slice(0, WORDS_PER_MEMORY))]));
   const links: MemoryLink[] = [];
   const paired = new Set<string>();
   const pair = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
@@ -103,7 +107,9 @@ export function linkMemories(memories: MemoryRow[], hubs: HubRow[], reviews: { m
       // A folder's name is short ("Saúde"): the whole name must be there. A title needs two words.
       if (hub.kind === "folder" ? n === set.size : n >= SHARED_MIN) found.push({ hub, score: n });
     }
-    found.sort((a, b) => b.score - a.score);
+    // The folders first: a one-word name scores less than any title and must not lose its place to six notes.
+    const folderFirst = (h: HubRow) => (h.kind === "folder" ? 0 : 1);
+    found.sort((a, b) => folderFirst(a.hub) - folderFirst(b.hub) || b.score - a.score);
     for (const f of found.slice(0, HUBS_PER_MEMORY)) hubLinks.push({ memory: m.id, ...f });
   }
   // The hubs with the most memories stay when there are too many.

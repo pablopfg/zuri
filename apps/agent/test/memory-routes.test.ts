@@ -226,7 +226,7 @@ describe("the map of the memory (Sinal, S06)", () => {
     expect(alone).toEqual({ memories: [expect.objectContaining({ id: far.id })], hubs: [], links: [], truncated: false });
   });
 
-  it("a fact and the one that replaced it are linked as versions, and a pending conflict as a review", async () => {
+  it("a fact and the one that replaced it are linked as versions", async () => {
     const old = (await create("Trabalha na padaria Trigo Dourado como gerente")).memory;
     const corrected = await json<MemoryWriteResult>(await api("POST", `/memories/${old.id}/correct`, { content: "Trabalha na livraria Entrelinhas como gerente" }), 201);
     const around = await graph(`?around=${corrected.memory.id}`);

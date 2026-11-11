@@ -196,7 +196,8 @@ tabela própria: as ligações saem do que já está guardado, por regras fixas
 Limites, para o custo não crescer com o banco: o mapa leva as 160 memórias mais
 recentes e até 40 pastas, conversas, tarefas e notas (200 pontos no total), e
 olha as 100 mais recentes de cada tipo (tarefas, só as abertas). Cada memória
-fica com as 5 memórias mais próximas e até 6 dos outros itens. Com `around`, a
+fica com as 5 memórias mais próximas e até 6 dos outros itens (as pastas
+primeiro), e só as 40 primeiras palavras com sentido de cada memória contam. Com `around`, a
 resposta traz só aquela memória e o que encosta nela; é o que o painel pede.
 Quando há mais memórias do que o mapa desenha, `truncated` vem `true`.
 
