@@ -19,6 +19,18 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.43.0] - 2026-11-10
+
+Mesclada às 22:15 (UTC-3) · commit [`411c8d0`](https://github.com/pablopfg/Zuri/commit/411c8d0d941e49324a888c1ea87bc16b4b644ba6) · PR [#270](https://github.com/pablopfg/Zuri/pull/270) · Início do Sinal com "Seu dia", linha de agora, cortina e pendentes (S04)
+
+### Alterado
+
+- Início com o desenho novo: o dia por extenso em cima do cumprimento, o campo "Escreva para a Zuri" maior (Enter envia, Shift+Enter quebra a linha) e tudo numa coluna mais estreita.
+- "Seu dia" no lugar do cartão "Hoje": as tarefas de hoje, os eventos do Google Agenda e as rotinas do dia numa lista só, com a linha de agora, que anda sozinha a cada 30 segundos. Mostra das 08:00 às 18:00; o que cai fora fica em "N fora das 08:00 às 18:00 · Mostrar".
+- O que já passou vai para a cortina "N já passaram", que abre e fecha com um toque ou pelo teclado. Tarefa que passou da hora, tarefa atrasada e rotina esperando a sua aprovação ficam em cima, com o contador "N pendentes".
+- Dá para concluir uma tarefa direto no Início. Ela vai para a cortina como "Feito", e desmarcar desfaz.
+- "Próximos dias" virou uma lista com o dia, o título e a hora. As rotinas aparecem como "Rotina".
+
 ## [0.42.1] - 2026-11-10
 
 Mesclada às 20:55 (UTC-3) · commit [`bbe026b`](https://github.com/pablopfg/Zuri/commit/bbe026bbad2f6ada53d60cb427e66634eeecdf83) · PR [#268](https://github.com/pablopfg/Zuri/pull/268) · "Sincronizar agora" espera as etiquetas salvarem; Update PRs acha a CI que a lista do commit não traz
@@ -3025,7 +3037,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.42.1...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.43.0...develop
+[0.43.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.43.0
 [0.42.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.42.1
 [0.42.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.42.0
 [0.41.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.41.1
