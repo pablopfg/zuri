@@ -1,4 +1,4 @@
-import { flowConnectionCreateSchema, flowConnectionUpdateSchema, flowCreateSchema, flowUpdateSchema, RECORD_ID } from "@zuri/shared";
+import { flowConnectionCreateSchema, flowConnectionUpdateSchema, flowCreateSchema, flowSettingsSchema, flowUpdateSchema, RECORD_ID } from "@zuri/shared";
 import type { Context, Hono } from "hono";
 import type { ClientInfo } from "../auth/client.ts";
 import type { AuthService } from "../auth/service.ts";
@@ -47,6 +47,12 @@ export function registerFlowRoutes(app: Hono<ApiEnv>, deps: () => FlowRouteDeps,
   });
 
   app.get("/flows/runs", (c) => Response.json(deps().flows.runs(c.req.query())));
+
+  // Before "/flows/:id". No password: both numbers stay inside FLOW_LIMITS, and neither sends data anywhere.
+  app.patch("/flows/settings", async (c) => {
+    const input = await readJson(c.req.raw, flowSettingsSchema, 1024);
+    return Response.json({ settings: deps().flows.updateSettings(input) });
+  });
 
   app.patch("/flows/:id", async (c) => {
     const id = flowId(c.req.param("id"));

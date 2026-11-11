@@ -293,6 +293,12 @@ Numeradas para o PR poder citar ("segue P2 e P4").
   tabela nova. Ao acordar também rodam a limpeza da lixeira (uma
   busca por índice) e as tabelas internas do Agents SDK, fora desta conta.
 - `Database.usage` soma as linhas lidas e escritas, para os testes de orçamento.
+- Configurações dos fluxos e do CRM na tela (11/11/2026): o que gasta cota tem
+  como máximo o valor fixo de antes, e os fluxos ligados dividem 2.000
+  horários por dia (`FLOW_LIMITS.slotsPerDay`), o que deixa o intervalo descer
+  a 5 minutos. Um horário executado grava 17 linhas e um pulado, 12; o pior
+  dia (500 execuções e 1.500 pulados) grava cerca de 26.500 linhas, 27% das
+  100.000, contra cerca de 25.500 de antes.
 
 ## Para o Pablo (pede decisão)
 

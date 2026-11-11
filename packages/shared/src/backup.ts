@@ -232,7 +232,17 @@ const crm = /* @__PURE__ */ z
   .object({
     stages: z.array(crmStage).max(CRM_LIMITS.stagesMax),
     clients: z.array(crmClient).max(CRM_LIMITS.clients),
-    settings: z.object({ followUps: z.boolean(), birthdays: z.boolean(), newClients: z.boolean() }).strict().nullable(),
+    // The last two came later (11/11/2026): a backup of before has neither, and the restore keeps what is set.
+    settings: z
+      .object({
+        followUps: z.boolean(),
+        birthdays: z.boolean(),
+        newClients: z.boolean(),
+        birthdayTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+        newClientNoticesPerDay: z.number().int().min(1).max(20).optional(),
+      })
+      .strict()
+      .nullable(),
   })
   .strict();
 

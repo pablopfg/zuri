@@ -133,7 +133,16 @@ export const crmStagesSchema = /* @__PURE__ */ (() =>
 
 export const crmSettingsSchema = /* @__PURE__ */ (() =>
   z
-    .object({ followUps: z.boolean(), birthdays: z.boolean(), newClients: z.boolean() })
+    .object({
+      followUps: z.boolean(),
+      birthdays: z.boolean(),
+      newClients: z.boolean(),
+      birthdayTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+      newClientNoticesPerDay: z.number().int().min(CRM_LIMITS.newClientNoticesMin).max(CRM_LIMITS.newClientNoticesPerDay),
+      // Never past the ceilings of CRM_LIMITS. The hour's number against the day's is the service's to check: one of them may be the stored one.
+      eventsPerHour: z.number().int().min(CRM_LIMITS.eventsPerHourMin).max(CRM_LIMITS.eventsPerHour),
+      eventsPerDay: z.number().int().min(CRM_LIMITS.eventsPerDayMin).max(CRM_LIMITS.eventsPerDay),
+    })
     .partial()
     .strict()
     .refine((value) => Object.keys(value).length > 0))();

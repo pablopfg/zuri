@@ -12,6 +12,66 @@ test.afterEach(async ({ page }) => {
   const list = (await (await page.request.get("/api/crm/clients", { headers: CSRF })).json()) as { clients?: { id: string }[] };
   for (const client of list.clients ?? []) await page.request.delete(`/api/crm/clients/${client.id}`, { headers: CSRF });
   await page.request.delete("/api/crm/events-key", { headers: CSRF });
+  await page.request.patch("/api/crm/settings", { headers: CSRF, data: { birthdayTime: "09:00", newClientNoticesPerDay: 20, eventsPerHour: 300, eventsPerDay: 1_000 } });
+});
+
+test("the owner picks the birthday notice's time and how many new-client notices a day @mobile", async ({ page }) => {
+  await page.goto("/contatos/clientes");
+  await signIn(page);
+  await expect(page.getByRole("heading", { level: 1, name: "Contatos" })).toBeVisible();
+  // The database keeps what the other project saved: start from a new installation's values.
+  expect((await page.request.patch("/api/crm/settings", { headers: CSRF, data: { birthdayTime: "09:00", newClientNoticesPerDay: 20 } })).ok()).toBe(true);
+  await page.reload();
+  const card = page.getByRole("region", { name: "Avisos do CRM" });
+  const time = card.getByLabel("Hora do aviso de aniversários");
+  const perDay = card.getByLabel("Avisos de cliente novo por dia");
+  const save = card.getByRole("button", { name: "Salvar avisos" });
+  await expect(time).toHaveValue("09:00");
+  await expect(perDay).toHaveValue("20");
+  await expect(card.getByText("De 1 a 20. Passou disso, o cliente só aparece na lista.")).toBeVisible();
+  await expect(save).toBeDisabled();
+  await perDay.fill("21");
+  await expect(save).toBeDisabled();
+  await perDay.fill("0");
+  await expect(save).toBeDisabled();
+  await perDay.fill("6");
+  await time.fill("07:30");
+  await expectAccessible(page, "clientes-avisos");
+  await save.click();
+  await expect(page.getByRole("status").filter({ hasText: "Avisos salvos" })).toBeVisible();
+  await expect(save).toBeDisabled();
+  await page.reload();
+  await expect(time).toHaveValue("07:30");
+  await expect(perDay).toHaveValue("6");
+});
+
+test("the owner sets how many events are taken per hour and per day, never past the ceilings @mobile", async ({ page }) => {
+  await page.goto("/contatos/clientes");
+  await signIn(page);
+  await expect(page.getByRole("heading", { level: 1, name: "Contatos" })).toBeVisible();
+  expect((await page.request.patch("/api/crm/settings", { headers: CSRF, data: { eventsPerHour: 300, eventsPerDay: 1_000 } })).ok()).toBe(true);
+  await page.reload();
+  const perHour = page.getByLabel("Eventos aceitos por hora");
+  const perDay = page.getByLabel("Eventos aceitos por dia");
+  const save = page.getByRole("button", { name: "Salvar limites" });
+  await expect(perHour).toHaveValue("300");
+  await expect(perDay).toHaveValue("1000");
+  await expect(page.getByText("De 10 a 300.", { exact: true })).toBeVisible();
+  await expect(page.getByText("De 50 a 1000.", { exact: true })).toBeVisible();
+  await expect(save).toBeDisabled();
+  await perHour.fill("301");
+  await expect(save).toBeDisabled();
+  // An hour that takes more than the day: the server says why, and nothing is saved.
+  await perHour.fill("200");
+  await perDay.fill("100");
+  await save.click();
+  await expect(page.getByRole("status").filter({ hasText: "O número de eventos por hora não pode passar o do dia." })).toBeVisible();
+  await perHour.fill("60");
+  await save.click();
+  await expect(page.getByRole("status").filter({ hasText: "Limites salvos" })).toBeVisible();
+  await page.reload();
+  await expect(perHour).toHaveValue("60");
+  await expect(perDay).toHaveValue("100");
 });
 
 test("adds a client, notes, moves and deletes it on the Clients tab; accessible @mobile", async ({ page }) => {

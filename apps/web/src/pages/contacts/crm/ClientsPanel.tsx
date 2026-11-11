@@ -17,6 +17,7 @@ import {
 } from "@zuri/shared";
 import { Filter, ListOrdered, Search, Tag, UserPlus, Users, Webhook } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
+import { NumbersForm } from "../../../components/NumbersForm.tsx";
 import { Switch } from "../../../components/Switch.tsx";
 import { useToast } from "../../../components/Toaster.tsx";
 import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, Loading, Notice, SelectField, TextAreaField, TextField } from "../../../components/ui.tsx";
@@ -216,7 +217,7 @@ export function ClientsPanel() {
       )}
 
       <SettingsCard settings={data.settings} />
-      <EventsCard events={data.events} />
+      <EventsCard events={data.events} settings={data.settings} />
 
       {editing && <ClientDialog editing={editing} stages={data.stages} onClose={() => setEditing(null)} />}
       {funnel && <FunnelDialog stages={data.stages} onClose={() => setFunnel(false)} />}
@@ -625,11 +626,67 @@ function SettingsCard({ settings }: { settings: CrmSettings }) {
       <Switch label={t("web.crm.settings.followUps")} checked={settings.followUps} onChange={(value) => change({ followUps: value })} />
       <Switch label={t("web.crm.settings.birthdays")} checked={settings.birthdays} onChange={(value) => change({ birthdays: value })} />
       <Switch label={t("web.crm.settings.newClients")} checked={settings.newClients} onChange={(value) => change({ newClients: value })} />
+      <NoticeTimes settings={settings} />
     </Card>
   );
 }
 
-function EventsCard({ events }: { events: CrmOverview["events"] }) {
+/** When the birthdays are told and how many new-client notices a day: typed, then saved together. */
+function NoticeTimes({ settings }: { settings: CrmSettings }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const save = useCrmSave();
+  const [time, setTime] = useState(settings.birthdayTime);
+  const [perDay, setPerDay] = useState(String(settings.newClientNoticesPerDay));
+  const [saving, setSaving] = useState(false);
+  // What the server holds moved (another tab): start from it again.
+  useEffect(() => {
+    setTime(settings.birthdayTime);
+    setPerDay(String(settings.newClientNoticesPerDay));
+  }, [settings.birthdayTime, settings.newClientNoticesPerDay]);
+  const typed = Number(perDay);
+  const valid = /^\d{2}:\d{2}$/.test(time) && /^\d+$/.test(perDay.trim()) && typed >= CRM_LIMITS.newClientNoticesMin && typed <= CRM_LIMITS.newClientNoticesPerDay;
+  const same = time === settings.birthdayTime && typed === settings.newClientNoticesPerDay;
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!valid) return;
+    setSaving(true);
+    try {
+      await save(() => api("/crm/settings", { method: "PATCH", body: { birthdayTime: time, newClientNoticesPerDay: typed } }));
+      toast(t("web.crm.settings.saved"));
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={(e) => void submit(e)} className="space-y-3 rounded-xl border border-border p-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <TextField label={t("web.crm.settings.birthdayTime")} type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
+        <TextField
+          label={t("web.crm.settings.perDay")}
+          hint={t("web.crm.settings.perDayHint", { min: CRM_LIMITS.newClientNoticesMin, max: CRM_LIMITS.newClientNoticesPerDay })}
+          type="number"
+          inputMode="numeric"
+          min={CRM_LIMITS.newClientNoticesMin}
+          max={CRM_LIMITS.newClientNoticesPerDay}
+          step={1}
+          required
+          value={perDay}
+          onChange={(e) => setPerDay(e.target.value)}
+        />
+      </div>
+      <Button type="submit" loading={saving} disabled={!valid || same}>
+        {t("web.crm.settings.save")}
+      </Button>
+    </form>
+  );
+}
+
+function EventsCard({ events, settings }: { events: CrmOverview["events"]; settings: CrmSettings }) {
   const { t, dateTime } = useI18n();
   const toast = useToast();
   const save = useCrmSave();
@@ -702,6 +759,18 @@ function EventsCard({ events }: { events: CrmOverview["events"] }) {
         </div>
       )}
       <p className="text-xs leading-5 text-fg-muted">{t("web.crm.events.passwordNote")}</p>
+      <div className="mt-3 rounded-xl border border-border p-3">
+        <NumbersForm
+          fields={[
+            { key: "eventsPerHour", label: t("web.crm.events.perHour"), hint: t("web.crm.events.range", { min: CRM_LIMITS.eventsPerHourMin, max: CRM_LIMITS.eventsPerHour }), min: CRM_LIMITS.eventsPerHourMin, max: CRM_LIMITS.eventsPerHour },
+            { key: "eventsPerDay", label: t("web.crm.events.perDay"), hint: t("web.crm.events.range", { min: CRM_LIMITS.eventsPerDayMin, max: CRM_LIMITS.eventsPerDay }), min: CRM_LIMITS.eventsPerDayMin, max: CRM_LIMITS.eventsPerDay },
+          ]}
+          values={{ eventsPerHour: settings.eventsPerHour, eventsPerDay: settings.eventsPerDay }}
+          saveLabel={t("web.crm.events.saveLimits")}
+          savedLabel={t("web.crm.events.savedLimits")}
+          onSave={(changed) => save(() => api("/crm/settings", { method: "PATCH", body: changed }))}
+        />
+      </div>
       {shown && (
         <Dialog open onClose={() => setShown(null)} title={t("web.crm.events.secretTitle")}>
           <Notice tone="warning">{t("web.crm.events.secretOnce")}</Notice>

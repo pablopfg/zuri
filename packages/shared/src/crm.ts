@@ -36,9 +36,11 @@ export const CRM_LIMITS = {
   /** One event's body, as signed. */
   eventBodyBytes: 16 * 1024,
   eventId: 100,
-  /** Events accepted per UTC hour and per UTC day. */
+  /** Events accepted per UTC hour and per UTC day: the most, and what holds until the owner picks fewer. */
   eventsPerHour: 300,
   eventsPerDay: 1_000,
+  eventsPerHourMin: 10,
+  eventsPerDayMin: 50,
   /** How far the signature's time may be from Zuri's clock. */
   signatureWindowMs: 5 * 60_000,
   /** How long an event's id is remembered, so a repeat writes nothing. */
@@ -48,8 +50,9 @@ export const CRM_LIMITS = {
   query: 100,
   /** Follow-up notices per wake of the alarm; the rest go in one notice. */
   followUpsPerWake: 10,
-  /** Notices of new clients from n8n per day; the rest only show on the screen. */
+  /** Notices of new clients from n8n per day, at most; the rest only show on the screen. The owner may pick fewer. */
   newClientNoticesPerDay: 20,
+  newClientNoticesMin: 1,
   /** Names in one birthday notice. */
   namesPerNotice: 5,
   /** Results of search_clients and history entries get_client shows. */
@@ -150,9 +153,19 @@ export interface CrmSettings {
   /** Notices of follow-ups that come due. */
   followUps: boolean;
   birthdays: boolean;
-  /** A notice for each client n8n adds (up to 20 a day). */
+  /** A notice for each client n8n adds (up to `newClientNoticesPerDay` a day). */
   newClients: boolean;
+  /** When the day's birthdays are told, "HH:MM" in the owner's time zone. */
+  birthdayTime: string;
+  /** New-client notices a day, 1 to 20. */
+  newClientNoticesPerDay: number;
+  /** Events n8n may send per UTC hour (10 to 300) and per UTC day (50 to 1,000); the hour's never passes the day's. */
+  eventsPerHour: number;
+  eventsPerDay: number;
 }
+
+/** The birthday notice's time until the owner picks another. */
+export const CRM_BIRTHDAY_TIME = "09:00";
 
 export interface CrmEventsStatus {
   enabled: boolean;

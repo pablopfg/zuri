@@ -225,6 +225,10 @@ export function importBackup(deps: ImportDeps, backup: Backup): BackupImportSumm
       clients = deps.crm.restore(d.crm);
       if (d.crm.settings) {
         db.run(`UPDATE zur_crm_settings SET follow_ups = ?, birthdays = ?, new_clients = ? WHERE id = 1`, d.crm.settings.followUps ? 1 : 0, d.crm.settings.birthdays ? 1 : 0, d.crm.settings.newClients ? 1 : 0);
+        // A backup of before 11/11/2026 has neither: what is set here stays.
+        if (d.crm.settings.birthdayTime !== undefined) db.run(`UPDATE zur_crm_settings SET reminder_time = ? WHERE id = 1`, d.crm.settings.birthdayTime);
+        if (d.crm.settings.newClientNoticesPerDay !== undefined) db.run(`UPDATE zur_crm_settings SET new_client_notices = ? WHERE id = 1`, d.crm.settings.newClientNoticesPerDay);
+        deps.crm.planReminder();
       }
     }
 

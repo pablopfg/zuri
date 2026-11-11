@@ -17,11 +17,23 @@ export const FLOW_LIMITS = {
   sites: 10,
   siteQuery: 200,
   siteUrl: 500,
+  /** The shortest interval until the owner picks another, from 5 minutes (the alarm's own pace) to an hour. */
   minIntervalMinutes: 15,
-  /** A flow with an AI step: the same floor as the AI routines. */
+  minIntervalFloor: 5,
+  minIntervalCeiling: 60,
+  /** A flow with an AI step: the same floor as the AI routines; the owner picks from half an hour to a day. */
   aiMinIntervalMinutes: 60,
-  /** External calls of one run, every step and every wake together. */
+  aiMinIntervalFloor: 30,
+  aiMinIntervalCeiling: 1_440,
+  /**
+   * Scheduled times a day, all the flows turned on together: 20 flows every 15 minutes, the most there
+   * could be before the owner set the shortest interval. A shorter interval never costs more than that:
+   * what doesn't fit isn't turned on.
+   */
+  slotsPerDay: 2_000,
+  /** External calls of one run, every step and every wake together: the most, and what holds until the owner picks fewer. */
   callsPerRun: 40,
+  callsPerRunMin: 5,
   /** Subrequests the flows may make in one wake of the alarm, DNS included; the rest waits a minute. */
   subrequestsPerWake: 20,
   runsPerWake: 3,
@@ -36,18 +48,25 @@ export const FLOW_LIMITS = {
   requestTimeoutMs: 10_000,
   /** Tries of a request that failed for a passing reason, and the waits between them. */
   attempts: 3,
+  attemptsMin: 1,
   retryMinutes: [1, 5],
   /** The monitor's own tries before a site counts as down. */
   siteRetryMinutes: [1, 5],
+  /** Runs a day, all flows together: the most there is, and what holds until the owner picks fewer. */
   runsPerDay: 500,
+  runsPerDayMin: 10,
+  /** The flows' share of the day's Neurons: the most, and what holds until the owner picks fewer. */
   neuronsPerDay: 3_000,
+  neuronsPerDayMin: 100,
   waitMinutesMax: 30 * 24 * 60,
   noticesPerRun: 10,
   runsKept: 2_000,
   runsPruneBatch: 100,
   runsPage: 30,
-  /** Failures in a row that turn a flow off (and tell the owner). */
+  /** Failures in a row that turn a flow off (and tell the owner); the owner picks from 2 to 10. */
   failuresToPause: 5,
+  failuresToPauseMin: 2,
+  failuresToPauseMax: 10,
   name: 80,
   path: 500,
   fieldPath: 100,
@@ -272,10 +291,50 @@ export interface FlowGoogleInfo {
   labels: { id: string; name: string }[];
 }
 
+/** What the owner sets for every flow at once (CRM screen). */
+export interface FlowSettings {
+  /** Failures in a row that turn a flow off. */
+  failuresToPause: number;
+  /** Runs a day, all flows together. */
+  runsPerDay: number;
+  /** The shortest interval a flow may be saved or turned on with, in minutes. */
+  minIntervalMinutes: number;
+  /** The same for a flow with an AI step. */
+  aiMinIntervalMinutes: number;
+  /** External calls of one run. */
+  callsPerRun: number;
+  /** Neurons a day, all flows together. */
+  neuronsPerDay: number;
+  /** Tries of a call that failed for a passing reason (1 is no retry). */
+  attempts: number;
+}
+
+/** What each field of the flows' settings starts at, and its limits: one table for the schema, the service, the database's CHECKs and the screen. */
+export const FLOW_SETTING_RANGES = {
+  failuresToPause: { min: FLOW_LIMITS.failuresToPauseMin, max: FLOW_LIMITS.failuresToPauseMax, initial: FLOW_LIMITS.failuresToPause },
+  runsPerDay: { min: FLOW_LIMITS.runsPerDayMin, max: FLOW_LIMITS.runsPerDay, initial: FLOW_LIMITS.runsPerDay },
+  minIntervalMinutes: { min: FLOW_LIMITS.minIntervalFloor, max: FLOW_LIMITS.minIntervalCeiling, initial: FLOW_LIMITS.minIntervalMinutes },
+  aiMinIntervalMinutes: { min: FLOW_LIMITS.aiMinIntervalFloor, max: FLOW_LIMITS.aiMinIntervalCeiling, initial: FLOW_LIMITS.aiMinIntervalMinutes },
+  callsPerRun: { min: FLOW_LIMITS.callsPerRunMin, max: FLOW_LIMITS.callsPerRun, initial: FLOW_LIMITS.callsPerRun },
+  neuronsPerDay: { min: FLOW_LIMITS.neuronsPerDayMin, max: FLOW_LIMITS.neuronsPerDay, initial: FLOW_LIMITS.neuronsPerDay },
+  attempts: { min: FLOW_LIMITS.attemptsMin, max: FLOW_LIMITS.attempts, initial: FLOW_LIMITS.attempts },
+} as const satisfies Record<keyof FlowSettings, { min: number; max: number; initial: number }>;
+
+export const FLOW_SETTING_KEYS = Object.keys(FLOW_SETTING_RANGES) as (keyof FlowSettings)[];
+
+/** Scheduled times a day a flow takes while on: an interval's share of the day, one for a daily, weekly or monthly time, none by hand. */
+export function flowSlotsPerDay(definition: Pick<FlowDefinition, "trigger">): number {
+  const { trigger } = definition;
+  if (trigger.type !== "schedule") return 0;
+  return trigger.schedule.type === "interval" ? Math.ceil(1_440 / trigger.schedule.minutes) : 1;
+}
+
 export interface FlowList {
   flows: Flow[];
+  settings: FlowSettings;
   connections: FlowConnection[];
-  counts: { flows: number; enabled: number; connections: number; sites: number; runsToday: number; neuronsToday: number };
+  /** `slots`: scheduled times a day of the flows turned on, of FLOW_LIMITS.slotsPerDay. */
+  counts: { flows: number; enabled: number; connections: number; sites: number; runsToday: number; neuronsToday: number; slots: number };
   /** False without MCP_CREDENTIAL_KEY: connections can't keep a credential. */
   credentialsAvailable: boolean;
   /** Flows the chat suggested (step 22b), newest first, until saved or dropped. */

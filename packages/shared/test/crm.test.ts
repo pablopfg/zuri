@@ -105,6 +105,14 @@ describe("the Clients tab's bodies", () => {
     expect(ok(crmSettingsSchema, { followUps: false })).toBe(true);
     expect(ok(crmSettingsSchema, { followUps: "false" })).toBe(false);
     expect(ok(crmSettingsSchema, { events: true })).toBe(false);
+    for (const time of ["00:00", "09:00", "23:59"]) expect(ok(crmSettingsSchema, { birthdayTime: time }), time).toBe(true);
+    for (const time of ["24:00", "9:00", "09:60", "09:00:00", " 09:00", "09:00\n", ""]) expect(ok(crmSettingsSchema, { birthdayTime: time }), JSON.stringify(time)).toBe(false);
+    for (const n of [CRM_LIMITS.newClientNoticesMin, CRM_LIMITS.newClientNoticesPerDay]) expect(ok(crmSettingsSchema, { newClientNoticesPerDay: n }), String(n)).toBe(true);
+    for (const n of [0, CRM_LIMITS.newClientNoticesPerDay + 1, 1.5, -1, "5", null]) expect(ok(crmSettingsSchema, { newClientNoticesPerDay: n }), String(n)).toBe(false);
+    for (const n of [CRM_LIMITS.eventsPerHourMin, CRM_LIMITS.eventsPerHour]) expect(ok(crmSettingsSchema, { eventsPerHour: n }), String(n)).toBe(true);
+    for (const n of [CRM_LIMITS.eventsPerHourMin - 1, CRM_LIMITS.eventsPerHour + 1, 20.5, "20"]) expect(ok(crmSettingsSchema, { eventsPerHour: n }), String(n)).toBe(false);
+    for (const n of [CRM_LIMITS.eventsPerDayMin, CRM_LIMITS.eventsPerDay]) expect(ok(crmSettingsSchema, { eventsPerDay: n }), String(n)).toBe(true);
+    for (const n of [CRM_LIMITS.eventsPerDayMin - 1, CRM_LIMITS.eventsPerDay + 1, 99.5, "100"]) expect(ok(crmSettingsSchema, { eventsPerDay: n }), String(n)).toBe(false);
     expect(ok(crmClientsQuerySchema, { q: "a".repeat(CRM_LIMITS.query) })).toBe(true);
     expect(ok(crmClientsQuerySchema, { q: "a".repeat(CRM_LIMITS.query + 1) })).toBe(false);
     expect(ok(crmClientsQuerySchema, { followUp: "ontem" })).toBe(false);

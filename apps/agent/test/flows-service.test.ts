@@ -6,6 +6,8 @@ import { addConnection, FlowModel, type FlowWorld, NOON, withFlowWorld } from ".
 // Step 22a: the flows' engine and service, in a database of their own.
 
 const MINUTE = 60_000;
+/** What every setting of the flows starts at (the numbers that were fixed in the code). */
+const START = { failuresToPause: 5, runsPerDay: 500, minIntervalMinutes: 15, aiMinIntervalMinutes: 60, callsPerRun: 40, neuronsPerDay: 3_000, attempts: 3 };
 
 async function refusal(work: Promise<unknown> | (() => unknown)): Promise<AppError> {
   try {
@@ -29,6 +31,8 @@ const request = (connection: string, patch: Partial<Extract<FlowNode, { type: "r
   itemsPath: "data",
   ...patch,
 });
+
+const aiFlow = (id: string): FlowDefinition => manual([request(id), { type: "ai", instruction: "Resuma os clientes em uma frase.", output: "resumo" }, { type: "notify", title: "Resumo", body: "{{resumo}} ({{count}})", priority: "normal", each: false }]);
 
 const clients = [
   { id: 1, nome: "Ana", etapa: "proposta", valor: 1200 },
@@ -375,7 +379,6 @@ describe("running the steps", () => {
 });
 
 describe("the AI step", () => {
-  const aiFlow = (id: string): FlowDefinition => manual([request(id), { type: "ai", instruction: "Resuma os clientes em uma frase.", output: "resumo" }, { type: "notify", title: "Resumo", body: "{{resumo}} ({{count}})", priority: "normal", each: false }]);
 
   it("sends the items as data and the owner's instruction as the system's, with no tools", async () => {
     await withFlowWorld(async (world) => {
@@ -502,6 +505,190 @@ describe("the schedule", () => {
       expect(world.flows.get(flow.id)).toMatchObject({ enabled: false, failures: FLOW_LIMITS.failuresToPause, nextRunAt: null });
       expect(world.notices.filter((notice) => notice.kind === "failed")).toHaveLength(FLOW_LIMITS.failuresToPause - 1);
       expect(world.notices.at(-1)).toMatchObject({ kind: "paused", flowName: "Quebrado" });
+    });
+  });
+
+  it("stops at the owner's runs a day when they picked fewer than 500", async () => {
+    await withFlowWorld(async (world) => {
+      expect(world.flows.settings()).toEqual(START);
+      expect(world.flows.updateSettings({ runsPerDay: 10 })).toEqual({ ...START, runsPerDay: 10 });
+      const flow = await world.flows.create({ name: "Ping", definition: manual([{ type: "notify", title: "ok", body: "", priority: "low", each: false }]) });
+      for (let i = 0; i < 10; i++) expect((await world.flows.runNow(flow.id)).status).toBe("success");
+      const refused = await refusal(world.flows.runNow(flow.id));
+      expect(refused).toMatchObject({ code: "CONFLICT", details: { limit: 10 } });
+      const timed = await world.flows.create({ name: "Hora", definition: every(15, [{ type: "wait", minutes: 1 }]) });
+      await world.flows.update(timed.id, { enabled: true });
+      world.clock.now += 15 * MINUTE;
+      await world.flows.tick();
+      expect(runRows(world).at(-1)).toMatchObject({ status: "skipped", problem: "runs_limit" });
+      // A higher number the same day lets the next run through.
+      world.flows.updateSettings({ runsPerDay: 11 });
+      expect((await world.flows.runNow(flow.id)).status).toBe("success");
+      expect(world.flows.list().settings).toEqual({ ...START, runsPerDay: 11 });
+    });
+  });
+
+  it("turns a flow off after the failures in a row the owner picked; a flow already failing keeps its count", async () => {
+    await withFlowWorld(async (world) => {
+      serveApi(world, () => new Response("no", { status: 400 }));
+      const id = await addConnection(world);
+      const flow = await world.flows.create({ name: "Quebrado", definition: every(15, [request(id)]) });
+      await world.flows.update(flow.id, { enabled: true });
+      world.flows.updateSettings({ failuresToPause: 3 });
+      for (let i = 0; i < 2; i++) {
+        world.clock.now += 15 * MINUTE;
+        await world.flows.tick();
+      }
+      expect(world.flows.get(flow.id)).toMatchObject({ enabled: true, failures: 2 });
+      // Lowering the number turns nothing off by itself: the next failure does.
+      world.flows.updateSettings({ failuresToPause: 2 });
+      expect(world.flows.get(flow.id)).toMatchObject({ enabled: true, failures: 2 });
+      world.clock.now += 15 * MINUTE;
+      await world.flows.tick();
+      expect(world.flows.get(flow.id)).toMatchObject({ enabled: false, failures: 3, nextRunAt: null });
+      expect(world.notices.at(-1)).toMatchObject({ kind: "paused", flowName: "Quebrado" });
+    });
+  });
+
+  it("writes nothing when the numbers saved are the ones already there, and holds the limits whatever the row says", async () => {
+    await withFlowWorld(async (world) => {
+      world.flows.updateSettings({ failuresToPause: 4, runsPerDay: 100 });
+      const usage = world.db.usage.rowsWritten;
+      expect(world.flows.updateSettings({ failuresToPause: 4, runsPerDay: 100 })).toEqual({ ...START, failuresToPause: 4, runsPerDay: 100 });
+      expect(world.db.usage.rowsWritten).toBe(usage);
+      expect(() => world.db.run(`UPDATE zur_flow_settings SET runs_per_day = 501`)).toThrow();
+      expect(() => world.db.run(`UPDATE zur_flow_settings SET failures_to_pause = 1`)).toThrow();
+      for (const statement of ["min_interval_min = 4", "min_interval_min = 61", "ai_min_interval_min = 29", "ai_min_interval_min = 1441", "calls_per_run = 4", "calls_per_run = 41", "neurons_per_day = 99", "neurons_per_day = 3001", "attempts = 0", "attempts = 4"]) {
+        expect(() => world.db.run(`UPDATE zur_flow_settings SET ${statement}`), statement).toThrow();
+      }
+      // The row gone (a restore of an older copy): the numbers of before, and a save makes it again.
+      world.db.run(`DELETE FROM zur_flow_settings`);
+      expect(world.flows.settings()).toEqual(START);
+      expect(world.flows.updateSettings({ failuresToPause: 6 })).toEqual({ ...START, failuresToPause: 6 });
+    });
+  });
+
+  it("holds the owner's shortest interval on saving and on turning on (n-1, n), and leaves a flow already on alone", async () => {
+    await withFlowWorld(async (world) => {
+      const ping = (minutes: number) => every(minutes, [{ type: "wait", minutes: 1 }]);
+      const short = await refusal(world.flows.create({ name: "Curto", definition: ping(14) }));
+      expect(short).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["definition.trigger"], min: 15 } });
+      const flow = await world.flows.create({ name: "Certo", definition: ping(15) });
+      await world.flows.update(flow.id, { enabled: true });
+      // Down to 5: 5 is taken, 4 is nobody's to take (the schema's own floor).
+      world.flows.updateSettings({ minIntervalMinutes: 5 });
+      expect((await refusal(world.flows.create({ name: "Quatro", definition: ping(4) }))).code).toBe("VALIDATION_FAILED");
+      const five = await world.flows.create({ name: "Cinco", definition: ping(5) });
+      await world.flows.update(five.id, { enabled: true });
+      // Up to 30: the two flows on go on at their own pace and can be renamed and turned off...
+      world.flows.updateSettings({ minIntervalMinutes: 30 });
+      world.clock.now += 5 * MINUTE;
+      await world.flows.tick();
+      expect(runRows(world).at(-1)).toMatchObject({ status: "waiting" });
+      expect((await world.flows.update(five.id, { name: "Cinco de novo" })).enabled).toBe(true);
+      expect((await world.flows.update(five.id, { enabled: false })).enabled).toBe(false);
+      // ...but turning one on again, or saving it again, asks for the new floor.
+      expect(await refusal(world.flows.update(five.id, { enabled: true }))).toMatchObject({ code: "VALIDATION_FAILED", details: { min: 30 } });
+      expect(await refusal(world.flows.update(flow.id, { definition: ping(29) }))).toMatchObject({ code: "VALIDATION_FAILED", details: { min: 30 } });
+      expect(world.flows.get(flow.id)).toMatchObject({ enabled: true, definition: ping(15) });
+      expect((await world.flows.update(flow.id, { definition: ping(30) })).enabled).toBe(true);
+    });
+  });
+
+  it("holds the owner's shortest interval for a flow with an AI step, never under the one of every flow", async () => {
+    await withFlowWorld(async (world) => {
+      const id = await addConnection(world);
+      const ai = (minutes: number) => ({ ...aiFlow(id), trigger: { type: "schedule" as const, schedule: { type: "interval" as const, minutes } } });
+      expect(await refusal(world.flows.create({ name: "IA", definition: ai(59) }))).toMatchObject({ code: "VALIDATION_FAILED", details: { min: 60 } });
+      await world.flows.create({ name: "IA 60", definition: ai(60) });
+      world.flows.updateSettings({ aiMinIntervalMinutes: 30 });
+      await world.flows.create({ name: "IA 30", definition: ai(30) });
+      expect((await refusal(world.flows.create({ name: "IA 29", definition: ai(29) }))).code).toBe("VALIDATION_FAILED");
+      // The AI's floor under the floor of every flow: the higher of the two holds.
+      world.flows.updateSettings({ minIntervalMinutes: 45 });
+      expect(await refusal(world.flows.create({ name: "IA 44", definition: ai(44) }))).toMatchObject({ details: { min: 45 } });
+      await world.flows.create({ name: "IA 45", definition: ai(45) });
+    });
+  });
+
+  it("turns on only what fits in the day's 2,000 scheduled times: a shorter interval never costs more than before", async () => {
+    await withFlowWorld(async (world) => {
+      world.flows.updateSettings({ minIntervalMinutes: 5 });
+      const ping = (minutes: number) => every(minutes, [{ type: "wait", minutes: 1 }]);
+      // Every 5 minutes is 288 times a day: six fit (1,728), a seventh doesn't (2,016).
+      const flows = [];
+      for (let i = 0; i < 7; i++) flows.push(await world.flows.create({ name: `F${i}`, definition: ping(5) }));
+      for (const flow of flows.slice(0, 6)) await world.flows.update(flow.id, { enabled: true });
+      expect(world.flows.list().counts.slots).toBe(1_728);
+      const last = flows[6] as (typeof flows)[number];
+      expect(await refusal(world.flows.update(last.id, { enabled: true }))).toMatchObject({ code: "CONFLICT", details: { limit: FLOW_LIMITS.slotsPerDay, slots: 2_016 } });
+      expect(world.flows.get(last.id)).toMatchObject({ enabled: false, nextRunAt: null });
+      // What is left is 272 times: every 6 minutes (240) fits to the number, in one save with turning on.
+      expect((await world.flows.update(last.id, { definition: ping(6), enabled: true })).enabled).toBe(true);
+      expect(world.flows.list().counts.slots).toBe(1_968);
+      // A flow on can't grow past the count either, and stays as it was; a time of day takes one.
+      expect((await refusal(world.flows.update(last.id, { definition: ping(5) }))).code).toBe("CONFLICT");
+      expect(world.flows.get(last.id)).toMatchObject({ enabled: true, definition: ping(6) });
+      const daily = await world.flows.create({ name: "Diário", definition: { version: 1, trigger: { type: "schedule", schedule: { type: "daily", time: "09:00" } }, nodes: [{ type: "wait", minutes: 1 }] } });
+      await world.flows.update(daily.id, { enabled: true });
+      expect(world.flows.list().counts.slots).toBe(1_969);
+      // Renaming and turning off are never refused; a flow off or by hand counts nothing.
+      await world.flows.update(last.id, { name: "Outro nome" });
+      await world.flows.update(last.id, { enabled: false });
+      expect(world.flows.list().counts.slots).toBe(1_729);
+    });
+  });
+
+  it("stops a run at the owner's calls when they picked fewer than 40", async () => {
+    await withFlowWorld(async (world) => {
+      world.flows.updateSettings({ callsPerRun: 5 });
+      const id = await addConnection(world);
+      serveApi(world, (req) => (req.url.endsWith("/v1/lista") ? Response.json({ data: Array.from({ length: 8 }, (_, i) => ({ i })) }) : Response.json({ ok: true })));
+      const flow = await world.flows.create({ name: "Laço", definition: manual([request(id, { path: "/v1/lista" }), request(id, { path: "/v1/x/{{i}}", each: true, itemsPath: "" })]) });
+      const run = await world.flows.runNow(flow.id);
+      expect(run).toMatchObject({ status: "error", problem: "calls_limit", calls: 5 });
+      expect(world.network.requests.filter((req) => req.url.includes("/v1/x/")).length).toBe(4);
+    });
+  });
+
+  it("tries a passing failure as many times as the owner picked: once is no second try", async () => {
+    await withFlowWorld(async (world) => {
+      let calls = 0;
+      serveApi(world, () => {
+        calls++;
+        return new Response("down", { status: 503 });
+      });
+      const id = await addConnection(world);
+      const flow = await world.flows.create({ name: "Instável", definition: manual([request(id)]) });
+      world.flows.updateSettings({ attempts: 1 });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "error", problem: "http_error", httpStatus: 503 });
+      expect(calls).toBe(1);
+      world.flows.updateSettings({ attempts: 2 });
+      let run = await world.flows.runNow(flow.id);
+      expect(run.status).toBe("waiting");
+      world.clock.now += MINUTE;
+      await world.flows.tick();
+      run = world.flows.runs({}).runs[0] as typeof run;
+      expect(run).toMatchObject({ status: "error", problem: "http_error" });
+      expect(calls).toBe(3);
+    });
+  });
+
+  it("stops the AI steps at the owner's Neurons a day when they picked fewer than 3,000", async () => {
+    await withFlowWorld(async (world) => {
+      world.model.provider = new FlowModel(true);
+      const id = await addConnection(world);
+      serveApi(world);
+      const flow = await world.flows.create({ name: "Resumo", definition: aiFlow(id) });
+      world.flows.updateSettings({ neuronsPerDay: 100 });
+      expect((await world.flows.runNow(flow.id)).status).toBe("success");
+      world.db.run(`UPDATE zur_flow_runs SET neurons = 100`);
+      const before = (world.model.provider as FlowModel).generated.length;
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "skipped", problem: "ai_limit" });
+      expect((world.model.provider as FlowModel).generated.length).toBe(before);
+      // The same spend under the number of before: it runs.
+      world.flows.updateSettings({ neuronsPerDay: 3_000 });
+      expect((await world.flows.runNow(flow.id)).status).toBe("success");
     });
   });
 

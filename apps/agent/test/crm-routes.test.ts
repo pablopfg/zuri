@@ -44,7 +44,7 @@ afterEach(async () => {
     for (const table of ["zur_crm_tags", "zur_crm_history", "zur_crm_clients", "zur_crm_tag_counts", "zur_crm_stages", "zur_flow_drafts", "zur_auth_events", "zur_notices"]) {
       db.run(`DELETE FROM ${table}`);
     }
-    db.run(`UPDATE zur_crm_settings SET events_key = NULL, follow_ups = 1, birthdays = 1, new_clients = 1, next_reminder = NULL`);
+    db.run(`UPDATE zur_crm_settings SET events_key = NULL, follow_ups = 1, birthdays = 1, new_clients = 1, next_reminder = NULL, reminder_time = '09:00', new_client_notices = 20, events_per_hour = 300, events_per_day = 1000, reminded_day = NULL`);
     // The stages went too: the service makes the default ones again on next use.
     (agent.store.crm as unknown as { ready: boolean }).ready = false;
   });
@@ -71,7 +71,7 @@ describe("/api/crm", () => {
     ]);
     expect(view.tags).toEqual([]);
     expect(view.summary).toEqual({ total: 0, overdue: 0, today: 0, week: 0, newThisWeek: 0 });
-    expect(view.settings).toEqual({ followUps: true, birthdays: true, newClients: true });
+    expect(view.settings).toEqual({ followUps: true, birthdays: true, newClients: true, birthdayTime: "09:00", newClientNoticesPerDay: 20, eventsPerHour: 300, eventsPerDay: 1_000 });
     expect(view.events).toMatchObject({ enabled: false });
     expect(JSON.stringify(view)).not.toMatch(/secret|zcrm_/i);
   });
@@ -155,9 +155,45 @@ describe("/api/crm", () => {
   it("turns the notices off and on", async () => {
     const res = await api("PATCH", "/crm/settings", { birthdays: false, newClients: false });
     expect(res.status).toBe(200);
-    expect((await overview()).settings).toEqual({ followUps: true, birthdays: false, newClients: false });
+    expect((await overview()).settings).toEqual({ followUps: true, birthdays: false, newClients: false, birthdayTime: "09:00", newClientNoticesPerDay: 20, eventsPerHour: 300, eventsPerDay: 1_000 });
     expect((await api("PATCH", "/crm/settings", { birthdays: "no" })).status).toBe(400);
     expect((await api("PATCH", "/crm/settings", { other: true })).status).toBe(400);
+  });
+
+  it("saves the birthday notice's time and the new-client notices a day, inside the limits only", async () => {
+    const res = await api("PATCH", "/crm/settings", { birthdayTime: "07:45", newClientNoticesPerDay: 5 });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ settings: { followUps: true, birthdays: true, newClients: true, birthdayTime: "07:45", newClientNoticesPerDay: 5, eventsPerHour: 300, eventsPerDay: 1_000 } });
+    for (const body of [
+      { birthdayTime: "24:00" },
+      { birthdayTime: "7:45" },
+      { birthdayTime: "07:60" },
+      { birthdayTime: "07:45:00" },
+      { birthdayTime: "07:45\n" },
+      { birthdayTime: 745 },
+      { newClientNoticesPerDay: 0 },
+      { newClientNoticesPerDay: 21 },
+      { newClientNoticesPerDay: 2.5 },
+      { newClientNoticesPerDay: "5" },
+      { eventsPerHour: 9 },
+      { eventsPerHour: 301 },
+      { eventsPerDay: 49 },
+      { eventsPerDay: 1_001 },
+      // The hour's number can't pass the day's, sent together or against the one stored.
+      { eventsPerHour: 200, eventsPerDay: 100 },
+    ]) {
+      const refused = await api("PATCH", "/crm/settings", body);
+      expect(refused.status, JSON.stringify(body)).toBe(400);
+    }
+    expect((await overview()).settings).toMatchObject({ birthdayTime: "07:45", newClientNoticesPerDay: 5, eventsPerHour: 300, eventsPerDay: 1_000 });
+    expect((await api("PATCH", "/crm/settings", { eventsPerHour: 60, eventsPerDay: 100 })).status).toBe(200);
+    const over = await api("PATCH", "/crm/settings", { eventsPerHour: 101 });
+    expect(over.status).toBe(400);
+    expect(await errorBody(over)).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["eventsPerHour"] } });
+    const under = await api("PATCH", "/crm/settings", { eventsPerDay: 59 });
+    expect(await errorBody(under)).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["eventsPerDay"] } });
+    expect((await api("PATCH", "/crm/settings", { eventsPerHour: 100 })).status).toBe(200);
+    expect((await overview()).settings).toMatchObject({ eventsPerHour: 100, eventsPerDay: 100 });
   });
 
   it("turns the events on only with the password typed recently, tells the owner, shows the secret once", async () => {

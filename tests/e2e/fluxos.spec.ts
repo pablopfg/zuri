@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // The Flows tab of Automations (step 22a) against the real Worker: the site
 // monitor from its model, a connection with a credential that never comes back,
@@ -187,6 +187,81 @@ test("the flows have their own address in the CRM, and the palette opens a new f
   }
 });
 
+const START = { failuresToPause: 5, runsPerDay: 500, minIntervalMinutes: 15, aiMinIntervalMinutes: 60, callsPerRun: 40, neuronsPerDay: 3_000, attempts: 3 };
+
+test("the owner sets what holds for every flow on the screen, each number inside limits that fit the free plan @mobile", async ({ page }) => {
+  await openFlows(page);
+  // The database keeps what the other project saved: start from the numbers of a new installation.
+  expect((await page.request.patch("/api/flows/settings", { headers: CSRF, data: START })).ok()).toBe(true);
+  try {
+    await page.reload();
+    const card = page.getByRole("region", { name: "Configurações dos fluxos" });
+    const field = {
+      interval: card.getByLabel("Intervalo mínimo entre execuções (minutos)"),
+      aiInterval: card.getByLabel("Intervalo mínimo com passo de IA (minutos)"),
+      runs: card.getByLabel("Execuções por dia, todos os fluxos juntos"),
+      calls: card.getByLabel("Chamadas a serviços por execução"),
+      neurons: card.getByLabel("Uso de IA dos fluxos por dia (Neurons)"),
+      attempts: card.getByLabel("Tentativas de uma chamada que falhou"),
+      failures: card.getByLabel("Pausar o fluxo depois de quantas falhas seguidas"),
+    };
+    const save = card.getByRole("button", { name: "Salvar configurações" });
+    for (const [name, value] of [["interval", "15"], ["aiInterval", "60"], ["runs", "500"], ["calls", "40"], ["neurons", "3000"], ["attempts", "3"], ["failures", "5"]] as const) {
+      await expect(field[name], name).toHaveValue(value);
+    }
+    for (const range of ["De 5 a 60.", "De 30 a 1440.", "De 10 a 500.", "De 5 a 40.", "De 100 a 3000.", "De 1 a 3.", "De 2 a 10."]) await expect(card.getByText(range, { exact: true })).toBeVisible();
+    await expect(card.getByText(/Horários por dia dos fluxos ligados: \d+ de 2000\./)).toBeVisible();
+    // Nothing changed, or a number outside its limits: nothing to save.
+    await expect(save).toBeDisabled();
+    for (const [name, bad] of [["runs", "501"], ["runs", "9"], ["interval", "4"], ["calls", "41"], ["neurons", "3001"], ["attempts", "0"], ["failures", "1"]] as const) {
+      const before = await field[name].inputValue();
+      await field[name].fill(bad);
+      await expect(save, `${name} ${bad}`).toBeDisabled();
+      await field[name].fill(before);
+    }
+    await field.failures.fill("3");
+    await field.interval.fill("5");
+    await field.runs.fill("120");
+    await expectAccessible(page, "fluxos configuracoes");
+    // By the keyboard: Enter in a field saves.
+    await field.runs.press("Enter");
+    await expect(toast(page, "Configurações salvas")).toBeVisible();
+    await expect(save).toBeDisabled();
+    await page.reload();
+    await expect(field.failures).toHaveValue("3");
+    await expect(field.interval).toHaveValue("5");
+    await expect(field.runs).toHaveValue("120");
+    // The editor follows the owner's floor: 5 minutes is now offered, with the hint saying so.
+    await page.getByRole("button", { name: "Novo fluxo" }).click();
+    const form = page.getByRole("dialog", { name: "Novo fluxo" });
+    await expect(form.getByText("No mínimo 5. Com um passo de IA, no mínimo 60.")).toBeVisible();
+    await expect(form.getByLabel("Minutos entre execuções")).toHaveAttribute("min", "5");
+    await form.getByRole("button", { name: "Cancelar" }).click();
+  } finally {
+    expect((await page.request.patch("/api/flows/settings", { headers: CSRF, data: START })).ok()).toBe(true);
+  }
+});
+
+test("a flow at a time of day shows its schedule when the CRM is the first screen opened", async ({ page }) => {
+  // Not through Rotinas first: the schedule's words must come with this screen.
+  await openFlows(page);
+  const name = `Semanal ${tag()}`;
+  const created = await page.request.post("/api/flows", {
+    headers: CSRF,
+    data: { name, definition: { version: 1, trigger: { type: "schedule", schedule: { type: "weekly", days: [1, 2, 3, 4, 5], time: "09:00" } }, nodes: [{ type: "notify", title: "Bom dia", body: "", priority: "low", each: false }] } },
+  });
+  expect(created.status()).toBe(201);
+  const { flow } = (await created.json()) as { flow: { id: string } };
+  try {
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
+    await expect(flowRow(page, name)).toContainText("às 09:00");
+    await expect(page.getByText("Esta tela parou")).toHaveCount(0);
+  } finally {
+    await page.request.delete(`/api/flows/${flow.id}`, { headers: CSRF });
+  }
+});
+
 test("loading, empty and error states of the tab", async ({ page }) => {
   let answer: "slow" | "empty" | "error" = "slow";
   let release: () => void = () => undefined;
@@ -195,7 +270,7 @@ test("loading, empty and error states of the tab", async ({ page }) => {
     if (answer === "error") return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ code: "INTERNAL", message: "Algo deu errado." }) });
     return route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ flows: [], drafts: [], connections: [], counts: { flows: 0, enabled: 0, connections: 0, sites: 0, runsToday: 0, neuronsToday: 0 }, credentialsAvailable: false }),
+      body: JSON.stringify({ flows: [], drafts: [], connections: [], counts: { flows: 0, enabled: 0, connections: 0, sites: 0, runsToday: 0, neuronsToday: 0, slots: 0 }, settings: START, credentialsAvailable: false }),
     });
   });
   await page.goto("/crm/fluxos");

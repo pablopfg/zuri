@@ -21,6 +21,7 @@ const stale = () => inOwner((agent) => agent.store.db.run(`UPDATE zur_sessions S
 const fresh = () => inOwner((agent) => agent.store.db.run(`UPDATE zur_sessions SET confirmed_at = ?`, Date.now()));
 
 const SITE = "https://loja.exemplo.com.br/";
+const START = { failuresToPause: 5, runsPerDay: 500, minIntervalMinutes: 15, aiMinIntervalMinutes: 60, callsPerRun: 40, neuronsPerDay: 3_000, attempts: 3 };
 const monitor = { version: 1, trigger: { type: "schedule", schedule: { type: "interval", minutes: 15 } }, nodes: [{ type: "monitor", sites: [SITE] }] };
 const connectionBody = { name: "CRM", origin: "https://api.exemplo.com.br", methods: ["GET"], paths: ["/v1"], auth: "bearer", headerName: null, credential: "segredo-da-rota-123" };
 
@@ -55,6 +56,7 @@ afterEach(async () => {
     const { db } = agent.store;
     new InternalState(db).delete("lockdown_until");
     for (const table of ["zur_flow_runs", "zur_flow_sites", "zur_flows", "zur_flow_connections", "zur_auth_events", "zur_notices"]) db.run(`DELETE FROM ${table}`);
+    db.run(`UPDATE zur_flow_settings SET failures_to_pause = 5, runs_per_day = 500, min_interval_min = 15, ai_min_interval_min = 60, calls_per_run = 40, neurons_per_day = 3000, attempts = 3`);
   });
 });
 
@@ -159,6 +161,61 @@ describe("/api/flows", () => {
     expect((await api("PATCH", "/flows/abc", { enabled: false })).status).toBe(404);
   });
 
+  it("saves what holds for every flow without the password, inside the limits only", async () => {
+    await stale();
+    const res = await api("PATCH", "/flows/settings", { failuresToPause: 3, runsPerDay: 120 });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ settings: { ...START, failuresToPause: 3, runsPerDay: 120 } });
+    const one = await api("PATCH", "/flows/settings", { runsPerDay: 10 });
+    expect(await one.json()).toEqual({ settings: { ...START, failuresToPause: 3, runsPerDay: 10 } });
+    expect(((await (await api("GET", "/flows")).json()) as FlowList).settings).toEqual({ ...START, failuresToPause: 3, runsPerDay: 10 });
+    for (const body of [
+      { failuresToPause: 1 },
+      { failuresToPause: 11 },
+      { runsPerDay: 9 },
+      { runsPerDay: 501 },
+      { runsPerDay: 50.5 },
+      { runsPerDay: "50" },
+      { runsPerDay: 50, other: 1 },
+      { minIntervalMinutes: 4 },
+      { minIntervalMinutes: 61 },
+      { aiMinIntervalMinutes: 29 },
+      { aiMinIntervalMinutes: 1_441 },
+      { callsPerRun: 4 },
+      { callsPerRun: 41 },
+      { neuronsPerDay: 99 },
+      { neuronsPerDay: 3_001 },
+      { attempts: 0 },
+      { attempts: 4 },
+      // What the plan fixes is nobody's to send.
+      { subrequestsPerWake: 50 },
+      { slotsPerDay: 5_000 },
+      {},
+    ]) {
+      const refused = await api("PATCH", "/flows/settings", body);
+      expect(refused.status, JSON.stringify(body)).toBe(400);
+      expect((await errorBody(refused)).code).toBe("VALIDATION_FAILED");
+    }
+    // A body past 1 KB is refused before it is read as JSON.
+    expect((await api("PATCH", "/flows/settings", { runsPerDay: 100, pad: "x".repeat(2_000) })).status).toBe(400);
+    expect((await api("PATCH", "/flows/settings", { runsPerDay: 100 }, false)).status).toBe(401);
+    expect(((await (await api("GET", "/flows")).json()) as FlowList).settings).toEqual({ ...START, failuresToPause: 3, runsPerDay: 10 });
+  });
+
+  it("takes each protection inside its limits, and the editor's interval follows the owner's floor", async () => {
+    const all = { failuresToPause: 2, runsPerDay: 10, minIntervalMinutes: 5, aiMinIntervalMinutes: 30, callsPerRun: 5, neuronsPerDay: 100, attempts: 1 };
+    const res = await api("PATCH", "/flows/settings", all);
+    expect(await res.json()).toEqual({ settings: all });
+    const five = { ...monitor, trigger: { type: "schedule", schedule: { type: "interval", minutes: 5 } } };
+    const flow = await createFlow(five);
+    expect(flow.definition.trigger).toEqual(five.trigger);
+    expect((await api("PATCH", "/flows/settings", { minIntervalMinutes: 15 })).status).toBe(200);
+    const refused = await api("PATCH", `/flows/${flow.id}`, { enabled: true });
+    expect(refused.status).toBe(400);
+    expect(await errorBody(refused)).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["definition.trigger"], min: 15 } });
+    expect(((await (await api("GET", "/flows")).json()) as FlowList).counts.slots).toBe(0);
+  });
+
   it("answers 423 to every flow route during a lockdown", async () => {
     const flow = await createFlow();
     await inOwner((agent) => new InternalState(agent.store.db).set("lockdown_until", new Date(Date.now() + 3_600_000).toISOString()));
@@ -167,6 +224,7 @@ describe("/api/flows", () => {
       ["GET", "/flows", undefined],
       ["POST", "/flows", { name: "X", definition: monitor }],
       ["GET", "/flows/runs", undefined],
+      ["PATCH", "/flows/settings", { runsPerDay: 100 }],
       ["POST", `/flows/${flow.id}/run`, undefined],
       ["PATCH", `/flows/${flow.id}`, { enabled: true }],
       ["DELETE", `/flows/${flow.id}`, undefined],

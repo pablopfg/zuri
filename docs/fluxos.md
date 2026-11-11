@@ -108,6 +108,47 @@ excesso de pedidos ou erro do serviço) é tentada de novo 1 e 5 minutos
 depois. Se a IA estiver indisponível, a execução para na hora, sem tentar de
 novo. Depois de 5 falhas seguidas o fluxo se desliga e a Zuri avisa.
 
+### Configurações dos fluxos
+
+No cartão **Configurações dos fluxos**, em CRM › Fluxos, você muda os números
+que valem para todos os fluxos. Cada um tem uma faixa que cabe no plano
+gratuito da Cloudflare; o servidor recusa o que sair dela.
+
+| Campo | Padrão | Faixa |
+| --- | --- | --- |
+| Intervalo mínimo entre execuções (minutos) | 15 | 5 a 60 |
+| Intervalo mínimo com passo de IA (minutos) | 60 | 30 a 1.440 |
+| Execuções por dia, todos os fluxos juntos | 500 | 10 a 500 |
+| Chamadas a serviços por execução | 40 | 5 a 40 |
+| Uso de IA dos fluxos por dia (Neurons) | 3.000 | 100 a 3.000 |
+| Tentativas de uma chamada que falhou | 3 | 1 a 3 |
+| Pausar o fluxo depois de quantas falhas seguidas | 5 | 2 a 10 |
+
+Como a conta fecha dentro da cota:
+
+- **O que gasta cota só desce.** Execuções por dia, chamadas, Neurons e
+  tentativas têm como máximo o número que já era fixo. Você pode baixar, nunca
+  passar dele.
+- **Intervalo menor não gasta mais.** Os fluxos ligados dividem **2.000
+  horários por dia**: um fluxo a cada 15 minutos ocupa 96, a cada 5 minutos
+  ocupa 288, e um fluxo diário ou semanal ocupa 1. 2.000 é o que 20 fluxos a
+  cada 15 minutos já ocupavam. Um fluxo que não couber nessa conta não liga, e
+  a tela diz quantos horários estão ocupados. O piso de 5 minutos é o ritmo do
+  próprio alarme da Zuri.
+- **Mudar um número não mexe no que já está rodando.** Subir o intervalo
+  mínimo não desliga um fluxo ligado com intervalo menor; o novo mínimo vale
+  quando você salvar ou ligar o fluxo de novo. Baixar o número de falhas não
+  desliga um fluxo que já está falhando: a próxima falha é que conta. Subir as
+  execuções do dia libera as que estavam esperando no mesmo dia.
+- Com passo de IA vale o maior entre os dois intervalos mínimos.
+
+O horário de cada fluxo continua no próprio fluxo, em **Editar**.
+
+Ficam fixos porque são limites da plataforma ou de segurança, não escolhas: as
+20 subrequisições por despertar (a Cloudflare permite 50 por requisição, e os
+fluxos dividem esse espaço com a agenda e os contatos), o tempo de 10 s e os
+256 KB por resposta, os 20 fluxos e os 10 sites.
+
 Desligar ou mudar um fluxo encerra a execução dele que estava esperando: ela
 não continua com os passos antigos.
 
@@ -126,7 +167,7 @@ travada, mostra só as contagens, sem endereços nem nomes de fluxos.
 | Chamadas por execução | 40 |
 | Itens por execução | 200 |
 | Resposta de um serviço | 256 KB, em até 10 s |
-| Execuções por dia | 500 |
+| Execuções por dia | 500 (ajustável de 10 a 500) |
 | IA dos fluxos por dia | 3.000 Neurons, dentro dos 9.000 do dia |
 | Histórico | últimas 2.000 execuções |
 | Eventos lidos por passo | 100, de no máximo 10 agendas |

@@ -34,9 +34,22 @@ canais da central de avisos:
 
 - **Retorno**: na hora marcada. Até 10 avisos de uma vez; se vencerem mais, o
   resto vem num aviso só.
-- **Aniversários**: às 9 h no seu fuso, com até 5 nomes por aviso. Quem faz
-  aniversário em 29 de fevereiro é lembrado no dia 28 nos anos comuns.
-- **Cliente novo vindo do n8n**: até 20 por dia.
+- **Aniversários**: na hora que você escolher em **Hora do aviso de
+  aniversários** (9 h no seu fuso, se não mexer), com até 5 nomes por aviso.
+  Quem faz aniversário em 29 de fevereiro é lembrado no dia 28 nos anos comuns.
+- **Cliente novo vindo do n8n**: quantos você escolher em **Avisos de cliente
+  novo por dia**, de 1 a 20 (20, se não mexer). Passou disso, o cliente só
+  aparece na lista.
+
+No cartão dos eventos do n8n, **Eventos aceitos por hora** (de 10 a 300) e
+**Eventos aceitos por dia** (de 50 a 1.000) dizem quantos eventos a Zuri aceita.
+Os máximos são os números de antes, que cabem na cota gratuita; você só pode
+baixar. O número da hora nunca passa o do dia.
+
+Cada dia tem um aviso de aniversários só. Se você mudar a hora depois do aviso
+do dia, a hora nova vale a partir de amanhã. Se mudar para uma hora que já
+passou, antes do aviso do dia, o de hoje sai na hora antiga e a nova vale a
+partir de amanhã.
 
 ### Na conversa
 
@@ -156,7 +169,7 @@ ou apaga (`null`) o retorno de um cliente que já existe.
 | 404 | Eventos desligados, ou endereço antigo depois de trocar o segredo |
 | 413 | Corpo acima de 16 KB |
 | 423 | Conta em bloqueio |
-| 429 | Mais de 300 eventos na hora ou 1.000 no dia (UTC); `Retry-After` diz quando tentar |
+| 429 | Mais eventos na hora ou no dia (UTC) do que você definiu: 300 e 1.000, se não mexer; `Retry-After` diz quando tentar |
 | 507 | O CRM chegou a 5.000 clientes |
 
 Os eventos recusados por formato também contam no limite, para um fluxo com

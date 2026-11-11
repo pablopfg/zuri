@@ -2,7 +2,7 @@ import { CRM_LIMITS, type CrmEvent, type CrmEventsKey, type CrmEventsStatus, crm
 import type { Database } from "../db/database.ts";
 import { checkCrmSignature, crmEventsSecret } from "../gates/crm-events.ts";
 import { AppError } from "../http/errors.ts";
-import type { CrmService } from "./service.ts";
+import { type CrmService, eventLimits } from "./service.ts";
 
 /**
  * n8n's signed events for the CRM (step 22b). The Worker already checked the
@@ -88,11 +88,12 @@ export class CrmEvents {
     const hour = `h:${nowIso.slice(0, 13)}`;
     const day = `d:${nowIso.slice(0, 10)}`;
     const counts = new Map(this.db.all<{ bucket: string; n: number }>(`SELECT bucket, n FROM zur_crm_counts WHERE bucket IN (?, ?)`, hour, day).map((item) => [item.bucket, item.n]));
-    if ((counts.get(day) ?? 0) >= CRM_LIMITS.eventsPerDay) {
+    const limits = eventLimits(row);
+    if ((counts.get(day) ?? 0) >= limits.eventsPerDay) {
       const midnight = Date.parse(`${nowIso.slice(0, 10)}T00:00:00.000Z`) + 24 * HOUR_MS;
       throw new AppError("RATE_LIMITED", "error.rateLimited", { retryAfter: Math.max(1, Math.ceil((midnight - nowMs) / 1000)) });
     }
-    if ((counts.get(hour) ?? 0) >= CRM_LIMITS.eventsPerHour) {
+    if ((counts.get(hour) ?? 0) >= limits.eventsPerHour) {
       const next = Math.floor(nowMs / HOUR_MS) * HOUR_MS + HOUR_MS;
       throw new AppError("RATE_LIMITED", "error.rateLimited", { retryAfter: Math.max(1, Math.ceil((next - nowMs) / 1000)) });
     }
