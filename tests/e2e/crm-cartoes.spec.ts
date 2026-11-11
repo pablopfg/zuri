@@ -59,7 +59,7 @@ test("a CRM notice turned off stays off after a reload; the card is accessible @
 test("the CRM has no door for other systems: no events card and no address to post to", async ({ page }) => {
   await page.goto("/crm");
   await signIn(page);
-  await expect(page.getByRole("switch", { name: "Aniversários de clientes, às 9 h" })).toBeVisible();
+  await expect(page.getByRole("switch", { name: "Aniversários de clientes", exact: true })).toBeVisible();
   // Zuri takes no events from n8n (owner's decision of 11/11/2026): nothing on the screen offers them.
   await expect(page.getByText(/n8n/i)).toHaveCount(0);
   await expect(page.getByRole("button", { name: /eventos|segredo/i })).toHaveCount(0);
