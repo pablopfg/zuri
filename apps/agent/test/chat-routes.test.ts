@@ -376,7 +376,7 @@ describe("conversations", () => {
     await chat("mais uma", old);
     const after = await json<{ conversations: Conversation[] }>(await api("GET", "/conversations"), 200);
     expect(after.conversations.map((c) => c.id)).toEqual([old, recent]);
-    expect(after.conversations[0]?.updatedAt > lastUse).toBe(true);
+    expect((after.conversations[0]?.updatedAt ?? "") > lastUse).toBe(true);
   });
 
   it("pages the list and the messages with a cursor, and refuses a malformed one", async () => {

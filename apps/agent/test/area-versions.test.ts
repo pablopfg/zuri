@@ -153,6 +153,11 @@ describe("each area moves with its own changes only", () => {
     ).toEqual({ conversations: 1 });
     // The running summary is not on screen: it moves nothing.
     expect(await change(() => inOwner((db) => db.run(`UPDATE zur_conversations SET summary = 'resumo', summary_upto = 3 WHERE id = 'av-c1'`)))).toEqual({});
+    // A rename is on screen, though it no longer touches `updated_at` (#272): the title alone moves the list.
+    const renamed = crypto.randomUUID();
+    await inOwner((db) => db.run(`INSERT INTO zur_conversations (id, title, created_at, updated_at) VALUES (?, 'Oi', ?, ?)`, renamed, at, at));
+    expect(await change(async () => expect((await api("PATCH", `/conversations/${renamed}`, { title: "Olá" })).status).toBe(200))).toEqual({ conversations: 1 });
+    expect(await inOwner((db) => db.one<{ updated_at: string }>(`SELECT updated_at FROM zur_conversations WHERE id = ?`, renamed)?.updated_at)).toBe(at);
   });
 
   it("a change elsewhere (the settings, a session) moves no area", async () => {
