@@ -1548,13 +1548,37 @@ export const MIGRATIONS: readonly Migration[] = [
   },
   {
     version: 34,
+    name: "crm_flow_settings",
+    statements: [
+      // What was fixed in the code and the owner now sets on the screen (11/11/2026). The defaults are the
+      // values of before, so nothing changes until the owner changes it. The CHECKs repeat the limits of
+      // FLOW_LIMITS: a row written by hand can't lift a ceiling. None of these is in the
+      // area triggers: the route that saves one answers with the new state.
+      `ALTER TABLE zur_crm_settings ADD COLUMN reminder_time TEXT NOT NULL DEFAULT '09:00'`,
+      // The owner's day of the last birthday notice: a time changed later that day doesn't tell it twice.
+      `ALTER TABLE zur_crm_settings ADD COLUMN reminded_day TEXT`,
+      `CREATE TABLE IF NOT EXISTS zur_flow_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        failures_to_pause INTEGER NOT NULL DEFAULT 5 CHECK (failures_to_pause BETWEEN 2 AND 10),
+        runs_per_day INTEGER NOT NULL DEFAULT 500 CHECK (runs_per_day BETWEEN 10 AND 500),
+        min_interval_min INTEGER NOT NULL DEFAULT 15 CHECK (min_interval_min BETWEEN 5 AND 60),
+        ai_min_interval_min INTEGER NOT NULL DEFAULT 60 CHECK (ai_min_interval_min BETWEEN 30 AND 1440),
+        calls_per_run INTEGER NOT NULL DEFAULT 40 CHECK (calls_per_run BETWEEN 5 AND 40),
+        neurons_per_day INTEGER NOT NULL DEFAULT 3000 CHECK (neurons_per_day BETWEEN 100 AND 3000),
+        attempts INTEGER NOT NULL DEFAULT 3 CHECK (attempts BETWEEN 1 AND 3)
+      )`,
+      `INSERT INTO zur_flow_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
+    ],
+  },
+  {
+    version: 35,
     name: "session_binding",
     statements: [
       // A session is tied to where it was opened (the owner's decision, 11/11/2026), so a copied cookie is
       // not enough by itself: `device` is the HMAC of the browser's device cookie (never the cookie),
       // `country` the edge's country at sign-in, `networks` every network it was used from (one per line,
       // the sign-in's first) and `confirmed_network` the one the password was last typed on. Sessions
-      // opened before this have none of it and are not compared: they end by themselves within a day.
+      // opened before this have none of it and end at their first request.
       `ALTER TABLE zur_sessions ADD COLUMN device TEXT`,
       `ALTER TABLE zur_sessions ADD COLUMN country TEXT NOT NULL DEFAULT ''`,
       `ALTER TABLE zur_sessions ADD COLUMN networks TEXT NOT NULL DEFAULT ''`,

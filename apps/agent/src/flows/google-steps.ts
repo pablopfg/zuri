@@ -63,10 +63,10 @@ function problemOf(error: unknown): unknown {
  * Without room for all of them, the step waits a minute before starting (it
  * is never left half done in a wake).
  */
-function meterFor(need: number, state: RunState, wake: WakeMeter): GoogleMeter {
-  if (state.calls + 1 > FLOW_LIMITS.callsPerRun) throw new FlowStepError("calls_limit");
+function meterFor(need: number, state: RunState, wake: WakeMeter, callsPerRun: number): GoogleMeter {
+  if (state.calls + 1 > callsPerRun) throw new FlowStepError("calls_limit");
   if (!wake.room(need)) throw new FlowStepError("calls_limit");
-  const budget = Math.min(need, FLOW_LIMITS.callsPerRun - state.calls);
+  const budget = Math.min(need, callsPerRun - state.calls);
   return new GoogleMeter(budget, {
     room: (n: number) => wake.room(n),
     take: () => {
@@ -90,7 +90,7 @@ function addDays(date: string, days: number): string {
 }
 
 /** Reads the events of the window; each one becomes an item. */
-export async function readCalendar(node: Extract<FlowNode, { type: "calendar" }>, state: RunState, google: FlowGoogle, wake: WakeMeter, now: number): Promise<Item[]> {
+export async function readCalendar(node: Extract<FlowNode, { type: "calendar" }>, state: RunState, google: FlowGoogle, wake: WakeMeter, now: number, callsPerRun: number): Promise<Item[]> {
   const calendar = connected(google);
   const open = calendar.readable();
   const chosen = node.calendar ? open.filter((info) => info.id === node.calendar) : open.slice(0, FLOW_LIMITS.calendarsPerRead);
@@ -101,7 +101,7 @@ export async function readCalendar(node: Extract<FlowNode, { type: "calendar" }>
   const from = localInstant(first, zone) as Date;
   const to = localInstant(addDays(first, node.days), zone) as Date;
   // One call per calendar and maybe a token renewal.
-  const meter = meterFor(chosen.length + 1, state, wake);
+  const meter = meterFor(chosen.length + 1, state, wake, callsPerRun);
   try {
     const { events, skipped } = await calendar.events(chosen, from, to, meter, {
       timeZone: zone,
@@ -167,7 +167,7 @@ async function eventId(flowId: string, calendarId: string, key: string): Promise
  * run with nothing created. A retry or the next wake goes on from the first
  * item not done.
  */
-export async function createEvents(node: Extract<FlowNode, { type: "calendar_create" }>, state: RunState, google: FlowGoogle, wake: WakeMeter, flowId: string): Promise<Item[]> {
+export async function createEvents(node: Extract<FlowNode, { type: "calendar_create" }>, state: RunState, google: FlowGoogle, wake: WakeMeter, flowId: string, callsPerRun: number): Promise<Item[]> {
   const calendar = connected(google);
   if (!calendar.writable().some((info) => info.id === node.calendar)) throw new FlowStepError("calendar_missing");
   const zone = google.timeZone();
@@ -187,7 +187,7 @@ export async function createEvents(node: Extract<FlowNode, { type: "calendar_cre
     const entry = planned[partial.done] as (typeof planned)[number];
     const when = entry.when as NonNullable<typeof entry.when>;
     // The event and maybe a token renewal.
-    const meter = meterFor(2, state, wake);
+    const meter = meterFor(2, state, wake, callsPerRun);
     const id = entry.key ? await eventId(flowId, node.calendar, entry.key) : undefined;
     let made: { id: string; created: boolean };
     try {
@@ -228,12 +228,15 @@ export function searchContacts(node: Extract<FlowNode, { type: "contacts" }>, st
     const query = [...fill(node.query, item).trim()].slice(0, FLOW_LIMITS.contactsQuery).join("");
     // "One per item" with nothing to look for finds nobody rather than the first name of the list.
     if (!query && node.each && node.query) return [];
-    return contacts.search({
-      limit,
-      ...(query ? { query } : {}),
-      ...(node.label ? { label: node.label } : {}),
-      ...(node.birthday ? { birthday: node.birthday } : {}),
-    }).contacts;
+    // What a flow gets of a contact is this and no more: the photo's address and the CPF never travel in a flow.
+    return contacts
+      .search({
+        limit,
+        ...(query ? { query } : {}),
+        ...(node.label ? { label: node.label } : {}),
+        ...(node.birthday ? { birthday: node.birthday } : {}),
+      })
+      .contacts.map(({ id, name, labels, phone, email, birthday }) => ({ id, name, labels, phone, email, birthday }));
   };
   if (!node.each) return find(state.items[0] ?? newItem(), node.limit).map((contact) => plain(contact) as Item);
   return state.items.map((item) => {

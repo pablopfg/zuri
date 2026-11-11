@@ -520,6 +520,7 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
 - A barra de uma tela testada só no Pixel 7 (412 px) pode quebrar em 390 px.
   Teste de layout de celular fixa a janela em 390 px com `test.use` em vez de
   pular fora do projeto `mobile` (S08).
+- Grupos do menu (11/11/2026): lugar dobrado fica com `visibility: hidden`, e o `getByRole("listitem")` do Playwright não o acha mais; para medir a altura use `locator("li")`. As classes das partes do menu saíram do `Sidebar.tsx` para `.zuri-menu …` em `styles.css` (por posição): foi o que pagou os bytes do botão novo (140.860 B com teto de 140.900 B).
 - CI sem `--with-deps` (11/11/2026): `npx playwright install --with-deps chromium` caía com código 100 nos jobs `e2e` e `lighthouse` quando o runner `ubuntu-26.04` não resolvia os espelhos do Ubuntu (apt). A imagem já traz as bibliotecas do Chromium; o `--with-deps` só acrescentava nove pacotes de fontes. A CI instala só o navegador (`npx playwright install chromium`). Se um dia faltar biblioteca na imagem, o navegador não abre e o job falha na hora: aí instale só a que faltar, nunca a lista inteira.
 - Teste de rota que manda só o cookie da sessão recebe 401 e encerra a sessão
   (ela é presa ao cookie de aparelho desde 11/11/2026). Use `signedCookies(res)`

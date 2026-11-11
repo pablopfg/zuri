@@ -20,10 +20,10 @@ export const CONTACT_LIMITS = {
   /** The alarm reads Google this often until the owner picks another interval (Settings, 11/11/2026). */
   syncEveryMs: 5 * 60_000,
   /**
-   * The interval the owner may pick, in minutes. Five is the floor: the reviews' check waits two and a
-   * half minutes after a contacts' sync, so a shorter one would leave it no wake of its own.
+   * The interval the owner may pick, in minutes (from one, the owner's call of 11/11/2026). Under five,
+   * the times a day it takes come out of DAY_BUDGET, shared with the reviews' check and the flows.
    */
-  syncEveryMinMinutes: 5,
+  syncEveryMinMinutes: 1,
   syncEveryMaxMinutes: 1_440,
   /** "Sync now" at most once a minute. */
   syncNowEveryMs: 60_000,
@@ -114,6 +114,8 @@ export interface ContactsStatus {
   lastResult: ContactSyncResult | null;
   /** Every contact is being read again (a label added, the first read, fields Zuri started to keep). */
   refreshing: boolean;
+  /** The labels were read from Google at least once since the contacts were turned on: the list to choose from is real. */
+  labelsRead: boolean;
   /** Minutes between two reads by itself, as the owner chose. */
   syncEveryMinutes: number;
   contacts: number;
@@ -131,6 +133,14 @@ export interface ContactSummary {
   email: string | null;
   /** "MM-DD" */
   birthday: string | null;
+  /** "MM-DD" or "YYYY-MM-DD". */
+  birthdayFull: string | null;
+  /** What the owner wrote after the name at Google ("Paciente" of "Ana Souza / Paciente"); "" with none. */
+  note: string;
+  /** The CPF Google has for the contact, with the ends hidden ("***.456.789-**"): enough to tell two people apart. */
+  cpf: string | null;
+  /** The contact's photo, at Google's image host (https only); null shows the initials. */
+  photo: string | null;
 }
 
 export interface ContactValue {
@@ -155,8 +165,6 @@ export interface ContactDetail extends ContactSummary {
   nickname: string;
   phones: ContactValue[];
   emails: ContactValue[];
-  /** "MM-DD" or "YYYY-MM-DD". */
-  birthdayFull: string | null;
   dates: ContactDate[];
   organization: string;
   jobTitle: string;
@@ -172,6 +180,8 @@ export interface ContactDetail extends ContactSummary {
   chats: ContactValue[];
   /** Items Google has past Zuri's ceiling, by list ("and 3 more at Google"); lists within it are left out. */
   more: Partial<Record<ContactList, number>>;
+  /** Other contacts with this very name: other people, told apart by phone, birthday and CPF. */
+  sameName: number;
   /** The contact in Google Contacts. */
   googleUrl: string;
 }
@@ -182,3 +192,47 @@ export interface ContactPage {
   /** More results: ask again with `after` = this cursor. */
   next: string | null;
 }
+
+/** How an event of the calendar reads as an appointment: by the first word of its type ("Consulta | Consultório"). */
+export const APPOINTMENT_KINDS = ["consultation", "return", "other"] as const;
+export type AppointmentKind = (typeof APPOINTMENT_KINDS)[number];
+
+export interface ContactAppointment {
+  /** ISO instant for a timed event; "YYYY-MM-DD" for an all-day one. */
+  start: string;
+  allDay: boolean;
+  kind: AppointmentKind;
+  /** The type as written in the event ("Consulta"); "" when the event has none. */
+  type: string;
+  /** What comes after the type ("Consultório"); "" with none. */
+  place: string;
+  /**
+   * False when another contact has the same name and nothing in the event (a phone, an e-mail, the
+   * CPF, the birthday) says whose it is.
+   */
+  certain: boolean;
+}
+
+/** GET /api/contacts/:id/appointments: read from the calendar at the moment it is asked. */
+export interface ContactAppointments {
+  /** The calendar is connected and some calendar is open to Zuri. */
+  available: boolean;
+  /** The last appointment that already began. */
+  last: ContactAppointment | null;
+  /** The next appointment ahead, of any type. */
+  next: ContactAppointment | null;
+  /** The calendar had more events with this name than one read brings. */
+  more: boolean;
+}
+
+export const APPOINTMENT_LIMITS = {
+  /** How far back and ahead the calendar is read. */
+  pastDays: 1_095,
+  /** The last months are read by themselves first: a common name's old events never hide the recent ones. */
+  recentDays: 180,
+  aheadDays: 366,
+  /** Events with the name read from each calendar, in pages of 250. */
+  pages: 2,
+  typeMax: 40,
+  placeMax: 60,
+} as const;

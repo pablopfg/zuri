@@ -35,6 +35,22 @@ describe("the alarm's two Google reads", () => {
     });
   });
 
+  it("with the contacts read every minute or two, the check waits half that interval: it always has a wake before the next sync", async () => {
+    await inOwner(async (agent) => {
+      const held: number[] = [];
+      vi.spyOn(agent.store.contacts, "tick").mockResolvedValue(true);
+      vi.spyOn(agent.store.contacts, "readGoogle", "get").mockReturnValue(true);
+      vi.spyOn(agent.store.reviews, "holdOff").mockImplementation((ms) => void held.push(ms));
+      vi.spyOn(agent.store.reviews, "tick").mockResolvedValue(false);
+      const every = vi.spyOn(agent.store.contacts, "everyMs");
+      for (const minutes of [1, 2, 4, 5, 6, 60]) {
+        every.mockReturnValue(minutes * 60_000);
+        await agent.runAutomations(null);
+      }
+      expect(held).toEqual([30_000, 60_000, 120_000, 150_000, 150_000, 150_000]);
+    });
+  });
+
   it("CF-S09-03: a wake where the contacts only sent the notice of the day, or found the sync busy, holds nothing", async () => {
     await inOwner(async (agent) => {
       vi.spyOn(agent.store.contacts, "tick").mockResolvedValue(true);

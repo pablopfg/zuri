@@ -119,17 +119,17 @@ describe("/api/google/contacts", () => {
     expect((await errorBody(res)).code).toBe("CONFLICT");
   });
 
-  it("saves the owner's interval between two reads, within 5 minutes and a day, and plans the next read by it", async () => {
+  it("saves the owner's interval between two reads, within a minute and a day, and plans the next read by it", async () => {
     const on = await turnOn();
     expect(on.syncEveryMinutes).toBe(5);
-    for (const body of [{ syncEveryMinutes: 4 }, { syncEveryMinutes: 1_441 }, { syncEveryMinutes: 7.5 }, { syncEveryMinutes: "15" }, { syncEveryMinutes: null }, { syncEveryMs: 60_000 }]) {
+    for (const body of [{ syncEveryMinutes: 0 }, { syncEveryMinutes: -1 }, { syncEveryMinutes: 1_441 }, { syncEveryMinutes: 7.5 }, { syncEveryMinutes: "15" }, { syncEveryMinutes: null }, { syncEveryMs: 60_000 }]) {
       const res = await api("PATCH", "/google/contacts/settings", body);
       expect(res.status, JSON.stringify(body)).toBe(400);
       expect((await errorBody(res)).code).toBe("VALIDATION_FAILED");
     }
     // Nothing of a refused body was kept.
     expect(((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).syncEveryMinutes).toBe(5);
-    for (const minutes of [5, 1_440, 15]) {
+    for (const minutes of [1, 5, 1_440, 15]) {
       const res = await api("PATCH", "/google/contacts/settings", { syncEveryMinutes: minutes });
       expect(res.status).toBe(200);
       const status = (await res.json()) as ContactsStatus;
@@ -248,7 +248,7 @@ describe("/api/google/contacts", () => {
     expect(status).toMatchObject({ status: "ok", lastResult: "changed", refreshing: false });
     const wait = Date.parse(status.nextSyncAt ?? "") - Date.parse(status.lastSyncAt ?? "");
     expect(wait).toBe(5 * 60_000);
-    expect(Object.keys(status).sort()).toEqual(["connected", "contacts", "enabled", "labels", "lastResult", "lastSyncAt", "nextSyncAt", "onAdded", "outcome", "problem", "refreshing", "reminders", "status", "syncEveryMinutes"]);
+    expect(Object.keys(status).sort()).toEqual(["connected", "contacts", "enabled", "labels", "labelsRead", "lastResult", "lastSyncAt", "nextSyncAt", "onAdded", "outcome", "problem", "refreshing", "reminders", "status", "syncEveryMinutes"]);
     expect(JSON.stringify(status)).not.toMatch(/sync\.\d|people_sync_token|page_token/);
   });
 
@@ -256,7 +256,8 @@ describe("/api/google/contacts", () => {
     expect((await api("POST", "/google/contacts/labels/refresh", undefined, false)).status).toBe(401);
     expect((await api("POST", "/google/contacts/labels/refresh")).status).toBe(409);
     await turnOn();
-    await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET labels_read_at = labels_read_at - 60000`));
+    // The labels were read when the owner came back from Google's page: the minute passes.
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET labels_read_at = labels_read_at - 60000, labels_asked_at = labels_asked_at - 60000`));
     google.people.groups.push({ resourceName: "contactGroups/nova", name: "Nova", groupType: "USER_CONTACT_GROUP", memberCount: 4 });
     try {
       const people = google.seen.filter((seen) => seen.url.includes("/people/me/connections")).length;
@@ -367,6 +368,236 @@ describe("/api/google/contacts", () => {
     ] as const) {
       expect((await api(method, path)).status).toBe(423);
     }
+  });
+});
+
+describe("the owner's way of naming, the first setup and two people with one name", () => {
+  const member = (label: string) => [{ contactGroupMembership: { contactGroupResourceName: label } }];
+  const PRIMARY = "dono@exemplo.com.br";
+  const list = async (query = "") => ((await (await api("GET", `/contacts${query}`)).json()) as ContactPage).contacts;
+  const detail = async (id: string) => ((await (await api("GET", `/contacts/${id}`)).json()) as { contact: ContactDetail }).contact;
+  const choose = async (...labels: string[]) => {
+    expect((await api("PATCH", "/google/contacts/labels", { selected: labels })).status).toBe(200);
+    await minuteLater();
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+  };
+
+  it("coming back from Google's page brings the labels at once, and no contact is copied before one is chosen", async () => {
+    expect((await consent("/google/connect")).status).toBe(200);
+    expect((await consent("/google/contacts/connect")).status).toBe(200);
+    // Before any sync: the labels are there to choose from, read from Google, none chosen, nobody copied.
+    const status = (await (await api("GET", "/google/contacts")).json()) as ContactsStatus;
+    expect(status).toMatchObject({ enabled: true, labelsRead: true, contacts: 0 });
+    expect(status.labels.map((label) => [label.name, label.selected])).toEqual([["Clientes", false], ["Família", false]]);
+    expect(google.seen.filter((seen) => seen.url.includes("/people/me/connections"))).toHaveLength(0);
+    // A sync with nothing chosen reads no contact either.
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+    expect(google.seen.filter((seen) => seen.url.includes("/people/me/connections"))).toHaveLength(0);
+    expect(await list()).toEqual([]);
+    // Only the chosen label's contacts come.
+    await choose(CLIENTS);
+    expect((await list()).map((contact) => contact.name)).toEqual(["Ana Souza"]);
+    // Unchoosing everything right after is still "the labels are here, choose": never "reading" or "failed" again.
+    const none = await api("PATCH", "/google/contacts/labels", { selected: [] });
+    expect(none.status).toBe(200);
+    expect((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).toMatchObject({ labelsRead: true, contacts: 0 });
+  });
+
+  it("Google failing when the owner comes back still turns the contacts on; the labels come with the next read", async () => {
+    expect((await consent("/google/connect")).status).toBe(200);
+    google.people.failure = { status: 503, body: { error: { code: 503 } } };
+    try {
+      expect((await consent("/google/contacts/connect")).status).toBe(200);
+    } finally {
+      google.people.failure = null;
+    }
+    expect((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).toMatchObject({ enabled: true, labelsRead: false, labels: [], contacts: 0 });
+    // QA-CN-03: the read that failed doesn't hold the next one back; the owner asks again at once.
+    const refreshed = (await (await api("POST", "/google/contacts/labels/refresh")).json()) as ContactsStatus;
+    expect(refreshed).toMatchObject({ labelsRead: true });
+    expect(refreshed.labels).toHaveLength(2);
+  });
+
+  it("keeps the name without the note written after it, finds it by either, and shows the note apart", async () => {
+    google.people.add({
+      resourceName: "people/c3",
+      names: [{ displayName: "Beatriz Novaes Conceição / Paciente", givenName: "Beatriz", middleName: "Novaes", familyName: "Conceição / Paciente" }],
+      phoneNumbers: [{ value: "(41) 99999-0110" }, { value: "(41) 3333-0110" }],
+      emailAddresses: [{ value: "beatriz@exemplo.com.br" }, { value: "beatriz2@exemplo.com.br" }],
+      photos: [{ url: "https://lh3.googleusercontent.com/contacts/beatriz" }],
+      memberships: member(CLIENTS),
+    });
+    google.people.add({ resourceName: "people/c4", names: [{ displayName: "Empresa Exemplo S/A" }], photos: [{ url: "https://exemplo.com.br/x.png" }], memberships: member(CLIENTS) });
+    await turnOn();
+    await choose(CLIENTS);
+    const all = await list();
+    expect(all.map((contact) => contact.name)).toEqual(["Ana Souza", "Beatriz Novaes Conceição", "Empresa Exemplo S/A"]);
+    expect(all[1]).toMatchObject({ note: "Paciente", phone: "(41) 99999-0110", photo: "https://lh3.googleusercontent.com/contacts/beatriz", cpf: null });
+    expect(all[2]).toMatchObject({ note: "", photo: null });
+    expect((await list("?q=conceicao")).map((contact) => contact.name)).toEqual(["Beatriz Novaes Conceição"]);
+    expect((await list("?q=paciente")).map((contact) => contact.name)).toEqual(["Beatriz Novaes Conceição"]);
+    const beatriz = await detail(all[1]?.id ?? "");
+    expect(beatriz).toMatchObject({ name: "Beatriz Novaes Conceição", given: "Beatriz", middle: "Novaes", family: "Conceição", note: "Paciente", sameName: 0 });
+    expect(beatriz.phones).toHaveLength(2);
+    expect(beatriz.emails).toHaveLength(2);
+    // Nothing of the note is left in the database's name.
+    expect(await inOwner((agent) => agent.store.db.all<{ display_name: string }>(`SELECT display_name FROM zur_contacts WHERE display_name LIKE '%/ Paciente%'`))).toEqual([]);
+  });
+
+  it("a contact renamed at Google with a note keeps its id and its clean name", async () => {
+    await turnOn();
+    await choose(CLIENTS);
+    const [before] = await list();
+    google.people.update("people/c1", { names: [{ displayName: "Ana Souza / Prospect" }] });
+    await minuteLater();
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+    const [after] = await list();
+    expect(after).toMatchObject({ id: before?.id, name: "Ana Souza", note: "Prospect" });
+  });
+
+  it("two people with one name stay two contacts, each told apart by phone, birthday and CPF", async () => {
+    google.people.add({
+      resourceName: "people/c5",
+      names: [{ displayName: "Marcos Vieira Lopes / Paciente" }],
+      phoneNumbers: [{ value: "(41) 97777-0112" }],
+      birthdays: [{ date: { year: 1979, month: 2, day: 11 } }],
+      userDefined: [{ key: "CPF", value: "529.982.247-25" }],
+      memberships: member(CLIENTS),
+    });
+    google.people.add({
+      resourceName: "people/c6",
+      names: [{ displayName: "MARCOS  VIEIRA LOPES" }],
+      phoneNumbers: [{ value: "(41) 96666-0113" }],
+      birthdays: [{ date: { year: 1994, month: 9, day: 3 } }],
+      userDefined: [{ key: "CPF", value: "111.444.777-35" }],
+      memberships: member(CLIENTS),
+    });
+    google.people.add({ resourceName: "people/c7", names: [{ displayName: "Marcos Vieira Lopes Filho" }], memberships: member(CLIENTS) });
+    await turnOn();
+    await choose(CLIENTS);
+    const marcos = (await list("?q=marcos vieira lopes")).filter((contact) => /^marcos\s+vieira lopes$/i.test(contact.name));
+    expect(marcos).toHaveLength(2);
+    expect(marcos.map((contact) => [contact.phone, contact.birthdayFull, contact.cpf]).sort()).toEqual([
+      ["(41) 96666-0113", "1994-09-03", "***.444.777-**"],
+      ["(41) 97777-0112", "1979-02-11", "***.982.247-**"],
+    ]);
+    for (const contact of marcos) expect((await detail(contact.id)).sameName).toBe(1);
+    // A longer name is someone else, not a namesake.
+    const [son] = (await list("?q=filho"));
+    expect((await detail(son?.id ?? "")).sameName).toBe(0);
+    // The whole CPF never leaves in the list.
+    expect(JSON.stringify(await list())).not.toMatch(/52998224725|529\.982\.247-25/);
+  });
+
+  it("SEC-CN-01: many longer names that begin the same never hide the namesake, nor count as one", async () => {
+    for (let i = 0; i < 70; i++) {
+      google.people.add({ resourceName: `people/d${i}`, names: [{ displayName: `Marcos Vieira Lopes ${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}lves` }], memberships: member(CLIENTS) });
+    }
+    google.people.add({ resourceName: "people/c5", names: [{ displayName: "Marcos Vieira Lopes / Paciente" }], phoneNumbers: [{ value: "(41) 97777-0112" }], memberships: member(CLIENTS) });
+    google.people.add({ resourceName: "people/c6", names: [{ displayName: "Marcos Vieira Lopes | Prospect" }], phoneNumbers: [{ value: "(41) 96666-0113" }], memberships: member(CLIENTS) });
+    await turnOn();
+    await choose(CLIENTS);
+    const marcos = (await list("?q=97777")).concat(await list("?q=96666"));
+    expect(marcos.map((contact) => contact.name)).toEqual(["Marcos Vieira Lopes", "Marcos Vieira Lopes"]);
+    for (const contact of marcos) expect((await detail(contact.id)).sameName).toBe(1);
+  });
+
+  describe("GET /api/contacts/:id/appointments", () => {
+    const at = (days: number, hour: number) => new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() + days, hour)).toISOString();
+    const visit = (id: string, summary: string, days: number, description: string) => ({ id, etag: `"${id}"`, summary, description, start: { dateTime: at(days, 13) }, end: { dateTime: at(days, 14) } });
+    const appointments = (id: string) => api("GET", `/contacts/${id}/appointments`);
+
+    it("needs a session, a contact of the copy and its id's shape", async () => {
+      await turnOn();
+      await choose(CLIENTS);
+      const [ana] = await list();
+      expect((await api("GET", `/contacts/${ana?.id}/appointments`, undefined, false)).status).toBe(401);
+      for (const id of ["0f8fad5b-d9cb-469f-a165-70867728950e", "x", "..%2F..%2Fgoogle"]) {
+        const res = await appointments(id);
+        expect(res.status, id).toBe(404);
+        expect((await errorBody(res)).code).toBe("NOT_FOUND");
+      }
+    });
+
+    it("says the calendar is not there while every calendar is closed, without a call to Google", async () => {
+      await turnOn();
+      await choose(CLIENTS);
+      const [ana] = await list();
+      const calls = google.seen.length;
+      const res = await appointments(ana?.id ?? "");
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ available: false, last: null, next: null, more: false });
+      expect(google.seen.length).toBe(calls);
+    });
+
+    it("reads the last appointment and the nearest one ahead from the open calendar, by the name without the note, and sends no text of the event", async () => {
+      google.people.add({ resourceName: "people/c3", names: [{ displayName: "Beatriz Novaes Conceição / Paciente" }], memberships: member(CLIENTS) });
+      google.events.set(PRIMARY, [
+        visit("a1", "Beatriz Novaes Conceição", -40, "Consulta | Consultório"),
+        visit("a2", "Beatriz Novaes Conceição / Paciente", -10, "Retorno | Consultório\nsegredo-do-evento"),
+        visit("a3", "Beatriz Novaes Conceição", 5, "Consulta | Online"),
+        visit("a4", "Beatriz Novaes Conceição", 12, "Retorno | Consultório"),
+        { ...visit("a5", "Beatriz Novaes Conceição", -1, "Retorno | Consultório"), status: "cancelled" },
+        visit("a6", "Ana Souza", -2, "Consulta | Consultório"),
+      ]);
+      await turnOn();
+      await choose(CLIENTS);
+      expect((await api("PATCH", `/google/calendars/${encodeURIComponent(PRIMARY)}`, { mode: "read" })).status).toBe(200);
+      const [beatriz] = await list("?q=beatriz");
+      const res = await appointments(beatriz?.id ?? "");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("cache-control")).toContain("no-store");
+      const text = await res.text();
+      expect(JSON.parse(text)).toEqual({
+        available: true,
+        last: { start: at(-10, 13), allDay: false, kind: "return", type: "Retorno", place: "Consultório", certain: true },
+        // The next one is the nearest ahead, whatever its kind: the owner reads "Próxima consulta" or "Retorno" from it.
+        next: { start: at(5, 13), allDay: false, kind: "consultation", type: "Consulta", place: "Online", certain: true },
+        more: false,
+      });
+      expect(text).not.toContain("segredo-do-evento");
+      // The search at Google is by the clean name.
+      const asked = google.seen.filter((seen) => seen.url.includes("/events")).at(-1);
+      expect(new URL(asked?.url ?? "").searchParams.get("q")).toBe("Beatriz Novaes Conceição");
+    });
+
+    it("two people with one name: the guest's e-mail says whose the appointment is; with nothing to tell, it is shown as unsure to both", async () => {
+      const person = (id: string, email: string, phone: string) => ({ resourceName: `people/${id}`, names: [{ displayName: "Marcos Vieira Lopes / Paciente" }], emailAddresses: [{ value: email }], phoneNumbers: [{ value: phone }], memberships: member(CLIENTS) });
+      google.people.add(person("c5", "marcos.um@exemplo.com.br", "(41) 97777-0112"));
+      google.people.add(person("c6", "marcos.dois@exemplo.com.br", "(41) 96666-0113"));
+      google.events.set(PRIMARY, [
+        visit("m1", "Marcos Vieira Lopes", -30, "Consulta | Consultório"),
+        { ...visit("m2", "Marcos Vieira Lopes", -7, "Retorno | Consultório"), attendees: [{ email: "Marcos.Um@exemplo.com.br" }] },
+      ]);
+      await turnOn();
+      await choose(CLIENTS);
+      expect((await api("PATCH", `/google/calendars/${encodeURIComponent(PRIMARY)}`, { mode: "read" })).status).toBe(200);
+      const [one] = await list("?q=97777");
+      const [two] = await list("?q=96666");
+      expect(await (await appointments(one?.id ?? "")).json()).toMatchObject({ last: { start: at(-7, 13), kind: "return", certain: true }, next: null });
+      // The other Marcos never gets the first one's return; the visit nobody can tell apart is shown as unsure.
+      expect(await (await appointments(two?.id ?? "")).json()).toMatchObject({ last: { start: at(-30, 13), kind: "consultation", certain: false }, next: null });
+    });
+
+    it("says Google didn't answer in the owner's words, and reads nothing during a lockdown", async () => {
+      await turnOn();
+      await choose(CLIENTS);
+      expect((await api("PATCH", `/google/calendars/${encodeURIComponent(PRIMARY)}`, { mode: "read" })).status).toBe(200);
+      const [ana] = await list();
+      google.outage = 503;
+      try {
+        const res = await appointments(ana?.id ?? "");
+        expect(res.status).toBe(503);
+        expect((await errorBody(res)).code).toBe("SERVICE_UNAVAILABLE");
+      } finally {
+        google.outage = null;
+      }
+      await inOwner((agent) => new InternalState(agent.store.db).set("lockdown_until", new Date(Date.now() + 3_600_000).toISOString()));
+      const calls = google.seen.length;
+      const locked = await appointments(ana?.id ?? "");
+      expect(locked.status).toBe(423);
+      expect(google.seen.length).toBe(calls);
+    });
   });
 });
 

@@ -260,6 +260,33 @@ describe("import", () => {
     expect(counts).toEqual({ t: 6, c: 1 });
   });
 
+  it("carries the time of the CRM's birthday notice, and a file of before it leaves the time as it is", async () => {
+    await seed();
+    const time = () => inOwner((agent) => agent.store.db.one(`SELECT reminder_time FROM zur_crm_settings WHERE id = 1`));
+    try {
+      await ok(session("PATCH", "/crm/settings", { birthdayTime: "07:30" }));
+      const file = await exported();
+      expect(JSON.parse(file).data.crm.settings).toEqual({ followUps: true, birthdays: true, newClients: true, birthdayTime: "07:30" });
+      await ok(session("PATCH", "/crm/settings", { birthdayTime: "10:00" }));
+      await ok(session("POST", "/backup/import", undefined, file));
+      expect(await time()).toEqual({ reminder_time: "07:30" });
+      const older = JSON.parse(file);
+      older.data.crm.settings = { followUps: true, birthdays: true, newClients: true };
+      await ok(session("PATCH", "/crm/settings", { birthdayTime: "11:00" }));
+      await ok(session("POST", "/backup/import", undefined, JSON.stringify(older)));
+      expect(await time()).toEqual({ reminder_time: "11:00" });
+      // A file with a time no clock shows, or a field the copy never had, imports nothing.
+      for (const settings of [{ birthdayTime: "25:00" }, { newClientNoticesPerDay: 5 }]) {
+        const bad = JSON.parse(file);
+        Object.assign(bad.data.crm.settings, settings);
+        expect((await session("POST", "/backup/import", undefined, JSON.stringify(bad))).status, JSON.stringify(settings)).toBe(400);
+      }
+      expect(await time()).toEqual({ reminder_time: "11:00" });
+    } finally {
+      await inOwner((agent) => agent.store.db.run(`UPDATE zur_crm_settings SET reminder_time = '09:00', reminded_day = NULL, next_reminder = NULL`));
+    }
+  });
+
   it("drops links to records missing from the file and a loop of replaced memories", async () => {
     const a = crypto.randomUUID();
     const b = crypto.randomUUID();

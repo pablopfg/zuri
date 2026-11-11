@@ -2,6 +2,10 @@ import {
   AUTOMATION_CATCH_UP_MS,
   CRM_LIMITS,
   FLOW_LIMITS,
+  FLOW_SETTING_KEYS,
+  FLOW_SETTING_RANGES,
+  type FlowSettings,
+  flowSlotsPerDay,
   type FlowDraft,
   type Flow,
   type FlowDefinition,
@@ -25,6 +29,7 @@ import {
 import { currentWake } from "../agent/wake-budget.ts";
 import type { MeteredAI } from "../ai/metered.ts";
 import { recordActivity } from "../db/activity.ts";
+import { flowSlots, flowSlotsLimit } from "../db/day-slots.ts";
 import type { Database } from "../db/database.ts";
 import { AppError } from "../http/errors.ts";
 import { log } from "../log.ts";
@@ -106,6 +111,17 @@ interface Stored {
 /** A run late by more than this after its time is a catch-up (the object was asleep or down). */
 const LATE_MS = 5 * 60_000;
 
+/** Each setting's column in zur_flow_settings (migration 34). Fixed names: they go into the SQL text. */
+const SETTING_COLUMNS: Record<keyof FlowSettings, string> = {
+  failuresToPause: "failures_to_pause",
+  runsPerDay: "runs_per_day",
+  minIntervalMinutes: "min_interval_min",
+  aiMinIntervalMinutes: "ai_min_interval_min",
+  callsPerRun: "calls_per_run",
+  neuronsPerDay: "neurons_per_day",
+  attempts: "attempts",
+};
+
 /**
  * The flows (step 22a): the rules of every change and every run. Changes come
  * only from the screen's routes (no tool, no bot command);
@@ -166,7 +182,11 @@ export class FlowService {
         sites: flows.reduce((sum, flow) => sum + sitesOf(flow.definition).length, 0),
         runsToday: this.runsToday(),
         neuronsToday: Math.round(this.neuronsToday()),
+        // From the rows already read: the list reads no flow twice.
+        slots: flows.reduce((sum, flow) => sum + (flow.enabled ? flowSlotsPerDay(flow.definition) : 0), 0),
+        slotsLimit: flowSlotsLimit(this.db),
       },
+      settings: this.settings(),
       credentialsAvailable: this.deps.connections.credentialsAvailable,
       drafts: this.drafts(),
       google: this.googleInfo(),
@@ -260,6 +280,50 @@ export class FlowService {
     return { runs: shown.map(presentRun), nextCursor: rows.length > page && last ? `${last.started_at}|${last.id}` : null };
   }
 
+  /** What the owner set for every flow, kept inside the limits whatever the row holds. */
+  settings(): FlowSettings {
+    const row = this.db.one<Record<string, number>>(`SELECT ${Object.values(SETTING_COLUMNS).join(", ")} FROM zur_flow_settings WHERE id = 1`);
+    const out = {} as FlowSettings;
+    for (const key of FLOW_SETTING_KEYS) {
+      const { min, max, initial } = FLOW_SETTING_RANGES[key];
+      const value = row?.[SETTING_COLUMNS[key]];
+      out[key] = Number.isInteger(value) ? Math.min(max, Math.max(min, value as number)) : initial;
+    }
+    return out;
+  }
+
+  /**
+   * Only what changed is written. Nothing already there is touched by a new number: a flow paused stays
+   * paused, one failing keeps its count, and a flow on with an interval shorter than a floor just raised
+   * goes on running (the floor is checked when a flow is saved or turned on).
+   */
+  updateSettings(patch: { [K in keyof FlowSettings]?: number | undefined }): FlowSettings {
+    const before = this.settings();
+    const next = { ...before };
+    for (const key of FLOW_SETTING_KEYS) next[key] = patch[key] ?? before[key];
+    const changed = FLOW_SETTING_KEYS.filter((key) => next[key] !== before[key]);
+    if (changed.length > 0) {
+      const columns = FLOW_SETTING_KEYS.map((key) => SETTING_COLUMNS[key]);
+      this.db.run(
+        `INSERT INTO zur_flow_settings (id, ${columns.join(", ")}) VALUES (1, ${columns.map(() => "?").join(", ")})
+         ON CONFLICT (id) DO UPDATE SET ${columns.map((column) => `${column} = excluded.${column}`).join(", ")}`,
+        ...FLOW_SETTING_KEYS.map((key) => next[key]),
+      );
+      // SEC-A1-01: no password here, so a change leaves a trace the owner can read.
+      recordActivity(this.db, "flow.settings", { fields: changed });
+    }
+    return this.settings();
+  }
+
+  /** The owner's shortest interval, for a flow being saved or turned on: 400 with the number the screen shows. */
+  private checkInterval(definition: FlowDefinition): void {
+    const { trigger } = definition;
+    if (trigger.type !== "schedule" || trigger.schedule.type !== "interval") return;
+    const settings = this.settings();
+    const min = flowUsesAi(definition) ? Math.max(settings.minIntervalMinutes, settings.aiMinIntervalMinutes) : settings.minIntervalMinutes;
+    if (trigger.schedule.minutes < min) throw new AppError("VALIDATION_FAILED", "error.flowInterval", { fields: ["definition.trigger"], min });
+  }
+
   /** Runs started today (UTC, with the Neurons), skipped ones aside: what the cap of 500 counts. One row, kept by triggers. */
   runsToday(): number {
     return this.today()?.runs ?? 0;
@@ -292,6 +356,7 @@ export class FlowService {
       const count = this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_flows`)?.n ?? 0;
       if (count >= FLOW_LIMITS.flows) throw new AppError("CONFLICT", "error.flowLimit", { limit: FLOW_LIMITS.flows });
       this.checkReferences(data.definition, null);
+      this.checkInterval(data.definition);
       const at = this.iso();
       // Every flow starts off: the owner turns it on, with the password.
       this.db.run(
@@ -320,6 +385,15 @@ export class FlowService {
       const enabled = patch.enabled ?? row.enabled === 1;
       // A new definition or turning it on starts the count of failures again and sets the next run from now.
       const changed = patch.definition !== undefined || (patch.enabled === true && row.enabled !== 1);
+      if (changed) this.checkInterval(definition);
+      // Turned on, or changed while on: its times a day must fit next to the others'. A shorter interval never
+      // costs more than the day's count allows; turning off and renaming are never refused.
+      if (changed && enabled) {
+        const slots = flowSlots(this.db, id) + flowSlotsPerDay(definition);
+        // Their own most, or what the reads of Google leave of the day (a read every minute takes its share).
+        const limit = flowSlotsLimit(this.db);
+        if (slots > limit) throw new AppError("CONFLICT", "error.flowSlotsLimit", { limit, slots });
+      }
       const next = enabled ? (changed || row.next_run === null ? this.firstRun(definition) : row.next_run) : null;
       this.db.run(
         `UPDATE zur_flows SET name = ?, definition = ?, enabled = ?, uses_ai = ?, next_run = ?, failures = ?, updated_at = ? WHERE id = ?`,
@@ -567,7 +641,7 @@ export class FlowService {
         this.insertRun(fresh, slot, trigger, "skipped", "busy");
         return null;
       }
-      if (this.runsToday() >= FLOW_LIMITS.runsPerDay) {
+      if (this.runsToday() >= this.settings().runsPerDay) {
         this.insertRun(fresh, slot, trigger, "skipped", "runs_limit");
         return null;
       }
@@ -617,7 +691,8 @@ export class FlowService {
     const definition = this.definitionOf(row);
     const runId = this.db.transaction(() => {
       if (this.busy(id)) throw new AppError("CONFLICT", "error.flowRunning");
-      if (this.runsToday() >= FLOW_LIMITS.runsPerDay) throw new AppError("CONFLICT", "error.flowRunsLimit", { limit: FLOW_LIMITS.runsPerDay });
+      const limit = this.settings().runsPerDay;
+      if (this.runsToday() >= limit) throw new AppError("CONFLICT", "error.flowRunsLimit", { limit });
       const inserted = this.insertRun(row, null, "manual", "running", null) as string;
       this.#inFlight.add(inserted);
       return inserted;
@@ -637,6 +712,8 @@ export class FlowService {
     this.#inFlight.add(runId);
     // A resumed run's Neurons are already in the day's sum: only what it spends now counts on top.
     const kept = state.neurons;
+    // Read once: a run goes to its end with the numbers it started this wake with.
+    const limits = this.settings();
     let outcome: Advance;
     try {
       outcome = await advance(
@@ -652,7 +729,8 @@ export class FlowService {
           ...(this.deps.agentSettings ? { agentSettings: this.deps.agentSettings } : {}),
           notify: (notice) => this.deps.notify({ kind: "step", flowId: flow.id, flowName: flow.name, ...notice }),
           siteChanged: (change) => this.deps.notify({ kind: "site", flowId: flow.id, flowName: flow.name, change }),
-          neuronsLeft: () => FLOW_LIMITS.neuronsPerDay - this.neuronsToday() - (state.neurons - kept),
+          neuronsLeft: () => limits.neuronsPerDay - this.neuronsToday() - (state.neurons - kept),
+          limits,
           lockdown: this.deps.lockdown,
           clock: () => this.now(),
           google: this.deps.google,
@@ -704,7 +782,7 @@ export class FlowService {
       if (!flow || status === "waiting") return;
       // A failure counts; a success starts the count again; a skip changes nothing.
       const failures = status === "error" ? flow.failures + 1 : status === "success" ? 0 : flow.failures;
-      paused = status === "error" && failures >= FLOW_LIMITS.failuresToPause;
+      paused = status === "error" && failures >= this.settings().failuresToPause;
       this.db.run(
         `UPDATE zur_flows SET last_run_at = ?, last_run_status = ?, last_problem = ?, failures = ?, enabled = CASE WHEN ? THEN 0 ELSE enabled END, next_run = CASE WHEN ? THEN NULL ELSE next_run END WHERE id = ?`,
         at,

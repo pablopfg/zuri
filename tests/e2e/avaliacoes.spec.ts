@@ -50,16 +50,16 @@ test("turns the reviews on, tells the team of a negative one and publishes an ap
   await expect(reviews.getByText(/Você aprovou \d de 10 rascunhos sem mudar nada\./)).toBeVisible();
   await reviews.getByRole("button", { name: "Salvar avaliações" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Avaliações salvas" })).toBeVisible();
-  // The owner's interval between two checks: 4 minutes is refused on the spot, 20 is kept, then back to 10.
+  // The owner's interval between two checks: 0 minutes is refused on the spot, 20 is kept, then back to 10.
   const every = reviews.getByRole("spinbutton", { name: "Conferir a cada (minutos)" });
   const saveEvery = reviews.getByRole("button", { name: "Salvar intervalo" });
-  await every.fill("4");
+  await every.fill("0");
   await expect(saveEvery).toBeDisabled();
   await every.fill("20");
   await saveEvery.click();
   await expect(page.getByRole("status").filter({ hasText: "Intervalo salvo" })).toBeVisible();
   await expect(saveEvery).toBeDisabled();
-  await expect(reviews.getByText("De 5 a 1440 minutos. Quando nada mudou no Google, nada é regravado aqui.")).toBeVisible();
+  await expect(reviews.getByText("De 1 a 1440 minutos. Quando nada mudou no Google, nada é regravado aqui.")).toBeVisible();
   await expect(reviews.getByText(/^Próxima leitura: \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
   await expectAccessible(page, "integracoes-avaliacoes");
   await every.fill("10");

@@ -10,6 +10,6 @@
 
 ### Atualização
 
-- Migration 34 (`session_binding`): quatro colunas novas em `zur_sessions`. Só acréscimo. Sessões abertas antes da atualização são encerradas no primeiro pedido: é só entrar de novo.
+- Migration 35 (`session_binding`): quatro colunas novas em `zur_sessions`. Só acréscimo. Sessões abertas antes da atualização são encerradas no primeiro pedido: é só entrar de novo.
 - As tabelas `zur_remote_tokens` e `zur_remote_failures` ficam no banco, sem uso. Tokens criados antes deixam de funcionar.
 - ⚠ Se algum script ou automação sua usava um token `zur_pat_`, ele para de funcionar com esta versão.

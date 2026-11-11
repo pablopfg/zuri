@@ -105,6 +105,9 @@ describe("the Clients tab's bodies", () => {
     expect(ok(crmSettingsSchema, { followUps: false })).toBe(true);
     expect(ok(crmSettingsSchema, { followUps: "false" })).toBe(false);
     expect(ok(crmSettingsSchema, { events: true })).toBe(false);
+    for (const time of ["00:00", "09:00", "23:59"]) expect(ok(crmSettingsSchema, { birthdayTime: time }), time).toBe(true);
+    for (const gone of [{ newClientNoticesPerDay: 5 }, { eventsPerHour: 100 }, { eventsPerDay: 100 }]) expect(ok(crmSettingsSchema, gone), JSON.stringify(gone)).toBe(false);
+    for (const time of ["24:00", "9:00", "09:60", "09:00:00", " 09:00", "09:00\n", ""]) expect(ok(crmSettingsSchema, { birthdayTime: time }), JSON.stringify(time)).toBe(false);
     expect(ok(crmClientsQuerySchema, { q: "a".repeat(CRM_LIMITS.query) })).toBe(true);
     expect(ok(crmClientsQuerySchema, { q: "a".repeat(CRM_LIMITS.query + 1) })).toBe(false);
     expect(ok(crmClientsQuerySchema, { followUp: "ontem" })).toBe(false);

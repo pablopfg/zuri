@@ -3,6 +3,9 @@ import {
   connectionOriginSchema,
   connectionPathSchema,
   FLOW_LIMITS,
+  FLOW_SETTING_KEYS,
+  FLOW_SETTING_RANGES,
+  flowSlotsPerDay,
   type FlowDefinition,
   fieldPathSchema,
   flowConnectionCreateSchema,
@@ -10,6 +13,7 @@ import {
   flowCreateSchema,
   flowDefinitionSchema,
   flowRunsQuerySchema,
+  flowSettingsSchema,
   flowUpdateSchema,
   flowUsesAi,
   headerNameSchema,
@@ -95,20 +99,49 @@ describe("flowDefinitionSchema", () => {
     expect(flowDefinitionSchema.safeParse(make(21)).success).toBe(false);
   });
 
-  it("runs at most every 15 minutes (14, 15)", () => {
+  it("takes an interval from the lowest the owner may pick (4, 5): the owner's own floor is the service's to check", () => {
     const at = (minutes: number) => ({ ...monitor(["https://exemplo.com.br/"]), trigger: { type: "schedule", schedule: { type: "interval", minutes } } });
-    expect(flowDefinitionSchema.safeParse(at(14)).success).toBe(false);
-    expect(flowDefinitionSchema.safeParse(at(15)).success).toBe(true);
+    expect(flowDefinitionSchema.safeParse(at(FLOW_LIMITS.minIntervalFloor - 1)).success).toBe(false);
+    expect(flowDefinitionSchema.safeParse(at(FLOW_LIMITS.minIntervalFloor)).success).toBe(true);
+    expect(flowDefinitionSchema.safeParse(at(4.5)).success).toBe(false);
   });
 
-  it("runs at most hourly with an AI step (59, 60)", () => {
+  it("counts a flow's scheduled times a day: an interval's share of the day, one for a time of day, none by hand", () => {
+    const at = (schedule: unknown) => ({ trigger: { type: "schedule", schedule } }) as Parameters<typeof flowSlotsPerDay>[0];
+    expect(flowSlotsPerDay({ trigger: { type: "manual" } })).toBe(0);
+    expect(flowSlotsPerDay(at({ type: "interval", minutes: 5 }))).toBe(288);
+    expect(flowSlotsPerDay(at({ type: "interval", minutes: 15 }))).toBe(96);
+    expect(flowSlotsPerDay(at({ type: "interval", minutes: 7 }))).toBe(206);
+    expect(flowSlotsPerDay(at({ type: "interval", minutes: 1_440 }))).toBe(1);
+    expect(flowSlotsPerDay(at({ type: "interval", minutes: 10_080 }))).toBe(1);
+    expect(flowSlotsPerDay(at({ type: "daily", time: "09:00" }))).toBe(1);
+    expect(flowSlotsPerDay(at({ type: "weekly", days: [1], time: "09:00" }))).toBe(1);
+    // The ceiling is what 20 flows at the first shortest interval took: nothing that was allowed stops fitting.
+    expect(FLOW_LIMITS.flows * flowSlotsPerDay(at({ type: "interval", minutes: FLOW_LIMITS.minIntervalMinutes }))).toBeLessThanOrEqual(FLOW_LIMITS.slotsPerDay);
+  });
+
+  it("keeps every setting's start inside its own limits, and no limit past what the plan allows", () => {
+    for (const key of FLOW_SETTING_KEYS) {
+      const { min, max, initial } = FLOW_SETTING_RANGES[key];
+      expect(min, key).toBeLessThanOrEqual(initial);
+      expect(initial, key).toBeLessThanOrEqual(max);
+    }
+    // The ceilings of what costs quota are the numbers that were fixed before: the owner only goes down from them.
+    expect(FLOW_SETTING_RANGES.runsPerDay.max).toBe(500);
+    expect(FLOW_SETTING_RANGES.callsPerRun.max).toBe(40);
+    expect(FLOW_SETTING_RANGES.neuronsPerDay.max).toBe(3_000);
+    expect(FLOW_SETTING_RANGES.attempts.max).toBe(3);
+    expect(FLOW_SETTING_RANGES.minIntervalMinutes.min).toBe(5);
+  });
+
+  it("takes an interval with an AI step from the lowest the owner may pick (29, 30)", () => {
     const at = (minutes: number) => ({
       version: 1,
       trigger: { type: "schedule", schedule: { type: "interval", minutes } },
       nodes: [{ type: "ai", instruction: "Resuma", output: "resumo" }],
     });
-    expect(flowDefinitionSchema.safeParse(at(59)).success).toBe(false);
-    expect(flowDefinitionSchema.safeParse(at(60)).success).toBe(true);
+    expect(flowDefinitionSchema.safeParse(at(FLOW_LIMITS.aiMinIntervalFloor - 1)).success).toBe(false);
+    expect(flowDefinitionSchema.safeParse(at(FLOW_LIMITS.aiMinIntervalFloor)).success).toBe(true);
   });
 
   it("takes the automations' other schedules", () => {
@@ -285,6 +318,14 @@ describe("flow routes' bodies", () => {
 
   it("updates with a field at least", () => {
     expect(flowUpdateSchema.safeParse({}).success).toBe(false);
+    // What holds for every flow: only inside the limits, only whole numbers, only the two fields.
+    for (const key of FLOW_SETTING_KEYS) {
+      const { min, max } = FLOW_SETTING_RANGES[key];
+      for (const value of [min, max]) expect(flowSettingsSchema.safeParse({ [key]: value }).success, `${key} ${value}`).toBe(true);
+      for (const value of [min - 1, max + 1, min + 0.5, String(min), null]) expect(flowSettingsSchema.safeParse({ [key]: value }).success, `${key} ${value}`).toBe(false);
+    }
+    expect(flowSettingsSchema.safeParse({}).success).toBe(false);
+    expect(flowSettingsSchema.safeParse({ runsPerDay: 20, subrequestsPerWake: 50 }).success).toBe(false);
     expect(flowUpdateSchema.safeParse({ enabled: true }).success).toBe(true);
   });
 

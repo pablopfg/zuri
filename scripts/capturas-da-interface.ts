@@ -20,13 +20,18 @@
  * - `painel-da-conta=/`: the account panel (a sheet on a phone), opened on that page.
  * - `folha-mais=/`: the "Mais" sheet of the phone's bottom bar (phone only).
  * - `menu-recolhido=/`: the side menu as a rail of icons, with one name showing (computer only).
+ * - `menu-grupo-fechado=/…`: the side menu with the group "Organizar" closed by its title
+ *   (computer only); at an address inside the group, the place in view stays.
  * - `conversa-aberta=/conversa`: the sample conversation ("Organizar a mudança"), open.
  * - `conversa-anterior=/conversa`: the same, as if it had last been used yesterday (the notice under its messages).
  * - `memoria-painel=/memoria`: a sample memory chosen, with its links in the panel.
  * - `memoria-mapa=/memoria`: the map (on a computer, with the same memory chosen).
  * - `nota-aberta=/notas`: the sample note ("Lista da mudança de apartamento"), open in the editor.
- * - `contatos=/contatos`, `contato-ficha=/contatos` and `contatos-etiquetas=/contatos`: the list with the sample
- *   contacts copied, the card of one of them ("Ana Souza") and the label filter open (need --exemplos).
+ * - `contatos=/contatos`, `contato-ficha=/contatos`, `contato-homonimo=/contatos` and `contatos-etiquetas=/contatos`:
+ *   the list with the sample contacts copied, the card of one of them (Beatriz, with her appointments), the card of
+ *   one of two people with the same name, and the label filter open (need --exemplos).
+ * - `integracoes-sem-etiqueta=/configuracoes/integracoes>Contatos`: the contacts just turned on, with the labels
+ *   to choose and nobody copied yet (needs --exemplos; run it apart, on a database of its own: it empties the copy).
  * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
  * - `agenda-dia=/agenda` and `agenda-mes=/agenda`: the Agenda in that view (plain `agenda=/agenda` is the
@@ -150,7 +155,7 @@ for (const [device, options] of [
     for (const screen of signedIn) {
       // Shots that exist on one size only.
       if (screen.name === "folha-mais" && device !== "celular") continue;
-      if (screen.name === "menu-recolhido" && device !== "computador") continue;
+      if (/^menu-(recolhido|grupo-fechado)/.test(screen.name) && device !== "computador") continue;
       if (screen.name === "conversas" && device !== "celular") continue;
       let path = screen.path;
       if (screen.name === "conversa-menu" && device !== "computador") continue;
@@ -181,14 +186,26 @@ for (const [device, options] of [
       }
       if (/^contatos?(-|$)/.test(screen.name)) {
         await seedContacts(page, BASE);
-        if (screen.name === "contato-ficha") {
-          const found = (await (await page.request.get(`${BASE}/api/contacts?q=Ana`, { headers: CSRF })).json()) as { contacts: { id: string }[] };
-          if (!found.contacts[0]) throw new Error("contato-ficha needs --exemplos");
+        // "contato-ficha": Beatriz, with the note after her name and her appointments; "contato-homonimo": one of the two Marcos.
+        const who = screen.name === "contato-ficha" ? "Beatriz" : screen.name === "contato-homonimo" ? "Marcos" : "";
+        if (who) {
+          const found = (await (await page.request.get(`${BASE}/api/contacts?q=${who}`, { headers: CSRF })).json()) as { contacts: { id: string }[] };
+          if (!found.contacts[0]) throw new Error(`${screen.name} needs --exemplos`);
           path = `/contatos/${found.contacts[0].id}`;
+        }
+      }
+      if (screen.name === "integracoes-sem-etiqueta") {
+        // The first setup: the contacts on, the labels read and none chosen yet (shoot it apart: it empties the copy).
+        await seedContacts(page, BASE);
+        const status = (await (await page.request.get(`${BASE}/api/google/contacts`, { headers: CSRF })).json()) as { labels: { selected: boolean }[] };
+        if (status.labels.some((label) => label.selected)) {
+          const none = await page.request.patch(`${BASE}/api/google/contacts/labels`, { headers: CSRF, data: { selected: [] } });
+          if (!none.ok()) throw new Error(`/api/google/contacts/labels: ${none.status()}`);
         }
       }
       await page.goto(BASE + path);
       await page.getByRole("heading", { level: 1 }).or(page.getByRole("heading", { level: 2 })).first().waitFor();
+      if (/^contato-(ficha|homonimo)$/.test(screen.name)) await page.getByRole("region", { name: "Atendimentos" }).locator("dl").waitFor();
       if (screen.name === "contatos-etiquetas") {
         await page.getByRole("button", { name: "Filtrar por etiqueta" }).click();
         await page.getByRole("dialog", { name: "Filtrar por etiqueta" }).getByText("Todas as etiquetas").waitFor();
@@ -208,6 +225,11 @@ for (const [device, options] of [
       if (screen.name === "menu-recolhido") {
         await page.getByRole("button", { name: "Recolher menu" }).click();
         await page.locator("aside").getByRole("link", { name: "Agenda", exact: true }).hover();
+      }
+      const group = page.locator("aside").getByRole("button", { name: "Organizar", exact: true });
+      if (screen.name.startsWith("menu-grupo-fechado")) {
+        await group.click();
+        await page.locator("aside").getByRole("link", { name: "Notas", exact: true }).waitFor({ state: "hidden" });
       }
       if (/^memoria-(painel|mapa)$/.test(screen.name)) {
         const sample = "Está organizando a mudança para um apartamento novo.";
@@ -232,7 +254,7 @@ for (const [device, options] of [
         await page.getByRole("link", { name: /Organizar a mudança/ }).waitFor();
       }
       if (screen.region) {
-        const region = page.getByRole("region", { name: screen.region });
+        const region = page.getByRole("region", { name: screen.region, exact: true });
         await region.waitFor();
         await region.evaluate((box: HTMLElement) => box.scrollIntoView({ block: "start" }));
       }
@@ -240,6 +262,7 @@ for (const [device, options] of [
       if (screen.name === "conversa-anterior") await page.unrouteAll({ behavior: "wait" });
       // The rail is remembered on the device: the next shots get the wide menu back.
       if (screen.name === "menu-recolhido") await page.getByRole("button", { name: "Expandir menu" }).click();
+      if (screen.name.startsWith("menu-grupo-fechado")) await group.click();
     }
     await context.close();
   }

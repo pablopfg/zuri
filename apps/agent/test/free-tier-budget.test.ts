@@ -890,6 +890,14 @@ describe("Google contacts (step 19b)", () => {
       world.contacts.search({ query: "pessoa 4", limit: 50 });
       expect(world.googleSim.seen.length).toBe(calls);
       expect(world.db.usage.rowsRead - before.rowsRead).toBeLessThanOrEqual(1_000);
+      // The card (GET /api/contacts/:id) and what the calendar needs of the contact (GET /api/contacts/:id/appointments):
+      // the contact, its labels and the others with the very same name, by the name's index. Nothing is written.
+      const [someone] = world.contacts.search({ query: "pessoa 4", limit: 1 }).contacts;
+      const card = { ...world.db.usage };
+      expect(world.contacts.get(someone?.id ?? "")?.sameName).toBe(0);
+      expect(world.contacts.identity(someone?.id ?? "")?.others).toEqual([]);
+      expect(world.db.usage.rowsRead - card.rowsRead).toBeLessThanOrEqual(40);
+      expect(world.db.usage.rowsWritten - card.rowsWritten).toBe(0);
     }));
 });
 
@@ -1008,6 +1016,37 @@ describe("Google reviews published by themselves (step 19d)", () => {
 });
 
 describe("flows (step 22a)", () => {
+  it("a scheduled time of a flow every 5 minutes costs a few rows run or skipped, so the day's 2,000 times stay under a third of the rows written", () =>
+    withFlowWorld(async (world) => {
+      world.flows.updateSettings({ minIntervalMinutes: 5, runsPerDay: 10 });
+      const flow = await world.flows.create({
+        name: "Cinco",
+        definition: { version: 1, trigger: { type: "schedule", schedule: { type: "interval", minutes: 5 } }, nodes: [{ type: "notify", title: "ok", body: "", priority: "low", each: false }] },
+      });
+      await world.flows.update(flow.id, { enabled: true });
+      const slot = async () => {
+        const before = { ...world.db.usage };
+        world.clock.now = Date.parse(world.flows.nextDue() ?? "");
+        await world.flows.tick();
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      const ran = await slot();
+      expect(world.flows.runs({}).runs[0]).toMatchObject({ status: "success", trigger: "schedule" });
+      for (let i = 0; i < 9; i++) await slot();
+      // The day's runs are spent: the next time is recorded as skipped and nothing runs.
+      const skipped = await slot();
+      expect(world.flows.runs({}).runs[0]).toMatchObject({ status: "skipped", problem: "runs_limit" });
+      // Measured 17 written and 20 read for a run, 12 and 18 for a skip.
+      expect(ran.written).toBeLessThanOrEqual(20);
+      expect(ran.read).toBeLessThanOrEqual(30);
+      expect(skipped.written).toBeLessThanOrEqual(15);
+      expect(skipped.read).toBeLessThanOrEqual(30);
+      // The worst day the settings allow: 500 runs and every other scheduled time skipped (about 26,500 rows as
+      // measured, against 25,540 with the 1,920 times of before the shortest interval could be set).
+      const worst = FLOW_LIMITS.runsPerDay * 20 + (FLOW_LIMITS.slotsPerDay - FLOW_LIMITS.runsPerDay) * 15;
+      expect(worst).toBeLessThanOrEqual(100_000 / 3);
+    }));
+
   it("the Flows tab, a page of the history, a monitor run of 10 sites and an idle wake read and write about one page, out of 20 flows and 2,000 runs", () =>
     withFlowWorld(async (world) => {
       const sites = Array.from({ length: FLOW_LIMITS.sites }, (_, i) => `https://s${i}.exemplo.com.br/`);

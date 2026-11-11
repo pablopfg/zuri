@@ -31,7 +31,7 @@ A Zuri já tinha limite de tentativas por rede, verificação contra robôs, seg
 | CA8 | A 5ª rede de uma sessão funciona; a 6ª encerra a sessão com alerta | plano |
 | CA9 | Nenhum pedido com `Authorization` é aceito, nem com sessão válida junto; as rotas `/api/remote` não existem | Pablo |
 | CA10 | O bot não tem mais `/tokens`; o menu é reenviado | Pablo |
-| CA11 | A migration 34 só acrescenta; sessão aberta antes dela é encerrada no primeiro pedido (SEC-A3-P2) | regra do repositório e auditoria |
+| CA11 | A migration 35 só acrescenta; sessão aberta antes dela é encerrada no primeiro pedido (SEC-A3-P2) | regra do repositório e auditoria |
 | CA12 | Confirmação e troca de senha atrás de uma sessão não entram no teto diário (SEC-A3-P1) | auditoria |
 
 ## 4. Escopo
@@ -111,7 +111,7 @@ Concorrência: pedidos simultâneos de uma rede nova gravam um evento só (a atu
 | `apps/agent/src/auth/service.ts` | muda | `validate` compara a origem (`sameOrigin`); sai o gancho dos tokens |
 | `apps/agent/src/api/app.ts`, `apps/agent/src/live/channel.ts` | muda | passam a origem do pedido; recusam `Authorization` |
 | `apps/agent/src/index.ts` | muda | o Worker recusa `Authorization` antes do objeto |
-| `apps/agent/src/db/migrations.ts` | muda | migration 34 |
+| `apps/agent/src/db/migrations.ts` | muda | migration 35 |
 | `apps/agent/src/remote/`, `api/remote.ts`, `packages/shared/src/remote.ts`, `RemoteAccessCard.tsx` | apaga | acesso remoto |
 | `apps/agent/src/telegram/security.ts`, `service.ts` | muda | sai `/tokens`; `TELEGRAM_MENU_VERSION` 7 |
 
@@ -121,7 +121,7 @@ Somem `GET/PATCH /api/remote`, `POST/DELETE /api/remote/tokens`, `DELETE /api/re
 
 ### Banco
 
-Migration 34 `session_binding`: `ALTER TABLE zur_sessions ADD COLUMN` para `device` (HMAC do cookie de aparelho), `country`, `networks` (uma por linha) e `confirmed_network`. No máximo 20 linhas na tabela. Nenhuma consulta nova por pedido: os dados vêm na linha da sessão que já era lida.
+Migration 35 `session_binding`: `ALTER TABLE zur_sessions ADD COLUMN` para `device` (HMAC do cookie de aparelho), `country`, `networks` (uma por linha) e `confirmed_network`. No máximo 20 linhas na tabela. Nenhuma consulta nova por pedido: os dados vêm na linha da sessão que já era lida.
 
 ### Ferramentas do agente
 
@@ -187,7 +187,7 @@ Limite conhecido: quem copia os dois cookies e usa da mesma rede e país do dono
 | --- | --- | --- | --- |
 | Operadora que troca o IP o tempo todo estoura as 5 redes | baixa | o Pablo entra de novo | redes já vistas não contam de novo; o número é uma constante fácil de subir |
 | Viagem ao exterior com a sessão aberta | baixa | sessão encerrada uma vez | entrar de novo no país novo abre sessão normal |
-| Outra PR usar a migration 34 antes | média | conflito | renumerar para 35 antes do merge |
+| Outra PR usar a migration 34 antes | média | conflito | renumerada para 35 (a 34 ficou com a PR #293) |
 
 ## 13. Suposições
 

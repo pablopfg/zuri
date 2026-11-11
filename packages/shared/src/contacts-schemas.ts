@@ -128,6 +128,7 @@ export const googlePersonSchema = /* @__PURE__ */ (() =>
       ),
       urls: list(z.object({ value: text.optional(), formattedType: text.optional(), type: text.optional() }).loose()),
       relations: list(z.object({ person: text.optional(), formattedType: text.optional(), type: text.optional() }).loose()),
+      photos: list(z.object({ url: z.string().max(2_000).optional(), default: z.boolean().optional() }).loose()),
       imClients: list(z.object({ username: text.optional(), formattedProtocol: text.optional(), protocol: text.optional(), formattedType: text.optional(), type: text.optional() }).loose()),
     })
     .loose())();

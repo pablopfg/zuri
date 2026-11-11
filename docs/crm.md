@@ -42,9 +42,15 @@ canais da central de avisos:
 
 - **Retorno**: na hora marcada. Até 10 avisos de uma vez; se vencerem mais, o
   resto vem num aviso só.
-- **Aniversários**: às 9 h no seu fuso, com até 5 nomes por aviso. Quem faz
-  aniversário em 29 de fevereiro é lembrado no dia 28 nos anos comuns.
+- **Aniversários**: na hora que você escolher em **Hora do aviso de
+  aniversários** (9 h no seu fuso, se não mexer), com até 5 nomes por aviso.
+  Quem faz aniversário em 29 de fevereiro é lembrado no dia 28 nos anos comuns.
 - **Cliente novo vindo do n8n**: até 20 por dia.
+
+Cada dia tem um aviso de aniversários só. Se você mudar a hora depois do aviso
+do dia, a hora nova vale a partir de amanhã. Se mudar para uma hora que já
+passou, antes do aviso do dia, o de hoje sai na hora antiga e a nova vale a
+partir de amanhã.
 
 ### Na conversa
 
