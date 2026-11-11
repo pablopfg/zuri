@@ -275,15 +275,19 @@ test.describe("on a device in another time zone", () => {
     const before = asked;
     await page.clock.runFor(2_000);
     await expect(list.getByText("Conferindo agora")).toBeVisible();
+    // The next wait only starts once the screen has the answer to the last try, and that
+    // takes real time the fake clock does not see: one long jump could end before the wait
+    // began. So the clock walks a second at a time until the try comes, with room to spare.
+    const runUntilAsked = async (count: number, wait: number) => {
+      for (let ran = 0; asked < count && ran < wait * 4; ran += 1_000) await page.clock.runFor(1_000);
+      expect(asked).toBe(count);
+    };
     // The first try fails: the other two still come, 15 and 30 seconds later.
     fail = true;
-    await page.clock.runFor(3_000);
-    await expect.poll(() => asked).toBe(before + 1);
+    await runUntilAsked(before + 1, 3_000);
     fail = false;
-    await page.clock.runFor(15_000);
-    await expect.poll(() => asked).toBe(before + 2);
-    await page.clock.runFor(30_000);
-    await expect.poll(() => asked).toBe(before + 3);
+    await runUntilAsked(before + 2, 15_000);
+    await runUntilAsked(before + 3, 30_000);
     // And no more, however long the screen stays open.
     await page.clock.runFor(600_000);
     await expect(list.getByText("Conferindo agora")).toBeVisible();
