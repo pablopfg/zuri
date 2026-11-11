@@ -347,6 +347,98 @@ describe("notices", () => {
       expect(notices.at(-1)).toMatchObject({ names: "Leap", day: "2028-02-29" });
     }));
 
+  it("tells the birthdays at the time the owner picked, from the same day on when it is still ahead", () =>
+    withCrm(({ crm, clock, notices }) => {
+      crm.create({ name: "Ana", birthday: "11-03" }, "app");
+      expect(crm.settings()).toEqual({ followUps: true, birthdays: true, birthdayTime: "09:00" });
+      // 03/11 12:00 in São Paulo: 9 h is gone, so the plan is the 4th. With 15:30 picked, it is today again.
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-04T12:00:00.000Z"));
+      expect(crm.updateSettings({ birthdayTime: "15:30" })).toMatchObject({ birthdayTime: "15:30" });
+      const today = Date.parse("2026-11-03T18:30:00.000Z");
+      expect(crm.nextDue()).toBe(today);
+      clock.now = today;
+      crm.tick();
+      expect(notices).toEqual([{ kind: "crm.birthdays", names: "Ana", more: 0, day: "2026-11-03" }]);
+      expect(crm.nextDue()).toBe(today + 86_400_000);
+    }));
+
+  it("never tells one day twice: a time moved to later, after the day's notice, starts the next day", () =>
+    withCrm(({ crm, clock, notices }) => {
+      crm.create({ name: "Ana", birthday: "11-04" }, "app");
+      crm.nextDue();
+      clock.now = Date.parse("2026-11-04T12:00:00.000Z");
+      crm.tick();
+      expect(notices).toHaveLength(1);
+      clock.now = Date.parse("2026-11-04T13:00:00.000Z");
+      crm.updateSettings({ birthdayTime: "15:00" });
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-05T18:00:00.000Z"));
+      // Another setting saved later the same day plans from the clock again: still tomorrow.
+      crm.updateSettings({ followUps: false });
+      crm.updateSettings({ birthdays: false });
+      crm.updateSettings({ birthdays: true });
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-05T18:00:00.000Z"));
+      clock.now = Date.parse("2026-11-04T18:00:00.000Z");
+      crm.tick();
+      expect(notices).toHaveLength(1);
+    }));
+
+  it("never loses a day: a time moved to before now, with the day's notice still ahead, leaves today's where it was", () =>
+    withCrm(({ crm, clock, notices }) => {
+      crm.create({ name: "Ana", birthday: "11-04" }, "app");
+      crm.create({ name: "Bia", birthday: "11-05" }, "app");
+      // 04/11 08:00 in São Paulo, the notice planned for 09:00; the owner picks 07:00.
+      clock.now = Date.parse("2026-11-04T11:00:00.000Z");
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-04T12:00:00.000Z"));
+      crm.updateSettings({ birthdayTime: "07:00" });
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-04T12:00:00.000Z"));
+      clock.now = Date.parse("2026-11-04T12:00:00.000Z");
+      crm.tick();
+      expect(notices).toEqual([{ kind: "crm.birthdays", names: "Ana", more: 0, day: "2026-11-04" }]);
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-05T10:00:00.000Z"));
+      clock.now = Date.parse("2026-11-05T10:00:00.000Z");
+      crm.tick();
+      expect(notices.at(-1)).toMatchObject({ names: "Bia", day: "2026-11-05" });
+    }));
+
+  it("never loses a day: a time moved to earlier while today's notice is due and the alarm has not run yet still tells today", () =>
+    withCrm(({ crm, clock, notices }) => {
+      crm.create({ name: "Ana", birthday: "11-04" }, "app");
+      clock.now = Date.parse("2026-11-04T11:00:00.000Z");
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-04T12:00:00.000Z"));
+      // 09:00:20, the alarm late: the owner picks 08:00.
+      clock.now = Date.parse("2026-11-04T12:00:20.000Z");
+      crm.updateSettings({ birthdayTime: "08:00" });
+      crm.tick();
+      expect(notices).toEqual([{ kind: "crm.birthdays", names: "Ana", more: 0, day: "2026-11-04" }]);
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-05T11:00:00.000Z"));
+    }));
+
+  it("writes nothing when the time saved is the one already there", () =>
+    withCrm(({ crm, db }) => {
+      crm.create({ name: "Ana", birthday: "11-04" }, "app");
+      crm.updateSettings({ birthdayTime: "10:15" });
+      const usage = db.usage.rowsWritten;
+      expect(crm.updateSettings({ birthdayTime: "10:15" })).toMatchObject({ birthdayTime: "10:15" });
+      expect(db.usage.rowsWritten).toBe(usage);
+    }));
+
+  it("SEC-A1-01: a change of settings goes to the activity log with the names of the fields, and the same values leave nothing", () =>
+    withCrm(({ crm, db }) => {
+      const trail = () => db.all<{ detail: string }>(`SELECT detail FROM zur_activity WHERE kind = 'crm.settings' ORDER BY id`).map((row) => JSON.parse(row.detail));
+      crm.updateSettings({ birthdayTime: "10:15", birthdays: false, followUps: true });
+      expect(trail()).toEqual([{ fields: ["birthdays", "birthdayTime"] }]);
+      crm.updateSettings({ birthdayTime: "10:15", birthdays: false, followUps: true });
+      expect(trail()).toHaveLength(1);
+    }));
+
+  it("falls back to 9 h when the stored time is not a time", () =>
+    withCrm(({ crm, db }) => {
+      crm.create({ name: "Ana", birthday: "11-04" }, "app");
+      db.run(`UPDATE zur_crm_settings SET reminder_time = '99:99', next_reminder = NULL`);
+      expect(crm.settings().birthdayTime).toBe("09:00");
+      expect(crm.nextDue()).toBe(Date.parse("2026-11-04T12:00:00.000Z"));
+    }));
+
   it("names at most 5 in a birthday notice and counts the rest", () =>
     withCrm(({ crm, clock, notices }) => {
       for (let i = 0; i < 7; i++) crm.create({ name: `P${i}`, birthday: "11-04" }, "app");
@@ -361,6 +453,6 @@ describe("notices", () => {
     withCrm(({ crm }) => {
       expect(crm.create({ name: "Ana" }, "app").source).toBe("app");
       expect(crm.create({ name: "Bia" }, "chat").source).toBe("app");
-      expect(crm.settings()).toEqual({ followUps: true, birthdays: true });
+      expect(crm.settings()).toEqual({ followUps: true, birthdays: true, birthdayTime: "09:00" });
     }));
 });

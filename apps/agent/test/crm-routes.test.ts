@@ -44,7 +44,7 @@ afterEach(async () => {
     for (const table of ["zur_crm_tags", "zur_crm_history", "zur_crm_clients", "zur_crm_tag_counts", "zur_crm_stages", "zur_flow_drafts", "zur_auth_events", "zur_notices"]) {
       db.run(`DELETE FROM ${table}`);
     }
-    db.run(`UPDATE zur_crm_settings SET follow_ups = 1, birthdays = 1, next_reminder = NULL`);
+    db.run(`UPDATE zur_crm_settings SET follow_ups = 1, birthdays = 1, next_reminder = NULL, reminder_time = '09:00', reminded_day = NULL`);
     // The stages went too: the service makes the default ones again on next use.
     (agent.store.crm as unknown as { ready: boolean }).ready = false;
   });
@@ -71,7 +71,7 @@ describe("/api/crm", () => {
     ]);
     expect(view.tags).toEqual([]);
     expect(view.summary).toEqual({ total: 0, overdue: 0, today: 0, week: 0, newThisWeek: 0 });
-    expect(view.settings).toEqual({ followUps: true, birthdays: true });
+    expect(view.settings).toEqual({ followUps: true, birthdays: true, birthdayTime: "09:00" });
     // Nothing of the events other systems once sent: no address, no key, no secret.
     expect(Object.keys(view).sort()).toEqual(["limits", "settings", "stages", "summary", "tags"]);
     expect(JSON.stringify(view)).not.toMatch(/secret|zcrm_|events/i);
@@ -156,11 +156,38 @@ describe("/api/crm", () => {
   it("turns the notices off and on", async () => {
     const res = await api("PATCH", "/crm/settings", { birthdays: false });
     expect(res.status).toBe(200);
-    expect((await overview()).settings).toEqual({ followUps: true, birthdays: false });
+    expect((await overview()).settings).toEqual({ followUps: true, birthdays: false, birthdayTime: "09:00" });
     // The notice of clients from n8n went with the events.
     expect((await api("PATCH", "/crm/settings", { newClients: false })).status).toBe(400);
     expect((await api("PATCH", "/crm/settings", { birthdays: "no" })).status).toBe(400);
     expect((await api("PATCH", "/crm/settings", { other: true })).status).toBe(400);
+  });
+
+  it("saves the birthday notice's time, a time of the clock only, and nothing else", async () => {
+    const res = await api("PATCH", "/crm/settings", { birthdayTime: "07:45" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ settings: { followUps: true, birthdays: true, birthdayTime: "07:45" } });
+    for (const body of [
+      { birthdayTime: "24:00" },
+      { birthdayTime: "7:45" },
+      { birthdayTime: "07:60" },
+      { birthdayTime: "07:45:00" },
+      { birthdayTime: "07:45\n" },
+      { birthdayTime: 745 },
+      // What the plan fixes, and what went with n8n's events, is nobody's to send.
+      { newClients: false },
+      { newClientNoticesPerDay: 5 },
+      { eventsPerHour: 100 },
+      { eventsPerDay: 100 },
+    ]) {
+      const refused = await api("PATCH", "/crm/settings", body);
+      expect(refused.status, JSON.stringify(body)).toBe(400);
+    }
+    // A body past 1 KB is refused before it is read, whatever it holds.
+    const big = await call(`${ORIGIN}/api/crm/settings`, { method: "PATCH", headers: headers(true), body: `{"birthdayTime":"08:00"${" ".repeat(1_024)}}` });
+    expect(big.status).toBe(400);
+    expect(await errorBody(big)).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["_body"] } });
+    expect((await overview()).settings).toMatchObject({ birthdayTime: "07:45" });
   });
 
   it("has no door for other systems: the signed events' address and its key are gone", async () => {

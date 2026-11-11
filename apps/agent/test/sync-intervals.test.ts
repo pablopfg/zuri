@@ -1,5 +1,6 @@
-import { CONTACT_LIMITS, contactSettingsSchema, REVIEW_LIMITS, reviewIntervalSchema } from "@zuri/shared";
+import { CONTACT_LIMITS, contactSettingsSchema, DAY_BUDGET, REVIEW_LIMITS, reviewIntervalSchema } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
+import * as daySlots from "../src/db/day-slots.ts";
 import { type ChatWorld, withChatWorld } from "./chat-world.ts";
 import { add as addReview, draftAnswer, LOCATION, type ReviewsWorld, row as reviewRow, SECOND_OK, turnOn as turnReviewsOn, withReviewsWorld } from "./reviews-world.ts";
 
@@ -35,14 +36,14 @@ const contact = (world: ChatWorld, id: string) =>
   world.db.one<{ id: string; etag: string; data: string; display_name: string }>(`SELECT id, etag, data, display_name FROM zur_contacts WHERE resource_name = ?`, `people/${id}`);
 
 describe("the interval the owner may pick", () => {
-  it("accepts whole minutes from 5 to 1,440 and nothing else (n - 1, n, n + 1)", () => {
-    expect(CONTACT_LIMITS.syncEveryMinMinutes).toBe(5);
+  it("accepts whole minutes from 1 to 1,440 and nothing else (n - 1, n, n + 1)", () => {
+    expect(CONTACT_LIMITS.syncEveryMinMinutes).toBe(1);
     expect(CONTACT_LIMITS.syncEveryMaxMinutes).toBe(1_440);
-    expect(REVIEW_LIMITS.checkEveryMinMinutes).toBe(5);
+    expect(REVIEW_LIMITS.checkEveryMinMinutes).toBe(1);
     expect(REVIEW_LIMITS.checkEveryMaxMinutes).toBe(1_440);
     for (const schema of [contactSettingsSchema, reviewIntervalSchema]) {
-      for (const minutes of [5, 6, 60, 1_439, 1_440]) expect(schema.safeParse({ syncEveryMinutes: minutes }).success).toBe(true);
-      for (const minutes of [4, 0, -5, 1_441, 5.5, Number.NaN, Number.POSITIVE_INFINITY, "10", null, [10]]) {
+      for (const minutes of [1, 2, 5, 60, 1_439, 1_440]) expect(schema.safeParse({ syncEveryMinutes: minutes }).success).toBe(true);
+      for (const minutes of [0, -1, -5, 1_441, 1.5, 5.5, Number.NaN, Number.POSITIVE_INFINITY, "10", null, [10]]) {
         expect(schema.safeParse({ syncEveryMinutes: minutes }).success).toBe(false);
       }
     }
@@ -135,7 +136,7 @@ describe("the contacts at the owner's interval", () => {
       expect(world.contacts.configure({ syncEveryMinutes: 30 }).nextSyncAt).toBe(iso(world.clock.now + 30 * MINUTE));
     }));
 
-  it("a row with an interval out of the range (a damaged one) is read as the nearest allowed", () =>
+  it("a row with an interval out of the range (a damaged one) is read as the default when under it and as the longest when over", () =>
     withChatWorld(async (world) => {
       addContact(world, "c1", "Ana");
       await turnContactsOn(world);
@@ -250,6 +251,102 @@ describe("a contact is stored again only when what Zuri keeps of it changed", ()
     }));
 });
 
+describe("an interval under five minutes is paid from the day's count (DAY_BUDGET)", () => {
+  const refusal = (fn: () => unknown) => {
+    try {
+      fn();
+    } catch (error) {
+      return error as { code: string; messageKey: string; details: unknown };
+    }
+    throw new Error("not refused");
+  };
+  const flowOn = (world: { db: ChatWorld["db"] }, id: string, minutes: number) =>
+    world.db.run(
+      `INSERT INTO zur_flows (id, name, definition, enabled, uses_ai, created_at, updated_at) VALUES (?, ?, ?, 1, 0, ?, ?)`,
+      id,
+      id,
+      JSON.stringify({ version: 1, trigger: { type: "schedule", schedule: { type: "interval", minutes } }, nodes: [{ type: "wait", minutes: 1 }] }),
+      iso(0),
+      iso(0),
+    );
+
+  it("the whole is what the day held before: 2,000 times of flows at 2 and 576 reads at 3", () => {
+    expect(DAY_BUDGET).toEqual({ units: 2_000 * 2 + 576 * 3, perSync: 3, perFlow: 2 });
+    // Rows written, from the budget test and the plan: a read in a wake of its own about 19, a flow's time 13.25
+    // on the worst day (500 runs at 17, 1,500 skipped at 12). The day spent on reads alone stays under the old worst.
+    const before = 2_000 * 13.25 + 576 * 19;
+    expect(Math.floor(DAY_BUDGET.units / DAY_BUDGET.perSync) * 19).toBeLessThanOrEqual(before);
+    expect(DAY_BUDGET.perSync / DAY_BUDGET.perFlow).toBeGreaterThanOrEqual(19 / 13.25);
+  });
+
+  it("the contacts read every minute: planned by it, with the reviews' check at its ten", () =>
+    withChatWorld(async (world) => {
+      addContact(world, "c1", "Ana");
+      await turnContactsOn(world);
+      const first = world.clock.now;
+      expect(world.contacts.configure({ syncEveryMinutes: 1 })).toMatchObject({ syncEveryMinutes: 1, nextSyncAt: iso(first + MINUTE) });
+      expect(world.contacts.everyMs()).toBe(MINUTE);
+      world.clock.now = first + MINUTE;
+      expect(await world.contacts.tick()).toBe(true);
+      expect(world.contacts.status()).toMatchObject({ lastResult: "unchanged", nextSyncAt: iso(first + 2 * MINUTE) });
+    }));
+
+  it("the two reads together: a minute next to four fits (5,400), next to three doesn't (5,760), refused with nothing written", () =>
+    withChatWorld(async (world) => {
+      await turnContactsOn(world);
+      world.db.run(`INSERT INTO zur_review_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING`);
+      world.db.run(`UPDATE zur_review_settings SET check_every_min = 1 WHERE id = 1`);
+      expect(daySlots.syncSlots(world.db)).toBe(1_440 + 288);
+      const before = world.contacts.status();
+      expect(refusal(() => world.contacts.configure({ syncEveryMinutes: 1, daysAhead: 3 }))).toMatchObject({ code: "CONFLICT", messageKey: "error.syncSlotsLimit", details: { limit: 5_728, cost: 8_640 } });
+      expect(refusal(() => world.contacts.configure({ syncEveryMinutes: 3 }))).toMatchObject({ code: "CONFLICT", details: { cost: 5_760 } });
+      expect(world.contacts.status()).toEqual(before);
+      expect(world.contacts.configure({ syncEveryMinutes: 4 })).toMatchObject({ syncEveryMinutes: 4 });
+      // A longer interval is never refused, whatever the count; nor is the one already there.
+      world.db.run(`UPDATE zur_contact_sync SET sync_every_min = 1 WHERE id = 1`);
+      expect(world.contacts.configure({ syncEveryMinutes: 1 })).toMatchObject({ syncEveryMinutes: 1 });
+      expect(world.contacts.configure({ syncEveryMinutes: 2 })).toMatchObject({ syncEveryMinutes: 2 });
+    }));
+
+  it("the flows turned on count: the day's last unit is taken and the next one refused (n, n + 1)", () =>
+    withChatWorld(async (world) => {
+      await turnContactsOn(world);
+      // Reviews at their 10 minutes (144). Contacts at 1 (1,440): 1,584 reads at 3 leave 976, 488 times of flows.
+      for (const [id, minutes] of [["a", 5], ["b", 12], ["c", 20], ["d", 180]] as const) flowOn(world, id, minutes);
+      expect(daySlots.flowSlots(world.db)).toBe(288 + 120 + 72 + 8);
+      expect(daySlots.flowSlotsLimit(world.db)).toBe(2_000);
+      expect(world.contacts.configure({ syncEveryMinutes: 1 })).toMatchObject({ syncEveryMinutes: 1 });
+      expect(daySlots.flowSlotsLimit(world.db)).toBe(488);
+      world.contacts.configure({ syncEveryMinutes: 5 });
+      flowOn(world, "e", 1_440);
+      expect(refusal(() => world.contacts.configure({ syncEveryMinutes: 1 }))).toMatchObject({ code: "CONFLICT", details: { limit: 5_728, cost: 5_730 } });
+      world.db.run(`UPDATE zur_flows SET enabled = 0 WHERE id = 'e'`);
+      expect(world.contacts.configure({ syncEveryMinutes: 1 })).toMatchObject({ syncEveryMinutes: 1 });
+      // A stored flow that can't be read counts none.
+      world.db.run(`UPDATE zur_flows SET definition = '{' WHERE id = 'a'`);
+      expect(daySlots.flowSlots(world.db)).toBe(200);
+    }));
+
+  it("the reviews' check every minute: taken with the contacts at five, refused with them at one, and a row not there counts the defaults", () =>
+    withReviewsWorld(async (world) => {
+      await turnReviewsOn(world);
+      expect(daySlots.syncSlots(world.db)).toBe(288 + 144);
+      expect(daySlots.flowSlotsLimit(world.db)).toBe(2_000);
+      const first = world.clock.now;
+      expect(world.reviews.setInterval(1)).toMatchObject({ syncEveryMinutes: 1, nextSyncAt: iso(first + MINUTE) });
+      world.reviews.setInterval(10);
+      world.db.run(`INSERT INTO zur_contact_sync (id) VALUES (1) ON CONFLICT (id) DO NOTHING`);
+      world.db.run(`UPDATE zur_contact_sync SET sync_every_min = 1 WHERE id = 1`);
+      expect(refusal(() => world.reviews.setInterval(1))).toMatchObject({ code: "CONFLICT", messageKey: "error.syncSlotsLimit", details: { limit: 5_728, cost: 8_640 } });
+      expect(refusal(() => world.reviews.setInterval(3))).toMatchObject({ code: "CONFLICT", details: { cost: 5_760 } });
+      expect(world.reviews.status().syncEveryMinutes).toBe(10);
+      expect(world.reviews.setInterval(4)).toMatchObject({ syncEveryMinutes: 4 });
+      // A damaged interval counts as the default, never as the shortest.
+      world.db.run(`UPDATE zur_contact_sync SET sync_every_min = 0 WHERE id = 1`);
+      expect(daySlots.syncSlots(world.db)).toBe(288 + 360);
+    }));
+});
+
 describe("the reviews at the owner's interval", () => {
   it("starts at ten minutes and, once changed, plans every check by the new interval", () =>
     withReviewsWorld(async (world) => {
@@ -299,14 +396,14 @@ describe("the reviews at the owner's interval", () => {
       expect(world.reviews.setInterval(5)).toMatchObject({ syncEveryMinutes: 5, nextSyncAt: status.nextSyncAt });
     }));
 
-  it("the interval can be picked before the reviews are turned on, and a damaged one is read as the nearest allowed", () =>
+  it("the interval can be picked before the reviews are turned on, and a damaged one is read as the default", () =>
     withReviewsWorld(async (world) => {
       expect(world.reviews.setInterval(20)).toMatchObject({ enabled: false, syncEveryMinutes: 20, nextSyncAt: null });
       addReview(world, "old", 5, "Muito bom");
       await turnReviewsOn(world);
       expect(world.reviews.status().nextSyncAt).toBe(iso(world.clock.now + 20 * MINUTE));
       world.db.run(`UPDATE zur_review_settings SET check_every_min = -3 WHERE id = 1`);
-      expect(world.reviews.status().syncEveryMinutes).toBe(5);
+      expect(world.reviews.status().syncEveryMinutes).toBe(10);
     }));
 });
 

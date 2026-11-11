@@ -4,5 +4,8 @@ export const ptBRCrm = {
   "web.crm.settings.title": "Avisos do CRM",
   "web.crm.settings.body": "O que a Zuri avisa sobre os seus clientes, pelos canais da central de avisos.",
   "web.crm.settings.followUps": "Quando chegar a hora de um retorno",
-  "web.crm.settings.birthdays": "Aniversários de clientes, às 9 h",
+  "web.crm.settings.birthdays": "Aniversários de clientes",
+  "web.crm.settings.birthdayTime": "Hora do aviso de aniversários",
+  "web.crm.settings.save": "Salvar hora",
+  "web.crm.settings.saved": "Hora salva",
 } as const;

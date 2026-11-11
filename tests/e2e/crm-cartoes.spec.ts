@@ -10,12 +10,34 @@ test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 test.afterEach(async ({ page }) => {
   const list = (await (await page.request.get("/api/crm/clients", { headers: CSRF })).json()) as { clients?: { id: string }[] };
   for (const client of list.clients ?? []) await page.request.delete(`/api/crm/clients/${client.id}`, { headers: CSRF });
+  await page.request.patch("/api/crm/settings", { headers: CSRF, data: { birthdayTime: "09:00" } });
+});
+
+test("the owner picks the time of the birthday notice, kept after a reload @mobile", async ({ page }) => {
+  await page.goto("/crm");
+  await signIn(page);
+  const card = page.getByRole("region", { name: "Avisos do CRM" });
+  const time = card.getByLabel("Hora do aviso de aniversários");
+  const save = card.getByRole("button", { name: "Salvar hora" });
+  await expect(time).toHaveValue("09:00");
+  // Nothing changed, or no time at all: nothing to save.
+  await expect(save).toBeDisabled();
+  await time.fill("");
+  await expect(save).toBeDisabled();
+  await time.fill("07:30");
+  await expectAccessible(page, "crm-avisos-hora");
+  expect(await tooSmallControls(page), "every control of the CRM card is a 44 px target").toEqual([]);
+  await save.click();
+  await expect(page.getByRole("status").filter({ hasText: "Hora salva" })).toBeVisible();
+  await expect(save).toBeDisabled();
+  await page.reload();
+  await expect(card.getByLabel("Hora do aviso de aniversários")).toHaveValue("07:30");
 });
 
 test("a CRM notice turned off stays off after a reload; the card is accessible @mobile", async ({ page }) => {
   await page.goto("/crm");
   await signIn(page);
-  const notice = page.getByRole("switch", { name: "Aniversários de clientes, às 9 h" });
+  const notice = page.getByRole("switch", { name: "Aniversários de clientes", exact: true });
   await expect(notice).toBeVisible();
   const before = await notice.isChecked();
   await expectAccessible(page, "crm-cartoes");
@@ -24,7 +46,7 @@ test("a CRM notice turned off stays off after a reload; the card is accessible @
     await notice.click();
     await expect(notice).toBeChecked({ checked: !before });
     await page.reload();
-    await expect(page.getByRole("switch", { name: "Aniversários de clientes, às 9 h" })).toBeChecked({ checked: !before });
+    await expect(page.getByRole("switch", { name: "Aniversários de clientes", exact: true })).toBeChecked({ checked: !before });
     // The other kept its place, and the notice of clients from n8n is gone.
     await expect(page.getByRole("switch", { name: "Quando chegar a hora de um retorno" })).toBeVisible();
     await expect(page.getByRole("switch")).toHaveCount(2);

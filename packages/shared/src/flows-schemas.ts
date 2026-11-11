@@ -9,8 +9,10 @@ import {
   FLOW_LIMITS,
   FLOW_METHODS,
   FLOW_PRIORITIES,
+  FLOW_SETTING_RANGES,
   FLOW_TRANSFORMS,
   type FlowDefinition,
+  type FlowSettings,
   flowUsesAi,
   siteUrl,
 } from "./flows.ts";
@@ -75,13 +77,17 @@ function template(max: number, oneLine: boolean) {
   return (oneLine ? line(max) : text(max)).refine((value) => [...value.matchAll(/\{\{([^}]*)\}\}/g)].every((match) => fieldPathSchema.safeParse(match[1]?.trim()).success));
 }
 
-/** The flows' schedule: the automations' rules, with an interval down to 15 minutes. */
+/**
+ * The flows' schedule: the automations' rules, with an interval down to the lowest the owner may pick
+ * (5 minutes). The shortest interval the owner did pick (15 until they change it) is the service's to
+ * check, on saving and on turning on: a schema can't read the database.
+ */
 const flowScheduleSchema = /* @__PURE__ */ (() =>
   z.union([
     z
       .object({
         type: z.literal("interval"),
-        minutes: z.number().int().min(FLOW_LIMITS.minIntervalMinutes).max(AUTOMATION_LIMITS.maxIntervalMinutes),
+        minutes: z.number().int().min(FLOW_LIMITS.minIntervalFloor).max(AUTOMATION_LIMITS.maxIntervalMinutes),
       })
       .strict(),
     scheduleSchema,
@@ -195,7 +201,7 @@ export const flowDefinitionSchema = /* @__PURE__ */ (() =>
     .strict()
     .superRefine((definition, ctx) => {
       const { trigger } = definition;
-      if (trigger.type === "schedule" && trigger.schedule.type === "interval" && flowUsesAi(definition) && trigger.schedule.minutes < FLOW_LIMITS.aiMinIntervalMinutes) {
+      if (trigger.type === "schedule" && trigger.schedule.type === "interval" && flowUsesAi(definition) && trigger.schedule.minutes < FLOW_LIMITS.aiMinIntervalFloor) {
         ctx.addIssue({ code: "custom", path: ["trigger"], message: "ai_interval" });
       }
     }))();
@@ -211,6 +217,24 @@ export const flowCreateSchema = /* @__PURE__ */ (() =>
 export const flowUpdateSchema = /* @__PURE__ */ (() =>
   z
     .object({ name: line(FLOW_LIMITS.name).optional(), definition: flowDefinitionSchema.optional(), enabled: z.boolean().optional() })
+    .strict()
+    .refine((value) => Object.keys(value).length > 0))();
+
+const settingNumber = (key: keyof FlowSettings) => z.number().int().min(FLOW_SETTING_RANGES[key].min).max(FLOW_SETTING_RANGES[key].max);
+
+/** What holds for every flow, set by the owner on the screen: each stays inside the limits the free plan allows (FLOW_SETTING_RANGES). */
+export const flowSettingsSchema = /* @__PURE__ */ (() =>
+  z
+    .object({
+      failuresToPause: settingNumber("failuresToPause"),
+      runsPerDay: settingNumber("runsPerDay"),
+      minIntervalMinutes: settingNumber("minIntervalMinutes"),
+      aiMinIntervalMinutes: settingNumber("aiMinIntervalMinutes"),
+      callsPerRun: settingNumber("callsPerRun"),
+      neuronsPerDay: settingNumber("neuronsPerDay"),
+      attempts: settingNumber("attempts"),
+    })
+    .partial()
     .strict()
     .refine((value) => Object.keys(value).length > 0))();
 

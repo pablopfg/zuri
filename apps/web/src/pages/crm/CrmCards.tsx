@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type CrmOverview, type CrmSettings, ptBRCrm } from "@zuri/shared";
+import { type FormEvent, useEffect, useState } from "react";
 import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
-import { Card, ErrorNotice, Loading } from "../../components/ui.tsx";
+import { Button, Card, ErrorNotice, Loading, TextField } from "../../components/ui.tsx";
 import { api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 
@@ -46,6 +47,42 @@ function SettingsCard({ settings }: { settings: CrmSettings }) {
     <Card title={t("web.crm.settings.title")} description={t("web.crm.settings.body")}>
       <Switch label={t("web.crm.settings.followUps")} checked={settings.followUps} onChange={(value) => change({ followUps: value })} />
       <Switch label={t("web.crm.settings.birthdays")} checked={settings.birthdays} onChange={(value) => change({ birthdays: value })} />
+      <BirthdayTime time={settings.birthdayTime} />
     </Card>
+  );
+}
+
+/** When the day's birthdays are told: typed, then saved (a day gets one notice whatever the time becomes). */
+function BirthdayTime({ time }: { time: string }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const save = useCrmSave();
+  const [value, setValue] = useState(time);
+  const [saving, setSaving] = useState(false);
+  // What the server holds moved (another tab): start from it again.
+  useEffect(() => setValue(time), [time]);
+  const valid = /^\d{2}:\d{2}$/.test(value);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!valid) return;
+    setSaving(true);
+    try {
+      await save(() => api("/crm/settings", { method: "PATCH", body: { birthdayTime: value } }));
+      toast(t("web.crm.settings.saved"));
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={(e) => void submit(e)} className="space-y-3 rounded-xl border border-border p-3">
+      <TextField label={t("web.crm.settings.birthdayTime")} type="time" required value={value} onChange={(e) => setValue(e.target.value)} />
+      <Button type="submit" loading={saving} disabled={!valid || value === time}>
+        {t("web.crm.settings.save")}
+      </Button>
+    </form>
   );
 }

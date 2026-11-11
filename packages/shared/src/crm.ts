@@ -127,7 +127,12 @@ export interface CrmSettings {
   /** Notices of follow-ups that come due. */
   followUps: boolean;
   birthdays: boolean;
+  /** When the day's birthdays are told, "HH:MM" in the owner's time zone. */
+  birthdayTime: string;
 }
+
+/** The birthday notice's time until the owner picks another. */
+export const CRM_BIRTHDAY_TIME = "09:00";
 
 export interface CrmOverview {
   stages: CrmStage[];

@@ -1,5 +1,6 @@
 import {
   birthdayMonthDay,
+  CRM_BIRTHDAY_TIME,
   CRM_LIMITS,
   type CrmClientDetail,
   type CrmClientPage,
@@ -17,6 +18,7 @@ import {
   t,
   zonedParts,
 } from "@zuri/shared";
+import { recordActivity } from "../db/activity.ts";
 import { now as isoNow, type Database, type SqlValue } from "../db/database.ts";
 import { dayKeys, searchText } from "../google/contacts.ts";
 import { cleanText } from "../google/events.ts";
@@ -87,12 +89,20 @@ interface SettingsRow {
   follow_ups: number;
   birthdays: number;
   next_reminder: number | null;
+  reminder_time: string;
+  /** The owner's day ("2026-11-11") of the last birthday notice's turn: a time changed later the same day doesn't tell it twice. */
+  reminded_day: string | null;
+}
+
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** The stored time, or 9 h when the row holds something a clock can't show. */
+function reminderTime(row: SettingsRow): string {
+  return HHMM.test(row.reminder_time) ? row.reminder_time : CRM_BIRTHDAY_TIME;
 }
 
 const COLUMNS = "id, ref, name, search_name, phone, email, birthday, stage_id, notes, follow_up_at, follow_up_note, source, last_activity_at, created_at, updated_at";
 const DEFAULT_STAGES = ["crm.stage.new", "crm.stage.talking", "crm.stage.scheduled", "crm.stage.client", "crm.stage.inactive"] as const;
-/** Birthdays are told at this hour of the owner's day. */
-const REMINDER_TIME = "09:00";
 const DAY_MS = 86_400_000;
 
 export class CrmService {
@@ -561,36 +571,69 @@ export class CrmService {
 
   settingsRow(): SettingsRow {
     return (
-      this.db.one<SettingsRow>(`SELECT follow_ups, birthdays, next_reminder FROM zur_crm_settings WHERE id = 1`) ?? {
+      this.db.one<SettingsRow>(`SELECT follow_ups, birthdays, next_reminder, reminder_time, reminded_day FROM zur_crm_settings WHERE id = 1`) ?? {
         follow_ups: 1,
         birthdays: 1,
         next_reminder: null,
+        reminder_time: CRM_BIRTHDAY_TIME,
+        reminded_day: null,
       }
     );
   }
 
   settings(): CrmSettings {
     const row = this.settingsRow();
-    return { followUps: row.follow_ups === 1, birthdays: row.birthdays === 1 };
+    return {
+      followUps: row.follow_ups === 1,
+      birthdays: row.birthdays === 1,
+      birthdayTime: reminderTime(row),
+    };
   }
 
-  updateSettings(patch: { [K in keyof CrmSettings]?: boolean | undefined }): CrmSettings {
-    const map: [keyof CrmSettings, string][] = [
+  updateSettings(patch: { [K in keyof CrmSettings]?: CrmSettings[K] | undefined }): CrmSettings {
+    const before = this.settingsRow();
+    const map = [
       ["followUps", "follow_ups"],
       ["birthdays", "birthdays"],
-    ];
+    ] as const;
+    const changed: string[] = [];
     for (const [key, column] of map) {
       const value = patch[key];
-      if (value !== undefined) this.db.run(`UPDATE zur_crm_settings SET ${column} = ? WHERE id = 1`, value ? 1 : 0);
+      if (value === undefined) continue;
+      this.db.run(`UPDATE zur_crm_settings SET ${column} = ? WHERE id = 1`, value ? 1 : 0);
+      if ((before[column] === 1) !== value) changed.push(key);
     }
+    // The same value writes nothing: the screen saves on every "Salvar".
+    if (patch.birthdayTime !== undefined && patch.birthdayTime !== before.reminder_time) {
+      this.db.run(`UPDATE zur_crm_settings SET reminder_time = ? WHERE id = 1`, patch.birthdayTime);
+      changed.push("birthdayTime");
+    }
+    // SEC-A1-01: no password here, so a change leaves a trace the owner can read.
+    if (changed.length > 0) recordActivity(this.db, "crm.settings", { fields: changed });
     this.planReminder();
     return this.settings();
   }
 
-  /** The next birthday notice, at 9 h in the owner's zone; none while they are off. */
+  /**
+   * The next birthday notice, at the owner's time (9 h until they pick another) in their zone; none while
+   * they are off. A day gets one notice whatever the owner does to the time: after today's, the new time
+   * starts tomorrow; before it, a time moved to earlier than now leaves today's where it was.
+   */
   planReminder(): void {
     const row = this.settingsRow();
-    const at = row.birthdays === 1 ? nextRun({ type: "daily", time: REMINDER_TIME }, this.deps.timeZone(), new Date(this.clock())) : null;
+    const now = this.clock();
+    const schedule = { type: "daily", time: reminderTime(row) } as const;
+    let at = row.birthdays === 1 ? nextRun(schedule, this.deps.timeZone(), new Date(now)) : null;
+    if (at) {
+      const today = this.localDay(now);
+      // Due and not yet told counts too: a save in the seconds before the alarm must not send today's to tomorrow.
+      const pendingToday = row.next_reminder !== null && this.localDay(row.next_reminder) === today;
+      if (this.localDay(at.getTime()) === today) {
+        if (row.reminded_day === today) at = nextRun(schedule, this.deps.timeZone(), at);
+      } else if (pendingToday && row.reminded_day !== today) {
+        at = new Date(row.next_reminder as number);
+      }
+    }
     const value = at ? at.getTime() : null;
     if (value !== row.next_reminder) this.db.run(`UPDATE zur_crm_settings SET next_reminder = ? WHERE id = 1`, value);
   }
@@ -648,20 +691,23 @@ export class CrmService {
     }
     if (row.next_reminder !== null && row.next_reminder <= nowMs) {
       // Only on the day it was planned for: a notice late past midnight would name the wrong day's birthdays at the wrong hour.
-      if (row.birthdays === 1 && this.sameLocalDay(row.next_reminder, nowMs)) this.remindBirthdays();
+      if (row.birthdays === 1 && this.sameLocalDay(row.next_reminder, nowMs)) {
+        this.remindBirthdays();
+        this.db.run(`UPDATE zur_crm_settings SET reminded_day = ? WHERE id = 1`, this.localDay(nowMs));
+      }
       this.planReminder();
       moved = true;
     }
     return moved;
   }
 
+  private localDay(ms: number): string {
+    const parts = zonedParts(new Date(ms), this.deps.timeZone());
+    return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+  }
+
   private sameLocalDay(a: number, b: number): boolean {
-    const zone = this.deps.timeZone();
-    const day = (ms: number) => {
-      const parts = zonedParts(new Date(ms), zone);
-      return `${parts.year}-${parts.month}-${parts.day}`;
-    };
-    return day(a) === day(b);
+    return this.localDay(a) === this.localDay(b);
   }
 
   private remindBirthdays(): void {
