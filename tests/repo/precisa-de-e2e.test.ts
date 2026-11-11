@@ -345,7 +345,7 @@ describe("the browser jobs of ci.yml", () => {
   const GUARD = "steps.browser.outputs.run != 'false'";
 
   it.each([
-    ["e2e", "npm run test:e2e"],
+    ["e2e-parte", "npm run test:e2e -- --shard=${{ matrix.parte }}/4"],
     ["lighthouse", "npm run test:lighthouse"],
   ])("%s asks the script first and runs everything unless it said false", (name, command) => {
     const steps = ci.jobs[name]?.steps ?? [];
@@ -355,23 +355,66 @@ describe("the browser jobs of ci.yml", () => {
     expect(at).toBeGreaterThan(0);
     // The decision itself always runs, and a failure in it fails the job.
     expect(steps.slice(0, at + 1).every((step) => step.if === undefined && step["continue-on-error"] === undefined)).toBe(true);
-    expect(steps[at]).toEqual({ id: "browser", run: "node scripts/precisa-de-e2e.ts", env: { EVENT_NAME: "${{ github.event_name }}", BASE_REF: "${{ github.base_ref }}" } });
+    expect(steps[at]).toEqual({
+      id: "browser",
+      run: "node scripts/precisa-de-e2e.ts",
+      env: { EVENT_NAME: "${{ github.event_name }}", BASE_REF: "${{ github.base_ref }}" },
+    });
     const after = steps.slice(at + 1);
     expect(after.map((step) => step.run)).toEqual(["npm ci", "npx playwright install --with-deps chromium", command]);
     // Anything but an explicit "false" (an empty output included) runs the suite.
     for (const step of after) expect(step.if).toBe(GUARD);
   });
 
+  it("runs the e2e suite in parts that cover it whole, each one reporting", () => {
+    const parts = ci.jobs["e2e-parte"];
+    const numbers = parts?.strategy?.matrix?.parte ?? [];
+    // 1 to N over the same N as the command: a part left out of the matrix would be tests nobody ran.
+    expect(numbers).toEqual([1, 2, 3, 4]);
+    expect(parts?.steps?.at(-1)?.run).toMatch(new RegExp(`--shard=\\$\\{\\{ matrix\\.parte \\}\\}/${numbers.length}$`));
+    expect(Object.keys(parts?.strategy?.matrix ?? {})).toEqual(["parte"]);
+    expect(parts?.strategy?.["fail-fast"]).toBe(false);
+    // Splitting is what keeps the suite inside the limit, never a longer limit.
+    expect(parts?.["timeout-minutes"]).toBeLessThanOrEqual(30);
+  });
+
+  it("keeps the required e2e check green only when every part succeeded", () => {
+    const e2e = ci.jobs.e2e;
+    expect(e2e?.needs).toBe("e2e-parte");
+    // always(): a failed or cancelled part must not leave the required check "skipped".
+    expect(e2e?.if).toBe("${{ always() }}");
+    expect(e2e?.steps).toEqual([
+      {
+        name: "Every part of the e2e suite passed",
+        env: { RESULT: "${{ needs.e2e-parte.result }}" },
+        run: 'echo "e2e-parte: $RESULT"\ntest "$RESULT" = "success"\n',
+      },
+    ]);
+    // The same line, run: only "success" passes.
+    const verdict = (result: string) => {
+      try {
+        execFileSync("bash", ["-e", "-c", e2e?.steps?.[0]?.run ?? "false"], { env: { ...process.env, RESULT: result }, stdio: "ignore" });
+        return "pass";
+      } catch {
+        return "fail";
+      }
+    };
+    expect(verdict("success")).toBe("pass");
+    for (const result of ["failure", "cancelled", "skipped", "", "success\nx", " success"]) expect(verdict(result), JSON.stringify(result)).toBe("fail");
+  });
+
   it("is the only place where CI skips anything", () => {
     for (const [name, job] of Object.entries(ci.jobs)) {
-      // A job skipped by `if`, or by a failed job it needs, reports "skipped", which the rulesets take for a pass.
-      expect(job.if, name).toBeUndefined();
-      expect(job.needs, name).toBeUndefined();
       expect(job["continue-on-error"], name).toBeUndefined();
       for (const step of job.steps ?? []) {
         expect(step["continue-on-error"], name).toBeUndefined();
-        if (name !== "e2e" && name !== "lighthouse") expect(step.if, name).toBeUndefined();
+        if (name !== "e2e-parte" && name !== "lighthouse") expect(step.if, name).toBeUndefined();
       }
+      // A job skipped by `if`, or by a failed job it needs, reports "skipped", which the rulesets take for a pass.
+      // Only the e2e check depends on other jobs, and it always runs (the test above).
+      if (name === "e2e") continue;
+      expect(job.if, name).toBeUndefined();
+      expect(job.needs, name).toBeUndefined();
     }
   });
 });
