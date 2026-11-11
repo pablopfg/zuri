@@ -574,7 +574,8 @@ function seedContacts(google: DevGoogle, month: number, day: number): void {
     { resourceName: "contactGroups/clientes", name: "Clientes", groupType: "USER_CONTACT_GROUP", memberCount: 4 },
     { resourceName: "contactGroups/familia", name: "Família", groupType: "USER_CONTACT_GROUP", memberCount: 2 },
     { resourceName: "contactGroups/fornecedores", name: "Fornecedores", groupType: "USER_CONTACT_GROUP", memberCount: 1 },
-    { resourceName: "contactGroups/myContacts", name: "myContacts", groupType: "SYSTEM_CONTACT_GROUP", memberCount: 7 },
+    { resourceName: "contactGroups/consultorio", name: "Consultório", groupType: "USER_CONTACT_GROUP", memberCount: 2 },
+    { resourceName: "contactGroups/myContacts", name: "myContacts", groupType: "SYSTEM_CONTACT_GROUP", memberCount: 9 },
   );
   const member = (...labels: string[]) => labels.map((label) => ({ contactGroupMembership: { contactGroupResourceName: `contactGroups/${label}` } }));
   const person = (id: string, name: string, extra: Record<string, unknown>, ...labels: string[]) =>
@@ -583,6 +584,7 @@ function seedContacts(google: DevGoogle, month: number, day: number): void {
     "c1001",
     "Ana Souza",
     {
+      names: [{ displayName: "Ana Souza", givenName: "Ana", familyName: "Souza" }],
       phoneNumbers: [{ value: "(11) 99999-0001", canonicalForm: "+5511999990001", formattedType: "Celular" }],
       emailAddresses: [{ value: "ana@exemplo.com.br", formattedType: "Trabalho" }],
       birthdays: [{ date: { month, day } }],
@@ -602,6 +604,14 @@ function seedContacts(google: DevGoogle, month: number, day: number): void {
   person("c1005", "Elisa Rocha", { phoneNumbers: [{ value: "+55 11 96666-0005" }], biographies: [{ value: "Cliente desde 2022." }] }, "clientes");
   person("c1006", "Fábio Nunes", { phoneNumbers: [{ value: "(41) 95555-0006" }] }, "familia");
   person("c1007", "Gabriela Teixeira", { emailAddresses: [{ value: "gabi@exemplo.com.br" }] });
+  // The edges of the Contacts screen (Sinal, S10): a landline (no WhatsApp) and somebody Google has no name for.
+  person(
+    "c1008",
+    "Helena Prado",
+    { phoneNumbers: [{ value: "(41) 3333-0008", formattedType: "Trabalho" }], organizations: [{ name: "Clínica Prado", title: "Dentista" }], urls: [{ value: "https://clinica.exemplo.com.br", formattedType: "Trabalho" }] },
+    "consultorio",
+  );
+  google.people.add({ resourceName: "people/c1009", phoneNumbers: [{ value: "(41) 99999-0117", formattedType: "Celular" }], memberships: member("consultorio", "myContacts") });
 }
 
 let development: DevGoogle | null = null;

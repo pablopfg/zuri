@@ -1,6 +1,6 @@
 import { MEMORY_GRAPH_HUBS_MAX, type MemoryHubKind } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { linkMemories, WORDS_PER_MEMORY } from "../src/memory/graph.ts";
+import { CONTACT_PROBES, contactProbes, linkMemories, namedContacts, WORDS_PER_MEMORY } from "../src/memory/graph.ts";
 import type { MemoryRow } from "../src/memory/repository.ts";
 
 // The rules that draw the map of the memory (Sinal, S06), without a database.
@@ -102,5 +102,47 @@ describe("links to folders, conversations, tasks and notes", () => {
     const out = linkMemories([memory("a", "Viagem para Lisboa")], [hub("note", "n", title)], []);
     expect([...(out.hubs[0]?.label ?? "")]).toHaveLength(120);
     expect(out.hubs[0]?.label.endsWith("🙂")).toBe(true);
+  });
+});
+
+describe("contacts a memory names (Sinal, S10)", () => {
+  const person = (name: string) => ({ name });
+
+  it("probes only the words written with a capital, folded, each once, eight at most", () => {
+    expect(contactProbes("A Ângela Souza prefere café; ângela mora com o José.")).toEqual(["angela", "souza", "jose"]);
+    // Two letters are not a name, and a word in lower case is not looked up.
+    expect(contactProbes("Jo e a ana foram ao RJ")).toEqual([]);
+    const many = Array.from({ length: CONTACT_PROBES + 1 }, (_, i) => `Nome${String.fromCharCode(97 + i)}`).join(" ");
+    expect(contactProbes(many)).toHaveLength(CONTACT_PROBES);
+    expect(contactProbes(`${many} Zulmira`)).not.toContain("zulmira");
+    expect(contactProbes("")).toEqual([]);
+  });
+
+  it("links a contact whose whole name the memory says, among others with the same first name", () => {
+    const found = [person("Ana Lima"), person("Ana Souza"), person("Anabela Reis")];
+    expect(namedContacts("A Ana Souza prefere contato à tarde", "ana", found)).toEqual([person("Ana Souza")]);
+    // The accent and the case do not matter; the order of the words in the memory does not either.
+    expect(namedContacts("SOUZA, ANA: cliente desde 2022", "ana", found)).toEqual([person("Ana Souza")]);
+  });
+
+  it("links by the first name alone only when a single contact answers to it", () => {
+    expect(namedContacts("A Ana prefere café", "ana", [person("Ana Souza")])).toEqual([person("Ana Souza")]);
+    expect(namedContacts("A Ana prefere café", "ana", [person("Ana Souza"), person("Anabela Reis")])).toEqual([person("Ana Souza")]);
+    // Two Anas cannot be told apart.
+    expect(namedContacts("A Ana prefere café", "ana", [person("Ana Lima"), person("Ana Souza")])).toEqual([]);
+    // The page of rows came full: there may be another Ana the read did not reach.
+    expect(namedContacts("A Ana prefere café", "ana", [person("Ana Souza"), person("Anabela A"), person("Anabela B"), person("Anabela C")])).toEqual([]);
+    // A name that only starts like the word is somebody else.
+    expect(namedContacts("A Ana prefere café", "ana", [person("Anabela Reis")])).toEqual([]);
+    expect(namedContacts("A Ana prefere café", "ana", [])).toEqual([]);
+  });
+
+  it("an e-mail standing for a missing name is never a name", () => {
+    expect(namedContacts("Contato da escola mudou de telefone.", "contato", [{ name: "contato@exemplo.com.br" }])).toEqual([]);
+    expect(namedContacts("Contato Exemplo Com Br ligou.", "contato", [{ name: "contato@exemplo.com.br" }])).toEqual([]);
+  });
+
+  it("a contact with a single name is found by it", () => {
+    expect(namedContacts("Mãe faz aniversário em maio", "mae", [person("Mãe")])).toEqual([person("Mãe")]);
   });
 });

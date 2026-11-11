@@ -54,6 +54,17 @@ function useMemoryMap(enabled: boolean) {
 const chip = "inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors";
 const chipClass = (on: boolean) => cn(chip, on ? "border-transparent bg-accent-soft text-accent-text" : "border-border-strong bg-surface text-fg hover:bg-raised");
 
+/** The search a link asked for after "#busca=", as text and no longer than the field takes; empty when there is none. */
+function askedInAddress(): string {
+  const asked = /^#busca=(.*)$/.exec(window.location.hash)?.[1];
+  if (!asked) return "";
+  try {
+    return decodeURIComponent(asked).slice(0, 200);
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Memory: what Zuri knows about the owner and how each thing is linked. Facts
  * that change keep their past versions; possible conflicts wait here for the
@@ -64,7 +75,8 @@ export function MemoryPage() {
   const { t, plural } = useI18n();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
   const [category, setCategory] = useState<MemoryCategory | "">("");
-  const [query, setQuery] = useState("");
+  // A contact's card sends its name in the address ("/memoria#busca=Ana"): the list opens with that search.
+  const [query, setQuery] = useState(askedInAddress);
   const [view, setView] = useState<ViewMode>("list");
   /** A memory's id, or a hub's ("note:<id>") picked on the map. */
   const [selected, setSelected] = useState<string | null>(null);

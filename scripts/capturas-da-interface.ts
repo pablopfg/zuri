@@ -25,6 +25,8 @@
  * - `memoria-painel=/memoria`: a sample memory chosen, with its links in the panel.
  * - `memoria-mapa=/memoria`: the map (on a computer, with the same memory chosen).
  * - `nota-aberta=/notas`: the sample note ("Lista da mudança de apartamento"), open in the editor.
+ * - `contatos=/contatos`, `contato-ficha=/contatos` and `contatos-etiquetas=/contatos`: the list with the sample
+ *   contacts copied, the card of one of them ("Ana Souza") and the label filter open (need --exemplos).
  * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
  * - `agenda-dia=/agenda` and `agenda-mes=/agenda`: the Agenda in that view (plain `agenda=/agenda` is the
@@ -39,7 +41,7 @@ import { join } from "node:path";
 import { chromium, devices } from "@playwright/test";
 import { routeFakeTurnstile } from "../tests/e2e/fixtures.ts";
 import { CSRF, signIn } from "../tests/e2e/ui-helpers.ts";
-import { seed } from "./dados-de-exemplo.ts";
+import { seed, seedContacts } from "./dados-de-exemplo.ts";
 
 const BASE = "http://127.0.0.1:4173";
 const args = process.argv.slice(2);
@@ -177,8 +179,20 @@ for (const [device, options] of [
         if (!sample) throw new Error("nota-aberta needs --exemplos");
         path = `/notas/${sample.id}`;
       }
+      if (/^contatos?(-|$)/.test(screen.name)) {
+        await seedContacts(page, BASE);
+        if (screen.name === "contato-ficha") {
+          const found = (await (await page.request.get(`${BASE}/api/contacts?q=Ana`, { headers: CSRF })).json()) as { contacts: { id: string }[] };
+          if (!found.contacts[0]) throw new Error("contato-ficha needs --exemplos");
+          path = `/contatos/${found.contacts[0].id}`;
+        }
+      }
       await page.goto(BASE + path);
-      await page.getByRole("heading", { level: 1 }).first().waitFor();
+      await page.getByRole("heading", { level: 1 }).or(page.getByRole("heading", { level: 2 })).first().waitFor();
+      if (screen.name === "contatos-etiquetas") {
+        await page.getByRole("button", { name: "Filtrar por etiqueta" }).click();
+        await page.getByRole("dialog", { name: "Filtrar por etiqueta" }).getByText("Todas as etiquetas").waitFor();
+      }
       if (screen.name === "painel-de-avisos") {
         await page.getByRole("button", { name: /^Abrir avisos/ }).first().click();
         await page.getByRole("dialog", { name: "Avisos" }).getByRole("list").or(page.getByRole("dialog", { name: "Avisos" }).getByText("Nenhum aviso")).first().waitFor();

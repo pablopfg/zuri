@@ -333,7 +333,8 @@ describe("the Free plan budget of each route", () => {
     // Around one memory: the newest 60 matches of its words (about three rows each) and the same hubs.
     const around = await cost("GET", `/memories/graph?around=${some}`);
     expect(around.status).toBe(200);
-    expect(around.read).toBeLessThanOrEqual(3 * 60 + 4 * 100 + 60);
+    // Plus the contacts it names (Sinal, S10): eight words at most, four rows of the name's index each.
+    expect(around.read).toBeLessThanOrEqual(3 * 60 + 4 * 100 + 60 + 8 * 4);
     expect(around.written).toBe(0);
     const reviews = await cost("GET", "/memories/reviews");
     expect(reviews.status).toBe(200);
