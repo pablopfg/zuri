@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, type NoticePage, type ReviewItem, type ReviewPage, type ReviewsStatus } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, type NoticePage, type ReviewItem, type ReviewMetrics, type ReviewPage, type ReviewsStatus } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -265,6 +265,49 @@ describe("/api/reviews", () => {
     expect(((await (await api("POST", `/reviews/${item.id}/draft`)).json()) as { review: ReviewItem }).review).toMatchObject({ state: "proposed" });
     expect(((await (await api("POST", `/reviews/${item.id}/resolve`)).json()) as { review: ReviewItem }).review.state).toBe("resolved");
     expect((await api("POST", `/reviews/${item.id}/resolve`)).status).toBe(409);
+  });
+
+  it("answers the overview's numbers for 30 days, 6 and 12 months, and nothing of a review but numbers (PR S11)", async () => {
+    // Off: zeros, in the period's shape.
+    const off = (await (await api("GET", "/reviews/metrics")).json()) as ReviewMetrics;
+    expect(off).toMatchObject({ period: "30d", unit: "week", ratings: [0, 0, 0, 0, 0], replied: 0, medianReplyMinutes: null, requests: null, partial: false });
+    await turnOn();
+    await arrive("m1", 5, "Atendimento excelente, segredo-do-texto");
+    await arrive("m2", 1, "Demorou demais");
+    const calls = google.seen.length;
+    const res = await api("GET", "/reviews/metrics?period=30d");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toContain("no-store");
+    const text = await res.text();
+    const thirty = JSON.parse(text) as ReviewMetrics;
+    expect(Object.keys(thirty).sort()).toEqual(["buckets", "from", "medianReplyMinutes", "partial", "period", "ratings", "replied", "requests", "unit"]);
+    expect(thirty.ratings).toEqual([1, 0, 0, 0, 1]);
+    expect(thirty.buckets.at(-1)).toMatchObject({ promoters: 1, neutrals: 0, detractors: 1 });
+    expect(Object.keys(thirty.buckets[0] ?? {}).sort()).toEqual(["detractors", "key", "neutrals", "promoters"]);
+    // No name, text, id of a review or of the profile.
+    expect(text).not.toMatch(/Ana|Souza|segredo-do-texto|Demorou|accounts\/|locations\/|m1|m2/);
+    for (const [period, unit, buckets] of [
+      ["6m", "month", 6],
+      ["12m", "month", 12],
+    ] as const) {
+      const metrics = (await (await api("GET", `/reviews/metrics?period=${period}`)).json()) as ReviewMetrics;
+      expect(metrics).toMatchObject({ period, unit, ratings: [1, 0, 0, 0, 1] });
+      expect(metrics.buckets).toHaveLength(buckets);
+      expect(metrics.buckets.map((bucket) => bucket.key).every((key) => /^\d{4}-\d{2}$/.test(key))).toBe(true);
+    }
+    // Zuri's copy only: Google is never asked.
+    expect(google.seen.length).toBe(calls);
+  });
+
+  it("refuses a period it doesn't know, an extra parameter, and an overview without a session (PR S11)", async () => {
+    for (const query of ["?period=7d", "?period=", "?period=30D", "?period=12m%00", "?period=30d&period=1y", "?period=30d&from=2020-01-01", "?days=365"]) {
+      const res = await api("GET", `/reviews/metrics${query}`);
+      expect(res.status, query).toBe(400);
+      expect((await errorBody(res)).code).toBe("VALIDATION_FAILED");
+    }
+    expect((await api("GET", "/reviews/metrics", undefined, false)).status).toBe(401);
+    // Read only: nothing else answers at this address.
+    expect([404, 405]).toContain((await api("POST", "/reviews/metrics", {})).status);
   });
 
   it("limits 'check now' and says when a check is running", async () => {

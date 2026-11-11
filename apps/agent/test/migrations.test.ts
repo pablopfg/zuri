@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { Database } from "../src/db/database.ts";
 import { LATEST_SCHEMA_VERSION, MIGRATIONS, type Migration, migrate, schemaVersion } from "../src/db/migrations.ts";
+import { METRICS_SQL } from "../src/reviews/metrics.ts";
 import { testEnv } from "./helpers.ts";
 
 /** A fresh object with an empty database, kept apart from the owner's instance. */
@@ -114,6 +115,7 @@ describe("the migration list", () => {
       31: "7dab5e6e1796d31319943db97241b717fb87bdfd1abb91687b0c6a6a6b6fe320",
       32: "9e9ed87e486bc2a912d17a1f4386d26696c0cb7c46728087e1866f49930292fe",
       33: "b281d8f2f11df4452a26166f2f4d1368e5bc09a0a16fb72f8171a377c991048d",
+      34: "3998d5ed76fae99d51060677c3bf8136d5d4aeddbd7948ceb40678ba91b53a35",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -129,7 +131,7 @@ describe("migrate", () => {
       expect(zurObjects(db)).toEqual([]);
 
       expect(migrate(db)).toBe(LATEST_SCHEMA_VERSION);
-      expect(schemaVersion(db)).toBe(33);
+      expect(schemaVersion(db)).toBe(34);
       // FTS5 keeps shadow tables of its own (zur_notes_fts_data and others): only ours are listed.
       expect(zurObjects(db).filter((name) => !/^table:zur_(notes|memories)_fts_/.test(name))).toEqual([
         "table:zur_activity",
@@ -390,6 +392,7 @@ describe("migrate", () => {
         "index:zur_reviews_escalated",
         "index:zur_reviews_list",
         "index:zur_reviews_location",
+        "index:zur_reviews_metrics",
         "index:zur_reviews_seen",
         "index:zur_reviews_state",
         "table:zur_schema_version",
@@ -1294,7 +1297,7 @@ describe("migrate", () => {
       expect(migrate(db, MIGRATIONS.slice(0, 32))).toBe(32);
       db.run(`INSERT INTO zur_contact_sync (id, enabled, status, people_sync_token, last_ok_at, next_sync, copied) VALUES (1, 1, 'ok', 'sync.7', 1000, 2000, 12)`);
       db.run(`INSERT INTO zur_review_settings (id, enabled, signature, last_ok_at, next_check) VALUES (1, 1, 'Equipe Exemplo', 1000, 2000)`);
-      expect(migrate(db)).toBe(33);
+      expect(migrate(db, MIGRATIONS.slice(0, 33))).toBe(33);
       expect(db.one(`SELECT enabled, status, people_sync_token, last_ok_at, next_sync, copied, sync_every_min FROM zur_contact_sync`)).toEqual({
         enabled: 1,
         status: "ok",
@@ -1313,6 +1316,31 @@ describe("migrate", () => {
       db.run(`UPDATE zur_contact_sync SET sync_every_min = 30`);
       db.run(`UPDATE zur_review_settings SET check_every_min = 30`);
       expect(db.one(`SELECT contacts, reviews FROM zur_area_versions WHERE id = 1`)).toEqual(before);
+    });
+  });
+
+  it("upgrades a database at version 33 to 34: the reviews stay as they were and the overview reads them through its index", async () => {
+    await withEmptyDatabase("from-33", (db) => {
+      expect(migrate(db, MIGRATIONS.slice(0, 33))).toBe(33);
+      db.run(
+        `INSERT INTO zur_reviews (id, location, google_name, rating, comment, created_at, updated_at, state, reply, replied_at, seen_at)
+         VALUES ('r1', 'accounts/1/locations/2', 'accounts/1/locations/2/reviews/a', 5, 'Adorei', '2026-11-01T12:00:00.000Z', '2026-11-01T12:00:00.000Z', 'replied', 'Obrigado!', '2026-11-01T13:00:00.000Z', 1000),
+                ('r2', 'accounts/1/locations/2', 'accounts/1/locations/2/reviews/b', 2, 'Ruim', '2026-11-02T12:00:00.000Z', '2026-11-02T12:00:00.000Z', 'escalated', NULL, NULL, 1000)`,
+      );
+      const before = db.all(`SELECT * FROM zur_reviews ORDER BY id`);
+      const counts = db.all(`SELECT kind, n FROM zur_counts WHERE kind LIKE 'reviews%' ORDER BY kind`);
+      const number = db.one(`SELECT reviews FROM zur_area_versions WHERE id = 1`);
+      expect(migrate(db)).toBe(34);
+      expect(db.all(`SELECT * FROM zur_reviews ORDER BY id`)).toEqual(before);
+      expect(db.all(`SELECT kind, n FROM zur_counts WHERE kind LIKE 'reviews%' ORDER BY kind`)).toEqual(counts);
+      expect(db.one(`SELECT reviews FROM zur_area_versions WHERE id = 1`)).toEqual(number);
+      expect(db.all(METRICS_SQL, "2026-11-01T00:00:00.000Z", 10)).toEqual([
+        { created_at: "2026-11-02T12:00:00.000Z", rating: 2, replied_at: null, answered: 0 },
+        { created_at: "2026-11-01T12:00:00.000Z", rating: 5, replied_at: "2026-11-01T13:00:00.000Z", answered: 1 },
+      ]);
+      // The index follows a reply that comes later.
+      db.run(`UPDATE zur_reviews SET reply = 'Sentimos muito.', replied_at = '2026-11-03T12:00:00.000Z' WHERE id = 'r2'`);
+      expect(db.all(METRICS_SQL, "2026-11-02T00:00:00.000Z", 10)).toEqual([{ created_at: "2026-11-02T12:00:00.000Z", rating: 2, replied_at: "2026-11-03T12:00:00.000Z", answered: 1 }]);
     });
   });
 });

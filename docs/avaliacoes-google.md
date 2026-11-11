@@ -213,6 +213,49 @@ escolher).
 - No bloqueio nada lê o Google nem publica. Nada da avaliação (nome, texto,
   ids do Google) vai para o log: só contagens e nomes de erro.
 
+### Números da visão geral
+
+`GET /api/reviews/metrics?period=30d|6m|12m` (PR S11 do novo frontend) devolve
+os números que a tela **Avaliações › Visão geral** vai mostrar. A tela chega
+na PR S12; até lá a rota já responde. O código está em
+`apps/agent/src/reviews/metrics.ts`.
+
+| Campo | O que é |
+| --- | --- |
+| `period`, `from`, `unit` | O período pedido, o primeiro instante contado (uma meia-noite do dono, em UTC) e se os grupos são semanas (`week`) ou meses (`month`) |
+| `ratings` | Quantas avaliações do período têm 5, 4, 3, 2 e 1 estrela, nessa ordem |
+| `buckets` | Um item por semana ou mês, do mais antigo ao mais novo, com `key` (a segunda-feira `2026-11-09` ou o mês `2026-11`), `promoters` (5 estrelas), `neutrals` (4) e `detractors` (1 a 3). Semana ou mês sem avaliação vem com zeros |
+| `replied` | Avaliações do período com resposta no Google, de quem for |
+| `medianReplyMinutes` | Metade das respostas saiu em até esse tempo, em minutos. `null` quando a Zuri não sabe a hora de nenhuma |
+| `requests` | O funil dos pedidos (enviados, abertos, avaliaram). `null` enquanto a Zuri não envia pedidos de avaliação |
+| `partial` | `true` quando o período tem mais de 5.000 avaliações e só as mais novas foram contadas |
+
+- **Períodos.** `30d` é hoje e os 29 dias antes, em semanas que começam na
+  segunda-feira; a primeira e a última semana aparecem cortadas pelo período.
+  `6m` e `12m` são o mês corrente e os 5 ou 11 anteriores. O dia e o mês são os
+  do fuso do dono, inclusive na troca de horário de verão. Sem `period`, vale
+  `30d`; qualquer outro valor, parâmetro a mais ou `period` repetido dá 400
+  `VALIDATION_FAILED`.
+- **Índice de recomendação.** A rota manda as contagens; a conta é
+  `recommendationIndex` de `packages/shared/src/reviews.ts`: % de 5 estrelas
+  menos % de 1 a 3 estrelas, de −100 a 100, e `null` sem avaliações. É uma
+  estimativa pelas estrelas, não o NPS de 0 a 10.
+- **O que entra.** A avaliação conta pelo dia em que foi escrita no Google. As
+  importadas como histórico entram; as removidas do Google e as sem estrelas
+  não.
+- **Tempo até responder.** A resposta publicada pela Zuri usa a hora da
+  publicação. A resposta dada direto no Google usa a hora que o Google informa
+  na primeira vez que a Zuri a vê; editar a resposta depois não muda essa hora,
+  e apagar a resposta tira a avaliação da conta. Respostas que a Zuri copiou
+  antes da PR S11 contam em `replied`, mas ficam fora do tempo, porque a hora
+  delas não foi guardada.
+- **Só números.** Nenhum nome, texto ou id de avaliação sai por essa rota, e
+  ela não chama o Google: lê a cópia que a Zuri já tem. Com as avaliações
+  desligadas, responde zeros.
+- **Migration 34 (`review_metrics`).** Só o índice `zur_reviews_metrics`, pela
+  data em que a avaliação foi escrita, com a nota, o estado, a hora da resposta
+  e se há resposta. A leitura fica toda no índice e não abre a tabela.
+
 ## Limites e custo
 
 | O quê | Limite |
@@ -228,9 +271,12 @@ escolher).
 | Período de experiência (19d) | 10 aprovações sem edição entre as 30 últimas decisões |
 | Resposta | 40 a 600 caracteres |
 | Auditoria | 180 dias |
+| Visão geral (`GET /api/reviews/metrics`) | 30 dias, 6 ou 12 meses; até 5.000 avaliações por período, as mais novas |
 
 Medido no teste de orçamento (`apps/agent/test/free-tier-budget.test.ts`),
 num perfil com 1.000 avaliações: uma leitura sem novidade faz 1 chamada ao
 Google, lê cerca de 170 linhas e grava 5; uma leitura com 5 avaliações novas
-grava cerca de 60 linhas. Nenhuma mudança no JavaScript da primeira tela: a
+grava cerca de 60 linhas. A visão geral lê uma linha do índice por avaliação
+do período (59 linhas com 55 avaliações no período e 1.000 mais antigas na
+cópia) e não grava nada. Nenhuma mudança no JavaScript da primeira tela: a
 aba e a seção de Integrações carregam sob demanda.

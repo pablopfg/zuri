@@ -132,6 +132,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "auto", "key", "copies",
   // How often the reviews are checked (the owner's interval).
   "interval",
+  // The overview of the reviews (PR S11).
+  "metrics",
 ]);
 const MAX_SEGMENTS = 8;
 
