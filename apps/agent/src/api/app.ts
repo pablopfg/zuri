@@ -65,7 +65,7 @@ import { type McpRouteDeps, registerMcpRoutes } from "./mcp.ts";
 import { type GoogleRouteDeps, registerGooglePush, registerGoogleRoutes } from "./google.ts";
 import { registerReviewRoutes } from "./reviews.ts";
 import { type FlowRouteDeps, registerFlowRoutes } from "./flows.ts";
-import { type CrmRouteDeps, registerCrmEvents, registerCrmRoutes } from "./crm.ts";
+import { type CrmRouteDeps, registerCrmRoutes } from "./crm.ts";
 import { registerTelegramRoutes, registerTelegramWebhook, type TelegramDeps } from "./telegram.ts";
 import { type BackupRouteDeps, registerBackupRoutes } from "./backup.ts";
 import { log, rayOf, routeLabel } from "../log.ts";
@@ -113,7 +113,7 @@ export interface ApiDeps {
   google?(): GoogleRouteDeps;
   /** The flows and the site monitor (step 22a). Absent only in tests of other routes. */
   flows?(): FlowRouteDeps;
-  /** The internal CRM and n8n's events (step 22b). Absent only in tests of other routes. */
+  /** The internal CRM (step 22b). Absent only in tests of other routes. */
   crm?(): CrmRouteDeps;
   /** Storage use, the export and the import (step 23). Absent only in tests of other routes. */
   backup?(): BackupRouteDeps;
@@ -208,9 +208,6 @@ export function createApi(deps: ApiDeps) {
   // Google's push notices (step 19): no cookie and no Origin, only the channel's token (checked inside).
   const google = deps.google;
   if (google) registerGooglePush(app, () => google());
-  // n8n's events for the CRM (step 22b): no cookie and no Origin, only the signature (checked inside).
-  const crm = deps.crm;
-  if (crm) registerCrmEvents(app, () => crm());
 
   app.use("*", async (c, next) => {
     checkCsrf(c.req.raw, deps.origin());
@@ -536,7 +533,8 @@ export function createApi(deps: ApiDeps) {
   if (google) registerReviewRoutes(app, () => google(), client);
   const flows = deps.flows;
   if (flows) registerFlowRoutes(app, () => flows(), client);
-  if (crm) registerCrmRoutes(app, () => crm(), client);
+  const crm = deps.crm;
+  if (crm) registerCrmRoutes(app, () => crm());
   const backup = deps.backup;
   if (backup) registerBackupRoutes(app, () => backup(), client);
 

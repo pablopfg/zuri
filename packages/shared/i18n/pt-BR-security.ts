@@ -110,7 +110,7 @@ export const ptBRSecurity = {
   "web.activity.kind.backup_exported": "Backup baixado",
   "web.activity.kind.backup_imported": "Backup importado",
   "web.activity.kind.backup_key_set": "Chave do backup criada",
-  "web.activity.kind.crm_events_key": "Segredo dos eventos do n8n gerado",
+  "web.activity.kind.crm_events_key": "Segredo de eventos do CRM gerado (recurso removido)",
   "web.activity.kind.mcp_tool_autonomy": "Ferramenta externa com mais autonomia",
   "web.activity.kind.google_connected": "Google Agenda conectada",
   "web.activity.kind.google_calendar_write": "Agenda do Google liberada para escrita",

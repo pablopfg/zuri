@@ -32,6 +32,7 @@
  *   one of two people with the same name, and the label filter open (need --exemplos).
  * - `integracoes-sem-etiqueta=/configuracoes/integracoes>Contatos`: the contacts just turned on, with the labels
  *   to choose and nobody copied yet (needs --exemplos; run it apart, on a database of its own: it empties the copy).
+ * - `crm-avisos=/crm`: the CRM screen scrolled to its notices' card, under the flows.
  * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
  * - `agenda-dia=/agenda` and `agenda-mes=/agenda`: the Agenda in that view (plain `agenda=/agenda` is the
@@ -252,6 +253,11 @@ for (const [device, options] of [
       if (screen.name === "conversas") {
         await page.getByRole("button", { name: "Ver conversas" }).click();
         await page.getByRole("link", { name: /Organizar a mudança/ }).waitFor();
+      }
+      if (screen.name === "crm-avisos") {
+        const title = page.getByText("Avisos do CRM", { exact: true });
+        await title.waitFor();
+        await title.evaluate((box: HTMLElement) => box.scrollIntoView({ block: "center" }));
       }
       if (screen.region) {
         const region = page.getByRole("region", { name: screen.region, exact: true });

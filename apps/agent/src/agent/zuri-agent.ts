@@ -63,7 +63,6 @@ import { FlowConnections } from "../flows/connections.ts";
 import { developmentFlowNetwork } from "../flows/dev-flows.ts";
 import { SiteStates } from "../flows/monitor.ts";
 import { type FlowNotice, FlowService } from "../flows/service.ts";
-import { CrmEvents } from "../crm/events.ts";
 import { AgentConfigs } from "../specialists/configs.ts";
 import { type CrmNotice, CrmService } from "../crm/service.ts";
 import { McpCredentials } from "../mcp/credentials.ts";
@@ -134,9 +133,8 @@ interface Store {
   reviews: ReviewService;
   /** The flows and the site monitor (step 22a). */
   flows: FlowService;
-  /** The internal CRM (step 22b) and n8n's signed events. */
+  /** The internal CRM (step 22b). */
   crm: CrmService;
-  crmEvents: CrmEvents;
   /** Each agent's settings on the AI screen (guardrails, PR 2). */
   agents: AgentConfigs;
   /** The automatic backup to BACKUP_BUCKET (step 23b). */
@@ -231,7 +229,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     }),
     mcp: () => ({ service: this.store.mcp, auth: this.store.auth, automations: this.store.automations }),
     flows: () => ({ flows: this.store.flows, connections: this.store.flows.connections, auth: this.store.auth, development: () => this.development() }),
-    crm: () => ({ crm: this.store.crm, events: this.store.crmEvents, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
+    crm: () => ({ crm: this.store.crm, rearm: () => this.store.automations.rearm() }),
     backup: () => {
       const { db, settings, productivity, crm, auth, automations } = this.store;
       let zoneBefore: string | null = null;
@@ -857,13 +855,6 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       if (this.development()) flows.network = developmentFlowNetwork(flows.network);
       // The internal CRM (step 22b): its notices go to the center; nothing in it ever reaches a log.
       const crm = new CrmService({ db, timeZone: () => settings.field("timeZone"), locale: () => this.locale(), notify: (notice) => crmNotice(alerts, notice), assertBytes: () => productivity.storage.assertBytes() });
-      const crmEvents = new CrmEvents({
-        db,
-        crm,
-        sessionSecret: () => env.SESSION_SECRET,
-        origin: () => this.publicUrl().origin,
-        lockdown: () => auth.lockdown.active(),
-      });
       // The owner's conversation in the bot (step 14): the same runner, meter and turns as the app.
       const telegramConversation = new TelegramConversation({
         db,
@@ -1016,7 +1007,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         },
         telegram: { chat: () => telegram.ownerChat(), client: (options) => telegram.client(options) },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmEvents, agents, backupAuto };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, agents, backupAuto };
     }
     return this.#store;
   }
@@ -1141,9 +1132,6 @@ function crmNotice(alerts: AlertService, notice: CrmNotice): void {
         dedupeKey: `crm-birthdays-${notice.day}`,
         dedupeMs: 36 * 3_600_000,
       });
-      return;
-    case "crm.newClient":
-      alerts.raise({ kind: notice.kind, category: "reminders", priority: "normal", params: { name: notice.name }, link: "/crm" });
       return;
   }
 }

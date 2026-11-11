@@ -44,7 +44,7 @@ afterEach(async () => {
     for (const table of ["zur_crm_tags", "zur_crm_history", "zur_crm_clients", "zur_crm_tag_counts", "zur_crm_stages", "zur_flow_drafts", "zur_auth_events", "zur_notices"]) {
       db.run(`DELETE FROM ${table}`);
     }
-    db.run(`UPDATE zur_crm_settings SET events_key = NULL, follow_ups = 1, birthdays = 1, new_clients = 1, next_reminder = NULL, reminder_time = '09:00', reminded_day = NULL`);
+    db.run(`UPDATE zur_crm_settings SET follow_ups = 1, birthdays = 1, next_reminder = NULL, reminder_time = '09:00', reminded_day = NULL`);
     // The stages went too: the service makes the default ones again on next use.
     (agent.store.crm as unknown as { ready: boolean }).ready = false;
   });
@@ -60,7 +60,7 @@ describe("/api/crm", () => {
     expect(noCsrfWrite.status).toBe(403);
   });
 
-  it("starts with the five stages, nothing counted, events off and every notice on", async () => {
+  it("starts with the five stages, nothing counted and every notice on", async () => {
     const view = await overview();
     expect(view.stages.map((stage) => [stage.name, stage.count])).toEqual([
       ["Novo", 0],
@@ -71,9 +71,10 @@ describe("/api/crm", () => {
     ]);
     expect(view.tags).toEqual([]);
     expect(view.summary).toEqual({ total: 0, overdue: 0, today: 0, week: 0, newThisWeek: 0 });
-    expect(view.settings).toEqual({ followUps: true, birthdays: true, newClients: true, birthdayTime: "09:00" });
-    expect(view.events).toMatchObject({ enabled: false });
-    expect(JSON.stringify(view)).not.toMatch(/secret|zcrm_/i);
+    expect(view.settings).toEqual({ followUps: true, birthdays: true, birthdayTime: "09:00" });
+    // Nothing of the events other systems once sent: no address, no key, no secret.
+    expect(Object.keys(view).sort()).toEqual(["limits", "settings", "stages", "summary", "tags"]);
+    expect(JSON.stringify(view)).not.toMatch(/secret|zcrm_|events/i);
   });
 
   it("adds, reads, changes, notes and deletes a client", async () => {
@@ -153,9 +154,11 @@ describe("/api/crm", () => {
   });
 
   it("turns the notices off and on", async () => {
-    const res = await api("PATCH", "/crm/settings", { birthdays: false, newClients: false });
+    const res = await api("PATCH", "/crm/settings", { birthdays: false });
     expect(res.status).toBe(200);
-    expect((await overview()).settings).toEqual({ followUps: true, birthdays: false, newClients: false, birthdayTime: "09:00" });
+    expect((await overview()).settings).toEqual({ followUps: true, birthdays: false, birthdayTime: "09:00" });
+    // The notice of clients from n8n went with the events.
+    expect((await api("PATCH", "/crm/settings", { newClients: false })).status).toBe(400);
     expect((await api("PATCH", "/crm/settings", { birthdays: "no" })).status).toBe(400);
     expect((await api("PATCH", "/crm/settings", { other: true })).status).toBe(400);
   });
@@ -163,7 +166,7 @@ describe("/api/crm", () => {
   it("saves the birthday notice's time, a time of the clock only, and nothing else", async () => {
     const res = await api("PATCH", "/crm/settings", { birthdayTime: "07:45" });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ settings: { followUps: true, birthdays: true, newClients: true, birthdayTime: "07:45" } });
+    expect(await res.json()).toEqual({ settings: { followUps: true, birthdays: true, birthdayTime: "07:45" } });
     for (const body of [
       { birthdayTime: "24:00" },
       { birthdayTime: "7:45" },
@@ -171,7 +174,8 @@ describe("/api/crm", () => {
       { birthdayTime: "07:45:00" },
       { birthdayTime: "07:45\n" },
       { birthdayTime: 745 },
-      // What the plan fixes is nobody's to send.
+      // What the plan fixes, and what went with n8n's events, is nobody's to send.
+      { newClients: false },
       { newClientNoticesPerDay: 5 },
       { eventsPerHour: 100 },
       { eventsPerDay: 100 },
@@ -186,37 +190,40 @@ describe("/api/crm", () => {
     expect((await overview()).settings).toMatchObject({ birthdayTime: "07:45" });
   });
 
-  it("turns the events on only with the password typed recently, tells the owner, shows the secret once", async () => {
-    await stale();
-    const refused = await api("POST", "/crm/events-key");
-    expect(refused.status).toBe(403);
-    expect((await errorBody(refused)).code).toBe("RECENT_AUTH_REQUIRED");
-    expect((await overview()).events.enabled).toBe(false);
-
-    await fresh();
-    const res = await api("POST", "/crm/events-key");
-    expect(res.status).toBe(200);
-    const opened = (await res.json()) as { url: string; secret: string };
-    expect(opened.url).toMatch(/^https:\/\/[^/]+\/api\/crm\/events\/[A-Za-z0-9_-]{22}$/);
-    expect(opened.secret).toMatch(/^zcrm_[A-Za-z0-9_-]{43}$/);
-    const view = await overview();
-    expect(view.events).toMatchObject({ enabled: true, url: opened.url });
-    // The overview never carries the secret, and the database never keeps it.
-    expect(JSON.stringify(view)).not.toContain(opened.secret);
-    const stored = await inOwner((agent) => JSON.stringify(agent.store.db.all(`SELECT * FROM zur_crm_settings`)));
-    expect(stored).not.toContain(opened.secret);
-    const kinds = await inOwner((agent) => agent.store.db.all<{ kind: string }>(`SELECT kind FROM zur_auth_events`).map((row) => row.kind));
-    expect(kinds).toContain("crm_events_key");
-
-    // A new secret retires the old address.
-    const again = (await (await api("POST", "/crm/events-key")).json()) as { url: string; secret: string };
-    expect(again.url).not.toBe(opened.url);
-    expect(again.secret).not.toBe(opened.secret);
-
-    // Turning off needs no password: it only stops data coming in.
-    await stale();
-    expect((await api("DELETE", "/crm/events-key")).status).toBe(200);
-    expect((await overview()).events.enabled).toBe(false);
+  it("has no door for other systems: the signed events' address and its key are gone", async () => {
+    // A key left on by a database from before the removal opens nothing.
+    const key = "A".repeat(22);
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_crm_settings SET events_key = ? WHERE id = 1`, key));
+    const body = JSON.stringify({ id: "evt-1", type: "client.upsert", data: { ref: "cw-1", name: "Eva Lima" } });
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    // Signed the way the removed route asked, with the secret it derived for that key.
+    const mac = async (secret: string, message: string) => {
+      const raw = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+      return new Uint8Array(await crypto.subtle.sign("HMAC", raw, new TextEncoder().encode(message)));
+    };
+    const secret = `zcrm_${btoa(String.fromCharCode(...(await mac(testEnv.SESSION_SECRET, `zuri:crm-events:v1:${key}`))))
+      .replaceAll("+", "-")
+      .replaceAll("/", "_")
+      .replaceAll("=", "")}`;
+    const signature = `sha256=${[...(await mac(secret, `${timestamp}.${body}`))].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+    const signed = { "content-type": "application/json", "cf-connecting-ip": IP, "x-zuri-timestamp": timestamp, "x-zuri-signature": signature };
+    // With no session it is any other API address: refused before anything is read.
+    const outside = await call(`${ORIGIN}/api/crm/events/${key}`, { method: "POST", headers: signed, body });
+    expect(outside.status).toBe(403);
+    expect((await errorBody(outside)).code).toBe("CSRF_FAILED");
+    const noCookie = await call(`${ORIGIN}/api/crm/events/${key}`, { method: "POST", headers: { ...signed, ...CSRF }, body });
+    expect(noCookie.status).toBe(401);
+    expect((await errorBody(noCookie)).code).toBe("UNAUTHORIZED");
+    // With Cloudflare Access on, the signature is no way round it any more.
+    const behindAccess = await call(`${ORIGIN}/api/crm/events/${key}`, { method: "POST", headers: { ...signed, ...CSRF }, body }, { ACCESS_TEAM_DOMAIN: "equipe.cloudflareaccess.com", ACCESS_AUD: "a".repeat(64) });
+    expect(behindAccess.status).toBe(403);
+    expect((await errorBody(behindAccess)).code).toBe("FORBIDDEN");
+    // With the owner's session there is no such route.
+    expect((await api("POST", `/crm/events/${key}`, JSON.parse(body))).status).toBe(404);
+    expect((await api("POST", "/crm/events-key")).status).toBe(404);
+    expect((await api("DELETE", "/crm/events-key")).status).toBe(404);
+    expect(await (await api("GET", "/crm/clients")).json()).toMatchObject({ clients: [] });
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_crm_settings SET events_key = NULL WHERE id = 1`));
   });
 
   it("answers 423 to every CRM route in a lockdown", async () => {
@@ -228,8 +235,6 @@ describe("/api/crm", () => {
       ["POST", "/crm/clients", { name: "Bia" }],
       ["PATCH", `/crm/clients/${ana.id}`, { name: "Ana Maria" }],
       ["DELETE", `/crm/clients/${ana.id}`],
-      ["POST", "/crm/events-key"],
-      ["DELETE", "/crm/events-key"],
     ] as [string, string, unknown?][]) {
       expect((await api(method, path, body)).status, `${method} ${path}`).toBe(423);
     }
