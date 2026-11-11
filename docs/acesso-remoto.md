@@ -1,7 +1,7 @@
 # Acesso remoto e eventos
 
 A partir da etapa 20, outros programas falam com a Zuri por um token de
-acesso: o n8n, o Home Assistant, um atalho do celular ou um script seu. Cada
+acesso: o Home Assistant, um atalho do celular ou um script seu. Cada
 token tem um escopo, vale 90 dias e só alcança uma lista fechada de rotas. O
 escopo **Só eventos** manda avisos para a central da Zuri, como "Backup
 falhou".
@@ -15,7 +15,7 @@ O plano técnico está em `docs/planos/etapa-20-acesso-remoto.md`.
 1. Abra **Configurações › Segurança › Acesso remoto**.
 2. Ligue **Permitir acesso por token**. Se faz mais de 15 minutos que você
    digitou a senha, a Zuri pede de novo.
-3. **Novo token**: dê um nome (por exemplo, `n8n`) e escolha o escopo.
+3. **Novo token**: dê um nome (por exemplo, `monitor`) e escolha o escopo.
 4. **Gerar token** mostra o token **uma única vez**, com um botão para copiar
    e um exemplo de `curl`. Guarde no cofre de credenciais da integração. A
    Zuri guarda só uma impressão dele (HMAC) e não consegue mostrar de novo.
@@ -76,7 +76,7 @@ CORS): chame de um servidor.
 curl -X POST "https://exemplo.com.br/api/remote/events" \
   -H "Authorization: Bearer $ZURI_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Backup falhou","source":"n8n","priority":"high","id":"backup-2026-11-04"}'
+  -d '{"title":"Backup falhou","source":"monitor","priority":"high","id":"backup-2026-11-04"}'
 ```
 
 | Campo | Regra |
@@ -93,14 +93,10 @@ Respostas: 201 com o aviso criado; 200 com `{"event": null, "duplicate": true}`
 para uma repetição; 400 `VALIDATION_FAILED` para um campo fora da regra, um
 campo a mais ou corpo acima de 2 KB; 429 com `Retry-After` passados os limites.
 
-No n8n, use um nó **HTTP Request** com método `POST`, a URL acima, uma
-credencial **Header Auth** (`Authorization` = `Bearer zur_pat_…`) e o corpo em
-JSON.
-
 ### O que a Zuri faz com um evento
 
 - Vira um aviso na categoria **Eventos** da central, com a origem no título
-  ("n8n: Backup falhou"), em uma linha, com links desarmados. O corpo mantém as
+  ("monitor: Backup falhou"), em uma linha, com links desarmados. O corpo mantém as
   linhas, sem caracteres invisíveis ou de direção e sem linhas em branco em
   sequência. O texto é
   guardado como dado: nunca vira instrução para a Zuri.
