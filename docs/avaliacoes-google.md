@@ -231,7 +231,8 @@ na PR S12; até lá a rota já responde. O código está em
 | `partial` | `true` quando o período tem mais de 5.000 avaliações e só as mais novas foram contadas |
 
 - **Períodos.** `30d` é hoje e os 29 dias antes, em semanas que começam na
-  segunda-feira; a primeira e a última semana aparecem cortadas pelo período.
+  segunda-feira: são 5 semanas, ou 6 quando hoje é segunda, e a primeira e a
+  última aparecem cortadas pelo período.
   `6m` e `12m` são o mês corrente e os 5 ou 11 anteriores. O dia e o mês são os
   do fuso do dono, inclusive na troca de horário de verão. Sem `period`, vale
   `30d`; qualquer outro valor, parâmetro a mais ou `period` repetido dá 400

@@ -181,7 +181,9 @@ Como cheguei nos números:
   avisa com `partial`). Um consultório com 300 avaliações em 12 meses lê umas
   300 linhas por abertura da tela, 0,006% das 5 milhões do dia. O índice custa
   uma linha gravada a mais quando uma avaliação entra, muda de nota ou de
-  estado, ou ganha resposta (regra P4).
+  estado, ou ganha resposta (regra P4). Criar o índice grava, uma única
+  vez, uma linha por avaliação já copiada, no primeiro acesso depois da
+  atualização: 1.000 avaliações são 1% das 100.000 escritas do dia.
 - **Intervalo escolhido pelo dono (de 5 a 1.440 minutos cada).** O pior caso
   são as duas leituras a cada 5 minutos: 576 despertares por dia (0,6% das
   100.000 requisições), perto de 11.000 linhas gravadas (11% da cota) e 62.000

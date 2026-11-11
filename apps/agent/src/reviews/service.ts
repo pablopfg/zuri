@@ -710,7 +710,8 @@ export class ReviewService {
         reply,
         state,
         mine ? 1 : 0,
-        at,
+        // Only of a reply seen for the first time: Google's time moves when a reply is edited.
+        row.reply === null ? at : null,
         row.id,
       );
       if (state !== row.state) this.event(row.id, state === "replied" ? "replied" : "replied_elsewhere", "check");

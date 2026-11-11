@@ -457,7 +457,7 @@ describe("the Free plan budget of each route", () => {
     try {
       const list = await cost("GET", "/conversations");
       expect(list.status).toBe(200);
-      expect(list.read).toBeLessThanOrEqual(70);
+      expect(list.read).toBeLessThanOrEqual(60);
       expect(list.written).toBe(0);
 
       const page = await cost("GET", `/conversations/${id}`);
@@ -796,7 +796,7 @@ describe("the Free plan budget of each route", () => {
       });
       // A chat turn's list: the tools on (an index) and the servers, never the whole catalog.
       expect(turn.offered).toBe(9);
-      expect(turn.read).toBeLessThanOrEqual(70);
+      expect(turn.read).toBeLessThanOrEqual(60);
     } finally {
       await runInDurableObject(owner(), (agent: ZuriAgent) => {
         agent.store.db.run(`DELETE FROM zur_mcp_tools`);
@@ -1230,7 +1230,7 @@ describe("the CRM (step 22b)", () => {
       expect(res.status).toBe(200);
       await res.arrayBuffer();
       const after = await usage();
-      expect(after.rowsRead - before.rowsRead).toBeLessThanOrEqual(70);
+      expect(after.rowsRead - before.rowsRead).toBeLessThanOrEqual(60);
       expect(after.rowsWritten - before.rowsWritten).toBeLessThanOrEqual(20);
     } finally {
       await runInDurableObject(owner(), (agent: ZuriAgent) => {

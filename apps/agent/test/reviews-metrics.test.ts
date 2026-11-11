@@ -1,13 +1,20 @@
 import { REVIEW_LIMITS, type ReviewMetrics, recommendationIndex } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
 import { METRICS_SQL, type MetricRow, metricWindow, summarize } from "../src/reviews/metrics.ts";
-import { add, later, LOCATION, row, turnOn, withReviewsWorld } from "./reviews-world.ts";
+import { add, draftAnswer, later, LOCATION, type ReviewsWorld, row, SECOND_OK, turnOn, withReviewsWorld } from "./reviews-world.ts";
 
 // PR S11: the numbers of Reviews › Overview, in the owner's time zone.
 
 const SP = "America/Sao_Paulo";
 const at = (iso: string) => Date.parse(iso);
 const review = (created: string, rating: number, repliedAt: string | null = null, answered = repliedAt ? 1 : 0): MetricRow => ({ created_at: created, rating, replied_at: repliedAt, answered });
+const REPLY = "Obrigado pela visita, Ana! Ficamos muito felizes com a sua avaliação.";
+/** The review as the simulated Google keeps it. */
+const in_ = (world: ReviewsWorld, id: string) => {
+  const stored = world.sim.business.reviews.get(LOCATION)?.find((item) => item.reviewId === id);
+  if (!stored) throw new Error(`no review ${id}`);
+  return stored;
+};
 const index = (metrics: ReviewMetrics) => metrics.buckets.map((bucket) => recommendationIndex(bucket));
 
 describe("the overview's period", () => {
@@ -28,6 +35,27 @@ describe("the overview's period", () => {
     const window = metricWindow("30d", at("2027-01-10T15:00:00Z"), SP);
     expect(new Date(window.from).toISOString()).toBe("2026-12-12T03:00:00.000Z");
     expect(window.buckets.map((bucket) => bucket.key)).toEqual(["2026-12-07", "2026-12-14", "2026-12-21", "2026-12-28", "2027-01-04"]);
+  });
+
+  it("30 days ending on a Monday touch six weeks", () => {
+    // Monday 09/11/2026: the first day is Sunday 11/10, the last of its week.
+    const window = metricWindow("30d", at("2026-11-09T15:00:00Z"), SP);
+    expect(new Date(window.from).toISOString()).toBe("2026-10-11T03:00:00.000Z");
+    expect(window.buckets.map((bucket) => bucket.key)).toEqual(["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26", "2026-11-02", "2026-11-09"]);
+  });
+
+  it("a day of 23 hours, a midnight that doesn't exist and a leap day keep the owner's calendar", () => {
+    // New York enters daylight saving on 08/03/2026: the weeks' midnights go from UTC-5 to UTC-4.
+    const spring = metricWindow("30d", at("2026-03-20T16:00:00Z"), "America/New_York");
+    expect(new Date(spring.buckets[1]?.start ?? 0).toISOString()).toBe("2026-02-23T05:00:00.000Z");
+    expect(new Date(spring.buckets.at(-1)?.start ?? 0).toISOString()).toBe("2026-03-16T04:00:00.000Z");
+    // Santiago skips 00:00 on 06/09/2026 (the clock goes to 01:00): the day starts at 01:00, 04:00 UTC.
+    const santiago = metricWindow("30d", at("2026-10-05T15:00:00Z"), "America/Santiago");
+    expect(santiago.buckets[0]?.key).toBe("2026-08-31");
+    expect(new Date(santiago.from).toISOString()).toBe("2026-09-06T04:00:00.000Z");
+    // 29/02/2028 is a day of its own, and the month before March is February.
+    expect(new Date(metricWindow("30d", at("2028-03-29T15:00:00Z"), SP).from).toISOString()).toBe("2028-02-29T03:00:00.000Z");
+    expect(metricWindow("6m", at("2028-03-29T15:00:00Z"), SP).buckets.map((bucket) => bucket.key)).toEqual(["2027-10", "2027-11", "2027-12", "2028-01", "2028-02", "2028-03"]);
   });
 
   it("6 and 12 months: this month and the ones before, from the owner's first midnight", () => {
@@ -168,7 +196,7 @@ describe("the overview read from the copy", () => {
       expect(year.requests).toBeNull();
     }));
 
-  it("knows how long a reply took: Zuri's by its own clock, someone else's by Google's time, first seen", () =>
+  it("knows how long a reply given at Google took, by Google's time of the reply first seen", () =>
     withReviewsWorld(async (world) => {
       await turnOn(world);
       // Answered at Google before Zuri saw it: Google's time of the reply (the simulated one is the review's).
@@ -198,6 +226,15 @@ describe("the overview read from the copy", () => {
       expect(metrics.replied).toBe(2);
       // 0 and 90 minutes.
       expect(metrics.medianReplyMinutes).toBe(45);
+      // A reply copied before Zuri kept the time, edited now: the edit's time is not the reply's, so none is kept.
+      world.db.run(`UPDATE zur_reviews SET replied_at = NULL WHERE google_name = ?`, `${LOCATION}/reviews/waiting`);
+      const again = new Date(created + 5 * 86_400_000 + 120_000).toISOString();
+      stored.reviewReply = { comment: "Obrigada pela visita, até a próxima!", updateTime: again };
+      stored.updateTime = again;
+      world.clock.now = created + 5 * 86_400_000 + 180_000;
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      expect(row(world, "waiting")).toMatchObject({ reply: "Obrigada pela visita, até a próxima!", replied_at: null });
+      expect(world.reviews.metrics("30d")).toMatchObject({ replied: 2, medianReplyMinutes: 0 });
       // The reply taken down at Google: neither counted nor timed.
       delete stored.reviewReply;
       stored.updateTime = new Date(created + 6 * 86_400_000).toISOString();
@@ -205,6 +242,87 @@ describe("the overview read from the copy", () => {
       expect(await world.reviews.check("alarm")).toBe("ok");
       expect(row(world, "waiting")?.replied_at).toBeNull();
       expect(world.reviews.metrics("30d")).toMatchObject({ replied: 1, medianReplyMinutes: 0 });
+    }));
+
+  it("keeps Google's time of a reply on every way a reply is found", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      const minutes = (n: number) => n * 60_000;
+      const start = world.clock.now;
+      // An old review, read whole by an earlier check, answered later without Google moving its own time.
+      add(world, "old", 5, "Muito bom");
+      await later(world);
+      // Three hours on, two more reviews.
+      world.clock.now = start + minutes(180);
+      add(world, "same", 5, "Adorei");
+      add(world, "edited", 4, "Bom");
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      const oldAnswered = new Date(start + minutes(200)).toISOString();
+      const sameAnswered = new Date(start + minutes(205)).toISOString();
+      const editedAnswered = new Date(start + minutes(210)).toISOString();
+      in_(world, "old").reviewReply = { comment: "Obrigado!", updateTime: oldAnswered };
+      // Only the reply is new: the review's own time stays.
+      in_(world, "same").reviewReply = { comment: "Obrigada!", updateTime: sameAnswered };
+      // The stars changed and the reply came in the same read.
+      const edited = in_(world, "edited");
+      edited.starRating = "FIVE";
+      edited.updateTime = editedAnswered;
+      edited.reviewReply = { comment: "Que bom!", updateTime: editedAnswered };
+      world.clock.now = start + minutes(220);
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      expect(row(world, "old")).toMatchObject({ reply: "Obrigado!", replied_at: oldAnswered });
+      expect(row(world, "same")).toMatchObject({ reply: "Obrigada!", replied_at: sameAnswered });
+      expect(row(world, "edited")).toMatchObject({ rating: 5, reply: "Que bom!", replied_at: editedAnswered });
+      // 200, 25 and 30 minutes after each review.
+      expect(world.reviews.metrics("30d")).toMatchObject({ ratings: [3, 0, 0, 0, 0], replied: 3, medianReplyMinutes: 30 });
+    }));
+
+  it("times a reply Zuri published by the moment it went out, and a later read keeps it", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      const created = world.clock.now;
+      add(world, "mine", 5, "Adorei o atendimento, todos muito gentis.");
+      world.answers.push(draftAnswer(REPLY), SECOND_OK);
+      await later(world);
+      const item = await world.reviews.item(row(world, "mine") as never);
+      expect(item.state).toBe("proposed");
+      world.clock.now = created + 50 * 60_000;
+      expect((await world.reviews.approve(item.id, { text: `${REPLY}\n\nEquipe Exemplo`, version: item.version }, "app")).state).toBe("replied");
+      const published = new Date(created + 50 * 60_000).toISOString();
+      expect(row(world, "mine")?.replied_at).toBe(published);
+      // Google dates the reply a little later: the next reads keep Zuri's own time.
+      in_(world, "mine").reviewReply = { comment: `${REPLY}\n\nEquipe Exemplo`, updateTime: new Date(created + 58 * 60_000).toISOString() };
+      await later(world);
+      await later(world);
+      expect(row(world, "mine")).toMatchObject({ state: "replied", replied_at: published });
+      expect(world.reviews.metrics("30d")).toMatchObject({ replied: 1, medianReplyMinutes: 50 });
+    }));
+
+  it("counts a review written at the period's first instant and not one a millisecond before", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      const from = Date.parse(world.reviews.metrics("30d").from);
+      const insert = (id: string, created: number, state: string) =>
+        world.db.run(
+          `INSERT INTO zur_reviews (id, location, google_name, rating, created_at, updated_at, state, seen_at) VALUES (?, ?, ?, 5, ?, ?, ?, ?)`,
+          id,
+          LOCATION,
+          `${LOCATION}/reviews/${id}`,
+          new Date(created).toISOString(),
+          new Date(created).toISOString(),
+          state,
+          world.clock.now,
+        );
+      insert("before", from - 1, "history");
+      expect(world.reviews.metrics("30d").ratings).toEqual([0, 0, 0, 0, 0]);
+      insert("first", from, "history");
+      // Every state but "removed" counts: a review is one whatever Zuri did with it.
+      insert("sending", from + 1, "sending");
+      insert("uncertain", from + 2, "uncertain");
+      insert("removed", from + 3, "removed");
+      const metrics = world.reviews.metrics("30d");
+      expect(metrics.ratings).toEqual([3, 0, 0, 0, 0]);
+      expect(metrics.buckets[0]).toMatchObject({ promoters: 3 });
     }));
 
   it("answers zeros while the reviews are off, without reading the copy", () =>
@@ -223,10 +341,10 @@ describe("the overview read from the copy", () => {
       const plan = world.db.all<{ detail: string }>(`EXPLAIN QUERY PLAN ${METRICS_SQL}`, "2026-01-01T00:00:00.000Z", 10);
       expect(plan.map((step) => step.detail).join(" | ")).toMatch(/USING COVERING INDEX zur_reviews_metrics \(created_at>\?\)/);
       expect(plan.map((step) => step.detail).join(" | ")).not.toMatch(/TEMP B-TREE/);
-      const total = REVIEW_LIMITS.metricsRows + 3;
+      const total = REVIEW_LIMITS.metricsRows + 1;
       world.db.transaction(() => {
         for (let i = 0; i < total; i++) {
-          // One a minute, back from now; the three oldest are 1 star.
+          // One a minute, back from now; the oldest is 1 star.
           const created = new Date(world.clock.now - i * 60_000).toISOString();
           world.db.run(
             `INSERT INTO zur_reviews (id, location, google_name, rating, created_at, updated_at, state, seen_at) VALUES (?, ?, ?, ?, ?, ?, 'history', ?)`,
@@ -240,6 +358,11 @@ describe("the overview read from the copy", () => {
           );
         }
       });
+      // Exactly the limit: everything counted, nothing partial.
+      world.db.run(`UPDATE zur_reviews SET state = 'removed' WHERE id = ?`, `many-${REVIEW_LIMITS.metricsRows}`);
+      expect(world.reviews.metrics("30d")).toMatchObject({ partial: false, ratings: [REVIEW_LIMITS.metricsRows, 0, 0, 0, 0] });
+      // One more: the oldest is left out, and the answer says so.
+      world.db.run(`UPDATE zur_reviews SET state = 'history' WHERE id = ?`, `many-${REVIEW_LIMITS.metricsRows}`);
       const before = world.db.usage.rowsRead;
       const metrics = world.reviews.metrics("30d");
       expect(metrics.partial).toBe(true);
