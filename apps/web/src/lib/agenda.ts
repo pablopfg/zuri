@@ -1,4 +1,4 @@
-import { type AgendaEvent, AGENDA_LIMITS, zonedParts } from "@zuri/shared";
+import { type AgendaEvent, AGENDA_LIMITS, type AgendaPrefs, type AgendaView, zonedParts } from "@zuri/shared";
 
 /**
  * The Agenda screen's dates (step 19). Days are "YYYY-MM-DD" in the owner's
@@ -9,7 +9,7 @@ import { type AgendaEvent, AGENDA_LIMITS, zonedParts } from "@zuri/shared";
 /** Under "calendar": the area's number refreshes it (lib/versions.ts) on this screen and in Integrations. */
 export const GOOGLE_STATUS_KEY = ["calendar", "status"] as const;
 
-export type AgendaView = "day" | "week" | "month";
+export type { AgendaView };
 export const AGENDA_VIEWS: readonly AgendaView[] = ["day", "week", "month"];
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -63,10 +63,10 @@ export function localTime(at: Date | string | number, timeZone: string): string 
   return `${pad(p.hour)}:${pad(p.minute)}`;
 }
 
-/** The first and last day (both inclusive) a view shows around `anchor`. Weeks start on Monday. */
-export function viewRange(view: AgendaView, anchor: string): { from: string; to: string } {
+/** The first and last day (both inclusive) a view shows around `anchor`. Weeks start on Monday, or on Sunday when the owner says so. */
+export function viewRange(view: AgendaView, anchor: string, weekStart: 0 | 1 = 1): { from: string; to: string } {
   if (view === "day") return { from: anchor, to: anchor };
-  const monday = (date: string) => addDays(date, -((weekday(date) + 6) % 7));
+  const monday = (date: string) => addDays(date, -((weekday(date) + 7 - weekStart) % 7));
   if (view === "week") {
     const from = monday(anchor);
     return { from, to: addDays(from, 6) };
@@ -193,4 +193,131 @@ export function changedFields(before: EventForm, after: ReturnType<typeof formBo
     out.end = after.end;
   }
   return out;
+}
+
+/** The slice of the preferences that decides what a day shows. */
+export type DayPrefs = Pick<AgendaPrefs, "from" | "to" | "allDay" | "outside">;
+
+/**
+ * The shortest block the week draws, in minutes of its scale: a 5-minute event is still a button
+ * the owner can hit (28 px at 48 px an hour).
+ */
+export const BLOCK_MIN = 35;
+
+export interface DayBlock {
+  event: AgendaEvent;
+  /** Where the block sits in the working hours, as fractions of them (0 = the first hour's line). */
+  top: number;
+  height: number;
+  /** Side by side with what overlaps it: its column and how many columns its group has. */
+  lane: number;
+  lanes: number;
+}
+
+export interface DayPlan {
+  allDay: AgendaEvent[];
+  /** Over before the working hours start, and starting when they are over. */
+  before: AgendaEvent[];
+  after: AgendaEvent[];
+  /** What touches the working hours, cut to them. */
+  blocks: DayBlock[];
+}
+
+/** The minutes of `day` (0 to 1440) an event with hours covers; a zero-length one covers its own minute. */
+function minutesOn(event: AgendaEvent, day: string, timeZone: string): { start: number; end: number } {
+  const minute = (at: number) => {
+    const date = localDate(at, timeZone);
+    if (date !== day) return date < day ? 0 : 24 * 60;
+    const p = zonedParts(new Date(at), timeZone);
+    return p.hour * 60 + p.minute;
+  };
+  const start = minute(Date.parse(event.start));
+  return { start, end: Math.max(minute(Date.parse(event.end)), start) };
+}
+
+/**
+ * One day of the week view: the all-day events, what falls wholly outside the
+ * working hours and, for the rest, where each block goes. Overlapping events
+ * share the width; an event that crosses the edge of the hours is cut to them.
+ */
+export function planDay(events: readonly AgendaEvent[], day: string, hours: { from: number; to: number }, timeZone: string): DayPlan {
+  const plan: DayPlan = { allDay: [], before: [], after: [], blocks: [] };
+  const [from, to] = [hours.from * 60, hours.to * 60];
+  const span = to - from;
+  const min = Math.min(BLOCK_MIN, span);
+  const placed: { event: AgendaEvent; start: number; end: number; lane: number; group: number }[] = [];
+  for (const event of eventsOn(events, day, timeZone)) {
+    if (event.allDay) {
+      plan.allDay.push(event);
+      continue;
+    }
+    const at = minutesOn(event, day, timeZone);
+    // An event ending as the hours start is before them; one of no length at that very minute is inside.
+    if (at.end <= from && at.start < from) plan.before.push(event);
+    else if (at.start >= to) plan.after.push(event);
+    else {
+      // Room for the shortest block, never past the last line.
+      const start = Math.min(Math.max(at.start, from), to - min);
+      placed.push({ event, start, end: Math.max(Math.min(at.end, to), start + min), lane: 0, group: 0 });
+    }
+  }
+  // eventsOn sorted by start; the cut above can only pull a start back, so sort again by where the block is drawn.
+  placed.sort((a, b) => a.start - b.start || b.end - a.end);
+  const free: number[] = [];
+  let group = -1;
+  let groupEnd = Number.NEGATIVE_INFINITY;
+  const lanes: number[] = [];
+  for (const block of placed) {
+    if (block.start >= groupEnd) {
+      group++;
+      free.length = 0;
+      groupEnd = block.end;
+    }
+    groupEnd = Math.max(groupEnd, block.end);
+    let lane = free.findIndex((end) => end <= block.start);
+    if (lane === -1) lane = free.length;
+    free[lane] = block.end;
+    block.lane = lane;
+    block.group = group;
+    lanes[group] = Math.max(lanes[group] ?? 0, lane + 1);
+  }
+  plan.blocks = placed.map(({ event, start, end, lane, group: g }) => ({ event, top: (start - from) / span, height: (end - start) / span, lane, lanes: lanes[g] ?? 1 }));
+  return plan;
+}
+
+/** Whether an event with hours has no part inside the working hours of `day`. */
+export function outsideHours(event: AgendaEvent, day: string, hours: { from: number; to: number }, timeZone: string): boolean {
+  if (event.allDay) return false;
+  const at = minutesOn(event, day, timeZone);
+  return (at.end <= hours.from * 60 && at.start < hours.from * 60) || at.start >= hours.to * 60;
+}
+
+/**
+ * What a day lists under the preferences, and how many events they left out.
+ * Nothing leaves without a count: the screen shows it beside "Mostrar".
+ */
+export function dayEvents(events: readonly AgendaEvent[], day: string, prefs: DayPrefs, timeZone: string): { events: AgendaEvent[]; allDay: number; outside: number } {
+  const out = { events: [] as AgendaEvent[], allDay: 0, outside: 0 };
+  for (const event of eventsOn(events, day, timeZone)) {
+    if (event.allDay) {
+      if (prefs.allDay) out.events.push(event);
+      else out.allDay++;
+    } else if (!prefs.outside && outsideHours(event, day, prefs, timeZone)) out.outside++;
+    else out.events.push(event);
+  }
+  return out;
+}
+
+/** The days of a week the owner sees: the working ones, and the days off when asked. */
+export function shownDays(days: readonly string[], prefs: Pick<AgendaPrefs, "workDays" | "daysOff">): string[] {
+  return prefs.daysOff ? [...days] : days.filter((day) => prefs.workDays.includes(weekday(day)));
+}
+
+/** How far into the working hours an instant of `day` is (0 to 1), or null outside them. */
+export function nowAt(now: number, day: string, hours: { from: number; to: number }, timeZone: string): number | null {
+  if (localDate(now, timeZone) !== day) return null;
+  const p = zonedParts(new Date(now), timeZone);
+  const minute = p.hour * 60 + p.minute;
+  if (minute < hours.from * 60 || minute >= hours.to * 60) return null;
+  return (minute - hours.from * 60) / ((hours.to - hours.from) * 60);
 }

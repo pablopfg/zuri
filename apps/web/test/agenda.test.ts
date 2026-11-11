@@ -1,6 +1,6 @@
 import type { AgendaEvent } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, blankForm, changedFields, daysOf, eventDays, eventsOn, formBody, formOf, isDate, isTime, step, viewRange } from "../src/lib/agenda.ts";
+import { addDays, addMonths, BLOCK_MIN, blankForm, changedFields, dayEvents, daysOf, eventDays, eventsOn, formBody, formOf, isDate, isTime, nowAt, outsideHours, planDay, shownDays, step, viewRange } from "../src/lib/agenda.ts";
 
 const SP = "America/Sao_Paulo";
 const NY = "America/New_York";
@@ -132,5 +132,121 @@ describe("the event form", () => {
     const same = formBody(before);
     if (typeof same === "string") throw new Error(same);
     expect(changedFields(before, same)).toEqual({});
+  });
+});
+
+describe("the Agenda under the owner's preferences (Sinal S08)", () => {
+  const HOURS = { from: 8, to: 18 };
+  const DAY = "2026-11-09";
+  // São Paulo is UTC−3: 11:00Z is 08:00 there.
+  const at = (start: string, end: string, over: Partial<AgendaEvent> = {}) => event({ id: `${start}-${end}`, start: `${DAY}T${start}:00-03:00`, end: `${DAY}T${end}:00-03:00`, ...over });
+
+  it("starts the week on Monday, or on Sunday when asked, in the week and the month", () => {
+    expect(viewRange("week", "2026-11-11")).toEqual({ from: "2026-11-09", to: "2026-11-15" });
+    expect(viewRange("week", "2026-11-11", 0)).toEqual({ from: "2026-11-08", to: "2026-11-14" });
+    // The edges: a Sunday belongs to the week that ends on it, or to the one that starts on it.
+    expect(viewRange("week", "2026-11-15", 1)).toEqual({ from: "2026-11-09", to: "2026-11-15" });
+    expect(viewRange("week", "2026-11-15", 0)).toEqual({ from: "2026-11-15", to: "2026-11-21" });
+    expect(viewRange("month", "2026-11-11", 0)).toEqual({ from: "2026-11-01", to: "2026-12-05" });
+    expect(viewRange("month", "2026-11-11", 1)).toEqual({ from: "2026-10-26", to: "2026-12-06" });
+  });
+
+  it("shows the working days, and the days off only when asked", () => {
+    const week = daysOf("2026-11-09", "2026-11-15");
+    expect(shownDays(week, { workDays: [1, 2, 3, 4, 5], daysOff: true })).toEqual(week);
+    expect(shownDays(week, { workDays: [1, 2, 3, 4, 5], daysOff: false })).toEqual(week.slice(0, 5));
+    expect(shownDays(week, { workDays: [0, 3], daysOff: false })).toEqual(["2026-11-11", "2026-11-15"]);
+  });
+
+  it("tells what is outside the working hours at the exact edges", () => {
+    const out = (start: string, end: string) => outsideHours(at(start, end), DAY, HOURS, SP);
+    expect(out("07:00", "08:00")).toBe(true); // ends as the hours start
+    expect(out("07:00", "08:01")).toBe(false);
+    expect(out("17:59", "19:00")).toBe(false);
+    expect(out("18:00", "19:00")).toBe(true); // starts as they end
+    expect(out("08:00", "08:00")).toBe(false); // no length, on the first minute
+    expect(out("07:59", "07:59")).toBe(true);
+    expect(outsideHours(event({ allDay: true, start: DAY, end: "2026-11-10" }), DAY, HOURS, SP)).toBe(false);
+    // The whole day as working hours leaves nothing outside.
+    expect(outsideHours(at("00:00", "00:30"), DAY, { from: 0, to: 24 }, SP)).toBe(false);
+    expect(outsideHours(at("23:30", "23:59"), DAY, { from: 0, to: 24 }, SP)).toBe(false);
+  });
+
+  it("an event that crosses midnight counts in each day by the part that falls in it", () => {
+    const night = event({ start: "2026-11-09T22:00:00-03:00", end: "2026-11-10T09:00:00-03:00" });
+    expect(outsideHours(night, "2026-11-09", HOURS, SP)).toBe(true);
+    expect(outsideHours(night, "2026-11-10", HOURS, SP)).toBe(false);
+    const plan = planDay([night], "2026-11-10", HOURS, SP);
+    expect(plan.blocks).toEqual([{ event: night, top: 0, height: 0.1, lane: 0, lanes: 1 }]);
+    expect(planDay([night], "2026-11-09", HOURS, SP).after).toEqual([night]);
+  });
+
+  it("lists a day with what the preferences hide counted, never lost", () => {
+    const allDay = event({ id: "a", allDay: true, start: DAY, end: "2026-11-10" });
+    const events = [allDay, at("07:00", "07:30"), at("09:00", "10:00"), at("19:00", "20:00")];
+    const all = dayEvents(events, DAY, { ...HOURS, allDay: true, outside: true }, SP);
+    expect(all).toMatchObject({ allDay: 0, outside: 0 });
+    expect(all.events).toHaveLength(4);
+    const some = dayEvents(events, DAY, { ...HOURS, allDay: false, outside: false }, SP);
+    expect(some).toMatchObject({ allDay: 1, outside: 2 });
+    expect(some.events.map((e) => e.id)).toEqual(["09:00-10:00"]);
+    // Every event is either listed or counted.
+    expect(some.events.length + some.allDay + some.outside).toBe(events.length);
+  });
+
+  it("places each block by its hours and cuts it to the working hours", () => {
+    const plan = planDay([at("07:00", "07:30"), at("07:30", "09:00"), at("13:00", "14:00"), at("17:00", "19:30"), at("19:00", "20:00"), event({ id: "a", allDay: true, start: DAY, end: "2026-11-10" })], DAY, HOURS, SP);
+    expect(plan.allDay.map((e) => e.id)).toEqual(["a"]);
+    expect(plan.before.map((e) => e.id)).toEqual(["07:00-07:30"]);
+    expect(plan.after.map((e) => e.id)).toEqual(["19:00-20:00"]);
+    expect(plan.blocks.map((b) => [b.event.id, b.top, b.height])).toEqual([
+      ["07:30-09:00", 0, 0.1],
+      ["13:00-14:00", 0.5, 0.1],
+      ["17:00-19:30", 0.9, 0.1],
+    ]);
+  });
+
+  it("puts overlapping events side by side and gives the lane back when it is free", () => {
+    const plan = planDay([at("09:00", "11:00"), at("09:30", "10:30"), at("10:00", "12:00"), at("11:00", "12:00"), at("14:00", "15:00")], DAY, HOURS, SP);
+    expect(plan.blocks.map((b) => [b.event.id, b.lane, b.lanes])).toEqual([
+      ["09:00-11:00", 0, 3],
+      ["09:30-10:30", 1, 3],
+      ["10:00-12:00", 2, 3],
+      ["11:00-12:00", 0, 3],
+      ["14:00-15:00", 0, 1],
+    ]);
+    // Back to back is not an overlap.
+    expect(planDay([at("09:00", "10:00"), at("10:00", "11:00")], DAY, HOURS, SP).blocks.map((b) => b.lanes)).toEqual([1, 1]);
+  });
+
+  it("keeps a short event tall enough to hit, inside the hours, and beside what it would cover", () => {
+    const min = BLOCK_MIN / 600;
+    const [short] = planDay([at("09:00", "09:05")], DAY, HOURS, SP).blocks;
+    expect(short?.height).toBeCloseTo(min);
+    // At the very end of the hours the block moves up instead of leaving the grid.
+    const [last] = planDay([at("17:55", "18:00")], DAY, HOURS, SP).blocks;
+    expect((last?.top ?? 0) + (last?.height ?? 0)).toBeCloseTo(1);
+    // Two short ones a few minutes apart would be drawn one over the other: they go side by side.
+    expect(planDay([at("09:00", "09:05"), at("09:10", "09:15")], DAY, HOURS, SP).blocks.map((b) => b.lanes)).toEqual([2, 2]);
+    // Working hours of a single hour still fit the block.
+    const [only] = planDay([at("09:00", "09:05")], DAY, { from: 9, to: 10 }, SP).blocks;
+    expect(only?.height).toBeLessThanOrEqual(1);
+  });
+
+  it("finds the line of now inside the working hours of today only", () => {
+    const now = (time: string) => Date.parse(`${DAY}T${time}:00-03:00`);
+    expect(nowAt(now("08:00"), DAY, HOURS, SP)).toBe(0);
+    expect(nowAt(now("13:00"), DAY, HOURS, SP)).toBe(0.5);
+    expect(nowAt(now("07:59"), DAY, HOURS, SP)).toBeNull();
+    expect(nowAt(now("18:00"), DAY, HOURS, SP)).toBeNull();
+    expect(nowAt(now("13:00"), "2026-11-10", HOURS, SP)).toBeNull();
+    // 23:59 here is already tomorrow in a zone ahead.
+    expect(nowAt(now("23:59"), DAY, { from: 0, to: 24 }, "Europe/Lisbon")).toBeNull();
+  });
+
+  it("a day of daylight saving time keeps each block at its wall-clock hour", () => {
+    // New York leaves daylight saving on 1 November 2026: 09:00 there is 14:00Z after the change.
+    const morning = event({ start: "2026-11-01T14:00:00Z", end: "2026-11-01T15:00:00Z" });
+    expect(planDay([morning], "2026-11-01", HOURS, NY).blocks[0]).toMatchObject({ top: 0.1, height: 0.1 });
   });
 });

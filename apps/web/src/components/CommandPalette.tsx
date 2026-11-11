@@ -114,6 +114,7 @@ export function CommandPalette({
       section("seguranca", "web.settings.tab.security", Shield),
       section("ia", "web.settings.tab.ai", Bot),
       section("modelos", "web.settings.tab.models", SlidersHorizontal),
+      section("agenda", "web.settings.tab.agenda", CalendarDays),
       section("avisos", "web.settings.tab.notifications", Bell),
       section("integracoes", "web.settings.tab.integrations", Plug),
       section("dados", "web.settings.tab.data", Database),

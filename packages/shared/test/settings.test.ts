@@ -46,6 +46,7 @@ describe("default settings", () => {
       alertPerDay: 30,
       alertLearning: true,
       alertFullText: [],
+      agenda: { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, allDay: true, outside: true },
     });
     expect(DEFAULT_TIME_ZONE).toBe("America/Sao_Paulo");
     expect(settingsSchema.parse(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS);
@@ -69,6 +70,22 @@ describe("default settings", () => {
     for (const alertRoutes of [{ security: ["sms"] }, { other: ["push"] }, { tasks: ["push", "push", "push", "push"] }, { tasks: "push" }]) {
       expect(settingsUpdateSchema.safeParse({ alertRoutes }).success, JSON.stringify(alertRoutes)).toBe(false);
     }
+  });
+
+  it("take the Agenda's preferences whole: hours in order, a known view, week days tidied, nothing extra", () => {
+    const agenda = DEFAULT_SETTINGS.agenda;
+    const ok = (patch: object) => settingsUpdateSchema.safeParse({ agenda: { ...agenda, ...patch } });
+    // The limits: midnight to 01:00, 23:00 to midnight, the whole day.
+    for (const hours of [{ from: 0, to: 1 }, { from: 23, to: 24 }, { from: 0, to: 24 }]) expect(ok(hours).success, JSON.stringify(hours)).toBe(true);
+    for (const hours of [{ from: 8, to: 8 }, { from: 18, to: 8 }, { from: -1, to: 8 }, { from: 24, to: 24 }, { from: 0, to: 25 }, { from: 0, to: 0 }, { from: 8.5, to: 18 }, { from: "8", to: 18 }]) {
+      expect(ok(hours).success, JSON.stringify(hours)).toBe(false);
+    }
+    expect(ok({ workDays: [5, 1, 1, 0] }).data?.agenda?.workDays).toEqual([0, 1, 5]);
+    for (const bad of [{ workDays: [] }, { workDays: [7] }, { workDays: [-1] }, { workDays: [1, 2, 3, 4, 5, 6, 0, 1] }, { workDays: "1" }, { view: "year" }, { weekStart: 2 }, { weekStart: "1" }, { daysOff: 1 }, { allDay: null }, { outside: "no" }, { extra: true }]) {
+      expect(ok(bad).success, JSON.stringify(bad)).toBe(false);
+    }
+    // A piece alone is refused: the screen saves the whole card, so a half never lands.
+    expect(settingsUpdateSchema.safeParse({ agenda: { from: 9 } }).success).toBe(false);
   });
 
   it("cannot be changed in place", () => {

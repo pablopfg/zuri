@@ -56,3 +56,20 @@ export function formatDue(iso: string, locale: Locale, timeZone: string, dateTim
   }
   return dateTime(iso);
 }
+
+/**
+ * A deadline as a list shows it (Sinal S08): "Ontem, 18:00", "Hoje" or "Amanhã, 09:30" for the
+ * days around today in the owner's zone, and the date for the rest. The words come from the
+ * browser in the owner's language.
+ */
+export function relativeDue(iso: string, now: Date, locale: Locale, timeZone: string, dateTime: (iso: string) => string): string {
+  const day = (instant: Date) => {
+    const p = zonedParts(instant, timeZone);
+    return Date.UTC(p.year, p.month - 1, p.day) / 86_400_000;
+  };
+  const offset = day(new Date(iso)) - day(now);
+  if (Math.abs(offset) > 1) return formatDue(iso, locale, timeZone, dateTime);
+  const word = new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(offset, "day");
+  const { time } = dueInputs(iso, timeZone);
+  return `${word.charAt(0).toUpperCase()}${word.slice(1)}${time ? `, ${time}` : ""}`;
+}

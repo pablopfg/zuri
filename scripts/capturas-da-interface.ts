@@ -27,6 +27,8 @@
  * - `nota-aberta=/notas`: the sample note ("Lista da mudança de apartamento"), open in the editor.
  * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
+ * - `agenda-dia=/agenda` and `agenda-mes=/agenda`: the Agenda in that view (plain `agenda=/agenda` is the
+ *   week on a computer and the day on a phone, as it opens).
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
  *   page's day and its line of now come out the same at any hour the script runs).
  * - `--exemplos`: fills the empty database with the sample data of
@@ -204,6 +206,11 @@ for (const [device, options] of [
           await page.getByRole("button", { name: "Mapa", exact: true }).click();
           await page.getByRole("group", { name: "Mapa das memórias" }).getByRole("button", { name: sample }).waitFor();
         }
+      }
+      if (/^agenda-(dia|mes)$/.test(screen.name)) {
+        const view = screen.name === "agenda-dia" ? "Dia" : "Mês";
+        await page.getByRole("group", { name: "Ver por" }).getByText(view, { exact: true }).click();
+        await page.getByRole("radio", { name: view }).and(page.locator(":checked")).waitFor({ state: "attached" });
       }
       if (screen.name === "conversa-menu") await page.getByRole("complementary", { name: "Conversas" }).getByRole("button", { name: /^Mais opções/ }).click();
       if (screen.name === "conversas") {

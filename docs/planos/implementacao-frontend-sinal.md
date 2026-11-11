@@ -231,7 +231,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S04 | mesclada (#270) |
 | S05 | mesclada (#273) |
 | S06 | mesclada (#275) |
-| S07 | em revisão |
+| S07 | mesclada (#277) |
+| S08 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -283,6 +284,21 @@ Diferenças da S06 para o que as tabelas previam:
 - O mapa vem junto com a tela da Memória, que já é carregada sob demanda, e não num pedaço próprio: como pedaço separado ele fazia o empacotador tirar do primeiro carregamento uma parte comum (ícones, textos ou o `jsx-runtime`) e o JS inicial passava do teto.
 - No mapa, o toque acha o ponto mais próximo num raio de 22 px (alvo de 44 px), calculado pelas posições. Assim um ponto desenhado por cima não rouba o toque do vizinho.
 - A chave "Revisão de conflitos" continua no fim da tela até a S16 (linha C2).
+
+Diferenças da S08 para o que as tabelas previam:
+
+- As opções da Agenda ficam numa chave só de `zur_settings` (`agenda`), salva inteira: o horário tem começo e fim, e os dois precisam ser conferidos juntos. A tela guarda com "Salvar alterações", como no protótipo.
+- "Mostrar sábado e domingo" virou **Mostrar os dias de folga**: com os dias de trabalho escolhidos pelo dono, a folga pode ser uma quarta. Desligado, a semana mostra só os dias de trabalho.
+- "Lembrete dos eventos novos" não entrou: não está na linha P12 e muda o que a Zuri grava no Google ao criar um evento (servidor e ferramentas da conversa). Fica para uma PR própria, se o Pablo quiser.
+- "Agendas da conta" não foi repetido em Configurações › Agenda: a escolha continua em Integrações › Google, e a S16 decide onde cada cartão mora.
+- O que fica escondido aparece contado embaixo da Agenda, uma linha por motivo (dia inteiro, fora do horário, dia de folga), cada uma com "Mostrar" e, depois, "Esconder". O protótipo lista os nomes dos eventos fora do horário; a contagem com o botão cumpre o critério e deixa cada evento clicável quando aparece. O mês mostra tudo.
+- A semana em grade existe a partir de 1.024 px. Abaixo disso, "Semana" é a faixa de sete dias com a lista do dia, andando de semana em semana, como no protótipo do celular.
+- O dia e a semana leem a semana inteira de uma vez: trocar de dia na faixa não faz pedido novo.
+- O evento que atravessa a borda do horário aparece na grade, cortado nela (o das 07:30 às 09:00 começa na linha das 08:00). Só vai para "Antes" ou "Depois" o que fica inteiro fora.
+- Evento curto tem altura mínima de 28 px na grade (35 minutos na escala), e dois curtos seguidos ficam lado a lado em vez de um sobre o outro.
+- A tela e o "Seu dia" não importam os valores padrão do pacote comum: um pedaço novo dividido entre telas sob demanda passava o JS inicial do teto. As telas esperam as configurações que a sessão já leu; `STANDARD_HOURS` (o "Voltar para 08:00 até 18:00") e `DAY_WINDOW` têm teste que os mantém iguais ao padrão do servidor.
+- O prazo relativo das tarefas ("Ontem, 18:00") saiu em `lib/due.ts`, com as palavras do próprio navegador (`Intl.RelativeTimeFormat`), sem texto novo no catálogo.
+- A preferência de visão guardada no navegador (`zuri.agenda.view`) saiu: quem manda é "Ao abrir, mostrar", igual em todos os aparelhos.
 
 ## 12. Riscos
 

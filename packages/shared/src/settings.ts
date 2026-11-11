@@ -6,6 +6,7 @@ import { DEFAULT_LOCALE, LOCALES } from "../i18n/index.ts";
 import { AI_LIMIT_RANGES, AI_MODEL_IDS, DEFAULT_CHAT_MODEL, DEFAULT_FALLBACK_MODEL, FALLBACK_MODEL_IDS } from "./ai-limits.ts";
 
 import { ALERT_LIMITS, alertFullTextSchema, alertRoutesSchema, DEFAULT_ALERT_ROUTES, DEFAULT_DIGEST_TIME } from "./alerts.ts";
+import { AGENDA_VIEWS, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "./time-zone.ts";
 
 export { DEFAULT_TIME_ZONE, isTimeZone };
@@ -51,6 +52,36 @@ export const ownerNameSchema = /* @__PURE__ */ z.string().max(OWNER_NAME_MAX * 1
 
 const range = (r: { min: number; max: number }) => z.number().int().min(r.min).max(r.max);
 
+/**
+ * How the Agenda shows the owner's days (Sinal, S08). Hours are whole hours of
+ * the owner's wall clock, `to` exclusive (18 = until 18:00, 24 = midnight);
+ * week days are 0 (Sunday) to 6 (Saturday). Hiding never loses anything: the
+ * screen says how many it left out and shows them when asked.
+ */
+export const agendaPrefsSchema = /* @__PURE__ */ z
+  .object({
+    /** The working hours the day and the week show. */
+    from: z.number().int().min(0).max(23),
+    to: z.number().int().min(1).max(24),
+    /** The view the Agenda opens in on a wide screen (a phone opens on the day). */
+    view: z.enum(AGENDA_VIEWS),
+    /** The first day of the week: Sunday (0) or Monday (1). */
+    weekStart: z.literal([0, 1]),
+    /** The days the owner works, in order, each once; at least one. */
+    workDays: z
+      .array(z.number().int().min(0).max(6))
+      .min(1)
+      .max(7)
+      .transform((days) => [...new Set(days)].sort((a, b) => a - b)),
+    /** Whether the week also shows the days off. */
+    daysOff: z.boolean(),
+    /** Whether all-day events and events outside the working hours show without asking. */
+    allDay: z.boolean(),
+    outside: z.boolean(),
+  })
+  .strict()
+  .refine((prefs) => prefs.from < prefs.to);
+
 /** The settings of steps 2 and 3. Later steps add fields here, each with its default. */
 export const settingsSchema = /* @__PURE__ */ z
   .object({
@@ -88,6 +119,8 @@ export const settingsSchema = /* @__PURE__ */ z
     alertLearning: z.boolean(),
     /** Step 13: the categories whose text Telegram shows in full; the rest arrive discreet (title only). */
     alertFullText: alertFullTextSchema,
+    /** Sinal S08: the Agenda's working hours and what it shows; saved whole. */
+    agenda: agendaPrefsSchema,
   })
   .strict();
 
@@ -127,4 +160,5 @@ export const DEFAULT_SETTINGS: Settings = /* @__PURE__ */ Object.freeze({
   alertPerDay: ALERT_LIMITS.perDay.default,
   alertLearning: true,
   alertFullText: [],
+  agenda: DEFAULT_AGENDA_PREFS,
 });

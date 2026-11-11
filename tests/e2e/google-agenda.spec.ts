@@ -116,7 +116,9 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   await expect(page.getByRole("status").filter({ hasText: "Evento criado" })).toBeVisible();
   await closeToast(page, "Evento criado");
   const created = page.getByRole("button", { name: /^Consulta de teste/ });
-  await expect(created).toContainText("20:00 – 21:00 · Rua das Flores, 10");
+  // The day lists the hour on the left and the end under the title.
+  await expect(created).toContainText("até 21:00 · Rua das Flores, 10");
+  await expect(created).toContainText("20:00");
 
   // Changed at Google while the form is open: nothing is overwritten, the form closes, the new version shows.
   await created.click();

@@ -75,6 +75,8 @@ describe("GET and PATCH /api/settings", () => {
     ["an idle limit under the range", { sessionIdleMinutes: 4 }],
     ["a maximum over the range", { sessionMaxHours: 25 }],
     ["a number as text", { sessionIdleMinutes: "30" }],
+    ["Agenda hours that end before they start", { agenda: { from: 18, to: 8, view: "week", weekStart: 1, workDays: [1], daysOff: true, allDay: true, outside: true } }],
+    ["a piece of the Agenda's preferences alone", { agenda: { from: 9 } }],
   ])("refuses %s with 400 VALIDATION_FAILED, naming fields and never values", async (_name, body) => {
     const ip = "192.0.2.82";
     const cookie = await signIn(ip);

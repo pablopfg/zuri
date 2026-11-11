@@ -1,10 +1,11 @@
 import { APP_VERSION, ptBRSettings, ptBRSettingsTabs } from "@zuri/shared";
-import { Activity, Bell, Bot, ChevronLeft, ChevronRight, Database, Plug, Shield, SlidersHorizontal, User } from "lucide-react";
+import { Activity, Bell, Bot, CalendarDays, ChevronLeft, ChevronRight, Database, Plug, Shield, SlidersHorizontal, User } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { Link, NavLink, Navigate, useParams } from "react-router";
 import { cn, PageHeader } from "../components/ui.tsx";
 import { addMessages, useI18n } from "../lib/i18n.tsx";
 import { AccountTab } from "./settings/AccountTab.tsx";
+import { AgendaTab } from "./settings/AgendaTab.tsx";
 import { AiModelsTab, AiUsageTab } from "./settings/AiTab.tsx";
 import { AlertsTab } from "./settings/AlertsTab.tsx";
 import { DataTab } from "./settings/DataTab.tsx";
@@ -17,7 +18,7 @@ addMessages(ptBRSettings);
 addMessages(ptBRSettingsTabs);
 
 /** The tabs, by the path segment the address shows ("/configuracoes/seguranca"). */
-export const SETTINGS_TABS = ["conta", "seguranca", "ia", "modelos", "avisos", "integracoes", "dados", "diagnostico"] as const;
+export const SETTINGS_TABS = ["conta", "seguranca", "ia", "modelos", "agenda", "avisos", "integracoes", "dados", "diagnostico"] as const;
 type Tab = (typeof SETTINGS_TABS)[number];
 
 /** Where the submenu fits beside the sidebar (Tailwind's lg): below it, settings is a list of sections, each on its own screen. */
@@ -43,6 +44,7 @@ export function SettingsPage() {
     { id: "seguranca", label: t("web.settings.tab.security"), hint: t("web.settings.hint.security"), icon: Shield },
     { id: "ia", label: t("web.settings.tab.ai"), hint: t("web.settings.hint.ai"), icon: Bot },
     { id: "modelos", label: t("web.settings.tab.models"), hint: t("web.settings.hint.models"), icon: SlidersHorizontal },
+    { id: "agenda", label: t("web.settings.tab.agenda"), hint: t("web.settings.hint.agenda"), icon: CalendarDays },
     { id: "avisos", label: t("web.settings.tab.notifications"), hint: t("web.settings.hint.notifications"), icon: Bell },
     { id: "integracoes", label: t("web.settings.tab.integrations"), hint: t("web.settings.hint.integrations"), icon: Plug },
     { id: "dados", label: t("web.settings.tab.data"), hint: t("web.settings.hint.data"), icon: Database },
@@ -104,7 +106,7 @@ export function SettingsPage() {
           <PageHeader title={active?.label ?? t("web.settings.title")} description={active?.hint} documentTitle={documentTitle} />
         </div>
       )}
-      {/* On a computer the seven sections are a submenu beside the page, each with its line of what it holds. */}
+      {/* On a computer the sections are a submenu beside the page, each with its line of what it holds. */}
       <div className={wide ? "grid grid-cols-[14rem_minmax(0,1fr)] items-start gap-8" : undefined}>
         {wide && (
           <nav aria-label={t("web.settings.sections")} className="sticky top-20">
@@ -135,6 +137,7 @@ export function SettingsPage() {
           {current === "seguranca" && <SecurityTab />}
           {current === "ia" && <AiUsageTab />}
           {current === "modelos" && <AiModelsTab />}
+          {current === "agenda" && <AgendaTab />}
           {current === "avisos" && <AlertsTab />}
           {current === "integracoes" && <IntegrationsTab />}
           {current === "dados" && <DataTab />}

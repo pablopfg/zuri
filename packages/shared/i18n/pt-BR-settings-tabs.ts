@@ -6,6 +6,7 @@ export const ptBRSettingsTabs = {
   "web.settings.tab.security": "Segurança",
   "web.settings.tab.ai": "Uso da IA",
   "web.settings.tab.models": "Modelos e limites",
+  "web.settings.tab.agenda": "Agenda",
   "web.settings.tab.notifications": "Avisos",
   "web.settings.tab.integrations": "Integrações",
   "web.settings.tab.data": "Dados",

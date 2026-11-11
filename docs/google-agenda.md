@@ -51,7 +51,35 @@ papel que mudou). Se o Google tirar o direito de editar, a agenda volta para
 
 **Agenda**, no menu lateral (ou Ctrl/⌘ K > Agenda), mostra os eventos das
 agendas abertas por **dia**, **semana** ou **mês**, no seu fuso. Os botões de
-cada agenda, acima da lista, escondem ou mostram os eventos dela só na tela.
+cada agenda, embaixo, escondem ou mostram os eventos dela só na tela.
+
+- **Semana** (no computador): uma grade com o seu horário de trabalho. Cada
+  evento fica na altura da hora dele, e os que se sobrepõem dividem a largura.
+  O que é de dia inteiro vai numa linha em cima; o que cai antes ou depois do
+  horário, nas linhas **Antes** e **Depois**. Uma linha vermelha marca a hora
+  de agora.
+- **Dia**: a semana numa faixa de sete dias e, embaixo, a lista do dia
+  escolhido. No celular a Agenda abre sempre no dia, e "Semana" usa a mesma
+  faixa.
+- **Mês**: a grade do mês, com todos os eventos.
+- "Hoje" é o dia do seu fuso, não o do aparelho. Com a tela aberta à meia-noite,
+  a marca de hoje passa para o dia seguinte sozinha; se você estava vendo hoje,
+  a tela acompanha.
+
+#### Configurações › Agenda
+
+| Opção | O que faz |
+| --- | --- |
+| **Horário de trabalho** | As horas que a semana e o dia mostram, de hora em hora (padrão 08:00 até 18:00). O "Seu dia" do Início usa o mesmo horário. |
+| **Ao abrir, mostrar** | Dia, semana ou mês, no computador. |
+| **A semana começa** | Domingo ou segunda. |
+| **Dias de trabalho** e **Mostrar os dias de folga** | Com os dias de folga desligados, a semana mostra só os dias de trabalho. |
+| **Eventos de dia inteiro** e **Eventos fora do horário** | Mostrar ou esconder no dia e na semana. |
+
+Nada some sem aviso: o que uma opção esconde aparece contado embaixo da
+Agenda ("2 eventos fora das 08:00 às 18:00"), com **Mostrar** ao lado. O mês
+mostra tudo. As opções ficam guardadas na Zuri e valem em todos os seus
+aparelhos; elas não mudam nada no Google.
 
 - **Novo evento** (ou Ctrl/⌘ K > Novo evento): título, agenda, dia inteiro ou
   horário, local e descrição.

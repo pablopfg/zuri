@@ -1,16 +1,19 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type AgendaEvent, type AgendaPage as AgendaWindow, GOOGLE_LIMITS, type GoogleCalendarInfo, type GoogleStatus, ptBRAgenda } from "@zuri/shared";
+import { type AgendaEvent, type AgendaPage as AgendaWindow, GOOGLE_LIMITS, type GoogleCalendarInfo, type GoogleStatus, ptBRAgenda, type Settings } from "@zuri/shared";
 import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Pencil, Repeat, Trash2, Users } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useId, useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router";
 import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
 import { Button, cn, Dialog, EmptyState, ErrorNotice, Loading, Notice, PageHeader, SelectField, TextAreaField, TextField } from "../../components/ui.tsx";
+import { SETTINGS_KEY } from "../../hooks/session.tsx";
 import {
   AGENDA_VIEWS,
   type AgendaView,
   blankForm,
   changedFields,
+  type DayBlock,
+  dayEvents,
   daysOf,
   type EventForm,
   eventDays,
@@ -21,6 +24,9 @@ import {
   GOOGLE_STATUS_KEY,
   localDate,
   localTime,
+  nowAt,
+  planDay,
+  shownDays,
   step,
   viewRange,
 } from "../../lib/agenda.ts";
@@ -32,9 +38,14 @@ addMessages(ptBRAgenda);
 
 /** The palette's "Novo evento": an address and an event of that name (CommandPalette.tsx). */
 export const NEW_EVENT = "novo-evento";
-const VIEW_KEY = "zuri.agenda.view";
 /** Events per day the month grid shows before "+N". */
 const MONTH_SHOWN = 3;
+/** How often the screen reads the clock again: the line of now walks, and at 0:00 today changes by itself. Only the browser's clock: no request. */
+const TICK_MS = 30_000;
+/** Where the week fits as a grid of hours (Tailwind's lg); below it the week is a strip of days over one day's list. */
+const WIDE = "(min-width: 64rem)";
+/** The height of one hour in the week's grid. */
+const HOUR_REM = 3;
 
 type T = ReturnType<typeof useI18n>["t"];
 const VIEW_TEXT: Record<AgendaView, Parameters<T>[0]> = { day: "web.agenda.view.day", week: "web.agenda.view.week", month: "web.agenda.view.month" };
@@ -44,41 +55,79 @@ const PROBLEM_TEXT: Record<FormProblem, Parameters<T>[0]> = {
   end: "web.agenda.form.error.end",
 };
 
-function storedView(): AgendaView {
-  try {
-    const value = localStorage.getItem(VIEW_KEY);
-    return AGENDA_VIEWS.includes(value as AgendaView) ? (value as AgendaView) : "week";
-  } catch {
-    return "week";
-  }
+const hour = (value: number) => `${String(value).padStart(2, "0")}:00`;
+const eventKey = (event: AgendaEvent) => `${event.calendarId}|${event.id}`;
+const utcNoon = (day: string) => new Date(`${day}T12:00:00Z`);
+
+function subscribeWide(change: () => void) {
+  const media = window.matchMedia(WIDE);
+  media.addEventListener("change", change);
+  return () => media.removeEventListener("change", change);
+}
+
+function useWide() {
+  return useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches);
+}
+
+/** The clock, read again every half minute and when the tab comes back. */
+function useNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const read = () => setNow(Date.now());
+    const id = window.setInterval(read, TICK_MS);
+    document.addEventListener("visibilitychange", read);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", read);
+    };
+  }, []);
+  return now;
 }
 
 const eventsKey = (from: string, to: string) => ["calendar", "events", from, to] as const;
 
 type Editing = { mode: "new"; day: string } | { mode: "edit"; event: AgendaEvent };
+/** What the preferences hide and the owner asked to see in this visit. */
+type Reveal = { allDay: boolean; outside: boolean; daysOff: boolean };
 
 /**
- * Agenda (step 19): the owner's Google Calendar events by day, week and month.
- * It follows Google: a change made there arrives by Google's push notice, which
- * moves the "calendar" area, and the open screen reads the window again. Only
- * events change here, and only in calendars open for editing (owner's choice of
- * 03/11/2026); calendars themselves are managed in Google.
+ * Agenda (step 19, redrawn in the Sinal S08): the owner's Google Calendar
+ * events by day, week and month. It follows Google: a change made there arrives
+ * by Google's push notice, which moves the "calendar" area, and the open screen
+ * reads the window again. Only events change here, and only in calendars open
+ * for editing (owner's choice of 03/11/2026).
+ *
+ * Today is the owner's zone's, never the device's, and it moves by itself at
+ * 0:00. The working hours, the first day of the week and what stays hidden come
+ * from Configurações › Agenda; whatever is hidden is counted beside "Mostrar".
  */
 export function AgendaPage() {
   const { t, timeZone } = useI18n();
   const status = useQuery({ queryKey: GOOGLE_STATUS_KEY, queryFn: ({ signal }) => api<GoogleStatus>("/google", { signal }) });
-  const [view, setView] = useState<AgendaView>(storedView);
-  const [anchor, setAnchor] = useState(() => localDate(Date.now(), timeZone));
+  // The session already read the settings: this is its answer, not a request of this screen.
+  const settings = useQuery({ queryKey: SETTINGS_KEY, queryFn: () => api<Settings>("/settings"), staleTime: 5 * 60_000 });
+  const prefs = settings.data?.agenda;
+  const wide = useWide();
+  const now = useNow();
+  const today = localDate(now, timeZone);
+  // Until the owner picks one, the view is the preference's (a phone opens on the day) and the day is today, whichever day that becomes.
+  const [chosen, setChosen] = useState<AgendaView | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const view = chosen ?? ((wide && prefs?.view) || "day");
+  const anchor = picked ?? today;
+  const go = (day: string) => setPicked(day === today ? null : day);
+  const [reveal, setReveal] = useState<Reveal>({ allDay: false, outside: false, daysOff: false });
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const [open, setOpen] = useState<AgendaEvent | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
 
   const ready = !!status.data?.connected && !status.data.problem && status.data.calendars.some((c) => c.mode !== "off");
-  const { from, to } = viewRange(view, anchor);
+  // The day reads its whole week: the strip of days changes day without a new request.
+  const { from, to } = viewRange(view === "month" ? "month" : "week", anchor, prefs?.weekStart);
   const events = useQuery({
     queryKey: eventsKey(from, to),
     queryFn: ({ signal }) => api<AgendaWindow>(`/google/events?from=${from}&to=${to}`, { signal }),
-    enabled: ready,
+    enabled: ready && !!prefs,
     // Back on the tab: Google may have changed while nobody looked (without a public address there is no push notice).
     refetchOnWindowFocus: true,
     placeholderData: (previous) => previous,
@@ -87,15 +136,6 @@ export function AgendaPage() {
   const byId = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const writable = calendars.filter((c) => c.mode === "write" && c.writable);
   const shown = (events.data?.events ?? []).filter((event) => !hidden.has(event.calendarId));
-
-  const chooseView = (next: AgendaView) => {
-    setView(next);
-    try {
-      localStorage.setItem(VIEW_KEY, next);
-    } catch {
-      // Private window: the choice lasts this visit.
-    }
-  };
 
   // "Novo evento" in the command palette: by the address on arrival, by an event when the page is open.
   const canCreate = writable.length > 0;
@@ -116,7 +156,7 @@ export function AgendaPage() {
       description={t("web.agenda.description")}
       actions={
         ready && canCreate ? (
-          <Button onClick={() => setEditing({ mode: "new", day: view === "day" ? anchor : localDate(Date.now(), timeZone) })}>
+          <Button onClick={() => setEditing({ mode: "new", day: view === "month" || (view === "week" && wide) ? today : anchor })}>
             <CalendarPlus className="h-4 w-4" aria-hidden />
             {t("web.agenda.new")}
           </Button>
@@ -125,19 +165,20 @@ export function AgendaPage() {
     />
   );
 
-  if (status.isPending) {
+  if (status.isError || settings.isError) {
+    const failed = status.isError ? status : settings;
+    return (
+      <div className="space-y-6">
+        {header}
+        <ErrorNotice error={failed.error} onRetry={() => void failed.refetch()} />
+      </div>
+    );
+  }
+  if (status.isPending || !prefs) {
     return (
       <div className="space-y-6">
         {header}
         <Loading />
-      </div>
-    );
-  }
-  if (status.isError) {
-    return (
-      <div className="space-y-6">
-        {header}
-        <ErrorNotice error={status.error} onRetry={() => void status.refetch()} />
       </div>
     );
   }
@@ -165,19 +206,40 @@ export function AgendaPage() {
     );
   }
 
+  const week = view === "month" ? [] : daysOf(from, to);
+  const grid = view === "week" && wide;
+  // What the owner asked to see in this visit wins over the preference; the count is always of what the preference hides.
+  const see = { from: prefs.from, to: prefs.to, allDay: prefs.allDay || reveal.allDay, outside: prefs.outside || reveal.outside };
+  const columns = grid ? shownDays(week, { workDays: prefs.workDays, daysOff: prefs.daysOff || reveal.daysOff }) : [anchor];
+  const left = { allDay: new Set<string>(), outside: 0, daysOff: new Set<string>() };
+  if (view !== "month") {
+    for (const day of grid ? shownDays(week, prefs) : [anchor]) {
+      for (const event of eventsOn(shown, day, timeZone)) if (event.allDay && !prefs.allDay) left.allDay.add(eventKey(event));
+      left.outside += dayEvents(shown, day, prefs, timeZone).outside;
+    }
+    if (grid && !prefs.daysOff) {
+      const working = new Set(shownDays(week, prefs));
+      for (const day of week) if (!working.has(day)) for (const event of eventsOn(shown, day, timeZone)) left.daysOff.add(eventKey(event));
+    }
+  }
+  const flip = (key: keyof Reveal) => setReveal((old) => ({ ...old, [key]: !old[key] }));
+  const openDay = (day: string) => {
+    go(day);
+    setChosen("day");
+  };
+
   return (
     <div className="space-y-6">
       {header}
       <Toolbar
         view={view}
-        onView={chooseView}
-        from={from}
+        onView={setChosen}
+        from={view === "day" ? anchor : from}
         to={to}
-        onStep={(direction) => setAnchor(step(view, anchor, direction))}
-        onToday={() => setAnchor(localDate(Date.now(), timeZone))}
+        onStep={(direction) => go(step(view, anchor, direction))}
+        onToday={() => setPicked(null)}
         loading={events.isFetching}
       />
-      <Legend calendars={calendars} hidden={hidden} onToggle={(id) => setHidden((old) => toggle(old, id))} />
       {!canCreate && <Notice>{t("web.agenda.noWritable")}</Notice>}
       {events.data?.more && <Notice tone="warning">{t("web.agenda.more")}</Notice>}
       {events.isError && !events.data ? (
@@ -185,36 +247,37 @@ export function AgendaPage() {
       ) : !events.data ? (
         <Loading rows={4} />
       ) : view === "month" ? (
-        <MonthView
-          anchor={anchor}
-          from={from}
-          to={to}
-          events={shown}
-          calendars={byId}
-          onOpen={setOpen}
-          onDay={(day) => {
-            setAnchor(day);
-            chooseView("day");
-          }}
-        />
-      ) : view === "week" ? (
-        <WeekView
-          days={daysOf(from, to)}
-          events={shown}
-          calendars={byId}
-          onOpen={setOpen}
-          onDay={(day) => {
-            setAnchor(day);
-            chooseView("day");
-          }}
-        />
+        <MonthView anchor={anchor} from={from} to={to} today={today} events={shown} calendars={byId} onOpen={setOpen} onDay={openDay} />
+      ) : grid ? (
+        <WeekGrid days={columns} today={today} now={now} hours={prefs} see={see} events={shown} calendars={byId} onOpen={setOpen} onDay={openDay} />
       ) : (
-        <DayList events={eventsOn(shown, anchor, timeZone)} calendars={byId} onOpen={setOpen} />
+        <>
+          <DayStrip days={week} day={anchor} today={today} onDay={go} />
+          <DayList day={anchor} events={dayEvents(shown, anchor, see, timeZone).events} calendars={byId} onOpen={setOpen} />
+        </>
+      )}
+      {view !== "month" && events.data && (
+        <LeftOut
+          rows={[
+            { key: "allDay", count: left.allDay.size, text: "web.agenda.hidden.allDay" },
+            { key: "outside", count: left.outside, text: "web.agenda.hidden.outside" },
+            { key: "daysOff", count: left.daysOff.size, text: "web.agenda.hidden.daysOff" },
+          ]}
+          hours={{ from: hour(prefs.from), to: hour(prefs.to) }}
+          reveal={reveal}
+          onFlip={flip}
+        />
       )}
       {events.isError && events.data && <ErrorNotice error={events.error} onRetry={() => void events.refetch()} />}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <Legend calendars={calendars} hidden={hidden} onToggle={(id) => setHidden((old) => toggle(old, id))} />
+        <Link to="/configuracoes/agenda" className="ml-auto inline-flex min-h-11 items-center rounded-xl px-2 text-sm font-medium text-accent-text hover:bg-raised">
+          {t("web.agenda.settings")}
+        </Link>
+      </div>
       <EventDialog
         // A fresh dialog per event: a delete half-confirmed never carries over.
-        key={open ? `${open.calendarId}|${open.id}` : "none"}
+        key={open ? eventKey(open) : "none"}
         event={open}
         calendar={open ? byId.get(open.calendarId) : undefined}
         onClose={() => setOpen(null)}
@@ -247,7 +310,12 @@ function Toolbar({
   const { t, locale } = useI18n();
   const label = rangeLabel(view, from, to, locale);
   return (
+    // On a phone the period has its own line, then the arrows on the left and the views on the right (one under the other on the narrowest).
     <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Read when the period changes, and while a new one is on its way. The week shows its days right below, so its period is spoken, not drawn. */}
+      <h2 aria-live="polite" aria-busy={loading || undefined} className={cn("basis-full text-base font-semibold first-letter:uppercase lg:mr-auto lg:basis-auto", view === "week" && "sr-only")}>
+        {label}
+      </h2>
       <div className="flex items-center gap-1">
         <Button variant="ghost" className="px-3" aria-label={t("web.agenda.prev")} onClick={() => onStep(-1)}>
           <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -258,19 +326,15 @@ function Toolbar({
         <Button variant="ghost" className="px-3" aria-label={t("web.agenda.next")} onClick={() => onStep(1)}>
           <ChevronRight className="h-4 w-4" aria-hidden />
         </Button>
-        {/* Read when the period changes, and while a new one is on its way. */}
-        <h2 aria-live="polite" aria-busy={loading || undefined} className="ml-2 text-base font-semibold first-letter:uppercase">
-          {label}
-        </h2>
       </div>
-      <fieldset className="flex rounded-xl border border-border-strong p-1">
+      <fieldset className="flex rounded-xl border border-border bg-raised p-1">
         <legend className="sr-only">{t("web.agenda.view.label")}</legend>
         {AGENDA_VIEWS.map((option) => (
           <label
             key={option}
             className={cn(
               "flex min-h-9 cursor-pointer items-center rounded-lg px-3 text-sm font-medium has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent",
-              view === option ? "bg-accent-soft text-accent-text" : "text-fg-muted hover:text-fg",
+              view === option ? "bg-surface text-fg shadow-sm" : "text-fg-muted hover:text-fg",
             )}
           >
             <input type="radio" name="agenda-view" className="sr-only" checked={view === option} onChange={() => onView(option)} />
@@ -282,14 +346,13 @@ function Toolbar({
   );
 }
 
-/** "3 de novembro de 2026", "2 – 8 de novembro de 2026" or "novembro de 2026", in the owner's language. */
+/** "segunda-feira, 9 de novembro de 2026", "9 – 15 de novembro de 2026" or "novembro de 2026", in the owner's language. */
 function rangeLabel(view: AgendaView, from: string, to: string, locale: string): string {
-  const utc = (day: string) => new Date(`${day}T12:00:00Z`);
-  if (view === "day") return new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(utc(from));
-  if (view === "week") return new Intl.DateTimeFormat(locale, { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" }).formatRange(utc(from), utc(to));
+  if (view === "day") return new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(utcNoon(from));
+  if (view === "week") return new Intl.DateTimeFormat(locale, { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" }).formatRange(utcNoon(from), utcNoon(to));
   // The grid starts in the week before: the month is the one of the middle day.
   const middle = daysOf(from, to)[15] ?? from;
-  return new Intl.DateTimeFormat(locale, { timeZone: "UTC", month: "long", year: "numeric" }).format(utc(middle));
+  return new Intl.DateTimeFormat(locale, { timeZone: "UTC", month: "long", year: "numeric" }).format(utcNoon(middle));
 }
 
 function Legend({ calendars, hidden, onToggle }: { calendars: GoogleCalendarInfo[]; hidden: ReadonlySet<string>; onToggle: (id: string) => void }) {
@@ -302,7 +365,7 @@ function Legend({ calendars, hidden, onToggle }: { calendars: GoogleCalendarInfo
         // The whole pill is the target (44 px); a hidden calendar's pill fades.
         <label
           key={calendar.id}
-          className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-border px-3 text-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[input:not(:checked)]:opacity-60"
+          className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[input:not(:checked)]:opacity-60"
         >
           <input type="checkbox" className="sr-only" checked={!hidden.has(calendar.id)} onChange={() => onToggle(calendar.id)} />
           <Dot color={calendar.color} />
@@ -318,13 +381,56 @@ function Dot({ color }: { color?: string | undefined }) {
   return <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent" style={color ? { backgroundColor: color } : undefined} />;
 }
 
+/**
+ * What the preferences leave out of the period on screen, each with its count
+ * and its own "Mostrar": nothing leaves the Agenda without saying so. Shown
+ * once, the line stays, to hide again.
+ */
+function LeftOut({
+  rows,
+  hours,
+  reveal,
+  onFlip,
+}: {
+  rows: { key: keyof Reveal; count: number; text: "web.agenda.hidden.allDay" | "web.agenda.hidden.outside" | "web.agenda.hidden.daysOff" }[];
+  hours: { from: string; to: string };
+  reveal: Reveal;
+  onFlip: (key: keyof Reveal) => void;
+}) {
+  const { t, plural } = useI18n();
+  const some = rows.filter((row) => row.count > 0);
+  if (some.length === 0) return null;
+  return (
+    <ul className="space-y-1 text-sm text-fg-muted">
+      {some.map((row) => {
+        const text = plural(row.text, row.count, hours);
+        return (
+          <li key={row.key} className="flex flex-wrap items-center gap-x-2">
+            <span>{text}</span>
+            <button
+              type="button"
+              aria-pressed={reveal[row.key]}
+              onClick={() => onFlip(row.key)}
+              className="min-h-11 rounded-xl px-2 font-semibold text-accent-text hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {t(reveal[row.key] ? "web.agenda.hidden.hide" : "web.agenda.hidden.show")}
+              {/* The name starts with what is seen (WCAG 2.5.3) and then says what it shows. */}
+              <span className="sr-only">, {text}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /** "14:00 – 15:00", "Dia inteiro", or with the days when it spans more than one. */
 function useWhen() {
   const { t, locale, timeZone } = useI18n();
   return (event: AgendaEvent, long = false): string => {
     const { first, last } = eventDays(event, timeZone);
     const options: Intl.DateTimeFormatOptions = long ? { timeZone: "UTC", weekday: "long", day: "numeric", month: "short" } : { timeZone: "UTC", day: "numeric", month: "short" };
-    const day = (d: string) => new Intl.DateTimeFormat(locale, options).format(new Date(`${d}T12:00:00Z`));
+    const day = (d: string) => new Intl.DateTimeFormat(locale, options).format(utcNoon(d));
     if (event.allDay) return first === last ? (long ? `${day(first)} · ${t("web.agenda.allDay")}` : t("web.agenda.allDay")) : `${day(first)} – ${day(last)}`;
     const start = localTime(event.start, timeZone);
     const end = localTime(event.end, timeZone);
@@ -333,124 +439,261 @@ function useWhen() {
   };
 }
 
-function EventButton({ event, calendar, onOpen, compact = false }: { event: AgendaEvent; calendar?: GoogleCalendarInfo | undefined; onOpen: (event: AgendaEvent) => void; compact?: boolean }) {
+/** An event as a small chip (the month, and the week's rows around the hours) or as a block of the week's grid. */
+function EventButton({ event, calendar, onOpen, block = false }: { event: AgendaEvent; calendar?: GoogleCalendarInfo | undefined; onOpen: (event: AgendaEvent) => void; block?: boolean }) {
   const { t } = useI18n();
   const when = useWhen()(event);
-  const title = event.title || t("web.agenda.event.untitled");
   return (
     <button
       type="button"
       onClick={() => onOpen(event)}
       className={cn(
-        "flex w-full min-w-0 items-start gap-2 rounded-lg border-l-4 bg-raised text-left hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-        compact ? "min-h-7 px-1.5 py-0.5 text-xs" : "min-h-11 px-3 py-2 text-sm",
+        "block w-full min-w-0 overflow-hidden rounded-lg border-l-4 bg-accent-soft px-1.5 text-left text-xs hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:hover:brightness-125",
+        block ? "h-full py-0.5" : "min-h-7 py-1",
       )}
-      style={{ borderLeftColor: calendar?.color ?? "var(--accent)" }}
+      style={{ borderLeftColor: calendar?.color ?? "var(--color-accent)" }}
     >
-      <span className="min-w-0 flex-1">
-        <span className={cn("block font-medium", compact ? "truncate" : "line-clamp-2 break-words")}>{title}</span>
-        {!compact && (
-          <span className="line-clamp-2 block break-words text-xs text-fg-muted">
-            {when}
-            {event.location ? ` · ${event.location}` : ""}
-          </span>
-        )}
-      </span>
-      {compact && <span className="sr-only">{when}</span>}
+      <span className="block truncate font-semibold">{event.title || t("web.agenda.event.untitled")}</span>
+      {block ? (
+        <span className="block truncate text-fg-muted">
+          {when}
+          {event.location ? ` · ${event.location}` : ""}
+        </span>
+      ) : (
+        <span className="sr-only">{when}</span>
+      )}
     </button>
   );
 }
 
-function DayList({ events, calendars, onOpen }: { events: AgendaEvent[]; calendars: Map<string, GoogleCalendarInfo>; onOpen: (event: AgendaEvent) => void }) {
-  const { t } = useI18n();
+/** The week over a day's list: seven days in a row, the chosen one filled, today marked. */
+function DayStrip({ days, day, today, onDay }: { days: string[]; day: string; today: string; onDay: (day: string) => void }) {
+  const { t, locale } = useI18n();
+  return (
+    <nav aria-label={t("web.agenda.week")}>
+      <ol className="grid grid-cols-7 gap-1">
+        {days.map((each) => {
+          const date = utcNoon(each);
+          const full = new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(date);
+          return (
+            <li key={each}>
+              <button
+                type="button"
+                onClick={() => onDay(each)}
+                aria-pressed={each === day}
+                aria-current={each === today ? "date" : undefined}
+                className={cn(
+                  "flex min-h-14 w-full flex-col items-center justify-center rounded-xl text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                  each === day ? "bg-fg text-bg" : "hover:bg-raised",
+                )}
+              >
+                <span className={cn("text-xs", each !== day && "text-fg-muted")}>{new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short" }).format(date).replace(".", "")}</span>
+                <span className={cn("text-base font-semibold", each === today && each !== day && "text-accent-text")}>{date.getUTCDate()}</span>
+                {/* The name starts with what is seen (WCAG 2.5.3) and then says where it goes. */}
+                <span className="sr-only">, {t("web.agenda.openDay", { date: full })}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+function DayList({ day, events, calendars, onOpen }: { day: string; events: AgendaEvent[]; calendars: Map<string, GoogleCalendarInfo>; onOpen: (event: AgendaEvent) => void }) {
+  const { t, timeZone } = useI18n();
+  const when = useWhen();
   if (events.length === 0) return <EmptyState icon={<CalendarDays className="h-6 w-6" />} title={t("web.agenda.empty.day")} />;
   return (
-    <ul className="space-y-2">
-      {events.map((event) => (
-        <li key={`${event.calendarId}|${event.id}`}>
-          <EventButton event={event} calendar={calendars.get(event.calendarId)} onOpen={onOpen} />
-        </li>
-      ))}
+    <ul className="divide-y divide-border/60 rounded-2xl border border-border bg-surface px-2 shadow-sm">
+      {events.map((event) => {
+        const { first, last } = eventDays(event, timeZone);
+        // One day: the hour on the left and the end below. More than one: the whole period below, and the hour only on the day it starts.
+        const rest = first === last ? (event.allDay ? "" : t("web.agenda.until", { time: localTime(event.end, timeZone) })) : when(event);
+        const under = [rest, event.location].filter(Boolean).join(" · ");
+        return (
+          <li key={eventKey(event)}>
+            <button
+              type="button"
+              onClick={() => onOpen(event)}
+              className="grid min-h-14 w-full grid-cols-[4.5rem_0.625rem_minmax(0,1fr)] items-baseline gap-x-3 rounded-xl px-2 py-3 text-left hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {/* The title comes first for whoever listens; the hour is drawn first. */}
+              <span className="col-start-3 row-start-1 min-w-0">
+                <span className="block break-words font-medium">{event.title || t("web.agenda.event.untitled")}</span>
+                {under && <span className="block break-words text-sm text-fg-muted">{under}</span>}
+              </span>
+              <span className="col-start-1 row-start-1 text-sm text-fg-muted tabular-nums">
+                {event.allDay ? t("web.agenda.allDay") : first === day ? localTime(event.start, timeZone) : ""}
+              </span>
+              <span className="col-start-2 row-start-1 self-center">
+                <Dot color={calendars.get(event.calendarId)?.color} />
+              </span>
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
-function DayHeading({ day, onDay, className }: { day: string; onDay: (day: string) => void; className?: string }) {
-  const { t, locale, timeZone } = useI18n();
-  const today = localDate(Date.now(), timeZone);
-  const date = new Date(`${day}T12:00:00Z`);
+function DayHeading({ day, today, onDay }: { day: string; today: string; onDay: (day: string) => void }) {
+  const { t, locale } = useI18n();
+  const date = utcNoon(day);
   const full = new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(date);
   return (
     <button
       type="button"
       onClick={() => onDay(day)}
       aria-current={day === today ? "date" : undefined}
-      className={cn("flex min-h-11 items-center gap-2 rounded-lg px-1 text-left text-sm font-semibold hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", className)}
+      className="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
     >
-      <span className="text-fg-muted first-letter:uppercase">{new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short" }).format(date)}</span>
-      <span className={cn("flex h-7 min-w-7 items-center justify-center rounded-full px-1", day === today && "bg-accent text-accent-fg")}>{date.getUTCDate()}</span>
+      <span className={cn("text-xs font-semibold tracking-wide uppercase", day === today ? "text-accent-text" : "text-fg-muted")}>
+        {new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short" }).format(date).replace(".", "")}
+      </span>
+      <span className={cn("flex h-8 min-w-8 items-center justify-center rounded-full px-1 text-lg font-semibold", day === today && "bg-accent text-accent-fg")}>{date.getUTCDate()}</span>
       {/* The name starts with what is seen (WCAG 2.5.3) and then says where it goes. */}
       <span className="sr-only">, {t("web.agenda.openDay", { date: full })}</span>
     </button>
   );
 }
 
-function WeekView({ days, events, calendars, onOpen, onDay }: { days: string[]; events: AgendaEvent[]; calendars: Map<string, GoogleCalendarInfo>; onOpen: (event: AgendaEvent) => void; onDay: (day: string) => void }) {
+const CELL = "min-w-0 border-t border-border";
+const CHIPS = "space-y-1 p-1";
+
+/**
+ * The week as a grid of the working hours. Every day is one item of a list,
+ * with its own rows (all day, before the hours, the hours, after them) lined up
+ * with the other days' by a subgrid; the hours on the left are drawing only.
+ * A row with nothing in any day takes no height.
+ */
+function WeekGrid({
+  days,
+  today,
+  now,
+  hours,
+  see,
+  events,
+  calendars,
+  onOpen,
+  onDay,
+}: {
+  days: string[];
+  today: string;
+  now: number;
+  hours: { from: number; to: number };
+  see: { allDay: boolean; outside: boolean };
+  events: AgendaEvent[];
+  calendars: Map<string, GoogleCalendarInfo>;
+  onOpen: (event: AgendaEvent) => void;
+  onDay: (day: string) => void;
+}) {
   const { t, timeZone } = useI18n();
-  if (events.length === 0) return <EmptyState icon={<CalendarDays className="h-6 w-6" />} title={t("web.agenda.empty.range")} />;
-  return (
-    <ol className="grid gap-3 lg:grid-cols-7">
-      {days.map((day) => {
-        const list = eventsOn(events, day, timeZone);
-        return (
-          <li key={day} className="min-w-0 space-y-2 rounded-2xl border border-border bg-surface p-2">
-            <DayHeading day={day} onDay={onDay} />
-            {list.length > 0 && (
-              <ul className="space-y-1.5">
-                {list.map((event) => (
-                  <li key={`${event.calendarId}|${event.id}`}>
-                    <EventButton event={event} calendar={calendars.get(event.calendarId)} onOpen={onOpen} />
-                  </li>
-                ))}
-              </ul>
-            )}
+  const plans = days.map((day) => planDay(events, day, hours, timeZone));
+  const rows = {
+    allDay: see.allDay && plans.some((plan) => plan.allDay.length > 0),
+    before: see.outside && plans.some((plan) => plan.before.length > 0),
+    after: see.outside && plans.some((plan) => plan.after.length > 0),
+  };
+  const count = hours.to - hours.from;
+  const height = `${count * HOUR_REM}rem`;
+  // One line at the top of every hour, drawn once per column.
+  const lines = { height, backgroundImage: `repeating-linear-gradient(to bottom, var(--color-border) 0 1px, transparent 1px ${HOUR_REM}rem)` };
+  const side = "flex items-start justify-end px-2 pt-2 text-xs whitespace-nowrap text-fg-muted";
+  const chips = (list: AgendaEvent[]) =>
+    list.length > 0 ? (
+      <ul className={CHIPS}>
+        {list.map((event) => (
+          <li key={eventKey(event)}>
+            <EventButton event={event} calendar={calendars.get(event.calendarId)} onOpen={onOpen} />
           </li>
-        );
-      })}
-    </ol>
+        ))}
+      </ul>
+    ) : null;
+  return (
+    <div className="grid grid-cols-[4.75rem_minmax(0,1fr)] grid-rows-[auto_auto_auto_auto_auto] overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+      <div aria-hidden className="row-span-full grid grid-rows-subgrid">
+        <div />
+        <div className={cn(rows.allDay && CELL, rows.allDay && side)}>{rows.allDay && t("web.agenda.allDay")}</div>
+        <div className={cn(rows.before && CELL, rows.before && side, "bg-raised/60")}>{rows.before && t("web.agenda.row.before")}</div>
+        <div className={cn(CELL, "relative")} style={{ height }}>
+          {Array.from({ length: count }, (_, index) => hours.from + index).map((each) => (
+            // The first hour's label sits under its line; the others straddle theirs.
+            <span key={each} className={cn("absolute right-2 text-xs text-fg-muted tabular-nums", each > hours.from && "-translate-y-1/2")} style={{ top: `${(each - hours.from) * HOUR_REM}rem` }}>
+              {hour(each)}
+            </span>
+          ))}
+        </div>
+        <div className={cn(rows.after && CELL, rows.after && side, "bg-raised/60")}>{rows.after && t("web.agenda.row.after")}</div>
+      </div>
+      <ol className="row-span-full grid grid-rows-subgrid" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
+        {days.map((day, index) => {
+          const plan = plans[index];
+          if (!plan) return null;
+          const line = nowAt(now, day, hours, timeZone);
+          return (
+            <li key={day} className="row-span-full grid min-w-0 grid-rows-subgrid border-l border-border">
+              <DayHeading day={day} today={today} onDay={onDay} />
+              <div className={cn(rows.allDay && CELL)}>{rows.allDay && chips(plan.allDay)}</div>
+              <div className={cn(rows.before && CELL, "bg-raised/60")}>{rows.before && chips(plan.before)}</div>
+              <div className={cn(CELL, "relative")} style={lines}>
+                {plan.blocks.length > 0 && (
+                  <ul>
+                    {plan.blocks.map((block) => (
+                      <li key={eventKey(block.event)} className="absolute p-px" style={place(block)}>
+                        <EventButton event={block.event} calendar={calendars.get(block.event.calendarId)} onOpen={onOpen} block />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {line !== null && (
+                  <span aria-hidden data-now className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-danger" style={{ top: `${line * 100}%` }}>
+                    <span className="absolute -top-2.5 left-0 rounded bg-danger px-1 text-[0.625rem] leading-4 font-semibold text-surface tabular-nums">{localTime(now, timeZone)}</span>
+                  </span>
+                )}
+              </div>
+              <div className={cn(rows.after && CELL, "bg-raised/60")}>{rows.after && chips(plan.after)}</div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
+}
+
+/** Where a block goes in its day's column: down by its hour, across by its lane. */
+function place(block: DayBlock) {
+  return { top: `${block.top * 100}%`, height: `${block.height * 100}%`, left: `${(block.lane / block.lanes) * 100}%`, width: `${100 / block.lanes}%` };
 }
 
 function MonthView({
   anchor,
   from,
   to,
+  today,
   events,
   calendars,
   onOpen,
   onDay,
-}: { anchor: string; from: string; to: string; events: AgendaEvent[]; calendars: Map<string, GoogleCalendarInfo>; onOpen: (event: AgendaEvent) => void; onDay: (day: string) => void }) {
+}: { anchor: string; from: string; to: string; today: string; events: AgendaEvent[]; calendars: Map<string, GoogleCalendarInfo>; onOpen: (event: AgendaEvent) => void; onDay: (day: string) => void }) {
   const { t, plural, locale, timeZone } = useI18n();
   const days = daysOf(from, to);
   const month = anchor.slice(0, 7);
-  const today = localDate(Date.now(), timeZone);
-  const names = days.slice(0, 7).map((day) => new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short" }).format(new Date(`${day}T12:00:00Z`)));
+  const names = days.slice(0, 7).map((day) => new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short" }).format(utcNoon(day)).replace(".", ""));
   return (
-    <div className="rounded-2xl border border-border bg-surface p-2">
-      <div aria-hidden className="grid grid-cols-7 pb-1 text-center text-xs font-medium text-fg-muted">
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+      <div aria-hidden className="grid grid-cols-7 py-2 text-center text-xs font-semibold tracking-wide text-fg-muted uppercase">
         {names.map((name) => (
-          <span key={name} className="first-letter:uppercase">
-            {name}
-          </span>
+          <span key={name}>{name}</span>
         ))}
       </div>
-      <ol className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-border">
+      <ol className="grid grid-cols-7 gap-px border-t border-border bg-border">
         {days.map((day) => {
           const list = eventsOn(events, day, timeZone);
-          const date = new Date(`${day}T12:00:00Z`);
+          const date = utcNoon(day);
           const full = new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(date);
           return (
-            <li key={day} className={cn("min-h-20 min-w-0 space-y-1 bg-surface p-1 sm:min-h-28", day.slice(0, 7) !== month && "bg-raised/60 text-fg-muted")}>
+            <li key={day} className={cn("min-h-20 min-w-0 space-y-1 p-1 sm:min-h-28", day.slice(0, 7) === month ? "bg-surface" : "bg-raised text-fg-muted")}>
               <button
                 type="button"
                 onClick={() => onDay(day)}
@@ -470,14 +713,14 @@ function MonthView({
               {list.length > 0 && (
                 <span aria-hidden className="flex gap-0.5 px-1 sm:hidden">
                   {list.slice(0, 3).map((event) => (
-                    <Dot key={`${event.calendarId}|${event.id}`} color={calendars.get(event.calendarId)?.color} />
+                    <Dot key={eventKey(event)} color={calendars.get(event.calendarId)?.color} />
                   ))}
                 </span>
               )}
               <ul className="hidden space-y-0.5 sm:block">
                 {list.slice(0, MONTH_SHOWN).map((event) => (
-                  <li key={`${event.calendarId}|${event.id}`}>
-                    <EventButton event={event} calendar={calendars.get(event.calendarId)} onOpen={onOpen} compact />
+                  <li key={eventKey(event)}>
+                    <EventButton event={event} calendar={calendars.get(event.calendarId)} onOpen={onOpen} />
                   </li>
                 ))}
                 {list.length > MONTH_SHOWN && (

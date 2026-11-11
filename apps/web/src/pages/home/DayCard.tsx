@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AgendaPage, Automation, GoogleStatus, MessageKey } from "@zuri/shared";
+import type { AgendaPage, Automation, GoogleStatus, MessageKey, Settings } from "@zuri/shared";
 import { Check, ChevronDown, Clock, Flag, TriangleAlert } from "lucide-react";
 import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { buttonClass, cn, ErrorNotice, Loading } from "../../components/ui.tsx";
 import { TASKS_KEY, useTasks } from "../../hooks/productivity.ts";
+import { SETTINGS_KEY } from "../../hooks/session.tsx";
 import { addDays, GOOGLE_STATUS_KEY, localDate, localTime } from "../../lib/agenda.ts";
 import { api } from "../../lib/api.ts";
 import { arrangeDay, DAY_WINDOW, type DayItem, type DayKind, type DayRow, dayItems } from "../../lib/day.ts";
@@ -16,7 +17,6 @@ const TICK_MS = 30_000;
 const BACKLOG_SHOWN = 3;
 
 const hour = (value: number) => `${String(value).padStart(2, "0")}:00`;
-const WINDOW = { from: hour(DAY_WINDOW.from), to: hour(DAY_WINDOW.to) };
 const ROW = "grid grid-cols-[4rem_1.25rem_minmax(0,1fr)] items-start gap-x-3 border-t border-border/60 py-3.5 first:border-t-0 sm:grid-cols-[4rem_1.25rem_minmax(0,1fr)_auto]";
 const SIDE = "col-start-3 pt-px text-sm whitespace-nowrap text-fg-muted sm:col-start-4 sm:text-right";
 const KINDS: Record<DayKind, MessageKey> = {
@@ -30,7 +30,14 @@ const MARK = "inline-flex items-center gap-1 font-semibold";
 /** The hours "Seu dia" shows, for its heading. */
 export function useDayWindow(): string {
   const { t } = useI18n();
-  return t("web.home.day.window", WINDOW);
+  return t("web.home.day.window", useWindow().text);
+}
+
+/** The owner's working hours (Configurações › Agenda), as numbers and as "08:00". */
+function useWindow() {
+  // The session already read the settings: this is its answer, not a request of this card.
+  const { from, to } = useQuery({ queryKey: SETTINGS_KEY, queryFn: () => api<Settings>("/settings"), staleTime: 5 * 60_000 }).data?.agenda ?? DAY_WINDOW;
+  return { hours: { from, to }, text: { from: hour(from), to: hour(to) } };
 }
 
 /**
@@ -111,7 +118,8 @@ export function DayCard({ automations, onNewDay }: { automations: readonly Autom
   // A task marked done here hides the list's copy; one unmarked shows from here only until the list has it again.
   const done = new Set([...marked].filter(([, entry]) => entry.done).map(([key]) => key));
   const items = [...live.filter((item) => !done.has(item.key)), ...[...marked].filter(([key, entry]) => entry.done || !liveKeys.has(key)).map(([, entry]) => entry.item)];
-  const day = arrangeDay(items, { now, timeZone, all, done });
+  const window = useWindow();
+  const day = arrangeDay(items, { now, timeZone, all, done, window: window.hours });
 
   async function toggle(row: DayRow) {
     // One save at a time per task: a second tap while the first is on its way would race it.
@@ -323,7 +331,7 @@ export function DayCard({ automations, onNewDay }: { automations: readonly Autom
             onClick={() => setAll(!all)}
             className="-mx-1.5 inline-flex min-h-11 items-center rounded-lg px-1.5 font-semibold text-fg underline underline-offset-4 hover:bg-raised"
           >
-            {all ? t("web.home.day.inside", WINDOW) : plural("web.home.day.outside", day.outside, WINDOW)}
+            {all ? t("web.home.day.inside", window.text) : plural("web.home.day.outside", day.outside, window.text)}
           </button>
         </p>
       )}
