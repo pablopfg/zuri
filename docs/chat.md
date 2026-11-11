@@ -19,7 +19,9 @@ a tela ocupa a área inteira e só as mensagens rolam.
   da semana com a hora ou a data.
 - **Renomear e Apagar conversa.** Ficam no menu **Mais opções** (⋯) de cada
   linha e ao lado do título da conversa aberta. Dá para renomear ou apagar uma
-  conversa sem abri-la. Apagar a que está aberta leva a uma conversa nova.
+  conversa sem abri-la. Renomear não conta como uso: a conversa continua no
+  mesmo lugar da lista, com o dia e a hora da última mensagem. Apagar a que
+  está aberta leva a uma conversa nova.
   Enquanto a Zuri escreve numa conversa, os dois itens dela ficam desligados.
 - **Conversa aberta.** O título, "Desde hoje, 08:12" (ou "Desde ontem" e
   "Desde 02/11") e as mensagens, com uma linha a cada dia. Cada resposta leva

@@ -82,6 +82,14 @@ test("each row shows when the conversation was used and renames by keyboard, the
   await expect(row(page, `Renomeada ${word}`).getByRole("button", { name: `Mais opções para “Renomeada ${word}”` })).toBeFocused();
   await expect(page).toHaveURL(new RegExp(`/conversa/${open}$`));
   await expect(page.getByRole("heading", { level: 1, name: `Aberta ${word}` })).toBeVisible();
+  // Renaming is not using (#272): the renamed row stays below the one used after it, also after a reload.
+  const order = () => list(page).getByRole("listitem").filter({ hasText: word }).getByRole("link");
+  await expect(order()).toHaveText([new RegExp(`^Aberta ${word}`), new RegExp(`^Renomeada ${word}`)]);
+  await page.reload();
+  await expect(order()).toHaveText([new RegExp(`^Aberta ${word}`), new RegExp(`^Renomeada ${word}`)]);
+  await row(page, `Renomeada ${word}`).getByRole("button", { name: `Mais opções para “Renomeada ${word}”` }).focus();
+
+  // The menu and the dialog pass  await expect(page.getByRole("heading", { level: 1, name: `Aberta ${word}` })).toBeVisible();
 
   // The menu and the dialog pass the accessibility check too, in the dark theme as well.
   await page.keyboard.press("Enter");
