@@ -55,7 +55,7 @@ function Screen({ id }: { id: string | null }) {
       </>
     );
   }
-  return <Book id={id} status={status.data} checkedAt={status.dataUpdatedAt} onDue={() => void status.refetch()} />;
+  return <Book id={id} status={status.data} checkedAt={Math.max(status.dataUpdatedAt, status.errorUpdatedAt)} onDue={() => void status.refetch()} />;
 }
 
 function Book({ id, status, checkedAt, onDue }: { id: string | null; status: ContactsStatus; checkedAt: number; onDue: () => void }) {
@@ -201,8 +201,8 @@ function Book({ id, status, checkedAt, onDue }: { id: string | null; status: Con
                             {(named && initials(contact.name)) || "?"}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-medium">{shownName(contact)}</span>
-                            <span className="block truncate text-xs text-fg-muted">{named ? [contact.phone, contact.email].filter(Boolean).join(" · ") : t("web.contacts.noName")}</span>
+                            <span className="block truncate text-sm font-medium">{shownName(contact) || t("web.contacts.noName")}</span>
+                            <span className="block truncate text-xs text-fg-muted">{named ? [contact.phone, contact.email].filter(Boolean).join(" · ") : shownName(contact) && t("web.contacts.noName")}</span>
                           </span>
                         </Link>
                       </li>
@@ -275,7 +275,7 @@ function SyncLine({ status, checkedAt, onDue }: { status: ContactsStatus; checke
   useEffect(() => {
     tries.current = 0;
   }, [next]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs again after each answer (checkedAt), with that render's onDue
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs again after each answer or failure (checkedAt), with that render's onDue
   useEffect(() => {
     const wait = due ? DUE_CHECKS_MS[tries.current] : undefined;
     if (wait === undefined) return;

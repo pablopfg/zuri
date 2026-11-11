@@ -159,7 +159,8 @@ export function contactProbes(content: string): string[] {
  */
 export function namedContacts<T extends { name: string }>(content: string, probe: string, found: T[]): T[] {
   const said = new Set(nameWords(content));
-  const candidates = found.filter((contact) => nameWords(contact.name)[0] === probe);
+  // An e-mail or a phone standing for a missing name is no name: "Contato" must not find contato@exemplo.com.br.
+  const candidates = found.filter((contact) => !contact.name.includes("@") && nameWords(contact.name)[0] === probe);
   const whole = candidates.filter((contact) => {
     const words = nameWords(contact.name);
     return words.length > 1 && words.every((word) => said.has(word));
@@ -189,7 +190,7 @@ function contactHubs(db: Database, content: string): HubRow[] {
 }
 
 /** The newest memories and their links, or one memory and what touches it. */
-export function memoryGraph(db: Database, repo: MemoryRepository, lifecycle: MemoryLifecycle, around?: string): MemoryGraph {
+export function memoryGraph(db: Database, repo: MemoryRepository, lifecycle: MemoryLifecycle, around?: string, contactsOn?: () => boolean): MemoryGraph {
   const reviews = repo.listReviews(MEMORY_REVIEWS_LIST_MAX);
   if (!around) {
     const rows = repo.list({ filter: "all", limit: MEMORY_GRAPH_MEMORIES_MAX + 1 });
@@ -213,7 +214,8 @@ export function memoryGraph(db: Database, repo: MemoryRepository, lifecycle: Mem
     else if (l.to === center.id) touching.add(l.from);
   }
   // The contacts are the chosen memory's alone: the whole map never looks them up (up to 5,000 names against every memory).
-  const contacts = contactHubs(db, center.content).map((hub): MemoryHub => ({ id: `contact:${hub.id}`, kind: "contact", ref: hub.id, label: [...hub.label].slice(0, LABEL_MAX).join("") }));
+  // SEC-S10-02: a copy left behind by an account that lost its permission is not shown here either.
+  const contacts = (contactsOn?.() ? contactHubs(db, center.content) : []).map((hub): MemoryHub => ({ id: `contact:${hub.id}`, kind: "contact", ref: hub.id, label: [...hub.label].slice(0, LABEL_MAX).join("") }));
   return {
     memories: [...candidates.values()].filter((m) => touching.has(m.id)).map(toMemory),
     hubs: [...all.hubs.filter((h) => touching.has(h.id)), ...contacts],

@@ -381,6 +381,28 @@ describe("contacts on the memory map (Sinal, S10)", () => {
       for (const id of ids) agent.store.db.run(`DELETE FROM zur_memories WHERE id = ?`, id);
     });
 
+  it("SEC-S10-02: with the permission gone and the copy still in the database, the map names no contact", async () => {
+    await turnOn();
+    expect((await api("PATCH", "/google/contacts/labels", { selected: [CLIENTS] })).status).toBe(200);
+    await minuteLater();
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+    const ana = await remember("A Ana Souza gosta de ser avisada na véspera.");
+    const scopes = await inOwner((agent) => agent.store.db.one<{ scopes: string }>(`SELECT scopes FROM zur_google_account WHERE id = 1`)?.scopes ?? "");
+    try {
+      expect((await around(ana)).hubs.some((item) => item.kind === "contact")).toBe(true);
+      await inOwner((agent) => {
+        agent.store.db.run(`UPDATE zur_google_account SET scopes = '' WHERE id = 1`);
+      });
+      expect(await inOwner((agent) => agent.store.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_contacts`)?.n)).toBeGreaterThan(0);
+      expect((await around(ana)).hubs.filter((item) => item.kind === "contact")).toEqual([]);
+    } finally {
+      await inOwner((agent) => {
+        agent.store.db.run(`UPDATE zur_google_account SET scopes = ? WHERE id = 1`, scopes);
+      });
+      await forget([ana]);
+    }
+  });
+
   it("a memory that names a copied contact is linked to it; one that names nobody is not", async () => {
     await turnOn();
     expect((await api("PATCH", "/google/contacts/labels", { selected: [CLIENTS, FAMILY] })).status).toBe(200);

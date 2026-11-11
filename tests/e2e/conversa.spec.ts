@@ -261,7 +261,9 @@ test("a conversation that grows after it is drawn stays at the end, unless the o
   await page.evaluate(() => (document.querySelector("[data-chat-scroll]") as HTMLElement).scrollTo(0, 0));
   await expect.poll(fromEnd).toBeGreaterThan(240);
   await pad("24px");
-  await expect.poll(() => page.evaluate(() => (document.querySelector("[data-chat-scroll]") as HTMLElement).scrollTop)).toBe(0);
+  // Two frames: the growth has been seen and answered by then, were it to pull the owner down.
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(null)))));
+  expect(await page.evaluate(() => (document.querySelector("[data-chat-scroll]") as HTMLElement).scrollTop)).toBe(0);
 });
 
 test("only the messages scroll: the list, the title and the field to write stay on screen", async ({ page }) => {

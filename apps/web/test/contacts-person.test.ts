@@ -1,6 +1,6 @@
 import type { ContactDetail } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { byLetter, countdown, dialNumber, emptyGroups, fileLetter, initials, isContactId, isNamed, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "../src/pages/contacts/person.ts";
+import { byLetter, countdown, dayText, dialNumber, emptyGroups, fileLetter, initials, isContactId, isNamed, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "../src/pages/contacts/person.ts";
 
 const contact = (over: Partial<ContactDetail> = {}): ContactDetail => ({
   id: "0f8fad5b-d9cb-469f-a165-70867728950e",
@@ -84,6 +84,10 @@ describe("phone links", () => {
     expect(dialNumber("(11) 99999-0001")).toBe("11999990001");
     expect(dialNumber(" +55 11 96666-0005")).toBe("+5511966660005");
     expect(dialNumber("ramal")).toBeNull();
+    // An extension written after the number is not dialled with it, and a word with a digit is no number.
+    expect(dialNumber("(11) 3333-0001 ramal 12")).toBe("1133330001");
+    expect(dialNumber("casa 2")).toBeNull();
+    expect(dialNumber("190")).toBe("190");
     expect(dialNumber("")).toBeNull();
   });
 
@@ -95,6 +99,12 @@ describe("phone links", () => {
     expect(whatsappNumber("(11) 3333-0001")).toBeNull();
     expect(whatsappNumber("(11) 8999-0001")).toBeNull();
     expect(whatsappNumber("+1 415 555 0100")).toBeNull();
+    // A foreign number whose own digits look like a Brazilian mobile is still foreign.
+    expect(whatsappNumber("+7 999 123-45-67")).toBeNull();
+    expect(whatsappNumber("+49 9131 12345")).toBeNull();
+    // Area code 55 (Rio Grande do Sul), with and without the country's 55.
+    expect(whatsappNumber("(55) 99999-0001")).toBe("5555999990001");
+    expect(whatsappNumber("+55 55 99999-0001")).toBe("5555999990001");
     expect(whatsappNumber("99999-0001")).toBeNull();
     // Ten and twelve digits: one short and one long of the eleven.
     expect(whatsappNumber("1199999000")).toBeNull();
@@ -181,5 +191,23 @@ describe("isContactId", () => {
     expect(isContactId("clientes")).toBe(false);
     expect(isContactId("0f8fad5b-d9cb-469f-a165-70867728950e/../x")).toBe(false);
     expect(isContactId("")).toBe(false);
+  });
+
+  it("writes a date in the owner's language, with the year only when Google has one", () => {
+    expect(dayText("02-29", "pt-BR")).toBe("29 de fevereiro");
+    expect(dayText("1990-12-31", "pt-BR")).toBe("31 de dezembro de 1990");
+    expect(dayText("1990-12-31", "en")).toBe("December 31, 1990");
+    // What the calendar cannot hold stays as it came, and takes nothing down.
+    expect(dayText("999999999-01-01", "pt-BR")).toBe("999999999-01-01");
+    expect(dayText("", "pt-BR")).toBe("");
+  });
+
+  it("an hour that is no hour counts as due", () => {
+    expect(countdown(Number.NaN)).toBe("0:00");
+  });
+
+  it("a contact with no name, phone or e-mail shows nothing, and the screen names it", () => {
+    expect(shownName(contact())).toBe("");
+    expect(isNamed(contact())).toBe(false);
   });
 });

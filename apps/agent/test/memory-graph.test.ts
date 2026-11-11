@@ -137,6 +137,11 @@ describe("contacts a memory names (Sinal, S10)", () => {
     expect(namedContacts("A Ana prefere café", "ana", [])).toEqual([]);
   });
 
+  it("an e-mail standing for a missing name is never a name", () => {
+    expect(namedContacts("Contato da escola mudou de telefone.", "contato", [{ name: "contato@exemplo.com.br" }])).toEqual([]);
+    expect(namedContacts("Contato Exemplo Com Br ligou.", "contato", [{ name: "contato@exemplo.com.br" }])).toEqual([]);
+  });
+
   it("a contact with a single name is found by it", () => {
     expect(namedContacts("Mãe faz aniversário em maio", "mae", [person("Mãe")])).toEqual([person("Mãe")]);
   });

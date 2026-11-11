@@ -206,7 +206,9 @@ Os contatos só entram no painel de uma memória (`around`), nunca no mapa
 inteiro. A Zuri procura até 8 palavras da memória que começam com maiúscula,
 pelo começo do nome guardado, 4 linhas por palavra, e mostra até 3 contatos.
 Por isso "Dra. Helena Prado" não é achada por "Helena": o nome guardado
-começa por "dra". Tocar no contato abre a ficha dele em Contatos.
+começa por "dra". Tocar no contato abre a ficha dele em Contatos. Sem a permissão dos
+contatos (conta desconectada ou permissão retirada), nenhum contato aparece,
+e um e-mail que está no lugar do nome nunca conta como nome.
 
 A rota só atende a sessão do dono. Um token de acesso pela API não chega a ela,
 porque a resposta traz títulos de outras áreas.

@@ -59,6 +59,8 @@ describe("the page a notice opens", () => {
     expect(noticePage("/automacoes")).toBe("/rotinas");
     expect(noticePage("/automacoes/fluxos")).toBe("/crm/fluxos");
     expect(noticePage("/contatos/avaliacoes")).toBe("/avaliacoes");
+    // A CRM notice saved before the Clients tab left: Contacts, where the tab was.
+    expect(noticePage("/contatos/clientes")).toBe("/contatos");
   });
 
   it("drops nothing, an address outside the list and another site", () => {

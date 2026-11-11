@@ -7,16 +7,16 @@ import type { ContactDetail, ContactSummary } from "@zuri/shared";
  */
 
 /**
- * Whether Google has a name for this contact. The server never sends an empty
- * name: with none at Google it sends the first e-mail, or the first phone, in
- * its place, and that is how the screen tells.
+ * Whether Google has a name for this contact. With none at Google the server
+ * sends the first e-mail, or the first phone, in its place (and nothing at all
+ * for a contact with neither), and that is how the screen tells.
  */
 export function isNamed(contact: Pick<ContactSummary, "name" | "phone" | "email">): boolean {
   const name = contact.name.trim();
   return name !== "" && name !== contact.phone && name !== contact.email;
 }
 
-/** The name, or what stands for it when Google has none: the first phone, then the first e-mail. */
+/** The name, or what stands for it when Google has none: the first phone, then the first e-mail. Empty with none of the three. */
 export function shownName(contact: Pick<ContactSummary, "name" | "phone" | "email">): string {
   return isNamed(contact) ? contact.name.trim() : contact.phone || contact.email || contact.name.trim();
 }
@@ -49,9 +49,13 @@ export function byLetter<T extends Pick<ContactSummary, "name" | "phone" | "emai
   return [...[...groups].map(([letter, list]) => ({ letter, contacts: list })), ...(rest ? [{ letter: "#", contacts: rest }] : [])];
 }
 
-/** The number for a `tel:` link: digits and a leading "+". Null when nothing is left to dial. */
+/**
+ * The number for a `tel:` link: digits and a leading "+", up to the first
+ * word ("3333-0001 ramal 12" dials the number, not the extension glued to it).
+ * Null when nothing is left to dial.
+ */
 export function dialNumber(phone: string): string | null {
-  const digits = phone.replace(/\D/g, "");
+  const digits = (phone.trim().split(/\p{L}/u)[0] ?? "").replace(/\D/g, "");
   if (!digits) return null;
   return `${phone.trim().startsWith("+") ? "+" : ""}${digits}`;
 }
@@ -63,6 +67,8 @@ export function dialNumber(phone: string): string | null {
  */
 export function whatsappNumber(phone: string): string | null {
   let digits = phone.replace(/\D/g, "").replace(/^0+/, "");
+  // Written with a country code that is not Brazil's: never read as a Brazilian number.
+  if (phone.trim().startsWith("+") && !digits.startsWith("55")) return null;
   if (digits.length === 13 && digits.startsWith("55")) digits = digits.slice(2);
   return /^[1-9][1-9]9\d{8}$/.test(digits) ? `55${digits}` : null;
 }
@@ -119,9 +125,18 @@ export function emptyGroups(contact: ContactDetail): CardGroup[] {
   return CARD_GROUPS.filter((group) => !hasGroup(contact, group));
 }
 
-/** "4:12" until the next sync; "0:00" once it is due. An hour or more shows the hours ("1:04:12"). */
+/** "MM-DD" or "YYYY-MM-DD": the day and month in the owner's language, the year when there is one. A date the calendar cannot hold stays as it came. */
+export function dayText(value: string, locale: string): string {
+  const [a, b, c] = value.split("-");
+  const [year, month, day] = c ? [a, b, c] : [undefined, a, b];
+  const date = new Date(Date.UTC(Number(year ?? 2000), Number(month) - 1, Number(day), 12));
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", ...(year ? { year: "numeric" } : {}), timeZone: "UTC" }).format(date);
+}
+
+/** "4:12" until the next sync; "0:00" once it is due or when the hour is no hour at all. An hour or more shows the hours ("1:04:12"). */
 export function countdown(msLeft: number): string {
-  const total = Math.max(0, Math.ceil(msLeft / 1000));
+  const total = Number.isFinite(msLeft) ? Math.max(0, Math.ceil(msLeft / 1000)) : 0;
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
   const seconds = String(total % 60).padStart(2, "0");

@@ -31,7 +31,7 @@ import { ErrorNotice, Loading } from "../../components/ui.tsx";
 import { ApiError, api } from "../../lib/api.ts";
 import { contactKey } from "../../lib/contacts.ts";
 import { useI18n } from "../../lib/i18n.tsx";
-import { CARD_GROUPS, type CardGroup, dialNumber, emptyGroups, hasGroup, initials, isNamed, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "./person.ts";
+import { CARD_GROUPS, type CardGroup, dayText, dialNumber, emptyGroups, hasGroup, initials, isNamed, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "./person.ts";
 
 const GROUP: Record<CardGroup, { icon: LucideIcon; title: MessageKey }> = {
   name: { icon: IdCard, title: "web.contacts.group.name" },
@@ -51,14 +51,6 @@ const GROUP: Record<CardGroup, { icon: LucideIcon; title: MessageKey }> = {
 
 /** Memories shown on the card; the rest are a search away in Memória. */
 const KNOWN_MAX = 3;
-
-/** "MM-DD" or "YYYY-MM-DD": the day and month in the owner's language, the year when there is one. */
-const dayText = (value: string, locale: string) => {
-  const [a, b, c] = value.split("-");
-  const [year, month, day] = c ? [a, b, c] : [undefined, a, b];
-  const date = new Date(Date.UTC(Number(year ?? 2000), Number(month) - 1, Number(day), 12));
-  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", ...(year ? { year: "numeric" } : {}), timeZone: "UTC" }).format(date);
-};
 
 /**
  * One contact, whole (Sinal, S10): who it is, the four doors (ask Zuri, call,
@@ -104,7 +96,7 @@ export function ContactCard({ id }: { id: string }) {
 function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: HTMLHeadingElement | null) => void }) {
   const { t } = useI18n();
   const named = isNamed(contact);
-  const name = shownName(contact);
+  const name = shownName(contact) || t("web.contacts.noName");
   const phone = contact.phones[0]?.value ?? "";
   const dial = dialNumber(phone);
   const whatsapp = whatsappOf(contact.phones);
@@ -121,7 +113,7 @@ function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: H
           <h2 ref={heading} tabIndex={-1} className="text-2xl font-semibold tracking-tight break-words focus:outline-none">
             {name}
           </h2>
-          {named ? role && <p className="break-words text-fg-muted">{role}</p> : <p className="text-fg-muted">{t(contact.phone ? "web.contacts.person.noName.phone" : "web.contacts.person.noName.email")}</p>}
+          {named || !(contact.phone || contact.email) ? role && <p className="break-words text-fg-muted">{role}</p> : <p className="text-fg-muted">{t(contact.phone ? "web.contacts.person.noName.phone" : "web.contacts.person.noName.email")}</p>}
           {contact.labels.length > 0 && (
             <ul className="flex flex-wrap gap-1.5" aria-label={t("web.contacts.group.labels")}>
               {contact.labels.map((label) => (
@@ -136,7 +128,7 @@ function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: H
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {named && (
-          <Link to="/conversa" state={{ ask: t("web.contacts.ask.message", { nome: contact.name.trim() }) }} className="zuri-contact-door border-transparent bg-accent-soft text-accent-text">
+          <Link to="/conversa" state={{ draft: t("web.contacts.ask.message", { nome: contact.name.trim() }) }} className="zuri-contact-door border-transparent bg-accent-soft text-accent-text">
             <BotMessageSquare className="h-5 w-5" aria-hidden />
             {t("web.contacts.ask")}
           </Link>

@@ -648,7 +648,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       const productivity = new Productivity(db, { timeZone: () => settings.get().timeZone });
       // The trash's 30 days also end while nobody opens it: checked each time the object wakes.
       productivity.trash.purgeExpired();
-      const memories = new MemoryService(db, productivity.storage, { conflictReview: () => settings.field("memoryConflictReview") });
+      const memories = new MemoryService(db, productivity.storage, { conflictReview: () => settings.field("memoryConflictReview"), contacts: () => contacts.enabled() });
       const conversations = new ConversationRepository(db, productivity.storage, () => this.locale());
       const actions = new PendingActionRepository(db);
       const plans = new TaskPlanService(db, productivity, () => settings.field("timeZone"));
