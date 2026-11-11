@@ -2,7 +2,7 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { hasControlCharacter, LIST_LIMIT_MAX, nfc, SEARCH_MAX, wellFormed } from "./productivity.ts";
+import { hasControlCharacter, LIST_LIMIT_MAX, nfc, RECORD_ID, SEARCH_MAX, wellFormed } from "./productivity.ts";
 
 /**
  * Memories with history (step 7): durable facts about the owner, which may
@@ -145,6 +145,49 @@ export const localOnlySchema = /* @__PURE__ */ z.object({ localOnly: z.boolean()
 
 export const memoryStatusSchema = /* @__PURE__ */ z.object({ status: z.enum(MEMORY_STATUSES) }).strict();
 export const memoryReviewResolveSchema = /* @__PURE__ */ z.object({ action: z.enum(MEMORY_REVIEW_ACTIONS) }).strict();
+
+/** Memories on the map at once; past that, the map shows one memory and its neighbours. */
+export const MEMORY_GRAPH_MEMORIES_MAX = 160;
+/** Folders, conversations, tasks and notes on the map at once. */
+export const MEMORY_GRAPH_HUBS_MAX = 40;
+/** Every node of the map: memories and hubs together. */
+export const MEMORY_GRAPH_NODES_MAX = MEMORY_GRAPH_MEMORIES_MAX + MEMORY_GRAPH_HUBS_MAX;
+
+export const MEMORY_HUB_KINDS = ["folder", "conversation", "task", "note"] as const;
+export type MemoryHubKind = (typeof MEMORY_HUB_KINDS)[number];
+/** "version": one replaced the other; "review": a conflict waiting; "near": words in common; "hub": a memory and a hub. */
+export const MEMORY_LINK_KINDS = ["version", "review", "near", "hub"] as const;
+export type MemoryLinkKind = (typeof MEMORY_LINK_KINDS)[number];
+
+/** Something else of the owner's that a memory talks about. `id` is "<kind>:<record id>". */
+export interface MemoryHub {
+  id: string;
+  kind: MemoryHubKind;
+  /** The record's own id, for the link to its screen. */
+  ref: string;
+  /** The folder's name or the title: the owner's text, always shown as text. */
+  label: string;
+}
+
+/** `from` is always a memory's id; `to` is a memory's id or a hub's. */
+export interface MemoryLink {
+  from: string;
+  to: string;
+  kind: MemoryLinkKind;
+}
+
+/** GET /memories/graph: memories, what they are linked to and why. Worked out from names and words, never by AI. */
+export interface MemoryGraph {
+  memories: Memory[];
+  hubs: MemoryHub[];
+  links: MemoryLink[];
+  /** True when there are more memories than the map draws. */
+  truncated: boolean;
+}
+
+/** `around`: only that memory and what touches it. */
+export const memoryGraphQuerySchema = /* @__PURE__ */ z.object({ around: z.string().regex(RECORD_ID).optional() }).strict();
+export type MemoryGraphQuery = z.input<typeof memoryGraphQuerySchema>;
 
 export const memoryListQuerySchema = /* @__PURE__ */ z
   .object({

@@ -229,7 +229,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S02 | mesclada (#265) |
 | S03 | mesclada (#267) |
 | S04 | mesclada (#270) |
-| S05 | em revisão |
+| S05 | mesclada (#273) |
+| S06 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -266,6 +267,21 @@ Diferenças da S05 para o que as tabelas previam:
 - O alvo de toque dos botões é de 44 px (critério 5), maior que o do protótipo.
 - O menu ao lado do título se chama só "Mais opções"; o da linha leva o nome da conversa. Dois botões com o mesmo nome confundiam o leitor de tela.
 - Para a S05b: a tela lê "hoje" quando desenha, então fica parada se atravessar a 0:00 aberta e sem uso; a troca da conversa do dia precisa redesenhar a lista e o título. E renomear uma conversa ainda conta como uso no servidor (issue aberta nesta PR).
+
+Diferenças da S06 para o que as tabelas previam:
+
+- As ligações saem de regras de texto, porque o banco não guarda de onde a memória veio: a pasta liga quando o nome inteiro dela está na memória; conversa, tarefa e nota ligam quando o título tem duas palavras com sentido em comum; "Memórias próximas" são as que dividem duas palavras, mais as versões do mesmo fato e as que esperam revisão. O painel diz isso numa linha ("A Zuri liga pelo nome da pasta e pelas palavras em comum, sem IA"). Detalhes em `docs/memoria.md`, "Ligações e mapa".
+- "Anotada pela Zuri numa conversa" continua sem apontar para a conversa: a memória não guarda esse vínculo e a S06 não cria tabela nem coluna. Se o Pablo quiser a ligação exata, é uma coluna nova em `zur_memories` (migration), em PR própria.
+- Contatos ("mesma pessoa") não entram no mapa nesta PR. Procurar nomes entre até 5.000 contatos a cada memória não cabe no orçamento de leituras; fica para a S10, que refaz Contatos.
+- O teto de 200 nós é dividido: 160 memórias e 40 pastas, conversas, tarefas e notas. Com mais de 160 memórias o mapa mostra as mais recentes e avisa; com uma memória escolhida, mostra só ela e o que encosta nela.
+- Os tipos não mostram contagem nos botões do filtro (o protótipo mostra): contar por tipo pediria contadores novos no banco. A contagem aparece no título de cada grupo da lista. Os filtros quebram em linhas no celular, no lugar de rolar de lado (regra "nada escondido").
+- As ações da memória (Editar e "Mais opções") saíram da linha da lista e ficam só no painel, como no protótipo. O botão principal continua "Editar"; "Atualizar este fato" segue no menu, como hoje.
+- No celular o painel entra no lugar da lista, com "Voltar", como a lista da Conversa na S05. O foco vai para o título do painel e volta para a linha.
+- "Para revisar" é uma faixa fechada com o botão "Revisar". A frase da faixa é a contagem ("1 memória nova pode mudar uma antiga…"), e não o motivo do primeiro conflito: a fila só é buscada quando o dono abre a faixa.
+- No computador o painel não tem botão para desfazer a escolha (o "Voltar" é do celular): escolher outra memória troca o painel. No mapa, o tipo da memória aparece pela cor do ponto e por escrito no painel.
+- O mapa vem junto com a tela da Memória, que já é carregada sob demanda, e não num pedaço próprio: como pedaço separado ele fazia o empacotador tirar do primeiro carregamento uma parte comum (ícones, textos ou o `jsx-runtime`) e o JS inicial passava do teto.
+- No mapa, o toque acha o ponto mais próximo num raio de 22 px (alvo de 44 px), calculado pelas posições. Assim um ponto desenhado por cima não rouba o toque do vizinho.
+- A chave "Revisão de conflitos" continua no fim da tela até a S16 (linha C2).
 
 ## 12. Riscos
 

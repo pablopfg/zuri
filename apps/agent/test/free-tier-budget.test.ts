@@ -310,6 +310,17 @@ describe("the Free plan budget of each route", () => {
     const common = await cost("GET", "/memories?q=sobre memória");
     expect(common.status).toBe(200);
     expect(common.read).toBeLessThanOrEqual(3 * 200 + 20);
+    // The map (Sinal, S06): one page of memories and one of each hub kind, whatever the tables hold.
+    const map = await cost("GET", "/memories/graph");
+    expect(map.status).toBe(200);
+    expect(map.read).toBeLessThanOrEqual(161 + 4 * 100 + 60);
+    expect(map.written).toBe(0);
+    const some = await runInDurableObject(owner(), (agent: ZuriAgent) => agent.store.db.one<{ id: string }>(`SELECT id FROM zur_memories ORDER BY updated_at DESC LIMIT 1`)?.id ?? "");
+    // Around one memory: the newest 60 matches of its words (about three rows each) and the same hubs.
+    const around = await cost("GET", `/memories/graph?around=${some}`);
+    expect(around.status).toBe(200);
+    expect(around.read).toBeLessThanOrEqual(3 * 60 + 4 * 100 + 60);
+    expect(around.written).toBe(0);
     const reviews = await cost("GET", "/memories/reviews");
     expect(reviews.status).toBe(200);
     expect(reviews.read).toBeLessThanOrEqual(5);

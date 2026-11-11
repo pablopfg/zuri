@@ -1,4 +1,4 @@
-import { MEMORY_BODY_MAX_BYTES, type MemoryAuthor, memoryListQuerySchema, RECORD_ID } from "@zuri/shared";
+import { MEMORY_BODY_MAX_BYTES, type MemoryAuthor, memoryGraphQuerySchema, memoryListQuerySchema, RECORD_ID } from "@zuri/shared";
 import type { Hono } from "hono";
 import { z } from "zod";
 import { AppError } from "../http/errors.ts";
@@ -51,6 +51,9 @@ export function registerMemoryRoutes(app: Hono<ApiEnv>, memories: () => MemorySe
     const input = await readJson(c.req.raw, anyObject, SMALL_BODY_BYTES);
     return Response.json(memories().resolveReview(id, input));
   });
+
+  // The map and the panel of one memory (Sinal, S06). Not in a token's allowlist: it also reads titles of other areas.
+  app.get("/memories/graph", (c) => Response.json(memories().graph(readQuery(c.req.url, memoryGraphQuerySchema))));
 
   app.get("/memories/:id", (c) => Response.json({ memory: memories().get(recordId(c.req.param("id"))) }));
 

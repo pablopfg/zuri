@@ -64,6 +64,8 @@ export async function expectFits(page: Page, label: string) {
   ] as const) {
     await page.setViewportSize({ width, height });
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    // What is drawn from a measured size (the memory map) follows the window at the next frame: read the settled layout.
+    await page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
     const overflow = await page.evaluate(() => {
       const root = document.documentElement;
       const wide = [...document.querySelectorAll<HTMLElement>("main *")].filter((el) => {

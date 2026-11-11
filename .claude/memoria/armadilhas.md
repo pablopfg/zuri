@@ -464,3 +464,26 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
 - Script que mata o servidor do e2e procurando "wrangler dev" na linha de
   comando mata também o shell que o chamou se o texto estiver no próprio
   comando. Deixe o texto num arquivo e chame só o arquivo (S05).
+- `position: sticky` cria um contexto de empilhamento: um menu `fixed` com
+  `z-index` alto dentro de uma caixa sticky fica preso nele e passa por baixo
+  dos toasts. Na Memória o painel sobe junto enquanto o menu está aberto
+  (`.zuri-memory-panel:has([role="menu"])`). O e2e pegou como clique que nunca
+  termina, só com toasts abertos (S06).
+- axe `label-content-name-mismatch` compara palavras inteiras: um rótulo
+  visível cortado no meio da palavra ("mudan…") não está contido no nome
+  acessível com a palavra inteira. Corte rótulo sempre no fim de uma palavra
+  (`cut` em `MemoryMap.tsx`, S06).
+- Pedaço sob demanda dentro de uma tela que já é sob demanda (o mapa da
+  Memória) muda a divisão do primeiro carregamento: conforme o que ele
+  importava, o empacotador separava `useBaseQuery`, `createLucideIcon` ou o
+  `jsx-runtime` do pacote inicial, sempre com 0,3 a 0,4 kB a mais. Saiu
+  importando o mapa direto na tela. Compare a lista de `dist/assets` com a da
+  `develop` (S06).
+- Desenho que depende de tamanho medido (`ResizeObserver`) só acompanha a
+  janela no quadro seguinte. `expectFits` espera dois quadros antes de medir;
+  teste novo que troca o tamanho da janela e mede na hora precisa do mesmo
+  (S06).
+- Dados de e2e ficam no banco entre os testes e entre os projetos (computador
+  e celular): uma memória "sem nada em comum" precisa de palavras que nenhum
+  outro teste usa, senão a regra das duas palavras em comum liga as duas
+  (S06, `memory.spec.ts`).

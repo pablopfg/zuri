@@ -103,7 +103,9 @@ test("a memory the assistant saves is marked as its own on the Memory screen, an
   await expect(item.getByText("Anotada pela Zuri numa conversa")).toBeVisible();
   await expectAccessible(page, "memória da assistente");
 
-  await item.getByRole("button", { name: "Editar" }).click();
+  // The actions are in the panel of the chosen memory (Sinal, S06).
+  await item.getByRole("button", { name: fact }).click();
+  await page.getByRole("complementary", { name: "Memória escolhida" }).getByRole("button", { name: "Editar" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Memória").fill(`${fact}.`);
   await dialog.getByRole("button", { name: "Guardar" }).click();
