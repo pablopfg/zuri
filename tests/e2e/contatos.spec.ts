@@ -461,6 +461,9 @@ test("the name comes without the note written after it, with only the phone unde
   await marcos.filter({ hasText: "(41) 97777-0112" }).click();
   const person = card(page);
   await expect(person.getByRole("heading", { level: 2, name: "Marcos Vieira Lopes" })).toBeVisible();
+  // On a phone the name takes the focus as the card opens; it is a title, with no ring drawn around it.
+  if (await navIsPhone(page)) await expect(person.getByRole("heading", { level: 2 })).toBeFocused();
+  await expect(person.getByRole("heading", { level: 2 })).toHaveCSS("outline-style", "none");
   await expect(person.getByText("Outro contato tem este mesmo nome. São pessoas diferentes. Dados deste: (41) 97777-0112 · nasc. 11 de fevereiro de 1979 · CPF ***.982.247-**")).toBeVisible();
   await expect(person.getByText("Paciente", { exact: true })).toBeVisible();
   await expectAccessible(page, "contato homônimo");

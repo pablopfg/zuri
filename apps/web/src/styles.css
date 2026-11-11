@@ -255,6 +255,12 @@ body {
   outline-offset: 2px;
 }
 
+/* A title that takes the focus when its screen opens (so a screen reader starts there) is no control: no ring around it. */
+h1[tabindex="-1"]:focus-visible,
+h2[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
 /* Edge draws its own eye in password fields; PasswordField already has one. */
 input::-ms-reveal,
 input::-ms-clear {

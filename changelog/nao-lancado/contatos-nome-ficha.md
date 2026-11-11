@@ -10,6 +10,10 @@
 - Ao ligar os contatos, as etiquetas do Google aparecem na hora e o cartão pede a escolha. Nenhum contato é copiado antes disso.
 - Na lista de contatos, abaixo do nome aparece só o telefone.
 
+### Corrigido
+
+- No celular, o nome do contato na ficha não aparece mais dentro de um contorno verde ao abrir.
+
 ### Segurança
 
 - A interface passa a aceitar imagens dos quatro endereços de fotos do Google (`lh3` a `lh6.googleusercontent.com`), só para a foto dos contatos. O endereço é conferido no servidor e na tela, e o pedido da imagem não leva a página de origem.
