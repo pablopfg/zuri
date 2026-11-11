@@ -106,6 +106,17 @@ describe("isLocale", () => {
   });
 });
 
+describe("a key without text", () => {
+  it("reads as the key itself instead of throwing (#297)", () => {
+    const sample = createTranslator<string>({ "pt-BR": { "a.known": "Olá, {name}" }, en: {} });
+    expect(sample.t("pt-BR", "a.known", { name: "Zuri" })).toBe("Olá, Zuri");
+    // English falls back to pt-BR first; only a key nowhere shows as itself.
+    expect(sample.t("en", "a.known", { name: "Zuri" })).toBe("Olá, Zuri");
+    expect(sample.t("pt-BR", "a.missing.{name}", { name: "x" })).toBe("a.missing.x");
+    expect(sample.t("en", "web.automations.schedule.weekdays", { time: "09:00" })).toBe("web.automations.schedule.weekdays");
+  });
+});
+
 describe("plural", () => {
   const sample = createTranslator({
     "pt-BR": { "tasks.count.one": "{count} tarefa", "tasks.count.other": "{count} tarefas", "inbox.one": "1 aviso de {name}", "inbox.other": "{count} avisos de {name}" },

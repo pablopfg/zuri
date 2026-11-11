@@ -11,6 +11,7 @@ import {
   MCP_LIMITS,
   type McpRoutineTool,
   ptBRAutomations,
+  ptBRSchedule,
   type Settings,
   SCHEDULE_TYPES,
   type ScheduleType,
@@ -32,6 +33,7 @@ import { DAY_SHORT, FREQUENCY_LABEL, KIND_HINT, KIND_LABEL, MESSAGE_LABEL, NAME_
 
 // This screen's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRAutomations);
+addMessages(ptBRSchedule);
 
 const KIND_ICON: Record<AutomationKind, typeof Bell> = { reminder: Bell, task_digest: ListChecks, agent_prompt: WandSparkles };
 
