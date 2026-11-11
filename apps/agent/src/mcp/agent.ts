@@ -150,8 +150,9 @@ export class McpTurnTools {
 
   /**
    * The turn read text a stranger could have written straight into Zuri (the
-   * CRM's history, from n8n): from then on no external call runs on its own,
-   * so a planted instruction can't send the owner's data out unseen.
+   * CRM's history, which may hold what other systems once sent): from then on
+   * no external call runs on its own, so a planted instruction can't send the
+   * owner's data out unseen.
    */
   sawThirdPartyText(): void {
     this.#thirdParty = true;

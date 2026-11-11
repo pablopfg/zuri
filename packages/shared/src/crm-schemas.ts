@@ -2,15 +2,13 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { CRM_ACTIVITY_KINDS, CRM_FOLLOW_UP_FILTERS, CRM_LIMITS } from "./crm.ts";
+import { CRM_FOLLOW_UP_FILTERS, CRM_LIMITS } from "./crm.ts";
 import { instantSchema, isValidCalendarDate } from "./dates.ts";
 import { hasControlCharacter, line, nfc, RECORD_ID, text, wellFormed } from "./productivity.ts";
 
 /**
- * The internal CRM (step 22b): what the screen, the chat and n8n's signed
- * events may send. Everything from n8n is a third party's data: it passes
- * here before anything is written, and an event that doesn't is refused
- * whole, never applied half.
+ * The internal CRM (step 22b): what the screen and the chat may send. It all
+ * passes here before anything is written.
  */
 
 /** "MM-DD" (any year, 29 February allowed) or "YYYY-MM-DD" (a real date). */
@@ -136,7 +134,6 @@ export const crmSettingsSchema = /* @__PURE__ */ (() =>
     .object({
       followUps: z.boolean(),
       birthdays: z.boolean(),
-      newClients: z.boolean(),
       birthdayTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     })
     .partial()
@@ -159,48 +156,3 @@ export const crmClientsQuerySchema = /* @__PURE__ */ (() =>
         .optional(),
     })
     .strict())();
-
-// ---------- n8n's events ----------
-
-const ref = /* @__PURE__ */ (() => line(CRM_LIMITS.ref).refine((value) => /^[\x21-\x7e]+$/.test(value)))();
-const eventText = /* @__PURE__ */ (() => text(CRM_LIMITS.historyText))();
-
-const upsertData = /* @__PURE__ */ (() =>
-  z
-    .object({
-      ref,
-      name: line(CRM_LIMITS.name).optional(),
-      phone: nullable(crmPhoneSchema).optional(),
-      email: nullable(crmEmailSchema).optional(),
-      birthday: nullable(birthdaySchema).optional(),
-      /** A stage by its name, any case; an unknown name is skipped. */
-      stage: line(CRM_LIMITS.stage).optional(),
-      tagsAdd: tagsSchema.optional(),
-      tagsRemove: tagsSchema.optional(),
-    })
-    .strict())();
-
-const activityData = /* @__PURE__ */ (() =>
-  z
-    .object({
-      ref,
-      kind: z.enum(CRM_ACTIVITY_KINDS),
-      text: eventText.optional(),
-      /** Needed only when the client is new to Zuri. */
-      name: line(CRM_LIMITS.name).optional(),
-    })
-    .strict())();
-
-const followUpData = /* @__PURE__ */ (() => z.object({ ref, followUp: crmFollowUpSchema }).strict())();
-
-/**
- * One event as n8n posts it: an id of its own (a repeat writes nothing),
- * a closed type and that type's data. Nothing else is read.
- */
-export const crmEventSchema = /* @__PURE__ */ (() =>
-  z.discriminatedUnion("type", [
-    z.object({ id: line(CRM_LIMITS.eventId), type: z.literal("client.upsert"), data: upsertData }).strict(),
-    z.object({ id: line(CRM_LIMITS.eventId), type: z.literal("client.activity"), data: activityData }).strict(),
-    z.object({ id: line(CRM_LIMITS.eventId), type: z.literal("client.follow_up"), data: followUpData }).strict(),
-  ]))();
-export type CrmEvent = z.output<typeof crmEventSchema>;
