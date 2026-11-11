@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Schedule } from "@zuri/shared";
-import { t } from "../../../packages/shared/i18n/index.ts";
+import { createTranslator, type MessageKey, ptBRCore, ptBRSchedule, t } from "../../../packages/shared/i18n/index.ts";
+import { DAY_SHORT } from "../src/pages/automations/labels.ts";
 import { automationAnchor, describeSchedule, draftOf, emptyDraft, joinList, scheduleOf } from "../src/lib/automations.ts";
 
 const SP = "America/Sao_Paulo";
@@ -40,6 +41,40 @@ describe("how a schedule reads", () => {
     expect(joinList(["a"], pt)).toBe("a");
     expect(joinList(["a", "b"], pt)).toBe("a e b");
     expect(joinList(["a", "b", "c"], pt)).toBe("a, b e c");
+  });
+});
+
+describe("the words of a schedule outside the Automations screen (#297)", () => {
+  // What the CRM's flows have loaded for a schedule: the first bundle's texts and the schedule part, without the Automations screen's.
+  const texts: Record<string, string> = { ...ptBRCore, ...ptBRSchedule };
+  const only = createTranslator<string>({ "pt-BR": texts, en: texts });
+  const lean = (key: MessageKey, params?: Record<string, string | number>) => only.t("pt-BR", key, params);
+
+  it("every kind of schedule reads with the schedule part alone", () => {
+    const schedules: Schedule[] = [
+      { type: "once", at: "2026-12-24T20:00" },
+      { type: "daily", time: "08:00" },
+      { type: "weekly", days: [1, 2, 3, 4, 5], time: "09:00" },
+      { type: "weekly", days: [0, 6], time: "10:00" },
+      { type: "weekly", days: [0, 1, 2, 3, 4, 5, 6], time: "06:00" },
+      { type: "weekly", days: [2, 4, 6], time: "11:00" },
+      { type: "monthly", day: 5, time: "18:00" },
+      { type: "monthly", day: 31, time: "18:00" },
+      { type: "interval", minutes: 60 },
+      { type: "interval", minutes: 180 },
+    ];
+    for (const schedule of schedules) {
+      const text = describeSchedule(schedule, lean, SP, iso);
+      expect(text, JSON.stringify(schedule)).toBe(describePt(schedule));
+      expect(text, JSON.stringify(schedule)).not.toContain("web.");
+    }
+  });
+
+  it("the days of the week, short and long, are in the schedule part", () => {
+    expect(DAY_SHORT.map((key) => lean(key))).toEqual(["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]);
+    expect([0, 1, 2, 3, 4, 5, 6].map((day) => describeSchedule({ type: "weekly", days: [day], time: "08:00" }, lean, SP, iso))).toEqual(
+      ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"].map((day) => `${day}, às 08:00`),
+    );
   });
 });
 
