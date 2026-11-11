@@ -155,7 +155,11 @@ interface Store {
  */
 /** The soonest the shared alarm comes back for notice work already past due (see `otherDue`). */
 const RETRY_FLOOR_MS = 60_000;
-/** The reviews' check waits this long after a wake that synced the contacts: the two Google reads never share a wake. */
+/**
+ * The reviews' check waits this long after a wake that synced the contacts, or half the contacts' interval
+ * when that is shorter (a sync every minute leaves it 30 s): the two Google reads never share a wake, and
+ * the check always has a wake of its own before the next sync.
+ */
 const SYNC_GAP_MS = 150_000;
 
 export class ZuriAgent extends Agent<WorkerEnv> {
@@ -391,7 +395,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       if (await this.store.contacts.tick()) {
         // The reviews' check never shares a wake with a contacts' sync that went to Google: it waits two
         // and a half minutes. A wake that only sent the notice of the day, or found the sync busy, holds nothing.
-        if (this.store.contacts.readGoogle) this.store.reviews.holdOff(SYNC_GAP_MS);
+        if (this.store.contacts.readGoogle) this.store.reviews.holdOff(Math.min(SYNC_GAP_MS, this.store.contacts.everyMs() / 2));
         await automations.rearm();
       }
     } catch (error) {

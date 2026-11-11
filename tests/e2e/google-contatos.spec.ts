@@ -99,7 +99,7 @@ test("\"Sync now\" waits for the labels being saved, then copies the new choice 
   expect(syncs).toEqual(["POST"]);
 });
 
-test("the owner picks how often the contacts are read, within 5 minutes and a day; accessible @mobile", async ({ page }) => {
+test("the owner picks how often the contacts are read, within a minute and a day; accessible @mobile", async ({ page }) => {
   const contacts = await turnOn(page);
   // The interval outlives turning the contacts off: whatever an earlier run left, this one starts from 5.
   expect((await page.request.patch("/api/google/contacts/settings", { headers: CSRF, data: { syncEveryMinutes: 5 } })).status()).toBe(200);
@@ -108,15 +108,22 @@ test("the owner picks how often the contacts are read, within 5 minutes and a da
   await expect(every).toHaveValue("5");
   const save = contacts.getByRole("button", { name: "Salvar intervalo" });
   await expect(every).toBeVisible();
-  await expect(contacts.getByText("De 5 a 1440 minutos. Quando nada mudou no Google, nada é regravado aqui.")).toBeVisible();
+  await expect(contacts.getByText("De 1 a 1440 minutos. Quando nada mudou no Google, nada é regravado aqui.")).toBeVisible();
   // Out of the range (n - 1 and n + 1), empty or not whole: nothing to save.
-  for (const value of ["4", "1441", "", "7.5"]) {
+  for (const value of ["0", "1441", "", "7.5"]) {
     await every.fill(value);
     await expect(save).toBeDisabled();
   }
-  await every.fill("45");
+  // A minute is the shortest (the owner's call of 11/11/2026): kept by the server, then on to 45.
+  await every.fill("1");
   await save.click();
   await expect(page.getByRole("status").filter({ hasText: "Intervalo salvo" })).toBeVisible();
+  await expect(save).toBeDisabled();
+  await page.reload();
+  await expect(every).toHaveValue("1");
+  await every.fill("45");
+  await save.click();
+  await expect(page.getByRole("status").filter({ hasText: "Intervalo salvo" }).last()).toBeVisible();
   // The same value again is nothing to save, and the next read is told.
   await expect(save).toBeDisabled();
   await expect(contacts.getByText(/^Próxima leitura: /)).toBeVisible();

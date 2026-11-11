@@ -11,6 +11,7 @@ import {
   type FlowDraft,
   type FlowFilterOp,
   type FlowGoogleInfo,
+  type FlowSettings,
   type FlowNode,
   type FlowNodeType,
   type FlowPriority,
@@ -52,8 +53,9 @@ interface TriggerDraft {
 }
 
 /** The form opened on a trigger; a schedule the form doesn't offer (once, monthly) shows as daily and is kept until changed. */
-function triggerDraft(trigger: FlowTrigger | null): TriggerDraft {
-  const draft: TriggerDraft = { kind: "interval", minutes: "15", time: "09:00", days: [1, 2, 3, 4, 5] };
+function triggerDraft(trigger: FlowTrigger | null, minInterval: number): TriggerDraft {
+  // A new flow starts at 15 minutes, or at the owner's shortest interval when that is longer.
+  const draft: TriggerDraft = { kind: "interval", minutes: String(Math.max(15, minInterval)), time: "09:00", days: [1, 2, 3, 4, 5] };
   if (!trigger) return draft;
   if (trigger.type === "manual") return { ...draft, kind: "manual" };
   const schedule = trigger.schedule;
@@ -64,14 +66,14 @@ function triggerDraft(trigger: FlowTrigger | null): TriggerDraft {
 }
 
 /** The trigger the fields describe, or null while something is missing (the server checks again). */
-function triggerOf(draft: TriggerDraft, original: FlowTrigger | null, untouched: boolean): FlowTrigger | null {
+function triggerOf(draft: TriggerDraft, original: FlowTrigger | null, untouched: boolean, minInterval: number): FlowTrigger | null {
   if (untouched && original) return original;
   switch (draft.kind) {
     case "manual":
       return { type: "manual" };
     case "interval": {
       const minutes = Number(draft.minutes);
-      return Number.isInteger(minutes) && minutes >= FLOW_LIMITS.minIntervalMinutes ? { type: "schedule", schedule: { type: "interval", minutes } } : null;
+      return Number.isInteger(minutes) && minutes >= minInterval ? { type: "schedule", schedule: { type: "interval", minutes } } : null;
     }
     case "daily":
       return TIME.test(draft.time) ? { type: "schedule", schedule: { type: "daily", time: draft.time } } : null;
@@ -121,7 +123,20 @@ function cleanNodes(nodes: FlowNode[]): FlowNode[] {
  * Creating or changing a flow: a name, when it runs and its steps, in order.
  * "Monitorar sites" opens it with one monitor step every 15 minutes.
  */
-export function FlowEditor({ editing, connections, google, onClose }: { editing: Editing; connections: FlowConnection[]; google: FlowGoogleInfo; onClose: () => void }) {
+export function FlowEditor({
+  editing,
+  connections,
+  google,
+  settings,
+  onClose,
+}: {
+  editing: Editing;
+  connections: FlowConnection[];
+  google: FlowGoogleInfo;
+  /** The owner's shortest intervals (the server checks them again on saving and on turning on). */
+  settings: Pick<FlowSettings, "minIntervalMinutes" | "aiMinIntervalMinutes">;
+  onClose: () => void;
+}) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const toast = useToast();
@@ -129,7 +144,7 @@ export function FlowEditor({ editing, connections, google, onClose }: { editing:
   const suggested = editing.mode === "draft" ? (editing.draft.definition as FlowDefinition) : null;
   const current = editing.mode === "edit" ? editing.flow : suggested ? { id: null, name: editing.mode === "draft" ? editing.draft.name : "", definition: suggested } : null;
   const [name, setName] = useState(current?.name ?? (editing.mode === "monitor" ? t("web.flows.template.monitorName") : ""));
-  const [trigger, setTrigger] = useState<TriggerDraft>(() => triggerDraft(current?.definition.trigger ?? null));
+  const [trigger, setTrigger] = useState<TriggerDraft>(() => triggerDraft(current?.definition.trigger ?? null, settings.minIntervalMinutes));
   const [touched, setTouched] = useState(false);
   // Each step gets a key of its own for React, so moving one keeps its fields with it.
   const [steps, setSteps] = useState<Step[]>(() => (current?.definition.nodes ?? (editing.mode === "monitor" ? [newNode("monitor", connections, google)] : [])).map(step));
@@ -137,7 +152,7 @@ export function FlowEditor({ editing, connections, google, onClose }: { editing:
   const [adding, setAdding] = useState<FlowNodeType>(editing.mode === "monitor" ? "notify" : "request");
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
-  const builtTrigger = triggerOf(trigger, current?.definition.trigger ?? null, !touched);
+  const builtTrigger = triggerOf(trigger, current?.definition.trigger ?? null, !touched, settings.minIntervalMinutes);
   const ready = name.trim() !== "" && builtTrigger !== null && nodes.length > 0;
   const setTriggerField = (patch: Partial<TriggerDraft>) => {
     setTouched(true);
@@ -192,10 +207,10 @@ export function FlowEditor({ editing, connections, google, onClose }: { editing:
         {trigger.kind === "interval" && (
           <TextField
             label={t("web.flows.form.minutes")}
-            hint={t("web.flows.form.minutesHint")}
+            hint={t("web.flows.form.minutesHint", { min: settings.minIntervalMinutes, aiMin: Math.max(settings.minIntervalMinutes, settings.aiMinIntervalMinutes) })}
             type="number"
             inputMode="numeric"
-            min={FLOW_LIMITS.minIntervalMinutes}
+            min={settings.minIntervalMinutes}
             value={trigger.minutes}
             required
             onChange={(e) => setTriggerField({ minutes: e.target.value })}
