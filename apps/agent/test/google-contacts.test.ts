@@ -7,13 +7,14 @@ import { ToolError, ToolExecutor } from "../src/tools/registry.ts";
 import { type ChatWorld, withChatWorld } from "./chat-world.ts";
 
 // Step 19b: the read-only copy of the Google contacts in the labels the owner
-// chose, synced from the People API (simulated here) once an hour and by the
-// owner's button; its two read tools, its notices and what never leaves it.
+// chose, synced from the People API (simulated here) every five minutes and by
+// the owner's button; its two read tools, its notices and what never leaves it.
 
 const CALENDAR_SCOPES = ["https://www.googleapis.com/auth/calendar.calendarlist.readonly", "https://www.googleapis.com/auth/calendar.events"];
 const CLIENTS = "contactGroups/clientes";
 const FAMILY = "contactGroups/familia";
 const HOUR = 3_600_000;
+const EVERY = CONTACT_LIMITS.syncEveryMs;
 
 async function consent(world: ChatWorld, purpose: "calendar" | "contacts") {
   const url = new URL(await world.google.begin("sessao", purpose));
@@ -201,6 +202,8 @@ describe("the sync", () => {
       add(world, "c1", "Ana", [CLIENTS]);
       await turnOn(world);
       world.googleSim.people.groups.splice(0, 1);
+      // The labels are read once an hour: the next sync that reads them finds the label gone.
+      world.clock.now += HOUR;
       expect(await world.contacts.sync("alarm")).toBe("ok");
       expect(world.contacts.labels().map((label) => label.name)).toEqual(["Família"]);
       expect(names(world)).toEqual([]);
@@ -344,11 +347,11 @@ describe("the sync", () => {
 });
 
 describe("the copy's edges", () => {
-  it("keeps five e-mails and five dates, skips a nameless field and reads a broken row as empty", () =>
+  it("keeps ten e-mails and ten dates and counts the rest, skips a nameless field and reads a broken row as empty", () =>
     withChatWorld(async (world) => {
       add(world, "c1", "Ana", [CLIENTS], {
-        emailAddresses: Array.from({ length: 7 }, (_, i) => ({ value: `ana${i}@exemplo.com.br` })),
-        events: Array.from({ length: 7 }, (_, i) => ({ date: { month: 1, day: i + 1 }, formattedType: `D${i}` })),
+        emailAddresses: Array.from({ length: 12 }, (_, i) => ({ value: `ana${i}@exemplo.com.br` })),
+        events: Array.from({ length: 13 }, (_, i) => ({ date: { month: 1, day: i + 1 }, formattedType: `D${i}` })),
         userDefined: [{ key: "", value: "sem nome" }, { key: "Plano", value: "Mensal" }],
       });
       await turnOn(world);
@@ -357,8 +360,12 @@ describe("the copy's edges", () => {
       expect(whole?.emails).toHaveLength(CONTACT_LIMITS.emails);
       expect(whole?.dates).toHaveLength(CONTACT_LIMITS.dates);
       expect(whole?.fields).toEqual([{ label: "Plano", value: "Mensal" }]);
-      world.db.run(`UPDATE zur_contacts SET data = '{' WHERE id = ?`, first?.id ?? "");
-      expect(world.contacts.get(first?.id ?? "")).toMatchObject({ phones: [], emails: [], notes: "", fields: [] });
+      // "and 2 more at Google": only the lists past their ceiling.
+      expect(whole?.more).toEqual({ emails: 2, dates: 3 });
+      for (const broken of ["{", "null", "[]", '{"phones":[1,{"label":"x"}],"more":{"phones":"9","emails":-1},"dates":[null],"fields":[{}]}']) {
+        world.db.run(`UPDATE zur_contacts SET data = ? WHERE id = ?`, broken, first?.id ?? "");
+        expect(world.contacts.get(first?.id ?? ""), broken).toMatchObject({ phones: [], emails: [], dates: [], notes: "", fields: [], addresses: [], urls: [], relations: [], chats: [], more: {}, given: "", middle: "" });
+      }
     }));
 
   it("pages the screen's list by name and id", () =>
@@ -430,20 +437,26 @@ describe("the sync's failures", () => {
       expect(world.contacts.status().problem).toBe("scope");
     }));
 
-  it("waits longer after each 429 or 5xx (30 min, 1 h, 2 h … 6 h) and tells the owner on the third", () =>
+  it("waits longer after each 429 or 5xx (5 min, 10 min, 20 min … 6 h) and tells the owner on the fifth", () =>
     withChatWorld(async (world) => {
       await turnOn(world);
       const waits: number[] = [];
-      for (const status of [429, 503, 500, 429, 429, 429]) {
+      for (const status of [429, 503, 500, 429, 429, 429, 429, 429, 429]) {
         world.googleSim.people.failure = { status, body: { error: { code: status } } };
         expect(await world.contacts.sync("alarm")).toBe("failed");
         waits.push(((sync(world).next_sync as number) - world.clock.now) / 60_000);
+        // The countdown on the screen shows the wait there really is.
+        expect(world.contacts.status().nextSyncAt).toBe(new Date(sync(world).next_sync as number).toISOString());
+        // Four failures (75 minutes of waiting) are a blip: the owner hears of the fifth.
+        expect(world.contactNotices.filter((notice) => notice.kind === "contacts.problem")).toHaveLength(waits.length >= 5 ? 1 : 0);
+        expect(world.contacts.status().lastResult).toBe("failed");
       }
-      expect(waits).toEqual([30, 60, 120, 240, 360, 360]);
+      expect(waits).toEqual([5, 10, 20, 40, 80, 160, 320, 360, 360]);
       expect(world.contactNotices.filter((notice) => notice.kind === "contacts.problem")).toEqual([{ kind: "contacts.problem", problem: "unavailable" }]);
       world.googleSim.people.failure = null;
       expect(await world.contacts.sync("alarm")).toBe("ok");
-      expect(sync(world)).toMatchObject({ failures: 0, problem: null, next_sync: world.clock.now + HOUR });
+      expect(sync(world)).toMatchObject({ failures: 0, problem: null, status: "ok", next_sync: world.clock.now + EVERY });
+      expect(world.contacts.status()).toMatchObject({ status: "ok", problem: null, lastResult: "unchanged" });
     }));
 
   it("skips a contact out of shape, counting it without its content, and keeps the rest", () =>
@@ -482,8 +495,8 @@ describe("the sync's failures", () => {
 });
 
 describe("what is kept of a contact", () => {
-  it("keeps up to 5 phones in E.164 and 5 e-mails, cut texts and dates that exist", () => {
-    const phones = Array.from({ length: 6 }, (_, i) => ({ value: `(11) 9999-000${i}`, formattedType: "Celular" }));
+  it("keeps up to 10 phones in E.164 and 10 e-mails, cut texts and dates that exist", () => {
+    const phones = Array.from({ length: 12 }, (_, i) => ({ value: `(11) 9999-00${String(i).padStart(2, "0")}`, formattedType: "Celular" }));
     const kept = readPerson({
       resourceName: "people/c1",
       names: [{ givenName: "Ana", familyName: "Souza" }],
@@ -495,7 +508,11 @@ describe("what is kept of a contact", () => {
       userDefined: Array.from({ length: 21 }, (_, i) => ({ key: `k${i}`, value: "v" })),
     });
     expect(kept.display).toBe("Ana Souza");
-    expect(kept.data.phones).toHaveLength(5);
+    expect(kept.data.phones).toHaveLength(10);
+    // The phone that isn't one is neither kept nor counted; the two past the ceiling are counted.
+    expect(kept.data.more).toEqual({ phones: 2, fields: 1 });
+    expect(kept.data.phones[0]).toEqual({ label: "Celular", value: "(11) 9999-0000" });
+    expect(kept.keys.filter((key) => key.kind === "phone")).toHaveLength(10);
     expect(kept.keys.filter((key) => key.kind === "phone").map((key) => key.value)[0]).toBe("+551199990000");
     expect(kept.data.emails).toEqual([{ label: "", value: "ana@exemplo.com.br" }]);
     expect(kept.birthday).toBe("02-28");

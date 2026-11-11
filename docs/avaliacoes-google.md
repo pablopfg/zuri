@@ -30,9 +30,10 @@ depois disso entram na fila.
 
 ### O que acontece com cada avaliação
 
-A Zuri lê o perfil a cada 15 minutos, pelo mesmo alarme das rotinas, e só o
+A Zuri lê o perfil a cada 10 minutos, pelo mesmo alarme das rotinas, e só o
 que mudou desde a leitura anterior. **Conferir agora** faz o mesmo na hora,
-no máximo uma vez por minuto.
+no máximo uma vez por minuto. Uma leitura sem novidade não regrava avaliação
+nenhuma e não faz a tela recarregar.
 
 | Avaliação | O que a Zuri faz |
 | --- | --- |
@@ -168,7 +169,7 @@ Antes do deploy, o dono confere no projeto do Google Cloud do cliente OAuth:
 Os mesmos secrets da agenda servem (`GOOGLE_CLIENT_ID`,
 `GOOGLE_CLIENT_SECRET`, `MCP_CREDENTIAL_KEY`). Nenhum recurso novo da
 Cloudflare. O aviso de avaliação nova por Pub/Sub exigiria faturamento no
-Google Cloud, então a Zuri lê de 15 em 15 minutos.
+Google Cloud, então a Zuri lê de 10 em 10 minutos.
 
 ## Como funciona
 
@@ -212,7 +213,8 @@ Google Cloud, então a Zuri lê de 15 em 15 minutos.
 | O quê | Limite |
 | --- | --- |
 | Perfis lidos | até 3 (até 20 listados) |
-| Leitura | a cada 15 minutos; "Conferir agora" 1 por minuto |
+| Leitura | a cada 10 minutos (144 por dia; sem novidade, 3 linhas gravadas); "Conferir agora" 1 por minuto |
+| Falhas seguidas do Google | espera que dobra de 10 minutos até 6 horas; aviso na quarta |
 | Chamadas ao Google por leitura | até 14 |
 | Rascunhos com IA | 30 por dia e 1.000 Neurons por dia (dentro dos 9.000 do dono); 3 por despertar |
 | Avisos por leitura | 3 avulsos, o resto num aviso só |

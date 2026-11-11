@@ -232,7 +232,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S05 | mesclada (#273) |
 | S06 | mesclada (#275) |
 | S07 | mesclada (#277) |
-| S08 | em revisão |
+| S08 | mesclada (#282) |
+| S09 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -302,6 +303,22 @@ Diferenças da S08 para o que as tabelas previam:
 - Auditoria (S08): nenhum achado alto ou médio. SEC-S08-01 (baixo), corrigido: as preferências da agenda entram no backup e voltam na importação, com a mesma validação.
 - Ficou para depois (baixo): em Tarefas, "Hoje" e "Ontem" do prazo só mudam à meia-noite quando a lista é desenhada de novo, como os grupos da S07; a virada da semana (domingo para segunda) com a tela aberta tem teste só da virada do dia.
 - A preferência de visão guardada no navegador (`zuri.agenda.view`) saiu: quem manda é "Ao abrir, mostrar", igual em todos os aparelhos.
+
+Diferenças da S09 (servidor da sincronização), para a S10 e a S12 não as desfazerem:
+
+- **Migration 32**, ao contrário do "nenhuma migration" de `sincronizacao-contatos-avaliacoes.md`. Os gatilhos das migrations 23 e 26 sobem o número da área quando `status`, `problem` ou `last_ok_at` aparecem num `UPDATE`, qualquer que seja o valor, e gatilho não se troca sem `DROP`. A leitura sem novidade grava a hora, o resultado e a próxima em colunas novas (`checked_at`, `last_result` e, nos contatos, `dirty`, `labels_read_at`, `synced_now_at`, `fields_version`), fora dos gatilhos. `status`, `problem` e `last_ok_at` só são escritos quando algo mudou ou quando precisam mudar.
+- A tela não recebe aviso quando a leitura não trouxe nada (é esse o ponto). A contagem regressiva da S10 e da S12 sai do `nextSyncAt` do estado; ao chegar a zero, a tela pede o estado de novo uma vez (`GET /api/google/contacts` ou `GET /api/reviews/status`, leitura de uma linha) para saber a próxima hora. `lastResult` diz se é "Nada mudou às" (`unchanged`), "Conferido às" (`changed`) ou falha (`failed`); `lastSyncAt` e `lastCheckAt` passam a ser a hora da última leitura que deu certo, com ou sem novidade.
+- O estado das avaliações usa o mesmo nome `nextSyncAt`, para um componente só de contagem.
+- "Sincronizar agora" dos contatos: 429 `RATE_LIMITED` com `retryAfter` em segundos (no corpo e no cabeçalho `Retry-After`). O texto do erro diz "daqui a um minuto", como o das avaliações; a tela pode mostrar os segundos do `retryAfter`. Ligar os contatos ou salvar uma escolha de etiquetas diferente da anterior devolve o minuto ao botão, porque a tela de hoje sincroniza logo depois de salvar. Salvar a mesma escolha de novo não devolve. O "Conferir agora" das avaliações também passa a devolver os segundos que faltam, em vez de sempre 60.
+- Rota nova `POST /api/google/contacts/labels/refresh`, para a S10 chamar ao abrir a escolha de etiquetas. A lista guardada serve por um minuto.
+- A ficha recebe `given`, `middle`, `family`, `addresses`, `urls`, `relations`, `chats` e `more` (quantos itens o Google tem além do teto de cada lista, para o "e mais N no Google"). Listas vazias vêm como `[]`: é delas que a S10 monta o "Vazio no Google". O teto de telefones, e-mails e datas subiu de 5 para 10, igual ao dos campos novos.
+- Site só é guardado se for `http` ou `https`, com domínio e sem usuário e senha; "exemplo.com.br" ganha `https://`. A tela pode criar o link sem conferir de novo, mas com `rel="noopener noreferrer"`.
+- `refreshing` no estado dos contatos diz que uma leitura inteira está em curso (primeira leitura, etiqueta acrescentada ou campos novos): é o gancho do aviso "Atualizando todos os contatos".
+- O aviso de "Google fora do ar" sai na quinta falha seguida dos contatos e na quarta das avaliações (antes, na terceira): com a espera partindo de 5 e de 10 minutos, três falhas seriam menos de meia hora. Continua pouco mais de uma hora, como era.
+- Os contatos e as avaliações não leem o Google no mesmo despertar: quando vencem juntos, a conferência das avaliações espera 2 min 30 s.
+- Endereço é cortado em 300 caracteres (o plano dizia 200 para os demais campos; um endereço completo passa disso). Site com mais de 200 caracteres fica de fora inteiro, porque um link cortado levaria a outro lugar, e não entra na conta do "e mais N no Google".
+- `lastResult` é `changed` também quando só as etiquetas mudaram (nova, renomeada, apagada ou com outra contagem), porque a lista da tela recarrega nesses casos.
+- Sem nenhuma etiqueta escolhida, a Zuri só fala com o Google para ler as etiquetas, uma vez por hora.
 
 ## 12. Riscos
 

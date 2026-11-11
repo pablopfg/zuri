@@ -1,7 +1,7 @@
 // The pt-BR texts of the Reviews tab in Contacts and of the reviews' part of
 // Settings › Integrations › Google (steps 19c and 19d). They come with those screens, on demand (rule P11).
 export const ptBRReviews = {
-  "web.reviews.description": "As avaliações do seu Perfil da Empresa no Google. A Zuri lê a cada 15 minutos, avisa a equipe das negativas e escreve rascunhos para você aprovar. Nada sai sem você, a não ser as positivas, se você liberar a Zuri a publicar sozinha.",
+  "web.reviews.description": "As avaliações do seu Perfil da Empresa no Google. A Zuri lê a cada 10 minutos, avisa a equipe das negativas e escreve rascunhos para você aprovar. Nada sai sem você, a não ser as positivas, se você liberar a Zuri a publicar sozinha.",
   "web.reviews.off.title": "Avaliações desligadas",
   "web.reviews.off.body": "Ligue em Configurações › Integrações › Google para a Zuri ler as avaliações do seu perfil.",
   "web.reviews.off.link": "Abrir Integrações",

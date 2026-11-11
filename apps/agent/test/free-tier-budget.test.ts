@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, CRM_LIMITS, FLOW_LIMITS, LIST_LIMIT_DEFAULT } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, CONTACT_LIMITS, CRM_LIMITS, FLOW_LIMITS, LIST_LIMIT_DEFAULT, REVIEW_LIMITS } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -848,7 +848,7 @@ describe("the Free plan budget of each route", () => {
 
 // Step 19b, the plan's section 10: 2,000 contacts at Google, 500 of them in the chosen labels.
 describe("Google contacts (step 19b)", () => {
-  it("the first sync, an hour with nothing new and an hour with ten changes stay within the plan's numbers", () =>
+  it("the first sync, a read with nothing new and one with ten changes stay within the plan's numbers", () =>
     withChatWorld(async (world) => {
       const member = (label: string) => [{ contactGroupMembership: { contactGroupResourceName: label } }];
       world.googleSim.people.groups.push(
@@ -886,20 +886,40 @@ describe("Google contacts (step 19b)", () => {
       // once (measured 5,512; docs/google-contatos.md, "Custo").
       expect(first.written).toBeLessThanOrEqual(5_600);
       expect(first.read).toBeLessThanOrEqual(5_000);
-      world.clock.now += 3_600_000;
+      // PR S09: a read every 5 minutes (288 a day). Nothing changed: one page asked, the labels left for the hour,
+      // and only the sync's own row written (the lock, the result, the release; measured 3 and 22), with the
+      // screens' number where it was.
+      const number = world.db.one(`SELECT contacts FROM zur_area_versions WHERE id = 1`);
+      const copy = world.db.one(`SELECT count(*) AS n, max(synced_at) AS at FROM zur_contacts`);
+      world.clock.now += CONTACT_LIMITS.syncEveryMs;
       const quiet = await measure();
-      // A token renewal after an hour, the labels and one page.
-      expect(quiet.calls).toBeLessThanOrEqual(3);
-      // Nothing changed: the sync's row only (an hourly sync, 24 a day).
-      expect(quiet.written).toBeLessThanOrEqual(10);
-      expect(quiet.read).toBeLessThanOrEqual(30);
-      for (let i = 0; i < 10; i++) world.googleSim.people.update(`people/c${i}`, { names: [{ displayName: `Pessoa ${i} Lima` }] });
+      expect(quiet.calls).toBe(1);
+      expect(quiet.written).toBeLessThanOrEqual(3);
+      expect(quiet.read).toBeLessThanOrEqual(25);
+      expect(world.db.one(`SELECT contacts FROM zur_area_versions WHERE id = 1`)).toEqual(number);
+      expect(world.db.one(`SELECT count(*) AS n, max(synced_at) AS at FROM zur_contacts`)).toEqual(copy);
+      // Once an hour the labels come too, with a token renewal: still no contact written.
       world.clock.now += 3_600_000;
+      const hourly = await measure();
+      expect(hourly.calls).toBeLessThanOrEqual(3);
+      expect(hourly.written).toBeLessThanOrEqual(5);
+      expect(hourly.read).toBeLessThanOrEqual(30);
+      expect(world.db.one(`SELECT contacts FROM zur_area_versions WHERE id = 1`)).toEqual(number);
+      for (let i = 0; i < 10; i++) world.googleSim.people.update(`people/c${i}`, { names: [{ displayName: `Pessoa ${i} Lima` }] });
+      world.clock.now += CONTACT_LIMITS.syncEveryMs;
       const busy = await measure();
-      expect(busy.calls).toBeLessThanOrEqual(3);
+      expect(busy.calls).toBe(1);
       // Ten changed contacts of a normal day: about 13 rows each (measured 128).
       expect(busy.written).toBeLessThanOrEqual(140);
       expect(busy.read).toBeLessThanOrEqual(200);
+      // The label picker's refresh (POST /api/google/contacts/labels/refresh): the labels from Google, a few rows.
+      world.clock.now += CONTACT_LIMITS.syncNowEveryMs;
+      const picker = { ...world.db.usage };
+      const asked = world.googleSim.seen.length;
+      await world.contacts.refreshLabels();
+      expect(world.googleSim.seen.length - asked).toBe(1);
+      expect(world.db.usage.rowsRead - picker.rowsRead).toBeLessThanOrEqual(15);
+      expect(world.db.usage.rowsWritten - picker.rowsWritten).toBeLessThanOrEqual(4);
       // A search on the screen reads the copy, never Google.
       const before = { ...world.db.usage };
       const calls = world.googleSim.seen.length;
@@ -909,7 +929,7 @@ describe("Google contacts (step 19b)", () => {
     }));
 });
 
-// Step 19c, the plan's section 10: a profile with 1,000 reviews, read every 15 minutes (96 checks a day).
+// Step 19c, the plan's section 10: a profile with 1,000 reviews, read every 10 minutes (PR S09: 144 checks a day).
 describe("Google reviews (step 19c)", () => {
   it("a quiet check, a check with five new reviews and the screen stay within the plan's numbers", () =>
     withReviewsWorld(async (world) => {
@@ -935,16 +955,20 @@ describe("Google reviews (step 19c)", () => {
       const measure = async () => {
         const before = { ...world.db.usage };
         const calls = world.sim.seen.length;
-        world.clock.now += 16 * 60_000;
+        world.clock.now += REVIEW_LIMITS.checkEveryMs;
         expect(await world.reviews.check("alarm")).toBe("ok");
         return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten, calls: world.sim.seen.length - calls };
       };
+      const number = world.db.one(`SELECT reviews FROM zur_area_versions WHERE id = 1`);
       const quiet = await measure();
       // One page of the profile (a token renewal at most).
       expect(quiet.calls).toBeLessThanOrEqual(2);
-      // The settings row and the lock; the 50 reviews of the page looked up by their unique name, the counters (measured 6 and 123).
-      expect(quiet.written).toBeLessThanOrEqual(10);
+      // The lock, the check's own row and the release; the 50 reviews of the page looked up by their unique name, the
+      // counters and the area's number read twice (measured 5 and 125 on this first check after turning on, which
+      // also moves the profile's mark; 3 written from then on, reviews-sync.test.ts). The screens' number stays.
+      expect(quiet.written).toBeLessThanOrEqual(5);
       expect(quiet.read).toBeLessThanOrEqual(150);
+      expect(world.db.one(`SELECT reviews FROM zur_area_versions WHERE id = 1`)).toEqual(number);
       world.answers.push(draftAnswer("Obrigado pela visita, Ana! Ficamos muito felizes com a sua avaliação."), SECOND_OK);
       for (let i = 0; i < 4; i++) add(world, `n${i}`, 1, "Ruim");
       add(world, "p0", 5, "Adorei o atendimento, todos muito gentis.");

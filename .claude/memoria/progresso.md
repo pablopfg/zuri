@@ -94,5 +94,5 @@ etapas ficam detalhadas; as mais antigas viram uma linha na tabela.
 
 - Todas as etapas da especificação (0 a 26) estão feitas com a 25. Não há etapa seguinte.
 - O que falta é do Pablo: o primeiro deploy (abrir a PR `develop → main`; a 1.0.0 é decisão dele), os segredos e cartões listados na etapa 24, e as decisões abertas (resposta uniforme da rota de recuperação e do webhook, os baixos da auditoria).
-- Próxima migration livre: 32.
+- Próxima migration livre: 33 (a 32 é da PR S09 do novo frontend: colunas da sincronização de contatos e avaliações).
 - Depois do deploy, para usar um modelo pago: o Pablo cadastra `ANTHROPIC_API_KEY` ou `OPENAI_API_KEY` como segredo do Worker.

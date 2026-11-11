@@ -162,7 +162,15 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     return Response.json(status);
   });
 
-  /** "Sync now": one sync at a time, the alarm's or this one. */
+  /** The label picker opened: the labels as Google has them now (kept for a minute), never the contacts. */
+  app.post("/google/contacts/labels/refresh", async () => {
+    const { contacts } = deps();
+    if (!contacts.enabled()) throw new AppError("CONFLICT", "error.googleContactsOff");
+    await owner(() => contacts.refreshLabels());
+    return Response.json(contacts.status());
+  });
+
+  /** "Sync now": one sync at a time, the alarm's or this one, and once a minute. */
   app.post("/google/contacts/sync", async () => {
     const { contacts } = deps();
     if (!contacts.enabled()) throw new AppError("CONFLICT", "error.googleContactsOff");

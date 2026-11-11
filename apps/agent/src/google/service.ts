@@ -56,6 +56,11 @@ const SEAL_VERIFIER = "google:verifier";
 const REQUEST_TIMEOUT_MS = 10_000;
 /** Google's answers are read up to this size; a page of 250 events is far smaller. */
 const MAX_RESPONSE_BYTES = 1024 * 1024;
+/**
+ * A page of 1,000 contacts, each with Google's metadata on every field, passes 1 MiB in an ordinary
+ * address book (SEC-S09-05): the People API's answers are read up to 4 MiB, about 4 KB a contact.
+ */
+export const MAX_PEOPLE_BYTES = 4 * 1024 * 1024;
 const WRITABLE_ROLES = new Set(["owner", "writer"]);
 /** An event id Zuri chooses: Google's base32hex alphabet, 5 to 1024 characters. */
 const EVENT_ID = /^[a-v0-9]{5,1024}$/;
@@ -639,7 +644,7 @@ export class GoogleCalendar {
 
   /** A People API read (step 19b): GET only, with the account's token. */
   async people(path: string, meter: GoogleMeter, query: Record<string, string>): Promise<Record<string, unknown>> {
-    const body = await this.call(GOOGLE_PEOPLE_API, path, meter, { query });
+    const body = await this.call(GOOGLE_PEOPLE_API, path, meter, { query, maxBytes: MAX_PEOPLE_BYTES });
     if (!body) throw new GoogleError("unavailable");
     return body;
   }
@@ -662,7 +667,7 @@ export class GoogleCalendar {
     base: string,
     path: string,
     meter: GoogleMeter,
-    init: { method?: string; query?: Record<string, string>; body?: unknown; ifMatch?: string } = {},
+    init: { method?: string; query?: Record<string, string>; body?: unknown; ifMatch?: string; maxBytes?: number } = {},
   ): Promise<Record<string, unknown> | null> {
     const url = new URL(`${base}${path}`);
     // An id of dots ("." or "..") would climb out of /events/ once the URL is normalized.
@@ -692,8 +697,8 @@ export class GoogleCalendar {
         return null;
       }
       if (res.ok) {
-        // A 2xx that isn't JSON (or is larger than 1 MB) is not an answer to trust.
-        const body = await readJson(res);
+        // A 2xx that isn't JSON (or is larger than the caller's ceiling, 1 MB unless it says more) is not an answer to trust.
+        const body = await readJson(res, init.maxBytes);
         if (!body) throw new GoogleError("unavailable", res.status);
         return body;
       }
@@ -1055,11 +1060,11 @@ function rateLimited(body: Record<string, unknown> | null): boolean {
   return errors.some((item) => !!item && typeof item === "object" && RATE_REASONS.has(String((item as { reason?: unknown }).reason)));
 }
 
-/** A JSON object read up to MAX_RESPONSE_BYTES, chunk by chunk; null when it isn't one or is larger. */
-async function readJson(res: Response): Promise<Record<string, unknown> | null> {
+/** A JSON object read up to `max` bytes (MAX_RESPONSE_BYTES unless the caller says more), chunk by chunk; null when it isn't one or is larger. */
+async function readJson(res: Response, max = MAX_RESPONSE_BYTES): Promise<Record<string, unknown> | null> {
   try {
     const declared = Number(res.headers.get("content-length"));
-    if (!res.body || (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES)) {
+    if (!res.body || (Number.isFinite(declared) && declared > max)) {
       await res.body?.cancel();
       return null;
     }
@@ -1070,7 +1075,7 @@ async function readJson(res: Response): Promise<Record<string, unknown> | null> 
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > MAX_RESPONSE_BYTES) {
+      if (total > max) {
         await reader.cancel();
         return null;
       }

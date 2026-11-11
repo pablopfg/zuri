@@ -1512,6 +1512,29 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE zur_messages ADD COLUMN local_only INTEGER NOT NULL DEFAULT 0 CHECK (local_only IN (0, 1))`,
     ],
   },
+  {
+    version: 32,
+    name: "sync_every_few_minutes",
+    statements: [
+      // Contacts every 5 minutes and reviews every 10 (plan sincronizacao-contatos-avaliacoes.md). The area
+      // triggers of migrations 23 and 26 fire on last_ok_at, status and problem, so a quiet read keeps its
+      // time and its result in columns of their own: the screens read again only when something changed.
+      `ALTER TABLE zur_contact_sync ADD COLUMN checked_at INTEGER`,
+      `ALTER TABLE zur_contact_sync ADD COLUMN last_result TEXT`,
+      // 1 while a read that spans wakes has copied or forgotten something.
+      `ALTER TABLE zur_contact_sync ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0`,
+      // The list of labels is read once an hour, not on every sync.
+      `ALTER TABLE zur_contact_sync ADD COLUMN labels_read_at INTEGER`,
+      // The last time the label picker asked Google for them, whether it answered or not: once a minute.
+      `ALTER TABLE zur_contact_sync ADD COLUMN labels_asked_at INTEGER`,
+      // "Sync now", once a minute.
+      `ALTER TABLE zur_contact_sync ADD COLUMN synced_now_at INTEGER`,
+      // The set of fields the copy was read with: a newer set reads every contact once more.
+      `ALTER TABLE zur_contact_sync ADD COLUMN fields_version INTEGER NOT NULL DEFAULT 1`,
+      `ALTER TABLE zur_review_settings ADD COLUMN checked_at INTEGER`,
+      `ALTER TABLE zur_review_settings ADD COLUMN last_result TEXT`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

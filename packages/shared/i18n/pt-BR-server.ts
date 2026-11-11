@@ -611,6 +611,7 @@ export const ptBRServer = {
   "error.googleContactsScope": "Marque a permissão de ver os contatos na página do Google e tente de novo.",
   "error.googleContactsOff": "Os contatos do Google estão desligados. Ligue-os em Configurações › Integrações.",
   "error.googleContactsBusy": "A Zuri já está sincronizando os contatos. Espere um pouco e veja de novo.",
+  "error.googleContactsSyncSoon": "Os contatos acabaram de ser sincronizados. Tente de novo daqui a um minuto.",
   "error.contactNotFound": "Este contato não está mais na Zuri. Ele pode ter saído das etiquetas escolhidas.",
   "contacts.task.title": "Falar com {name}",
   "notice.flow.notice.title": "{title}",

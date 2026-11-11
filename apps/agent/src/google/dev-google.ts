@@ -589,6 +589,10 @@ function seedContacts(google: DevGoogle, month: number, day: number): void {
       organizations: [{ name: "Padaria Central", title: "Gerente" }],
       biographies: [{ value: "Prefere contato por mensagem à tarde." }],
       userDefined: [{ key: "Plano", value: "Mensal" }],
+      addresses: [{ streetAddress: "Rua das Flores, 120", city: "Curitiba", region: "PR", postalCode: "80000-000", formattedType: "Trabalho" }],
+      urls: [{ value: "https://padaria.exemplo.com.br", formattedType: "Trabalho" }],
+      relations: [{ person: "Bruno Lima", formattedType: "Sócio" }],
+      imClients: [{ username: "ana.souza", formattedProtocol: "Telegram" }],
     },
     "clientes",
   );
