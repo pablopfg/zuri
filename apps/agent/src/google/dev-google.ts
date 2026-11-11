@@ -530,6 +530,14 @@ function seedEvents(google: DevGoogle, now: number): void {
   add("trabalho@exemplo.com.br", "Revisão do projeto", { dateTime: at(2, 10) }, { dateTime: at(2, 11) });
   add("consultorio@exemplo.com.br", "Atendimento", { dateTime: at(0, 16) }, { dateTime: at(0, 17) });
   add("consultorio@exemplo.com.br", "Atendimento", { dateTime: at(1, 8) }, { dateTime: at(1, 9) });
+  // The scheduling system's events: the person's full name as the title, the type in the description.
+  const visit = (name: string, offset: number, hour: number, description: string) =>
+    add("consultorio@exemplo.com.br", name, { dateTime: at(offset, hour) }, { dateTime: at(offset, hour + 1) }, { description });
+  visit("Beatriz Novaes Conceição", -63, 10, "Consulta | Consultório");
+  visit("Beatriz Novaes Conceição", -28, 15, "Retorno | Consultório");
+  visit("Beatriz Novaes Conceição", 9, 14, "Retorno | Consultório");
+  visit("Marcos Vieira Lopes", -21, 9, "Consulta | Consultório\nCPF 529.982.247-25");
+  visit("Marcos Vieira Lopes", 16, 11, "Retorno | Consultório");
 }
 
 const SAMPLE_PREFIX = "exemplo";
@@ -575,7 +583,8 @@ function seedContacts(google: DevGoogle, month: number, day: number): void {
     { resourceName: "contactGroups/familia", name: "Família", groupType: "USER_CONTACT_GROUP", memberCount: 2 },
     { resourceName: "contactGroups/fornecedores", name: "Fornecedores", groupType: "USER_CONTACT_GROUP", memberCount: 1 },
     { resourceName: "contactGroups/consultorio", name: "Consultório", groupType: "USER_CONTACT_GROUP", memberCount: 2 },
-    { resourceName: "contactGroups/myContacts", name: "myContacts", groupType: "SYSTEM_CONTACT_GROUP", memberCount: 9 },
+    { resourceName: "contactGroups/pacientes", name: "Pacientes", groupType: "USER_CONTACT_GROUP", memberCount: 4 },
+    { resourceName: "contactGroups/myContacts", name: "myContacts", groupType: "SYSTEM_CONTACT_GROUP", memberCount: 13 },
   );
   const member = (...labels: string[]) => labels.map((label) => ({ contactGroupMembership: { contactGroupResourceName: `contactGroups/${label}` } }));
   const person = (id: string, name: string, extra: Record<string, unknown>, ...labels: string[]) =>
@@ -610,6 +619,34 @@ function seedContacts(google: DevGoogle, month: number, day: number): void {
     "Helena Prado",
     { phoneNumbers: [{ value: "(41) 3333-0008", formattedType: "Trabalho" }], organizations: [{ name: "Clínica Prado", title: "Dentista" }], urls: [{ value: "https://clinica.exemplo.com.br", formattedType: "Trabalho" }] },
     "consultorio",
+  );
+  // The owner's way of naming at Google, "Name / Note" (the name is kept without it), and two people with one name.
+  person(
+    "c1010",
+    "Beatriz Novaes Conceição / Paciente",
+    {
+      names: [{ displayName: "Beatriz Novaes Conceição / Paciente", givenName: "Beatriz", middleName: "Novaes", familyName: "Conceição / Paciente" }],
+      phoneNumbers: [
+        { value: "(41) 99999-0110", canonicalForm: "+5541999990110", formattedType: "Celular" },
+        { value: "(41) 3333-0110", formattedType: "Casa" },
+      ],
+      emailAddresses: [{ value: "beatriz@exemplo.com.br" }, { value: "beatriz.trabalho@exemplo.com.br", formattedType: "Trabalho" }],
+      birthdays: [{ date: { year: 1988, month: 5, day: 20 } }],
+    },
+    "pacientes",
+  );
+  person("c1011", "Carla Regina Duarte Pires / Prospect", { phoneNumbers: [{ value: "(41) 98888-0111", formattedType: "Celular" }] }, "pacientes");
+  person(
+    "c1012",
+    "Marcos Vieira Lopes / Paciente",
+    { phoneNumbers: [{ value: "(41) 97777-0112", formattedType: "Celular" }], birthdays: [{ date: { year: 1979, month: 2, day: 11 } }], userDefined: [{ key: "CPF", value: "529.982.247-25" }] },
+    "pacientes",
+  );
+  person(
+    "c1013",
+    "Marcos Vieira Lopes / Paciente",
+    { phoneNumbers: [{ value: "(41) 96666-0113", formattedType: "Celular" }], birthdays: [{ date: { year: 1994, month: 9, day: 3 } }], userDefined: [{ key: "CPF", value: "111.444.777-35" }] },
+    "pacientes",
   );
   google.people.add({ resourceName: "people/c1009", phoneNumbers: [{ value: "(41) 99999-0117", formattedType: "Celular" }], memberships: member("consultorio", "myContacts") });
 }

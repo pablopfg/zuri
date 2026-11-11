@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CONTACT_LIMITS, CONTACT_ON_ADDED, type ContactOnAdded, type ContactProblem, type ContactReminders, type ContactsStatus } from "@zuri/shared";
 import { RefreshCw, Users } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
@@ -90,6 +90,26 @@ export function ContactsSection() {
   };
 
   const data = status.data;
+  // The first setup: no contact is copied before a label is chosen, and the list to choose from comes
+  // from Google first (the server reads it when the owner comes back from Google's page; this asks again
+  // if that read failed).
+  const noneChosen = !!data?.enabled && !data.labels.some((label) => label.selected);
+  const askLabels = !!data?.enabled && !data.labelsRead && !data.problem;
+  // "asking" while the request is on its way; "failed" when Google did not answer (or the server is
+  // resting a minute between two tries): the owner is told and may try again, never left waiting.
+  const [labelsAsk, setLabelsAsk] = useState<"asking" | "failed">("asking");
+  const readLabels = useCallback(() => {
+    setLabelsAsk("asking");
+    return api<ContactsStatus>("/google/contacts/labels/refresh", { method: "POST" })
+      .then((next) => {
+        qc.setQueryData(CONTACTS_STATUS_KEY, next);
+        if (!next.labelsRead) setLabelsAsk("failed");
+      })
+      .catch(() => setLabelsAsk("failed"));
+  }, [qc]);
+  useEffect(() => {
+    if (askLabels) void readLabels();
+  }, [askLabels, readLabels]);
   return (
     <section className="space-y-3 border-t border-border pt-4" aria-labelledby="google-contacts">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -117,8 +137,10 @@ export function ContactsSection() {
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-fg-muted" role="status">
-            {data.status === "syncing" && !data.lastSyncAt
-              ? t("web.contacts.card.syncing")
+            {noneChosen
+              ? t(!data.labelsRead ? (labelsAsk === "failed" ? "web.contacts.card.labelsFailed" : "web.contacts.card.readingLabels") : data.labels.length > 0 ? "web.contacts.card.choose" : "web.contacts.card.noLabels")
+              : data.status === "syncing" && !data.lastSyncAt
+                ? t("web.contacts.card.syncing")
               : data.lastSyncAt
                 ? data.contacts > 0
                   ? t("web.contacts.card.synced", { when: dateTime(data.lastSyncAt), count: plural("web.contacts.card.count", data.contacts) })
@@ -135,9 +157,14 @@ export function ContactsSection() {
               )}
             </div>
           )}
-          <LabelPicker status={data} onSaving={setSavingLabels} />
+          {noneChosen && data.labels.length === 0 && (data.labelsRead || labelsAsk === "failed") && (
+            <Button variant="secondary" onClick={() => void readLabels()}>
+              {t("web.retry")}
+            </Button>
+          )}
+          {data.labels.length > 0 && <LabelPicker status={data} onSaving={setSavingLabels} />}
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" onClick={() => void sync()} loading={busy === "sync"} disabled={data.problem === "reconnect" || savingLabels}>
+            <Button variant="secondary" onClick={() => void sync()} loading={busy === "sync"} disabled={data.problem === "reconnect" || savingLabels || noneChosen}>
               <RefreshCw className="h-4 w-4" aria-hidden />
               {t("web.contacts.card.sync")}
             </Button>
@@ -210,9 +237,7 @@ function LabelPicker({ status, onSaving }: { status: ContactsStatus; onSaving: (
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">{t("web.contacts.card.labels")}</legend>
         <p className="text-sm leading-6 text-fg-muted">{t("web.contacts.card.labelsHint")}</p>
-        {status.labels.length === 0 ? (
-          <p className="text-sm text-fg-muted">{t("web.contacts.card.noLabels")}</p>
-        ) : (
+        {status.labels.length > 0 && (
           <ul className="divide-y divide-border rounded-xl border border-border">
             {status.labels.map((label) => (
               <li key={label.id}>

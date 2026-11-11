@@ -227,7 +227,7 @@ export async function seedContacts(page: Page, base: string): Promise<void> {
   await post("/api/google/callback", { state: consent.searchParams.get("state") ?? "", code: `dev.${consent.searchParams.get("code_challenge") ?? ""}` });
   // The first read learns the labels; saving a choice lets the next one run at once.
   await post("/api/google/contacts/sync");
-  const chosen = await page.request.patch(`${base}/api/google/contacts/labels`, { headers: CSRF, data: { selected: ["contactGroups/clientes", "contactGroups/consultorio"] } });
+  const chosen = await page.request.patch(`${base}/api/google/contacts/labels`, { headers: CSRF, data: { selected: ["contactGroups/clientes", "contactGroups/consultorio", "contactGroups/pacientes"] } });
   if (!chosen.ok()) throw new Error(`/api/google/contacts/labels: ${chosen.status()}`);
   await post("/api/google/contacts/sync");
   await post("/api/memories", { content: "A Ana Souza prefere ser atendida no fim da tarde.", category: "person" });

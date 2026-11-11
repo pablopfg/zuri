@@ -943,6 +943,14 @@ describe("Google contacts (step 19b)", () => {
       world.contacts.search({ query: "pessoa 4", limit: 50 });
       expect(world.googleSim.seen.length).toBe(calls);
       expect(world.db.usage.rowsRead - before.rowsRead).toBeLessThanOrEqual(1_000);
+      // The card (GET /api/contacts/:id) and what the calendar needs of the contact (GET /api/contacts/:id/appointments):
+      // the contact, its labels and the others with the very same name, by the name's index. Nothing is written.
+      const [someone] = world.contacts.search({ query: "pessoa 4", limit: 1 }).contacts;
+      const card = { ...world.db.usage };
+      expect(world.contacts.get(someone?.id ?? "")?.sameName).toBe(0);
+      expect(world.contacts.identity(someone?.id ?? "")?.others).toEqual([]);
+      expect(world.db.usage.rowsRead - card.rowsRead).toBeLessThanOrEqual(40);
+      expect(world.db.usage.rowsWritten - card.rowsWritten).toBe(0);
     }));
 });
 
