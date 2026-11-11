@@ -19,6 +19,14 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.46.3] - 2026-11-11
+
+Mesclada às 07:19 (UTC-3) · commit [`28b98c2`](https://github.com/pablopfg/Zuri/commit/28b98c2083319694fb280be54d6b13a123e35413) · PR [#283](https://github.com/pablopfg/Zuri/pull/283) · E2e em quatro partes paralelas, com o check e2e respondendo por todas
+
+### Alterado
+
+- CI: os testes no navegador (`e2e`) rodam em quatro partes ao mesmo tempo, em vez de uma fila só que já batia no limite de 30 minutos. Nenhum teste saiu, e o check `e2e` só fica verde quando as quatro partes passam.
+
 ## [0.46.2] - 2026-11-11
 
 Mesclada às 05:56 (UTC-3) · commit [`6c38d29`](https://github.com/pablopfg/Zuri/commit/6c38d299bee9600bc67e13ed165f6578ef41397d) · PR [#280](https://github.com/pablopfg/Zuri/pull/280) · E2e e lighthouse só rodam quando o PR muda algo além de texto ou da versão
@@ -3099,7 +3107,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.46.2...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.46.3...develop
+[0.46.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.3
 [0.46.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.2
 [0.46.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.1
 [0.46.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.0
