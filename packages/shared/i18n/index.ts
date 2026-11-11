@@ -28,6 +28,7 @@ import { ptBRAgents } from "./pt-BR-agents.ts";
 import { ptBRUsage } from "./pt-BR-usage.ts";
 import { ptBRBackup } from "./pt-BR-backup.ts";
 import { ptBRMenu } from "./pt-BR-menu.ts";
+import { ptBRVoice } from "./pt-BR-voice.ts";
 
 export type MessageKey = keyof typeof ptBR;
 export type Messages = Record<MessageKey, string>;
@@ -75,6 +76,7 @@ export {
   ptBRUsage,
   ptBRBackup,
   ptBRMenu,
+  ptBRVoice,
 };
 
 export type Params = Record<string, string | number>;

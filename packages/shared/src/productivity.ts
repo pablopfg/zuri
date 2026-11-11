@@ -187,11 +187,24 @@ export const noteCreateSchema = /* @__PURE__ */ z
   .strict();
 export type NoteCreate = z.input<typeof noteCreateSchema>;
 
+/** An instant as the server writes it ("2026-11-09T11:12:00.000Z"). */
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
 export const noteUpdateSchema = /* @__PURE__ */ z
-  .object({ title: line(NOTE_TITLE_MAX), content: text(NOTE_CONTENT_MAX), projectId: recordId.nullable() })
+  .object({
+    title: line(NOTE_TITLE_MAX),
+    content: text(NOTE_CONTENT_MAX),
+    projectId: recordId.nullable(),
+    /**
+     * The `updatedAt` of the version this save started from (the editor that
+     * saves by itself sends it). When the note changed since, the save is
+     * refused with CONFLICT and nothing is written.
+     */
+    ifUpdatedAt: z.string().regex(ISO_INSTANT),
+  })
   .partial()
   .strict()
-  .refine(atLeastOne);
+  .refine(({ ifUpdatedAt: _version, ...changes }) => atLeastOne(changes));
 export type NoteUpdate = z.input<typeof noteUpdateSchema>;
 
 export const noteListQuerySchema = /* @__PURE__ */ z

@@ -282,6 +282,20 @@ describe("the Free plan budget of each route", () => {
     expect(created.written).toBeLessThanOrEqual(10);
   });
 
+  it("a note that saves itself (Sinal, PR S07) writes a handful of rows per save, however long the text", async () => {
+    const created = await cost("POST", "/notes", { title: "Vistoria", content: "" });
+    expect(created.status).toBe(201);
+    expect(created.written).toBeLessThanOrEqual(8);
+    const id = await runInDurableObject(owner(), (agent: ZuriAgent) => agent.store.db.one<{ id: string }>(`SELECT id FROM zur_notes WHERE title = 'Vistoria'`)?.id);
+    // The editor sends only what changed: the text of a long note, typed on, costs the same as a short one.
+    const typed = await cost("PATCH", `/notes/${id}`, { content: "Levar a trena. ".repeat(2_000) });
+    expect(typed.status).toBe(200);
+    expect(typed.written).toBeLessThanOrEqual(8);
+    expect(typed.read).toBeLessThanOrEqual(8);
+    const again = await cost("PATCH", `/notes/${id}`, { content: `${"Levar a trena. ".repeat(2_000)}E a caneta.` });
+    expect(again.written).toBeLessThanOrEqual(typed.written);
+  });
+
   it("memories: a page of the list, the counters, a search and the review queue read about one page", async () => {
     // The counters come from five rows of zur_counts, never a count(*) of the table.
     // CF-07-01 and CF-07-02: "current" merges two index walks; a status with a category has its own index.

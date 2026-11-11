@@ -298,7 +298,7 @@ describe("reading", () => {
     expect(await command("/tarefas casa nova")).toBe(
       "Tarefas abertas em Casa Nova\n\n1. Da casa\n\nOs números valem por 1 hora. Para concluir, toque em Feito ou mande /feito e o número.",
     );
-    expect(await command("/tarefas Trabalho")).toBe("Não achei o projeto “Trabalho”. Confira o nome no app.");
+    expect(await command("/tarefas Trabalho")).toBe("Não achei a pasta “Trabalho”. Confira o nome no app.");
   });
 
   it("/buscar: up to 5 of each kind, cut to 100 characters; nothing found; no term", async () => {

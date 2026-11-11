@@ -27,7 +27,7 @@ canais. Cabem 20 tokens.
 
 | Escopo | O que alcança |
 | --- | --- |
-| **Só ler** | Ler tarefas, contagens, notas, projetos, memórias e automações; `GET /api/health` |
+| **Só ler** | Ler tarefas, contagens, notas, pastas, memórias e automações; `GET /api/health` |
 | **Ler e escrever** | O de **Só ler**, mais criar e mudar tarefas, notas e automações, criar memórias; apagar tarefas e notas (vão para a lixeira) |
 | **Só eventos** | Só `POST /api/remote/events` |
 

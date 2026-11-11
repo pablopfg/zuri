@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { type AutomationList, ptBRHome } from "@zuri/shared";
+import { type AutomationList, CHAT_MESSAGE_MAX, ptBRHome } from "@zuri/shared";
 import { ArrowUp, ChevronRight } from "lucide-react";
 import { type FormEvent, type ReactNode, useCallback, useId, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Greeting } from "../../components/Greeting.tsx";
 import { cn, ErrorNotice, Loading } from "../../components/ui.tsx";
+import { VoiceButton, VoiceStatus } from "../../components/voice/VoiceInput.tsx";
+import { useVoice } from "../../components/voice/voice.ts";
 import { useTasks } from "../../hooks/productivity.ts";
 import { api } from "../../lib/api.ts";
 import { dueInputs } from "../../lib/due.ts";
@@ -53,6 +55,8 @@ function Ask() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [text, setText] = useState("");
+  // What was said lands after what is written, for the owner to read before sending (as in the conversation).
+  const voice = useVoice(useCallback((said: string) => setText((current) => (current.trim() ? `${current.trimEnd()} ${said}` : said).slice(0, CHAT_MESSAGE_MAX)), []));
   const ask = (message: string) => message.trim() && navigate("/conversa", { state: { ask: message.trim() } });
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -65,6 +69,9 @@ function Ask() {
         onSubmit={submit}
         className="flex flex-wrap items-end rounded-3xl border border-border-strong bg-surface py-2.5 pr-2.5 pl-5 shadow-md transition-shadow focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/20"
       >
+        <div className="basis-full empty:hidden -ml-3">
+          <VoiceStatus voice={voice} />
+        </div>
         <label className="min-w-0 basis-full">
           <span className="sr-only">{t("web.home.ask")}</span>
           <textarea
@@ -82,11 +89,14 @@ function Ask() {
             className="field-sizing-content block max-h-40 min-h-11 w-full resize-none bg-transparent pt-2.5 pb-1 text-[17px] leading-normal text-fg placeholder:text-fg-muted focus:outline-none"
           />
         </label>
+        <span className="ml-auto">
+          <VoiceButton voice={voice} className="rounded-xl" />
+        </span>
         <button
           type="submit"
           aria-label={t("web.home.send")}
           disabled={!text.trim()}
-          className="ml-auto inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-60"
+          className="ml-1.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           <ArrowUp className="h-5 w-5" strokeWidth={2.25} aria-hidden />
         </button>
