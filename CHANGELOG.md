@@ -19,6 +19,19 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.44.0] - 2026-11-10
+
+Mesclada às 23:57 (UTC-3) · commit [`675d874`](https://github.com/pablopfg/Zuri/commit/675d874e6bf3775724f30e1829629fa29c0205fd) · PR [#273](https://github.com/pablopfg/Zuri/pull/273) · Conversa do Sinal com lista em coluna, menu por linha e aviso de conversa anterior (S05)
+
+### Alterado
+
+- Conversa com o desenho novo: a lista de conversas virou uma coluna ao lado da conversa aberta, e só as mensagens rolam. O título e o campo de escrever ficam sempre na tela.
+- Cada linha da lista mostra quando a conversa foi usada (a hora, o dia da semana ou a data) e tem o menu "Mais opções" com **Renomear** e **Apagar conversa**. Dá para renomear ou apagar uma conversa sem abri-la, também só pelo teclado.
+- No celular, **Ver conversas** troca a conversa pela lista, no lugar da janela que abria por cima.
+- A conversa aberta mostra desde quando existe ("Desde hoje, 08:12"), uma linha a cada dia e a hora de cada resposta da Zuri.
+- Conversa usada pela última vez antes de hoje avisa "Conversa anterior. Escrever aqui continua esta conversa." e aponta para a de hoje, quando existe.
+- O campo de escrever ficou mais arredondado, com a seta para enviar. O microfone e a linha de gravação passaram a ser uma peça só, igual em todo lugar que aceitar voz.
+
 ## [0.43.0] - 2026-11-10
 
 Mesclada às 22:15 (UTC-3) · commit [`411c8d0`](https://github.com/pablopfg/Zuri/commit/411c8d0d941e49324a888c1ea87bc16b4b644ba6) · PR [#270](https://github.com/pablopfg/Zuri/pull/270) · Início do Sinal com "Seu dia", linha de agora, cortina e pendentes (S04)
@@ -3037,7 +3050,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.43.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.44.0...develop
+[0.44.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.44.0
 [0.43.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.43.0
 [0.42.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.42.1
 [0.42.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.42.0
