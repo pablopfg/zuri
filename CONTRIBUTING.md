@@ -83,7 +83,7 @@ A regra completa está em [`.claude/rules/capturas.md`](.claude/rules/capturas.m
   Documentação, changelog e PRs em pt-BR.
 - Todo texto visível sai do catálogo `packages/shared/i18n`, em pt-BR e en.
 - Mudança visível ganha um arquivo em `changelog/nao-lancado/`, com os grupos
-  do `CHANGELOG.md` (`### Adicionado`, `### Corrigido`…). Depois do merge, o
+  do `CHANGELOG.md` (`### Adicionado`, `### Corrigido`…). A cada 10 merges, o
   workflow `Versão` dá o número, escreve a seção e cria a tag e a pré-release
   ([docs/agente/versionamento.md](docs/agente/versionamento.md)).
 - Dependência nova só com motivo claro, com versão exata.
