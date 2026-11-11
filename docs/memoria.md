@@ -169,7 +169,7 @@ linhas lidas/gravadas por requisição:
 | `GET /memories?q=` palavra comum | 610 | 0 |
 | `GET /memories/reviews` | 2 | 0 |
 | `GET /memories/graph` (mapa inteiro) | 365 | 0 |
-| `GET /memories/graph?around=` (painel de uma memória, palavra comum) | 385 | 0 |
+| `GET /memories/graph?around=` (painel de uma memória, palavra comum; os contatos citados somam até 32 linhas ao teto) | 385 | 0 |
 | `POST /memories` nova | 16 | 10 |
 | `POST /memories` duplicata | 5 | 5 |
 | `POST /memories` com conflito | 26 | 16 |
@@ -192,6 +192,7 @@ tabela própria: as ligações saem do que já está guardado, por regras fixas
 | Memória próxima | Duas memórias com pelo menos duas palavras com sentido em comum (as mesmas palavras que a busca de conflitos usa, sem acento e sem plural) |
 | Pasta | O nome inteiro da pasta aparece no texto da memória |
 | Conversa, tarefa ou nota | O título tem pelo menos duas palavras em comum com a memória |
+| Contato | O nome inteiro de um contato do Google aparece no texto da memória, ou só o primeiro nome quando um único contato começa por ele. Só com `around` |
 
 Limites, para o custo não crescer com o banco: o mapa leva as 160 memórias mais
 recentes e até 40 pastas, conversas, tarefas e notas (200 pontos no total), e
@@ -200,6 +201,14 @@ fica com as 5 memórias mais próximas e até 6 dos outros itens (as pastas
 primeiro), e só as 40 primeiras palavras com sentido de cada memória contam. Com `around`, a
 resposta traz só aquela memória e o que encosta nela; é o que o painel pede.
 Quando há mais memórias do que o mapa desenha, `truncated` vem `true`.
+
+Os contatos só entram no painel de uma memória (`around`), nunca no mapa
+inteiro. A Zuri procura até 8 palavras da memória que começam com maiúscula,
+pelo começo do nome guardado, 4 linhas por palavra, e mostra até 3 contatos.
+Por isso "Dra. Helena Prado" não é achada por "Helena": o nome guardado
+começa por "dra". Tocar no contato abre a ficha dele em Contatos. Sem a permissão dos
+contatos (conta desconectada ou permissão retirada), nenhum contato aparece,
+e um e-mail que está no lugar do nome nunca conta como nome.
 
 A rota só atende a sessão do dono. Um token de acesso pela API não chega a ela,
 porque a resposta traz títulos de outras áreas.

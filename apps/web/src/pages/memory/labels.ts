@@ -51,4 +51,5 @@ export const HUB_LABEL: Record<MemoryHubKind, MessageKey> = {
   conversation: "web.memory.hub.conversation",
   task: "web.memory.hub.task",
   note: "web.memory.hub.note",
+  contact: "web.memory.hub.contact",
 };

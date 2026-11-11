@@ -10,7 +10,7 @@ import {
 import type { Database } from "../db/database.ts";
 import type { MemoryLifecycle } from "./lifecycle.ts";
 import { type MemoryRepository, type MemoryRow, toMemory } from "./repository.ts";
-import { anyWordQuery, tokens } from "./text.ts";
+import { anyWordQuery, fold, tokens } from "./text.ts";
 
 /**
  * The map of the memory (Sinal, S06): what each memory is linked to, worked
@@ -19,7 +19,9 @@ import { anyWordQuery, tokens } from "./text.ts";
  * - "version" and "review" are real links (a fact that replaced another, a conflict waiting);
  * - "near" joins two memories with at least two meaningful words in common;
  * - a folder is a hub of the memories that say its whole name;
- * - a conversation, a task or a note is a hub of the memories that share two words with its title.
+ * - a conversation, a task or a note is a hub of the memories that share two words with its title;
+ * - a contact (Sinal, S10) is a hub of the one memory being looked at, when that memory says the
+ *   contact's whole name, or a first name only one contact has.
  *
  * Every read is bounded (rule P2): one page of memories and one of each hub kind.
  * The folders have no index by status: that read walks at most the table's own
@@ -41,6 +43,13 @@ const AROUND_CANDIDATES = 30;
 const AROUND_WINDOW = 60;
 /** A hub's label on the wire: the start of the title is enough to recognise it. */
 const LABEL_MAX = 120;
+
+/** Capitalised words of the chosen memory looked up among the contacts' first names. */
+export const CONTACT_PROBES = 8;
+/** Contacts read per word: with more than one sharing a first name, only a whole name links. */
+const CONTACT_ROWS = 4;
+/** Contacts linked to one memory. */
+const CONTACTS_PER_MEMORY = 3;
 
 interface HubRow {
   kind: MemoryHubKind;
@@ -127,8 +136,61 @@ export function linkMemories(memories: MemoryRow[], hubs: HubRow[], reviews: { m
   return { hubs: [...out.values()], links };
 }
 
+const nameWords = (text: string): string[] => fold(text).match(/[\p{L}\p{N}]+/gu) ?? [];
+
+/**
+ * The words of a memory worth looking up as somebody's first name: the ones
+ * written with a capital, folded, each once, in the order they come.
+ */
+export function contactProbes(content: string): string[] {
+  const out = new Set<string>();
+  for (const word of content.match(/\p{Lu}[\p{L}\p{N}]{2,}/gu) ?? []) {
+    out.add(fold(word));
+    if (out.size === CONTACT_PROBES) break;
+  }
+  return [...out];
+}
+
+/**
+ * Which of the contacts found for one first name a memory talks about. A
+ * contact whose every name is in the memory ("Ana Souza") always counts; a
+ * first name alone ("Ana") counts only when a single contact answers to it,
+ * since two Anas cannot be told apart. Pure.
+ */
+export function namedContacts<T extends { name: string }>(content: string, probe: string, found: T[]): T[] {
+  const said = new Set(nameWords(content));
+  // An e-mail or a phone standing for a missing name is no name: "Contato" must not find contato@exemplo.com.br.
+  const candidates = found.filter((contact) => !contact.name.includes("@") && nameWords(contact.name)[0] === probe);
+  const whole = candidates.filter((contact) => {
+    const words = nameWords(contact.name);
+    return words.length > 1 && words.every((word) => said.has(word));
+  });
+  if (whole.length > 0) return whole;
+  return candidates.length === 1 && found.length < CONTACT_ROWS ? candidates : [];
+}
+
+/**
+ * The contacts the chosen memory names. Each probe reads a few rows by the
+ * index of the name (rule P2), never the whole copy: a contact is found by
+ * how its name starts, so "Dra. Helena" is not found by "Helena".
+ */
+function contactHubs(db: Database, content: string): HubRow[] {
+  const out = new Map<string, HubRow>();
+  for (const probe of contactProbes(content)) {
+    const found = db.all<{ id: string; name: string }>(
+      `SELECT id, display_name AS name FROM zur_contacts WHERE search_name >= ? AND search_name < ? ORDER BY search_name, id LIMIT ?`,
+      probe,
+      `${probe}\uffff`,
+      CONTACT_ROWS,
+    );
+    for (const contact of namedContacts(content, probe, found)) out.set(contact.id, { kind: "contact", id: contact.id, label: contact.name });
+    if (out.size >= CONTACTS_PER_MEMORY) break;
+  }
+  return [...out.values()].slice(0, CONTACTS_PER_MEMORY);
+}
+
 /** The newest memories and their links, or one memory and what touches it. */
-export function memoryGraph(db: Database, repo: MemoryRepository, lifecycle: MemoryLifecycle, around?: string): MemoryGraph {
+export function memoryGraph(db: Database, repo: MemoryRepository, lifecycle: MemoryLifecycle, around?: string, contactsOn?: () => boolean): MemoryGraph {
   const reviews = repo.listReviews(MEMORY_REVIEWS_LIST_MAX);
   if (!around) {
     const rows = repo.list({ filter: "all", limit: MEMORY_GRAPH_MEMORIES_MAX + 1 });
@@ -151,10 +213,13 @@ export function memoryGraph(db: Database, repo: MemoryRepository, lifecycle: Mem
     if (l.from === center.id) touching.add(l.to);
     else if (l.to === center.id) touching.add(l.from);
   }
+  // The contacts are the chosen memory's alone: the whole map never looks them up (up to 5,000 names against every memory).
+  // SEC-S10-02: a copy left behind by an account that lost its permission is not shown here either.
+  const contacts = (contactsOn?.() ? contactHubs(db, center.content) : []).map((hub): MemoryHub => ({ id: `contact:${hub.id}`, kind: "contact", ref: hub.id, label: [...hub.label].slice(0, LABEL_MAX).join("") }));
   return {
     memories: [...candidates.values()].filter((m) => touching.has(m.id)).map(toMemory),
-    hubs: all.hubs.filter((h) => touching.has(h.id)),
-    links: all.links.filter((l) => touching.has(l.from) && touching.has(l.to)),
+    hubs: [...all.hubs.filter((h) => touching.has(h.id)), ...contacts],
+    links: [...all.links.filter((l) => touching.has(l.from) && touching.has(l.to)), ...contacts.map((hub): MemoryLink => ({ from: center.id, to: hub.id, kind: "hub" }))],
     truncated: false,
   };
 }

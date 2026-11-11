@@ -199,9 +199,19 @@ export function ChatPage() {
   // Per arrival (the address's key): the screen stays mounted from one conversation to the next.
   const asked = useRef<string | null>(null);
   const ask = (location.state as { ask?: unknown } | null)?.ask;
+  // A question written for the owner out of stored text (a contact's name): it only waits in the
+  // composer. Text that came from somebody else is never sent as the owner's word by itself.
+  const written = (location.state as { draft?: unknown } | null)?.draft;
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per question, with the send of this render
   useEffect(() => {
-    if (asked.current === location.key || id || typeof ask !== "string" || !ask.trim()) return;
+    if (asked.current === location.key || id) return;
+    if (typeof written === "string" && written.trim()) {
+      asked.current = location.key;
+      setDraft(written);
+      navigate(location.pathname, { replace: true, state: null });
+      return;
+    }
+    if (typeof ask !== "string" || !ask.trim()) return;
     asked.current = location.key;
     // Too long for one message: it waits in the composer, where the counter says why. Nothing is
     // sent, so the address may keep it (a reload just puts it back in the composer).
@@ -211,7 +221,7 @@ export function ChatPage() {
     }
     navigate(location.pathname, { replace: true, state: null });
     void send(ask);
-  }, [ask, id, location.key]);
+  }, [ask, written, id, location.key]);
 
   async function stop() {
     const conversationId = live?.conversationId;
@@ -635,9 +645,31 @@ function Thread({
     }
     const nearBottom = scroller.clientHeight + scroller.scrollTop >= scroller.scrollHeight - 240;
     if (nearBottom || growth.endsWith(":0:0:")) {
-      scroller.scrollTo({ top: scroller.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      // From far away it jumps: a slow walk to the end would be overtaken by text that is still taking its shape.
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: !nearBottom || matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     }
   }, [growth]);
+
+  // The messages grow after they are drawn (the formatting comes in a moment later): at the end, the owner stays at the end.
+  const empty = shown.length === 0 && !live;
+  useEffect(() => {
+    const scroller = empty ? null : end.current?.closest("[data-chat-scroll]");
+    const content = end.current?.parentElement;
+    if (!scroller || !content) return;
+    let pinned = true;
+    const onScroll = () => {
+      pinned = scroller.clientHeight + scroller.scrollTop >= scroller.scrollHeight - 240;
+    };
+    const observer = new ResizeObserver(() => {
+      if (pinned && fromEnd.current === null) scroller.scrollTop = scroller.scrollHeight;
+    });
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    observer.observe(content);
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      observer.disconnect();
+    };
+  }, [empty]);
 
   async function loadOlder() {
     const first = messages[0];
@@ -656,7 +688,7 @@ function Thread({
     }
   }
 
-  if (shown.length === 0 && !live) {
+  if (empty) {
     return (
       <EmptyState icon={<Sparkles className="h-6 w-6" />} title={t("web.chat.empty.title")}>
         <p>{t("web.chat.empty.body")}</p>

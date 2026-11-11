@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Memory, MemoryGraph, MemoryHub, MemoryHubKind, MemoryLinkKind } from "@zuri/shared";
-import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, CircleHelp, CornerDownRight, Folder, History, type LucideIcon, MessagesSquare, ListTodo, Notebook, Pencil, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, BookUser, CircleHelp, CornerDownRight, Folder, History, type LucideIcon, MessagesSquare, ListTodo, Notebook, Pencil, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { type ReactNode, type Ref, useState } from "react";
 import { Link } from "react-router";
 import { ActionsMenu } from "../../components/ActionsMenu.tsx";
@@ -20,9 +20,10 @@ export function useMemoryLinks(id: string | null) {
   });
 }
 
-const HUB_ICON: Record<MemoryHubKind, LucideIcon> = { folder: Folder, conversation: MessagesSquare, task: ListTodo, note: Notebook };
-/** Where a hub opens: a note and a conversation have a page of their own; a task and a folder open their list. */
-export const hubPath = (hub: MemoryHub): string => (hub.kind === "note" ? `/notas/${hub.ref}` : hub.kind === "conversation" ? `/conversa/${hub.ref}` : "/tarefas");
+const HUB_ICON: Record<MemoryHubKind, LucideIcon> = { folder: Folder, conversation: MessagesSquare, task: ListTodo, note: Notebook, contact: BookUser };
+/** Where a hub opens: a note, a conversation and a contact have a page of their own; a task and a folder open their list. */
+export const hubPath = (hub: MemoryHub): string =>
+  hub.kind === "note" ? `/notas/${hub.ref}` : hub.kind === "conversation" ? `/conversa/${hub.ref}` : hub.kind === "contact" ? `/contatos/${hub.ref}` : "/tarefas";
 
 export interface PanelActions {
   onEdit: (memory: Memory) => void;
@@ -97,8 +98,10 @@ export function MemoryPanel({ id, heading, onSelect, onBack, onGone, actions }: 
     else if (link.to === id) kindOf.set(link.from, link.kind);
   }
   const hubs = links.data.hubs.filter((hub) => kindOf.has(hub.id));
-  const folders = hubs.filter((hub) => hub.kind === "folder");
-  const mentions = hubs.filter((hub) => hub.kind !== "folder");
+  // What the memory is about (its folder, the contact it names) and where else its words show up.
+  const about = (hub: MemoryHub) => hub.kind === "folder" || hub.kind === "contact";
+  const folders = hubs.filter(about);
+  const mentions = hubs.filter((hub) => !about(hub));
   const near = links.data.memories.filter((m) => m.id !== id && kindOf.has(m.id));
 
   return (
@@ -205,7 +208,7 @@ export function MemoryPanel({ id, heading, onSelect, onBack, onGone, actions }: 
 
 function HubLink({ hub }: { hub: MemoryHub }) {
   const { t } = useI18n();
-  const Icon = hub.kind === "folder" ? HUB_ICON.folder : CornerDownRight;
+  const Icon = hub.kind === "folder" || hub.kind === "contact" ? HUB_ICON[hub.kind] : CornerDownRight;
   return (
     <Link to={hubPath(hub)} className="flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5 text-sm leading-5 transition-colors hover:bg-raised">
       <Icon className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
