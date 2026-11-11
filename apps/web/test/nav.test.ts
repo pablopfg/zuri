@@ -11,6 +11,11 @@ describe("the one list of places", () => {
     ]);
   });
 
+  it("names no group with a title that is part of another's: the closed groups are kept by title, one after the other (lib/sidebar.ts)", () => {
+    const headings = NAV.flatMap((group) => group.heading ?? []);
+    for (const one of headings) for (const other of headings) expect(one !== other && other.includes(one), `${one} in ${other}`).toBe(false);
+  });
+
   it("gives the phone's bar the first four and the sheet the rest, with nothing left out or repeated", () => {
     expect(TAB_ITEMS.map((item) => item.id)).toEqual(["home", "chat", "tasks", "agenda"]);
     expect(MORE_ITEMS.map((item) => item.id)).toEqual(["notes", "memory", "routines", "contacts", "reviews", "crm"]);
