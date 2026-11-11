@@ -348,6 +348,32 @@ describe("reading the reviews", () => {
       expect(await world.reviews.checkNow()).toBe("ok");
     }));
 
+  it("QA-S09-06: a refused 'check now' says the seconds really left, not always a minute", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      world.clock.now += REVIEW_LIMITS.checkNowEveryMs;
+      expect(await world.reviews.checkNow()).toBe("ok");
+      const left = async () => {
+        try {
+          await world.reviews.checkNow();
+        } catch (error) {
+          return (error as { details?: { retryAfter?: number } }).details?.retryAfter;
+        }
+        return null;
+      };
+      expect(await left()).toBe(60);
+      world.clock.now += 1;
+      expect(await left()).toBe(60);
+      world.clock.now += 30_000;
+      expect(await left()).toBe(30);
+      world.clock.now += 29_000;
+      expect(await left()).toBe(1);
+      world.clock.now += 998;
+      expect(await left()).toBe(1);
+      world.clock.now += 1;
+      expect(await world.reviews.checkNow()).toBe("ok");
+    }));
+
   it("schedules from the one alarm: due, not due, off", () =>
     withReviewsWorld(async (world) => {
       expect(world.reviews.nextDue()).toBeNull();

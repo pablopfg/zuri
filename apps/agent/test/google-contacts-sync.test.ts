@@ -139,11 +139,16 @@ describe("the contacts every five minutes", () => {
     withChatWorld(async (world) => {
       expect(world.contacts.status()).toMatchObject({ nextSyncAt: null, lastResult: null, refreshing: false });
       await turnOn(world, []);
-      // Nothing chosen: the sync still runs (it has nothing to read), and nothing is "being read again".
+      // Nothing chosen: the sync still runs (it has nothing to read but the labels, new to Zuri), and
+      // nothing is "being read again".
+      expect(world.contacts.status()).toMatchObject({ refreshing: false, lastResult: "changed" });
+      world.clock.now += EVERY;
+      expect(await world.contacts.sync("alarm")).toBe("ok");
       expect(world.contacts.status()).toMatchObject({ refreshing: false, lastResult: "unchanged" });
       world.googleSim.refreshTokens.clear();
       world.db.run(`UPDATE zur_google_account SET access_expires_at = 0`);
-      world.clock.now += EVERY;
+      // With nothing chosen Google is only asked for the labels, at the hour: that is when it shows.
+      world.clock.now += HOUR;
       expect(await world.contacts.sync("alarm")).toBe("failed");
       expect(world.contacts.status()).toMatchObject({ problem: "reconnect", nextSyncAt: null });
       world.contacts.disable();
@@ -187,6 +192,14 @@ describe("what the alarm is told", () => {
       expect(await world.contacts.tick()).toBe(true);
       expect(world.contacts.readGoogle).toBe(true);
       world.googleSim.people.failure = null;
+      // A read cut in pages comes back every minute: it holds nothing, or the reviews would never be checked.
+      world.db.run(`UPDATE zur_contact_sync SET next_sync = ?, failures = 0`, world.clock.now);
+      const { GoogleMeter } = await import("../src/google/service.ts");
+      const sync = world.contacts.sync.bind(world.contacts);
+      world.contacts.sync = (trigger) => sync(trigger, new GoogleMeter(0));
+      expect(await world.contacts.tick()).toBe(true);
+      expect(world.contacts.readGoogle).toBe(false);
+      world.contacts.sync = sync;
       // Only the notice of the day is due.
       world.db.run(`UPDATE zur_contact_sync SET next_sync = ?, next_reminder = ?`, world.clock.now + HOUR, world.clock.now);
       expect(await world.contacts.tick()).toBe(true);
@@ -232,6 +245,65 @@ describe("the labels once an hour", () => {
       expect(await world.contacts.sync("alarm")).toBe("ok");
       expect(world.contacts.labels().map((label) => label.name)).toEqual(["Família", "Pacientes"]);
       expect(area(world)).toBeGreaterThan(number);
+      // QA-S09-04: the screen is told something changed, not "nothing changed".
+      expect(world.contacts.status()).toMatchObject({ lastResult: "changed", lastSyncAt: iso(world.clock.now) });
+      world.clock.now += EVERY;
+      expect(await world.contacts.sync("alarm")).toBe("ok");
+      expect(world.contacts.status().lastResult).toBe("unchanged");
+    }));
+
+  it("QA-S09-04: a chosen label deleted at Google forgets its contacts and the read says it changed", () =>
+    withChatWorld(async (world) => {
+      add(world, "c1", "Ana", [CLIENTS]);
+      await turnOn(world);
+      expect(copy(world)).toHaveLength(1);
+      world.clock.now += HOUR;
+      expect(await world.contacts.sync("alarm")).toBe("ok");
+      expect(world.contacts.status().lastResult).toBe("unchanged");
+      const groups = world.googleSim.people.groups;
+      groups.splice(groups.findIndex((item) => item.resourceName === CLIENTS), 1);
+      const number = area(world);
+      world.clock.now += HOUR;
+      expect(await world.contacts.sync("alarm")).toBe("ok");
+      expect(copy(world)).toHaveLength(0);
+      expect(area(world)).toBeGreaterThan(number);
+      expect(world.contacts.status()).toMatchObject({ lastResult: "changed", contacts: 0 });
+    }));
+
+  it("turned off and on again inside the hour, the first read brings the labels", () =>
+    withChatWorld(async (world) => {
+      await turnOn(world, []);
+      world.clock.now += EVERY;
+      world.contacts.disable();
+      expect(world.contacts.labels()).toEqual([]);
+      world.contacts.enable();
+      expect(await world.contacts.sync("owner")).toBe("ok");
+      expect(world.contacts.labels().map((label) => label.name)).toEqual(["Clientes", "Família"]);
+    }));
+
+  it("QA-S09-02: with no label chosen the labels still come once an hour, and a quiet read writes its three rows", () =>
+    withChatWorld(async (world) => {
+      await turnOn(world, []);
+      const start = labelCalls(world);
+      const from = world.clock.now;
+      for (let i = 1; i <= 11; i++) {
+        world.clock.now = from + i * EVERY;
+        const before = world.db.usage.rowsWritten;
+        expect(await world.contacts.sync("alarm")).toBe("ok");
+        expect(world.db.usage.rowsWritten - before).toBeLessThanOrEqual(3);
+      }
+      expect(labelCalls(world)).toBe(start);
+      expect(peopleCalls(world)).toHaveLength(0);
+      world.clock.now = from + HOUR;
+      expect(await world.contacts.sync("alarm")).toBe("ok");
+      expect(labelCalls(world)).toBe(start + 1);
+      // No contact is kept with the old set of fields: nothing is left "to read again".
+      expect(row(world).fields_version).toBe(FIELDS_VERSION);
+      world.db.run(`UPDATE zur_contact_sync SET fields_version = 1`);
+      world.clock.now += EVERY;
+      expect(await world.contacts.sync("alarm")).toBe("ok");
+      expect(row(world).fields_version).toBe(FIELDS_VERSION);
+      expect(labelCalls(world)).toBe(start + 1);
     }));
 
   it("reads the labels again right after the owner saves a choice", () =>
@@ -299,6 +371,29 @@ describe("the labels once an hour", () => {
       expect(row(world).running_since).toBeNull();
     }));
 
+  it("SEC-S09-03: the picker's refresh asks a failing Google once a minute, not on every opening", () =>
+    withChatWorld(async (world) => {
+      await turnOn(world);
+      world.clock.now += 2 * 60_000;
+      world.googleSim.people.failure = { status: 500, body: { error: { code: 500 } } };
+      const calls = world.googleSim.seen.length;
+      await expect(world.contacts.refreshLabels()).rejects.toMatchObject({ kind: "unavailable" });
+      const asked = world.googleSim.seen.length - calls;
+      expect(asked).toBeGreaterThanOrEqual(1);
+      for (let i = 0; i < 20; i++) {
+        world.clock.now += 10;
+        await world.contacts.refreshLabels();
+      }
+      world.clock.now += 59_799;
+      await world.contacts.refreshLabels();
+      expect(world.googleSim.seen.length - calls).toBe(asked);
+      // At the minute, once more; the hourly read of the sync was never put off by the asking.
+      world.clock.now += 1;
+      await expect(world.contacts.refreshLabels()).rejects.toMatchObject({ kind: "unavailable" });
+      expect(world.googleSim.seen.length - calls).toBe(2 * asked);
+      expect(row(world).labels_read_at as number).toBeLessThan(world.clock.now - 60_000);
+    }));
+
   it("the picker's refresh waits for a running sync, frees its lock when Google fails and does nothing while off", () =>
     withChatWorld(async (world) => {
       await world.contacts.refreshLabels();
@@ -332,6 +427,25 @@ describe("\"Sync now\" once a minute", () => {
       expect(world.googleSim.seen.length).toBe(calls);
       world.clock.now += 1;
       expect(await world.contacts.syncNow()).toBe("ok");
+    }));
+
+  it("SEC-S09-02: saving the same choice of labels again gives no minute back, nor the labels' hour", () =>
+    withChatWorld(async (world) => {
+      await turnOn(world);
+      world.clock.now += EVERY;
+      expect(await world.contacts.syncNow()).toBe("ok");
+      const calls = world.googleSim.seen.length;
+      const read = row(world).labels_read_at;
+      for (let i = 0; i < 20; i++) {
+        world.clock.now += 10;
+        world.contacts.select([CLIENTS]);
+        await expect(world.contacts.syncNow()).rejects.toMatchObject({ code: "RATE_LIMITED" });
+      }
+      expect(world.googleSim.seen.length).toBe(calls);
+      expect(row(world).labels_read_at).toBe(read);
+      // A label taken out is a new choice (and putting it back asks for the password, on the route).
+      world.contacts.select([]);
+      expect(row(world)).toMatchObject({ labels_read_at: null, synced_now_at: null });
     }));
 
   it("has its minute back when the owner saves a choice of labels, and survives a clock set back", () =>
@@ -441,6 +555,26 @@ describe("the fields Zuri started to keep", () => {
       expect(world.contacts.count()).toBe(3);
     }));
 
+  it("SEC-S09-05: reads a page of 1,000 contacts that weighs more than 1 MiB, and refuses one past 4 MiB", () =>
+    withChatWorld(async (world) => {
+      await turnOn(world);
+      const { MAX_PEOPLE_BYTES } = await import("../src/google/service.ts");
+      expect(MAX_PEOPLE_BYTES).toBe(4 * 1024 * 1024);
+      // About 2 KB a contact, as Google sends them with its metadata on every field.
+      const filler = "x".repeat(1_900);
+      for (let i = 0; i < 1_000; i++) world.googleSim.people.add({ resourceName: `people/g${i}`, names: [{ displayName: `G${i}`, metadata: { filler } }], memberships: member(CLIENTS) });
+      world.db.run(`UPDATE zur_contact_sync SET full_needed = 1`);
+      world.clock.now += EVERY;
+      expect(await world.contacts.sync("alarm")).toBe("ok");
+      expect(world.contacts.count()).toBe(1_000);
+      // Past the ceiling the answer is not trusted: a failure that waits, never a half-read page.
+      world.googleSim.people.update("people/g0", { names: [{ displayName: "G0", metadata: { filler: "y".repeat(MAX_PEOPLE_BYTES) } }] });
+      world.clock.now += EVERY;
+      expect(await world.contacts.sync("alarm")).toBe("failed");
+      expect(world.contacts.count()).toBe(1_000);
+      expect(world.contacts.status().lastResult).toBe("failed");
+    }));
+
   it("keeps the name's parts, addresses, sites, relations and chat names, cut and counted", () => {
     const kept = readPerson({
       resourceName: "people/c1",
@@ -475,7 +609,7 @@ describe("the fields Zuri started to keep", () => {
     expect([...(kept.data.addresses[2]?.value ?? "")]).toHaveLength(CONTACT_LIMITS.address);
     expect(kept.data.urls).toEqual([
       { label: "Blog", value: "https://exemplo.com.br/ana" },
-      { label: "", value: "https://exemplo.com.br" },
+      { label: "", value: "https://exemplo.com.br/" },
     ]);
     expect(kept.data.relations).toEqual([
       { label: "Irmão", value: "Bruno Lima" },
@@ -514,11 +648,29 @@ describe("the fields Zuri started to keep", () => {
     expect(empty.data).toEqual({ given: "", middle: "", family: "", nickname: "", phones: [], emails: [], birthday: null, dates: [], organization: "", jobTitle: "", notes: "", fields: [], addresses: [], urls: [], relations: [], chats: [], more: {} });
   });
 
+  it("QA-S09-05: cuts an address at 300 characters and drops a site past 200 (n - 1, n, n + 1)", () => {
+    const address = (length: number) => readPerson({ resourceName: "people/c1", addresses: [{ formattedValue: "a".repeat(length) }] }).data.addresses[0]?.value ?? "";
+    const max = CONTACT_LIMITS.address;
+    expect(address(max - 1)).toBe("a".repeat(max - 1));
+    expect(address(max)).toBe("a".repeat(max));
+    expect([...address(max + 1)]).toHaveLength(max);
+    const site = (length: number) => `https://exemplo.com.br/${"x".repeat(length - "https://exemplo.com.br/".length)}`;
+    const top = CONTACT_LIMITS.url;
+    expect(siteUrl(site(top - 1))).toBe(site(top - 1));
+    expect(siteUrl(site(top))).toBe(site(top));
+    // A link cut short would lead somewhere else: past the ceiling it is left out whole.
+    expect(siteUrl(site(top + 1))).toBe("");
+    const kept = readPerson({ resourceName: "people/c1", urls: [{ value: site(top + 1) }, { value: site(top) }] });
+    expect(kept.data.urls).toEqual([{ label: "", value: site(top) }]);
+  });
+
   it("only keeps a site the screen may link: http or https, a real host, no user or password", () => {
-    expect(siteUrl("https://exemplo.com.br")).toBe("https://exemplo.com.br");
+    expect(siteUrl("https://exemplo.com.br")).toBe("https://exemplo.com.br/");
+    // As the browser reads it: the host in lower case, a backslash as a slash (SEC-S09-06).
+    expect(siteUrl("https://EXEMPLO.com.br\\@outro.exemplo.com.br")).toBe("https://exemplo.com.br/@outro.exemplo.com.br");
     expect(siteUrl("http://exemplo.com.br/a?b=1#c")).toBe("http://exemplo.com.br/a?b=1#c");
     expect(siteUrl("exemplo.com.br:8080/a")).toBe("https://exemplo.com.br:8080/a");
-    expect(siteUrl("  www.exemplo.com.br  ")).toBe("https://www.exemplo.com.br");
+    expect(siteUrl("  www.exemplo.com.br  ")).toBe("https://www.exemplo.com.br/");
     for (const bad of ["javascript:alert(1)", "JAVASCRIPT:alert(1)", " javascript:alert(1)", "java\tscript:alert(1)", "data:text/html,x", "vbscript:x", "file:///etc/passwd", "tel:+5511999990001", "mailto:ana@exemplo.com.br", "ftp://exemplo.com.br", "https://a:b@exemplo.com.br", "ana@exemplo.com.br", "localhost", "https://", "//exemplo.com.br", "exemplo com br", "", null, 7, `https://exemplo.com.br/${"x".repeat(300)}`]) {
       expect(siteUrl(bad), String(bad)).toBe("");
     }
@@ -537,7 +689,7 @@ describe("the fields Zuri started to keep", () => {
       add(world, "c1", "Ana Souza", [CLIENTS], {
         names: [{ displayName: "Ana Souza", givenName: "Ana", middleName: "M.", familyName: "Souza" }],
         addresses: [{ formattedValue: "Rua das Flores, 120" }],
-        urls: [{ value: "https://exemplo.com.br" }],
+        urls: [{ value: "https://exemplo.com.br/" }],
         relations: [{ person: "Bruno", formattedType: "Irmão" }],
         imClients: [{ username: "ana.souza", formattedProtocol: "Telegram" }],
         phoneNumbers: Array.from({ length: 11 }, (_, i) => ({ value: `(11) 99999-00${String(i).padStart(2, "0")}` })),
@@ -552,7 +704,7 @@ describe("the fields Zuri started to keep", () => {
         middle: "M.",
         family: "Souza",
         addresses: [{ label: "", value: "Rua das Flores, 120" }],
-        urls: [{ label: "", value: "https://exemplo.com.br" }],
+        urls: [{ label: "", value: "https://exemplo.com.br/" }],
         relations: [{ label: "Irmão", value: "Bruno" }],
         chats: [{ label: "Telegram", value: "ana.souza" }],
         more: { phones: 1 },
@@ -563,7 +715,7 @@ describe("the fields Zuri started to keep", () => {
       // Third parties' text: inside <data>, like the rest of the contact.
       const got = await executor.execute("get_contact", { id: list[0]?.id ?? "" }, "c1");
       expect(got).toMatch(/^<data source="contact" id="get_contact">.*<\/data>$/s);
-      for (const text of ['"addresses":[{"label":"","value":"Rua das Flores, 120"}]', '"sites":[{"label":"","value":"https://exemplo.com.br"}]', '"relations":[{"label":"Irmão","value":"Bruno"}]', '"chats":[{"label":"Telegram","value":"ana.souza"}]']) {
+      for (const text of ['"addresses":[{"label":"","value":"Rua das Flores, 120"}]', '"sites":[{"label":"","value":"https://exemplo.com.br/"}]', '"relations":[{"label":"Irmão","value":"Bruno"}]', '"chats":[{"label":"Telegram","value":"ana.souza"}]']) {
         expect(got).toContain(text);
       }
       const bare = await executor.execute("get_contact", { id: list[1]?.id ?? "" }, "c2");

@@ -445,6 +445,8 @@ describe("the sync's failures", () => {
         world.googleSim.people.failure = { status, body: { error: { code: status } } };
         expect(await world.contacts.sync("alarm")).toBe("failed");
         waits.push(((sync(world).next_sync as number) - world.clock.now) / 60_000);
+        // The countdown on the screen shows the wait there really is.
+        expect(world.contacts.status().nextSyncAt).toBe(new Date(sync(world).next_sync as number).toISOString());
         // Four failures (75 minutes of waiting) are a blip: the owner hears of the fifth.
         expect(world.contactNotices.filter((notice) => notice.kind === "contacts.problem")).toHaveLength(waits.length >= 5 ? 1 : 0);
         expect(world.contacts.status().lastResult).toBe("failed");

@@ -1525,6 +1525,8 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE zur_contact_sync ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0`,
       // The list of labels is read once an hour, not on every sync.
       `ALTER TABLE zur_contact_sync ADD COLUMN labels_read_at INTEGER`,
+      // The last time the label picker asked Google for them, whether it answered or not: once a minute.
+      `ALTER TABLE zur_contact_sync ADD COLUMN labels_asked_at INTEGER`,
       // "Sync now", once a minute.
       `ALTER TABLE zur_contact_sync ADD COLUMN synced_now_at INTEGER`,
       // The set of fields the copy was read with: a newer set reads every contact once more.

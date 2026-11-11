@@ -495,7 +495,12 @@ export class ReviewService {
       now,
       now - REVIEW_LIMITS.checkNowEveryMs,
     ).rowsWritten;
-    if (!done) throw new AppError("RATE_LIMITED", "error.reviewsCheckSoon", { retryAfter: 60 });
+    if (!done) {
+      // The seconds really left, as the contacts' "Sync now" tells them (QA-S09-06).
+      const last = this.db.one<{ at: number | null }>(`SELECT checked_now_at AS at FROM zur_review_settings WHERE id = 1`)?.at ?? now;
+      const seconds = Math.min(60, Math.max(1, Math.ceil((last + REVIEW_LIMITS.checkNowEveryMs - now) / 1_000)));
+      throw new AppError("RATE_LIMITED", "error.reviewsCheckSoon", { retryAfter: seconds });
+    }
     return this.check("owner");
   }
 

@@ -106,6 +106,7 @@ describe("/api/google/contacts", () => {
     expect((await errorBody(await api("DELETE", "/google/contacts"))).code).toBe("RECENT_AUTH_REQUIRED");
     // Removing labels and syncing don't.
     expect((await api("PATCH", "/google/contacts/labels", { selected: [] })).status).toBe(200);
+    await minuteLater();
     expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
   });
 
@@ -188,8 +189,9 @@ describe("/api/google/contacts", () => {
   });
 
   it("the status tells when the next read is and how the last one went, with nothing of the sync's tokens", async () => {
+    // The first read brings the labels, new to Zuri: it changed something.
     const status = (await turnOn()) as ContactsStatus & Record<string, unknown>;
-    expect(status).toMatchObject({ status: "ok", lastResult: "unchanged", refreshing: false });
+    expect(status).toMatchObject({ status: "ok", lastResult: "changed", refreshing: false });
     const wait = Date.parse(status.nextSyncAt ?? "") - Date.parse(status.lastSyncAt ?? "");
     expect(wait).toBe(5 * 60_000);
     expect(Object.keys(status).sort()).toEqual(["connected", "contacts", "enabled", "labels", "lastResult", "lastSyncAt", "nextSyncAt", "onAdded", "outcome", "problem", "refreshing", "reminders", "status"]);
@@ -214,6 +216,36 @@ describe("/api/google/contacts", () => {
       expect(google.seen.length).toBe(calls);
     } finally {
       google.people.groups.pop();
+    }
+  });
+
+  it("the label picker's refresh says Google didn't answer, and two at once go to Google once", async () => {
+    await turnOn();
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET labels_read_at = labels_read_at - 60000, labels_asked_at = NULL`));
+    const calls = () => google.seen.filter((seen) => seen.url.includes("/contactGroups")).length;
+    const before = calls();
+    const both = await Promise.all([api("POST", "/google/contacts/labels/refresh"), api("POST", "/google/contacts/labels/refresh")]);
+    expect(both.map((res) => res.status)).toEqual([200, 200]);
+    expect(calls()).toBe(before + 1);
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET labels_read_at = labels_read_at - 60000, labels_asked_at = NULL`));
+    google.people.failure = { status: 503, body: { error: { code: 503 } } };
+    try {
+      const res = await api("POST", "/google/contacts/labels/refresh");
+      expect(res.status).toBe(503);
+      expect(await errorBody(res)).toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+      expect(await inOwner((agent) => agent.store.db.one<{ at: number | null }>(`SELECT running_since AS at FROM zur_contact_sync WHERE id = 1`)?.at)).toBeNull();
+    } finally {
+      google.people.failure = null;
+    }
+  });
+
+  it("SEC-S09-02: saving the same labels and pressing \"Sync now\" in a loop stays at one sync a minute", async () => {
+    await turnOn();
+    expect((await api("PATCH", "/google/contacts/labels", { selected: [CLIENTS] })).status).toBe(200);
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+    for (let i = 0; i < 3; i++) {
+      expect((await api("PATCH", "/google/contacts/labels", { selected: [CLIENTS] })).status).toBe(200);
+      expect((await api("POST", "/google/contacts/sync")).status).toBe(429);
     }
   });
 
@@ -276,6 +308,7 @@ describe("/api/google/contacts", () => {
     for (const [method, path] of [
       ["GET", "/google/contacts"],
       ["POST", "/google/contacts/sync"],
+      ["POST", "/google/contacts/labels/refresh"],
       ["GET", "/contacts"],
     ] as const) {
       expect((await api(method, path)).status).toBe(423);

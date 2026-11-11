@@ -1,6 +1,6 @@
 import { REVIEW_LIMITS } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { add, draftAnswer, later, SECOND_OK, turnOn, withReviewsWorld, type ReviewsWorld } from "./reviews-world.ts";
+import { add, draftAnswer, later, LOCATION, SECOND_OK, turnOn, withReviewsWorld, type ReviewsWorld } from "./reviews-world.ts";
 
 // PR S09 of the new frontend (plan sincronizacao-contatos-avaliacoes.md, PR 1): the reviews read every
 // ten minutes, and a check that finds nothing new moves nothing on the screens.
@@ -58,6 +58,9 @@ describe("the reviews every ten minutes", () => {
           add(world, "n1", 5, "Adorei o atendimento, todos muito gentis.");
         },
         () => add(world, "n2", 1, "Ruim"),
+        // The author changed the review; then someone answered it at Google's own page.
+        () => world.sim.business.edit(LOCATION, "a", { starRating: "TWO", comment: "Mudei de ideia", updateTime: new Date(world.clock.now + 1_000).toISOString() }),
+        () => world.sim.business.edit(LOCATION, "n2", { reviewReply: { comment: "Sentimos muito. Equipe", updateTime: new Date(world.clock.now).toISOString() } }),
       ];
       for (const step of steps) {
         const number = area(world);

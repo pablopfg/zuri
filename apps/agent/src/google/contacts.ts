@@ -113,6 +113,7 @@ interface SyncRow {
   last_result: string | null;
   dirty: number;
   labels_read_at: number | null;
+  labels_asked_at: number | null;
   synced_now_at: number | null;
   fields_version: number;
 }
@@ -317,9 +318,10 @@ export class GoogleContacts {
     const now = this.clock();
     this.knownOff = false;
     this.ensureRow();
+    // Turned on (again): the labels come from Google on the first read, whatever was read before turning off.
     this.db.run(
       `UPDATE zur_contact_sync SET enabled = 1, status = 'syncing', problem = NULL, full_needed = 1, page_token = NULL, page_mode = NULL,
-         failures = 0, next_sync = ?, next_reminder = NULL, synced_now_at = NULL WHERE id = 1`,
+         failures = 0, next_sync = ?, next_reminder = NULL, synced_now_at = NULL, labels_read_at = NULL, labels_asked_at = NULL WHERE id = 1`,
       now,
     );
     this.planReminder();
@@ -345,6 +347,9 @@ export class GoogleContacts {
         .map((label) => label.id),
     );
     const added = [...chosen].some((id) => !before.has(id));
+    // The same choice saved again gives nothing back: "Sync now" keeps its minute and the labels their hour,
+    // or saving in a loop would spend Google's quota without the password (SEC-S09-02).
+    const changed = added || chosen.size !== before.size;
     const now = this.clock();
     this.db.transaction(() => {
       this.db.run(`UPDATE zur_contact_labels SET selected = 0, updated_at = ? WHERE selected = 1`, now);
@@ -357,7 +362,7 @@ export class GoogleContacts {
       // the next one, due now, reads the new choice.
       this.db.run(
         `UPDATE zur_contact_sync SET ${added ? "full_needed = 1, page_token = NULL, page_mode = NULL, " : ""}status = 'syncing', running_since = NULL,
-           problem = CASE WHEN problem = 'too_many' THEN NULL ELSE problem END, failures = 0, next_sync = ?, labels_read_at = NULL, synced_now_at = NULL WHERE id = 1`,
+           problem = CASE WHEN problem = 'too_many' THEN NULL ELSE problem END, failures = 0, next_sync = ?${changed ? ", labels_read_at = NULL, synced_now_at = NULL" : ""} WHERE id = 1`,
         now,
       );
     });
@@ -418,7 +423,7 @@ export class GoogleContacts {
     return due.length ? Math.min(...due) : null;
   }
 
-  /** The last tick's sync went to Google (it ended, well or not): the alarm keeps the reviews' check out of that wake. */
+  /** The last tick's sync went to Google and ended, well or not: the alarm keeps the reviews' check out of that wake. */
   get readGoogle(): boolean {
     return this.reached;
   }
@@ -432,8 +437,9 @@ export class GoogleContacts {
     this.reached = false;
     if (row.next_sync !== null && row.next_sync <= now && this.deps.google.granted(CONTACTS_SCOPE)) {
       const outcome = await this.sync("alarm");
-      // "busy" (another sync holds the lock) and "off" never left for Google.
-      this.reached = outcome !== "busy" && outcome !== "off";
+      // Only a sync that ended, well or not: "busy" and "off" never left for Google, and a read cut in
+      // pages comes back every minute until it ends (holding the reviews each time would starve them).
+      this.reached = outcome === "ok" || outcome === "failed";
       worked = true;
     }
     if (row.next_reminder !== null && row.next_reminder <= now) {
@@ -506,9 +512,13 @@ export class GoogleContacts {
   async refreshLabels(meter = new GoogleMeter(LABELS_BUDGET)): Promise<void> {
     if (!this.enabled()) return;
     const stamp = this.clock();
-    const read = this.row()?.labels_read_at ?? null;
-    if (read !== null && read <= stamp && stamp - read < CONTACT_LIMITS.syncNowEveryMs) return;
+    const row = this.row();
+    // Read, or asked (Google may be failing: SEC-S09-03), in the last minute: the list kept serves.
+    for (const at of [row?.labels_read_at ?? null, row?.labels_asked_at ?? null]) {
+      if (at !== null && at <= stamp && stamp - at < CONTACT_LIMITS.syncNowEveryMs) return;
+    }
     if (!this.lock(stamp)) return;
+    this.db.run(`UPDATE zur_contact_sync SET labels_asked_at = ? WHERE id = 1`, stamp);
     try {
       await this.readLabels(meter, stamp);
     } finally {
@@ -535,20 +545,24 @@ export class GoogleContacts {
     // The labels come from Google once an hour, on a full read and after the owner saved a choice; in
     // between, the names kept serve: a contact's own labels come with the contact.
     const due = state.labels_read_at === null || state.labels_read_at > stamp || stamp - state.labels_read_at >= CONTACT_LIMITS.labelsEveryMs;
-    let labelsRead = mode === "full" || due;
-    let userLabels = labelsRead ? await this.readLabels(meter, stamp) : new Set(this.labels().map((label) => label.id));
-    if (!this.mine(stamp)) return "off";
     const chosen = () =>
       new Set(
         this.labels()
           .filter((label) => label.selected)
           .map((label) => label.id),
       );
+    // With nothing chosen the read stays "full" for good (there is no token to go on from), so only the
+    // hour asks for the labels then (QA-S09-02).
+    let labelsRead = due || (mode === "full" && chosen().size > 0);
+    let userLabels = labelsRead ? await this.readLabels(meter, stamp) : new Set(this.labels().map((label) => label.id));
+    if (!this.mine(stamp)) return "off";
     let selected = chosen();
     if (selected.size === 0) {
-      // Nothing chosen: nothing copied, and nothing to read from Google.
+      // Nothing chosen: nothing copied, and nothing to read from Google. No contact is left with the old
+      // set of fields either.
       this.db.transaction(() => {
         this.done(stamp, null, false, this.pruneUnselected() > 0);
+        this.db.run(`UPDATE zur_contact_sync SET fields_version = ? WHERE id = 1 AND running_since = ? AND fields_version != ?`, FIELDS_VERSION, stamp, FIELDS_VERSION);
       });
       return "ok";
     }
@@ -694,6 +708,8 @@ export class GoogleContacts {
     );
     const now = this.clock();
     let goneChosen = false;
+    // A label new, renamed, recounted or gone moves the screens' number: the read tells "changed" (QA-S09-04).
+    let wrote = false;
     this.db.transaction(() => {
       for (const [id, label] of seen) {
         const before = stored.get(id);
@@ -707,15 +723,17 @@ export class GoogleContacts {
           label.count,
           now,
         );
+        wrote = true;
       }
       for (const [id, row] of stored) {
         if (seen.has(id)) continue;
+        wrote = true;
         if (row.selected === 1) goneChosen = true;
         this.db.run(`DELETE FROM zur_contact_labels WHERE resource_name = ?`, id);
         this.db.run(`DELETE FROM zur_contact_memberships WHERE label = ?`, id);
       }
       if (goneChosen) this.pruneUnselected();
-      this.db.run(`UPDATE zur_contact_sync SET labels_read_at = ? WHERE id = 1`, now);
+      this.db.run(`UPDATE zur_contact_sync SET labels_read_at = ?${wrote ? ", dirty = 1" : ""} WHERE id = 1`, now);
     });
     if (goneChosen) this.deps.notify({ kind: "contacts.labelGone" });
     return new Set(seen.keys());
@@ -1116,7 +1134,9 @@ export function siteUrl(value: unknown): string {
   try {
     const url = new URL(candidate);
     if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username || url.password || !url.hostname.includes(".")) return "";
-    return candidate;
+    // The address as the browser will read it (a "\" is a "/" to it), never the text as it came, and only
+    // if that still fits (SEC-S09-06).
+    return url.href.length <= CONTACT_LIMITS.url ? url.href : "";
   } catch {
     return "";
   }

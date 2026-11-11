@@ -112,7 +112,7 @@ describe("the migration list", () => {
       29: "84038c823c68cb872b48d2013fc29c108bacec70b3bd4e893a9eaab9cac67889",
       30: "9438daaa32e658a73c3b370095cb63f27d70e4786ec82d9998650e78b77dd827",
       31: "7dab5e6e1796d31319943db97241b717fb87bdfd1abb91687b0c6a6a6b6fe320",
-      32: "64eee1d09920f145635d63a8b3ee27978034228e04bc136cfa9f1fd39b6fb302",
+      32: "9e9ed87e486bc2a912d17a1f4386d26696c0cb7c46728087e1866f49930292fe",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -1258,7 +1258,7 @@ describe("migrate", () => {
       db.run(`INSERT INTO zur_contact_sync (id, enabled, status, people_sync_token, full_needed, last_ok_at, next_sync, copied, reminder_time) VALUES (1, 1, 'ok', 'sync.7', 0, 1000, 2000, 12, '07:30')`);
       db.run(`INSERT INTO zur_review_settings (id, enabled, signature, last_ok_at, next_check) VALUES (1, 1, 'Equipe Exemplo', 1000, 2000)`);
       expect(migrate(db)).toBe(32);
-      expect(db.one(`SELECT enabled, status, people_sync_token, full_needed, last_ok_at, next_sync, copied, reminder_time, checked_at, last_result, dirty, labels_read_at, synced_now_at, fields_version FROM zur_contact_sync`)).toEqual({
+      expect(db.one(`SELECT enabled, status, people_sync_token, full_needed, last_ok_at, next_sync, copied, reminder_time, checked_at, last_result, dirty, labels_read_at, labels_asked_at, synced_now_at, fields_version FROM zur_contact_sync`)).toEqual({
         enabled: 1,
         status: "ok",
         people_sync_token: "sync.7",
@@ -1271,6 +1271,7 @@ describe("migrate", () => {
         last_result: null,
         dirty: 0,
         labels_read_at: null,
+        labels_asked_at: null,
         synced_now_at: null,
         // The copy was read with the first set of fields: the next sync reads every contact once more.
         fields_version: 1,
@@ -1278,7 +1279,7 @@ describe("migrate", () => {
       expect(db.one(`SELECT enabled, signature, last_ok_at, next_check, checked_at, last_result FROM zur_review_settings`)).toEqual({ enabled: 1, signature: "Equipe Exemplo", last_ok_at: 1000, next_check: 2000, checked_at: null, last_result: null });
       // What a quiet read writes leaves the areas' numbers where they were.
       const before = db.one(`SELECT contacts, reviews FROM zur_area_versions WHERE id = 1`);
-      db.run(`UPDATE zur_contact_sync SET checked_at = 3000, last_result = 'unchanged', dirty = 0, labels_read_at = 3000, synced_now_at = 3000, fields_version = 2, next_sync = 4000, running_since = NULL, failures = 0`);
+      db.run(`UPDATE zur_contact_sync SET checked_at = 3000, last_result = 'unchanged', dirty = 0, labels_read_at = 3000, labels_asked_at = 3000, synced_now_at = 3000, fields_version = 2, next_sync = 4000, running_since = NULL, failures = 0`);
       db.run(`UPDATE zur_review_settings SET checked_at = 3000, last_result = 'unchanged', next_check = 4000, failures = 0, running_since = NULL`);
       expect(db.one(`SELECT contacts, reviews FROM zur_area_versions WHERE id = 1`)).toEqual(before);
       db.run(`UPDATE zur_contact_sync SET last_ok_at = 3000`);

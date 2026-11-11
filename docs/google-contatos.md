@@ -153,7 +153,11 @@ Os mesmos secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   `apps/agent/src/google/contacts.ts`. O `syncToken` do Google vale para um
   conjunto de campos e um contato que não mudou mantém o `etag`; por isso,
   quem acrescentar um campo sobe o `FIELDS_VERSION`, e a leitura seguinte é
-  inteira e regrava todos.
+  inteira. Ela regrava só o contato cujos dados guardados mudaram. O custo é
+  de uma vez: uma chamada ao Google a cada 1.000 contatos, até 10 por
+  despertar, e perto de uma linha lida por contato.
+- Sem etiqueta escolhida não há contato a ler: a Zuri só pede as etiquetas
+  ao Google, uma vez por hora.
 - Tela: `GET /api/google/contacts` devolve `nextSyncAt`, `lastResult`
   (`unchanged`, `changed` ou `failed`) e `refreshing` (leitura inteira em
   curso). `POST /api/google/contacts/sync` responde 429 `RATE_LIMITED` com
