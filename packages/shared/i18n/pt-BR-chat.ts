@@ -38,6 +38,7 @@ export const ptBRChat = {
   "web.chat.search": "Buscar conversas",
   "web.chat.searchShort": "Buscar",
   "web.chat.searchEmpty": "Nenhuma conversa com esse nome. Tente outra palavra.",
+  "web.chat.searchMore": "Nenhuma conversa com esse nome entre as que já apareceram. Carregue mais para seguir buscando.",
   "web.chat.group.today": "Hoje",
   "web.chat.group.yesterday": "Ontem",
   "web.chat.group.week": "Últimos 7 dias",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clock, messageDay, rowWhen } from "../src/pages/chat/when.ts";
+import { clock, messageDay, rowWhen, shortDate } from "../src/pages/chat/when.ts";
 
 const SP = "America/Sao_Paulo";
 /** An instant written as São Paulo's wall clock (UTC−3, no daylight saving since 2019). */
@@ -46,6 +46,26 @@ describe("rowWhen", () => {
 
   it("treats a clock a little ahead on the server as today", () => {
     expect(rowWhen(iso("2026-11-10T00:00:30"), sp("2026-11-09T23:59:50"), "pt-BR", SP)).toBe("00:00");
+  });
+});
+
+describe("a date that is not one", () => {
+  it("shows nothing instead of failing the whole screen", () => {
+    expect(rowWhen("", now, "pt-BR", SP)).toBe("");
+    expect(rowWhen("nope", now, "pt-BR", SP)).toBe("");
+    expect(shortDate("nope", now, "pt-BR", SP)).toBe("");
+  });
+});
+
+describe("days of 23 and 25 hours (New York)", () => {
+  const NY = "America/New_York";
+  it("counts calendar days across the change of the clocks, both ways", () => {
+    // 1 Nov 2026 has 25 hours there: 00:10 of that day, seen at 23:50 of the same day, is still today.
+    expect(messageDay("2026-11-01T04:10:00Z", new Date("2026-11-02T04:50:00Z"), "en", NY).offset).toBe(0);
+    expect(messageDay("2026-11-01T03:50:00Z", new Date("2026-11-02T04:50:00Z"), "en", NY).offset).toBe(-1);
+    // 8 Mar 2026 has 23 hours: 23:50 of the 7th, seen at 23:50 of the 8th, is yesterday.
+    expect(messageDay("2026-03-08T04:50:00Z", new Date("2026-03-09T03:50:00Z"), "en", NY).offset).toBe(-1);
+    expect(rowWhen("2026-03-08T05:10:00Z", new Date("2026-03-09T03:50:00Z"), "en", NY)).toBe("12:10 AM");
   });
 });
 

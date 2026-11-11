@@ -14,6 +14,7 @@ export function clock(iso: string, locale: string, timeZone: string): string {
  * of the last seven days, and the date before that.
  */
 export function rowWhen(iso: string, now: Date, locale: string, timeZone: string): string {
+  if (!valid(iso)) return "";
   const days = -dayOffset(iso, now, timeZone);
   if (days <= 1) return clock(iso, locale, timeZone);
   const instant = new Date(iso);
@@ -27,6 +28,7 @@ export function rowWhen(iso: string, now: Date, locale: string, timeZone: string
 
 /** The date in numbers ("02/11"), with the year when it is not this one. */
 export function shortDate(iso: string, now: Date, locale: string, timeZone: string): string {
+  if (!valid(iso)) return "";
   const instant = new Date(iso);
   const year = (date: Date) => new Intl.DateTimeFormat("en", { timeZone, year: "numeric" }).format(date);
   return new Intl.DateTimeFormat(locale, { timeZone, day: "2-digit", month: "2-digit", ...(year(instant) === year(now) ? {} : { year: "numeric" }) }).format(instant);

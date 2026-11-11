@@ -264,6 +264,8 @@ Diferenças da S05 para o que as tabelas previam:
 - "Um componente de gravação" é `pages/chat/VoiceInput.tsx` (botão e linha de estado). Hoje só a Conversa tem microfone; a S07 leva o componente e o `useVoice` para uma pasta comum e liga a nota e o Início nele.
 - O cartão do plano e os cartões de aprovação ficaram como estavam; só os balões mudaram (o do dono cinza, a resposta da Zuri sem moldura, com a marca e a hora).
 - O alvo de toque dos botões é de 44 px (critério 5), maior que o do protótipo.
+- O menu ao lado do título se chama só "Mais opções"; o da linha leva o nome da conversa. Dois botões com o mesmo nome confundiam o leitor de tela.
+- Para a S05b: a tela lê "hoje" quando desenha, então fica parada se atravessar a 0:00 aberta e sem uso; a troca da conversa do dia precisa redesenhar a lista e o título. E renomear uma conversa ainda conta como uso no servidor (issue aberta nesta PR).
 
 ## 12. Riscos
 

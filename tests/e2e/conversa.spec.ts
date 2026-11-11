@@ -52,7 +52,7 @@ async function age(page: Page, id: string, days: number) {
 test("each row shows when the conversation was used and renames by keyboard, the open one or another", async ({ page }) => {
   const word = tag();
   await openChat(page);
-  const other = await converse(page, `Outra ${word}`);
+  await converse(page, `Outra ${word}`);
   const open = await converse(page, `Aberta ${word}`);
   await page.goto(`/conversa/${open}`);
   await expect(page.getByRole("heading", { level: 1, name: `Aberta ${word}` })).toBeVisible();
@@ -83,24 +83,34 @@ test("each row shows when the conversation was used and renames by keyboard, the
   await expect(page).toHaveURL(new RegExp(`/conversa/${open}$`));
   await expect(page.getByRole("heading", { level: 1, name: `Aberta ${word}` })).toBeVisible();
 
-  // Esc gives up on a rename: nothing is saved.
+  // The menu and the dialog pass the accessibility check too, in the dark theme as well.
   await page.keyboard.press("Enter");
+  await expectAccessible(page, "menu da linha");
   await page.keyboard.press("Enter");
+  await expectAccessible(page, "renomear");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expectAccessible(page, "renomear, escuro");
+  await page.emulateMedia({ colorScheme: "light" });
+  // Esc gives up on a rename: nothing leaves the browser and the name stays.
+  let saves = 0;
+  page.on("request", (request) => {
+    if (request.method() === "PATCH") saves += 1;
+  });
   await page.keyboard.type("x");
   await page.keyboard.press("Escape");
   await expect(rename).toBeHidden();
-  await expect(row(page, `Renomeada ${word}`)).toHaveCount(1);
+  await expect(row(page, `Renomeada ${word}`).getByRole("link")).toHaveText(new RegExp(`^Renomeada ${word}\\d\\d:\\d\\d$`));
+  expect(saves).toBe(0);
 
   // The open conversation renames from its own menu, at the top: title, tab and row follow.
-  // Two menus carry its name: the row's, in the list, and the one beside the title, after it.
-  await page.getByRole("button", { name: `Mais opções para “Aberta ${word}”` }).last().click();
+  // The menu beside the title has no name of its own: the title is right there.
+  await page.getByRole("button", { name: "Mais opções", exact: true }).click();
   await page.getByRole("menuitem", { name: "Renomear" }).click();
   await rename.getByLabel("Nome da conversa").fill(`Título novo ${word}`);
   await rename.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("heading", { level: 1, name: `Título novo ${word}` })).toBeVisible();
   await expect(page).toHaveTitle(`Título novo ${word} · Zuri`);
   await expect(row(page, `Título novo ${word}`).getByRole("link")).toHaveAttribute("aria-current", "page");
-  expect(other).not.toBe(open);
 });
 
 test("deleting by keyboard: another conversation leaves the list and the open one stays; the open one leads to a new conversation", async ({ page }) => {
@@ -165,6 +175,9 @@ test("a conversation of another day says so and points to today's; today's has n
   // The composer still works here: the notice explains, it never blocks.
   await expect(page.getByRole("textbox", { name: "Mensagem" })).toBeEnabled();
   await expectAccessible(page, "conversa anterior");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expectAccessible(page, "conversa anterior, escuro");
+  await page.emulateMedia({ colorScheme: "light" });
 
   await notice.getByRole("link", { name: `A de hoje segue em “De hoje ${word}”` }).click();
   await expect(page).toHaveURL(new RegExp(`/conversa/${today}$`));
@@ -298,7 +311,7 @@ test.describe("on a narrow screen", () => {
   });
 });
 
-test("the list's search, empty and error states", async ({ page }) => {
+test("the list's search and its error state", async ({ page }) => {
   const word = tag();
   await openChat(page);
   await converse(page, `Achável ${word}`);
@@ -319,4 +332,108 @@ test("the list's search, empty and error states", async ({ page }) => {
   await list(page).getByRole("button", { name: "Tentar de novo" }).click();
   await expect(row(page, `Achável ${word}`)).toHaveCount(1);
   await page.unrouteAll({ behavior: "ignoreErrors" });
+});
+
+test("a conversation deleted somewhere else leaves the list when the owner tries to delete or rename it here", async ({ page }) => {
+  const word = tag();
+  await openChat(page);
+  const first = await converse(page, `Sumiu ${word}`);
+  const second = await converse(page, `Também ${word}`);
+  await page.reload();
+  await expect(row(page, `Sumiu ${word}`)).toHaveCount(1);
+  // Another tab, or the bot, deleted both, and the news has not reached this list (a phone back from
+  // sleep, say): its reads keep answering the old list, less what the server already told this page is gone.
+  const before = (await (await page.request.get("/api/conversations", { headers: CSRF })).json()) as { conversations: { id: string }[]; nextCursor: string | null };
+  const told = new Set<string>();
+  page.on("response", (response) => {
+    if (response.status() === 404) told.add(response.url().split("/").pop() ?? "");
+  });
+  await page.route(/\/api\/conversations$/, (route) =>
+    route.request().method() === "GET" ? route.fulfill({ json: { ...before, conversations: before.conversations.filter((conversation) => !told.has(conversation.id)) } }) : route.fallback(),
+  );
+  for (const id of [first, second]) expect((await page.request.delete(`/api/conversations/${id}`, { headers: CSRF })).status()).toBe(204);
+
+  await row(page, `Sumiu ${word}`).getByRole("button", { name: /^Mais opções/ }).click();
+  await page.getByRole("menuitem", { name: "Apagar conversa" }).click();
+  await page.getByRole("dialog", { name: "Apagar esta conversa?" }).getByRole("button", { name: "Apagar conversa" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(row(page, `Sumiu ${word}`)).toHaveCount(0);
+
+  await expect(row(page, `Também ${word}`)).toHaveCount(1);
+  await row(page, `Também ${word}`).getByRole("button", { name: /^Mais opções/ }).click();
+  await page.getByRole("menuitem", { name: "Renomear" }).click();
+  await page.getByRole("dialog", { name: "Renomear" }).getByLabel("Nome da conversa").fill(`Outro nome ${word}`);
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(row(page, word)).toHaveCount(0);
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
+
+test("while Zuri writes in a conversation, its rename and delete are off; another conversation's stay on", async ({ page }) => {
+  const word = tag();
+  await openChat(page);
+  await converse(page, `Parada ${word}`);
+  await page.reload();
+  const box = page.getByRole("textbox", { name: "Mensagem" });
+  // "slow" answers a word every 200 ms: the turn is open while the menus are checked.
+  await box.fill(`slow ${word} um dois tres quatro cinco seis sete oito nove dez onze doze`);
+  await box.press("Enter");
+  await expect(page.getByRole("button", { name: "Parar" })).toBeVisible();
+  await page.getByRole("button", { name: "Mais opções", exact: true }).click();
+  for (const name of ["Renomear", "Apagar conversa"]) await expect(page.getByRole("menuitem", { name })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await row(page, `Parada ${word}`).getByRole("button", { name: /^Mais opções/ }).click();
+  for (const name of ["Renomear", "Apagar conversa"]) await expect(page.getByRole("menuitem", { name })).toBeEnabled();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Parar" }).click();
+  await expect(page.getByRole("button", { name: "Parar" })).toHaveCount(0);
+});
+
+test("older messages come in above and the place on screen stays", async ({ page }) => {
+  const word = tag();
+  await openChat(page);
+  // A message taller than the screen: its start and its end are never in view together.
+  const tall = Array.from({ length: 60 }, (_, line) => `linha ${line}`).join("\n");
+  const id = await converse(page, `Comprida ${word}\n${tall}`);
+  // The first page of this conversation carries its two messages; everything "older" is made up here.
+  await page.route(new RegExp(`/api/conversations/${id}(\\?before=.*)?$`), async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const older = route.request().url().includes("before=");
+    const response = await route.fetch({ url: route.request().url().replace(/\?before=.*$/, "") });
+    const body = await response.json();
+    const filler = Array.from({ length: 40 }, (_, line) => ({ ...body.messages[1], id: `antiga-${line}`, content: `antiga ${line}` }));
+    await route.fulfill({ response, json: older ? { ...body, messages: filler, hasMore: false } : { ...body, hasMore: true } });
+  });
+  await page.goto(`/conversa/${id}`);
+  const start = page.getByRole("log").getByText(`Comprida ${word}`, { exact: false }).first();
+  await expect(start).toBeAttached();
+  // The owner goes up to read from the start and asks for what came before.
+  const more = page.getByRole("button", { name: "Ver mensagens anteriores" });
+  await more.scrollIntoViewIfNeeded();
+  const before = await start.evaluate((node) => node.getBoundingClientRect().top);
+  await more.click();
+  await expect(page.getByRole("log").getByText("antiga 0", { exact: true })).toBeAttached();
+  await expect(more).toHaveCount(0);
+  // The older ones are above, a scroll away, and what was on screen did not move (the button that left aside).
+  expect(await page.evaluate(() => (document.querySelector("[data-chat-scroll]") as HTMLElement).scrollTop)).toBeGreaterThan(200);
+  const after = await start.evaluate((node) => node.getBoundingClientRect().top);
+  expect(Math.abs(after - before)).toBeLessThan(80);
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
+
+test.describe("a device in another zone than the owner's", () => {
+  // Twelve hours ahead of São Paulo, the owner's zone: an hour read in the device's zone is never the right one.
+  test.use({ timezoneId: "Asia/Tokyo" });
+
+  test("the hours of the list and of the conversation are the owner's", async ({ page }) => {
+    const word = tag();
+    await openChat(page);
+    const id = await converse(page, `Fuso ${word}`);
+    const body = (await (await page.request.get(`/api/conversations/${id}`, { headers: CSRF })).json()) as { conversation: { createdAt: string; updatedAt: string } };
+    const inSaoPaulo = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+    await page.goto(`/conversa/${id}`);
+    await expect(row(page, `Fuso ${word}`).locator("time")).toHaveText(inSaoPaulo(body.conversation.updatedAt));
+    await expect(page.getByText(`Desde hoje, ${inSaoPaulo(body.conversation.createdAt)}`, { exact: true })).toBeVisible();
+    await expect(list(page).getByRole("region", { name: "Hoje" }).getByRole("link", { name: new RegExp(`Fuso ${word}`) })).toBeVisible();
+  });
 });

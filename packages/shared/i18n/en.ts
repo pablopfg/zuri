@@ -105,6 +105,7 @@ export const en: Messages = {
   "web.chat.search": "Search conversations",
   "web.chat.searchShort": "Search",
   "web.chat.searchEmpty": "No conversation with that name. Try another word.",
+  "web.chat.searchMore": "No conversation with that name among the ones shown so far. Load more to keep searching.",
   "web.chat.group.today": "Today",
   "web.chat.group.yesterday": "Yesterday",
   "web.chat.group.week": "Last 7 days",

@@ -223,6 +223,10 @@ export function ChatPage() {
     await api("/chat/cancel", { method: "POST", body: { conversationId } }).catch(() => controller.current?.abort());
   }
 
+  // A move that came from outside the list (the palette asking a question, say) brings the conversation back.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the address is the trigger
+  useEffect(() => setListOpen(false), [location.key]);
+
   // The phone's list takes the conversation's place: the focus goes with it, and comes back.
   const showList = () => {
     flushSync(() => setListOpen(true));
@@ -288,7 +292,8 @@ export function ChatPage() {
           <button ref={listButton} type="button" onClick={showList} aria-label={t("web.chat.listOpen")} title={t("web.chat.listOpen")} className={cn(ICON_BUTTON, "lg:hidden")}>
             <MessagesSquare className="h-5 w-5" aria-hidden />
           </button>
-          {id && conversation && <ActionsMenu name={conversation.title} actions={menu(conversation)} />}
+          {/* Without the name: the title is right beside it, and the row's menu in the list already carries the name. */}
+          {id && conversation && <ActionsMenu actions={menu(conversation)} />}
         </div>
 
         {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling area must take the keyboard's focus to scroll with the arrows. */}
@@ -317,7 +322,7 @@ export function ChatPage() {
             {previous && (
               <p role="note" className="flex items-start gap-2 rounded-xl border border-dashed border-border-strong px-4 py-3 text-sm leading-6 text-fg-muted">
                 <History className="mt-1 h-4 w-4 shrink-0" aria-hidden />
-                <span>
+                <span className="min-w-0 break-words">
                   {t("web.chat.previous")}
                   {todays && (
                     <>
@@ -441,7 +446,7 @@ function ConversationRows({
           <p className="px-2 py-2 text-sm text-fg-muted">{t("web.chat.listEmpty")}</p>
         ) : groups.length === 0 ? (
           <p role="status" className="px-2 py-2 text-sm text-fg-muted">
-            {t("web.chat.searchEmpty")}
+            {list.hasNextPage ? t("web.chat.searchMore") : t("web.chat.searchEmpty")}
           </p>
         ) : (
           groups.map(({ group, items: inGroup }) => (
@@ -513,27 +518,37 @@ function ConversationChange({ change, onClose, onDeleted }: { change: Change; on
       onClose();
       toast(t("web.chat.renamed"));
     } catch (failure) {
+      if (gone(failure)) return left();
       setError(errorMessage(failure));
       setPending(false);
     }
+  }
+
+  /** Deleted already, in another tab or by the bot: the server says it does not exist. */
+  const gone = (failure: unknown) => failure instanceof ApiError && failure.code === "NOT_FOUND";
+
+  /** The conversation is no more, deleted here or elsewhere: its row leaves at once and the page moves on. */
+  async function left() {
+    qc.removeQueries({ queryKey: pageKey(conversation.id) });
+    // Out of the list at once: the row must not wait for the next read to leave.
+    await qc.cancelQueries({ queryKey: LIST_KEY });
+    qc.setQueryData<ConversationList>(LIST_KEY, (current) =>
+      current ? { ...current, pages: current.pages.map((p) => ({ ...p, conversations: p.conversations.filter((c) => c.id !== conversation.id) })) } : current,
+    );
+    void qc.invalidateQueries({ queryKey: LIST_KEY });
+    // The dialog closes first; the row and its menu are gone, so the page says where the focus goes next.
+    onClose();
+    onDeleted(conversation.id);
+    toast(t("web.chat.deleted"));
   }
 
   async function remove() {
     setPending(true);
     try {
       await api(`/conversations/${conversation.id}`, { method: "DELETE" });
-      qc.removeQueries({ queryKey: pageKey(conversation.id) });
-      // Out of the list at once: the row must not wait for the next read to leave.
-      await qc.cancelQueries({ queryKey: LIST_KEY });
-      qc.setQueryData<ConversationList>(LIST_KEY, (current) =>
-        current ? { ...current, pages: current.pages.map((p) => ({ ...p, conversations: p.conversations.filter((c) => c.id !== conversation.id) })) } : current,
-      );
-      void qc.invalidateQueries({ queryKey: LIST_KEY });
-      // The dialog closes first; the row and its menu are gone, so the page says where the focus goes next.
-      onClose();
-      onDeleted(conversation.id);
-      toast(t("web.chat.deleted"));
+      await left();
     } catch (failure) {
+      if (gone(failure)) return left();
       setError(errorMessage(failure));
       setPending(false);
     }
@@ -596,6 +611,8 @@ function Thread({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [olderError, setOlderError] = useState<unknown>(null);
   const end = useRef<HTMLDivElement>(null);
+  /** How far from the end the owner was when older messages were asked for: they come in above, and the place stays. */
+  const fromEnd = useRef<number | null>(null);
   const messages = [...(older?.messages ?? []), ...(page?.messages ?? [])];
   const hasMore = older ? older.hasMore : (page?.hasMore ?? false);
   const actions = new Map([...(page?.actions ?? []), ...(live?.actions ?? [])].map((a) => [a.id, a]));
@@ -611,6 +628,11 @@ function Thread({
     // Only the messages scroll: the title above and the field to write below stay put.
     const scroller = node.closest("[data-chat-scroll]");
     if (!scroller) return;
+    if (fromEnd.current !== null) {
+      scroller.scrollTop = scroller.scrollHeight - fromEnd.current;
+      fromEnd.current = null;
+      return;
+    }
     const nearBottom = scroller.clientHeight + scroller.scrollTop >= scroller.scrollHeight - 240;
     if (nearBottom || growth.endsWith(":0:0:")) {
       scroller.scrollTo({ top: scroller.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
@@ -624,6 +646,8 @@ function Thread({
     setOlderError(null);
     try {
       const result = await api<ConversationPage>(`/conversations/${page.conversation.id}?before=${first.id}`);
+      const scroller = end.current?.closest("[data-chat-scroll]");
+      if (scroller) fromEnd.current = scroller.scrollHeight - scroller.scrollTop;
       setOlder({ messages: [...result.messages, ...(older?.messages ?? [])], hasMore: result.hasMore });
     } catch (failure) {
       setOlderError(failure);

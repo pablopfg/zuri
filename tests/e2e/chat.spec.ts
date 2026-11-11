@@ -36,9 +36,9 @@ async function send(page: Page, text: string) {
 
 const log = (page: Page) => page.getByRole("log");
 
-/** Picks an action from the "Mais opções" menu beside the open conversation's title (the rows' menus come before it). */
+/** Picks an action from the "Mais opções" menu beside the open conversation's title (the rows' menus carry the conversation's name). */
 async function openConversationAction(page: Page, name: string) {
-  await page.getByRole("button", { name: /^Mais opções para/ }).last().click();
+  await page.getByRole("button", { name: "Mais opções", exact: true }).click();
   await page.getByRole("menu").getByRole("menuitem", { name, exact: true }).click();
 }
 
