@@ -108,6 +108,16 @@ jobs:
           node scripts/deploy/gerar-config.ts
           cd apps/agent && npx --no-install wrangler deploy --dry-run -c wrangler.deploy.json
 
+  # e2e and lighthouse open the built interface on the real Worker. A pull
+  # request with only text (docs, changelog, the agent's memory) or only the
+  # version number (the release pull request) has nothing for them to open:
+  # scripts/precisa-de-e2e.ts says so and the steps after it are skipped. The
+  # job still runs and ends green, because the rulesets require both checks
+  # (a workflow filtered by `paths` would leave them waiting forever). The
+  # decision is a step here, not a job these depend on: if that job failed,
+  # these would read as "skipped", which the rulesets take for a pass. Any
+  # answer other than an explicit "false" runs the suite, and so does every
+  # push to develop and the run before a deploy.
   e2e:
     runs-on: ubuntu-26.04
     # One worker runs the whole suite: 254 tests took 16 min on 03/11/2026,
@@ -117,13 +127,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The merge commit and its parents: precisa-de-e2e.ts reads the pull request's changes from them.
+          fetch-depth: 2
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - id: browser
+        run: node scripts/precisa-de-e2e.ts
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+      - if: steps.browser.outputs.run != 'false'
+        run: npm ci
+      - if: steps.browser.outputs.run != 'false'
+        run: npx playwright install --with-deps chromium
+      - if: steps.browser.outputs.run != 'false'
+        run: npm run test:e2e
 
   # Lighthouse on the sign-in and the main screens, against the same Worker as
   # e2e. Floors in tests/lighthouse/lighthouse.spec.ts (accessibility >= 95).
@@ -134,13 +154,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The merge commit and its parents: precisa-de-e2e.ts reads the pull request's changes from them.
+          fetch-depth: 2
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:lighthouse
+      - id: browser
+        run: node scripts/precisa-de-e2e.ts
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+      - if: steps.browser.outputs.run != 'false'
+        run: npm ci
+      - if: steps.browser.outputs.run != 'false'
+        run: npx playwright install --with-deps chromium
+      - if: steps.browser.outputs.run != 'false'
+        run: npm run test:lighthouse
 
   # Reads only package-lock.json, so it needs no install. Fails on any
   # high or critical advisory in the dependency tree.
