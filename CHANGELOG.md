@@ -19,6 +19,18 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.49.4] - 2026-11-11
+
+Mesclada às 18:12 (UTC-3) · commit [`3b73989`](https://github.com/pablopfg/Zuri/commit/3b739891e77f894c9f3de74ad2bfa4754f643c49) · PR [#302](https://github.com/pablopfg/Zuri/pull/302) · Tela CRM carrega só os textos de horário, e texto faltando não derruba a tela
+
+### Alterado
+
+- A tela **CRM** abre mais leve: carrega só os textos de horário e dos dias da semana, sem trazer junto todos os textos da tela **Rotinas**.
+
+### Corrigido
+
+- Quando faltar um texto numa tela, aparece só aquele rótulo estranho; antes a tela inteira parava ("Esta tela parou"). Foi o que aconteceu na tela **CRM** com fluxos de horário diário ou semanal.
+
 ## [0.49.3] - 2026-11-11
 
 Mesclada às 17:10 (UTC-3) · commit [`7e87973`](https://github.com/pablopfg/Zuri/commit/7e87973ab233d6c5eb738ae11846742b1c084258) · PR [#295](https://github.com/pablopfg/Zuri/pull/295) · Nome sem a anotação, homônimos, foto e atendimentos na ficha
@@ -3250,7 +3262,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.3...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.4...develop
+[0.49.4]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.4
 [0.49.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.3
 [0.49.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.2
 [0.49.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.1
