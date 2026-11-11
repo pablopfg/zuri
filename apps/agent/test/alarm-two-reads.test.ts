@@ -101,7 +101,7 @@ describe("the alarm with the contacts and the reviews due together", () => {
     });
     const later = google.seen.map((seen) => seen.url);
     expect(later.some((url) => url.includes("mybusiness"))).toBe(true);
-    expect(later.filter((url) => url.includes("people.googleapis.com"))).toEqual([]);
+    expect(later.filter((url) => new URL(url).hostname === "people.googleapis.com")).toEqual([]);
     expect(later.length).toBeLessThanOrEqual(14);
   });
 });
