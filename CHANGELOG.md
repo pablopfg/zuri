@@ -19,6 +19,30 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.49.3] - 2026-11-11
+
+Mesclada às 17:10 (UTC-3) · commit [`7e87973`](https://github.com/pablopfg/Zuri/commit/7e87973ab233d6c5eb738ae11846742b1c084258) · PR [#295](https://github.com/pablopfg/Zuri/pull/295) · Nome sem a anotação, homônimos, foto e atendimentos na ficha
+
+### Adicionado
+
+- A ficha do contato mostra o último atendimento e o próximo, lidos da agenda do Google na hora. O título de cada quadro segue o tipo ("Última consulta" ou "Último retorno", "Próxima consulta" ou "Retorno"); sem nada marcado de hoje em diante, fica só o "Último atendimento". A Zuri acha os eventos pelo nome completo no título e lê o tipo nas observações ("Consulta | Consultório", "Retorno | Consultório").
+- A foto do contato no Google Contatos aparece na lista e na ficha. A Zuri guarda só o endereço da foto; sem foto, ficam as iniciais.
+- Duas pessoas com o mesmo nome continuam dois contatos: a lista mostra o nascimento e o CPF de cada uma (com as pontas escondidas) e a ficha avisa que existe outra pessoa com o nome. Na agenda, o evento vai para quem tiver telefone, e-mail, CPF ou nascimento escrito nele.
+
+### Alterado
+
+- O nome escrito no Google com uma anotação depois ("Beatriz Novaes Conceição / Paciente") é guardado só como o nome. A anotação aparece à parte na ficha e continua valendo na busca.
+- Ao ligar os contatos, as etiquetas do Google aparecem na hora e o cartão pede a escolha. Nenhum contato é copiado antes disso.
+- Na lista de contatos, abaixo do nome aparece só o telefone.
+
+### Corrigido
+
+- No celular, o nome do contato na ficha não aparece mais dentro de um contorno verde ao abrir.
+
+### Segurança
+
+- A interface passa a aceitar imagens dos quatro endereços de fotos do Google (`lh3` a `lh6.googleusercontent.com`), só para a foto dos contatos. O endereço é conferido no servidor e na tela, e o pedido da imagem não leva a página de origem.
+
 ## [0.49.2] - 2026-11-11
 
 Mesclada às 16:51 (UTC-3) · commit [`85acfe6`](https://github.com/pablopfg/Zuri/commit/85acfe664925f40b030b640d62509b662d2ef525) · PR [#293](https://github.com/pablopfg/Zuri/pull/293) · Configurações do CRM e dos fluxos na tela, dentro da cota gratuita
@@ -3226,7 +3250,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.2...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.3...develop
+[0.49.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.3
 [0.49.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.2
 [0.49.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.1
 [0.49.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.0
