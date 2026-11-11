@@ -2,6 +2,7 @@
 
 Situação: implementado. Decisão do Pablo em 11/11/2026 (seção 14): tudo ajustável pela interface, dentro da cota gratuita.
 Origem: pedido do Pablo em 11/11/2026, 12:24 (horário de Brasília): "em todo workflow que tiver sincronização no CRM, preciso que haja o botão de configuração do tempo de sincronização no frontend, para que essa e demais configurações não fiquem limitadas ao código".
+Mudança de escopo (11/11/2026, 17:35 UTC): o Pablo decidiu que a Zuri não recebe eventos do n8n e que a integração sai do código (thread "Remover integração com o n8n"). Por isso os limites de eventos por hora e por dia e o número de avisos de cliente novo por dia **saíram desta PR** antes do merge: continuam fixos até a integração ser removida. Do CRM ficou a hora do aviso de aniversários. A tela do CRM também mudou de lugar com a S10 (#291): o cartão "Avisos do CRM" está em `/crm` (`apps/web/src/pages/crm/CrmCards.tsx`).
 Dependências: PR #289 (intervalo das sincronizações do Google), já mesclada.
 
 ## 1. Resumo
@@ -16,7 +17,7 @@ O que existe hoje, lido no código:
 | --- | --- | --- | --- |
 | Fluxos (`apps/agent/src/flows/service.ts`) | CRM › Fluxos, editor | Gatilho por horário: intervalo de 15 min ou mais (60 com IA), diário, semanal, mensal | Já é do dono, fluxo a fluxo |
 | Monitor de sites | Um fluxo como os outros | O intervalo do fluxo | Já é |
-| CRM, clientes (`apps/agent/src/crm/service.ts`) | Contatos › Clientes | Sem leitura periódica: os clientes chegam por evento assinado do n8n (`apps/agent/src/crm/events.ts`) | Não se aplica |
+| CRM, clientes (`apps/agent/src/crm/service.ts`) | CRM | Sem leitura periódica: os clientes chegam por evento assinado do n8n (`apps/agent/src/crm/events.ts`) | Não se aplica |
 | Contatos e avaliações do Google | Configurações › Integrações › Google | 1 a 1.440 min | Já é (PR #289); mínimo de 1 min nesta PR, decisão do Pablo de 11/11 16:44 UTC |
 | Módulos do CRM (confirmação, pedido de avaliação, aniversário e outros) | `docs/planos/modulos-crm.md` | Janelas e tetos previstos como constantes | Ainda não existem |
 
@@ -25,9 +26,9 @@ Valores fixos no código, um a um:
 | Valor | Constante | Na tela | Faixa |
 | --- | --- | --- | --- |
 | Hora do aviso de aniversários, 9 h | `REMINDER_TIME` em `crm/service.ts` | Sim | `00:00` a `23:59` |
-| Avisos de cliente novo por dia, 20 | `CRM_LIMITS.newClientNoticesPerDay` | Sim | 1 a 20 |
-| Eventos do n8n por hora, 300 | `CRM_LIMITS.eventsPerHour` | Sim | 10 a 300 |
-| Eventos do n8n por dia, 1.000 | `CRM_LIMITS.eventsPerDay` | Sim | 50 a 1.000 |
+| Avisos de cliente novo por dia, 20 | `CRM_LIMITS.newClientNoticesPerDay` | Não (sai com a integração do n8n) | fixo |
+| Eventos do n8n por hora, 300 | `CRM_LIMITS.eventsPerHour` | Não (sai com a integração do n8n) | fixo |
+| Eventos do n8n por dia, 1.000 | `CRM_LIMITS.eventsPerDay` | Não (sai com a integração do n8n) | fixo |
 | Intervalo mínimo dos fluxos, 15 min | `FLOW_LIMITS.minIntervalMinutes` | Sim | 5 a 60 |
 | Intervalo mínimo com passo de IA, 60 min | `FLOW_LIMITS.aiMinIntervalMinutes` | Sim | 30 a 1.440 |
 | Execuções de fluxos por dia, 500 | `FLOW_LIMITS.runsPerDay` | Sim | 10 a 500 |
@@ -47,14 +48,14 @@ Decisões que valem: plano gratuito (regra 1), migrations só de acréscimo (reg
 | --- | --- | --- |
 | CA1 | O dono salva a hora do aviso de aniversários (`HH:MM`); hora inválida, 400 e nada gravado | Pablo |
 | CA2 | Um dia nunca tem dois avisos de aniversário, e nunca perde o dele por causa de uma troca de hora | plano |
-| CA3 | O dono salva os avisos de cliente novo por dia, de 1 a 20; 0 e 21, 400 | Pablo |
-| CA4 | O dono salva cada número dos fluxos e dos eventos dentro da faixa da tabela da seção 2; n−1 e n+1 de cada faixa, 400 e nada gravado | Pablo |
+| CA3 | Retirado em 11/11/2026 (avisos de cliente novo por dia: sai com a integração do n8n) | Pablo |
+| CA4 | O dono salva cada número dos fluxos dentro da faixa da tabela da seção 2; n−1 e n+1 de cada faixa, 400 e nada gravado | Pablo |
 | CA5 | Nenhum ajuste passa da cota: o que gasta cota tem como máximo o valor fixo de antes; os fluxos ligados cabem em 2.000 horários por dia, e o que não cabe não liga (409) | Pablo |
 | CA5b | Mudar um número não mexe no que já roda: fluxo ligado continua, fluxo falhando mantém a conta, e o novo mínimo vale ao salvar ou ligar | plano |
 | CA6 | Salvar o mesmo valor não grava nada | Pablo (11/11, não regravar o que não mudou) |
 | CA7 | Banco existente continua com os valores de antes depois da migration | regra 5 |
 | CA8 | As tabelas recusam número fora da faixa mesmo gravado à mão | plano |
-| CA9 | A hora e o número dos avisos vão no backup e voltam; backup antigo não mexe neles | plano |
+| CA9 | A hora do aviso vai no backup e volta; backup antigo não mexe nela | plano |
 | CA10 | Telas com campo, faixa, botão desligado quando nada mudou ou o valor é inválido, teclado e leitor de tela, pt-BR e en | padrões |
 | CA11 | O plano dos módulos do CRM registra que horário, janela, intervalo e teto são ajustáveis na tela | Pablo |
 
@@ -72,8 +73,8 @@ Decisões que valem: plano gratuito (regra 1), migrations só de acréscimo (reg
 
 ### Fluxo 1 · Avisos do CRM
 
-1. Contatos › Clientes, cartão **Avisos do CRM**. Embaixo das três chaves há dois campos: **Hora do aviso de aniversários** e **Avisos de cliente novo por dia** ("De 1 a 20. Passou disso, o cliente só aparece na lista.").
-2. **Salvar avisos** fica desligado enquanto nada mudou ou o número está fora da faixa. Salvou: "Avisos salvos".
+1. CRM, cartão **Avisos do CRM**. Embaixo das três chaves há o campo **Hora do aviso de aniversários**.
+2. **Salvar hora** fica desligado enquanto nada mudou ou o campo está vazio. Salvou: "Hora salva".
 3. Mudou a hora depois do aviso do dia: vale a partir de amanhã. Mudou para uma hora que já passou, antes do aviso do dia: o de hoje sai na hora antiga.
 
 ### Fluxo 2 · Configurações dos fluxos
@@ -84,16 +85,11 @@ Decisões que valem: plano gratuito (regra 1), migrations só de acréscimo (reg
 4. No editor do fluxo, o campo "Minutos entre execuções" passa a seguir o mínimo escolhido ("No mínimo 5. Com um passo de IA, no mínimo 60.").
 5. Ligar um fluxo que estoura a conta: "Os fluxos ligados passariam de 2000 horários por dia. Aumente o intervalo deste fluxo ou desligue outro."
 
-### Fluxo 3 · Eventos do n8n
-
-1. Contatos › Clientes, cartão dos eventos: **Eventos aceitos por hora** e **Eventos aceitos por dia**, com a faixa embaixo, e **Salvar limites**.
-2. Hora maior que o dia: "O número de eventos por hora não pode passar o do dia."
-
-Estados: os cartões aparecem com a lista (carregando, vazio e erro são os da tela, que não mudam). Celular: os dois campos empilham. Enter no campo salva.
+Estados: os cartões aparecem com a lista (carregando, vazio e erro são os da tela, que não mudam). Enter no campo salva.
 
 ### Textos visíveis
 
-`web.crm.settings.birthdays`, `.newClients` (sem "às 9 h" e "até 20 por dia"), `.birthdayTime`, `.perDay`, `.perDayHint`, `.save`, `.saved`; `web.flows.settings.title`, `.body`, `.failures`, `.runs`, `.range`, `.save`, `.saved`; `web.flows.problem.runs_limit` e `notice.flow.paused.body` sem o número fixo. pt-BR e en.
+`web.crm.settings.birthdays` (sem "às 9 h"), `.birthdayTime`, `.save`, `.saved`; `web.flows.settings.title`, `.body`, `.failures`, `.runs`, `.range`, `.save`, `.saved`; `web.flows.problem.runs_limit` e `notice.flow.paused.body` sem o número fixo. pt-BR e en.
 
 ## 6. Regras de negócio e limites
 
@@ -101,7 +97,7 @@ Estados: os cartões aparecem com a lista (carregando, vazio e erro são os da t
 
 O pedido do Pablo foi "tudo ajustável pela interface, porém dentro da cota gratuita". A cota que importa aqui é a do Durable Object no plano Free: 100.000 requisições, 100.000 linhas gravadas e 5 milhões de linhas lidas por dia, 50 subrequisições por requisição e 10.000 Neurons por dia (`docs/arquitetura/orcamento-free-tier.md`, com as fontes). Três regras fecham a conta:
 
-1. **O que gasta cota só desce.** Execuções por dia, chamadas por execução, Neurons, tentativas e eventos do n8n têm como máximo o número que já era fixo e já estava no orçamento. O dono escolhe qualquer valor da faixa, e o pior caso continua sendo o de antes.
+1. **O que gasta cota só desce.** Execuções por dia, chamadas por execução, Neurons e tentativas têm como máximo o número que já era fixo e já estava no orçamento. O dono escolhe qualquer valor da faixa, e o pior caso continua sendo o de antes.
 2. **Tempo menor é pago por uma conta de horários.** Baixar o intervalo mínimo de 15 para 5 minutos triplicaria os horários agendados se nada mais mudasse (20 fluxos a cada 5 minutos são 5.760 por dia, e cada horário grava linhas mesmo quando a execução é pulada pelo teto do dia). Por isso os fluxos ligados dividem **2.000 horários por dia**: um intervalo de N minutos ocupa ⌈1.440/N⌉, e um horário diário, semanal ou mensal ocupa 1. 2.000 cobre o pior caso de antes (20 fluxos × 96 = 1.920), então nada que já era permitido deixa de caber. Um fluxo a cada 5 minutos ocupa 288: cabem seis, ou um de 5 minutos e dezessete de 15. A conferência é feita ao ligar um fluxo ou ao mudar um fluxo ligado; o que não cabe responde 409 e fica como estava.
 3. **O piso de 5 minutos é o ritmo do alarme.** As leituras do Google já acordam o objeto a cada 5 minutos; um fluxo nesse ritmo não cria despertar novo.
 
@@ -114,8 +110,6 @@ Custo medido no teste de orçamento (`apps/agent/test/free-tier-budget.test.ts`)
 | Regra | Valor | No limite |
 | --- | --- | --- |
 | Hora do aviso | `00:00` a `23:59` | Outro formato: `VALIDATION_FAILED` |
-| Avisos de cliente novo por dia | 1 a 20, padrão 20 | 0 ou 21: `VALIDATION_FAILED`; passou do número no dia, o cliente só aparece na lista |
-| Eventos por hora / por dia | 10 a 300 / 50 a 1.000 | Fora da faixa ou hora maior que o dia: `VALIDATION_FAILED`; passou, 429 com `Retry-After` |
 | Intervalo mínimo / com IA | 5 a 60 / 30 a 1.440 min | Fluxo abaixo do mínimo: `VALIDATION_FAILED` com `details.min`; com IA vale o maior dos dois |
 | Horários por dia dos fluxos ligados | 2.000 | 2.001: `CONFLICT` (`error.flowSlotsLimit`) |
 | Execuções por dia | 10 a 500, padrão 500 | Passou, a execução fica "pulada" com `runs_limit` |
@@ -130,13 +124,13 @@ Mudar um número nunca mexe no que já está rodando: fluxo ligado continua, flu
 
 ## 7. Desenho técnico
 
-- `packages/shared`: `FlowSettings` (sete campos), `FLOW_SETTING_RANGES` (mínimo, máximo e padrão de cada um, a mesma tabela para o schema, o serviço e a tela), `flowSlotsPerDay`, `flowSettingsSchema`, `FlowList.settings` e `counts.slots`; `CrmSettings` com `birthdayTime`, `newClientNoticesPerDay`, `eventsPerHour` e `eventsPerDay`. O schema do fluxo passa a aceitar o piso absoluto (5 min, 30 com IA); o mínimo do dono é conferido no serviço, porque o schema não lê o banco.
-- Migration 34 (`crm_flow_settings`): colunas `reminder_time`, `new_client_notices`, `events_per_hour`, `events_per_day` e `reminded_day` em `zur_crm_settings`; tabela `zur_flow_settings` de uma linha. Cada número tem CHECK com a faixa. Nenhuma coluna está nos gatilhos de área.
-- `apps/agent/src/crm/service.ts`: `planReminder` usa a hora do dono e o dia do último aviso; `announceNew` usa o número do dono; `eventLimits` dá os tetos dos eventos a `crm/events.ts`.
+- `packages/shared`: `FlowSettings` (sete campos), `FLOW_SETTING_RANGES` (mínimo, máximo e padrão de cada um, a mesma tabela para o schema, o serviço e a tela), `flowSlotsPerDay`, `flowSettingsSchema`, `FlowList.settings` e `counts.slots`; `CrmSettings` com `birthdayTime`. O schema do fluxo passa a aceitar o piso absoluto (5 min, 30 com IA); o mínimo do dono é conferido no serviço, porque o schema não lê o banco.
+- Migration 34 (`crm_flow_settings`): colunas `reminder_time` e `reminded_day` em `zur_crm_settings`; tabela `zur_flow_settings` de uma linha. Cada número tem CHECK com a faixa. Nenhuma coluna está nos gatilhos de área.
+- `apps/agent/src/crm/service.ts`: `planReminder` usa a hora do dono e o dia do último aviso.
 - `apps/agent/src/flows/service.ts`: `settings()`, `updateSettings()`, `checkInterval()` (ao criar, mudar ou ligar) e a conta de horários em `update()`. `engine.ts` e `google-steps.ts` recebem `callsPerRun` e `attempts` por `deps.limits`.
-- Rotas: `PATCH /api/crm/settings` aceita os campos novos; `PATCH /api/flows/settings` é nova, sem senha recente (todo número fica dentro da faixa e nenhum faz dado sair), fechada no modo de bloqueio como as outras.
-- Backup: a hora e o número dos avisos entram como opcionais em `crm.settings`. Os tetos de eventos e as configurações dos fluxos não entram, como os próprios fluxos e a chave dos eventos.
-- Telas: `apps/web/src/components/NumbersForm.tsx` (números com faixa, salva só o que mudou), usado em `FlowSettingsCard` (`FlowsPanel.tsx`) e no cartão de eventos; `NoticeTimes` em `ClientsPanel.tsx`; `FlowEditor.tsx` segue o mínimo do dono.
+- Rotas: `PATCH /api/crm/settings` aceita `birthdayTime`; `PATCH /api/flows/settings` é nova, sem senha recente (todo número fica dentro da faixa e nenhum faz dado sair), fechada no modo de bloqueio como as outras.
+- Backup: a hora do aviso entra como opcional em `crm.settings`. As configurações dos fluxos não entram, como os próprios fluxos.
+- Telas: `apps/web/src/components/NumbersForm.tsx` (números com faixa, salva só o que mudou), usado em `FlowSettingsCard` (`FlowsPanel.tsx`); `BirthdayTime` em `pages/crm/CrmCards.tsx`; `FlowEditor.tsx` segue o mínimo do dono.
 
 ## 8. Custo e cotas do plano Free
 
@@ -148,7 +142,7 @@ As duas rotas ficam atrás da sessão, do CSRF e da origem do dono, com corpo de
 
 ## 10. Testes
 
-Unidade (`packages/shared/test`): faixas dos schemas. Agente: `crm-service.test.ts` (hora escolhida, um aviso por dia, dia nunca perdido, mesmo valor sem gravação, hora inválida no banco, número do dono), `crm-events.test.ts` (tetos do dono, n−1 e n), `flows-service.test.ts` (mínimo do dono ao salvar e ao ligar, mínimo com IA, conta de 2.000 horários, chamadas, tentativas, Neurons, execuções do dia, falhas até pausar, mesmo valor, linha ausente), `crm-routes.test.ts`, `flows-routes.test.ts` (n−1 e n+1 de cada faixa, sem senha, 401, 423), `migrations.test.ts` (33 para 34, CHECKs, números de área parados), `backup.test.ts` (ida e volta, backup antigo, valores ruins), `free-tier-budget.test.ts` (custo de um horário). Cada regra nova foi provada quebrando o código e vendo o teste falhar. Navegador: `clientes.spec.ts` e `fluxos.spec.ts`, computador e celular, com axe.
+Unidade (`packages/shared/test`): faixas dos schemas. Agente: `crm-service.test.ts` (hora escolhida, um aviso por dia, dia nunca perdido, mesmo valor sem gravação, hora inválida no banco), `flows-service.test.ts` (mínimo do dono ao salvar e ao ligar, mínimo com IA, conta de 2.000 horários, chamadas, tentativas, Neurons, execuções do dia, falhas até pausar, mesmo valor, linha ausente), `crm-routes.test.ts`, `flows-routes.test.ts` (n−1 e n+1 de cada faixa, sem senha, 401, 423), `migrations.test.ts` (33 para 34, CHECKs, números de área parados), `backup.test.ts` (ida e volta, backup antigo, valores ruins), `free-tier-budget.test.ts` (custo de um horário). Cada regra nova foi provada quebrando o código e vendo o teste falhar. Navegador: `clientes.spec.ts` e `fluxos.spec.ts`, computador e celular, com axe.
 
 ## 11. Entrega
 
@@ -157,7 +151,7 @@ Uma PR para a `develop`, com changelog e capturas das duas telas.
 ## 12. Riscos
 
 - Outra PR em paralelo usar a migration 34: quem mesclar depois renumera.
-- `ClientsPanel.tsx` também é tocado pelas threads de Contatos: o trecho novo é um componente à parte, no fim do cartão.
+- `ClientsPanel.tsx` também era tocado pelas threads de Contatos: a S10 (#291) apagou o arquivo, e o campo da hora foi levado para `pages/crm/CrmCards.tsx`.
 
 ## 13. Suposições
 

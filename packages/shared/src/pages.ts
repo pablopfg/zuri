@@ -12,6 +12,8 @@ export const MOVED_PAGES = {
   "/automacoes/fluxos": "/crm/fluxos",
   "/automacoes/conexoes": "/crm/credenciais",
   "/contatos/avaliacoes": "/avaliacoes",
+  // The Clients tab left Contacts (Sinal, S10); the CRM's own screens come later.
+  "/contatos/clientes": "/contatos",
 } as const;
 
 /** Longer than any old address, with room for a made-up tab after /automacoes/. */

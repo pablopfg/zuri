@@ -224,7 +224,7 @@ Pedido do Pablo (11/11/2026): nenhum fluxo do CRM com sincronização ou horári
 - Mudar um campo vale a partir da próxima janela, nunca reabre uma janela que já fechou no dia e fica no histórico do módulo. Salvar o mesmo valor não grava nada.
 - Testes de cada módulo: n−1, n e n+1 de cada faixa; mudança no meio da janela; valor igual sem gravação; banco existente com os padrões depois da migration.
 
-A parte que já existe na Zuri segue a mesma regra desde a PR do plano [crm-e-fluxos-na-tela.md](crm-e-fluxos-na-tela.md): hora do aviso de aniversários, avisos de cliente novo por dia, eventos do n8n por hora e por dia e, nos fluxos, intervalos mínimos, execuções por dia, chamadas, Neurons, tentativas e falhas até pausar.
+A parte que já existe na Zuri segue a mesma regra desde a PR do plano [crm-e-fluxos-na-tela.md](crm-e-fluxos-na-tela.md): hora do aviso de aniversários e, nos fluxos, intervalos mínimos, execuções por dia, chamadas, Neurons, tentativas e falhas até pausar.
 
 ### Janelas, intervalos e tetos por tipo
 

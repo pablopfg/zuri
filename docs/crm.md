@@ -1,12 +1,20 @@
 # CRM interno e eventos do n8n
 
-A partir da etapa 22b, a aba **Clientes**, dentro de **Contatos**
-(`/contatos/clientes`), guarda os seus clientes com a etapa do funil,
-etiquetas, anotações, retorno e aniversário. O n8n continua conversando com
+A Zuri guarda os seus clientes com a etapa do funil, etiquetas, anotações,
+retorno e aniversário. O n8n continua conversando com
 eles (WhatsApp, Chatwoot, agendamentos) e manda à Zuri o que acontece, por
 eventos assinados. A Zuri não manda mensagem a cliente nenhum.
 
 O plano técnico está em `docs/planos/etapa-22b-crm-interno.md`.
+
+> **Tela em mudança.** A aba **Clientes** saiu de Contatos com o novo visual
+> (o endereço antigo, `/contatos/clientes`, leva a Contatos). Até as telas
+> próprias do CRM chegarem, os clientes são vistos e mudados pela conversa
+> ("quem volta esta semana?", "anote no cadastro da Ana…") e pelos eventos do
+> n8n. O que esta página descreve da lista, do funil e de **Apagar cliente**
+> vale para o servidor e volta à tela com o CRM novo. Os cartões **Avisos do
+> CRM** e **Eventos do n8n** ficam em **CRM**, no menu lateral, abaixo dos
+> fluxos.
 
 ## Para o dono
 
@@ -29,7 +37,7 @@ O plano técnico está em `docs/planos/etapa-22b-crm-interno.md`.
 
 ### Avisos
 
-Em **Avisos do CRM**, na mesma aba, você escolhe o que a Zuri avisa, pelos
+Em **Avisos do CRM**, na tela **CRM**, você escolhe o que a Zuri avisa, pelos
 canais da central de avisos:
 
 - **Retorno**: na hora marcada. Até 10 avisos de uma vez; se vencerem mais, o
@@ -37,14 +45,7 @@ canais da central de avisos:
 - **Aniversários**: na hora que você escolher em **Hora do aviso de
   aniversários** (9 h no seu fuso, se não mexer), com até 5 nomes por aviso.
   Quem faz aniversário em 29 de fevereiro é lembrado no dia 28 nos anos comuns.
-- **Cliente novo vindo do n8n**: quantos você escolher em **Avisos de cliente
-  novo por dia**, de 1 a 20 (20, se não mexer). Passou disso, o cliente só
-  aparece na lista.
-
-No cartão dos eventos do n8n, **Eventos aceitos por hora** (de 10 a 300) e
-**Eventos aceitos por dia** (de 50 a 1.000) dizem quantos eventos a Zuri aceita.
-Os máximos são os números de antes, que cabem na cota gratuita; você só pode
-baixar. O número da hora nunca passa o do dia.
+- **Cliente novo vindo do n8n**: até 20 por dia.
 
 Cada dia tem um aviso de aniversários só. Se você mudar a hora depois do aviso
 do dia, a hora nova vale a partir de amanhã. Se mudar para uma hora que já
@@ -74,7 +75,7 @@ salvar, e cabem 5 de cada vez.
 
 ## Ligar os eventos do n8n
 
-1. Na aba **Clientes**, em **Eventos do n8n**, toque em **Ligar eventos**. Se a
+1. Na tela **CRM**, em **Eventos do n8n**, toque em **Ligar eventos**. Se a
    sua senha foi digitada há mais de 15 minutos, a Zuri pede de novo.
 2. A Zuri mostra o **endereço** e o **segredo** uma única vez. Copie os dois
    para as credenciais do n8n e toque em **Já guardei**. Você recebe um aviso
@@ -169,7 +170,7 @@ ou apaga (`null`) o retorno de um cliente que já existe.
 | 404 | Eventos desligados, ou endereço antigo depois de trocar o segredo |
 | 413 | Corpo acima de 16 KB |
 | 423 | Conta em bloqueio |
-| 429 | Mais eventos na hora ou no dia (UTC) do que você definiu: 300 e 1.000, se não mexer; `Retry-After` diz quando tentar |
+| 429 | Mais de 300 eventos na hora ou 1.000 no dia (UTC); `Retry-After` diz quando tentar |
 | 507 | O CRM chegou a 5.000 clientes |
 
 Os eventos recusados por formato também contam no limite, para um fluxo com
@@ -201,7 +202,7 @@ erro não ficar martelando a Zuri.
 
 ## Custo no plano gratuito
 
-A aba lê o funil e as etiquetas de contadores mantidos pelo banco, não dos
+A lista lê o funil e as etiquetas de contadores mantidos pelo banco, não dos
 5.000 clientes; uma página da lista lê 50 clientes e as etiquetas deles. Um
 evento do n8n lê e grava poucas dezenas de linhas. O alarme olha o próximo
 retorno e o próximo aniversário por índice. Os números ficam conferidos em

@@ -151,8 +151,12 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
       - if: steps.browser.outputs.run != 'false'
         run: npm ci
+      # Only the browser: no `--with-deps`. The image already has every library
+      # Chromium needs; `--with-deps` only added nine font packages through apt,
+      # and the job died there whenever the runner could not reach the Ubuntu
+      # mirrors (11/11/2026). A missing library fails the launch, loudly.
       - if: steps.browser.outputs.run != 'false'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - if: steps.browser.outputs.run != 'false'
         run: npm run test:e2e -- --shard=${{ matrix.parte }}/4
 
@@ -196,8 +200,12 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
       - if: steps.browser.outputs.run != 'false'
         run: npm ci
+      # Only the browser: no `--with-deps`. The image already has every library
+      # Chromium needs; `--with-deps` only added nine font packages through apt,
+      # and the job died there whenever the runner could not reach the Ubuntu
+      # mirrors (11/11/2026). A missing library fails the launch, loudly.
       - if: steps.browser.outputs.run != 'false'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - if: steps.browser.outputs.run != 'false'
         run: npm run test:lighthouse
 

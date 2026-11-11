@@ -48,6 +48,8 @@ const CONFLICT_WINDOW = 50;
 export interface MemoryServiceOptions {
   /** Settings → conflict review. Off, memories are saved without any detection. */
   conflictReview: () => boolean;
+  /** Whether the copy of the Google contacts may be read now (the same gate as the Contacts screen). Absent, the map never names a contact. */
+  contacts?: () => boolean;
   clock?: () => number;
 }
 
@@ -102,7 +104,7 @@ export class MemoryService {
 
   /** The map: memories and what links them (rules only, no AI). */
   graph(input: MemoryGraphQuery | Untrusted = {}): MemoryGraph {
-    return memoryGraph(this.db, this.repo, this.lifecycle, parse(memoryGraphQuerySchema, input).around);
+    return memoryGraph(this.db, this.repo, this.lifecycle, parse(memoryGraphQuerySchema, input).around, this.options.contacts);
   }
 
   // ---------- Writes ----------

@@ -80,7 +80,6 @@ export const ptBRServer = {
   "error.flowInterval": "O intervalo mínimo é de {min} minutos. Você muda esse número em CRM › Fluxos, em Configurações dos fluxos.",
   "error.syncSlotsLimit": "Esse intervalo não cabe no dia junto com a outra sincronização e os fluxos ligados. Escolha um intervalo maior aqui ou na outra sincronização, ou desligue um fluxo.",
   "error.flowSlotsLimit": "Os fluxos ligados passariam de {limit} horários por dia. Aumente o intervalo deste fluxo ou desligue outro.",
-  "error.crmEventLimits": "O número de eventos por hora não pode passar o do dia.",
   "error.flowRunsLimit": "Os fluxos já rodaram {limit} vezes hoje. A conta zera à meia-noite UTC (21h em Brasília).",
   "error.flowSite": "Use um endereço https sem senha, sem IP, na porta 443 e que não seja o da própria Zuri.",
   "error.flowSitesLimit": "Os monitores acompanham no máximo {limit} sites, somando todos os fluxos. Tire um site de algum monitor para pôr outro.",

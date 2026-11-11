@@ -94,9 +94,6 @@ interface SettingsRow {
   new_clients: number;
   next_reminder: number | null;
   reminder_time: string;
-  new_client_notices: number;
-  events_per_hour: number;
-  events_per_day: number;
   /** The owner's day ("2026-11-11") of the last birthday notice's turn: a time changed later the same day doesn't tell it twice. */
   reminded_day: string | null;
 }
@@ -106,19 +103,6 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 /** The stored time, or 9 h when the row holds something a clock can't show. */
 function reminderTime(row: SettingsRow): string {
   return HHMM.test(row.reminder_time) ? row.reminder_time : CRM_BIRTHDAY_TIME;
-}
-
-/** Events n8n may send per UTC hour and day, inside the ceilings whatever the row holds; the hour's never passes the day's. */
-export function eventLimits(row: Pick<SettingsRow, "events_per_hour" | "events_per_day">): { eventsPerHour: number; eventsPerDay: number } {
-  const within = (value: number, min: number, max: number) => (Number.isInteger(value) ? Math.min(max, Math.max(min, value)) : max);
-  const eventsPerDay = within(row.events_per_day, CRM_LIMITS.eventsPerDayMin, CRM_LIMITS.eventsPerDay);
-  return { eventsPerHour: Math.min(eventsPerDay, within(row.events_per_hour, CRM_LIMITS.eventsPerHourMin, CRM_LIMITS.eventsPerHour)), eventsPerDay };
-}
-
-/** The stored number inside its limits, whatever the row holds. */
-function noticesPerDay(row: SettingsRow): number {
-  const n = Number.isInteger(row.new_client_notices) ? row.new_client_notices : CRM_LIMITS.newClientNoticesPerDay;
-  return Math.min(CRM_LIMITS.newClientNoticesPerDay, Math.max(CRM_LIMITS.newClientNoticesMin, n));
 }
 
 const COLUMNS = "id, ref, name, search_name, phone, email, birthday, stage_id, notes, follow_up_at, follow_up_note, source, last_activity_at, created_at, updated_at";
@@ -591,7 +575,7 @@ export class CrmService {
 
   settingsRow(): SettingsRow {
     return (
-      this.db.one<SettingsRow>(`SELECT events_key, last_event_at, follow_ups, birthdays, new_clients, next_reminder, reminder_time, new_client_notices, events_per_hour, events_per_day, reminded_day FROM zur_crm_settings WHERE id = 1`) ?? {
+      this.db.one<SettingsRow>(`SELECT events_key, last_event_at, follow_ups, birthdays, new_clients, next_reminder, reminder_time, reminded_day FROM zur_crm_settings WHERE id = 1`) ?? {
         events_key: null,
         last_event_at: null,
         follow_ups: 1,
@@ -599,9 +583,6 @@ export class CrmService {
         new_clients: 1,
         next_reminder: null,
         reminder_time: CRM_BIRTHDAY_TIME,
-        new_client_notices: CRM_LIMITS.newClientNoticesPerDay,
-        events_per_hour: CRM_LIMITS.eventsPerHour,
-        events_per_day: CRM_LIMITS.eventsPerDay,
         reminded_day: null,
       }
     );
@@ -614,18 +595,11 @@ export class CrmService {
       birthdays: row.birthdays === 1,
       newClients: row.new_clients === 1,
       birthdayTime: reminderTime(row),
-      newClientNoticesPerDay: noticesPerDay(row),
-      ...eventLimits(row),
     };
   }
 
   updateSettings(patch: { [K in keyof CrmSettings]?: CrmSettings[K] | undefined }): CrmSettings {
     const before = this.settingsRow();
-    // Checked before anything is written: an hour that takes more than the day would promise what the day refuses.
-    const limits = eventLimits(before);
-    const perHour = patch.eventsPerHour ?? limits.eventsPerHour;
-    const perDay = patch.eventsPerDay ?? limits.eventsPerDay;
-    if (perHour > perDay) throw new AppError("VALIDATION_FAILED", "error.crmEventLimits", { fields: [patch.eventsPerHour !== undefined ? "eventsPerHour" : "eventsPerDay"] });
     const map = [
       ["followUps", "follow_ups"],
       ["birthdays", "birthdays"],
@@ -642,14 +616,6 @@ export class CrmService {
     if (patch.birthdayTime !== undefined && patch.birthdayTime !== before.reminder_time) {
       this.db.run(`UPDATE zur_crm_settings SET reminder_time = ? WHERE id = 1`, patch.birthdayTime);
       changed.push("birthdayTime");
-    }
-    if (patch.newClientNoticesPerDay !== undefined && patch.newClientNoticesPerDay !== before.new_client_notices) {
-      this.db.run(`UPDATE zur_crm_settings SET new_client_notices = ? WHERE id = 1`, patch.newClientNoticesPerDay);
-      changed.push("newClientNoticesPerDay");
-    }
-    if (perHour !== before.events_per_hour || perDay !== before.events_per_day) {
-      this.db.run(`UPDATE zur_crm_settings SET events_per_hour = ?, events_per_day = ? WHERE id = 1`, perHour, perDay);
-      changed.push("eventLimits");
     }
     // SEC-A1-01: no password here, so a change leaves a trace the owner can read.
     if (changed.length > 0) recordActivity(this.db, "crm.settings", { fields: changed });
@@ -772,7 +738,7 @@ export class CrmService {
     const parts = zonedParts(new Date(this.clock()), this.deps.timeZone());
     const bucket = `n:${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
     const n = this.db.one<{ n: number }>(`SELECT n FROM zur_crm_counts WHERE bucket = ?`, bucket)?.n ?? 0;
-    if (n >= noticesPerDay(this.settingsRow())) return;
+    if (n >= CRM_LIMITS.newClientNoticesPerDay) return;
     this.db.run(`INSERT INTO zur_crm_counts (bucket, n) VALUES (?, 1) ON CONFLICT (bucket) DO UPDATE SET n = n + 1`, bucket);
     this.deps.notify({ kind: "crm.newClient", clientId: client.id, name: cleanText(client.name, 60) });
   }

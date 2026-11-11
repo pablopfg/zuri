@@ -239,7 +239,6 @@ const crm = /* @__PURE__ */ z
         birthdays: z.boolean(),
         newClients: z.boolean(),
         birthdayTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
-        newClientNoticesPerDay: z.number().int().min(1).max(20).optional(),
       })
       .strict()
       .nullable(),

@@ -43,7 +43,7 @@ afterEach(async () => {
     const { db } = agent.store;
     new InternalState(db).delete("lockdown_until");
     for (const table of ["zur_crm_tags", "zur_crm_history", "zur_crm_clients", "zur_crm_tag_counts", "zur_crm_inbox", "zur_crm_counts", "zur_notices"]) db.run(`DELETE FROM ${table}`);
-    db.run(`UPDATE zur_crm_settings SET events_key = NULL, last_event_at = NULL, events_per_hour = 300, events_per_day = 1000`);
+    db.run(`UPDATE zur_crm_settings SET events_key = NULL, last_event_at = NULL`);
   });
 });
 
@@ -269,24 +269,6 @@ describe("POST /api/crm/events/:key", () => {
     const daily = await send(upsert({ name: "Ana" }));
     expect(daily.status).toBe(429);
     expect(Number(daily.headers.get("retry-after"))).toBeLessThanOrEqual(86_400);
-  });
-
-  it("holds to the owner's numbers when they picked fewer (n-1, n), and takes more again once they raise them", async () => {
-    await inOwner((agent) => agent.store.crm.updateSettings({ eventsPerHour: 10, eventsPerDay: 50 }));
-    const hour = `h:${new Date().toISOString().slice(0, 13)}`;
-    const day = `d:${new Date().toISOString().slice(0, 10)}`;
-    await inOwner((agent) => agent.store.db.run(`INSERT INTO zur_crm_counts (bucket, n) VALUES (?, 9), (?, 9)`, hour, day));
-    expect((await send(upsert({ name: "Ana" }))).status).toBe(200);
-    expect((await send(upsert({ name: "Bia" }))).status).toBe(429);
-    await inOwner((agent) => agent.store.db.run(`UPDATE zur_crm_counts SET n = CASE bucket WHEN ? THEN 0 ELSE 49 END`, hour));
-    expect((await send(upsert({ name: "Caio" }))).status).toBe(200);
-    const daily = await send(upsert({ name: "Duda" }));
-    expect(daily.status).toBe(429);
-    expect((await errorBody(daily)).code).toBe("RATE_LIMITED");
-    await inOwner((agent) => agent.store.crm.updateSettings({ eventsPerDay: 51 }));
-    expect((await send(upsert({ name: "Duda" }))).status).toBe(200);
-    // A refused event isn't counted: 49, then the two that went in.
-    expect(await inOwner((agent) => agent.store.db.one(`SELECT n FROM zur_crm_counts WHERE bucket = ?`, day))).toEqual({ n: 51 });
   });
 
   it("refuses everything during a lockdown, writing nothing", async () => {

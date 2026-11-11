@@ -1552,15 +1552,11 @@ export const MIGRATIONS: readonly Migration[] = [
     statements: [
       // What was fixed in the code and the owner now sets on the screen (11/11/2026). The defaults are the
       // values of before, so nothing changes until the owner changes it. The CHECKs repeat the limits of
-      // CRM_LIMITS and FLOW_LIMITS: a row written by hand can't lift a ceiling. None of these is in the
+      // FLOW_LIMITS: a row written by hand can't lift a ceiling. None of these is in the
       // area triggers: the route that saves one answers with the new state.
       `ALTER TABLE zur_crm_settings ADD COLUMN reminder_time TEXT NOT NULL DEFAULT '09:00'`,
-      `ALTER TABLE zur_crm_settings ADD COLUMN new_client_notices INTEGER NOT NULL DEFAULT 20 CHECK (new_client_notices BETWEEN 1 AND 20)`,
       // The owner's day of the last birthday notice: a time changed later that day doesn't tell it twice.
       `ALTER TABLE zur_crm_settings ADD COLUMN reminded_day TEXT`,
-      // Events n8n may send per UTC hour and day: the ceilings of before are the most there is.
-      `ALTER TABLE zur_crm_settings ADD COLUMN events_per_hour INTEGER NOT NULL DEFAULT 300 CHECK (events_per_hour BETWEEN 10 AND 300)`,
-      `ALTER TABLE zur_crm_settings ADD COLUMN events_per_day INTEGER NOT NULL DEFAULT 1000 CHECK (events_per_day BETWEEN 50 AND 1000)`,
       `CREATE TABLE IF NOT EXISTS zur_flow_settings (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         failures_to_pause INTEGER NOT NULL DEFAULT 5 CHECK (failures_to_pause BETWEEN 2 AND 10),

@@ -159,8 +159,8 @@ export function* exportBackup(deps: ExportDeps): Generator<string> {
 
   // The CRM: the funnel in order, every client with its tags and history, and the notices' switches (never the events key).
   const stages = db.all<{ id: string; name: string }>(`SELECT id, name FROM zur_crm_stages ORDER BY position`);
-  const crmSettings = db.one<{ follow_ups: number; birthdays: number; new_clients: number; reminder_time: string; new_client_notices: number }>(
-    `SELECT follow_ups, birthdays, new_clients, reminder_time, new_client_notices FROM zur_crm_settings WHERE id = 1`,
+  const crmSettings = db.one<{ follow_ups: number; birthdays: number; new_clients: number; reminder_time: string }>(
+    `SELECT follow_ups, birthdays, new_clients, reminder_time FROM zur_crm_settings WHERE id = 1`,
   );
   yield `,"crm":{"stages":${JSON.stringify(stages.filter((stage) => backupItemSchemas.crmStage.safeParse(stage).success))}`;
   yield* section(
@@ -196,7 +196,6 @@ export function* exportBackup(deps: ExportDeps): Generator<string> {
           newClients: crmSettings.new_clients === 1,
           // A time a clock can't show is left out: the import refuses the whole file on one bad field.
           ...(/^([01]\d|2[0-3]):[0-5]\d$/.test(crmSettings.reminder_time) ? { birthdayTime: crmSettings.reminder_time } : {}),
-          newClientNoticesPerDay: crmSettings.new_client_notices,
         }
       : null,
   )}}`;

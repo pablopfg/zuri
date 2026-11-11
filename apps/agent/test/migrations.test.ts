@@ -114,7 +114,7 @@ describe("the migration list", () => {
       31: "7dab5e6e1796d31319943db97241b717fb87bdfd1abb91687b0c6a6a6b6fe320",
       32: "9e9ed87e486bc2a912d17a1f4386d26696c0cb7c46728087e1866f49930292fe",
       33: "b281d8f2f11df4452a26166f2f4d1368e5bc09a0a16fb72f8171a377c991048d",
-      34: "98113f394dc04e2183a90dcf2b40c12507bf8428ec48ce52c152a9035528d05b",
+      34: "ead4c0e3131aa24742f95906ead330a3e3ff9374127373d88b46a9c54741e620",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -1318,27 +1318,22 @@ describe("migrate", () => {
     });
   });
 
-  it("upgrades a database at version 33 to 34: the CRM's notices and the flows keep the numbers that were fixed in the code, and the tables hold the limits", async () => {
+  it("upgrades a database at version 33 to 34: the birthday notice keeps its 9 h and the flows keep the numbers that were fixed in the code, and the tables hold the limits", async () => {
     await withEmptyDatabase("from-33", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 33))).toBe(33);
       db.run(`UPDATE zur_crm_settings SET events_key = 'k', follow_ups = 0, birthdays = 1, new_clients = 0, next_reminder = 4000`);
       expect(migrate(db)).toBe(34);
-      expect(db.one(`SELECT events_key, follow_ups, birthdays, new_clients, next_reminder, reminder_time, new_client_notices, events_per_hour, events_per_day, reminded_day FROM zur_crm_settings`)).toEqual({
+      expect(db.one(`SELECT events_key, follow_ups, birthdays, new_clients, next_reminder, reminder_time, reminded_day FROM zur_crm_settings`)).toEqual({
         events_key: "k",
         follow_ups: 0,
         birthdays: 1,
         new_clients: 0,
         next_reminder: 4000,
         reminder_time: "09:00",
-        new_client_notices: 20,
-        events_per_hour: 300,
-        events_per_day: 1000,
         reminded_day: null,
       });
       expect(db.all(`SELECT * FROM zur_flow_settings`)).toEqual([{ id: 1, failures_to_pause: 5, runs_per_day: 500, min_interval_min: 15, ai_min_interval_min: 60, calls_per_run: 40, neurons_per_day: 3000, attempts: 3 }]);
       for (const statement of [
-        `UPDATE zur_crm_settings SET new_client_notices = 21`,
-        `UPDATE zur_crm_settings SET new_client_notices = 0`,
         `UPDATE zur_flow_settings SET failures_to_pause = 1`,
         `UPDATE zur_flow_settings SET failures_to_pause = 11`,
         `UPDATE zur_flow_settings SET runs_per_day = 9`,
@@ -1353,17 +1348,13 @@ describe("migrate", () => {
         `UPDATE zur_flow_settings SET neurons_per_day = 3001`,
         `UPDATE zur_flow_settings SET attempts = 0`,
         `UPDATE zur_flow_settings SET attempts = 4`,
-        `UPDATE zur_crm_settings SET events_per_hour = 9`,
-        `UPDATE zur_crm_settings SET events_per_hour = 301`,
-        `UPDATE zur_crm_settings SET events_per_day = 49`,
-        `UPDATE zur_crm_settings SET events_per_day = 1001`,
         `INSERT INTO zur_flow_settings (id) VALUES (2)`,
       ]) {
         expect(() => db.run(statement), statement).toThrow();
       }
       // None of the new values moves a screen's number: the route that saves answers with the new state.
       const before = db.one(`SELECT crm, flows FROM zur_area_versions WHERE id = 1`);
-      db.run(`UPDATE zur_crm_settings SET reminder_time = '10:00', new_client_notices = 3, events_per_hour = 20, events_per_day = 60, reminded_day = '2026-11-11'`);
+      db.run(`UPDATE zur_crm_settings SET reminder_time = '10:00', reminded_day = '2026-11-11'`);
       db.run(`UPDATE zur_flow_settings SET failures_to_pause = 3, runs_per_day = 50, min_interval_min = 5, ai_min_interval_min = 30, calls_per_run = 5, neurons_per_day = 100, attempts = 1`);
       expect(db.one(`SELECT crm, flows FROM zur_area_versions WHERE id = 1`)).toEqual(before);
     });

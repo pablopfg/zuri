@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, type ContactDetail, type ContactPage, type ContactsStatus, type NoticePage } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, type ContactDetail, type ContactPage, type ContactsStatus, type MemoryGraph, type NoticePage } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -369,3 +369,78 @@ describe("/api/google/contacts", () => {
     }
   });
 });
+
+describe("contacts on the memory map (Sinal, S10)", () => {
+  const remember = async (content: string) => {
+    const res = await api("POST", "/memories", { content, category: "person" });
+    expect(res.status).toBe(201);
+    return ((await res.json()) as { memory: { id: string } }).memory.id;
+  };
+  const around = async (id: string) => (await (await api("GET", `/memories/graph?around=${id}`)).json()) as MemoryGraph;
+  const forget = (ids: string[]) => inOwner((agent) => {
+      for (const id of ids) agent.store.db.run(`DELETE FROM zur_memories WHERE id = ?`, id);
+    });
+
+  it("SEC-S10-02: with the permission gone and the copy still in the database, the map names no contact", async () => {
+    await turnOn();
+    expect((await api("PATCH", "/google/contacts/labels", { selected: [CLIENTS] })).status).toBe(200);
+    await minuteLater();
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+    const ana = await remember("A Ana Souza gosta de ser avisada na véspera.");
+    const scopes = await inOwner((agent) => agent.store.db.one<{ scopes: string }>(`SELECT scopes FROM zur_google_account WHERE id = 1`)?.scopes ?? "");
+    try {
+      expect((await around(ana)).hubs.some((item) => item.kind === "contact")).toBe(true);
+      await inOwner((agent) => {
+        agent.store.db.run(`UPDATE zur_google_account SET scopes = '' WHERE id = 1`);
+      });
+      expect(await inOwner((agent) => agent.store.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_contacts`)?.n)).toBeGreaterThan(0);
+      expect((await around(ana)).hubs.filter((item) => item.kind === "contact")).toEqual([]);
+    } finally {
+      await inOwner((agent) => {
+        agent.store.db.run(`UPDATE zur_google_account SET scopes = ? WHERE id = 1`, scopes);
+      });
+      await forget([ana]);
+    }
+  });
+
+  it("a memory that names a copied contact is linked to it; one that names nobody is not", async () => {
+    await turnOn();
+    expect((await api("PATCH", "/google/contacts/labels", { selected: [CLIENTS, FAMILY] })).status).toBe(200);
+    await minuteLater();
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+    const ana = await remember("A Ana Souza prefere contato por mensagem.");
+    const nobody = await remember("Prefere reunião de manhã na Padaria.");
+    try {
+      const graph = await around(ana);
+      const hub = graph.hubs.find((item) => item.kind === "contact");
+      expect(hub).toMatchObject({ kind: "contact", label: "Ana Souza" });
+      expect(hub?.id).toBe(`contact:${hub?.ref}`);
+      expect(graph.links).toContainEqual({ from: ana, to: hub?.id, kind: "hub" });
+      // The link opens the contact itself.
+      const one = (await (await api("GET", `/contacts/${hub?.ref}`)).json()) as { contact: ContactDetail };
+      expect(one.contact.name).toBe("Ana Souza");
+      expect((await around(nobody)).hubs.filter((item) => item.kind === "contact")).toEqual([]);
+      // The whole map never looks the contacts up.
+      const whole = (await (await api("GET", "/memories/graph")).json()) as MemoryGraph;
+      expect(whole.hubs.filter((item) => item.kind === "contact")).toEqual([]);
+    } finally {
+      await forget([ana, nobody]);
+    }
+  });
+
+  it("with the contacts off, nothing of the old copy is linked", async () => {
+    await turnOn();
+    expect((await api("PATCH", "/google/contacts/labels", { selected: [CLIENTS] })).status).toBe(200);
+    await minuteLater();
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+    const ana = await remember("A Ana Souza prefere contato por mensagem.");
+    try {
+      expect((await around(ana)).hubs.some((item) => item.kind === "contact")).toBe(true);
+      expect((await api("DELETE", "/google/contacts")).status).toBe(200);
+      expect((await around(ana)).hubs.filter((item) => item.kind === "contact")).toEqual([]);
+    } finally {
+      await forget([ana]);
+    }
+  });
+});
+

@@ -350,7 +350,7 @@ describe("notices", () => {
   it("tells the birthdays at the time the owner picked, from the same day on when it is still ahead", () =>
     withCrm(({ crm, clock, notices }) => {
       crm.create({ name: "Ana", birthday: "11-03" }, "app");
-      expect(crm.settings()).toMatchObject({ birthdayTime: "09:00", newClientNoticesPerDay: 20 });
+      expect(crm.settings()).toEqual({ followUps: true, birthdays: true, newClients: true, birthdayTime: "09:00" });
       // 03/11 12:00 in São Paulo: 9 h is gone, so the plan is the 4th. With 15:30 picked, it is today again.
       expect(crm.nextDue()).toBe(Date.parse("2026-11-04T12:00:00.000Z"));
       expect(crm.updateSettings({ birthdayTime: "15:30" })).toMatchObject({ birthdayTime: "15:30" });
@@ -413,42 +413,30 @@ describe("notices", () => {
       expect(crm.nextDue()).toBe(Date.parse("2026-11-05T11:00:00.000Z"));
     }));
 
-  it("writes nothing when the time and the number saved are the ones already there", () =>
+  it("writes nothing when the time saved is the one already there", () =>
     withCrm(({ crm, db }) => {
       crm.create({ name: "Ana", birthday: "11-04" }, "app");
-      crm.updateSettings({ birthdayTime: "10:15", newClientNoticesPerDay: 7, eventsPerHour: 20, eventsPerDay: 60 });
+      crm.updateSettings({ birthdayTime: "10:15" });
       const usage = db.usage.rowsWritten;
-      expect(crm.updateSettings({ birthdayTime: "10:15", newClientNoticesPerDay: 7, eventsPerHour: 20, eventsPerDay: 60 })).toMatchObject({ birthdayTime: "10:15", newClientNoticesPerDay: 7, eventsPerHour: 20, eventsPerDay: 60 });
+      expect(crm.updateSettings({ birthdayTime: "10:15" })).toMatchObject({ birthdayTime: "10:15" });
       expect(db.usage.rowsWritten).toBe(usage);
     }));
 
   it("SEC-A1-01: a change of settings goes to the activity log with the names of the fields, and the same values leave nothing", () =>
     withCrm(({ crm, db }) => {
       const trail = () => db.all<{ detail: string }>(`SELECT detail FROM zur_activity WHERE kind = 'crm.settings' ORDER BY id`).map((row) => JSON.parse(row.detail));
-      crm.updateSettings({ birthdayTime: "10:15", newClientNoticesPerDay: 7, eventsPerDay: 50, eventsPerHour: 10, newClients: false, followUps: true });
-      expect(trail()).toEqual([{ fields: ["newClients", "birthdayTime", "newClientNoticesPerDay", "eventLimits"] }]);
-      crm.updateSettings({ birthdayTime: "10:15", newClientNoticesPerDay: 7, eventsPerDay: 50, eventsPerHour: 10, newClients: false, followUps: true });
+      crm.updateSettings({ birthdayTime: "10:15", newClients: false, followUps: true });
+      expect(trail()).toEqual([{ fields: ["newClients", "birthdayTime"] }]);
+      crm.updateSettings({ birthdayTime: "10:15", newClients: false, followUps: true });
       expect(trail()).toHaveLength(1);
     }));
 
-  it("falls back to 9 h when the stored time is not a time, and the table refuses a number outside 1 to 20", () =>
+  it("falls back to 9 h when the stored time is not a time", () =>
     withCrm(({ crm, db }) => {
       crm.create({ name: "Ana", birthday: "11-04" }, "app");
       db.run(`UPDATE zur_crm_settings SET reminder_time = '99:99', next_reminder = NULL`);
       expect(crm.settings().birthdayTime).toBe("09:00");
       expect(crm.nextDue()).toBe(Date.parse("2026-11-04T12:00:00.000Z"));
-      expect(() => db.run(`UPDATE zur_crm_settings SET new_client_notices = 21`)).toThrow();
-      expect(() => db.run(`UPDATE zur_crm_settings SET new_client_notices = 0`)).toThrow();
-    }));
-
-  it("tells as many new clients a day as the owner picked, and takes a higher number the same day", () =>
-    withCrm(({ crm, notices }) => {
-      crm.updateSettings({ newClientNoticesPerDay: 3 });
-      for (let i = 0; i < 5; i++) crm.announceNew({ id: `id${i}`, name: `N${i}` });
-      expect(notices).toHaveLength(3);
-      crm.updateSettings({ newClientNoticesPerDay: 4 });
-      for (let i = 5; i < 8; i++) crm.announceNew({ id: `id${i}`, name: `N${i}` });
-      expect(notices).toHaveLength(4);
     }));
 
   it("names at most 5 in a birthday notice and counts the rest", () =>

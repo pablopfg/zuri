@@ -455,8 +455,69 @@ dialog::backdrop {
     @apply mx-auto w-full max-w-5xl space-y-6 px-4 pt-5 pb-10 md:px-8 md:pt-8;
   }
   /* The Conversa screen fills the area and scrolls its own parts (the list, the messages). */
-  .zuri-content > div:has(> .zuri-chat) {
+  .zuri-content > div:has(> .zuri-chat),
+  .zuri-content > div:has(> .zuri-contacts) {
     @apply flex h-full max-w-none flex-col space-y-0 p-0;
+  }
+
+  /*
+   * Contatos (Sinal, S10). The list and the chosen contact's card sit side by side and each scrolls by
+   * itself; on a phone the card takes the list's place while a contact is open (data-open).
+   */
+  .zuri-contacts {
+    @apply grid min-h-0 flex-1 lg:grid-cols-[22rem_minmax(0,1fr)];
+  }
+  .zuri-contacts > * {
+    @apply min-h-0 overflow-y-auto overscroll-contain px-4 pt-5 pb-10 focus:outline-none;
+  }
+  .zuri-contacts-list {
+    @apply space-y-3 lg:border-r lg:border-border;
+  }
+  .zuri-contacts-card {
+    @apply max-lg:hidden md:px-8;
+  }
+  .zuri-contacts[data-open] > .zuri-contacts-list {
+    @apply max-lg:hidden;
+  }
+  .zuri-contacts[data-open] > .zuri-contacts-card {
+    @apply max-lg:block;
+  }
+  /* A contact's line in the list; the chosen one is a card. */
+  .zuri-contact-row {
+    @apply flex min-h-14 w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-left hover:bg-raised;
+  }
+  .zuri-contact-row[aria-current] {
+    @apply border-border bg-surface shadow-sm;
+  }
+  /* The round mark with the initials, in one of four quiet tints picked by the name. */
+  .zuri-contact-mark {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised text-sm font-semibold text-fg-muted;
+  }
+  .zuri-contact-mark[data-big] {
+    @apply h-16 w-16 text-xl;
+  }
+  /* The four doors of the card: ask, call, WhatsApp, e-mail. A door with nowhere to go is dimmed and says why. */
+  .zuri-contact-door {
+    @apply flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-surface px-2 py-2 text-center text-sm font-medium leading-5 shadow-sm;
+  }
+  a.zuri-contact-door {
+    @apply hover:bg-raised;
+  }
+  .zuri-contact-door[aria-disabled] {
+    @apply bg-raised text-fg-muted shadow-none;
+  }
+  .zuri-contact-box {
+    @apply rounded-2xl border border-border bg-surface p-4 shadow-sm;
+  }
+  .zuri-contact-box > h3,
+  .zuri-contact-term {
+    @apply text-xs font-semibold tracking-wide text-fg-muted uppercase;
+  }
+  .zuri-contact-term {
+    @apply flex items-center gap-2;
+  }
+  .zuri-contact-chip {
+    @apply inline-flex min-h-7 items-center rounded-full bg-raised px-2.5 text-xs font-medium;
   }
 
   /*

@@ -208,3 +208,27 @@ export async function seed(page: Page, base: string): Promise<{ conversationId: 
   }
   return { conversationId };
 }
+
+/**
+ * The sample contacts (Sinal, S10): the labels "Clientes" and "Consultório" of the Worker's own
+ * Google (apps/agent/src/google/dev-google.ts), copied, and one memory that names a contact.
+ * Apart from seed(): a birthday of the copy would put a notice on every other screen's shot.
+ * Needs the calendar connected (seed() does it). Safe to call again.
+ */
+export async function seedContacts(page: Page, base: string): Promise<void> {
+  const post = async (path: string, data: object = {}) => {
+    const res = await page.request.post(base + path, { headers: CSRF, data });
+    if (!res.ok()) throw new Error(`${path}: ${res.status()} ${await res.text()}`);
+    return (await res.json()) as Record<string, unknown>;
+  };
+  const status = (await (await page.request.get(`${base}/api/google/contacts`, { headers: CSRF })).json()) as { enabled: boolean };
+  if (status.enabled) return;
+  const consent = new URL((await post("/api/google/contacts/connect")).url as string);
+  await post("/api/google/callback", { state: consent.searchParams.get("state") ?? "", code: `dev.${consent.searchParams.get("code_challenge") ?? ""}` });
+  // The first read learns the labels; saving a choice lets the next one run at once.
+  await post("/api/google/contacts/sync");
+  const chosen = await page.request.patch(`${base}/api/google/contacts/labels`, { headers: CSRF, data: { selected: ["contactGroups/clientes", "contactGroups/consultorio"] } });
+  if (!chosen.ok()) throw new Error(`/api/google/contacts/labels: ${chosen.status()}`);
+  await post("/api/google/contacts/sync");
+  await post("/api/memories", { content: "A Ana Souza prefere ser atendida no fim da tarde.", category: "person" });
+}

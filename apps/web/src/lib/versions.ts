@@ -29,7 +29,7 @@ const AREA_KEYS: Record<Area, readonly { queryKey: QueryKey; exact?: boolean }[]
   contacts: [{ queryKey: ["contacts"] }],
   // The Flows tab in Automations (step 22a).
   flows: [{ queryKey: ["flows"] }],
-  // The Clients tab in Contacts (step 22b).
+  // The internal CRM (step 22b); its cards live on the CRM screen since the Clients tab left Contacts.
   crm: [{ queryKey: ["crm"] }],
   // The Reviews tab in Contacts and the reviews in Integrations (step 19c).
   reviews: [{ queryKey: ["reviews"] }],
