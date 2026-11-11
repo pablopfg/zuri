@@ -134,7 +134,9 @@ Como a conta fecha dentro da cota:
   ocupa 288, e um fluxo diário ou semanal ocupa 1. 2.000 é o que 20 fluxos a
   cada 15 minutos já ocupavam. Um fluxo que não couber nessa conta não liga, e
   a tela diz quantos horários estão ocupados. O piso de 5 minutos é o ritmo do
-  próprio alarme da Zuri.
+  próprio alarme da Zuri. Se você puser uma sincronização do Google abaixo de
+  5 minutos, ela ocupa parte dessa conta e sobram menos horários para os
+  fluxos (com os contatos a cada minuto, 488); a tela mostra o total que vale.
 - **Mudar um número não mexe no que já está rodando.** Subir o intervalo
   mínimo não desliga um fluxo ligado com intervalo menor; o novo mínimo vale
   quando você salvar ou ligar o fluxo de novo. Baixar o número de falhas não

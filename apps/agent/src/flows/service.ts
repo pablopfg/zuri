@@ -29,6 +29,7 @@ import {
 import { currentWake } from "../agent/wake-budget.ts";
 import type { MeteredAI } from "../ai/metered.ts";
 import { recordActivity } from "../db/activity.ts";
+import { flowSlots, flowSlotsLimit } from "../db/day-slots.ts";
 import type { Database } from "../db/database.ts";
 import { AppError } from "../http/errors.ts";
 import { log } from "../log.ts";
@@ -183,6 +184,7 @@ export class FlowService {
         neuronsToday: Math.round(this.neuronsToday()),
         // From the rows already read: the list reads no flow twice.
         slots: flows.reduce((sum, flow) => sum + (flow.enabled ? flowSlotsPerDay(flow.definition) : 0), 0),
+        slotsLimit: flowSlotsLimit(this.db),
       },
       settings: this.settings(),
       credentialsAvailable: this.deps.connections.credentialsAvailable,
@@ -313,14 +315,6 @@ export class FlowService {
     return this.settings();
   }
 
-  /** Scheduled times a day of the flows turned on, `except` aside. */
-  private slots(except: string | null = null): number {
-    return this.db
-      .all<{ id: string; definition: string }>(`SELECT id, definition FROM zur_flows WHERE enabled = 1 LIMIT ?`, FLOW_LIMITS.flows)
-      .filter((row) => row.id !== except)
-      .reduce((sum, row) => sum + flowSlotsPerDay(safeDefinition(row.definition)), 0);
-  }
-
   /** The owner's shortest interval, for a flow being saved or turned on: 400 with the number the screen shows. */
   private checkInterval(definition: FlowDefinition): void {
     const { trigger } = definition;
@@ -395,8 +389,10 @@ export class FlowService {
       // Turned on, or changed while on: its times a day must fit next to the others'. A shorter interval never
       // costs more than the day's count allows; turning off and renaming are never refused.
       if (changed && enabled) {
-        const slots = this.slots(id) + flowSlotsPerDay(definition);
-        if (slots > FLOW_LIMITS.slotsPerDay) throw new AppError("CONFLICT", "error.flowSlotsLimit", { limit: FLOW_LIMITS.slotsPerDay, slots });
+        const slots = flowSlots(this.db, id) + flowSlotsPerDay(definition);
+        // Their own most, or what the reads of Google leave of the day (a read every minute takes its share).
+        const limit = flowSlotsLimit(this.db);
+        if (slots > limit) throw new AppError("CONFLICT", "error.flowSlotsLimit", { limit, slots });
       }
       const next = enabled ? (changed || row.next_run === null ? this.firstRun(definition) : row.next_run) : null;
       this.db.run(

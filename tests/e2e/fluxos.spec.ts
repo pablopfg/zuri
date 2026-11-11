@@ -210,7 +210,7 @@ test("the owner sets what holds for every flow on the screen, each number inside
       await expect(field[name], name).toHaveValue(value);
     }
     for (const range of ["De 5 a 60.", "De 30 a 1440.", "De 10 a 500.", "De 5 a 40.", "De 100 a 3000.", "De 1 a 3.", "De 2 a 10."]) await expect(card.getByText(range, { exact: true })).toBeVisible();
-    await expect(card.getByText(/Horários por dia dos fluxos ligados: \d+ de 2000\./)).toBeVisible();
+    await expect(card.getByText(/Horários por dia dos fluxos ligados: \d+ de \d+\./)).toBeVisible();
     // Nothing changed, or a number outside its limits: nothing to save.
     await expect(save).toBeDisabled();
     for (const [name, bad] of [["runs", "501"], ["runs", "9"], ["interval", "4"], ["calls", "41"], ["neurons", "3001"], ["attempts", "0"], ["failures", "1"]] as const) {
@@ -270,7 +270,7 @@ test("loading, empty and error states of the tab", async ({ page }) => {
     if (answer === "error") return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ code: "INTERNAL", message: "Algo deu errado." }) });
     return route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ flows: [], drafts: [], connections: [], counts: { flows: 0, enabled: 0, connections: 0, sites: 0, runsToday: 0, neuronsToday: 0, slots: 0 }, settings: START, credentialsAvailable: false }),
+      body: JSON.stringify({ flows: [], drafts: [], connections: [], counts: { flows: 0, enabled: 0, connections: 0, sites: 0, runsToday: 0, neuronsToday: 0, slots: 0, slotsLimit: 2000 }, settings: START, credentialsAvailable: false }),
     });
   });
   await page.goto("/crm/fluxos");
@@ -310,7 +310,7 @@ test("the row says a flow was turned off by failures at the owner's number, not 
         flows: [flow("Parou em duas", 2), flow("Desligado à mão", 1)],
         drafts: [],
         connections: [],
-        counts: { flows: 2, enabled: 0, connections: 0, sites: 0, runsToday: 0, neuronsToday: 0, slots: 0 },
+        counts: { flows: 2, enabled: 0, connections: 0, sites: 0, runsToday: 0, neuronsToday: 0, slots: 0, slotsLimit: 2000 },
         settings: { ...START, failuresToPause: 2 },
         credentialsAvailable: false,
       }),

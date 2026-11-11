@@ -322,6 +322,19 @@ export const FLOW_SETTING_RANGES = {
 
 export const FLOW_SETTING_KEYS = Object.keys(FLOW_SETTING_RANGES) as (keyof FlowSettings)[];
 
+/**
+ * One count for everything the alarm runs by the clock, so a read of Google every minute (the owner's call
+ * of 11/11/2026) never makes the worst day cost more rows than it did. A read of Google weighs 3 and a
+ * flow's scheduled time 2: a wake of its own writes about 19 rows, a flow's time about 13 (the budget test).
+ * The whole is what there was before: the flows' 2,000 times and the two reads at five minutes each (576).
+ */
+export const DAY_BUDGET = { units: 5_728, perSync: 3, perFlow: 2 } as const;
+
+/** Scheduled times a day of a read of Google that runs every `minutes`. */
+export function syncSlotsPerDay(minutes: number): number {
+  return Math.ceil(1_440 / minutes);
+}
+
 /** Scheduled times a day a flow takes while on: an interval's share of the day, one for a daily, weekly or monthly time, none by hand. */
 export function flowSlotsPerDay(definition: Pick<FlowDefinition, "trigger">): number {
   const { trigger } = definition;
@@ -333,8 +346,8 @@ export interface FlowList {
   flows: Flow[];
   settings: FlowSettings;
   connections: FlowConnection[];
-  /** `slots`: scheduled times a day of the flows turned on, of FLOW_LIMITS.slotsPerDay. */
-  counts: { flows: number; enabled: number; connections: number; sites: number; runsToday: number; neuronsToday: number; slots: number };
+  /** `slots`: scheduled times a day of the flows turned on, of `slotsLimit` (FLOW_LIMITS.slotsPerDay, or what the reads of Google leave of DAY_BUDGET). */
+  counts: { flows: number; enabled: number; connections: number; sites: number; runsToday: number; neuronsToday: number; slots: number; slotsLimit: number };
   /** False without MCP_CREDENTIAL_KEY: connections can't keep a credential. */
   credentialsAvailable: boolean;
   /** Flows the chat suggested (step 22b), newest first, until saved or dropped. */

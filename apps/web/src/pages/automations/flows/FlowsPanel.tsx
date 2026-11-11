@@ -162,7 +162,7 @@ export function FlowsPanel() {
               onEdit={(item) => setConnection({ mode: "edit", connection: item })}
               onDelete={(item) => setRemoving({ kind: "connection", connection: item })}
             />
-            <FlowSettingsCard settings={data.settings} slots={data.counts.slots} />
+            <FlowSettingsCard settings={data.settings} slots={data.counts.slots} slotsLimit={data.counts.slotsLimit} />
             <RunHistory />
           </>
         )
@@ -188,7 +188,7 @@ const SETTING_LABEL: Record<keyof FlowSettings, MessageKey> = {
  * What holds for every flow. Each number has limits that fit the free plan, shown under its field; the
  * scheduled times a day of the flows turned on are counted against their own ceiling.
  */
-function FlowSettingsCard({ settings, slots }: { settings: FlowSettings; slots: number }) {
+function FlowSettingsCard({ settings, slots, slotsLimit }: { settings: FlowSettings; slots: number; slotsLimit: number }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const fields = (Object.keys(SETTING_LABEL) as (keyof FlowSettings)[]).map((key) => ({
@@ -214,7 +214,7 @@ function FlowSettingsCard({ settings, slots }: { settings: FlowSettings; slots: 
             }
           }}
         />
-        <p className="text-xs leading-5 text-fg-muted">{t("web.flows.settings.slots", { slots, max: FLOW_LIMITS.slotsPerDay })}</p>
+        <p className="text-xs leading-5 text-fg-muted">{t("web.flows.settings.slots", { slots, max: slotsLimit })}</p>
       </div>
     </Card>
   );

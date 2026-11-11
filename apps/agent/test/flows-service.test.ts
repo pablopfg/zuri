@@ -660,6 +660,28 @@ describe("the schedule", () => {
     });
   });
 
+  it("with the contacts read every minute, the flows turned on get what is left of the day: 488 times, not 2,000", async () => {
+    await withFlowWorld(async (world) => {
+      world.flows.updateSettings({ minIntervalMinutes: 5 });
+      const ping = (minutes: number) => every(minutes, [{ type: "wait", minutes: 1 }]);
+      world.db.run(`INSERT INTO zur_contact_sync (id) VALUES (1) ON CONFLICT (id) DO NOTHING`);
+      world.db.run(`UPDATE zur_contact_sync SET sync_every_min = 1 WHERE id = 1`);
+      expect(world.flows.list().counts).toMatchObject({ slots: 0, slotsLimit: 488 });
+      const first = await world.flows.create({ name: "Um", definition: ping(5) });
+      await world.flows.update(first.id, { enabled: true });
+      const second = await world.flows.create({ name: "Dois", definition: ping(7) });
+      // 288 + 206 = 494: six past. Every 8 minutes (180) fits, and 20 more to the number.
+      expect(await refusal(world.flows.update(second.id, { enabled: true }))).toMatchObject({ code: "CONFLICT", details: { limit: 488, slots: 494 } });
+      expect((await world.flows.update(second.id, { definition: ping(8), enabled: true })).enabled).toBe(true);
+      const third = await world.flows.create({ name: "Três", definition: ping(72) });
+      expect((await world.flows.update(third.id, { enabled: true })).enabled).toBe(true);
+      expect(world.flows.list().counts).toMatchObject({ slots: 488, slotsLimit: 488 });
+      // Back at five minutes, the flows have their 2,000 again.
+      world.db.run(`UPDATE zur_contact_sync SET sync_every_min = 5 WHERE id = 1`);
+      expect(world.flows.list().counts.slotsLimit).toBe(2_000);
+    });
+  });
+
   it("takes the day's 2,000th scheduled time and refuses the 2,001st (n, n+1)", async () => {
     await withFlowWorld(async (world) => {
       world.flows.updateSettings({ minIntervalMinutes: 5 });

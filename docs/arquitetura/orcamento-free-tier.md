@@ -173,6 +173,19 @@ Como cheguei nos números:
   chamadas ao Google. A leitura sem novidade não sobe o número da área, e a
   tela não recarrega. Sem a permissão dos contatos no Google, nenhuma
   sincronização fica vencida (não há despertar por minuto à toa).
+- **Intervalo a partir de 1 minuto (decisão do Pablo, 11/11/2026).** Abaixo
+  de 5 minutos, a leitura é paga por uma conta única do dia (`DAY_BUDGET`,
+  `apps/agent/src/db/day-slots.ts`): cada leitura do Google pesa 3 e cada
+  horário de fluxo ligado pesa 2, num total de 5.728 (os 2.000 horários de
+  fluxo e as 576 leituras de antes). Os pesos vêm das linhas gravadas: perto
+  de 19 por leitura num despertar só dela e 13 por horário de fluxo. Com os
+  padrões os fluxos mantêm os 2.000 horários; contatos a cada minuto deixam
+  488. O dia gasto só em leituras (1.909) grava cerca de 36.300 linhas, abaixo
+  das 37.400 que fluxos e leituras somavam no pior dia de antes, e faz 1.909
+  chamadas ao Google e o mesmo número de despertares (1,9% das 100.000
+  requisições). A folga entre as duas leituras é de 2 min 30 s ou metade do
+  intervalo dos contatos, o que for menor. O parágrafo abaixo descreve a conta
+  de antes, que continua valendo para intervalos de 5 minutos ou mais.
 - **Intervalo escolhido pelo dono (de 5 a 1.440 minutos cada).** O pior caso
   são as duas leituras a cada 5 minutos: 576 despertares por dia (0,6% das
   100.000 requisições), perto de 11.000 linhas gravadas (11% da cota) e 62.000

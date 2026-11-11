@@ -1175,6 +1175,7 @@ export const en: Messages = {
   "error.flowLimit": "You've reached the limit of {limit} flows. Delete one to create another.",
   "error.flowRunning": "This flow is already running. Wait for it to finish.",
   "error.flowInterval": "The shortest interval is {min} minutes. You change that number under CRM › Flows, in Flow settings.",
+  "error.syncSlotsLimit": "This interval doesn't fit in the day next to the other sync and the flows turned on. Pick a longer interval here or in the other sync, or turn a flow off.",
   "error.flowSlotsLimit": "The flows turned on would pass {limit} scheduled times a day. Make this flow's interval longer or turn another off.",
   "error.crmEventLimits": "The events per hour can't pass the events per day.",
   "error.flowRunsLimit": "Flows already ran {limit} times today. The count starts again at midnight UTC.",

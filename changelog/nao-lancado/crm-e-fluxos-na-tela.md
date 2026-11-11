@@ -7,6 +7,7 @@
 
 ### Alterado
 
+- As sincronizações do Google (contatos e avaliações) aceitam intervalo a partir de 1 minuto, em vez de 5. Abaixo de 5 minutos, a leitura divide a conta do dia com a outra sincronização e com os fluxos ligados, para não gastar mais do que a cota gratuita já previa: as duas não cabem a cada minuto ao mesmo tempo (1 minuto numa pede 4 ou mais na outra), e a tela avisa quando o intervalo não cabe.
 - Cada dia tem um aviso de aniversários só, mesmo que a hora mude no meio do dia.
 - O que gasta cota (execuções, chamadas, uso de IA, tentativas, eventos) tem como máximo o valor que já era fixo. Você pode baixar, nunca passar dele.
 - O selo "Desligado por falhas" de um fluxo segue o número de falhas que você escolheu.
