@@ -18,6 +18,8 @@ const headers = (withCookie = true) => ({ ...CSRF, "content-type": "application/
 const api = (method: string, path: string, body?: unknown, withCookie = true) =>
   call(`${ORIGIN}/api${path}`, { method, headers: headers(withCookie), ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 const stale = () => inOwner((agent) => agent.store.db.run(`UPDATE zur_sessions SET confirmed_at = ?`, Date.now() - 16 * 60_000));
+/** "Sync now" is once a minute: the minute passes. */
+const minuteLater = () => inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET synced_now_at = synced_now_at - 60000`));
 const fresh = () => inOwner((agent) => agent.store.db.run(`UPDATE zur_sessions SET confirmed_at = ?`, Date.now()));
 
 const CLIENTS = "contactGroups/clientes";
@@ -150,6 +152,7 @@ describe("/api/google/contacts", () => {
     await turnOn();
     expect((await api("PATCH", "/google/contacts/labels", { selected: [CLIENTS] })).status).toBe(200);
     expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+    await minuteLater();
     // The other label is saved while the next sync reads the contacts at Google.
     const real = google.handle.bind(google);
     let saved = false;
@@ -169,8 +172,54 @@ describe("/api/google/contacts", () => {
     expect((await res.json()) as ContactsStatus & { outcome: string }).toMatchObject({ outcome: "ok", status: "ok", contacts: 2 });
   });
 
+  it("\"Sync now\" is once a minute: the second answers 429 with the seconds to wait and never reaches Google", async () => {
+    await turnOn();
+    const calls = google.seen.length;
+    const res = await api("POST", "/google/contacts/sync");
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get("retry-after"))).toBeGreaterThanOrEqual(1);
+    expect(Number(res.headers.get("retry-after"))).toBeLessThanOrEqual(60);
+    const body = await errorBody(res);
+    expect(body.code).toBe("RATE_LIMITED");
+    expect(body.message).toBe("Os contatos acabaram de ser sincronizados. Tente de novo daqui a um minuto.");
+    expect(google.seen.length).toBe(calls);
+    await minuteLater();
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+  });
+
+  it("the status tells when the next read is and how the last one went, with nothing of the sync's tokens", async () => {
+    const status = (await turnOn()) as ContactsStatus & Record<string, unknown>;
+    expect(status).toMatchObject({ status: "ok", lastResult: "unchanged", refreshing: false });
+    const wait = Date.parse(status.nextSyncAt ?? "") - Date.parse(status.lastSyncAt ?? "");
+    expect(wait).toBe(5 * 60_000);
+    expect(Object.keys(status).sort()).toEqual(["connected", "contacts", "enabled", "labels", "lastResult", "lastSyncAt", "nextSyncAt", "onAdded", "outcome", "problem", "refreshing", "reminders", "status"]);
+    expect(JSON.stringify(status)).not.toMatch(/sync\.\d|people_sync_token|page_token/);
+  });
+
+  it("the label picker's refresh brings the labels from Google, needs the contacts on and a session, and reads no contact", async () => {
+    expect((await api("POST", "/google/contacts/labels/refresh", undefined, false)).status).toBe(401);
+    expect((await api("POST", "/google/contacts/labels/refresh")).status).toBe(409);
+    await turnOn();
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET labels_read_at = labels_read_at - 60000`));
+    google.people.groups.push({ resourceName: "contactGroups/nova", name: "Nova", groupType: "USER_CONTACT_GROUP", memberCount: 4 });
+    try {
+      const people = google.seen.filter((seen) => seen.url.includes("/people/me/connections")).length;
+      const res = await api("POST", "/google/contacts/labels/refresh");
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as ContactsStatus).labels.map((label) => [label.name, label.count])).toEqual([["Clientes", 1], ["Família", 1], ["Nova", 4]]);
+      expect(google.seen.filter((seen) => seen.url.includes("/people/me/connections")).length).toBe(people);
+      // Asked again at once: the list kept answers, Google is left alone.
+      const calls = google.seen.length;
+      expect((await api("POST", "/google/contacts/labels/refresh")).status).toBe(200);
+      expect(google.seen.length).toBe(calls);
+    } finally {
+      google.people.groups.pop();
+    }
+  });
+
   it("says when a sync is already running and when the contacts are off", async () => {
     await turnOn();
+    await minuteLater();
     await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET running_since = ?`, Date.now()));
     const busy = await api("POST", "/google/contacts/sync");
     expect(busy.status).toBe(409);

@@ -112,6 +112,7 @@ describe("the migration list", () => {
       29: "84038c823c68cb872b48d2013fc29c108bacec70b3bd4e893a9eaab9cac67889",
       30: "9438daaa32e658a73c3b370095cb63f27d70e4786ec82d9998650e78b77dd827",
       31: "7dab5e6e1796d31319943db97241b717fb87bdfd1abb91687b0c6a6a6b6fe320",
+      32: "64eee1d09920f145635d63a8b3ee27978034228e04bc136cfa9f1fd39b6fb302",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -127,7 +128,7 @@ describe("migrate", () => {
       expect(zurObjects(db)).toEqual([]);
 
       expect(migrate(db)).toBe(LATEST_SCHEMA_VERSION);
-      expect(schemaVersion(db)).toBe(31);
+      expect(schemaVersion(db)).toBe(32);
       // FTS5 keeps shadow tables of its own (zur_notes_fts_data and others): only ours are listed.
       expect(zurObjects(db).filter((name) => !/^table:zur_(notes|memories)_fts_/.test(name))).toEqual([
         "table:zur_activity",
@@ -1245,9 +1246,44 @@ describe("migrate", () => {
       expect(migrate(db, MIGRATIONS.slice(0, 30))).toBe(30);
       db.run(`INSERT INTO zur_conversations (id, title, created_at, updated_at) VALUES ('c1', 'Oi', 'x', 'x')`);
       db.run(`INSERT INTO zur_messages (id, conversation_id, role, content, created_at) VALUES ('m1', 'c1', 'assistant', 'Olá', 'x')`);
-      expect(migrate(db)).toBe(31);
+      expect(migrate(db, MIGRATIONS.slice(0, 31))).toBe(31);
       expect(db.one(`SELECT content, local_only FROM zur_messages WHERE id = 'm1'`)).toEqual({ content: "Olá", local_only: 0 });
       expect(() => db.run(`UPDATE zur_messages SET local_only = 2 WHERE id = 'm1'`)).toThrow();
+    });
+  });
+
+  it("upgrades a database at version 31 to 32: the sync's choices and times stay, and its new columns don't move the screens' numbers", async () => {
+    await withEmptyDatabase("from-31", (db) => {
+      expect(migrate(db, MIGRATIONS.slice(0, 31))).toBe(31);
+      db.run(`INSERT INTO zur_contact_sync (id, enabled, status, people_sync_token, full_needed, last_ok_at, next_sync, copied, reminder_time) VALUES (1, 1, 'ok', 'sync.7', 0, 1000, 2000, 12, '07:30')`);
+      db.run(`INSERT INTO zur_review_settings (id, enabled, signature, last_ok_at, next_check) VALUES (1, 1, 'Equipe Exemplo', 1000, 2000)`);
+      expect(migrate(db)).toBe(32);
+      expect(db.one(`SELECT enabled, status, people_sync_token, full_needed, last_ok_at, next_sync, copied, reminder_time, checked_at, last_result, dirty, labels_read_at, synced_now_at, fields_version FROM zur_contact_sync`)).toEqual({
+        enabled: 1,
+        status: "ok",
+        people_sync_token: "sync.7",
+        full_needed: 0,
+        last_ok_at: 1000,
+        next_sync: 2000,
+        copied: 12,
+        reminder_time: "07:30",
+        checked_at: null,
+        last_result: null,
+        dirty: 0,
+        labels_read_at: null,
+        synced_now_at: null,
+        // The copy was read with the first set of fields: the next sync reads every contact once more.
+        fields_version: 1,
+      });
+      expect(db.one(`SELECT enabled, signature, last_ok_at, next_check, checked_at, last_result FROM zur_review_settings`)).toEqual({ enabled: 1, signature: "Equipe Exemplo", last_ok_at: 1000, next_check: 2000, checked_at: null, last_result: null });
+      // What a quiet read writes leaves the areas' numbers where they were.
+      const before = db.one(`SELECT contacts, reviews FROM zur_area_versions WHERE id = 1`);
+      db.run(`UPDATE zur_contact_sync SET checked_at = 3000, last_result = 'unchanged', dirty = 0, labels_read_at = 3000, synced_now_at = 3000, fields_version = 2, next_sync = 4000, running_since = NULL, failures = 0`);
+      db.run(`UPDATE zur_review_settings SET checked_at = 3000, last_result = 'unchanged', next_check = 4000, failures = 0, running_since = NULL`);
+      expect(db.one(`SELECT contacts, reviews FROM zur_area_versions WHERE id = 1`)).toEqual(before);
+      db.run(`UPDATE zur_contact_sync SET last_ok_at = 3000`);
+      db.run(`UPDATE zur_review_settings SET last_ok_at = 3000`);
+      expect(db.one(`SELECT contacts, reviews FROM zur_area_versions WHERE id = 1`)).not.toEqual(before);
     });
   });
 });

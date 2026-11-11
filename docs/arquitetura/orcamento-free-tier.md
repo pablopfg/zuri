@@ -157,6 +157,16 @@ Como cheguei nos números:
   agora") custa 15 lidas e 10 escritas. Cada despertar roda no máximo 2
   rotinas com IA (cada uma com prazo de 5 min), para ficar longe do limite de
   15 min do alarme.
+- **Contatos a cada 5 min e avaliações a cada 10 (PR S09 do novo frontend).**
+  Com as duas ligadas, o alarme desperta até 432 vezes por dia (288 + 144),
+  0,4% das 100.000 requisições. Uma leitura sem novidade grava 3 linhas do
+  Zuri (a trava, o resultado e a soltura), lê umas 22 nos contatos e umas 125
+  nas avaliações, e faz 1 chamada ao Google: cerca de 1.300 linhas gravadas e
+  24.000 lidas por dia. O Agents SDK soma de 4 a 5 gravações por disparo do
+  alarme (umas 2.000 por dia). Ao todo, perto de 3,5% da cota de escrita e
+  0,5% da de leitura. As duas leituras nunca dividem um despertar (2 min 30 s
+  de diferença), então cada um fica em até 14 chamadas ao Google. A leitura
+  sem novidade não sobe o número da área, e a tela não recarrega.
 - **Busca por significado (etapa 17, opcional).** Desligada, custa zero.
   Ligada, o preparo usa no máximo 2.000 textos e metade do teto de Neurons por
   dia: com 150 tokens por item, uns 320 Neurons por dia nos dias de preparo

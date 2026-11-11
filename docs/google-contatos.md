@@ -38,13 +38,24 @@ etiquetas**:
 
 ### Sincronização
 
-A cópia é atualizada de hora em hora, e só com o que mudou desde a última vez
+A cópia é atualizada a cada 5 minutos, e só com o que mudou desde a última vez
 (o Google entrega só as diferenças). **Sincronizar agora** faz a mesma coisa
-na hora. Uma mudança feita no Google pode levar alguns minutos para chegar.
+na hora, no máximo uma vez por minuto. Uma mudança feita no Google pode levar
+alguns minutos para chegar.
+
+Uma leitura que não acha novidade não regrava contato nenhum e não faz a tela
+recarregar: a Zuri guarda só a hora em que conferiu e a hora da próxima. A
+lista de etiquetas (nomes e contagens) vem do Google uma vez por hora, ao
+salvar uma escolha e ao abrir a escolha de etiquetas. Um contato que entra numa
+etiqueta criada há pouco faz a Zuri buscar a lista na mesma leitura.
+
+Quando a Zuri passa a guardar um campo novo do Google, a leitura seguinte traz
+todos os contatos de novo, uma única vez, em partes. Depois volta a ler só as
+diferenças.
 
 Quando o Google falha, a Zuri tenta de novo sozinha, com intervalos que
-crescem de 30 minutos até 6 horas. Na terceira falha seguida, um aviso entra na
-central. Se a permissão for retirada, ou se a People API estiver desligada no
+dobram de 5 minutos até 6 horas. Na quinta falha seguida (pouco mais de uma
+hora), um aviso entra na central. Se a permissão for retirada, ou se a People API estiver desligada no
 seu projeto do Google Cloud, o cartão diz o que fazer.
 
 ### Tela Contatos
@@ -55,6 +66,13 @@ nome, de 50 em 50. A busca acha pelo nome, apelido, um pedaço do telefone
 filtrar por etiqueta. Tocar num contato abre os telefones, os e-mails, o
 aniversário, as datas especiais, a empresa, as observações e os campos
 personalizados, com o atalho **Abrir no Google Contatos** para mudar algo lá.
+
+A Zuri também guarda o nome em partes (nome, nome do meio e sobrenome), os
+endereços, os sites, as relações ("Mãe", "Sócio") e os nomes de usuário em
+aplicativos de conversa. Cada lista guarda até 10 itens (20 nos campos
+personalizados) e conta o que o Google tem além disso. Site só entra se for
+um endereço `http` ou `https`. A ficha que mostra esses campos chega com a
+tela nova de Contatos.
 
 ### Avisos
 
@@ -82,7 +100,8 @@ Com os contatos ligados, a Zuri ganha duas ferramentas de leitura:
 
 - `search_contacts`: busca por nome, apelido, telefone ou e-mail, numa
   etiqueta ou pelos aniversários de hoje ou da semana (até 10 resultados).
-- `get_contact`: o contato inteiro.
+- `get_contact`: o contato inteiro, com endereços, sites, relações e nomes de
+  usuário em aplicativos de conversa quando o Google tem.
 
 As duas leem a cópia da Zuri, nunca o Google, e o que voltam entra no prompt
 como dado (`<data source="contact">`): um nome ou uma observação escrita por
@@ -126,13 +145,30 @@ Os mesmos secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   1.000, até 10 páginas por despertar, e `syncToken` para as diferenças. Token
   vencido (o Google guarda 7 dias, `EXPIRED_SYNC_TOKEN`) recomeça uma vez como
   leitura inteira. As etiquetas vêm de `GET contactGroups`, só
-  `USER_CONTACT_GROUP`.
+  `USER_CONTACT_GROUP`, uma vez por hora (`CONTACT_LIMITS.labelsEveryMs`).
+- Intervalo: `CONTACT_LIMITS.syncEveryMs` (5 minutos), pelo alarme único. A
+  conferência das avaliações nunca divide o despertar com os contatos: se as
+  duas vencem juntas, a das avaliações espera 2 min 30 s.
+- Campos: `PERSON_FIELDS` e `FIELDS_VERSION` em
+  `apps/agent/src/google/contacts.ts`. O `syncToken` do Google vale para um
+  conjunto de campos e um contato que não mudou mantém o `etag`; por isso,
+  quem acrescentar um campo sobe o `FIELDS_VERSION`, e a leitura seguinte é
+  inteira e regrava todos.
+- Tela: `GET /api/google/contacts` devolve `nextSyncAt`, `lastResult`
+  (`unchanged`, `changed` ou `failed`) e `refreshing` (leitura inteira em
+  curso). `POST /api/google/contacts/sync` responde 429 `RATE_LIMITED` com
+  `retryAfter` dentro do minuto. `POST /api/google/contacts/labels/refresh`
+  traz as etiquetas do Google (a lista guardada serve por um minuto).
 - Banco (migration 23): `zur_contact_labels`, `zur_contacts` (com o nome
   normalizado para a busca), `zur_contact_keys` (telefone canônico e e-mail,
   para a busca por pedaço), `zur_contact_memberships`, `zur_contact_dates`
   (mês-dia para os avisos) e `zur_contact_sync` (uma linha: estado, tokens de
   sincronização, escolhas dos avisos). Coluna `contacts` em
-  `zur_area_versions`, para a tela atualizar sozinha.
+  `zur_area_versions`, para a tela atualizar sozinha. A migration 32 acrescenta
+  a `zur_contact_sync` as colunas que uma leitura sem novidade grava
+  (`checked_at`, `last_result`, `dirty`, `labels_read_at`, `synced_now_at`,
+  `fields_version`): elas ficam fora dos gatilhos da área, então o número da
+  tela só sobe quando um contato ou uma etiqueta muda.
 - Uma sincronização por vez: trava no banco (`running_since`, 10 minutos) e,
   a cada `await`, a Zuri confere se a trava ainda é dela.
 - Orçamento de chamadas ao Google por despertar: 14 na sincronização, dentro
@@ -148,8 +184,10 @@ Os mesmos secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
 Tudo de graça. A People API não cobra pela leitura. No plano Free da
 Cloudflare (100.000 linhas gravadas por dia no banco do Durable Object):
 
-- uma sincronização por hora que não acha mudança grava umas 8 linhas (a de
-  estado e os índices dela);
+- uma sincronização que não acha mudança (288 por dia, uma a cada 5 minutos)
+  grava 3 linhas e lê umas 22, com 1 chamada ao Google: cerca de 900 linhas
+  gravadas por dia, 0,9% da cota. Uma vez por hora ela também busca as
+  etiquetas (1 chamada a mais);
 - a primeira leitura grava cerca de 11 linhas por contato copiado (contato,
   telefones, e-mails, etiquetas, datas e índices), uma única vez: uns 5.500
   com 500 contatos e uns 55.000 no teto de 5.000. Acrescentar uma etiqueta

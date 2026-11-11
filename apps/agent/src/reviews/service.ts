@@ -52,6 +52,8 @@ const SENDING_STALE_MS = 5 * MINUTE;
 /** How far behind the watermark a check still looks: Google may list a review a little after its time. */
 const OVERLAP_MS = HOUR;
 const BACKOFF_MAX_MS = 6 * HOUR;
+/** Failures in a row before the owner hears of it. */
+const FAILURES_NOTICE = 4;
 /** Calls one check may make: a token renewal, three pages per profile, a few re-reads and a retry after a 401. */
 export const CHECK_BUDGET = 14;
 /** Calls one approval may make: a token renewal, the re-read, the reply and a retry after a 401. */
@@ -110,6 +112,8 @@ interface SettingsRow {
   listed_at: number | null;
   saved_read_at: number | null;
   last_ok_at: number | null;
+  checked_at: number | null;
+  last_result: string | null;
   day: string;
   drafts_today: number;
   neurons_today: number;
@@ -285,6 +289,8 @@ export class ReviewService {
 
   status(): ReviewsStatus {
     const row = this.row();
+    // A quiet check keeps its time in checked_at; one that changed something, in last_ok_at too.
+    const last = Math.max(row?.checked_at ?? 0, row?.last_ok_at ?? 0);
     const enabled = row?.enabled === 1;
     const connected = this.deps.google.connected();
     const granted = this.deps.google.granted(BUSINESS_SCOPE);
@@ -297,7 +303,9 @@ export class ReviewService {
       level: this.level(row),
       paused: row?.paused === 1,
       problem: enabled ? problem : null,
-      lastCheckAt: row?.last_ok_at ? new Date(row.last_ok_at).toISOString() : null,
+      lastCheckAt: last ? new Date(last).toISOString() : null,
+      nextSyncAt: enabled && connected && granted && typeof row?.next_check === "number" ? new Date(row.next_check).toISOString() : null,
+      lastResult: enabled && (row?.last_result === "unchanged" || row?.last_result === "changed" || row?.last_result === "failed") ? row.last_result : null,
       locations: granted ? this.locations() : [],
       pattern: this.pattern(row),
       needs: enabled ? this.needs() : 0,
@@ -447,6 +455,17 @@ export class ReviewService {
     return row.next_check;
   }
 
+  /**
+   * Another Google read ran in this wake (the contacts' sync): a check due now waits `ms`, so the two
+   * never share a wake's subrequests and settle a few minutes apart.
+   */
+  holdOff(ms: number): void {
+    const row = this.onRow();
+    const now = this.clock();
+    if (!row || row.next_check === null || row.next_check > now) return;
+    this.db.run(`UPDATE zur_review_settings SET next_check = ? WHERE id = 1 AND next_check <= ?`, now + ms, now);
+  }
+
   /** From the alarm: the check, when due. True when it ran (the next time moved). */
   async tick(): Promise<boolean> {
     const row = this.onRow();
@@ -480,6 +499,11 @@ export class ReviewService {
     return this.check("owner");
   }
 
+  /** The Reviews area's number (one row): what the screens follow to read again. */
+  private areaNumber(): number {
+    return this.db.one<{ n: number }>(`SELECT reviews AS n FROM zur_area_versions WHERE id = 1`)?.n ?? 0;
+  }
+
   /** One check, from the alarm or the owner's button. Only one runs at a time. */
   async check(trigger: "alarm" | "owner", meter = new GoogleMeter(CHECK_BUDGET)): Promise<"ok" | "partial" | "busy" | "off" | "failed"> {
     if (!this.enabled()) return "off";
@@ -497,6 +521,8 @@ export class ReviewService {
     ).rowsWritten;
     if (!locked) return "busy";
     const found: Found = { negatives: [], worse: [], drafts: 0 };
+    // The screens' number before the check: if nothing moves it, the check was a quiet one.
+    const before = this.areaNumber();
     try {
       let more = false;
       // A publication cut halfway (the object restarted between the claim and the answer): it may have gone out.
@@ -522,11 +548,21 @@ export class ReviewService {
       const waiting = ids.length ? (this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_reviews WHERE state = 'proposed' AND id IN (${ids.map(() => "?").join(", ")})`, ...ids)?.n ?? 0) : 0;
       if (waiting > 0) this.deps.notify({ kind: "reviews.draft", count: waiting });
       const done = this.clock();
+      const moved = this.areaNumber() !== before;
+      // A quiet check writes its time, its result and the next one in columns that don't move the
+      // screens' number (migration 26's trigger fires on `problem` and `last_ok_at`, whatever the value).
       this.db.run(
-        `UPDATE zur_review_settings SET problem = NULL, failures = 0, last_ok_at = ?, next_check = ? WHERE id = 1 AND running_since = ?`,
+        `UPDATE zur_review_settings SET failures = 0, checked_at = ?, last_result = ?, next_check = ? WHERE id = 1 AND running_since = ?`,
         done,
+        moved ? "changed" : "unchanged",
         more ? done : done + REVIEW_LIMITS.checkEveryMs,
         stamp,
+      );
+      this.db.run(
+        `UPDATE zur_review_settings SET problem = NULL, last_ok_at = ? WHERE id = 1 AND running_since = ? AND (? OR problem IS NOT NULL OR last_ok_at IS NULL)`,
+        done,
+        stamp,
+        moved ? 1 : 0,
       );
       if (trigger === "owner") log("info", "reviews_checked", { count: found.negatives.length });
       return more ? "partial" : "ok";
@@ -1308,7 +1344,7 @@ export class ReviewService {
         case "revoked":
         case "not_connected":
         case "not_configured":
-          this.db.run(`UPDATE zur_review_settings SET next_check = ? WHERE id = 1`, now + HOUR);
+          this.db.run(`UPDATE zur_review_settings SET next_check = ?, last_result = 'failed' WHERE id = 1`, now + HOUR);
           return "failed";
         case "api_disabled":
           this.problem("api_disabled", now + BACKOFF_MAX_MS);
@@ -1324,11 +1360,12 @@ export class ReviewService {
     }
     const row = this.settings();
     const failures = row.failures + 1;
-    // 429 and 5xx: 15, 30, 60 minutes, then up to 6 hours.
-    const wait = Math.min(BACKOFF_MAX_MS, 15 * MINUTE * 2 ** (failures - 1));
-    this.db.run(`UPDATE zur_review_settings SET failures = ?, next_check = ? WHERE id = 1`, failures, now + wait);
+    // 429 and 5xx: the wait doubles from the check's own interval (10, 20, 40 minutes…), up to 6 hours.
+    const wait = Math.min(BACKOFF_MAX_MS, REVIEW_LIMITS.checkEveryMs * 2 ** Math.min(failures - 1, 20));
+    this.db.run(`UPDATE zur_review_settings SET failures = ?, next_check = ?, last_result = 'failed' WHERE id = 1`, failures, now + wait);
     log("warn", "reviews_check_failed", { error, count: failures });
-    if (failures >= 3) this.problem("unavailable", now + wait);
+    // Told after 10, 20 and 40 minutes of waiting: a little over an hour of Google failing.
+    if (failures >= FAILURES_NOTICE) this.problem("unavailable", now + wait);
     return "failed";
   }
 
@@ -1337,7 +1374,7 @@ export class ReviewService {
     const row = this.settings();
     const notify = row.problem !== problem || row.problem_noticed_at === null || now - row.problem_noticed_at >= 24 * HOUR;
     this.db.run(
-      `UPDATE zur_review_settings SET problem = ?, next_check = ?${notify ? ", problem_noticed_at = ?" : ""} WHERE id = 1`,
+      `UPDATE zur_review_settings SET problem = ?, next_check = ?, last_result = 'failed'${notify ? ", problem_noticed_at = ?" : ""} WHERE id = 1`,
       problem,
       next,
       ...(notify ? [now] : []),

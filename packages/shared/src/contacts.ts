@@ -17,9 +17,22 @@ export const CONTACT_LIMITS = {
   /** Pages of 1,000 read per wake (10,000 contacts at Google): a large account ends on the next wake. */
   pagesPerWake: 10,
   pageSize: 1_000,
-  phones: 5,
-  emails: 5,
-  dates: 5,
+  /** The alarm reads Google this often (the owner's decision, 09/11/2026); not a setting. */
+  syncEveryMs: 5 * 60_000,
+  /** "Sync now" at most once a minute. */
+  syncNowEveryMs: 60_000,
+  /** The list of labels is read from Google at most this often by the alarm (the picker reads it on opening). */
+  labelsEveryMs: 60 * 60_000,
+  /** Items kept of each list of a contact (phones, e-mails, dates, addresses, sites, relations, chats); the rest is a count. */
+  phones: 10,
+  emails: 10,
+  dates: 10,
+  addresses: 10,
+  urls: 10,
+  relations: 10,
+  chats: 10,
+  address: 300,
+  url: 200,
   fields: 20,
   fieldKey: 200,
   fieldValue: 200,
@@ -53,6 +66,10 @@ export type ContactSyncStatus = (typeof CONTACT_SYNC_STATUSES)[number];
 export const CONTACT_PROBLEMS = ["reconnect", "api_disabled", "scope", "too_many", "unavailable"] as const;
 export type ContactProblem = (typeof CONTACT_PROBLEMS)[number];
 
+/** How a sync ended: nothing new at Google, something copied or forgotten, or it could not read. */
+export const CONTACT_SYNC_RESULTS = ["unchanged", "changed", "failed"] as const;
+export type ContactSyncResult = (typeof CONTACT_SYNC_RESULTS)[number];
+
 /** What a contact who joins a chosen label brings: nothing, a notice, or a notice and a task for tomorrow. */
 export const CONTACT_ON_ADDED = ["off", "notice", "task"] as const;
 export type ContactOnAdded = (typeof CONTACT_ON_ADDED)[number];
@@ -83,8 +100,14 @@ export interface ContactsStatus {
   enabled: boolean;
   status: ContactSyncStatus;
   problem: ContactProblem | null;
-  /** UTC ISO of the last sync that ended well. */
+  /** UTC ISO of the last sync that ended well, whether it brought something or not. */
   lastSyncAt: string | null;
+  /** UTC ISO of the next read by itself (in the past while one is due); null while off or waiting for the owner. */
+  nextSyncAt: string | null;
+  /** How the last sync ended; null before the first one. */
+  lastResult: ContactSyncResult | null;
+  /** Every contact is being read again (a label added, the first read, fields Zuri started to keep). */
+  refreshing: boolean;
   contacts: number;
   labels: ContactLabel[];
   reminders: ContactReminders;
@@ -113,7 +136,14 @@ export interface ContactDate {
   date: string;
 }
 
+/** The lists of a contact that have a ceiling; `more` counts what Google has past it. */
+export const CONTACT_LISTS = ["phones", "emails", "dates", "addresses", "urls", "relations", "chats", "fields"] as const;
+export type ContactList = (typeof CONTACT_LISTS)[number];
+
 export interface ContactDetail extends ContactSummary {
+  given: string;
+  middle: string;
+  family: string;
   nickname: string;
   phones: ContactValue[];
   emails: ContactValue[];
@@ -124,6 +154,16 @@ export interface ContactDetail extends ContactSummary {
   jobTitle: string;
   notes: string;
   fields: ContactValue[];
+  /** One line each; the label is Google's ("Casa", "Trabalho"). */
+  addresses: ContactValue[];
+  /** Sites, http(s) only. */
+  urls: ContactValue[];
+  /** label: the relation ("Mãe"); value: the person's name. */
+  relations: ContactValue[];
+  /** label: the service ("Telegram"); value: the user name there. */
+  chats: ContactValue[];
+  /** Items Google has past Zuri's ceiling, by list ("and 3 more at Google"); lists within it are left out. */
+  more: Partial<Record<ContactList, number>>;
   /** The contact in Google Contacts. */
   googleUrl: string;
 }

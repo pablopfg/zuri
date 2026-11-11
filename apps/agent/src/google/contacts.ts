@@ -1,13 +1,16 @@
 import {
   CONTACT_LIMITS,
+  CONTACT_LISTS,
   CONTACTS_SCOPE,
   type ContactDetail,
   type ContactLabel,
+  type ContactList,
   type ContactOnAdded,
   type ContactPage,
   type ContactProblem,
   type ContactReminders,
   type ContactSummary,
+  type ContactSyncResult,
   type ContactSyncStatus,
   type ContactsStatus,
   type GooglePerson,
@@ -18,6 +21,7 @@ import {
   zonedTimeToUtc,
 } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
+import { AppError } from "../http/errors.ts";
 import { log } from "../log.ts";
 import { forgetContacts, removeContact } from "./contacts-store.ts";
 import { cleanBlock, cleanText } from "./events.ts";
@@ -26,9 +30,12 @@ import { type GoogleCalendar, GoogleError, GoogleMeter } from "./service.ts";
 /**
  * Google Contacts (step 19b): a read-only copy of the contacts in the labels
  * the owner chose, on the calendar's Google connection. The sync runs from
- * the object's one alarm (rule P8) once an hour and from the owner's button,
- * one at a time (a lock in the database), reading only what changed since the
- * last time (Google's sync token) and at most ten pages per wake. Everything
+ * the object's one alarm (rule P8) every five minutes and from the owner's
+ * button, one at a time (a lock in the database), reading only what changed
+ * since the last time (Google's sync token) and at most ten pages per wake.
+ * A read that brings nothing writes only the sync's own row, in columns that
+ * don't move the screen's number: the screens read again only after a change.
+ * The list of labels is read once an hour. Everything
  * Google sends passes a schema first; nothing of a contact (name, phone,
  * e-mail, notes, label names) ever reaches a log, only counts and error names.
  * Zuri never writes to Google nor to any contact.
@@ -37,14 +44,24 @@ import { type GoogleCalendar, GoogleError, GoogleMeter } from "./service.ts";
 const HOUR_MS = 3_600_000;
 /** A lock older than this belongs to a wake that died: the next sync takes it. */
 const LOCK_MS = 10 * 60_000;
-/** The longest wait after failures in a row (doubling from 30 minutes). */
+/** The longest wait after failures in a row (doubling from the sync's interval). */
 const BACKOFF_MAX_MS = 6 * HOUR_MS;
-/** Failures in a row before the owner hears of it. */
-const FAILURES_NOTICE = 3;
+/** Failures in a row before the owner hears of it: 5, 10, 20 and 40 minutes of waiting, a little over an hour. */
+const FAILURES_NOTICE = 5;
 /** Calls one sync may make: the labels, ten pages, a token renewal and a retry after a 401. */
 export const SYNC_BUDGET = 14;
+/** Calls the label picker's refresh may make: the labels, a token renewal and a retry after a 401. */
+const LABELS_BUDGET = 3;
 /** The fields Zuri reads; the same on every page and every incremental read (Google requires it). */
-export const PERSON_FIELDS = "names,nicknames,phoneNumbers,emailAddresses,birthdays,events,organizations,memberships,biographies,userDefined,metadata";
+export const PERSON_FIELDS =
+  "names,nicknames,phoneNumbers,emailAddresses,birthdays,events,organizations,memberships,biographies,userDefined,addresses,urls,relations,imClients,metadata";
+/**
+ * The number of PERSON_FIELDS' set. Google's sync token is tied to the fields asked, and a contact that
+ * didn't change keeps its etag: when the set grows, raise this and every contact is read once more.
+ */
+export const FIELDS_VERSION = 2;
+/** Google's own groups, never offered as labels; the ones a fresh read of the labels shows join them in memory. */
+const SYSTEM_GROUPS = ["myContacts", "starred", "friends", "family", "coworkers", "all", "blocked", "chatBuddies"].map((id) => `contactGroups/${id}`);
 
 export type SyncOutcome = "ok" | "partial" | "busy" | "off" | "failed";
 
@@ -92,6 +109,12 @@ interface SyncRow {
   next_reminder: number | null;
   on_added: string;
   copied: number;
+  checked_at: number | null;
+  last_result: string | null;
+  dirty: number;
+  labels_read_at: number | null;
+  synced_now_at: number | null;
+  fields_version: number;
 }
 
 interface ContactRow {
@@ -105,6 +128,7 @@ interface ContactRow {
 /** What Zuri keeps of one contact, besides the columns. */
 interface ContactData {
   given: string;
+  middle: string;
   family: string;
   nickname: string;
   phones: { label: string; value: string }[];
@@ -115,6 +139,11 @@ interface ContactData {
   jobTitle: string;
   notes: string;
   fields: { key: string; value: string }[];
+  addresses: { label: string; value: string }[];
+  urls: { label: string; value: string }[];
+  relations: { label: string; value: string }[];
+  chats: { label: string; value: string }[];
+  more: Partial<Record<ContactList, number>>;
 }
 
 interface Joined {
@@ -125,6 +154,7 @@ interface Joined {
 
 const PROBLEMS = new Set<string>(["api_disabled", "scope", "too_many", "unavailable"]);
 const ON_ADDED = new Set<string>(["off", "notice", "task"]);
+const RESULTS = new Set<string>(["unchanged", "changed", "failed"]);
 
 class TooMany extends Error {}
 
@@ -193,6 +223,8 @@ export class GoogleContacts {
    * reads their row once per object's life, not once per question.
    */
   private knownOff = false;
+  /** Groups a read of the labels showed not to be the owner's: a contact in one of them is no reason to read the labels again. */
+  private readonly notLabels = new Set<string>(SYSTEM_GROUPS);
 
   constructor(private readonly deps: ContactsDeps) {
     this.clock = deps.clock ?? Date.now;
@@ -233,7 +265,8 @@ export class GoogleContacts {
   /** Counts the table once (the end of a full read, a label removed) and keeps the number. */
   private recount(): number {
     const n = this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_contacts`)?.n ?? 0;
-    this.db.run(`UPDATE zur_contact_sync SET copied = ? WHERE id = 1`, n);
+    // Only a number that moved is written: `copied` moves the screens' number.
+    this.db.run(`UPDATE zur_contact_sync SET copied = ? WHERE id = 1 AND copied != ?`, n, n);
     return n;
   }
 
@@ -259,14 +292,20 @@ export class GoogleContacts {
     // The access is the calendar's: when Google refuses it, the calendar card asks to connect again.
     let problem: ContactProblem | null = row?.problem && PROBLEMS.has(row.problem) ? (row.problem as ContactProblem) : null;
     if (enabled && (!connected || !this.deps.google.granted(CONTACTS_SCOPE))) problem = "reconnect";
+    const labels = enabled ? this.labels() : [];
+    // A quiet sync keeps its time in checked_at; one that changed something, in last_ok_at too.
+    const last = Math.max(row?.checked_at ?? 0, row?.last_ok_at ?? 0);
     return {
       connected: !!this.deps.google.accountEmail(),
       enabled,
       status: enabled ? (row?.status ?? "off") : "off",
       problem: enabled ? problem : null,
-      lastSyncAt: row?.last_ok_at ? new Date(row.last_ok_at).toISOString() : null,
+      lastSyncAt: last ? new Date(last).toISOString() : null,
+      nextSyncAt: enabled && problem !== "reconnect" && typeof row?.next_sync === "number" ? new Date(row.next_sync).toISOString() : null,
+      lastResult: enabled && row?.last_result && RESULTS.has(row.last_result) ? (row.last_result as ContactSyncResult) : null,
+      refreshing: enabled && problem === null && row?.full_needed === 1 && labels.some((label) => label.selected),
       contacts: enabled ? this.count() : 0,
-      labels: enabled ? this.labels() : [],
+      labels,
       reminders,
       onAdded: row && ON_ADDED.has(row.on_added) ? (row.on_added as ContactOnAdded) : "notice",
     };
@@ -279,7 +318,7 @@ export class GoogleContacts {
     this.ensureRow();
     this.db.run(
       `UPDATE zur_contact_sync SET enabled = 1, status = 'syncing', problem = NULL, full_needed = 1, page_token = NULL, page_mode = NULL,
-         failures = 0, next_sync = ?, next_reminder = NULL WHERE id = 1`,
+         failures = 0, next_sync = ?, next_reminder = NULL, synced_now_at = NULL WHERE id = 1`,
       now,
     );
     this.planReminder();
@@ -310,12 +349,14 @@ export class GoogleContacts {
       this.db.run(`UPDATE zur_contact_labels SET selected = 0, updated_at = ? WHERE selected = 1`, now);
       for (const id of chosen) this.db.run(`UPDATE zur_contact_labels SET selected = 1, updated_at = ? WHERE resource_name = ?`, now, id);
       this.pruneUnselected();
+      // A new choice is read at once (by the alarm, due now): "Sync now" has its minute back, and the labels
+      // come from Google again.
       // A choice that fits under the ceiling starts again; a full read takes in the new label. A sync on
       // its way read the old choice: freeing its lock makes it stop before it writes again (mine()), and
       // the next one, due now, reads the new choice.
       this.db.run(
         `UPDATE zur_contact_sync SET ${added ? "full_needed = 1, page_token = NULL, page_mode = NULL, " : ""}status = 'syncing', running_since = NULL,
-           problem = CASE WHEN problem = 'too_many' THEN NULL ELSE problem END, failures = 0, next_sync = ? WHERE id = 1`,
+           problem = CASE WHEN problem = 'too_many' THEN NULL ELSE problem END, failures = 0, next_sync = ?, labels_read_at = NULL, synced_now_at = NULL WHERE id = 1`,
         now,
       );
     });
@@ -397,16 +438,10 @@ export class GoogleContacts {
   async sync(trigger: SyncTrigger, meter = new GoogleMeter(SYNC_BUDGET)): Promise<SyncOutcome> {
     if (!this.enabled()) return "off";
     const stamp = this.clock();
-    const locked = this.db.run(
-      `UPDATE zur_contact_sync SET running_since = ?, status = CASE WHEN status = 'off' THEN 'syncing' ELSE status END
-       WHERE id = 1 AND enabled = 1 AND (running_since IS NULL OR running_since < ?)`,
-      stamp,
-      stamp - LOCK_MS,
-    ).rowsWritten;
-    if (!locked) return "busy";
+    if (!this.lock(stamp)) return "busy";
     try {
       const outcome = await this.run(stamp, meter);
-      // The hourly sync that finds nothing stays quiet (P10): only the owner's button leaves a line.
+      // The alarm's sync that finds nothing stays quiet (P10): only the owner's button leaves a line.
       if (outcome === "ok" && trigger !== "alarm") log("info", "contacts_synced", { kind: trigger });
       return outcome;
     } catch (error) {
@@ -417,13 +452,57 @@ export class GoogleContacts {
   }
 
   /**
-   * The owner's button. A choice of labels saved while this sync waited for Google stops it before it
-   * writes ("off", with the contacts still on): the owner asked for a sync and would be told it was
-   * done with nothing copied (issue #264), so it runs once more, now reading the new choice.
+   * The sync's lock. `status` is named only while it is "off": the column moves the screens' number
+   * (migration 23's trigger fires on the column, whatever the value), and a quiet sync must not.
+   */
+  private lock(stamp: number): boolean {
+    const locked = this.db.run(
+      `UPDATE zur_contact_sync SET running_since = ? WHERE id = 1 AND enabled = 1 AND (running_since IS NULL OR running_since < ?)`,
+      stamp,
+      stamp - LOCK_MS,
+    ).rowsWritten;
+    if (locked) this.db.run(`UPDATE zur_contact_sync SET status = 'syncing' WHERE id = 1 AND status = 'off'`);
+    return locked > 0;
+  }
+
+  /**
+   * The owner's button, once a minute: a session can't be used to spend Google's quota. A choice of
+   * labels saved while this sync waited for Google stops it before it writes ("off", with the contacts
+   * still on): the owner asked for a sync and would be told it was done with nothing copied (issue
+   * #264), so it runs once more, now reading the new choice.
    */
   async syncNow(): Promise<SyncOutcome> {
+    const now = this.clock();
+    const allowed = this.db.run(
+      `UPDATE zur_contact_sync SET synced_now_at = ? WHERE id = 1 AND (synced_now_at IS NULL OR synced_now_at <= ? OR synced_now_at > ?)`,
+      now,
+      now - CONTACT_LIMITS.syncNowEveryMs,
+      now,
+    ).rowsWritten;
+    if (!allowed) {
+      const last = this.row()?.synced_now_at ?? now;
+      const seconds = Math.min(60, Math.max(1, Math.ceil((last + CONTACT_LIMITS.syncNowEveryMs - now) / 1_000)));
+      throw new AppError("RATE_LIMITED", "error.googleContactsSyncSoon", { retryAfter: seconds });
+    }
     const outcome = await this.sync("owner");
     return outcome === "off" && this.enabled() ? this.sync("owner") : outcome;
+  }
+
+  /**
+   * The label picker was opened: the list of labels straight from Google, unless it was read in the
+   * last minute (or a sync is running, which reads it when due). Only names and counts move.
+   */
+  async refreshLabels(meter = new GoogleMeter(LABELS_BUDGET)): Promise<void> {
+    if (!this.enabled()) return;
+    const stamp = this.clock();
+    const read = this.row()?.labels_read_at ?? null;
+    if (read !== null && read <= stamp && stamp - read < CONTACT_LIMITS.syncNowEveryMs) return;
+    if (!this.lock(stamp)) return;
+    try {
+      await this.readLabels(meter, stamp);
+    } finally {
+      this.db.run(`UPDATE zur_contact_sync SET running_since = NULL WHERE id = 1 AND running_since = ?`, stamp);
+    }
   }
 
   /** Still this sync's turn: the owner didn't turn the contacts off (nor disconnect) meanwhile. */
@@ -432,29 +511,41 @@ export class GoogleContacts {
   }
 
   private async run(stamp: number, meter: GoogleMeter): Promise<SyncOutcome> {
-    const userLabels = await this.readLabels(meter, stamp);
+    let state = this.row() as SyncRow;
+    // The fields Zuri keeps grew since the copy was read: every contact once more, from the first page
+    // (a page token of the old set of fields would be refused). The negative number marks it as begun.
+    const refresh = state.fields_version !== FIELDS_VERSION;
+    if (refresh && state.fields_version !== -FIELDS_VERSION) {
+      this.db.run(`UPDATE zur_contact_sync SET full_needed = 1, page_token = NULL, page_mode = NULL, fields_version = ? WHERE id = 1`, -FIELDS_VERSION);
+      state = this.row() as SyncRow;
+    }
+    let mode: "full" | "incremental" =
+      state.page_mode === "full" || state.page_mode === "incremental" ? state.page_mode : state.full_needed === 1 || !state.people_sync_token ? "full" : "incremental";
+    // The labels come from Google once an hour, on a full read and after the owner saved a choice; in
+    // between, the names kept serve: a contact's own labels come with the contact.
+    const due = state.labels_read_at === null || state.labels_read_at > stamp || stamp - state.labels_read_at >= CONTACT_LIMITS.labelsEveryMs;
+    let labelsRead = mode === "full" || due;
+    let userLabels = labelsRead ? await this.readLabels(meter, stamp) : new Set(this.labels().map((label) => label.id));
     if (!this.mine(stamp)) return "off";
-    const selected = new Set(
-      this.labels()
-        .filter((label) => label.selected)
-        .map((label) => label.id),
-    );
+    const chosen = () =>
+      new Set(
+        this.labels()
+          .filter((label) => label.selected)
+          .map((label) => label.id),
+      );
+    let selected = chosen();
     if (selected.size === 0) {
       // Nothing chosen: nothing copied, and nothing to read from Google.
       this.db.transaction(() => {
-        this.pruneUnselected();
-        this.done(stamp, null, false);
+        this.done(stamp, null, false, this.pruneUnselected() > 0);
       });
       return "ok";
     }
-    let state = this.row() as SyncRow;
-    let mode: "full" | "incremental" =
-      state.page_mode === "full" || state.page_mode === "incremental" ? state.page_mode : state.full_needed === 1 || !state.people_sync_token ? "full" : "incremental";
     let pageToken = state.page_mode ? (state.page_token ?? undefined) : undefined;
     let fullStarted = mode === "full" ? (pageToken && state.full_started ? state.full_started : stamp) : null;
     let restarted = false;
     const joined: Joined[] = [];
-    const counter = { total: state.copied };
+    const counter = { total: state.copied, changed: false };
     for (let page = 0; page < CONTACT_LIMITS.pagesPerWake; page++) {
       const query: Record<string, string> = { personFields: PERSON_FIELDS, pageSize: String(CONTACT_LIMITS.pageSize) };
       if (mode === "full") query.requestSyncToken = "true";
@@ -480,9 +571,20 @@ export class GoogleContacts {
       const persons = Array.isArray(body.connections) ? body.connections.slice(0, CONTACT_LIMITS.pageSize) : [];
       const next = typeof body.nextPageToken === "string" && body.nextPageToken ? body.nextPageToken.slice(0, 2_000) : undefined;
       const syncToken = typeof body.nextSyncToken === "string" && body.nextSyncToken ? body.nextSyncToken.slice(0, 2_000) : null;
+      // A contact in a group Zuri doesn't know (a label made in the last hour): the labels now, once, so
+      // the contact is stored with it.
+      if (!labelsRead && this.unknownGroup(persons, userLabels)) {
+        labelsRead = true;
+        userLabels = await this.readLabels(meter, stamp);
+        if (!this.mine(stamp)) return "off";
+        selected = chosen();
+      }
+      const before = counter.changed;
+      counter.changed = false;
       this.db.transaction(() => {
-        this.apply(persons, mode, stamp, selected, userLabels, joined, counter);
-        this.db.run(`UPDATE zur_contact_sync SET copied = ? WHERE id = 1`, Math.max(0, counter.total));
+        this.apply(persons, mode, stamp, selected, userLabels, joined, counter, refresh);
+        // Written only by a page that copied or forgot someone: `copied` moves the screens' number.
+        if (counter.changed) this.db.run(`UPDATE zur_contact_sync SET copied = ?, dirty = 1 WHERE id = 1`, Math.max(0, counter.total));
         if (next) {
           this.db.run(`UPDATE zur_contact_sync SET page_token = ?, page_mode = ?, full_started = ? WHERE id = 1`, next, mode, fullStarted);
         } else {
@@ -490,11 +592,13 @@ export class GoogleContacts {
           if (mode === "full" && fullStarted !== null) {
             const stale = this.db.all<{ id: string }>(`SELECT id FROM zur_contacts WHERE synced_at < ?`, fullStarted);
             for (const { id } of stale) removeContact(this.db, id);
+            if (stale.length) counter.changed = true;
             this.recount();
           }
-          this.done(stamp, syncToken ?? (mode === "incremental" ? state.people_sync_token : null), mode === "full");
+          this.done(stamp, syncToken ?? (mode === "incremental" ? state.people_sync_token : null), mode === "full", counter.changed || before);
         }
       });
+      counter.changed ||= before;
       if (!next) {
         if (mode === "incremental") this.announce(joined);
         return "ok";
@@ -508,19 +612,49 @@ export class GoogleContacts {
     return "partial";
   }
 
-  private done(stamp: number, syncToken: string | null, full: boolean): void {
+  /** A person of the page is in a group that is neither a known label nor one of Google's own. */
+  private unknownGroup(persons: unknown[], userLabels: Set<string>): boolean {
+    for (const item of persons) {
+      const memberships = (item as { memberships?: unknown } | null)?.memberships;
+      if (!Array.isArray(memberships)) continue;
+      for (const membership of memberships) {
+        const id = (membership as { contactGroupMembership?: { contactGroupResourceName?: unknown } } | null)?.contactGroupMembership?.contactGroupResourceName;
+        if (typeof id === "string" && id.startsWith("contactGroups/") && !userLabels.has(id) && !this.notLabels.has(id)) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * The end of a sync that went well. What a quiet one writes (its time, its result, the next one)
+   * stays in columns that don't move the screens' number; `status`, `problem` and `last_ok_at` (which
+   * do) are written when something was copied or forgotten, or when they have to change.
+   */
+  private done(stamp: number, syncToken: string | null, full: boolean, changed: boolean): void {
     const now = this.clock();
+    const moved = changed || (this.row()?.dirty ?? 0) === 1;
     this.db.run(
       `UPDATE zur_contact_sync SET people_sync_token = ?, page_token = NULL, page_mode = NULL, full_started = NULL,
          full_needed = CASE WHEN ? THEN 0 ELSE full_needed END, first_done = CASE WHEN ? THEN 1 ELSE first_done END,
-         status = 'ok', problem = NULL, failures = 0, last_ok_at = ?, next_sync = ?
+         fields_version = CASE WHEN ? THEN ? ELSE fields_version END,
+         failures = 0, checked_at = ?, last_result = ?, dirty = 0, next_sync = ?
        WHERE id = 1 AND running_since = ?`,
       syncToken,
       full || syncToken !== null ? 1 : 0,
       full ? 1 : 0,
+      full ? 1 : 0,
+      FIELDS_VERSION,
       now,
-      now + HOUR_MS,
+      moved ? "changed" : "unchanged",
+      now + CONTACT_LIMITS.syncEveryMs,
       stamp,
+    );
+    this.db.run(
+      `UPDATE zur_contact_sync SET status = 'ok', problem = NULL, last_ok_at = ?
+       WHERE id = 1 AND running_since = ? AND (? OR status != 'ok' OR problem IS NOT NULL OR last_ok_at IS NULL)`,
+      now,
+      stamp,
+      moved ? 1 : 0,
     );
   }
 
@@ -532,10 +666,14 @@ export class GoogleContacts {
     const seen = new Map<string, { name: string; count: number }>();
     for (const item of groups) {
       const parsed = googleGroupSchema.safeParse(item);
+      if (!parsed.success) continue;
       // Only the owner's own labels: "My contacts", "Starred" and the others of the system are not offered.
-      if (!parsed.success || parsed.data.groupType !== "USER_CONTACT_GROUP") continue;
-      const name = cleanText(parsed.data.formattedName || parsed.data.name || "", CONTACT_LIMITS.labelName);
-      if (!name || seen.size >= CONTACT_LIMITS.maxLabels) continue;
+      const name = parsed.data.groupType === "USER_CONTACT_GROUP" ? cleanText(parsed.data.formattedName || parsed.data.name || "", CONTACT_LIMITS.labelName) : "";
+      if (!name || seen.size >= CONTACT_LIMITS.maxLabels) {
+        // Not a label Zuri offers: a contact in it won't ask for the labels again (a few hundred ids at most).
+        if (this.notLabels.size < 1_000) this.notLabels.add(parsed.data.resourceName);
+        continue;
+      }
       seen.set(parsed.data.resourceName, { name, count: parsed.data.memberCount ?? 0 });
     }
     const stored = new Map(
@@ -566,6 +704,7 @@ export class GoogleContacts {
         this.db.run(`DELETE FROM zur_contact_memberships WHERE label = ?`, id);
       }
       if (goneChosen) this.pruneUnselected();
+      this.db.run(`UPDATE zur_contact_sync SET labels_read_at = ? WHERE id = 1`, now);
     });
     if (goneChosen) this.deps.notify({ kind: "contacts.labelGone" });
     return new Set(seen.keys());
@@ -579,7 +718,8 @@ export class GoogleContacts {
     selected: Set<string>,
     userLabels: Set<string>,
     joined: Joined[],
-    counter: { total: number },
+    counter: { total: number; changed: boolean },
+    refresh = false,
   ): void {
     let ignored = 0;
     for (const item of persons) {
@@ -594,6 +734,7 @@ export class GoogleContacts {
         if (existing) {
           removeContact(this.db, existing.id);
           counter.total--;
+          counter.changed = true;
         }
         continue;
       }
@@ -608,11 +749,13 @@ export class GoogleContacts {
         if (existing) {
           removeContact(this.db, existing.id);
           counter.total--;
+          counter.changed = true;
         }
         continue;
       }
       const etag = person.etag ?? "";
-      if (existing && etag && existing.etag === etag) {
+      // The same etag is the same contact at Google; a read for new fields stores it anyway.
+      if (existing && etag && existing.etag === etag && !refresh) {
         // Unchanged: a full read only marks it seen.
         if (mode === "full") this.db.run(`UPDATE zur_contacts SET synced_at = ? WHERE id = ?`, stamp, existing.id);
         continue;
@@ -621,6 +764,7 @@ export class GoogleContacts {
       const before = existing ? this.db.all<{ label: string }>(`SELECT label FROM zur_contact_memberships WHERE contact_id = ?`, existing.id).map((row) => row.label) : [];
       const id = existing?.id ?? crypto.randomUUID();
       this.store(id, person, etag, labels, stamp);
+      counter.changed = true;
       if (!existing) counter.total++;
       if (mode === "incremental") {
         const fresh = labels.filter((label) => selected.has(label) && !before.includes(label));
@@ -674,13 +818,13 @@ export class GoogleContacts {
           this.db.run(`UPDATE zur_contact_sync SET next_sync = ? WHERE id = 1`, now);
           return "partial";
         case "lockdown":
-          this.db.run(`UPDATE zur_contact_sync SET next_sync = ? WHERE id = 1`, now + HOUR_MS);
+          this.db.run(`UPDATE zur_contact_sync SET next_sync = ?, last_result = 'failed' WHERE id = 1`, now + HOUR_MS);
           return "failed";
         case "revoked":
         case "not_connected":
         case "not_configured":
           // The calendar's card asks to connect again (and its notice went out): look again in an hour.
-          this.db.run(`UPDATE zur_contact_sync SET next_sync = ? WHERE id = 1`, now + HOUR_MS);
+          this.db.run(`UPDATE zur_contact_sync SET next_sync = ?, last_result = 'failed' WHERE id = 1`, now + HOUR_MS);
           return "failed";
         case "api_disabled":
           this.problem("api_disabled", now + BACKOFF_MAX_MS);
@@ -696,8 +840,9 @@ export class GoogleContacts {
     // 429, 5xx, a timeout or an answer out of shape: try again later, waiting longer each time.
     const row = this.row() as SyncRow;
     const failures = row.failures + 1;
-    const wait = Math.min(BACKOFF_MAX_MS, 30 * 60_000 * 2 ** (failures - 1));
-    this.db.run(`UPDATE zur_contact_sync SET failures = ?, next_sync = ? WHERE id = 1`, failures, now + wait);
+    // 5, 10, 20, 40 minutes…: the wait doubles from the sync's own interval, up to 6 hours.
+    const wait = Math.min(BACKOFF_MAX_MS, CONTACT_LIMITS.syncEveryMs * 2 ** Math.min(failures - 1, 20));
+    this.db.run(`UPDATE zur_contact_sync SET failures = ?, next_sync = ?, last_result = 'failed' WHERE id = 1`, failures, now + wait);
     log("warn", "contacts_sync_failed", { error, count: failures });
     if (failures >= FAILURES_NOTICE) this.problem("unavailable", now + wait);
     return "failed";
@@ -709,7 +854,7 @@ export class GoogleContacts {
     const row = this.row() as SyncRow;
     const notify = row.problem !== problem || !row.problem_noticed_at || now - row.problem_noticed_at >= 24 * HOUR_MS;
     this.db.run(
-      `UPDATE zur_contact_sync SET status = 'error', problem = ?, next_sync = ?${problem === "too_many" ? ", page_token = NULL, page_mode = NULL, full_needed = 1" : ""}${notify ? ", problem_noticed_at = ?" : ""} WHERE id = 1`,
+      `UPDATE zur_contact_sync SET status = 'error', problem = ?, next_sync = ?, last_result = 'failed'${problem === "too_many" ? ", page_token = NULL, page_mode = NULL, full_needed = 1" : ""}${notify ? ", problem_noticed_at = ?" : ""} WHERE id = 1`,
       problem,
       nextSync,
       ...(notify ? [now] : []),
@@ -861,6 +1006,9 @@ export class GoogleContacts {
     const data = parseData(row.data);
     return {
       ...this.summary(row, this.labelNames()),
+      given: data.given,
+      middle: data.middle,
+      family: data.family,
       nickname: data.nickname,
       phones: data.phones,
       emails: data.emails,
@@ -870,6 +1018,11 @@ export class GoogleContacts {
       jobTitle: data.jobTitle,
       notes: data.notes,
       fields: data.fields.map((field) => ({ label: field.key, value: field.value })),
+      addresses: data.addresses,
+      urls: data.urls,
+      relations: data.relations,
+      chats: data.chats,
+      more: data.more,
       googleUrl: `https://contacts.google.com/person/${row.resource_name.slice("people/".length)}`,
     };
   }
@@ -882,33 +1035,85 @@ function localDay(now: number, timeZone: string): string {
   return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`;
 }
 
+/** A list of label and value as stored; anything else (an older copy, a damaged row) is left out. */
+function pairs(value: unknown): { label: string; value: string }[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is { label: string; value: string } => typeof item?.label === "string" && typeof item?.value === "string");
+}
+
+/** What was stored, with every field present: a copy read before a field existed has it empty. */
 function parseData(raw: string): ContactData {
+  let value: Partial<ContactData> = {};
   try {
-    const value = JSON.parse(raw) as Partial<ContactData>;
-    return {
-      given: value.given ?? "",
-      family: value.family ?? "",
-      nickname: value.nickname ?? "",
-      phones: Array.isArray(value.phones) ? value.phones : [],
-      emails: Array.isArray(value.emails) ? value.emails : [],
-      birthday: value.birthday ?? null,
-      dates: Array.isArray(value.dates) ? value.dates : [],
-      organization: value.organization ?? "",
-      jobTitle: value.jobTitle ?? "",
-      notes: value.notes ?? "",
-      fields: Array.isArray(value.fields) ? value.fields : [],
-    };
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") value = parsed as Partial<ContactData>;
   } catch {
-    return { given: "", family: "", nickname: "", phones: [], emails: [], birthday: null, dates: [], organization: "", jobTitle: "", notes: "", fields: [] };
+    // An unreadable row shows as an empty contact, never as an error.
   }
+  const text = (field: unknown) => (typeof field === "string" ? field : "");
+  const more: ContactData["more"] = {};
+  if (value.more && typeof value.more === "object") {
+    for (const list of CONTACT_LISTS) {
+      const n = (value.more as Record<string, unknown>)[list];
+      if (typeof n === "number" && Number.isSafeInteger(n) && n > 0) more[list] = n;
+    }
+  }
+  return {
+    given: text(value.given),
+    middle: text(value.middle),
+    family: text(value.family),
+    nickname: text(value.nickname),
+    phones: pairs(value.phones),
+    emails: pairs(value.emails),
+    birthday: typeof value.birthday === "string" ? value.birthday : null,
+    dates: Array.isArray(value.dates) ? value.dates.filter((item) => typeof item?.label === "string" && typeof item?.date === "string") : [],
+    organization: text(value.organization),
+    jobTitle: text(value.jobTitle),
+    notes: text(value.notes),
+    fields: Array.isArray(value.fields) ? value.fields.filter((item) => typeof item?.key === "string" && typeof item?.value === "string") : [],
+    addresses: pairs(value.addresses),
+    urls: pairs(value.urls),
+    relations: pairs(value.relations),
+    chats: pairs(value.chats),
+    more,
+  };
 }
 
 const label = (value: { formattedType?: string | undefined; type?: string | undefined }) => cleanText(value.formattedType || value.type || "", 60);
 
+/** One line of an address: Google's own line when it has one, else the parts it has, in the order of an envelope. */
+function addressLine(address: NonNullable<GooglePerson["addresses"]>[number]): string {
+  const formatted = cleanText(address.formattedValue, CONTACT_LIMITS.address);
+  if (formatted) return formatted;
+  const parts = [address.streetAddress, address.extendedAddress, address.poBox, address.city, address.region, address.postalCode, address.country]
+    .map((part) => cleanText(part, CONTACT_LIMITS.address))
+    .filter(Boolean);
+  return cleanText(parts.join(", "), CONTACT_LIMITS.address);
+}
+
+/** A site as the screen may link it: http(s) only, with the scheme added to a bare "exemplo.com.br". Else "". */
+export function siteUrl(value: unknown): string {
+  const text = cleanText(value, CONTACT_LIMITS.url);
+  if (!text || text.endsWith("…") || /\s/.test(text)) return "";
+  // Another scheme ("javascript:", "data:", "tel:") is never kept; a host with a port ("exemplo.com.br:8080") is not a scheme.
+  const scheme = /^([a-z][a-z0-9+.-]*):(?!\d)/i.exec(text)?.[1]?.toLowerCase();
+  if (scheme && scheme !== "http" && scheme !== "https") return "";
+  const candidate = scheme ? text : `https://${text}`;
+  if (!/^https?:\/\/[^/\\]/i.test(candidate)) return "";
+  try {
+    const url = new URL(candidate);
+    if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username || url.password || !url.hostname.includes(".")) return "";
+    return candidate;
+  } catch {
+    return "";
+  }
+}
+
 /**
- * What Zuri keeps of a person: the fields of the plan's section 5, cut to
- * their limits (with "…"), values out of shape left out. Never the photo,
- * addresses, relations or social profiles.
+ * What Zuri keeps of a person: the fields of the plans (google-contatos.md and
+ * sincronizacao-contatos-avaliacoes.md), cut to their limits (with "…"), values
+ * out of shape left out, each list up to its ceiling with the rest counted in
+ * `more`. Never the photo nor social profiles.
  */
 export function readPerson(person: GooglePerson): {
   display: string;
@@ -917,64 +1122,90 @@ export function readPerson(person: GooglePerson): {
   keys: { kind: "phone" | "email"; value: string }[];
   dates: { md: string; label: string }[];
 } {
+  const more: ContactData["more"] = {};
+  /** Keeps up to the list's ceiling of what `read` accepts and counts the accepted ones past it. */
+  const take = <T, R>(list: ContactList, items: readonly T[] | undefined, max: number, read: (item: T) => R | null): R[] => {
+    const kept: R[] = [];
+    let over = 0;
+    for (const item of items ?? []) {
+      const value = read(item);
+      if (value === null) continue;
+      if (kept.length < max) kept.push(value);
+      else over++;
+    }
+    if (over) more[list] = over;
+    return kept;
+  };
   const name = person.names?.[0];
   const nickname = cleanText(person.nicknames?.[0]?.value, CONTACT_LIMITS.name);
-  const phones: ContactData["phones"] = [];
   const keys: { kind: "phone" | "email"; value: string }[] = [];
-  for (const phone of person.phoneNumbers ?? []) {
-    if (phones.length >= CONTACT_LIMITS.phones) break;
+  const phones = take("phones", person.phoneNumbers, CONTACT_LIMITS.phones, (phone) => {
     const value = cleanText(phone.value, 40);
     const key = phoneKey(value, phone.canonicalForm);
-    if (!value || !key) continue;
-    phones.push({ label: label(phone), value });
+    return value && key ? { label: label(phone), value, key } : null;
+  }).map(({ key, ...phone }) => {
     keys.push({ kind: "phone", value: key });
-  }
-  const emails: ContactData["emails"] = [];
-  for (const email of person.emailAddresses ?? []) {
-    if (emails.length >= CONTACT_LIMITS.emails) break;
+    return phone;
+  });
+  const emails = take("emails", person.emailAddresses, CONTACT_LIMITS.emails, (email) => {
     const value = cleanText(email.value, 254).toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+$/.test(value)) continue;
-    emails.push({ label: label(email), value });
-    keys.push({ kind: "email", value });
-  }
+    return /^[^\s@]+@[^\s@]+$/.test(value) ? { label: label(email), value } : null;
+  });
+  for (const email of emails) keys.push({ kind: "email", value: email.value });
   const birthday = (person.birthdays ?? []).map((item) => readDate(item.date)).find((date) => date !== null) ?? null;
-  const dates: ContactData["dates"] = [];
-  const dateKeys: { md: string; label: string }[] = [];
-  for (const event of person.events ?? []) {
-    if (dates.length >= CONTACT_LIMITS.dates) break;
+  const events = take("dates", person.events, CONTACT_LIMITS.dates, (event) => {
     const date = readDate(event.date);
-    if (!date) continue;
-    dates.push({ label: label(event), date: date.full });
-    dateKeys.push({ md: date.md, label: label(event) });
-  }
-  const fields: ContactData["fields"] = [];
-  for (const field of person.userDefined ?? []) {
-    if (fields.length >= CONTACT_LIMITS.fields) break;
+    return date ? { label: label(event), date } : null;
+  });
+  const fields = take("fields", person.userDefined, CONTACT_LIMITS.fields, (field) => {
     const key = cleanText(field.key, CONTACT_LIMITS.fieldKey);
-    if (!key) continue;
-    fields.push({ key, value: cleanText(field.value, CONTACT_LIMITS.fieldValue) });
-  }
+    return key ? { key, value: cleanText(field.value, CONTACT_LIMITS.fieldValue) } : null;
+  });
+  const addresses = take("addresses", person.addresses, CONTACT_LIMITS.addresses, (address) => {
+    const value = addressLine(address);
+    return value ? { label: label(address), value } : null;
+  });
+  const urls = take("urls", person.urls, CONTACT_LIMITS.urls, (url) => {
+    const value = siteUrl(url.value);
+    return value ? { label: label(url), value } : null;
+  });
+  const relations = take("relations", person.relations, CONTACT_LIMITS.relations, (relation) => {
+    const value = cleanText(relation.person, CONTACT_LIMITS.name);
+    return value ? { label: label(relation), value } : null;
+  });
+  const chats = take("chats", person.imClients, CONTACT_LIMITS.chats, (chat) => {
+    const value = cleanText(chat.username, CONTACT_LIMITS.name);
+    return value ? { label: cleanText(chat.formattedProtocol || chat.protocol || "", 60), value } : null;
+  });
   const organization = person.organizations?.[0];
   const given = cleanText(name?.givenName, CONTACT_LIMITS.name);
+  const middle = cleanText(name?.middleName, CONTACT_LIMITS.name);
   const family = cleanText(name?.familyName, CONTACT_LIMITS.name);
-  const display = cleanText(name?.displayName, CONTACT_LIMITS.name) || cleanText([given, family].filter(Boolean).join(" "), CONTACT_LIMITS.name) || nickname || emails[0]?.value || phones[0]?.value || "";
+  const display =
+    cleanText(name?.displayName, CONTACT_LIMITS.name) || cleanText([given, middle, family].filter(Boolean).join(" "), CONTACT_LIMITS.name) || nickname || emails[0]?.value || phones[0]?.value || "";
   return {
     display,
     birthday: birthday?.md ?? null,
     keys,
-    dates: dateKeys,
+    dates: events.map((event) => ({ md: event.date.md, label: event.label })),
     data: {
       given,
+      middle,
       family,
       nickname,
       phones,
       emails,
       birthday: birthday?.full ?? null,
-      dates,
+      dates: events.map((event) => ({ label: event.label, date: event.date.full })),
       organization: cleanText(organization?.name, CONTACT_LIMITS.organization),
       jobTitle: cleanText(organization?.title, CONTACT_LIMITS.organization),
       notes: cleanBlock(person.biographies?.[0]?.value, CONTACT_LIMITS.notes),
       fields,
+      addresses,
+      urls,
+      relations,
+      chats,
+      more,
     },
   };
 }

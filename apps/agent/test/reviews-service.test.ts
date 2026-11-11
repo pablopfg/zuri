@@ -381,15 +381,19 @@ describe("reading the reviews", () => {
       expect(world.notices).toEqual([{ kind: "reviews.problem", problem: "no_access" }]);
       world.sim.business.failure = { status: 503, body: {} };
       world.notices.length = 0;
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) {
+        // Three failures in a row (10, 20 and 40 minutes) are still a blip: the fourth tells the owner.
+        expect(world.notices).toEqual([]);
         world.clock.now = (world.reviews.nextDue() ?? world.clock.now) + 1;
         expect(await world.reviews.check("alarm")).toBe("failed");
+        expect(world.reviews.status().lastResult).toBe("failed");
       }
+      expect(world.notices).toEqual([{ kind: "reviews.problem", problem: "unavailable" }]);
       expect(world.reviews.status().problem).toBe("unavailable");
       world.sim.business.failure = null;
       world.clock.now = (world.reviews.nextDue() ?? 0) + 1;
       expect(await world.reviews.check("alarm")).toBe("ok");
-      expect(world.reviews.status().problem).toBeNull();
+      expect(world.reviews.status()).toMatchObject({ problem: null, lastResult: "unchanged" });
     }));
 
   it("never logs a reviewer's name or text", () =>

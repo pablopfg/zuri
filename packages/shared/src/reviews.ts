@@ -14,7 +14,7 @@ export const BUSINESS_SCOPE = "https://www.googleapis.com/auth/business.manage";
 
 export const REVIEW_LIMITS = {
   /** How often the alarm reads the reviews. */
-  checkEveryMs: 15 * 60_000,
+  checkEveryMs: 10 * 60_000,
   /** "Check now" at most once a minute. */
   checkNowEveryMs: 60_000,
   /** Pages of 50 read per check; the rest waits for the next one, from where this one stopped. */
@@ -146,6 +146,10 @@ export interface ReviewsStatus {
   paused: boolean;
   problem: ReviewProblem | null;
   lastCheckAt: string | null;
+  /** UTC ISO of the next check by itself (in the past while one is due); null while off or not allowed. */
+  nextSyncAt: string | null;
+  /** How the last check ended; null before the first one. */
+  lastResult: "unchanged" | "changed" | "failed" | null;
   locations: ReviewLocation[];
   pattern: ReviewPattern;
   /** Reviews waiting for the owner (the tab's number). */

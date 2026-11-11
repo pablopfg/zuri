@@ -155,6 +155,8 @@ interface Store {
  */
 /** The soonest the shared alarm comes back for notice work already past due (see `otherDue`). */
 const RETRY_FLOOR_MS = 60_000;
+/** The reviews' check waits this long after a wake that synced the contacts: the two Google reads never share a wake. */
+const SYNC_GAP_MS = 150_000;
 
 export class ZuriAgent extends Agent<WorkerEnv> {
   #store: Store | undefined;
@@ -382,15 +384,19 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     } catch (error) {
       log("error", "google_alarm_failed", { error });
     }
-    // The contacts' hourly sync and the notice of the day (step 19b).
+    // The contacts' sync every 5 minutes and the notice of the day (step 19b).
     try {
       // The alarm was set by `wake` while this work was still due (a retry a minute out):
       // set again from the times the sync and the notice just moved, so no empty wake follows.
-      if (await this.store.contacts.tick()) await automations.rearm();
+      if (await this.store.contacts.tick()) {
+        // The reviews' check never shares a wake with the contacts' sync: it waits two and a half minutes.
+        this.store.reviews.holdOff(SYNC_GAP_MS);
+        await automations.rearm();
+      }
     } catch (error) {
       log("error", "google_alarm_failed", { error });
     }
-    // The reviews' check every 15 minutes (step 19c): set the alarm again when it ran.
+    // The reviews' check every 10 minutes (step 19c): set the alarm again when it ran.
     try {
       if (await this.store.reviews.tick()) await automations.rearm();
     } catch (error) {

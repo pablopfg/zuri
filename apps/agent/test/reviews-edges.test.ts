@@ -143,7 +143,7 @@ describe("Google's odd answers and failures", () => {
         await world.reviews.check("alarm");
         waits.push(((world.reviews.nextDue() ?? 0) - world.clock.now) / 60_000);
       }
-      expect(waits).toEqual([15, 30, 60, 120, 240, 360, 360]);
+      expect(waits).toEqual([10, 20, 40, 80, 160, 320, 360]);
     }));
 
   it("tries again in a minute when the wake's subrequests run out, and in an hour when Google is disconnected", () =>

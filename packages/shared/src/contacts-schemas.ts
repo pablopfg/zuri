@@ -93,7 +93,7 @@ export const googlePersonSchema = /* @__PURE__ */ (() =>
         })
         .loose()
         .optional(),
-      names: list(z.object({ displayName: text.optional(), givenName: text.optional(), familyName: text.optional() }).loose()),
+      names: list(z.object({ displayName: text.optional(), givenName: text.optional(), middleName: text.optional(), familyName: text.optional() }).loose()),
       nicknames: list(z.object({ value: text.optional() }).loose()),
       phoneNumbers: list(z.object({ value: text.optional(), canonicalForm: text.optional(), formattedType: text.optional(), type: text.optional() }).loose()),
       emailAddresses: list(z.object({ value: text.optional(), formattedType: text.optional(), type: text.optional() }).loose()),
@@ -109,6 +109,25 @@ export const googlePersonSchema = /* @__PURE__ */ (() =>
       ),
       biographies: list(z.object({ value: text.optional() }).loose()),
       userDefined: list(z.object({ key: text.optional(), value: text.optional() }).loose()),
+      addresses: list(
+        z
+          .object({
+            formattedValue: text.optional(),
+            streetAddress: text.optional(),
+            extendedAddress: text.optional(),
+            poBox: text.optional(),
+            city: text.optional(),
+            region: text.optional(),
+            postalCode: text.optional(),
+            country: text.optional(),
+            formattedType: text.optional(),
+            type: text.optional(),
+          })
+          .loose(),
+      ),
+      urls: list(z.object({ value: text.optional(), formattedType: text.optional(), type: text.optional() }).loose()),
+      relations: list(z.object({ person: text.optional(), formattedType: text.optional(), type: text.optional() }).loose()),
+      imClients: list(z.object({ username: text.optional(), formattedProtocol: text.optional(), protocol: text.optional(), formattedType: text.optional(), type: text.optional() }).loose()),
     })
     .loose())();
 export type GooglePerson = z.output<typeof googlePersonSchema>;
