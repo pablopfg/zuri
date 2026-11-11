@@ -19,6 +19,23 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.48.1] - 2026-11-11
+
+Mesclada às 10:40 (UTC-3) · commit [`1feed85`](https://github.com/pablopfg/Zuri/commit/1feed85c4188747a98aa02d96bbef2b6250379e8) · PR [#289](https://github.com/pablopfg/Zuri/pull/289) · Intervalo das sincronizações escolhido pelo dono e comparação antes de regravar
+
+### Adicionado
+
+- Você escolhe de quantos em quantos minutos a Zuri lê os contatos e as avaliações do Google, em Configurações › Integrações › Google: os campos "Sincronizar a cada (minutos)" e "Conferir a cada (minutos)", de 5 a 1.440 (um dia). O cartão mostra a hora da próxima leitura. Os padrões continuam 5 e 10 minutos.
+
+### Alterado
+
+- Um contato que o Google marca como alterado por algo que a Zuri não guarda (a foto, um grupo do próprio Google) é comparado com a cópia e não é mais regravado, nem faz a tela recarregar.
+- Uma avaliação em que só a hora mudou no Google, com as mesmas estrelas e o mesmo texto, mantém a triagem e o rascunho. Antes, o rascunho era descartado e escrito de novo.
+
+### Atualização
+
+- Migration 33: colunas `sync_every_min` em `zur_contact_sync` e `check_every_min` em `zur_review_settings`. Ela é aplicada sozinha na primeira requisição e mantém os intervalos de hoje.
+
 ## [0.48.0] - 2026-11-11
 
 Mesclada às 09:57 (UTC-3) · commit [`7e299c9`](https://github.com/pablopfg/Zuri/commit/7e299c9d7a34196ebe0912336c80d3166201ab31) · PR [#286](https://github.com/pablopfg/Zuri/pull/286) · Contatos a cada 5 min e avaliações a cada 10, sem recarregar a tela à toa (S09)
@@ -3150,7 +3167,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.48.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.48.1...develop
+[0.48.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.48.1
 [0.48.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.48.0
 [0.47.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.47.0
 [0.46.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.3
