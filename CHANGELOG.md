@@ -17,7 +17,7 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 ## [Não lançado]
 
-O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
+O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) até juntar 10 merges, quando o workflow de versão escreve a seção.
 
 ## [0.49.6] - 2026-11-11
 

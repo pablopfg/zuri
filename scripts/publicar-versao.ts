@@ -1,9 +1,11 @@
 // Runs in the versao.yml workflow after each merge into develop
-// (docs/agente/versionamento.md):
+// (docs/agente/versionamento.md). A version only comes out once
+// MERGES_PER_VERSION merges wait for it, or when the workflow is started by
+// hand with "agora" (VERSAO_AGORA=true); until then the run changes nothing.
 //
-// 1. Gives every version a tag vX.Y.Z on its merge commit and a GitHub
-//    pre-release with its notes: the versions already in CHANGELOG.md and the
-//    merges that have no section yet.
+// 1. Gives every version a tag vX.Y.Z on the commit of its last merge and a
+//    GitHub pre-release with its notes: the versions already in CHANGELOG.md
+//    and the ones the waiting merges form.
 // 2. Writes the missing sections (scripts/versao.ts) on the branch
 //    chore/versao and keeps one pull request "chore(release): …" open for it,
 //    with auto-merge. develop only changes through pull requests (rulesets).
@@ -21,6 +23,7 @@ import {
   BASE_BRANCH,
   compareVersions,
   computePlan,
+  MERGES_PER_VERSION,
   FIRST_TAGGED_VERSION,
   noMentions,
   releaseName,
@@ -32,6 +35,11 @@ import {
 export { FIRST_TAGGED_VERSION };
 
 export const RELEASE_BRANCH = "chore/versao";
+
+/** True only for the literal "true" of the workflow's own boolean input "agora"; empty on push and schedule. */
+export function forcedByEnv(env: Record<string, string | undefined>): boolean {
+  return env.VERSAO_AGORA === "true";
+}
 /** Kept off the automatic update: this workflow rewrites the branch from develop itself. */
 export const RELEASE_LABEL = OPT_OUT_LABEL;
 /** GitHub limits how fast content is created; a pause between releases keeps the backfill under it. */
@@ -94,7 +102,7 @@ export function pullRequestTitle(pending: Version[]): string {
 export function pullRequestBody(pending: Version[]): string {
   const list = pending.map((v) => `- **${v.version}** · ${v.date} ${v.time} (${v.offset}) · ${v.commit.slice(0, 7)} · ${v.title}`);
   return noMentions([
-    "Aberta pelo workflow de versão (`.github/workflows/versao.yml`). Escreve no `CHANGELOG.md` a seção de cada merge que ainda não tinha uma, apaga os arquivos de `changelog/nao-lancado/` que viraram seção e escreve a versão nova em `packages/shared/src/version.ts`, nos `package.json` e no `package-lock.json`.",
+    "Aberta pelo workflow de versão (`.github/workflows/versao.yml`). Escreve no `CHANGELOG.md` a seção de cada versão que ainda não tinha uma, apaga os arquivos de `changelog/nao-lancado/` que viraram seção e escreve a versão nova em `packages/shared/src/version.ts`, nos `package.json` e no `package-lock.json`.",
     "",
     ...list,
     "",
@@ -162,7 +170,9 @@ function main(root: string): number {
 
   // Tags first: a merge that already has one keeps its number (planVersions).
   const tags = parseLsRemoteTags(remote(["ls-remote", "--tags", "origin"]));
-  const plan = computePlan(root, (...args) => git(args), "HEAD", tags);
+  const force = forcedByEnv(process.env);
+  const plan = computePlan(root, (...args) => git(args), "HEAD", tags, { force });
+  if (plan.waiting > 0) console.log(`${plan.waiting} of ${MERGES_PER_VERSION} merges waiting for the next version`);
   const versions = [...[...plan.changelog.versions].reverse(), ...plan.pending];
 
   // 1. Tags and pre-releases.
