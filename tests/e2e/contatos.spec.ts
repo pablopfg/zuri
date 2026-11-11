@@ -166,7 +166,7 @@ test("the label filter is a list with a search, and the labels Zuri copies are c
   expect((await refreshed).status()).toBe(200);
   const pick = page.getByRole("dialog", { name: "Etiquetas sincronizadas" });
   // Google's own groups ("myContacts") are never offered.
-  await expect(pick.getByRole("checkbox")).toHaveCount(4);
+  await expect(pick.getByRole("checkbox")).toHaveCount(5);
   await expect(pick.getByRole("button", { name: "Salvar etiquetas" })).toBeDisabled();
   await pick.getByRole("checkbox", { name: /^Consultório/ }).uncheck();
   await expect(pick.getByText("Quem está só em Consultório sai da Zuri na próxima leitura. No Google, continua igual.")).toBeVisible();
@@ -400,7 +400,8 @@ test("an address that is nobody's: the list for a made-up word, a plain line for
 test("with no label chosen the screen offers the choice; a memory that names a contact links both ways", async ({ page }) => {
   await copy(page, []);
   const list = page.getByRole("region", { name: "Lista de contatos" });
-  await expect(list.getByText("Nenhum contato copiado ainda")).toBeVisible();
+  await expect(list.getByText("Escolha as etiquetas para começar")).toBeVisible();
+  await expect(list.getByText("Nenhum contato é copiado antes disso.")).toBeVisible();
   await list.getByRole("button", { name: "Escolher etiquetas" }).click();
   const pick = page.getByRole("dialog", { name: "Etiquetas sincronizadas" });
   await pick.getByRole("checkbox", { name: /^Clientes/ }).check();
@@ -426,4 +427,173 @@ test("with no label chosen the screen offers the choice; a memory that names a c
   } finally {
     await page.request.delete(`/api/memories/${kept.memory.id}`, { headers: CSRF });
   }
+});
+
+// ---------- The owner's way of naming, two people with one name, the appointments and the photo ----------
+
+/** Opens the sample calendar the scheduling system writes on, for reading. */
+async function openCalendar(page: Page) {
+  const opened = await page.request.patch(`/api/google/calendars/${encodeURIComponent("consultorio@exemplo.com.br")}`, { headers: CSRF, data: { mode: "read" } });
+  expect(opened.ok(), `calendar: ${opened.status()}`).toBe(true);
+}
+
+test("the name comes without the note written after it, with only the phone under it; two people with one name show what tells them apart @mobile", async ({ page }) => {
+  await copy(page, ["pacientes"]);
+  const list = page.getByRole("region", { name: "Lista de contatos" });
+  await expect(rows(page)).toHaveCount(4);
+  // "Beatriz Novaes Conceição / Paciente" at Google.
+  const beatriz = rows(page).filter({ hasText: "Beatriz Novaes Conceição" });
+  await expect(beatriz).toHaveText(/Beatriz Novaes Conceição\s*\(41\) 99999-0110$/);
+  await expect(list.getByText("/ Paciente")).toHaveCount(0);
+  await expect(list.getByText("beatriz@exemplo.com.br")).toHaveCount(0);
+  await expect(list.getByText("/ Prospect")).toHaveCount(0);
+  // Two different people called Marcos Vieira Lopes: two lines, each with its phone, birthday and CPF (ends hidden).
+  const marcos = rows(page).filter({ hasText: "Marcos Vieira Lopes" });
+  await expect(marcos).toHaveCount(2);
+  await expect(marcos.filter({ hasText: "(41) 97777-0112" })).toContainText("nasc. 11 de fevereiro de 1979 · CPF ***.982.247-**");
+  await expect(marcos.filter({ hasText: "(41) 96666-0113" })).toContainText("nasc. 3 de setembro de 1994 · CPF ***.444.777-**");
+  await expect(page.getByText("529.982.247-25")).toHaveCount(0);
+  // The search finds by the name and by the note.
+  await page.getByRole("searchbox", { name: "Buscar por nome, telefone ou e-mail" }).fill("prospect");
+  await expect(rows(page)).toHaveText([/Carla Regina Duarte Pires/]);
+  await page.getByRole("searchbox", { name: "Buscar por nome, telefone ou e-mail" }).fill("");
+
+  await marcos.filter({ hasText: "(41) 97777-0112" }).click();
+  const person = card(page);
+  await expect(person.getByRole("heading", { level: 2, name: "Marcos Vieira Lopes" })).toBeVisible();
+  // On a phone the name takes the focus as the card opens; it is a title, with no ring drawn around it.
+  if (await navIsPhone(page)) await expect(person.getByRole("heading", { level: 2 })).toBeFocused();
+  await expect(person.getByRole("heading", { level: 2 })).toHaveCSS("outline-style", "none");
+  await expect(person.getByText("Outro contato tem este mesmo nome. São pessoas diferentes. Dados deste: (41) 97777-0112 · nasc. 11 de fevereiro de 1979 · CPF ***.982.247-**")).toBeVisible();
+  await expect(person.getByText("Paciente", { exact: true })).toBeVisible();
+  await expectAccessible(page, "contato homônimo");
+});
+
+test("the card shows the last appointment and the next one from the calendar, each titled by its kind, in the owner's zone; with no calendar it says how to see them @mobile", async ({ page }) => {
+  await copy(page, ["pacientes"]);
+  await rows(page).filter({ hasText: "Beatriz Novaes Conceição" }).click();
+  const person = card(page);
+  const visits = person.getByRole("region", { name: "Atendimentos" });
+  // Every calendar is still closed to Zuri.
+  await expect(visits.getByText("Conecte a agenda do Google para ver os atendimentos aqui.")).toBeVisible();
+  await expect(visits.getByRole("link", { name: "Ir para Integrações" })).toHaveAttribute("href", "/configuracoes/integracoes");
+
+  await openCalendar(page);
+  // QA-CN-07: the page's clock stands at the instant the days below are counted from.
+  const now = new Date();
+  await page.clock.setFixedTime(now);
+  await page.reload();
+  const day = (offset: number) => {
+    const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(now).split("-").map(Number) as [number, number, number];
+    return new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d + offset, 12)));
+  };
+  const last = visits.getByRole("definition").nth(0);
+  const next = visits.getByRole("definition").nth(1);
+  // The last one that happened was a return, and so is the next one marked.
+  await expect(visits.getByRole("term")).toHaveText(["Último retorno", "Retorno"]);
+  await expect(last).toContainText(`${day(-28)}, 15:00`);
+  await expect(last).toContainText("há 4 semanas · Retorno | Consultório");
+  await expect(next).toContainText(`${day(9)}, 14:00`);
+  await expect(next).toContainText("em 9 dias · Retorno | Consultório");
+  // Nobody else has her name: no warning.
+  await expect(person.getByText(/Outro contato tem este/)).toHaveCount(0);
+  await expectAccessible(page, "ficha com consultas");
+  expect(await tooSmallControls(page), "every control of the card is a 44 px target").toEqual([]);
+
+  // One of the two Marcos: the past visit carries his CPF; the return carries nothing, and the card says so.
+  await page.goto("/contatos");
+  await rows(page).filter({ hasText: "(41) 97777-0112" }).click();
+  await expect(visits.getByRole("term")).toHaveText(["Última consulta", "Retorno"]);
+  await expect(visits.getByRole("definition").nth(0)).toContainText("Consulta | Consultório");
+  await expect(visits.getByText("Outro contato tem este nome e o evento não traz telefone, e-mail, CPF nem nascimento para dizer de quem é. Confira na agenda.")).toBeVisible();
+  // The other Marcos: the visit with the first one's CPF is not his.
+  await page.goto("/contatos");
+  await rows(page).filter({ hasText: "(41) 96666-0113" }).click();
+  await expect(visits.getByRole("term")).toHaveText(["Retorno"]);
+  await expect(visits.getByRole("definition")).toHaveCount(1);
+});
+
+test("the titles follow what the calendar holds: nothing ahead makes the past one \"Último atendimento\", and a consultation ahead is \"Próxima consulta\"", async ({ page }) => {
+  await copy(page, ["pacientes"]);
+  await openCalendar(page);
+  const visit = (start: string, kind: string) => ({ start, allDay: false, kind, type: kind === "return" ? "Retorno" : kind === "consultation" ? "Consulta" : "", place: "", certain: true });
+  const past = new Date(Date.now() - 20 * 86_400_000).toISOString();
+  const ahead = new Date(Date.now() + 20 * 86_400_000).toISOString();
+  const cases: [last: string | null, next: string | null, titles: string[]][] = [
+    // Nothing from today on: one box, called by neither kind.
+    ["return", null, ["Último atendimento"]],
+    ["consultation", null, ["Último atendimento"]],
+    ["consultation", "consultation", ["Última consulta", "Próxima consulta"]],
+    ["return", "consultation", ["Último retorno", "Próxima consulta"]],
+    // An event with no type in its notes.
+    ["other", "other", ["Último atendimento", "Próximo atendimento"]],
+    [null, "consultation", ["Próxima consulta"]],
+  ];
+  let answer = {};
+  await page.route("**/api/contacts/*/appointments", (route) => route.fulfill({ json: answer }));
+  const visits = card(page).getByRole("region", { name: "Atendimentos" });
+  for (const [last, next, titles] of cases) {
+    answer = { available: true, last: last && visit(past, last), next: next && visit(ahead, next), more: false };
+    await page.goto("/contatos");
+    await rows(page).filter({ hasText: "Carla Regina Duarte Pires" }).click();
+    await expect(visits.getByRole("term"), `${last} / ${next}`).toHaveText(titles);
+    await expect(visits.getByText("Nenhum atendimento na agenda.")).toHaveCount(0);
+  }
+});
+
+test("a contact with nobody in the calendar says so, and a calendar that fails offers to try again", async ({ page }) => {
+  await copy(page, ["pacientes"]);
+  await openCalendar(page);
+  await rows(page).filter({ hasText: "Carla Regina Duarte Pires" }).click();
+  const visits = card(page).getByRole("region", { name: "Atendimentos" });
+  await expect(visits.getByText("Nenhum atendimento na agenda.")).toBeVisible();
+  await expect(visits.getByRole("term")).toHaveCount(0);
+
+  let fail = true;
+  await page.route("**/api/contacts/*/appointments", (route) => (fail ? route.fulfill({ status: 503, json: { code: "SERVICE_UNAVAILABLE", message: "x" } }) : route.continue()));
+  await page.reload();
+  await expect(visits.getByText("Não deu para ler a agenda.")).toBeVisible();
+  fail = false;
+  await visits.getByRole("button", { name: "Tentar de novo" }).click();
+  await expect(visits.getByText("Nenhum atendimento na agenda.")).toBeVisible();
+  await expect(visits.getByRole("term")).toHaveCount(0);
+});
+
+test("the photo from Google Contacts takes the place of the initials, and the initials come back when it does not load", async ({ page }) => {
+  const violations: string[] = [];
+  page.on("console", (message) => {
+    if (/Content Security Policy/i.test(message.text())) violations.push(message.text());
+  });
+  const PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+  let photos = 0;
+  await page.route("https://lh3.googleusercontent.com/**", (route) => {
+    photos++;
+    // No referrer goes to Google with the picture's request.
+    expect(route.request().headers().referer).toBeUndefined();
+    return route.request().url().endsWith("/quebrada") ? route.fulfill({ status: 404, body: "" }) : route.fulfill({ status: 200, contentType: "image/png", body: PIXEL });
+  });
+  // The sample Google has no pictures: the copy answers as it would with them (and with one address that is not Google's).
+  const photoOf: Record<string, string> = {
+    "Beatriz Novaes Conceição": "https://lh3.googleusercontent.com/contacts/beatriz",
+    "Carla Regina Duarte Pires": "https://lh3.googleusercontent.com/contacts/quebrada",
+    "Marcos Vieira Lopes": "https://exemplo.com.br/foto.png",
+  };
+  await page.route(/\/api\/contacts(\?.*)?$/, async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { contacts: { name: string; photo: string | null }[] };
+    await route.fulfill({ response, json: { ...body, contacts: body.contacts.map((contact) => ({ ...contact, photo: photoOf[contact.name] ?? null })) } });
+  });
+  await copy(page, ["pacientes"]);
+  const mark = (name: string) => rows(page).filter({ hasText: name }).first().locator(".zuri-contact-mark");
+  await expect(mark("Beatriz Novaes Conceição").locator("img")).toHaveJSProperty("complete", true);
+  expect(await mark("Beatriz Novaes Conceição").locator("img").evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+  await expect(mark("Beatriz Novaes Conceição")).toHaveText("");
+  // The one that failed and the one outside Google's host: the initials.
+  await expect(mark("Carla Regina Duarte Pires")).toHaveText("CP");
+  await expect(mark("Carla Regina Duarte Pires").locator("img")).toHaveCount(0);
+  await expect(mark("Marcos Vieira Lopes")).toHaveText("ML");
+  expect(photos).toBe(2);
+  expect(violations).toEqual([]);
+  // A list being read again when the test ends is no failure of the test that follows.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
 });

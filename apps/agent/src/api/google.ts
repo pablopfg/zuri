@@ -16,6 +16,7 @@ import type { Context, Hono } from "hono";
 import type { ClientInfo } from "../auth/client.ts";
 import type { AuthService } from "../auth/service.ts";
 import { CHANNEL_ID, GOOGLE_CHANNEL_HEADER, GOOGLE_PUSH_PATH, GOOGLE_STATE_HEADER, GOOGLE_TOKEN_HEADER, isGooglePushToken } from "../gates/google-push.ts";
+import { contactAppointments } from "../google/appointments.ts";
 import type { GoogleContacts } from "../google/contacts.ts";
 import type { ReviewService } from "../reviews/service.ts";
 import { toAppError } from "../google/errors.ts";
@@ -39,6 +40,8 @@ export interface GoogleRouteDeps {
 
 /** Calls to Google one owner action may make (rule P9): ten calendars, a token renewal and a retry. */
 const ACTION_BUDGET = 12;
+/** The card's appointments: what is ahead and the last months of ten calendars, a token renewal and a retry; never near the 45 of rule P9. */
+const APPOINTMENTS_BUDGET = 24;
 const DAY_MS = 86_400_000;
 
 /** A Google failure in the owner's words. */
@@ -91,8 +94,11 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     const { replaced, purpose } = await owner(() => google.finish(input, c.get("session").id));
     auth.events.record("google_connected", client(c), { alert: true });
     if (purpose === "contacts") {
-      // The first read of the labels runs on the next wake of the alarm, set now.
-      deps().contacts.enable();
+      const { contacts } = deps();
+      contacts.enable();
+      // The labels at once, so the owner comes back from Google's page to the list to choose from: no
+      // contact is copied before a label is chosen. If Google fails here, the alarm (set now) reads them.
+      await contacts.refreshLabels().catch(() => contacts.labelsFailed());
       await deps().rearm();
     }
     return Response.json({ ...google.status(), replaced, purpose });
@@ -201,6 +207,17 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     const contact = deps().contacts.get(c.req.param("id"));
     if (!contact) throw new AppError("NOT_FOUND", "error.contactNotFound");
     return Response.json({ contact });
+  });
+
+  /**
+   * The card's "last appointment" and "return": read from the calendar now, by the contact's name, and
+   * never kept. Only the dates and the type leave; the events' text stays on the server.
+   */
+  app.get("/contacts/:id/appointments", async (c) => {
+    const { contacts, google } = deps();
+    const who = contacts.identity(c.req.param("id"));
+    if (!who) throw new AppError("NOT_FOUND", "error.contactNotFound");
+    return Response.json(await owner(() => contactAppointments(google, who, deps().timeZone(), new GoogleMeter(APPOINTMENTS_BUDGET), google.now().getTime())));
   });
 
   // ---------- The Agenda screen ----------

@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ContactDetail, ContactList, ContactValue, Memory, MessageKey } from "@zuri/shared";
+import type { AppointmentKind, ContactAppointment, ContactAppointments, ContactDetail, ContactList, ContactValue, Memory, MessageKey } from "@zuri/shared";
 import {
   ArrowLeft,
   AtSign,
   BotMessageSquare,
   Building2,
   Cake,
+  CalendarCheck2,
+  CalendarClock,
   CalendarHeart,
   ChevronRight,
   ClipboardCopy,
@@ -27,11 +29,12 @@ import {
 import { type ReactNode, useCallback } from "react";
 import { Link } from "react-router";
 import { useToast } from "../../components/Toaster.tsx";
-import { ErrorNotice, Loading } from "../../components/ui.tsx";
+import { cn, ErrorNotice, Loading, Notice } from "../../components/ui.tsx";
 import { ApiError, api } from "../../lib/api.ts";
 import { contactKey } from "../../lib/contacts.ts";
+import { Avatar } from "./Avatar.tsx";
 import { useI18n } from "../../lib/i18n.tsx";
-import { CARD_GROUPS, type CardGroup, dayText, dialNumber, emptyGroups, hasGroup, initials, isNamed, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "./person.ts";
+import { CARD_GROUPS, type CardGroup, daysApart, dayText, dialNumber, emptyGroups, hasGroup, isNamed, localDay, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "./person.ts";
 
 const GROUP: Record<CardGroup, { icon: LucideIcon; title: MessageKey }> = {
   name: { icon: IdCard, title: "web.contacts.group.name" },
@@ -48,6 +51,10 @@ const GROUP: Record<CardGroup, { icon: LucideIcon; title: MessageKey }> = {
   fields: { icon: Rows3, title: "web.contacts.group.fields" },
   notes: { icon: StickyNote, title: "web.contacts.group.notes" },
 };
+
+/** The title of each box follows the type written in the event: a return is never called a consultation. */
+const LAST_TITLE: Record<AppointmentKind, MessageKey> = { consultation: "web.contacts.visits.last.consultation", return: "web.contacts.visits.last.return", other: "web.contacts.visits.last.other" };
+const NEXT_TITLE: Record<AppointmentKind, MessageKey> = { consultation: "web.contacts.visits.next.consultation", return: "web.contacts.visits.next.return", other: "web.contacts.visits.next.other" };
 
 /** Memories shown on the card; the rest are a search away in Memória. */
 const KNOWN_MAX = 3;
@@ -94,7 +101,7 @@ export function ContactCard({ id }: { id: string }) {
 }
 
 function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: HTMLHeadingElement | null) => void }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const named = isNamed(contact);
   const name = shownName(contact) || t("web.contacts.noName");
   const phone = contact.phones[0]?.value ?? "";
@@ -106,14 +113,18 @@ function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: H
   return (
     <>
       <header className="flex items-start gap-4">
-        <span aria-hidden className="zuri-contact-mark" data-big="">
-          {(named && initials(contact.name)) || "?"}
-        </span>
+        <Avatar name={named ? contact.name : null} photo={contact.photo} big />
         <div className="min-w-0 flex-1 space-y-1.5">
           <h2 ref={heading} tabIndex={-1} className="text-2xl font-semibold tracking-tight break-words focus:outline-none">
             {name}
           </h2>
           {named || !(contact.phone || contact.email) ? role && <p className="break-words text-fg-muted">{role}</p> : <p className="text-fg-muted">{t(contact.phone ? "web.contacts.person.noName.phone" : "web.contacts.person.noName.email")}</p>}
+          {contact.note && (
+            <p className="text-sm text-fg-muted">
+              <span className="sr-only">{t("web.contacts.note")} </span>
+              <span className="zuri-contact-chip border border-border bg-transparent">{contact.note}</span>
+            </p>
+          )}
           {contact.labels.length > 0 && (
             <ul className="flex flex-wrap gap-1.5" aria-label={t("web.contacts.group.labels")}>
               {contact.labels.map((label) => (
@@ -137,6 +148,21 @@ function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: H
         <Door href={whatsapp ? `https://wa.me/${whatsapp}` : null} icon={MessageCircle} label={t("web.contacts.whatsapp")} off={t(dial ? "web.contacts.noMobile" : "web.contacts.noPhone")} outside />
         <Door href={email ? `mailto:${encodeURIComponent(email).replace(/%40/g, "@")}` : null} icon={MailOpen} label={t("web.contacts.email")} off={t("web.contacts.noEmail")} />
       </div>
+
+      {contact.sameName > 0 && (
+        <Notice tone="warning">
+          {t("web.contacts.sameName")}{" "}
+          {[
+            contact.phone,
+            contact.birthdayFull && t("web.contacts.born", { data: dayText(contact.birthdayFull, locale) }),
+            contact.cpf && t("web.contacts.cpf", { cpf: contact.cpf }),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </Notice>
+      )}
+
+      {named && <Appointments id={contact.id} />}
 
       {named && <Known name={contact.name.trim()} />}
 
@@ -162,6 +188,78 @@ function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: H
         </p>
       </section>
     </>
+  );
+}
+
+/**
+ * The last appointment and the next one, each named by its type, read from the calendar when the card opens (and again after a
+ * minute): the event carries the person's name as its title and the type in its description.
+ */
+function Appointments({ id }: { id: string }) {
+  const { t } = useI18n();
+  const found = useQuery({
+    queryKey: [...contactKey(id), "appointments"],
+    queryFn: ({ signal }) => api<ContactAppointments>(`/contacts/${encodeURIComponent(id)}/appointments`, { signal }),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const data = found.data;
+  const unsure = !!data && [data.last, data.next].some((item) => item && !item.certain);
+  return (
+    <section className="zuri-contact-box space-y-3" aria-labelledby="zuri-contact-visits" aria-busy={found.isPending}>
+      <h3 id="zuri-contact-visits">{t("web.contacts.visits")}</h3>
+      {found.isPending ? (
+        <Loading rows={1} />
+      ) : !data ? (
+        <p className="flex flex-wrap items-center gap-x-2 text-sm text-fg-muted">
+          {t("web.contacts.visits.failed")}
+          <button type="button" onClick={() => void found.refetch()} className="inline-flex min-h-11 items-center font-semibold text-fg underline underline-offset-2">
+            {t("web.retry")}
+          </button>
+        </p>
+      ) : !data.available ? (
+        <p className="flex flex-wrap items-center gap-x-2 text-sm text-fg-muted">
+          {t("web.contacts.visits.off")}
+          <Link to="/configuracoes/integracoes" className="inline-flex min-h-11 items-center font-semibold text-fg underline underline-offset-2">
+            {t("web.contacts.goIntegrations")}
+          </Link>
+        </p>
+      ) : (
+        <>
+          {data.last || data.next ? (
+            <dl className={cn("grid gap-3", data.last && data.next && "sm:grid-cols-2")}>
+              {/* With nothing ahead the past one is just "the last appointment", whatever its type. */}
+              {data.last && <Visit icon={CalendarCheck2} title={t(data.next ? LAST_TITLE[data.last.kind] : "web.contacts.visits.last.other")} item={data.last} />}
+              {data.next && <Visit icon={CalendarClock} title={t(NEXT_TITLE[data.next.kind])} item={data.next} />}
+            </dl>
+          ) : (
+            <p className="text-sm text-fg-muted">{t("web.contacts.visits.none")}</p>
+          )}
+          {unsure && <Notice tone="warning">{t("web.contacts.visits.unsure")}</Notice>}
+          {data.more && <p className="text-xs text-fg-muted">{t("web.contacts.visits.more")}</p>}
+        </>
+      )}
+    </section>
+  );
+}
+
+function Visit({ icon: Icon, title, item }: { icon: LucideIcon; title: string; item: ContactAppointment }) {
+  const { locale, timeZone } = useI18n();
+  const day = item.allDay ? item.start : localDay(new Date(item.start), timeZone);
+  const hour = item.allDay ? "" : new Intl.DateTimeFormat(locale, { timeZone, hour: "2-digit", minute: "2-digit" }).format(new Date(item.start));
+  const when = [dayText(day, locale), hour].filter(Boolean).join(", ");
+  const apart = daysApart(day, localDay(new Date(), timeZone), locale);
+  return (
+    <div className="space-y-1 rounded-xl border border-border p-3">
+      <dt className="zuri-contact-term">
+        <Icon className="h-4 w-4" aria-hidden />
+        {title}
+      </dt>
+      <dd className="space-y-0.5">
+        <p className="font-semibold">{when}</p>
+        <p className="text-sm text-fg-muted">{[apart, [item.type, item.place].filter(Boolean).join(" | ")].filter(Boolean).join(" · ")}</p>
+      </dd>
+    </div>
   );
 }
 

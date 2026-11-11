@@ -17,8 +17,9 @@ manda mensagem para ninguém. O plano está em `docs/planos/google-contatos.md`.
    pede de novo.
 3. O Google mostra a permissão nova, "ver seus contatos". As permissões da
    agenda continuam como estavam.
-4. Você volta para Integrações. A Zuri lê as suas etiquetas em instantes, ou
-   na hora se você tocar em **Sincronizar agora**.
+4. Você volta para Integrações já com a lista das suas etiquetas, lida do
+   Google na hora. O cartão pede para você escolher; nenhum contato é copiado
+   antes disso, e **Sincronizar agora** fica desligado até lá.
 
 Se o Google não der a permissão dos contatos, nada é guardado e o cartão pede
 para ligar de novo.
@@ -88,6 +89,55 @@ volta.
   etiquetas, campos personalizados e observações. Os grupos sem nada aparecem
   numa linha só ("Vazio no Google: …"). **Abrir no Google Contatos** leva à
   ficha de lá, onde se muda qualquer coisa.
+
+#### Nome e anotação
+
+Se você escreve o nome no Google com uma anotação depois ("Beatriz Novaes
+Conceição / Paciente"), a Zuri guarda só o nome ("Beatriz Novaes Conceição") e
+mostra a anotação à parte, numa marca abaixo do nome na ficha. A busca acha
+pelos dois. Vale para barra, barra vertical e parênteses no fim do nome, com
+ou sem espaços. Nome sem anotação fica como está, e hífen nunca separa
+("Ana-Maria", "Clínica Vida - Unidade Centro"), nem a barra de "S/A" ou "A/C".
+
+#### Duas pessoas com o mesmo nome
+
+Dois contatos com o mesmo nome completo são duas pessoas; a Zuri nunca junta
+nem esconde um deles. Na lista, abaixo do nome aparece só o telefone; quando o
+nome se repete, a linha mostra também o nascimento e o CPF com as pontas
+escondidas. A ficha avisa que existe outro contato com o nome. O CPF vem de um
+campo personalizado chamado CPF, ou das observações depois da palavra "CPF", e
+só vale se os dígitos conferirem.
+
+#### Foto
+
+A ficha e a lista mostram a foto que o contato tem no Google Contatos. A Zuri
+guarda só o endereço da foto, nunca a imagem: o navegador busca direto no
+Google, sem dizer de que página veio. Sem foto, ou se ela não carregar,
+aparecem as iniciais.
+
+#### Atendimentos
+
+Com a agenda conectada, a ficha mostra o último atendimento e o próximo,
+lidos da agenda na hora em que a ficha abre (nada disso é guardado):
+
+- A Zuri procura, nas agendas abertas para ela, os eventos cujo título é o
+  nome completo do contato, de três anos atrás até um ano à frente.
+- O tipo vem das observações do evento, na linha "Consulta | Consultório" ou
+  "Retorno | Consultório". Evento sem tipo conta como atendimento sem tipo.
+- O primeiro quadro é o último atendimento que já começou. O título segue o
+  tipo: **Última consulta** ou **Último retorno**.
+- O segundo quadro é o próximo atendimento marcado, de hoje em diante:
+  **Próxima consulta** ou **Retorno**. Evento sem tipo aparece como
+  **Próximo atendimento**.
+- Sem nada marcado de hoje em diante, o segundo quadro não aparece e o
+  primeiro passa a se chamar **Último atendimento**. Sem nenhum evento, a
+  ficha diz "Nenhum atendimento na agenda."
+- Evento cancelado, com "cancelado", "desmarcado", "remarcado" ou "faltou" no
+  título, que você recusou ou um convite de outra pessoa que você ainda não
+  respondeu fica de fora. Evento de dia inteiro vale pelo dia, no seu fuso.
+- Com duas pessoas de mesmo nome, o evento vai para quem tiver telefone,
+  e-mail (escrito no evento ou entre os convidados), CPF ou nascimento nele. Se o evento não traz nada disso, a
+  ficha mostra a data e avisa que não dá para saber de quem é.
 
 Cada lista guarda até 10 itens (20 nos campos personalizados) e a ficha diz
 quantos o Google tem além disso. Site só vira link se for um endereço `http`
