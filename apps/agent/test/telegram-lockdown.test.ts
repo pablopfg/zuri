@@ -10,7 +10,7 @@ import startCode from "./fixtures/telegram/start-code.json?raw";
 import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Step 16b: the bot's security commands (/acessos, /sessoes, /encerrar_sessoes,
-// /tokens, /pausar_rotinas, /bloquear), the lockdown as the bot and the API see
+// /pausar_rotinas, /bloquear), the lockdown as the bot and the API see
 // it, the relock that suspends the link, and the bot's security alerts that only
 // the app acknowledges. The Bot API is answered here, never on the network.
 
@@ -318,6 +318,11 @@ describe("/sessoes and /encerrar_sessoes", () => {
 });
 
 describe("empty states and stale buttons", () => {
+  it("/tokens is gone with the access by token: typed, it is a command the bot doesn't know", async () => {
+    await linkOwner();
+    expect(await command("/tokens")).toBe("Ainda não conheço esse comando. Use /ajuda para ver o que eu faço por aqui.");
+  });
+
   it("say so instead of acting: nothing open, nothing to pause, a session already gone, a button past its 10 minutes", async () => {
     await linkOwner();
     expect(await command("/pausar_rotinas")).toBe("Nenhuma rotina da Zuri ativa.");

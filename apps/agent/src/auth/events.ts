@@ -1,5 +1,6 @@
 import {
   AUTH_ACTIVITY_GROUPS,
+  AUTH_EVENT_KINDS,
   AUTH_EVENT_DETAIL_DAYS,
   type AuthActivity,
   type AuthActivityQuery,
@@ -216,11 +217,11 @@ export class AuthEvents {
       where.push("at >= ?");
       params.push(this.clock() - query.days * DAY_MS);
     }
-    if (query.group !== undefined) {
-      const kinds = AUTH_ACTIVITY_GROUPS[query.group];
-      where.push(`kind IN (${kinds.map(() => "?").join(", ")})`);
-      params.push(...kinds);
-    }
+    // Always by kind: a row of a kind that no longer exists (the remote tokens', removed on 11/11/2026,
+    // kept for 90 days) would fail the screen's schema and take the whole page with it.
+    const kinds = query.group !== undefined ? AUTH_ACTIVITY_GROUPS[query.group] : AUTH_EVENT_KINDS;
+    where.push(`kind IN (${kinds.map(() => "?").join(", ")})`);
+    params.push(...kinds);
     if (query.ip !== undefined) {
       // A prefix compared as text: no LIKE, so "%" or "_" in the input mean nothing (CF-6-01 also caps LIKE patterns).
       where.push("substr(lower(ip), 1, ?) = ?");

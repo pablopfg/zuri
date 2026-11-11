@@ -48,6 +48,8 @@ export const ptBRSecurity = {
   "web.accessLog.reason.other_country": "usada em outro país",
   "web.accessLog.reason.too_many_networks": "usada em redes demais",
   "web.accessLog.reason.daily_cap": "limite diário atingido: redes desconhecidas suspensas",
+  "web.accessLog.reason.network_daily_cap": "limite diário de senhas erradas desta rede",
+  "web.accessLog.reason.unbound": "aberta antes da proteção por navegador",
   "web.accessLog.reason.recovery": "recuperação de senha",
   "web.accessLog.reason.wrong_email": "e-mail diferente do da conta",
   "web.accessLog.reason.email_off": "envio de e-mail desligado",

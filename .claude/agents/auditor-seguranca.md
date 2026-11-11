@@ -16,7 +16,7 @@ Siga `docs/qa/pentest.md`: para cada área do escopo, parta do catálogo de ataq
 
 ## O que procurar
 
-- **Acesso:** rota fora de sessão + CSRF; ação sensível sem senha recente; token remoto alcançando rota proibida; limitadores de login, recuperação e aprovação.
+- **Acesso:** rota fora de sessão + CSRF; ação sensível sem senha recente; pedido com `Authorization` aceito em qualquer rota; sessão usada fora do navegador, do país ou das redes em que foi aberta; limitadores de login, recuperação e aprovação.
 - **Sessão e cookies:** `__Host-`, `Secure`, `HttpOnly`, `SameSite=Strict`; expiração por inatividade e máxima.
 - **Agente:** ferramenta com permissão errada; `destructive` sem aprovação; prévia vinda do texto do modelo; conteúdo fora de `<data>`; execução agendada com escrita.
 - **Telegram:** ordem das travas, `allowed_updates`, conta estranha gravando algo, `callback_data` com dado do dono, trava de leitura, reconhecimento cruzado de alertas, abuso de `/bloquear`, código de aprovação reutilizável, token de `/aprovar` em log ou URL de caminho, trabalho em `ctx.waitUntil`.

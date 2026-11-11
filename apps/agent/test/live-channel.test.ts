@@ -142,6 +142,21 @@ describe("opening the live channel", () => {
     }
   });
 
+  it("a copied session cookie alone opens no channel: without the browser's device cookie the session ends and the owner is told", async () => {
+    await signIn();
+    const session = cookie.split("; ").find((part) => part.startsWith("__Host-zuri_session=")) ?? "";
+    expect(session).not.toBe("");
+    const blocked = () => inOwner((agent) => agent.sql<{ n: number }>`SELECT count(*) AS n FROM zur_auth_events WHERE kind = 'session_blocked' AND reason = 'other_browser'`[0]?.n ?? 0);
+    const before = await blocked();
+    const res = await upgrade({ cookie: session });
+    expect(res.status).toBe(401);
+    expect(res.webSocket).toBeNull();
+    expect(await blocked()).toBe(before + 1);
+    // Ended for the owner's browser too.
+    expect((await upgrade()).status).toBe(401);
+    await signIn();
+  });
+
   it("is the only upgrade: other paths, a trailing slash and other methods stay refused at the Worker", async () => {
     for (const [path, method] of [
       ["/api/live/", "GET"],
@@ -163,6 +178,17 @@ describe("opening the live channel", () => {
     );
     expect(res.status).toBe(403);
     expect(res.webSocket).toBeNull();
+  });
+
+  it("a request with Authorization is refused by the object too, when it arrives without the Worker (an empty header included)", async () => {
+    for (const authorization of ["Bearer x", ""]) {
+      const res = await inOwner((agent) =>
+        agent.fetch(new Request(`${ORIGIN}/api/auth/session`, { headers: { ...CSRF, "cf-connecting-ip": IP, cookie, authorization } })),
+      );
+      expect(res.status, authorization).toBe(401);
+    }
+    const plain = await inOwner((agent) => agent.fetch(new Request(`${ORIGIN}/api/auth/session`, { headers: { ...CSRF, "cf-connecting-ip": IP, cookie } })));
+    expect(plain.status).toBe(200);
   });
 
   it("without the upgrade, the path is just an unknown route", async () => {

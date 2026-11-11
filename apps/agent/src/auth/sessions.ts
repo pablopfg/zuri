@@ -174,7 +174,7 @@ export class Sessions {
     this.db.run(`UPDATE zur_sessions SET confirmed_at = ?, confirmed_network = ? WHERE id = ?`, this.clock(), network, id);
   }
 
-  /** The networks this session was used from; a session from before migration 34 has only the sign-in's. */
+  /** The networks this session was used from; one whose list is empty has only the sign-in's. */
   networksOf(row: SessionRow): string[] {
     return row.networks ? row.networks.split("\n") : [row.network];
   }
@@ -201,7 +201,7 @@ export class Sessions {
    */
   recentAuthUntil(row: SessionRow): number | null {
     if (row.confirmed_at === null) return null;
-    if (row.seen_network !== undefined && row.confirmed_network !== null && row.seen_network !== row.confirmed_network) return null;
+    if (row.seen_network !== undefined && row.seen_network !== row.confirmed_network) return null;
     const until = row.confirmed_at + STEP_UP_WINDOW_MS;
     return until > this.clock() ? until : null;
   }

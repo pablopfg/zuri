@@ -461,6 +461,8 @@ export const en: Messages = {
   "web.accessLog.reason.other_country": "used in another country",
   "web.accessLog.reason.too_many_networks": "used on too many networks",
   "web.accessLog.reason.daily_cap": "daily limit reached: unknown networks paused",
+  "web.accessLog.reason.network_daily_cap": "this network's daily limit of wrong passwords",
+  "web.accessLog.reason.unbound": "opened before sessions were tied to a browser",
   "web.accessLog.reason.recovery": "password recovery",
   "web.accessLog.reason.wrong_email": "not the account's e-mail",
   "web.accessLog.reason.email_off": "e-mail sending off",

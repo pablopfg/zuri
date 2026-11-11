@@ -112,6 +112,20 @@ describe("the access log's pages and filters", () => {
     expect([...grouped].sort()).toEqual([...AUTH_EVENT_KINDS].sort());
   });
 
+  it("leaves out a row of a kind that no longer exists (the removed remote tokens'), so the screen's schema never meets it", async () => {
+    await withAuth("log-old-kind", async (h) => {
+      const now = h.clock.now();
+      insert(h, [
+        { at: now - 3000, kind: "logout" },
+        { at: now - 2000, kind: "remote_token_rejected" },
+        { at: now - 1000, kind: "telegram_token_revoked" },
+      ]);
+      const page = h.service.events.page({}, AUTH_ACTIVITY_LIMIT);
+      expect(page.events.map((e) => e.kind)).toEqual(["logout"]);
+      expect(authActivitySchema.safeParse(page).success).toBe(true);
+    });
+  });
+
   it.each([
     [AUTH_ACTIVITY_LIMIT - 1, false],
     [AUTH_ACTIVITY_LIMIT, false],

@@ -86,6 +86,8 @@ const REASON_LABEL: Record<string, MessageKey> = {
   passkey: "web.accessLog.reason.passkey",
   idle: "web.accessLog.reason.idle",
   daily_cap: "web.accessLog.reason.daily_cap",
+  network_daily_cap: "web.accessLog.reason.network_daily_cap",
+  unbound: "web.accessLog.reason.unbound",
   other_browser: "web.accessLog.reason.other_browser",
   other_country: "web.accessLog.reason.other_country",
   too_many_networks: "web.accessLog.reason.too_many_networks",

@@ -135,7 +135,7 @@ type PasswordSource = { kind: "stored" | "hash"; hash: string } | { kind: "plain
 
 /** The access log's reason for a refusal of the day's cap (LoginLimiter.waitDaily); empty for the 15-minute wait. */
 function dailyCap(error: unknown): string {
-  return error instanceof AppError && error.details?.daily === true ? "daily_cap" : "";
+  return error instanceof AppError && error.details?.daily === true ? "network_daily_cap" : "";
 }
 
 function sameSource(a: PasswordSource, b: PasswordSource | null): boolean {

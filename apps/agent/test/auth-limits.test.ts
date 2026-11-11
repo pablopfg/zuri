@@ -327,7 +327,21 @@ describe("the day's cap: 5 wrong passwords per network in 24 hours", () => {
       expect((refusal as AppError).details).toEqual({ retryAfter: 19 * 3600, daily: true });
       // Another network is not affected.
       expect(await outcome(h.auth.login(right(), client(OTHER), noCookies))).toBe("ok");
-      expect(h.events().filter((e) => e.kind === "login_rate_limited").map((e) => e.reason)).toEqual(["daily_cap"]);
+      expect(h.events().filter((e) => e.kind === "login_rate_limited").map((e) => e.reason)).toEqual(["network_daily_cap"]);
+    });
+  });
+
+  it("counts the /aprovar page's refused tries too: guessing a link five times in a day closes the sign-in from that network", async () => {
+    await withAuth("daily-approvals", async (h) => {
+      for (let i = 0; i < 5; i++) {
+        // What api/approvals.ts writes for an unknown token or a refused passkey.
+        h.service.limiter.assertAllowed(NET);
+        h.service.limiter.begin(NET);
+        h.clock.advance(HOUR_MS);
+      }
+      expect(() => h.service.limiter.assertAllowed(NET)).toThrow(AppError);
+      expect(await outcome(h.auth.login(right(), client(NET), noCookies))).toBe("RATE_LIMITED");
+      expect(await outcome(h.auth.login(right(), client(OTHER), noCookies))).toBe("ok");
     });
   });
 

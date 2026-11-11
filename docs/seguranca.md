@@ -370,7 +370,8 @@ chega na etapa 5). Recomendado ligar logo depois do primeiro login.
   espera até a mais antiga das cinco completar um dia (429 `RATE_LIMITED` com
   `Retry-After` e `details.daily: true`; na Atividade de acesso, "limite diário
   atingido"). Sem esse teto, uma rede que respeitasse os 15 minutos teria 288
-  chutes por dia. Vale para o login. A confirmação e a troca de senha, que só existem atrás de
+  chutes por dia. Vale para o login e para a página `/aprovar` do bot, que usa o
+  mesmo contador: link inventado ou passkey recusada conta como senha errada. A confirmação e a troca de senha, que só existem atrás de
   uma sessão aberta e presa ao navegador, ficam fora dele e seguem só a regra
   dos 15 minutos (SEC-A3-P1): senão quem divide uma rede com o dono, num hotel,
   gastaria o teto no login e deixaria a sessão dele um dia sem ações sensíveis

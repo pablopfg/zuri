@@ -182,11 +182,14 @@ describe("a session stays where it was opened", () => {
   });
 
   it("goes on from the same browser and network, without a write or an event", async () => {
-    await withAuth("bound-same", async ({ auth, events }) => {
+    await withAuth("bound-same", async ({ auth, events, db }) => {
       const signed = await auth.login(right(), client(NET), noCookies);
       const before = events().length;
+      const row = () => db.one(`SELECT device, country, networks, confirmed_network FROM zur_sessions`);
+      const bound = row();
       for (let i = 0; i < 3; i++) expect(await auth.validate(signed.token, false, from(NET, signed.deviceToken))).not.toBeNull();
       expect(events()).toHaveLength(before);
+      expect(row()).toEqual(bound);
     });
   });
 
@@ -219,6 +222,15 @@ describe("a session stays where it was opened", () => {
       expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken, "PT"))).toBeNull();
       expect(events().filter((e) => e.kind === "session_blocked")).toMatchObject([{ reason: "other_country", alert_pending: 1 }]);
       expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken))).toBeNull();
+    });
+  });
+
+  it("a session opened with no country from the edge is not compared either: a country showing up later ends nothing", async () => {
+    await withAuth("bound-no-country", async ({ auth, events }) => {
+      const signed = await auth.login(right(), from(NET, null, "").client, noCookies);
+      expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken, "PT"))).not.toBeNull();
+      expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken, "BR"))).not.toBeNull();
+      expect(events().filter((e) => e.kind === "session_blocked")).toEqual([]);
     });
   });
 

@@ -185,9 +185,9 @@ export function createApi(deps: ApiDeps) {
   const client = (c: Context<ApiEnv>): ClientInfo => clientInfo(c.req.raw, deps.development());
 
   // No access by token: the Worker refuses Authorization before the object; here too, in case a request
-  // ever arrives another way. It never falls back to the cookie.
+  // ever arrives another way (an empty header included). It never falls back to the cookie.
   app.use("*", async (c, next) => {
-    if (c.req.header("authorization") !== undefined) throw new AppError("UNAUTHORIZED");
+    if (c.req.raw.headers.has("authorization")) throw new AppError("UNAUTHORIZED");
     await next();
   });
 
