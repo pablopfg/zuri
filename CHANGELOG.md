@@ -19,6 +19,22 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) até juntar 10 merges, quando o workflow de versão escreve a seção.
 
+## [0.49.6] - 2026-11-11
+
+Mesclada às 19:09 (UTC-3) · commit [`6aa51a9`](https://github.com/pablopfg/Zuri/commit/6aa51a918436972d29354fad90c524fe079b66b5) · PR [#298](https://github.com/pablopfg/Zuri/pull/298) · Tira a integração com o n8n (eventos assinados do CRM)
+
+### Alterado
+
+- A Zuri não recebe mais eventos do n8n. O cartão **Eventos do n8n** e o aviso **Cliente novo vindo do n8n** saíram da tela **CRM**. Os clientes que já tinham chegado por eventos continuam guardados.
+
+### Segurança
+
+- O endereço `POST /api/crm/events/<chave>`, que aceitava eventos assinados sem sessão, e as rotas da chave dos eventos deixaram de existir. Uma chave que estivesse ligada não abre mais nada.
+
+### Atualização
+
+- Se você usa o Cloudflare Access e criou um aplicativo com **Bypass** para `api/crm/events/*`, apague-o no painel: esse endereço não existe mais.
+
 ## [0.49.5] - 2026-11-11
 
 Mesclada às 18:34 (UTC-3) · commit [`82ce061`](https://github.com/pablopfg/Zuri/commit/82ce0618f9d4578080ea5029470557a95388710c) · PR [#305](https://github.com/pablopfg/Zuri/pull/305) · Relógio falso anda de segundo em segundo nas novas consultas dos contatos
@@ -3270,7 +3286,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.5...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.6...develop
+[0.49.6]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.6
 [0.49.5]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.5
 [0.49.4]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.4
 [0.49.3]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.3
