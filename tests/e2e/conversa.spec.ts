@@ -31,19 +31,19 @@ const list = (page: Page) => page.getByRole("complementary", { name: "Conversas"
 const row = (page: Page, title: string) => list(page).getByRole("listitem").filter({ hasText: title });
 const DAY = 86_400_000;
 
-/** Answers the reads of the conversations as if `id` had been made and last used `days` days ago. */
+/** Answers the reads of the conversations (and a rename, which answers with the conversation) as if `id` had been made and last used `days` days ago. */
 async function age(page: Page, id: string, days: number) {
   const older = (iso: string) => new Date(Date.parse(iso) - days * DAY).toISOString();
   const aged = <T extends { id: string; createdAt: string; updatedAt: string }>(conversation: T): T =>
     conversation.id === id ? { ...conversation, createdAt: older(conversation.createdAt), updatedAt: older(conversation.updatedAt) } : conversation;
   await page.route(/\/api\/conversations(\/[0-9a-f-]{36})?(\?.*)?$/, async (route) => {
-    if (route.request().method() !== "GET") return route.fallback();
+    if (!["GET", "PATCH"].includes(route.request().method())) return route.fallback();
     const response = await route.fetch();
     const body = await response.json();
     if (body.conversations) body.conversations = body.conversations.map(aged);
     if (body.conversation) {
       body.conversation = aged(body.conversation);
-      if (body.conversation.id === id) body.messages = body.messages.map((message: { createdAt: string }) => ({ ...message, createdAt: older(message.createdAt) }));
+      if (body.conversation.id === id && body.messages) body.messages = body.messages.map((message: { createdAt: string }) => ({ ...message, createdAt: older(message.createdAt) }));
     }
     await route.fulfill({ response, json: body });
   });
@@ -81,6 +81,13 @@ test("each row shows when the conversation was used and renames by keyboard, the
   // The focus goes back to the row's menu, under its new name; the open conversation did not change.
   await expect(row(page, `Renomeada ${word}`).getByRole("button", { name: `Mais opções para “Renomeada ${word}”` })).toBeFocused();
   await expect(page).toHaveURL(new RegExp(`/conversa/${open}$`));
+  await expect(page.getByRole("heading", { level: 1, name: `Aberta ${word}` })).toBeVisible();
+  // Renaming is not using (#272): the renamed row stays below the one used after it, also after a reload.
+  const order = () => list(page).getByRole("listitem").filter({ hasText: word }).getByRole("link");
+  await expect(order()).toHaveText([new RegExp(`^Aberta ${word}`), new RegExp(`^Renomeada ${word}`)]);
+  await page.reload();
+  await expect(order()).toHaveText([new RegExp(`^Aberta ${word}`), new RegExp(`^Renomeada ${word}`)]);
+  await row(page, `Renomeada ${word}`).getByRole("button", { name: `Mais opções para “Renomeada ${word}”` }).focus();
   await expect(page.getByRole("heading", { level: 1, name: `Aberta ${word}` })).toBeVisible();
 
   // The menu and the dialog pass the accessibility check too, in the dark theme as well.
@@ -179,6 +186,16 @@ test("a conversation of another day says so and points to today's; today's has n
   await expectAccessible(page, "conversa anterior, escuro");
   await page.emulateMedia({ colorScheme: "light" });
 
+  // Renaming is not using (#272): the page keeps the day the server answers, so the notice and the group stay.
+  await page.getByRole("button", { name: "Mais opções", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Renomear" }).click();
+  await page.getByRole("dialog", { name: "Renomear" }).getByLabel("Nome da conversa").fill(`Velha ${word}`);
+  await page.getByRole("dialog", { name: "Renomear" }).getByRole("button", { name: "Salvar" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: `Velha ${word}` })).toBeVisible();
+  await expect(notice).toContainText("Conversa anterior.");
+  await expect(page.getByText(/^Desde ontem, \d\d:\d\d$/)).toBeVisible();
+  await expect(list(page).getByRole("region", { name: "Ontem" }).getByRole("link", { name: new RegExp(`Velha ${word}`) })).toBeVisible();
+
   await notice.getByRole("link", { name: `A de hoje segue em “De hoje ${word}”` }).click();
   await expect(page).toHaveURL(new RegExp(`/conversa/${today}$`));
   await expect(page.getByRole("heading", { level: 1, name: `De hoje ${word}` })).toBeVisible();
@@ -201,7 +218,7 @@ test("a conversation of another day with none today has the notice without a lin
     await route.fulfill({ response, json: body });
   });
   await page.route(new RegExp(`/api/conversations/${old}$`), async (route) => {
-    if (route.request().method() !== "GET") return route.fallback();
+    if (!["GET", "PATCH"].includes(route.request().method())) return route.fallback();
     const response = await route.fetch();
     const body = await response.json();
     const stamp = new Date(Date.now() - 9 * DAY).toISOString();
@@ -397,7 +414,7 @@ test("older messages come in above and the place on screen stays", async ({ page
   const id = await converse(page, `Comprida ${word}\n${tall}`);
   // The first page of this conversation carries its two messages; everything "older" is made up here.
   await page.route(new RegExp(`/api/conversations/${id}(\\?before=.*)?$`), async (route) => {
-    if (route.request().method() !== "GET") return route.fallback();
+    if (!["GET", "PATCH"].includes(route.request().method())) return route.fallback();
     const older = route.request().url().includes("before=");
     const response = await route.fetch({ url: route.request().url().replace(/\?before=.*$/, "") });
     const body = await response.json();
