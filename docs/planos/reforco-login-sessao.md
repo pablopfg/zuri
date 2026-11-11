@@ -31,7 +31,8 @@ A Zuri já tinha limite de tentativas por rede, verificação contra robôs, seg
 | CA8 | A 5ª rede de uma sessão funciona; a 6ª encerra a sessão com alerta | plano |
 | CA9 | Nenhum pedido com `Authorization` é aceito, nem com sessão válida junto; as rotas `/api/remote` não existem | Pablo |
 | CA10 | O bot não tem mais `/tokens`; o menu é reenviado | Pablo |
-| CA11 | A migration 34 só acrescenta e mantém as sessões abertas | regra do repositório |
+| CA11 | A migration 34 só acrescenta; sessão aberta antes dela é encerrada no primeiro pedido (SEC-A3-P2) | regra do repositório e auditoria |
+| CA12 | Confirmação e troca de senha atrás de uma sessão não entram no teto diário (SEC-A3-P1) | auditoria |
 
 ## 4. Escopo
 
@@ -168,7 +169,8 @@ Limite conhecido: quem copia os dois cookies e usa da mesma rede e país do dono
 | CA8 | "the 5th network still works (n) and the 6th ends the session (n+1)" | unitário | `auth-sessions.test.ts` |
 | CA9 | "refuses a request that carries Authorization, even with a live session" | integração | `auth-password-route.test.ts` |
 | CA10 | menu do bot sem `tokens` | integração | `telegram-routes.test.ts`, `telegram-lockdown.test.ts` |
-| CA11 | "upgrades a database at version 33 to 34" | integração | `migrations.test.ts` |
+| CA11 | "upgrades a database at version 33 to 34" e "SEC-A3-P2: a session opened before the binding existed ends at its first request" | integração e unitário | `migrations.test.ts`, `auth-sessions.test.ts` |
+| CA12 | "SEC-A3-P1: someone spending the cap on a shared network…" | unitário | `auth-limits.test.ts` |
 
 ## 11. Entrega
 

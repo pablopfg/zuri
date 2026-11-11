@@ -386,21 +386,21 @@ describe("the day's cap: 5 wrong passwords per network in 24 hours", () => {
     });
   });
 
-  it("a signed-in session confirming its password on a new network is capped there too, and keeps the session", async () => {
+  it("SEC-A3-P1: someone spending the cap on a shared network doesn't lock the owner's open session out of its password there", async () => {
     await withAuth("daily-confirm", async (h) => {
       const signed = await h.auth.login(right(), client(OTHER), noCookies);
-      const row = await live(h.service, signed.token);
-      for (let i = 0; i < 5; i++) {
-        expect(await outcome(h.service.confirm(row, { password: "senha errada de teste aqui" }, client(NET)))).toBe("INVALID_CREDENTIALS");
-        // Past the 15-minute window, in steps short enough for the open tab's presence.
-        for (let step = 0; step < 4; step++) {
-          h.clock.advance(4 * MINUTE);
-          await live(h.service, signed.token);
-        }
-      }
-      expect(await outcome(h.service.confirm(row, { password: TEST_PASSWORD }, client(NET)))).toBe("RATE_LIMITED");
-      // From the network it signed in on, the same session still confirms.
-      expect(await outcome(h.service.confirm(await live(h.service, signed.token), { password: TEST_PASSWORD }, client(OTHER)))).toBe("ok");
+      // A stranger on the hotel's Wi-Fi spends the day's five.
+      await wrongAnHourApart(h, 5);
+      const again = await h.auth.login(right(), client(OTHER), { session: signed.token, device: signed.deviceToken });
+      const row = await live(h.service, again.token);
+      // A new sign-in from there waits for a day, even from the owner's browser.
+      const refusal = await h.auth.login(right(), client(NET), { session: null, device: signed.deviceToken }).catch((e: AppError) => e);
+      expect((refusal as AppError).details).toMatchObject({ daily: true });
+      // The session the owner brought along still confirms its password there, under the 15-minute rule alone.
+      expect(await outcome(h.service.confirm(row, { password: TEST_PASSWORD }, client(NET)))).toBe("ok");
+      for (let i = 0; i < 3; i++) expect(await outcome(h.service.confirm(row, { password: "senha errada de teste aqui" }, client(NET)))).toBe("INVALID_CREDENTIALS");
+      const wait = await h.service.confirm(row, { password: TEST_PASSWORD }, client(NET)).catch((e: AppError) => e);
+      expect((wait as AppError).details).toEqual({ retryAfter: 15 * 60 });
     });
   });
 });

@@ -647,6 +647,13 @@ export class AuthService {
       this.events.record("session_ended", null, { reason: ended, session: row.id.slice(0, 16) });
       return null;
     }
+    // SEC-A3-P2: a session from before the binding (migration 34) has no browser to be compared with, and a
+    // password change in it would open another like it. It ends at its first request; the owner signs in again.
+    if (row.device === null) {
+      this.sessions.revoke(row.id);
+      this.events.record("session_ended", null, { reason: "unbound", session: row.id.slice(0, 16) });
+      return null;
+    }
     if (seen && !(await this.sameOrigin(row, seen))) return null;
     const touched = this.sessions.touch(row, activity);
     return seen ? { ...touched, seen_network: seen.client.network } : touched;
@@ -668,8 +675,7 @@ export class AuthService {
       if (this.sessions.revoke(row.id) > 0) this.events.record("session_blocked", seen.client, { reason, session, alert: true });
       return false;
     };
-    // A session from before the binding has no browser to compare with; it ends by itself within a day.
-    if (row.device !== null && (await this.browserId(seen.device)) !== row.device) return end("other_browser");
+    if ((await this.browserId(seen.device)) !== row.device) return end("other_browser");
     const country = seen.client.geo.country;
     if (row.country && country && country !== row.country) return end("other_country");
     const noted = this.sessions.noteNetwork(row, seen.client.network);
@@ -839,7 +845,7 @@ export class AuthService {
   /** Behind a live session: the network's own 3 tries apply, the distributed-guess locks don't. */
   private beginChecked(client: ClientInfo, kind: "confirm_failure" | "password_change_failure" | "mfa_failure"): number {
     try {
-      return this.limiter.begin(client.network, { trusted: true });
+      return this.limiter.begin(client.network, { trusted: true, session: true });
     } catch (error) {
       this.events.record(kind, client, { reason: "rate_limited" });
       throw error;

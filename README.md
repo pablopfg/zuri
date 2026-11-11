@@ -34,7 +34,7 @@ de um Durable Object e conversa com você pelo navegador e pelo Telegram.
 
 - **Seus dados ficam com você.** Cada pessoa publica a própria Zuri na própria conta Cloudflare. Tudo mora no SQLite de um Durable Object, sem banco externo nem servidor de terceiros.
 - **Custo zero.** Cabe no plano Free da Cloudflare, com contadores e tetos para a IA não passar da cota.
-- **Segura por padrão.** Turnstile em todo login, 2FA, passkeys, página de acessos e um agente sem shell, sem execução de código e sem HTTP livre.
+- **Segura por padrão.** Turnstile em todo login, teto diário de senhas erradas por rede, 2FA, passkeys, página de acessos e um agente sem shell, sem execução de código e sem HTTP livre.
 - **Web e Telegram.** Interface web instalável (PWA) e um bot de administração que passa pelos mesmos portões, com os mesmos dados.
 
 ## 📸 Telas
@@ -121,7 +121,7 @@ de um Durable Object e conversa com você pelo navegador e pelo Telegram.
 
 | | Área | O que faz |
 | :---: | --- | --- |
-| 🔑 | **Entrar e proteger a conta** | Primeiro acesso com código de instalação, senha forte, Turnstile em todo login, 2FA (autenticador e 10 códigos de recuperação), passkeys, sessões que expiram, "Esqueci minha senha" por e-mail e a página **Acessos**, com cada tentativa de entrar. |
+| 🔑 | **Entrar e proteger a conta** | Primeiro acesso com código de instalação, senha forte, Turnstile em todo login, 2FA (autenticador e 10 códigos de recuperação), passkeys, sessões que expiram e só valem no navegador em que foram abertas, sem acesso por token, "Esqueci minha senha" por e-mail e a página **Acessos**, com cada tentativa de entrar. |
 | 🧭 | **Interface** | PWA em pt-BR e inglês, tema claro, escuro ou do sistema, menu lateral recolhível em três grupos, menu de baixo no celular, paleta de comandos (Ctrl/⌘ K) e atualização em tempo real do que muda em qualquer aparelho. O Início cumprimenta pelo horário do seu fuso e mostra "Seu dia": tarefas, eventos e rotinas de hoje em volta da linha de agora. |
 | 💬 | **Conversa com ferramentas** | A Zuri cria e organiza tarefas, notas, memórias e eventos; o que apaga ou reescreve vira um cartão para você aprovar. Entende datas como "sexta que vem" e aceita voz. |
 | ✅ | **Tarefas, notas e memória** | Tarefas com prazo e prioridade, notas em Markdown que salvam sozinhas, com ditado e busca sem acento, memória com histórico, fila de conflitos e mapa das ligações, lixeira de 30 dias e busca pelo significado opcional. |
@@ -130,7 +130,7 @@ de um Durable Object e conversa com você pelo navegador e pelo Telegram.
 | 🔔 | **Avisos** | Central com sino, notificação no aparelho, e-mail e Telegram, prioridade que aprende e Diagnóstico das falhas dos últimos 30 dias. |
 | 🤖 | **Bot do Telegram** | Só a sua conta: avisos com botões, conversa por texto e voz, comandos rápidos sem IA, trava de leitura, aprovações com passkey ou código e modo de bloqueio para emergências. |
 | 📅 | **Google** | Agenda (ver, criar e editar, em tempo real, com a semana no seu horário de trabalho), Contatos só para leitura por etiqueta, com ficha em grupos e atalhos para ligar e escrever, atualizados no intervalo que você escolher (5 minutos por padrão), e Avaliações do Perfil da Empresa com rascunho, conferência e publicação aprovada. |
-| 🔌 | **Integrações** | Servidores MCP com aprovação por chamada, CRM interno com eventos assinados do n8n. Não há acesso por token: só o navegador com a sessão do dono entra. |
+| 🔌 | **Integrações** | Servidores MCP com aprovação por chamada e CRM interno com eventos assinados do n8n. |
 | 💾 | **Dados** | Exportar e importar em JSON, uso do armazenamento e backup automático diário cifrado no R2 (opcional ⚠️), com 7 cópias. |
 | 🚀 | **Deploy** | Cada merge na `main` roda a CI, espera a sua aprovação e publica o Worker só no seu domínio, com release e changelog em pt-BR. |
 

@@ -47,6 +47,13 @@ export interface LimitContext {
    * and only until MAX_TRUSTED_FAILURES wrong passwords under such trust.
    */
   trusted?: boolean;
+  /**
+   * The check runs behind a live session (confirm, password change): the day's
+   * cap doesn't apply (SEC-A3-P1). Otherwise anyone sharing a network with the
+   * owner (a hotel's Wi-Fi) could spend it at the sign-in and leave the owner,
+   * already signed in, a day without any sensitive action there.
+   */
+  session?: boolean;
 }
 
 /**
@@ -173,7 +180,7 @@ export class LoginLimiter {
     const { day, window: failures } = this.networkFailures(network);
     // The day's cap first: its wait is the longer one, and the screen shows the one it is told. Only a
     // network without a recent sign-in, and only one at the cap costs that second read.
-    if (day >= MAX_DAILY_FAILURES_PER_NETWORK && !this.isTrusted(network)) throw this.waitDaily(network);
+    if (day >= MAX_DAILY_FAILURES_PER_NETWORK && context.session !== true && !this.isTrusted(network)) throw this.waitDaily(network);
     if (failures >= MAX_FAILURES_PER_NETWORK) throw this.wait(FAILURES, network);
     const robots = this.count([TURNSTILE_FAILED], network);
     if (robots >= MAX_TURNSTILE_FAILURES_PER_NETWORK) throw this.wait([TURNSTILE_FAILED], network);

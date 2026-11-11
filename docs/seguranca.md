@@ -232,7 +232,8 @@ e o e-mail do dono); sem ele, a página aponta para o código de instalação.
   O que isso não cobre: quem copia os dois cookies e usa da mesma rede e do
   mesmo país do dono. Para esse caso ficam os prazos curtos da sessão, a senha
   pedida de novo nas ações sensíveis e o alerta de rede nova. Sessões abertas
-  antes da migration 34 não têm o que comparar e terminam sozinhas em até 24 h.
+  antes da migration 34 não têm o que comparar e são encerradas no primeiro
+  pedido depois da atualização (SEC-A3-P2): é só entrar de novo.
   Sem `CF-Connecting-IP` (só fora da Cloudflare), um pedido com sessão recebe
   503, como o login. Trocar a senha mantém a sessão nova no mesmo navegador.
 - Entrar encerra a sessão que o navegador já tinha: um cookie plantado antes do
@@ -369,7 +370,11 @@ chega na etapa 5). Recomendado ligar logo depois do primeiro login.
   espera até a mais antiga das cinco completar um dia (429 `RATE_LIMITED` com
   `Retry-After` e `details.daily: true`; na Atividade de acesso, "limite diário
   atingido"). Sem esse teto, uma rede que respeitasse os 15 minutos teria 288
-  chutes por dia. Vale para login, confirmação e troca de senha. As redes do
+  chutes por dia. Vale para o login. A confirmação e a troca de senha, que só existem atrás de
+  uma sessão aberta e presa ao navegador, ficam fora dele e seguem só a regra
+  dos 15 minutos (SEC-A3-P1): senão quem divide uma rede com o dono, num hotel,
+  gastaria o teto no login e deixaria a sessão dele um dia sem ações sensíveis
+  ali. As redes do
   dono (login com sucesso nos últimos 30 dias) ficam de fora e mantêm só a regra
   dos 15 minutos: errar a senha em casa nunca tranca o dono por um dia. O cookie
   de aparelho não dá essa isenção. Não existe bloqueio da conta inteira por

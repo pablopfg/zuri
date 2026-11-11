@@ -293,13 +293,16 @@ describe("a session stays where it was opened", () => {
     });
   });
 
-  it("a session opened before the binding existed is not compared, and ends by its own limits", async () => {
-    await withAuth("bound-legacy", async ({ auth, db, clock }) => {
+  it("SEC-A3-P2: a session opened before the binding existed ends at its first request, whoever asks", async () => {
+    await withAuth("bound-legacy", async ({ auth, db, events }) => {
       const signed = await auth.login(right(), client(NET), noCookies);
       db.run(`UPDATE zur_sessions SET device = NULL, country = '', networks = '', confirmed_network = NULL`);
-      expect(await auth.validate(signed.token, true, from(NET, null))).not.toBeNull();
-      clock.advance(6 * HOUR);
-      expect(await auth.validate(signed.token, true, from(NET, null))).toBeNull();
+      expect(await auth.validate(signed.token, true, from(NET, signed.deviceToken))).toBeNull();
+      expect(db.all(`SELECT id FROM zur_sessions`)).toEqual([]);
+      expect(events().filter((e) => e.kind === "session_ended").map((e) => e.reason)).toEqual(["unbound"]);
+      // Signing in again opens a bound one.
+      const again = await auth.login(right(), client(NET), noCookies);
+      expect(await auth.validate(again.token, true, from(NET, again.deviceToken))).not.toBeNull();
     });
   });
 });
