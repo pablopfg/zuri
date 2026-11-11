@@ -44,6 +44,28 @@ async function turnOn(): Promise<ContactsStatus> {
   return (await synced.json()) as ContactsStatus;
 }
 
+/** How many times the alarm was set again while `work` ran (the routes that move a time must do it). */
+async function countRearms(work: () => Promise<unknown>): Promise<number> {
+  let count = 0;
+  const real = await inOwner((agent) => {
+    const { automations } = agent.store;
+    const original = automations.rearm;
+    automations.rearm = (...args: Parameters<typeof original>) => {
+      count++;
+      return original.apply(automations, args);
+    };
+    return original;
+  });
+  try {
+    await work();
+  } finally {
+    await inOwner((agent) => {
+      agent.store.automations.rearm = real;
+    });
+  }
+  return count;
+}
+
 beforeAll(async () => {
   const res = await call(`${ORIGIN}/api/auth/login`, {
     method: "POST",
@@ -74,6 +96,8 @@ afterEach(async () => {
     const { db } = agent.store;
     const state = new InternalState(db);
     state.delete("lockdown_until");
+    // The owner's interval outlives turning off: each test starts from the installation's.
+    db.run(`UPDATE zur_contact_sync SET sync_every_min = 5`);
     state.delete("google_oauth_pending");
     agent.store.contacts.disable();
     for (const table of ["zur_google_calendars", "zur_google_account", "zur_auth_events", "zur_notices"]) db.run(`DELETE FROM ${table}`);
@@ -112,13 +136,17 @@ describe("/api/google/contacts", () => {
       expect(status.syncEveryMinutes).toBe(minutes);
       expect(Date.parse(status.nextSyncAt ?? "") - Date.parse(status.lastSyncAt ?? "")).toBe(minutes * 60_000);
     }
-    // The alarm follows: what is due next is the read the screen was told of.
     const status = (await (await api("GET", "/google/contacts")).json()) as ContactsStatus;
     expect(await inOwner((agent) => agent.store.contacts.nextDue())).toBe(Date.parse(status.nextSyncAt ?? ""));
+    // The alarm itself is set again by the route, so a shorter interval doesn't wait for the old wake.
+    const rearmed = await countRearms(() => api("PATCH", "/google/contacts/settings", { syncEveryMinutes: 5 }));
+    expect(rearmed).toBe(1);
+    const alarm = await runInDurableObject(owner(), (_agent: ZuriAgent, state) => state.storage.getAlarm());
+    const short = (await (await api("GET", "/google/contacts")).json()) as ContactsStatus;
+    expect(alarm ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(Date.parse(short.nextSyncAt ?? ""));
     // Without a session, nothing.
     expect((await api("PATCH", "/google/contacts/settings", { syncEveryMinutes: 30 }, false)).status).toBe(401);
-    expect(((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).syncEveryMinutes).toBe(15);
-    await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET sync_every_min = 5 WHERE id = 1`));
+    expect(((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).syncEveryMinutes).toBe(5);
   });
 
   it("asks for the password typed recently to turn the contacts on, to add a label and to turn them off", async () => {

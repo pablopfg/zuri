@@ -30,7 +30,7 @@ import { log } from "../log.ts";
 import { type GuardContext, guard, languageOf, withSignature } from "./guard.ts";
 import { type ReviewAi, ReviewResponder } from "./responder.ts";
 import { forgetReviews } from "./store.ts";
-import { firstName, ratingOf, triage } from "./triage.ts";
+import { firstName, ratingOf, suspicious, triage } from "./triage.ts";
 
 /**
  * Google reviews (step 19c): reads the reviews of the profiles the owner
@@ -731,8 +731,11 @@ export class ReviewService {
       }
       // Only Google's time moved (the reviewer saved the same stars and the same text again): not an
       // edit. The time is kept, so the approval's version and the next check see the review as Google
-      // has it; the triage, the draft and the proposal were made for this same text and stay.
-      if (row.rating === rating && row.comment === comment && row.first_name === name && row.anonymous === anonymous) {
+      // has it; the triage, the draft and the proposal were made for this same text and stay. The text
+      // as Google sends it counts too: an invisible mark slipped in by an edit is gone from the text
+      // Zuri keeps, and must still send the review to the team (SEC-A6-01), so that one is an edit.
+      const marked = suspicious(comment, typeof review.comment === "string" ? review.comment : "");
+      if (row.rating === rating && row.comment === comment && row.first_name === name && row.anonymous === anonymous && marked === row.reasons.includes("suspicious")) {
         if (row.state === "sending") return;
         this.db.run(`UPDATE zur_reviews SET updated_at = ? WHERE id = ?`, updated, row.id);
         if (reply !== row.reply) this.applyReply(row, reply);
@@ -1148,8 +1151,15 @@ export class ReviewService {
     if (updated !== row.updated_at || ratingOf(current.starRating) !== row.rating || comment !== row.comment) {
       // Changed at Google since the owner read it: triaged again, nothing published.
       restore();
+      const raw = typeof current.comment === "string" ? current.comment : "";
+      if (ratingOf(current.starRating) === row.rating && comment === row.comment && suspicious(comment, raw) === row.reasons.includes("suspicious")) {
+        // Only Google's time moved, as in a check: the draft stays, the time is kept and the owner, whose
+        // screen reads the review again, approves the version Google has now. Nothing published here.
+        this.db.run(`UPDATE zur_reviews SET updated_at = ? WHERE id = ?`, updated, id);
+        throw new AppError("TARGET_CHANGED", "error.reviewChanged");
+      }
       const found: Found = { negatives: [], worse: [], drafts: 0 };
-      const next = { rating: ratingOf(current.starRating), name: firstName(current.reviewer?.displayName, current.reviewer?.isAnonymous), anonymous: current.reviewer?.isAnonymous ? 1 : 0, comment, raw: typeof current.comment === "string" ? current.comment : "", updated, reply: cleanBlock(current.reviewReply?.comment, REVIEW_LIMITS.commentMax) || null };
+      const next = { rating: ratingOf(current.starRating), name: firstName(current.reviewer?.displayName, current.reviewer?.isAnonymous), anonymous: current.reviewer?.isAnonymous ? 1 : 0, comment, raw, updated, reply: cleanBlock(current.reviewReply?.comment, REVIEW_LIMITS.commentMax) || null };
       this.db.transaction(() => this.changed(this.byId(id) as ReviewRow, next, found));
       // The row now holds Google's time, so the next check sees nothing new: the team hears of it here.
       this.tell(found);

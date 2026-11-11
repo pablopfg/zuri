@@ -71,6 +71,8 @@ export function registerReviewRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
    */
   app.patch("/reviews/interval", async (c) => {
     const { syncEveryMinutes } = await readJson(c.req.raw, reviewIntervalSchema, 1024);
+    // As the contacts' settings: only while on (the field shows only then).
+    if (!deps().reviews.status().enabled) throw new AppError("CONFLICT", "error.reviewsOff");
     const status = deps().reviews.setInterval(syncEveryMinutes);
     await deps().rearm();
     return Response.json(status);

@@ -119,6 +119,22 @@ describe("the contacts at the owner's interval", () => {
       expect(world.contacts.status().nextSyncAt).toBe(iso(world.clock.now + 1_440 * MINUTE));
     }));
 
+  it("a sync that waits for the owner (a problem) or for its next pages keeps its time when the interval changes", () =>
+    withChatWorld(async (world) => {
+      addContact(world, "c1", "Ana");
+      await turnContactsOn(world);
+      const planned = world.clock.now + 5 * MINUTE;
+      // The People API turned off at Google: the sync waits six hours and the card says what to do.
+      world.db.run(`UPDATE zur_contact_sync SET problem = 'api_disabled', status = 'error', next_sync = ? WHERE id = 1`, world.clock.now + 360 * MINUTE);
+      expect(world.contacts.configure({ syncEveryMinutes: 10 }).nextSyncAt).toBe(iso(world.clock.now + 360 * MINUTE));
+      // A read cut in pages, with the rest planned a minute out: the interval doesn't push it away.
+      world.db.run(`UPDATE zur_contact_sync SET problem = NULL, status = 'ok', page_mode = 'full', page_token = 'p2', next_sync = ? WHERE id = 1`, world.clock.now + MINUTE);
+      expect(world.contacts.configure({ syncEveryMinutes: 60 }).nextSyncAt).toBe(iso(world.clock.now + MINUTE));
+      // With nothing of that, it moves.
+      world.db.run(`UPDATE zur_contact_sync SET page_mode = NULL, page_token = NULL, next_sync = ? WHERE id = 1`, planned);
+      expect(world.contacts.configure({ syncEveryMinutes: 30 }).nextSyncAt).toBe(iso(world.clock.now + 30 * MINUTE));
+    }));
+
   it("a row with an interval out of the range (a damaged one) is read as the nearest allowed", () =>
     withChatWorld(async (world) => {
       addContact(world, "c1", "Ana");
@@ -181,6 +197,9 @@ describe("a contact is stored again only when what Zuri keeps of it changed", ()
     ["a phone", { phoneNumbers: [{ value: "(11) 98888-0002", canonicalForm: "+5511988880002" }] }, "Ana"],
     ["the same phone read by Google as another number", { phoneNumbers: [{ value: "(11) 99999-0001", canonicalForm: "+5521999990001" }] }, "Ana"],
     ["a note", { biographies: [{ value: "Prefere contato pela manhã" }] }, "Ana"],
+    ["an e-mail", { emailAddresses: [{ value: "ana@exemplo.com.br" }] }, "Ana"],
+    ["the birthday", { birthdays: [{ date: { month: 3, day: 9 } }] }, "Ana"],
+    ["a special date", { events: [{ type: "Retorno", date: { month: 7, day: 21 } }] }, "Ana"],
   ])("%s that changed is stored, and the screens are told", (_what, patch, name) =>
     withChatWorld(async (world) => {
       addContact(world, "c1", "Ana", { phoneNumbers: [{ value: "(11) 99999-0001", canonicalForm: "+5511999990001" }] });
@@ -268,6 +287,18 @@ describe("the reviews at the owner's interval", () => {
       expect(world.reviews.status().nextSyncAt).toBe(iso(world.clock.now + 1_440 * MINUTE));
     }));
 
+  it("a check that waits for the owner (the access not granted by Google) keeps its time when the interval changes", () =>
+    withReviewsWorld(async (world) => {
+      addReview(world, "old", 5, "Muito bom");
+      await turnReviewsOn(world);
+      world.sim.business.failure = { status: 403, body: { error: { code: 403, status: "PERMISSION_DENIED" } } };
+      world.clock.now += 10 * MINUTE;
+      expect(await world.reviews.check("alarm")).toBe("failed");
+      const status = world.reviews.status();
+      expect(status.problem).not.toBeNull();
+      expect(world.reviews.setInterval(5)).toMatchObject({ syncEveryMinutes: 5, nextSyncAt: status.nextSyncAt });
+    }));
+
   it("the interval can be picked before the reviews are turned on, and a damaged one is read as the nearest allowed", () =>
     withReviewsWorld(async (world) => {
       expect(world.reviews.setInterval(20)).toMatchObject({ enabled: false, syncEveryMinutes: 20, nextSyncAt: null });
@@ -297,9 +328,13 @@ describe("a review is triaged again only when its stars or its text changed", ()
       world.clock.now += 10 * MINUTE;
       const touched = iso(world.clock.now);
       world.sim.business.edit(LOCATION, "n1", { updateTime: touched });
+      const numberBefore = reviewsArea(world);
       expect(await world.reviews.check("alarm")).toBe("ok");
       const after = reviewRow(world, "n1");
       expect(after).toEqual({ ...before, updated_at: touched });
+      // The time is part of the version the owner approves: the screens are told, to read the review again.
+      expect(reviewsArea(world)).toBeGreaterThan(numberBefore);
+      expect(world.reviews.status().lastResult).toBe("changed");
       expect(world.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_review_events`)?.n).toBe(events);
       // The model wasn't asked for another draft (no Neurons spent on the same text).
       expect(world.requests.length).toBe(asked);
@@ -309,6 +344,71 @@ describe("a review is triaged again only when its stars or its text changed", ()
       expect(await world.reviews.check("alarm")).toBe("ok");
       expect(reviewsArea(world)).toBe(number);
       expect(world.reviews.status().lastResult).toBe("unchanged");
+    }));
+
+  it("approved before the next check: the old version is refused with the draft kept, and the new one publishes", () =>
+    withReviewsWorld(async (world) => {
+      addReview(world, "old", 5, "Muito bom");
+      await turnReviewsOn(world);
+      world.answers.push(draftAnswer("Obrigado pela visita! Ficamos muito felizes com a sua avaliação."), SECOND_OK);
+      world.clock.now += 10 * MINUTE;
+      addReview(world, "n1", 5, "Adorei o atendimento, todos muito gentis.");
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      const before = reviewRow(world, "n1");
+      const seen = await world.reviews.item(before as never);
+      const events = world.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_review_events WHERE action = 'changed'`)?.n;
+      // The reviewer saves the same review again, and the owner approves what is on the screen before any check.
+      world.clock.now += MINUTE;
+      const touched = iso(world.clock.now);
+      world.sim.business.edit(LOCATION, "n1", { updateTime: touched });
+      const text = before?.draft ?? "";
+      await expect(world.reviews.approve(seen.id, { text, version: seen.version }, "app")).rejects.toMatchObject({ code: "TARGET_CHANGED" });
+      // Nothing went out, the draft and the proposal are where they were, and no edit was recorded.
+      expect(world.sim.business.reviews.get(LOCATION)?.find((review) => review.reviewId === "n1")?.reviewReply).toBeUndefined();
+      expect(reviewRow(world, "n1")).toEqual({ ...before, updated_at: touched });
+      expect(world.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_review_events WHERE action = 'changed'`)?.n).toBe(events);
+      // The screen reads the review again and the owner approves the version Google has now.
+      const again = await world.reviews.item(reviewRow(world, "n1") as never);
+      expect(again.version).not.toBe(seen.version);
+      expect(await world.reviews.approve(again.id, { text, version: again.version }, "app")).toMatchObject({ state: "replied", reply: text });
+      expect(world.sim.business.reviews.get(LOCATION)?.find((review) => review.reviewId === "n1")?.reviewReply?.comment).toBe(text);
+    }));
+
+  it("SEC-A6-01: at the approval too, an invisible mark slipped into the same text drops the draft and nothing is published", () =>
+    withReviewsWorld(async (world) => {
+      addReview(world, "old", 5, "Muito bom");
+      await turnReviewsOn(world);
+      world.answers.push(draftAnswer("Obrigado pela visita! Ficamos muito felizes com a sua avaliação."), SECOND_OK);
+      world.clock.now += 10 * MINUTE;
+      addReview(world, "n1", 5, "Adorei o atendimento, todos muito gentis.");
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      const before = reviewRow(world, "n1");
+      const seen = await world.reviews.item(before as never);
+      world.clock.now += MINUTE;
+      world.sim.business.edit(LOCATION, "n1", { updateTime: iso(world.clock.now), comment: "Adorei o\u202eatendimento, todos muito gentis." });
+      await expect(world.reviews.approve(seen.id, { text: before?.draft ?? "", version: seen.version }, "app")).rejects.toMatchObject({ code: "TARGET_CHANGED" });
+      expect(reviewRow(world, "n1")).toMatchObject({ state: "escalated", draft: null });
+      expect(world.sim.business.reviews.get(LOCATION)?.find((review) => review.reviewId === "n1")?.reviewReply).toBeUndefined();
+    }));
+
+  it("SEC-A6-01: an edit that only slips an invisible mark into the same text is an edit: the draft goes and the team gets it", () =>
+    withReviewsWorld(async (world) => {
+      addReview(world, "old", 5, "Muito bom");
+      await turnReviewsOn(world);
+      world.answers.push(draftAnswer("Obrigado pela visita! Ficamos muito felizes com a sua avaliação."), SECOND_OK);
+      world.clock.now += 10 * MINUTE;
+      addReview(world, "n1", 5, "Adorei o atendimento, todos muito gentis.");
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      const before = reviewRow(world, "n1");
+      expect(before?.state).toBe("proposed");
+      // A right-to-left override where a space was: the text Zuri keeps comes out the same.
+      world.clock.now += 10 * MINUTE;
+      world.sim.business.edit(LOCATION, "n1", { updateTime: iso(world.clock.now), comment: "Adorei o\u202eatendimento, todos muito gentis." });
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      const after = reviewRow(world, "n1");
+      expect(after?.comment).toBe(before?.comment);
+      expect(after).toMatchObject({ state: "escalated", draft: null, needs_draft: 0 });
+      expect(JSON.parse(after?.reasons ?? "[]")).toContain("suspicious");
     }));
 
   it("a real edit (the text, or the stars) still drops the draft and is triaged again", () =>

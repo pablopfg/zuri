@@ -36,7 +36,8 @@ no máximo uma vez por minuto. Você escolhe o intervalo no campo **Conferir a
 cada (minutos)** do cartão, de 5 a 1.440 (um dia). Uma leitura sem novidade não
 regrava avaliação nenhuma e não faz a tela recarregar. Se o Google só muda a
 hora de uma avaliação, com as mesmas estrelas e o mesmo texto, a Zuri guarda a
-hora nova e mantém a triagem e o rascunho que já existiam.
+hora nova e mantém a triagem e o rascunho que já existiam. Se a mudança
+incluir um caractere invisível, ela conta como edição e vai para a equipe.
 
 | Avaliação | O que a Zuri faz |
 | --- | --- |

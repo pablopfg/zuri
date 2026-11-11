@@ -67,9 +67,8 @@ export function SyncIntervalForm({
         {t("web.sync.interval.save")}
       </Button>
       {nextAt && Date.parse(nextAt) > Date.now() && (
-        <p className="text-xs text-fg-muted" role="status">
-          {t("web.sync.interval.next", { when: dateTime(nextAt) })}
-        </p>
+        // Not a live region: the time moves at every read, and a screen reader would say it each time.
+        <p className="text-xs text-fg-muted">{t("web.sync.interval.next", { when: dateTime(nextAt) })}</p>
       )}
     </form>
   );

@@ -59,6 +59,8 @@ test("turns the reviews on, tells the team of a negative one and publishes an ap
   await saveEvery.click();
   await expect(page.getByRole("status").filter({ hasText: "Intervalo salvo" })).toBeVisible();
   await expect(saveEvery).toBeDisabled();
+  await expect(reviews.getByText("De 5 a 1440 minutos. Quando nada mudou no Google, nada é regravado aqui.")).toBeVisible();
+  await expect(reviews.getByText(/^Próxima leitura: \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
   await expectAccessible(page, "integracoes-avaliacoes");
   await every.fill("10");
   await saveEvery.click();

@@ -57,6 +57,28 @@ async function arrive(id: string, rating: number, comment?: string): Promise<Rev
   return found as ReviewItem;
 }
 
+/** How many times the alarm was set again while `work` ran (the routes that move a time must do it). */
+async function countRearms(work: () => Promise<unknown>): Promise<number> {
+  let count = 0;
+  const real = await inOwner((agent) => {
+    const { automations } = agent.store;
+    const original = automations.rearm;
+    automations.rearm = (...args: Parameters<typeof original>) => {
+      count++;
+      return original.apply(automations, args);
+    };
+    return original;
+  });
+  try {
+    await work();
+  } finally {
+    await inOwner((agent) => {
+      agent.store.automations.rearm = real;
+    });
+  }
+  return count;
+}
+
 beforeAll(async () => {
   const res = await call(`${ORIGIN}/api/auth/login`, {
     method: "POST",
@@ -84,6 +106,8 @@ afterEach(async () => {
     const { db } = agent.store;
     const state = new InternalState(db);
     state.delete("lockdown_until");
+    // The owner's interval outlives turning off: each test starts from the installation's.
+    db.run(`UPDATE zur_review_settings SET check_every_min = 10`);
     state.delete("google_oauth_pending");
     agent.store.reviews.disable();
     agent.testProvider = null;
@@ -140,11 +164,29 @@ describe("/api/reviews", () => {
     expect(await inOwner((agent) => agent.store.reviews.nextDue())).toBe(Date.parse(status.nextSyncAt ?? ""));
     // The level, the profile and the reply style are untouched: the interval never unlocks publishing.
     expect(status).toMatchObject({ level: on.level, enabled: true });
+    // The alarm itself is set again by the route, so a shorter interval doesn't wait for the old wake.
+    expect(await countRearms(() => api("PATCH", "/reviews/interval", { syncEveryMinutes: 1_440 }))).toBe(1);
+    expect(await countRearms(() => api("PATCH", "/reviews/interval", { syncEveryMinutes: 15 }))).toBe(1);
+    const alarm = await runInDurableObject(owner(), (_agent: ZuriAgent, state) => state.storage.getAlarm());
+    const short = (await (await api("GET", "/reviews/status")).json()) as ReviewsStatus;
+    expect(alarm ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(Date.parse(short.nextSyncAt ?? ""));
+    // A body past the route's 1 KiB is refused before it is read as JSON.
+    const big = await api("PATCH", "/reviews/interval", { syncEveryMinutes: 30, pad: "x".repeat(2_000) });
+    expect(big.status).toBe(400);
+    expect((await errorBody(big)).code).toBe("VALIDATION_FAILED");
+    // In a lockdown the route is closed, as the rest of the settings.
+    await inOwner((agent) => new InternalState(agent.store.db).set("lockdown_until", new Date(Date.now() + 3_600_000).toISOString()));
+    expect((await api("PATCH", "/reviews/interval", { syncEveryMinutes: 30 })).status).toBe(423);
+    await inOwner((agent) => new InternalState(agent.store.db).delete("lockdown_until"));
     // Without a session, or without the CSRF header, nothing.
     expect((await api("PATCH", "/reviews/interval", { syncEveryMinutes: 30 }, false)).status).toBe(401);
     expect((await call(`${ORIGIN}/api/reviews/interval`, { method: "PATCH", headers: { cookie, "cf-connecting-ip": IP, "content-type": "application/json" }, body: JSON.stringify({ syncEveryMinutes: 30 }) })).status).toBe(403);
     expect(((await (await api("GET", "/reviews/status")).json()) as ReviewsStatus).syncEveryMinutes).toBe(15);
-    await inOwner((agent) => agent.store.db.run(`UPDATE zur_review_settings SET check_every_min = 10 WHERE id = 1`));
+    // Turned off, there is nothing to plan: 409, as the contacts' settings.
+    expect((await api("DELETE", "/reviews")).status).toBe(200);
+    const off = await api("PATCH", "/reviews/interval", { syncEveryMinutes: 30 });
+    expect(off.status).toBe(409);
+    expect((await errorBody(off)).code).toBe("CONFLICT");
   });
 
   it("refuses malformed input", async () => {

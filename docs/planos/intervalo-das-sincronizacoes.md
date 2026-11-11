@@ -54,7 +54,7 @@ Em Configurações › Integrações › Google, o bloco Contatos ganha "Sincron
 
 - `packages/shared`: limites em `CONTACT_LIMITS` e `REVIEW_LIMITS`, `syncEveryMinutes` nos estados, `contactSettingsSchema` ganha o campo e `reviewIntervalSchema` é novo.
 - Banco: migration 33, `zur_contact_sync.sync_every_min` (padrão 5) e `zur_review_settings.check_every_min` (padrão 10), fora dos gatilhos de área.
-- Rotas: `PATCH /api/google/contacts/settings` aceita `syncEveryMinutes`; `PATCH /api/reviews/interval` é nova, com sessão e CSRF, sem senha recente (não muda o que é publicado), fora da lista dos tokens remotos e fora do modo de bloqueio.
+- Rotas: `PATCH /api/google/contacts/settings` aceita `syncEveryMinutes`; `PATCH /api/reviews/interval` é nova, com sessão e CSRF, só com as avaliações ligadas (409 desligadas), sem senha recente (não muda o que é publicado), fora da lista dos tokens remotos e fora do modo de bloqueio.
 - Comparação: fica no SQLite do próprio objeto. Um cache à parte (KV ou Redis) seria um recurso a mais, com custo e com uma segunda cópia para manter igual; a cópia que já existe é a referência. Contatos: `sameKept` compara nome mostrado, dados, chaves de busca e etiquetas. Avaliações: nota, texto, primeiro nome e anonimato.
 - Tela: `SyncIntervalForm.tsx`, usado pelas duas seções, carregado junto com o cartão do Google (fora do JS inicial).
 
@@ -64,7 +64,7 @@ Pior caso, as duas a cada 5 minutos: 576 despertares por dia, perto de 11.000 li
 
 ## 9. Segurança e privacidade
 
-Entrada validada com Zod (inteiro, faixa fechada, corpo estrito). O intervalo não alcança os tetos de publicação nem o nível das avaliações. Nenhum dado de contato ou avaliação vai para log. Manter o rascunho de uma avaliação só com hora nova não publica nada a mais: a aprovação continua presa à versão (que inclui a hora) e a avaliação é relida no Google antes de publicar.
+Entrada validada com Zod (inteiro, faixa fechada, corpo estrito). O intervalo não alcança os tetos de publicação nem o nível das avaliações. Nenhum dado de contato ou avaliação vai para log. Manter o rascunho de uma avaliação só com hora nova não publica nada a mais: a aprovação continua presa à versão (que inclui a hora) e a avaliação é relida no Google antes de publicar. Achado da auditoria (SEC-A6-01, baixo, corrigido): uma edição que só põe um caractere invisível no mesmo texto some na limpeza e passaria por "só a hora mudou"; o texto bruto do Google entra na comparação, e essa edição segue para a equipe sem rascunho. Na aprovação vale a mesma regra: só a hora nova devolve `TARGET_CHANGED` e mantém o rascunho, para o dono aprovar a versão atual.
 
 ## 10. Testes
 
