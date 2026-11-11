@@ -44,6 +44,7 @@ export async function seed(page: Page, base: string): Promise<{ conversationId: 
       "## Sala\n\n- Estante baixa na parede da janela\n- Luminária de piso perto do sofá\n- **Medir** o vão antes de comprar o tapete\n\n> Conferir se o condomínio permite furar a parede de concreto.",
   });
   await post("/api/notes", { title: "Receita de pão de fermentação natural", content: "1. 500 g de farinha\n2. 350 ml de água\n3. 100 g de levain\n4. 10 g de sal\n\nDescansar 12 h na geladeira." });
+  await post("/api/notes", { title: "Lista da mudança de apartamento", projectId, content: "- Caixas e fita\n- Etiquetas por cômodo\n- Plástico-bolha para as louças" });
   await post("/api/notes", { title: "Livros para ler em novembro", content: "- O Avesso da Pele\n- Torto Arado\n- Ensaio sobre a Cegueira" });
   for (const [content, category] of [
     ["Prefere reuniões pela manhã, antes das 11h.", "preference"],
@@ -52,6 +53,9 @@ export async function seed(page: Page, base: string): Promise<{ conversationId: 
     ["Treina na academia às terças e quintas.", "habit"],
     ["Ana é a irmã mais nova; aniversário em 12 de dezembro.", "person"],
     ["Está organizando a mudança para um apartamento novo.", "project"],
+    // Linked on the memory map: the folder's whole name, and two words in common with the memory above.
+    ["Quer terminar a mudança de apartamento até o fim do mês.", "goal"],
+    ["Faz o curso de fotografia às segundas, às 19h.", "habit"],
   ] as const) {
     await post("/api/memories", { content, category });
   }

@@ -1,4 +1,4 @@
-import { apiErrorSchema, type Memory, type MemoryCounts, type MemoryHistory, type MemoryReview, type MemoryWriteResult } from "@zuri/shared";
+import { apiErrorSchema, type Memory, type MemoryGraph, type MemoryCounts, type MemoryHistory, type MemoryReview, type MemoryWriteResult } from "@zuri/shared";
 import { beforeAll, describe, expect, it } from "vitest";
 import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD } from "./helpers.ts";
 
@@ -49,6 +49,7 @@ describe("the memory routes", () => {
     ["GET", "/memories"],
     ["POST", "/memories"],
     ["GET", "/memories/reviews"],
+    ["GET", "/memories/graph"],
     ["POST", `/memories/reviews/${MISSING}`],
     ["GET", `/memories/${MISSING}`],
     ["PATCH", `/memories/${MISSING}`],
@@ -180,5 +181,69 @@ describe("never send out (step 21, D3)", () => {
     expect((await refusal(await api("POST", `/memories/${MISSING}/local-only`, { localOnly: true }), 404)).code).toBe("NOT_FOUND");
     const off = await json<{ memory: Memory }>(await api("POST", `/memories/${memory.id}/local-only`, { localOnly: false }), 200);
     expect(off.memory.localOnly).toBe(false);
+  });
+});
+
+describe("the map of the memory (Sinal, S06)", () => {
+  const graph = async (query = "") => json<MemoryGraph>(await api("GET", `/memories/graph${query}`), 200);
+
+  it("links a memory to the folder it names, to titles with two words in common and to memories near it", async () => {
+    const folder = await json<{ project: { id: string } }>(await api("POST", "/projects", { name: "Mudança de apartamento" }), 201);
+    const task = await json<{ task: { id: string } }>(await api("POST", "/tasks", { title: "Encaixotar livros da mudança do apartamento" }), 201);
+    const note = await json<{ note: { id: string } }>(await api("POST", "/notes", { title: "Lista da mudança para o apartamento", content: "" }), 201);
+    await api("POST", "/notes", { title: "Receita de bolo de cenoura", content: "" });
+    const center = (await create("Está cuidando da mudança de apartamento para o bairro Água Verde")).memory;
+    const near = (await create("Quer terminar a mudança para o apartamento novo até o dia 20")).memory;
+    const far = (await create("Prefere chá de hortelã sem açúcar")).memory;
+
+    const whole = await graph();
+    expect(whole.truncated).toBe(false);
+    const ids = whole.memories.map((m) => m.id);
+    expect(ids).toEqual(expect.arrayContaining([center.id, near.id, far.id]));
+    const to = (id: string) => whole.links.filter((l) => l.from === id || l.to === id);
+    expect(to(center.id)).toEqual(
+      expect.arrayContaining([
+        { from: center.id, to: `folder:${folder.project.id}`, kind: "hub" },
+        { from: center.id, to: `task:${task.task.id}`, kind: "hub" },
+        { from: center.id, to: `note:${note.note.id}`, kind: "hub" },
+      ]),
+    );
+    expect(to(center.id).some((l) => l.kind === "near" && [l.from, l.to].includes(near.id))).toBe(true);
+    // One word in common, or none, links nothing.
+    expect(to(far.id)).toEqual([]);
+    expect(whole.hubs.find((h) => h.id === `folder:${folder.project.id}`)).toEqual({ id: `folder:${folder.project.id}`, kind: "folder", ref: folder.project.id, label: "Mudança de apartamento" });
+    expect(whole.hubs.some((h) => h.label.includes("bolo"))).toBe(false);
+    // Every link ends at something that came in the answer.
+    const known = new Set([...ids, ...whole.hubs.map((h) => h.id)]);
+    for (const link of whole.links) expect(known.has(link.from) && known.has(link.to), JSON.stringify(link)).toBe(true);
+
+    // Around one memory: it, what touches it, and nothing else.
+    const around = await graph(`?around=${center.id}`);
+    expect(around.memories.map((m) => m.id)).toEqual(expect.arrayContaining([center.id, near.id]));
+    expect(around.memories.some((m) => m.id === far.id)).toBe(false);
+    expect(around.hubs.map((h) => h.kind).sort()).toEqual(["folder", "note", "task"]);
+    const alone = await graph(`?around=${far.id}`);
+    expect(alone).toEqual({ memories: [expect.objectContaining({ id: far.id })], hubs: [], links: [], truncated: false });
+  });
+
+  it("a fact and the one that replaced it are linked as versions, and a pending conflict as a review", async () => {
+    const old = (await create("Trabalha na padaria Trigo Dourado como gerente")).memory;
+    const corrected = await json<MemoryWriteResult>(await api("POST", `/memories/${old.id}/correct`, { content: "Trabalha na livraria Entrelinhas como gerente" }), 201);
+    const around = await graph(`?around=${corrected.memory.id}`);
+    expect(around.links).toContainEqual({ from: old.id, to: corrected.memory.id, kind: "version" });
+    expect(around.memories.find((m) => m.id === old.id)?.status).toBe("historical");
+  });
+
+  it("refuses an unknown memory, a bad id, a repeated or unknown parameter", async () => {
+    expect((await refusal(await api("GET", `/memories/graph?around=${MISSING}`), 404)).code).toBe("NOT_FOUND");
+    for (const query of ["?around=1", "?around=", `?around=${MISSING}&around=${MISSING}`, "?limit=5", `?around=${MISSING.toUpperCase()}x`]) {
+      expect((await refusal(await api("GET", `/memories/graph${query}`), 400)).code, query).toBe("VALIDATION_FAILED");
+    }
+  });
+
+  it("a memory's text can't turn the word search into syntax", async () => {
+    const odd = (await create('NEAR("a" OR * AND ) -- "; DROP zur_memories \'')).memory;
+    const around = await graph(`?around=${odd.id}`);
+    expect(around.memories.map((m) => m.id)).toContain(odd.id);
   });
 });

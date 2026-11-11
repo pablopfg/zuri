@@ -2,8 +2,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MEMORY_CATEGORIES,
   MEMORY_CONTENT_MAX,
+  MEMORY_GRAPH_MEMORIES_MAX,
   type Memory,
   type MemoryCategory,
+  type MemoryGraph,
   type MemoryCounts,
   type MemoryFilter,
   type MemoryReview,
@@ -12,10 +14,10 @@ import {
   ptBRMemory,
   type Settings,
 } from "@zuri/shared";
-import { Archive, ArchiveRestore, BadgeCheck, Brain, CircleHelp, GitCompareArrows, History, Pencil, Plus, RefreshCw, Search, ShieldCheck, Trash2 } from "lucide-react";
-import { type FormEvent, useEffect, useId, useState } from "react";
-import { ActionsMenu } from "../../components/ActionsMenu.tsx";
-import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, fieldClass, PageHeader, SelectField, Loading, TextAreaField } from "../../components/ui.tsx";
+import { Brain, CircleHelp, GitCompareArrows, List, Maximize, Minus, Plus, Search, ShieldCheck, Type, Waypoints } from "lucide-react";
+import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, fieldClass, Notice, PageHeader, SelectField, Loading, TextAreaField } from "../../components/ui.tsx";
 import { MEMORIES_KEY, useMemories, useMemoryHistory, useMemoryReviews } from "../../hooks/memory.ts";
 import { SETTINGS_KEY } from "../../hooks/session.tsx";
 import { api, errorMessage } from "../../lib/api.ts";
@@ -23,7 +25,11 @@ import { FlashStatus, flashClass, useDebounced, useFlash } from "../../lib/lists
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { onMemorySearch } from "../../lib/palette.ts";
 import { useToast } from "../../components/Toaster.tsx";
-import { CATEGORY_LABEL, FILTER_LABEL, ORIGIN_LABEL, REASON_LABEL, STATUS_LABEL, TOPIC_LABEL } from "./labels.ts";
+import { CATEGORY_LABEL, FILTER_LABEL, HUB_LABEL, ORIGIN_LABEL, REASON_LABEL, STATUS_LABEL, TOPIC_LABEL } from "./labels.ts";
+// The map comes with this screen, which is already loaded on demand. As a piece of its own it made the
+// bundler cut a shared piece (the icons, the texts or the JSX runtime) out of the first load (rule P11).
+import MemoryMap from "./MemoryMap.tsx";
+import { HubPanel, MemoryPanel, useMemoryLinks } from "./MemoryPanel.tsx";
 
 // This screen's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRMemory);
@@ -33,23 +39,43 @@ const FILTERS = ["all", "active", "uncertain", "historical"] as const satisfies 
 const COUNT_OF: Record<(typeof FILTERS)[number], keyof MemoryCounts> = { all: "all", active: "active", uncertain: "uncertain", historical: "historical" };
 
 type Editing = { mode: "edit" | "correct"; memory: Memory };
+type ViewMode = "list" | "map";
+
+/** The whole map: the newest memories and their links. Asked only with the map open. */
+function useMemoryMap(enabled: boolean) {
+  return useQuery({
+    queryKey: [...MEMORIES_KEY, "graph", "all"],
+    queryFn: ({ signal }) => api<MemoryGraph>("/memories/graph", { signal }),
+    enabled,
+    staleTime: 15_000,
+  });
+}
+
+const chip = "inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors";
+const chipClass = (on: boolean) => cn(chip, on ? "border-transparent bg-accent-soft text-accent-text" : "border-border-strong bg-surface text-fg hover:bg-raised");
 
 /**
- * Memory: what Zuri knows about the owner. Facts that change keep their past
- * versions; possible conflicts wait here for the owner's answer; nothing is
- * overwritten or deleted without them.
+ * Memory: what Zuri knows about the owner and how each thing is linked. Facts
+ * that change keep their past versions; possible conflicts wait here for the
+ * owner's answer; nothing is overwritten or deleted without them. The list is
+ * the main, accessible view; the map shows the same memories as points.
  */
 export function MemoryPage() {
-  const { t } = useI18n();
+  const { t, plural } = useI18n();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
   const [category, setCategory] = useState<MemoryCategory | "">("");
   const [query, setQuery] = useState("");
+  const [view, setView] = useState<ViewMode>("list");
+  /** A memory's id, or a hub's ("note:<id>") picked on the map. */
+  const [selected, setSelected] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState(false);
   // A memory found in the command palette opens here with that search (revisão de design, D1).
   useEffect(
     () =>
       onMemorySearch((q) => {
         setFilter("all");
         setCategory("");
+        setView("list");
         setQuery(q);
       }),
     [],
@@ -66,6 +92,45 @@ export function MemoryPage() {
   const notify = (message: string, pending: boolean) => toast(message, { persistent: pending });
   // Saving by hand is the rarer visit (the Zuri saves most memories herself): a button and a dialog, so the list gets the top (stage 26c).
   const [creating, setCreating] = useState(false);
+
+  const whole = useMemoryMap(view === "map");
+  const selectedMemory = selected !== null && !selected.includes(":") ? selected : null;
+  // More memories than the map draws: with one chosen, the map is that memory and what touches it.
+  const around = useMemoryLinks(view === "map" && whole.data?.truncated ? selectedMemory : null);
+  const graph = around.data ?? whole.data;
+  const hub = selected?.includes(":") ? graph?.hubs.find((h) => h.id === selected) : undefined;
+  const filtered = filter !== "all" || category !== "" || q !== "";
+  const listed = useMemo(() => new Set(memories.data?.memories.map((m) => m.id)), [memories.data]);
+
+  const opener = useRef<HTMLElement | null>(null);
+  const focusPanel = useRef(false);
+  /**
+   * On a phone the panel takes the list's place: the focus goes to its heading as soon as it is
+   * drawn (the links load first), and comes back with "Voltar".
+   */
+  const heading = useCallback((node: HTMLHeadingElement | null) => {
+    if (!node || !focusPanel.current) return;
+    focusPanel.current = false;
+    node.focus();
+  }, []);
+  function select(id: string) {
+    if (selected === null) opener.current = document.activeElement as HTMLElement | null;
+    focusPanel.current = !window.matchMedia("(min-width: 1024px)").matches;
+    setSelected(id);
+  }
+  function back() {
+    const from = opener.current;
+    focusPanel.current = false;
+    flushSync(() => setSelected(null));
+    opener.current = null;
+    if (from?.isConnected) from.focus();
+    else document.querySelector<HTMLElement>(".zuri-memory-main button")?.focus();
+  }
+  const groups = useMemo(() => {
+    const by = new Map<MemoryCategory, Memory[]>();
+    for (const memory of memories.data?.memories ?? []) (by.get(memory.category) ?? by.set(memory.category, []).get(memory.category))?.push(memory);
+    return MEMORY_CATEGORIES.flatMap((item) => (by.has(item) ? [{ category: item, memories: by.get(item) ?? [] }] : []));
+  }, [memories.data]);
 
   return (
     <>
@@ -90,83 +155,171 @@ export function MemoryPage() {
         />
       </Dialog>
 
-      {(counts?.reviews ?? 0) > 0 && <ReviewQueue total={counts?.reviews ?? 0} onDone={toast} />}
-
-      <section aria-label={t("web.memory.listLabel")} className="space-y-3">
-        <fieldset className="flex gap-1 rounded-xl bg-raised p-1">
-          <legend className="sr-only">{t("web.memory.filterLabel")}</legend>
-          {FILTERS.map((item) => (
-            <button
-              key={item}
-              type="button"
-              aria-pressed={filter === item}
-              onClick={() => setFilter(item)}
-              className={cn(
-                "min-h-11 flex-auto whitespace-nowrap rounded-lg px-1.5 text-xs font-medium transition-colors sm:px-3 sm:text-sm",
-                filter === item ? "bg-surface text-fg shadow-sm ring-1 ring-border-strong" : "text-fg-muted hover:text-fg",
-              )}
-            >
-              {t(FILTER_LABEL[item])} {counts && <span className="tabular-nums text-fg-muted">{counts[COUNT_OF[item]]}</span>}
-            </button>
-          ))}
-        </fieldset>
-
-        <div className="grid gap-2 sm:grid-cols-[1fr_14rem]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" aria-hidden />
-            <input
-              type="search"
-              value={query}
-              maxLength={200}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("web.memory.search")}
-              aria-label={t("web.memory.search")}
-              className={cn(fieldClass, "pl-9")}
-            />
+      {(counts?.reviews ?? 0) > 0 && (
+        <section aria-label={t("web.memory.reviews.title")} className="rounded-2xl border border-border bg-surface shadow-sm">
+          <div className="flex flex-wrap items-center gap-3 p-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-raised text-fg-muted" aria-hidden>
+              <CircleHelp className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1 basis-56">
+              <h2 className="text-sm font-semibold">{plural("web.memory.reviews.strip", counts?.reviews ?? 0)}</h2>
+              <p className="text-sm text-fg-muted">{plural("web.memory.reviews.count", counts?.reviews ?? 0)}</p>
+            </div>
+            <Button variant="secondary" aria-expanded={reviewing} onClick={() => setReviewing((open) => !open)}>
+              {t("web.memory.reviews.open")}
+            </Button>
           </div>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as MemoryCategory | "")}
-            aria-label={t("web.memory.filterCategory")}
-            className={fieldClass}
-          >
-            <option value="">{t("web.memory.allCategories")}</option>
-            {MEMORY_CATEGORIES.map((item) => (
-              <option key={item} value={item}>
-                {t(CATEGORY_LABEL[item])}
-              </option>
-            ))}
-          </select>
-        </div>
+          {reviewing && (
+            <div className="border-t border-border p-4">
+              <ReviewQueue total={counts?.reviews ?? 0} onDone={toast} />
+            </div>
+          )}
+        </section>
+      )}
 
-        {memories.isPending ? (
-          <Loading />
-        ) : memories.isError ? (
-          <ErrorNotice error={memories.error} onRetry={() => void memories.refetch()} />
-        ) : memories.data.memories.length === 0 ? (
-          <EmptyState
-            icon={<Brain className="h-6 w-6" />}
-            title={q ? t("web.memory.empty.search") : (counts?.all ?? 0) === 0 ? t("web.memory.empty.title") : t("web.memory.empty.filter")}
-          >
-            {!q && (counts?.all ?? 0) === 0 && t("web.memory.empty.body")}
-          </EmptyState>
-        ) : (
-          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
-            {memories.data.memories.map((memory) => (
-              <MemoryRow
-                key={memory.id}
-                memory={memory}
-                glow={flashClass(flash.glowing, memory.id)}
-                onEdit={() => setEditing({ mode: "edit", memory })}
-                onCorrect={() => setEditing({ mode: "correct", memory })}
-                onHistory={() => setHistoryOf(memory)}
-                onDelete={() => setDeleting(memory)}
+      <div className="zuri-memory" data-open={selected !== null || undefined}>
+        <section aria-label={t("web.memory.listLabel")} className="zuri-memory-main space-y-3">
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <div className="relative min-w-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" aria-hidden />
+              <input
+                type="search"
+                value={query}
+                maxLength={200}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("web.memory.search")}
+                aria-label={t("web.memory.search")}
+                className={cn(fieldClass, "pl-9")}
               />
+            </div>
+            <fieldset className="grid min-w-0 grid-cols-2 gap-1 rounded-xl bg-raised p-1">
+              <legend className="sr-only">{t("web.memory.view")}</legend>
+              {(["list", "map"] as const).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  aria-pressed={view === item}
+                  onClick={() => setView(item)}
+                  className={cn("inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors", view === item ? "bg-surface text-fg shadow-sm ring-1 ring-border-strong" : "text-fg-muted hover:text-fg")}
+                >
+                  {item === "list" ? <List className="h-4 w-4" aria-hidden /> : <Waypoints className="h-4 w-4" aria-hidden />}
+                  {t(item === "list" ? "web.memory.view.list" : "web.memory.view.map")}
+                </button>
+              ))}
+            </fieldset>
+          </div>
+
+          <fieldset className="flex flex-wrap gap-1.5">
+            <legend className="sr-only">{t("web.memory.filterLabel")}</legend>
+            {FILTERS.map((item) => (
+              <button key={item} type="button" aria-pressed={filter === item} onClick={() => setFilter(item)} className={chipClass(filter === item)}>
+                {t(FILTER_LABEL[item])} {counts && <span className="tabular-nums">{counts[COUNT_OF[item]]}</span>}
+              </button>
             ))}
-          </ul>
-        )}
-        <FlashStatus count={flash.remote} />
-      </section>
+          </fieldset>
+          <fieldset className="flex flex-wrap gap-1.5">
+            <legend className="sr-only">{t("web.memory.filterCategory")}</legend>
+            <button type="button" aria-pressed={category === ""} onClick={() => setCategory("")} className={chipClass(category === "")}>
+              {t("web.memory.allCategories")}
+            </button>
+            {MEMORY_CATEGORIES.map((item) => (
+              <button key={item} type="button" aria-pressed={category === item} onClick={() => setCategory(item)} className={chipClass(category === item)}>
+                <i className="zuri-cat" data-cat={item} aria-hidden />
+                {t(CATEGORY_LABEL[item])}
+              </button>
+            ))}
+          </fieldset>
+
+          {view === "map" ? (
+            whole.isPending ? (
+              <Loading label={t("web.memory.map.loading")} />
+            ) : whole.isError ? (
+              <ErrorNotice error={whole.error} onRetry={() => void whole.refetch()} />
+            ) : !graph || graph.memories.length === 0 ? (
+              <EmptyState icon={<Waypoints className="h-6 w-6" />} title={t("web.memory.empty.title")}>
+                {t("web.memory.empty.body")}
+              </EmptyState>
+            ) : (
+              <>
+                {whole.data.truncated && <Notice>{t(around.data ? "web.memory.map.around" : "web.memory.map.truncated", { max: MEMORY_GRAPH_MEMORIES_MAX })}</Notice>}
+                <MemoryMap
+                  graph={graph}
+                  selected={selected}
+                  dimmed={(id) => filtered && !listed.has(id)}
+                  onSelect={select}
+                  texts={{
+                    label: t("web.memory.map.label"),
+                    hint: t("web.memory.map.hint"),
+                    zoomIn: t("web.memory.map.zoomIn"),
+                    zoomOut: t("web.memory.map.zoomOut"),
+                    fit: t("web.memory.map.fit"),
+                    names: t("web.memory.map.names"),
+                    hubName: (kind, name) => t("web.memory.hub.named", { kind: t(HUB_LABEL[kind]), name }),
+                    icons: {
+                      zoomIn: <Plus className="h-4 w-4" aria-hidden />,
+                      zoomOut: <Minus className="h-4 w-4" aria-hidden />,
+                      fit: <Maximize className="h-4 w-4" aria-hidden />,
+                      names: <Type className="h-4 w-4" aria-hidden />,
+                    },
+                  }}
+                />
+              </>
+            )
+          ) : memories.isPending ? (
+            <Loading />
+          ) : memories.isError ? (
+            <ErrorNotice error={memories.error} onRetry={() => void memories.refetch()} />
+          ) : memories.data.memories.length === 0 ? (
+            <EmptyState
+              icon={<Brain className="h-6 w-6" />}
+              title={q ? t("web.memory.empty.search") : (counts?.all ?? 0) === 0 ? t("web.memory.empty.title") : t("web.memory.empty.filter")}
+            >
+              {!q && (counts?.all ?? 0) === 0 && t("web.memory.empty.body")}
+            </EmptyState>
+          ) : (
+            groups.map((group) => (
+              <section key={group.category} aria-labelledby={`zuri-memory-${group.category}`} className="space-y-1.5">
+                <h2 id={`zuri-memory-${group.category}`} className="flex items-center gap-2 px-1 text-sm font-semibold">
+                  <i className="zuri-cat" data-cat={group.category} aria-hidden />
+                  {t(CATEGORY_LABEL[group.category])}
+                  <span className="font-normal tabular-nums text-fg-muted">{group.memories.length}</span>
+                </h2>
+                <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+                  {group.memories.map((memory) => (
+                    <MemoryRow key={memory.id} memory={memory} glow={flashClass(flash.glowing, memory.id)} chosen={selected === memory.id} onSelect={() => select(memory.id)} />
+                  ))}
+                </ul>
+              </section>
+            ))
+          )}
+          <FlashStatus count={flash.remote} />
+        </section>
+
+        <aside aria-label={t("web.memory.panel.label")} className="zuri-memory-panel">
+          {hub && graph ? (
+            <HubPanel
+              key={hub.id}
+              hub={hub}
+              memories={graph.memories.filter((m) => graph.links.some((l) => l.to === hub.id && l.from === m.id))}
+              heading={heading}
+              onSelect={select}
+              onBack={back}
+            />
+          ) : selectedMemory ? (
+            <MemoryPanel
+              key={selectedMemory}
+              id={selectedMemory}
+              heading={heading}
+              onSelect={select}
+              onBack={back}
+              onGone={back}
+              actions={{ onEdit: (memory) => setEditing({ mode: "edit", memory }), onCorrect: (memory) => setEditing({ mode: "correct", memory }), onHistory: setHistoryOf, onDelete: setDeleting }}
+            />
+          ) : (
+            <p className="text-sm leading-6 text-fg-muted">{t("web.memory.panel.empty")}</p>
+          )}
+        </aside>
+      </div>
 
       <ConflictReviewSetting />
 
@@ -178,6 +331,7 @@ export function MemoryPage() {
           onClose={() => setDeleting(null)}
           onDeleted={() => {
             setDeleting(null);
+            back();
             toast(t("web.memory.deleted"));
           }}
         />
@@ -265,121 +419,36 @@ const STATUS_TONE: Record<Memory["status"], string> = {
   historical: "bg-raised text-fg-muted",
 };
 
-function MemoryRow({
-  memory,
-  onEdit,
-  onCorrect,
-  onHistory,
-  onDelete,
-  glow,
-}: {
-  memory: Memory;
-  onEdit: () => void;
-  onCorrect: () => void;
-  onHistory: () => void;
-  onDelete: () => void;
-  glow: string;
-}) {
+/** A memory on the list: one button that opens it in the panel, where its actions and links are. */
+function MemoryRow({ memory, glow, chosen, onSelect }: { memory: Memory; glow: string; chosen: boolean; onSelect: () => void }) {
   const { t, dateTime } = useI18n();
-  const qc = useQueryClient();
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const past = memory.status === "historical";
-
-  async function setStatus(status: Memory["status"]) {
-    setPending(true);
-    setError(null);
-    try {
-      await api(`/memories/${memory.id}/status`, { method: "POST", body: { status } });
-      await qc.invalidateQueries({ queryKey: MEMORIES_KEY });
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setPending(false);
-    }
-  }
-
-  // Step 21 (plan D3): a marked memory never goes to a paid model.
-  async function setLocalOnly(localOnly: boolean) {
-    setPending(true);
-    setError(null);
-    try {
-      await api(`/memories/${memory.id}/local-only`, { method: "POST", body: { localOnly } });
-      await qc.invalidateQueries({ queryKey: MEMORIES_KEY });
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setPending(false);
-    }
-  }
-
-  const action = "inline-flex h-11 w-11 items-center justify-center rounded-xl text-fg-muted transition-colors hover:bg-raised hover:text-fg disabled:opacity-60";
   return (
-    <li className={cn("space-y-2 px-4 py-3", glow)}>
-      <p className={cn("whitespace-pre-wrap break-words text-[15px] leading-6", past && "text-fg-muted")}>{memory.content}</p>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className={cn("rounded-full px-2 py-0.5 font-medium", STATUS_TONE[memory.status])}>{t(STATUS_LABEL[memory.status])}</span>
-          <span className="rounded-full border border-border px-2 py-0.5 text-fg-muted">{t(CATEGORY_LABEL[memory.category])}</span>
-          {memory.origin !== "app" && <span className="rounded-full border border-border px-2 py-0.5 text-fg-muted">{t(ORIGIN_LABEL[memory.origin])}</span>}
-          {memory.author === "agent" && (
-            <span className="rounded-full border border-dashed border-border px-2 py-0.5 text-fg-muted" title={t("web.memory.author.agentHint")}>
-              {t("web.memory.author.agent")}
-            </span>
-          )}
+    <li className={glow}>
+      <button type="button" aria-pressed={chosen} onClick={onSelect} className={cn("block w-full space-y-1.5 px-4 py-3 text-left transition-colors hover:bg-raised", chosen && "bg-raised")}>
+        <span className={cn("block whitespace-pre-wrap break-words text-[15px] leading-6", past && "text-fg-muted")}>{memory.content}</span>
+        <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-fg-muted">
+          {memory.status !== "active" && <span className={cn("rounded-full px-2 py-0.5 font-medium", STATUS_TONE[memory.status])}>{t(STATUS_LABEL[memory.status])}</span>}
           {memory.localOnly && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 font-medium text-accent-text" title={t("web.memory.localOnlyHint")}>
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 font-medium text-accent-text">
               <ShieldCheck className="h-3 w-3" aria-hidden />
               {t("web.memory.localOnlyBadge")}
             </span>
           )}
-          {memory.validFrom && <span className="text-fg-muted">{t("web.memory.since", { date: memory.validFrom })}</span>}
-          <span className="text-fg-muted">{t("web.memory.savedAt", { time: dateTime(memory.updatedAt) })}</span>
-        </div>
-        <div className="flex flex-wrap items-center">
-          <button type="button" className={action} onClick={onEdit} disabled={pending} aria-label={t("web.memory.edit")} title={t("web.memory.edit")}>
-            <Pencil className="h-4 w-4" aria-hidden />
-          </button>
-          <ActionsMenu
-            name={memory.content}
-            busy={pending}
-            actions={[
-              ...(past ? [] : [{ label: t("web.memory.correct"), icon: <RefreshCw className="h-4 w-4" />, onSelect: onCorrect, disabled: pending }]),
-              {
-                label: t("web.memory.localOnly"),
-                icon: <ShieldCheck className="h-4 w-4" />,
-                onSelect: () => void setLocalOnly(!memory.localOnly),
-                checked: memory.localOnly,
-                disabled: pending,
-              },
-              { label: t("web.memory.history"), icon: <History className="h-4 w-4" />, onSelect: onHistory, disabled: pending },
-              ...(past
-                ? [{ label: t("web.memory.restore"), icon: <ArchiveRestore className="h-4 w-4" />, onSelect: () => void setStatus("active"), disabled: pending }]
-                : [
-                    memory.status === "active"
-                      ? { label: t("web.memory.markUncertain"), icon: <CircleHelp className="h-4 w-4" />, onSelect: () => void setStatus("uncertain"), disabled: pending }
-                      : { label: t("web.memory.confirmCurrent"), icon: <BadgeCheck className="h-4 w-4" />, onSelect: () => void setStatus("active"), disabled: pending },
-                    { label: t("web.memory.markPast"), icon: <Archive className="h-4 w-4" />, onSelect: () => void setStatus("historical"), disabled: pending },
-                  ]),
-              { label: t("web.memory.delete"), icon: <Trash2 className="h-4 w-4" />, onSelect: onDelete, danger: true, disabled: pending },
-            ]}
-          />
-        </div>
-      </div>
-      {error && (
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      )}
+          <span>{memory.author === "agent" ? t("web.memory.author.agent") : t("web.memory.author.owner")}</span>
+          {memory.origin !== "app" && <span>{t(ORIGIN_LABEL[memory.origin])}</span>}
+          {memory.validFrom && <span>{t("web.memory.since", { date: memory.validFrom })}</span>}
+          <span>{t("web.memory.savedAt", { time: dateTime(memory.updatedAt) })}</span>
+        </span>
+      </button>
     </li>
   );
 }
 
 function ReviewQueue({ total, onDone }: { total: number; onDone: (message: string) => void }) {
-  const { t, plural } = useI18n();
-  const reviews = useMemoryReviews(total > 0);
+    const reviews = useMemoryReviews(total > 0);
   return (
-    <Card title={t("web.memory.reviews.title")} description={plural("web.memory.reviews.count", total)} className="border-warning/40">
+    <>
       {reviews.isPending ? (
         <Loading />
       ) : reviews.isError ? (
@@ -391,7 +460,7 @@ function ReviewQueue({ total, onDone }: { total: number; onDone: (message: strin
           ))}
         </ul>
       )}
-    </Card>
+    </>
   );
 }
 

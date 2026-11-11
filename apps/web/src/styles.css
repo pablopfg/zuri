@@ -459,6 +459,146 @@ dialog::backdrop {
     @apply flex h-full max-w-none flex-col space-y-0 p-0;
   }
 
+  /*
+   * Memória (Sinal, S06). On a computer the list (or the map) and the panel of the chosen memory sit side
+   * by side; on a phone the panel takes the list's place while a memory is open (data-open).
+   */
+  .zuri-memory {
+    @apply grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem];
+  }
+  .zuri-memory-panel {
+    @apply rounded-2xl border border-border bg-surface p-4 shadow-sm max-lg:hidden lg:sticky lg:top-0;
+  }
+  /* A sticky box stacks on its own: while its "Mais opções" menu is open, it goes above the toasts with it. */
+  .zuri-memory-panel:has([role="menu"]) {
+    @apply z-[60];
+  }
+  .zuri-memory[data-open] > .zuri-memory-main {
+    @apply max-lg:hidden;
+  }
+  .zuri-memory[data-open] > .zuri-memory-panel {
+    @apply max-lg:block;
+  }
+  /* The dot of a memory's type, on the filters, the list, the panel and the map. */
+  .zuri-cat {
+    @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full;
+    background: var(--cat);
+  }
+  [data-cat] {
+    --cat: #64748b;
+  }
+  [data-cat="preference"] {
+    --cat: #0e7490;
+  }
+  [data-cat="goal"] {
+    --cat: #c2410c;
+  }
+  [data-cat="project"] {
+    --cat: #15803d;
+  }
+  [data-cat="habit"] {
+    --cat: #7c3aed;
+  }
+  [data-cat="person"] {
+    --cat: #be185d;
+  }
+  [data-cat="other"] {
+    --cat: #52525b;
+  }
+  .dark [data-cat] {
+    --cat: #94a3b8;
+  }
+  .dark [data-cat="preference"] {
+    --cat: #22d3ee;
+  }
+  .dark [data-cat="goal"] {
+    --cat: #fb923c;
+  }
+  .dark [data-cat="project"] {
+    --cat: #4ade80;
+  }
+  .dark [data-cat="habit"] {
+    --cat: #a78bfa;
+  }
+  .dark [data-cat="person"] {
+    --cat: #f472b6;
+  }
+  .dark [data-cat="other"] {
+    --cat: #a1a1aa;
+  }
+
+  /* The map: a dotted sheet, the points and their lines. Dragging is the map's, not the page's (touch-action). */
+  .zuri-memory-map {
+    @apply relative overflow-hidden rounded-2xl border border-border bg-surface shadow-sm;
+    height: clamp(22rem, 62vh, 40rem);
+    background-image: radial-gradient(var(--color-border) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  .zuri-memory-map > svg {
+    @apply absolute inset-0 block h-full w-full cursor-grab touch-none select-none;
+  }
+  .zuri-memory-map line {
+    stroke: var(--color-border-strong);
+    stroke-width: 1.25;
+  }
+  .zuri-memory-map line[data-kind="near"] {
+    stroke-dasharray: 4 4;
+  }
+  .zuri-memory-map line[data-on] {
+    stroke: var(--color-accent);
+    stroke-width: 2.25;
+  }
+  .zuri-memory-map line[data-off],
+  .zuri-memory-map g[data-off] {
+    opacity: 0.25;
+  }
+  .zuri-memory-map g[data-node] {
+    @apply cursor-pointer focus:outline-none;
+  }
+  .zuri-memory-map .hit {
+    fill: none;
+  }
+  .zuri-memory-map .dot {
+    fill: var(--cat);
+    stroke: var(--color-surface);
+    stroke-width: 2;
+  }
+  .zuri-memory-map g[data-hub] .dot {
+    fill: var(--color-surface);
+    stroke: var(--color-fg);
+    stroke-width: 2.5;
+  }
+  .zuri-memory-map .ring {
+    fill: none;
+    stroke: var(--color-accent);
+    stroke-width: 2.5;
+  }
+  .zuri-memory-map g[data-node]:focus-visible .hit {
+    stroke: var(--color-fg);
+    stroke-width: 2;
+    stroke-dasharray: 3 3;
+  }
+  .zuri-memory-map text {
+    @apply pointer-events-none text-[11px] font-medium;
+    fill: var(--color-fg);
+    paint-order: stroke;
+    stroke: var(--color-surface);
+    stroke-width: 3px;
+  }
+  /* On a phone a name shows only for the point in use (or with "Mostrar os nomes" on). */
+  .zuri-memory-map text:not([data-always]) {
+    @apply max-sm:hidden;
+  }
+  .zuri-memory-map-tools {
+    @apply absolute right-2 top-2 flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm;
+  }
+  .zuri-memory-map-tools > button {
+    @apply flex h-11 w-11 items-center justify-center text-fg-muted transition-colors hover:bg-raised hover:text-fg;
+  }
+  .zuri-memory-map-tools > button[aria-pressed="true"] {
+    @apply bg-accent-soft text-accent-text;
+  }
+
   .zuri-top-bar > a {
     @apply mr-auto flex min-h-11 min-w-0 items-center gap-2.5 rounded-xl;
   }

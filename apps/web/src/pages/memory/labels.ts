@@ -1,4 +1,4 @@
-import type { MemoryCategory, MemoryFilter, MemoryOrigin, MemoryReviewReason, MemoryStatus, MemoryTopic, MessageKey } from "@zuri/shared";
+import type { MemoryCategory, MemoryFilter, MemoryHubKind, MemoryOrigin, MemoryReviewReason, MemoryStatus, MemoryTopic, MessageKey } from "@zuri/shared";
 
 /** Catalog keys for the memory codes the server sends: the interface words them in the owner's language. */
 
@@ -44,4 +44,11 @@ export const TOPIC_LABEL: Record<MemoryTopic, MessageKey> = {
   job: "web.memory.topic.job",
   diet: "web.memory.topic.diet",
   relationship: "web.memory.topic.relationship",
+};
+
+export const HUB_LABEL: Record<MemoryHubKind, MessageKey> = {
+  folder: "web.memory.hub.folder",
+  conversation: "web.memory.hub.conversation",
+  task: "web.memory.hub.task",
+  note: "web.memory.hub.note",
 };

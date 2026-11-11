@@ -5,6 +5,8 @@ import {
   type MemoryCorrect,
   type MemoryCounts,
   type MemoryCreate,
+  type MemoryGraph,
+  type MemoryGraphQuery,
   type MemoryHistory,
   type MemoryListQuery,
   type MemoryAuthor,
@@ -16,6 +18,7 @@ import {
   type MemoryWriteResult,
   memoryCorrectSchema,
   memoryCreateSchema,
+  memoryGraphQuerySchema,
   memoryListQuerySchema,
   memoryReviewResolveSchema,
   memoryStatusSchema,
@@ -27,6 +30,7 @@ import type { StorageGuard } from "../productivity/storage.ts";
 import { parse, type Untrusted } from "../productivity/validate.ts";
 import { classify, reviewFor, topicSearchTerms } from "./conflict.ts";
 import { extractStatedDate } from "./dates.ts";
+import { memoryGraph } from "./graph.ts";
 import { MemoryLifecycle } from "./lifecycle.ts";
 import { MemoryRepository, type MemoryRow, toMemory } from "./repository.ts";
 import { anyWordQuery } from "./text.ts";
@@ -94,6 +98,11 @@ export class MemoryService {
   history(id: string): MemoryHistory {
     const h = this.lifecycle.history(id);
     return { memory: toMemory(h.memory), previous: h.previous.map(toMemory), next: h.next.map(toMemory) };
+  }
+
+  /** The map: memories and what links them (rules only, no AI). */
+  graph(input: MemoryGraphQuery | Untrusted = {}): MemoryGraph {
+    return memoryGraph(this.db, this.repo, this.lifecycle, parse(memoryGraphQuerySchema, input).around);
   }
 
   // ---------- Writes ----------

@@ -22,6 +22,8 @@
  * - `menu-recolhido=/`: the side menu as a rail of icons, with one name showing (computer only).
  * - `conversa-aberta=/conversa`: the sample conversation ("Organizar a mudança"), open.
  * - `conversa-anterior=/conversa`: the same, as if it had last been used yesterday (the notice under its messages).
+ * - `memoria-painel=/memoria`: a sample memory chosen, with its links in the panel.
+ * - `memoria-mapa=/memoria`: the map (on a computer, with the same memory chosen).
  * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
@@ -183,6 +185,18 @@ for (const [device, options] of [
       if (screen.name === "menu-recolhido") {
         await page.getByRole("button", { name: "Recolher menu" }).click();
         await page.locator("aside").getByRole("link", { name: "Agenda", exact: true }).hover();
+      }
+      if (/^memoria-(painel|mapa)$/.test(screen.name)) {
+        const sample = "Está organizando a mudança para um apartamento novo.";
+        // On a phone the panel takes the map's place: there the map is shown with nothing chosen.
+        if (screen.name === "memoria-painel" || device === "computador") {
+          await page.getByRole("region", { name: "Suas memórias" }).getByRole("button", { name: sample }).click();
+          await page.getByRole("complementary", { name: "Memória escolhida" }).getByRole("heading", { level: 2, name: sample }).waitFor();
+        }
+        if (screen.name === "memoria-mapa") {
+          await page.getByRole("button", { name: "Mapa", exact: true }).click();
+          await page.getByRole("group", { name: "Mapa das memórias" }).getByRole("button", { name: sample }).waitFor();
+        }
       }
       if (screen.name === "conversa-menu") await page.getByRole("complementary", { name: "Conversas" }).getByRole("button", { name: /^Mais opções/ }).click();
       if (screen.name === "conversas") {

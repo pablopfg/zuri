@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, expectFits, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // Memory and its history against the real Worker (step 7): save, duplicate,
 // review a conflict, update a fact, history, restore and delete. pt-BR.
@@ -11,6 +11,21 @@ async function openMemory(page: Page) {
   await signIn(page);
   await expect(page).toHaveURL(/\/memoria$/);
   await expect(page.getByRole("heading", { level: 1, name: "Memória" })).toBeVisible();
+}
+
+/** The panel of the chosen memory: beside the list on a computer, in its place on a phone. */
+const panel = (page: Page) => page.getByRole("complementary", { name: "Memória escolhida" });
+
+/** Picks a memory on the list; its text becomes the panel's heading. */
+async function openRow(page: Page, text: string) {
+  await page.getByRole("region", { name: "Suas memórias" }).getByRole("button", { name: text }).click();
+  await expect(panel(page).getByRole("heading", { level: 2, name: text })).toBeVisible();
+}
+
+/** On a phone, back to the list ("Voltar"); on a computer the list never left. */
+async function backToList(page: Page) {
+  const back = panel(page).getByRole("button", { name: "Voltar" });
+  if (await back.isVisible()) await back.click();
 }
 
 /** "Nova memória" in the header opens a dialog (stage 26c); saving closes it. */
@@ -56,7 +71,13 @@ test("memories: save, duplicate, review a conflict, history, restore, update and
   await save(page, `Vendi meu Volkswagen ${tag} e comprei um Tesla`);
   // The other project's run left memories in the same database: count at least this one.
   await expect(page.getByRole("status").filter({ hasText: /possíve(l|is) conflitos? espera(m)? a sua revisão/ })).toBeVisible();
+  // The review waits in a strip that opens when asked.
   const reviews = page.getByRole("region", { name: "Para revisar" });
+  await expect(reviews.getByRole("heading", { name: /memórias? para revisar/ })).toBeVisible();
+  const open = reviews.getByRole("button", { name: "Revisar" });
+  await expect(open).toHaveAttribute("aria-expanded", "false");
+  await open.click();
+  await expect(open).toHaveAttribute("aria-expanded", "true");
   const item = reviews
     .getByRole("listitem")
     .filter({ hasText: `Eu dirijo um Volkswagen ${tag}` })
@@ -74,7 +95,10 @@ test("memories: save, duplicate, review a conflict, history, restore, update and
   await page.getByRole("button", { name: /^Passadas/ }).click();
   const past = list.getByRole("listitem").filter({ hasText: `Eu dirijo um Volkswagen ${tag}` });
   await expect(past.getByText("Passado", { exact: true })).toBeVisible();
-  await rowAction(past, page, "Histórico");
+  // The actions live in the panel of the chosen memory.
+  await openRow(page, `Eu dirijo um Volkswagen ${tag}`);
+  await expect(panel(page).getByText("Fato · Passado")).toBeVisible();
+  await rowAction(panel(page), page, "Histórico");
   const history = page.getByRole("dialog", { name: "Histórico da memória" });
   await expect(history.getByText("Depois")).toBeVisible();
   await expect(history.getByText(`Vendi meu Volkswagen ${tag} e comprei um Tesla`)).toBeVisible();
@@ -82,27 +106,36 @@ test("memories: save, duplicate, review a conflict, history, restore, update and
   await history.getByRole("button", { name: "Fechar" }).click();
 
   // Restore as current.
-  await rowAction(past, page, "Restaurar como atual");
+  await rowAction(panel(page), page, "Restaurar como atual");
+  await expect(panel(page).getByText("Fato · Atual")).toBeVisible();
+  await backToList(page);
   await expect(list.getByText(`Eu dirijo um Volkswagen ${tag}`)).toHaveCount(0);
   await page.getByRole("button", { name: /^Atuais/ }).click();
   const current = list.getByRole("listitem").filter({ hasText: `Eu dirijo um Volkswagen ${tag}` });
-  await expect(current.getByText("Atual", { exact: true })).toBeVisible();
+  await expect(current).toBeVisible();
 
   // Update this fact: the old one becomes the past.
-  await rowAction(current, page, "Atualizar este fato");
+  await openRow(page, `Eu dirijo um Volkswagen ${tag}`);
+  await rowAction(panel(page), page, "Atualizar este fato");
   const dialog = page.getByRole("dialog", { name: "Atualizar este fato" });
   await dialog.getByLabel("Como é agora").fill(`Eu dirijo uma bicicleta ${tag}`);
   await dialog.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("status").filter({ hasText: "a anterior ficou no histórico" })).toBeVisible();
+  await backToList(page);
   await expect(list.getByText(`Eu dirijo uma bicicleta ${tag}`)).toBeVisible();
 
   // Delete for good, after a confirmation.
   const bike = list.getByRole("listitem").filter({ hasText: `Eu dirijo uma bicicleta ${tag}` });
-  await rowAction(bike, page, "Apagar");
+  await expect(bike).toBeVisible();
+  await openRow(page, `Eu dirijo uma bicicleta ${tag}`);
+  await rowAction(panel(page), page, "Apagar");
   const confirm = page.getByRole("dialog", { name: "Apagar esta memória?" });
   await expect(confirm.getByText("Não vai para a lixeira")).toBeVisible();
   await confirm.getByRole("button", { name: "Apagar de vez" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Memória apagada" })).toBeVisible();
+  // The panel closes with the memory, and the list is back, also on a phone.
+  await expect(panel(page).getByRole("heading", { level: 2 })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Atuais/ })).toBeVisible();
   await expect(list.getByText(`Eu dirijo uma bicicleta ${tag}`)).toHaveCount(0);
 });
 
@@ -185,6 +218,7 @@ test("memory in English: a conflict, replacing the older and discarding the newe
     // Replace the older: the confirmation is a dialog, accessible, and only then the older one goes.
     await saveEn(`I live in London ${tag}`);
     await saveEn(`I live in Paris ${tag}`);
+    await reviews.getByRole("button", { name: "Review" }).click();
     const first = reviews.getByRole("listitem").filter({ hasText: `I live in London ${tag}` }).filter({ hasText: `I live in Paris ${tag}` });
     await expect(first.getByText("Possible conflict")).toBeVisible();
     await expect(first.getByText("Both are about where you live, and it's unclear which one holds now.")).toBeVisible();
@@ -219,8 +253,9 @@ test("never send out: a memory and a note marked stay on the account, and the ma
   await openMemory(page);
   await save(page, `O código do portão é ${tag}`);
   const row = page.getByRole("listitem").filter({ hasText: `O código do portão é ${tag}` });
-  // The mark lives in the row's "Mais opções" menu, as an item that reads out its state.
-  const more = row.getByRole("button", { name: /^Mais opções/ });
+  // The mark lives in the "Mais opções" menu of the chosen memory, as an item that reads out its state.
+  await openRow(page, `O código do portão é ${tag}`);
+  const more = panel(page).getByRole("button", { name: /^Mais opções/ });
   await more.click();
   const mark = page.getByRole("menu").getByRole("menuitemcheckbox", { name: "Nunca enviar para fora" });
   // Opening focuses the first item; the arrow keys walk the rest.
@@ -239,6 +274,8 @@ test("never send out: a memory and a note marked stay on the account, and the ma
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(more).toBeFocused();
+  await expect(panel(page).getByText("Só na sua conta")).toBeVisible();
+  await backToList(page);
   await expect(row.getByText("Só na sua conta")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("listitem").filter({ hasText: `O código do portão é ${tag}` }).getByText("Só na sua conta")).toBeVisible();
@@ -258,4 +295,209 @@ test("never send out: a memory and a note marked stay on the account, and the ma
   await page.reload();
   await expect(page.getByRole("switch", { name: "Nunca enviar para fora" })).toBeChecked();
   await expectAccessible(page, "nota-nunca-enviar");
+});
+
+// ---------- Sinal, S06: the panel of links and the map ----------
+
+/** A folder, a task, a note and three memories about the same move, plus one about something else. */
+async function seedMove(page: Page, tag: string) {
+  const post = async <T>(path: string, data: unknown): Promise<T> => {
+    const res = await page.request.post(`/api${path}`, { headers: CSRF, data });
+    expect(res.status(), path).toBeLessThan(300);
+    return (await res.json()) as T;
+  };
+  const folder = await post<{ project: { id: string } }>("/projects", { name: `Mudança ${tag}` });
+  await post("/tasks", { title: `Encaixotar os livros da mudança ${tag}` });
+  const note = await post<{ note: { id: string } }>("/notes", { title: `Lista da mudança ${tag}`, content: "Caixas, fita e etiquetas" });
+  await post("/memories", { content: `Está cuidando da mudança ${tag} para o apartamento novo`, category: "project" });
+  await post("/memories", { content: `Quer terminar a mudança ${tag} até o dia 20`, category: "goal" });
+  await post("/memories", { content: `Prefere chá ${tag}`, category: "preference" });
+  return { folder: folder.project.id, note: note.note.id };
+}
+
+test("memory: the panel shows what a memory is linked to, and each link opens @mobile", async ({ page }) => {
+  const tag = uniqueTag(test.info().project.name);
+  await openMemory(page);
+  const { note } = await seedMove(page, tag);
+  await page.reload();
+  const list = page.getByRole("region", { name: "Suas memórias" });
+  const center = `Está cuidando da mudança ${tag} para o apartamento novo`;
+
+  // The list is grouped by type, each group with its name and how many it shows.
+  await expect(list.getByRole("heading", { level: 2, name: /^Projeto \d+$/ })).toBeVisible();
+  await expect(list.getByRole("heading", { level: 2, name: /^Objetivo \d+$/ })).toBeVisible();
+  // The type filter is a row of buttons; one type at a time.
+  await page.getByRole("button", { name: "Preferência", exact: true }).click();
+  await expect(list.getByText(`Prefere chá ${tag}`)).toBeVisible();
+  await expect(list.getByText(center)).toHaveCount(0);
+  await page.getByRole("button", { name: "Todos os tipos" }).click();
+
+  const row = list.getByRole("button", { name: center });
+  await row.focus();
+  await page.keyboard.press("Enter");
+  const side = panel(page);
+  await expect(side.getByRole("heading", { level: 2, name: center })).toBeVisible();
+  await expect(side.getByText("Projeto · Atual")).toBeVisible();
+  await expect(side.getByRole("heading", { level: 3, name: "Ligada a" })).toBeVisible();
+  await expect(side.getByRole("link", { name: `Pasta “Mudança ${tag}”` })).toHaveAttribute("href", "/tarefas");
+  await expect(side.getByRole("heading", { level: 3, name: "Aparece em" })).toBeVisible();
+  await expect(side.getByRole("link", { name: `Tarefa “Encaixotar os livros da mudança ${tag}”` })).toBeVisible();
+  await expect(side.getByRole("link", { name: `Nota “Lista da mudança ${tag}”` })).toHaveAttribute("href", `/notas/${note}`);
+  await expect(side.getByRole("heading", { level: 3, name: "Memórias próximas" })).toBeVisible();
+  await expect(side.getByText("A Zuri liga pelo nome da pasta e pelas palavras em comum, sem IA.")).toBeVisible();
+  await expectAccessible(page, "memória com painel");
+  expect(await tooSmallControls(page), "every control of the panel is a 44 px target").toEqual([]);
+
+  // On a phone the panel took the list's place and has the focus; "Voltar" gives both back.
+  const phone = await side.getByRole("button", { name: "Voltar" }).isVisible();
+  if (phone) {
+    await expect(side.getByRole("heading", { level: 2, name: center })).toBeFocused();
+    await expect(list).toBeHidden();
+    await side.getByRole("button", { name: "Voltar" }).click();
+    await expect(row).toBeFocused();
+    await row.click();
+  } else {
+    // On a computer the list stays, with the chosen row marked.
+    await expect(row).toHaveAttribute("aria-pressed", "true");
+    await expect(row).toBeFocused();
+  }
+
+  // A nearby memory opens in the same panel; one with nothing in common says so.
+  const near = `Quer terminar a mudança ${tag} até o dia 20`;
+  await side.getByRole("button", { name: near }).click();
+  await expect(side.getByRole("heading", { level: 2, name: near })).toBeVisible();
+  await expect(side.getByText("Objetivo · Atual")).toBeVisible();
+  await backToList(page);
+  await openRow(page, `Prefere chá ${tag}`);
+  await expect(side.getByText("Nada ligado a esta memória por enquanto.", { exact: false })).toBeVisible();
+  await expect(side.getByRole("heading", { level: 3 })).toHaveCount(0);
+
+  // A link leaves for the record's own screen.
+  await backToList(page);
+  await openRow(page, center);
+  await side.getByRole("link", { name: `Nota “Lista da mudança ${tag}”` }).click();
+  await expect(page).toHaveURL(new RegExp(`/notas/${note}$`));
+});
+
+test("memory: the map draws the same memories as points, by pointer and by keyboard @mobile", async ({ page }) => {
+  const tag = uniqueTag(test.info().project.name);
+  await openMemory(page);
+  await seedMove(page, tag);
+  await page.reload();
+  const center = `Está cuidando da mudança ${tag} para o apartamento novo`;
+  const side = panel(page);
+
+  const asMap = page.getByRole("button", { name: "Mapa", exact: true });
+  await expect(asMap).toHaveAttribute("aria-pressed", "false");
+  const loaded = page.waitForResponse((r) => r.url().endsWith("/api/memories/graph"));
+  await asMap.click();
+  await loaded;
+  await expect(asMap).toHaveAttribute("aria-pressed", "true");
+  const map = page.getByRole("group", { name: "Mapa das memórias" });
+  await expect(map).toBeVisible();
+  // Every point is a button with a name: the memory's text, or the kind and the title.
+  const point = map.getByRole("button", { name: center });
+  const folder = map.getByRole("button", { name: `Pasta “Mudança ${tag}”` });
+  await expect(point).toBeVisible();
+  await expect(folder).toBeVisible();
+  await expect(map.getByRole("button", { name: `Nota “Lista da mudança ${tag}”` })).toBeVisible();
+  // The names are SVG text, never markup.
+  expect(await map.locator("foreignObject").count()).toBe(0);
+  await expectAccessible(page, "mapa da memória");
+  for (const scheme of ["dark", "light"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await expectAccessible(page, `mapa da memória (${scheme})`);
+  }
+  await expectFits(page, "mapa da memória");
+  expect(await tooSmallControls(page), "the map's buttons are 44 px targets").toEqual([]);
+
+  // The keyboard: one Tab stop on the map, arrows between the points, Enter picks.
+  const stops = await map.locator('[role="button"][tabindex="0"]').count();
+  expect(stops).toBe(1);
+  await folder.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(map.locator('[role="button"]:focus')).not.toHaveAttribute("data-node", await folder.getAttribute("data-node").then(String));
+  await page.keyboard.press("ArrowLeft");
+  await expect(folder).toBeFocused();
+  await page.keyboard.press("Enter");
+  // A folder: what it is and the memories that name it.
+  await expect(side.getByRole("heading", { level: 2, name: `Mudança ${tag}` })).toBeVisible();
+  // On a computer the map stays beside the panel, with the point marked; on a phone the panel took its place.
+  if (await map.isVisible()) await expect(folder).toHaveAttribute("aria-pressed", "true");
+  else await expect(side.getByRole("heading", { level: 2, name: `Mudança ${tag}` })).toBeFocused();
+  await expect(side.getByRole("link", { name: "Abrir" })).toHaveAttribute("href", "/tarefas");
+  await expect(side.getByRole("heading", { level: 3, name: "Memórias ligadas" })).toBeVisible();
+  await side.getByRole("button", { name: center }).click();
+  await expect(side.getByRole("heading", { level: 2, name: center })).toBeVisible();
+  await expect(side.getByRole("link", { name: `Pasta “Mudança ${tag}”` })).toBeVisible();
+  await backToList(page);
+  await expect(map).toBeVisible();
+
+  // The pointer picks a point too.
+  await point.locator(".dot").click();
+  await expect(side.getByRole("heading", { level: 2, name: center })).toBeVisible();
+  await backToList(page);
+
+  // Zoom, fit and the names.
+  const sheet = map.locator("> g");
+  const before = await sheet.getAttribute("transform");
+  await page.getByRole("button", { name: "Aproximar" }).click();
+  await expect(sheet).not.toHaveAttribute("transform", String(before));
+  await page.getByRole("button", { name: "Afastar" }).click();
+  await page.getByRole("button", { name: "Enquadrar tudo" }).click();
+  await expect(sheet).toHaveAttribute("transform", "translate(0 0) scale(1)");
+  const names = page.getByRole("button", { name: "Mostrar os nomes" });
+  await names.click();
+  await expect(names).toHaveAttribute("aria-pressed", "true");
+  await expect(map.locator("text", { hasText: "Prefere chá" }).first()).toBeVisible();
+
+  // A filter fades what it leaves out, without redrawing the map.
+  await page.getByRole("button", { name: "Preferência", exact: true }).click();
+  await expect(point).toHaveAttribute("data-off", "true");
+  await page.getByRole("button", { name: "Todos os tipos" }).click();
+  await expect(point).not.toHaveAttribute("data-off", "true");
+
+  // Back to the list: the same memories.
+  await page.getByRole("button", { name: "Lista", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Suas memórias" }).getByRole("button", { name: center })).toBeVisible();
+});
+
+test("memory map: a point can be dragged, a failure offers a retry, and too many memories are said", async ({ page }) => {
+  const tag = uniqueTag("mapa");
+  await openMemory(page);
+  await seedMove(page, tag);
+
+  // A failure first.
+  await page.route("**/api/memories/graph", (route) => route.fulfill({ status: 500, body: "{}" }));
+  await page.getByRole("button", { name: "Mapa", exact: true }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page.unroute("**/api/memories/graph");
+  await page.getByRole("button", { name: "Tentar de novo" }).click();
+  const map = page.getByRole("group", { name: "Mapa das memórias" });
+  await expect(map).toBeVisible();
+
+  // Dragging moves the point and picks nothing.
+  const point = map.getByRole("button", { name: `Prefere chá ${tag}` });
+  await point.locator(".dot").scrollIntoViewIfNeeded();
+  const from = await point.locator(".dot").boundingBox();
+  if (!from) throw new Error("the point has no box");
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2 + 60, from.y + from.height / 2 + 40, { steps: 6 });
+  await page.mouse.up();
+  const to = await point.locator(".dot").boundingBox();
+  expect(Math.round((to?.x ?? 0) - from.x)).toBeGreaterThan(40);
+  await expect(point).toHaveAttribute("aria-pressed", "false");
+
+  // More memories than the map draws: it says so, and with one chosen it shows that one and its links.
+  await page.route("**/api/memories/graph", async (route) => {
+    const body = (await (await route.fetch()).json()) as { truncated: boolean };
+    await route.fulfill({ json: { ...body, truncated: true } });
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Mapa", exact: true }).click();
+  await expect(page.getByText("O mapa mostra as 160 memórias mais recentes. Escolha uma na Lista para ver só as ligações dela.")).toBeVisible();
+  await page.getByRole("group", { name: "Mapa das memórias" }).getByRole("button", { name: `Está cuidando da mudança ${tag} para o apartamento novo` }).locator(".dot").click();
+  await expect(page.getByText("O mapa mostra a memória escolhida e o que se liga a ela.")).toBeVisible();
+  await expect(page.getByRole("group", { name: "Mapa das memórias" }).getByRole("button", { name: `Prefere chá ${tag}` })).toHaveCount(0);
 });

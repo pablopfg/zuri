@@ -112,6 +112,7 @@ coisa no caminho responde `404 NOT_FOUND`.
 | `POST /api/memories` | `{content, category?}` (até 2.000 caracteres) | `201 {memory, duplicate, superseded, reviews}`; `200` se já existia |
 | `GET /api/memories/reviews` | — | `200 {reviews}` (até 50, as mais antigas primeiro) |
 | `POST /api/memories/reviews/:id` | `{action}` (`keep_both`, `mark_historical`, `replace`, `cancel`) | `200 {kept, deleted}`; `404` se a revisão já foi resolvida |
+| `GET /api/memories/graph` | `around` (id de uma memória, opcional) | `200 {memories, hubs, links, truncated}`: o mapa das ligações (seção "Ligações e mapa"); `404` se a memória de `around` não existe |
 | `GET /api/memories/:id` | — | `200 {memory}` |
 | `PATCH /api/memories/:id` | `{content?, category?}`, pelo menos um | `200 {memory, duplicate, superseded, reviews}` |
 | `DELETE /api/memories/:id` | — | `204` |
@@ -167,6 +168,8 @@ linhas lidas/gravadas por requisição:
 | `GET /memories?q=` palavra rara | 14 | 0 |
 | `GET /memories?q=` palavra comum | 610 | 0 |
 | `GET /memories/reviews` | 2 | 0 |
+| `GET /memories/graph` (mapa inteiro) | 365 | 0 |
+| `GET /memories/graph?around=` (painel de uma memória, palavra comum) | 385 | 0 |
 | `POST /memories` nova | 16 | 10 |
 | `POST /memories` duplicata | 5 | 5 |
 | `POST /memories` com conflito | 26 | 16 |
@@ -176,19 +179,64 @@ linhas lidas/gravadas por requisição:
 | `POST /memories/:id/correct` | 54 | 34 |
 | `DELETE /memories/:id` | 14 | 8 |
 
+## Ligações e mapa
+
+`GET /api/memories/graph` diz a que cada memória se liga. Nada disso usa IA nem
+tabela própria: as ligações saem do que já está guardado, por regras fixas
+(`apps/agent/src/memory/graph.ts`).
+
+| Ligação | Regra |
+| --- | --- |
+| Versão | Uma memória substituiu a outra (`superseded_by`) |
+| Revisão | As duas esperam a sua resposta em "Para revisar" |
+| Memória próxima | Duas memórias com pelo menos duas palavras com sentido em comum (as mesmas palavras que a busca de conflitos usa, sem acento e sem plural) |
+| Pasta | O nome inteiro da pasta aparece no texto da memória |
+| Conversa, tarefa ou nota | O título tem pelo menos duas palavras em comum com a memória |
+
+Limites, para o custo não crescer com o banco: o mapa leva as 160 memórias mais
+recentes e até 40 pastas, conversas, tarefas e notas (200 pontos no total), e
+olha as 100 mais recentes de cada tipo (tarefas, só as abertas). Cada memória
+fica com as 5 memórias mais próximas e até 6 dos outros itens. Com `around`, a
+resposta traz só aquela memória e o que encosta nela; é o que o painel pede.
+Quando há mais memórias do que o mapa desenha, `truncated` vem `true`.
+
+A rota só atende a sessão do dono. Um token de acesso pela API não chega a ela,
+porque a resposta traz títulos de outras áreas.
+
+O que fica de fora por enquanto: contatos (entram com a tela nova de Contatos)
+e a conversa em que a memória nasceu, que o banco não guarda. A ligação com uma
+conversa vem só das palavras do título.
+
 ## Tela
 
 `/memoria`, na barra lateral, mostra:
 
-- um campo para guardar uma memória, com contador de caracteres;
-- a fila "Para revisar", com a memória nova e a antiga lado a lado e as quatro
-  ações;
-- os filtros Todas, Atuais, Incertas e Passadas, com as contagens;
-- a busca e o filtro por categoria;
+- o botão **Nova memória**, que abre o campo com contador de caracteres;
+- a faixa "N memórias para revisar", que abre com **Revisar** e mostra a
+  memória nova e a antiga lado a lado, com as quatro ações;
+- a busca e a troca entre **Lista** e **Mapa**;
+- os filtros Todas, Atuais, Incertas e Passadas, com as contagens, e os tipos
+  em botões, cada um com a sua cor;
+- a lista agrupada por tipo;
+- o painel da memória escolhida: o texto, **Editar**, o menu "Mais opções"
+  (atualizar o fato, nunca enviar para fora, histórico, mudar o estado e
+  apagar) e as ligações em "Ligada a", "Aparece em" e "Memórias próximas";
 - a chave da revisão de conflitos.
 
-Cada item tem botões de 44 px: atualizar o fato, editar, histórico, mudar o
-estado e apagar. O texto da memória aparece sempre como texto, nunca como HTML.
+No computador o painel fica ao lado da lista. No celular ele entra no lugar
+dela, com **Voltar**.
+
+O **Mapa** desenha as mesmas memórias como pontos, na cor do tipo, e as pastas,
+conversas, tarefas e notas como círculos vazados. Os pontos se arrumam sozinhos.
+Dá para arrastar um ponto, mover o fundo, aproximar com a rolagem ou com os
+botões, enquadrar tudo e mostrar os nomes. Passar o ponteiro destaca as
+ligações de um ponto. Um filtro ou uma busca esmaece o que ficou de fora. Pelo
+teclado, o mapa é uma parada do Tab: as setas andam pelos pontos e Enter
+escolhe. A Lista continua sendo o caminho principal e mostra tudo o que o mapa
+mostra.
+
+Os botões têm 44 px. O texto da memória e os nomes no mapa aparecem sempre como
+texto, nunca como HTML.
 A memória que a assistente guardou numa conversa (`remember`
 ou `update_memory`) aparece com a marca **Anotada pela assistente**.
 
