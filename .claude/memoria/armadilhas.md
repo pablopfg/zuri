@@ -487,3 +487,25 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
   e celular): uma memória "sem nada em comum" precisa de palavras que nenhum
   outro teste usa, senão a regra das duas palavras em comum liga as duas
   (S06, `memory.spec.ts`).
+- Tela sob demanda que passa a importar um módulo comum (o `ActionsMenu` em
+  Notas) muda o conjunto de telas daquele pedaço, e o empacotador separa dele
+  o que as outras ainda dividem (o ícone de histórico virou
+  `rotate-ccw-clock.js`, mais 16 B no pacote inicial pelo nome no mapa de
+  importações). O mesmo vale para ícone ou função que só duas telas usam
+  (`lib/recents.ts`, `chat/when.ts`, `Folder`). Compare `dist/assets` com a
+  `develop` antes de procurar o estouro em outro lugar (S07).
+- A navegação do React Router é uma transição: o estado mudado junto com
+  `navigate` chega antes do endereço novo. Chave de componente calculada com
+  os dois (o editor da nota recém-criada) desmonta e monta de novo nesse
+  intervalo e perde o foco. Guarde que o endereço ainda não chegou (S07,
+  `born.arrived` em `NotesPage.tsx`).
+- Linha de lista que muda de grupo ao ser marcada é montada de novo: estado
+  dela (pendente, erro, foco) se perde. Em Tarefas esse estado fica na página
+  e o foco segue a tarefa por `data-task` (S07).
+- Salvamento automático chega antes da batida de 61 s: aviso de "mudou em
+  outro lugar" que dependa só da batida nunca aparece. A conferência tem que
+  ser do servidor (`ifUpdatedAt`, 409) (S07).
+- No e2e do microfone, parar a gravação antes de 1 s manda um áudio vazio e o
+  teste fica instável. Espere "Gravando: 1 s" antes de parar (S07).
+- `Button` com largura fixa e padding espreme o ícone (`svg` encolhe em
+  flex). Ícone dentro de botão quadrado leva `shrink-0` (S07, microfone).

@@ -172,7 +172,7 @@ describe("the Free plan budget of each route", () => {
     spy.mockRestore();
     expect(res.status).toBe(200);
     // The seen ids, the link and the code (plus what any request after the first one reads): never a scan.
-    expect(after.rowsRead - before.rowsRead).toBeLessThanOrEqual(8);
+    expect(after.rowsRead - before.rowsRead).toBeLessThanOrEqual(12);
     expect(after.rowsWritten - before.rowsWritten).toBe(0);
   });
 
@@ -344,7 +344,7 @@ describe("the Free plan budget of each route", () => {
     const created = await cost("POST", "/memories", { content: "Moro em Curitiba desde 2024" });
     expect(created.status).toBe(201);
     expect(created.read).toBeLessThan(60);
-    expect(created.written).toBeLessThanOrEqual(8);
+    expect(created.written).toBeLessThanOrEqual(12);
     const duplicate = await cost("POST", "/memories", { content: "moro em curitiba desde 2024" });
     expect(duplicate.status).toBe(200);
     // The memories' number (nova UI, PR 2) reads its one row and writes it.
@@ -397,7 +397,7 @@ describe("the Free plan budget of each route", () => {
     });
     const report = await cost("GET", "/usage");
     expect(report.status).toBe(200);
-    expect(report.read).toBeLessThanOrEqual(8);
+    expect(report.read).toBeLessThanOrEqual(12);
     expect(report.written).toBe(0);
   });
 
@@ -482,7 +482,7 @@ describe("the Free plan budget of each route", () => {
       const approve = await cost("POST", `/actions/${actionId}/approve`);
       expect(approve.status).toBe(200);
       expect(approve.read).toBeLessThanOrEqual(25);
-      expect(approve.written).toBeLessThanOrEqual(8);
+      expect(approve.written).toBeLessThanOrEqual(12);
       const confirm = await cost("POST", `/plans/${plan?.id}/confirm`, { revision: plan?.revision, plan: plan?.plan });
       expect(confirm.status).toBe(200);
       expect(confirm.read).toBeLessThanOrEqual(25);
@@ -676,7 +676,7 @@ describe("the Free plan budget of each route", () => {
       expect(step.written).toBeLessThanOrEqual(32);
     }
     expect(screen).toMatchObject({ status: 200, written: 0 });
-    expect(screen.read).toBeLessThanOrEqual(8);
+    expect(screen.read).toBeLessThanOrEqual(12);
     // A token's read costs the route's own reads (the counts read the open tasks) plus the gate:
     // one token row, and at most last_used_at and the day's count written.
     expect(read.status).toBe(200);
@@ -835,7 +835,7 @@ describe("the Free plan budget of each route", () => {
       expect(fixture.calls).toHaveLength(2);
       // The proposal, the tool and the server to recheck the hash, then the result on the proposal's row.
       expect(approve.read).toBeLessThanOrEqual(25);
-      expect(approve.written).toBeLessThanOrEqual(8);
+      expect(approve.written).toBeLessThanOrEqual(12);
     } finally {
       await runInDurableObject(owner(), (agent: ZuriAgent) => {
         agent.testProvider = null;

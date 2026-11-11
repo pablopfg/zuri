@@ -1,7 +1,8 @@
-# Tarefas, notas e projetos
+# Tarefas, notas e pastas
 
 Entregue na etapa 6. Tudo fica no SQLite do Durable Object do dono e funciona
-sem IA. O chat ganha ferramentas sobre estes mesmos dados na etapa 9, com as
+sem IA. Na tela, "projeto" se chama **pasta** (decisão de 09/11/2026); o nome
+interno (`project`, `projectId`, `/api/projects`) não mudou. O chat ganha ferramentas sobre estes mesmos dados na etapa 9, com as
 mesmas regras: os repositórios validam a entrada de novo, seja quem for que
 chame.
 
@@ -19,7 +20,7 @@ responde `404 NOT_FOUND`.
 | `GET`, `PATCH`, `DELETE /api/tasks/:id` | `PATCH`: qualquer campo acima, pelo menos um | `200 {task}`; `DELETE`: `200 {trashItem}` |
 | `GET /api/notes` | `q`, `projectId` (ou `none`), `limit` | `200 {notes}` com `excerpt` (200 caracteres), sem o texto inteiro |
 | `POST /api/notes` | `{title, content?, projectId?}` | `201 {note}` |
-| `GET`, `PATCH`, `DELETE /api/notes/:id` | `PATCH`: `{title?, content?, projectId?}` | `200 {note}`; `DELETE`: `200 {trashItem}` |
+| `GET`, `PATCH`, `DELETE /api/notes/:id` | `PATCH`: `{title?, content?, projectId?, ifUpdatedAt?}`, pelo menos um campo além de `ifUpdatedAt` | `200 {note}`; `DELETE`: `200 {trashItem}` |
 | `GET /api/projects` | — | `200 {projects}` (todos, até 1.000) |
 | `POST /api/projects` | `{name, description?, status?}` | `201 {project}` |
 | `PATCH`, `DELETE /api/projects/:id` | `PATCH`: `{name?, description?, status?}` | `200 {project}`; `DELETE`: `200 {trashItem}` |
@@ -31,6 +32,12 @@ responde `404 NOT_FOUND`.
 Erros: `400 VALIDATION_FAILED` com `details.fields` (só os nomes dos campos,
 nunca os valores), `404 NOT_FOUND` e `507 STORAGE_LIMIT_REACHED` com
 `details.kind` e `details.limit`.
+
+`ifUpdatedAt` é o `updatedAt` da versão que a tela tinha quando começou a
+editar. Se a nota mudou depois disso (outra aba, o bot, a Zuri), o `PATCH`
+responde `409 CONFLICT` e não grava nada. Sem o campo, o `PATCH` grava como
+antes. O `updatedAt` de uma nota sempre anda para a frente, mesmo com dois
+salvamentos no mesmo milissegundo, para a comparação nunca empatar.
 
 ## Datas
 
@@ -91,7 +98,7 @@ O SQLite do Durable Object cobra cada linha lida, então as visões usam
 | --- | --- |
 | Tarefas | 20.000 |
 | Notas | 5.000 (até 200.000 caracteres cada) |
-| Projetos | 1.000 |
+| Pastas | 1.000 |
 | Banco inteiro | 900 MB |
 
 A conferência lê uma linha de `zur_counts` (mantida por gatilhos) em vez de
@@ -101,15 +108,15 @@ Restaurar da lixeira também conta.
 
 ## Lixeira
 
-- Apagar uma tarefa, nota ou projeto guarda uma cópia em `zur_trash` (na mesma
+- Apagar uma tarefa, nota ou pasta guarda uma cópia em `zur_trash` (na mesma
   transação) por 30 dias.
 - Restaurar devolve a linha como estava, coluna por coluna (as colunas vêm de
-  uma lista fixa no código, nunca das chaves da cópia). Um projeto que não
-  existe mais deixa a tarefa ou a nota sem projeto.
-- Apagar um projeto deixa as tarefas e notas dele sem projeto. Restaurar o
-  projeto liga de novo as que continuam sem projeto; as que o dono pôs em outro
-  projeto ficam onde estão. Uma tarefa ou nota apagada depois do projeto já
-  estava sem projeto, então volta sem ele.
+  uma lista fixa no código, nunca das chaves da cópia). Uma pasta que não
+  existe mais deixa a tarefa ou a nota sem pasta.
+- Apagar uma pasta deixa as tarefas e notas dela sem pasta. Restaurar a
+  pasta liga de novo as que continuam sem pasta; as que o dono pôs em outra
+  pasta ficam onde estão. Uma tarefa ou nota apagada depois da pasta já
+  estava sem pasta, então volta sem ela.
 - Limpeza automática: o que passou de 30 dias some no próximo uso da lixeira e
   sempre que o Durable Object acorda. Passando de 10.000 itens ou 128 MB, os
   mais antigos saem primeiro.
@@ -131,21 +138,49 @@ abrindo em outra aba com `noopener noreferrer`. Nenhum
 
 - **Tarefas** (`/tarefas`): adição rápida no topo. Na visão Hoje, uma tarefa
   sem data vence hoje às 23:59 no seu fuso, para aparecer onde foi digitada.
-  Prazo, hora, projeto e prioridade ficam num painel que abre quando
+  Prazo, hora, pasta e prioridade ficam num painel que abre quando
   precisa; com ele fechado, o que foi escolhido aparece ao lado. Depois de
   adicionar, tudo volta ao padrão. Concluídas e Atrasadas não têm adição
-  rápida, porque a tarefa nova não apareceria nelas.
+  rápida, porque a tarefa nova não apareceria nelas. A lista vem em grupos
+  (Atrasadas, Hoje, Próximas, Concluídas), cada um com a contagem; grupo vazio
+  não aparece. Cada linha mostra a pasta, a situação, o prazo e a prioridade.
 - **Notas** (`/notas`): em telas largas a lista fica ao lado do editor; no
-  celular, uma de cada vez. Sair de uma nota com alterações não salvas por
-  qualquer caminho (lista, "Nova nota", lixeira, "Todas as notas", menu
-  lateral, menu de baixo do celular ou o voltar do navegador) pede confirmação, e
-  fechar a aba avisa. O app usa um roteador de dados (`createBrowserRouter`)
-  só para ter o `useBlocker`; a regra fica em `lib/leave-guard.ts`. Não
-  perguntam: a mesma nota (SEC-6R-01), os movimentos do próprio editor
-  (salvar uma nota nova, apagar) e a tela de entrada, porque Sair e o fim da
-  sessão sempre vencem.
+  celular, uma de cada vez. A lista mostra o título, quando a nota mudou, o
+  começo do texto e a pasta.
+
+## A nota salva sozinha
+
+Não existe botão Salvar. A regra fica em `apps/web/src/lib/autosave.ts`
+(`Autosaver`, sem React, com teste próprio):
+
+- Salva 2,5 s depois da última tecla e, para quem não para de digitar, pelo
+  menos a cada 30 s. Um salvamento por vez; o que foi digitado durante um
+  salvamento vai no seguinte. Só os campos que mudaram viajam.
+- Salva na hora ao sair da nota, com Ctrl+S (ou ⌘S), quando a aba vai para o
+  fundo e quando o editor fecha.
+- A linha de estado diz "Salvando…", "Salva às 08:12" ou, se não deu, o
+  motivo com **Tentar de novo**. Depois de uma falha a tela não insiste
+  sozinha: a próxima tentativa vem da próxima tecla ou do botão.
+- Nota nova só é criada quando tem título ou texto. Sem título, ela é salva
+  como "Nota sem título".
+- Sair da nota (lista, "Nova nota", lixeira, menu, voltar do navegador) salva
+  antes. A pergunta "Sair sem salvar?" só aparece quando esse salvamento
+  falha. Fechar a aba com texto não salvo avisa. Sair da conta e o fim da
+  sessão sempre vencem (`lib/leave-guard.ts`).
+- Se a nota mudou em outro lugar enquanto o dono digitava, o servidor recusa
+  (`409`, acima), o salvamento automático para e a tela oferece **Ver a
+  versão nova** ou **Manter a minha**. Nada é sobrescrito sem essa escolha.
+- Custo (regra P4): cada salvamento grava 6 linhas (7 ao criar), medido em
+  `free-tier-budget.test.ts`. Digitando sem parar por uma hora, são no máximo
+  1.440 salvamentos pela espera de 2,5 s; no uso comum, bem menos.
+
+O microfone da nota (**Ditar na nota**) usa o mesmo componente da Conversa e
+do Início (`components/voice/`). O que foi dito entra no fim do texto, numa
+linha nova, e é salvo como qualquer digitação. Título e busca não têm
+microfone (decisão de 10/11/2026). O menu "Mais opções" baixa a nota em
+Markdown (arquivo montado no navegador) e move para a lixeira.
 
 ## Backup
 
-Tarefas, notas e projetos entram no backup da etapa 23. A lixeira e os
+Tarefas, notas e pastas entram no backup da etapa 23. A lixeira e os
 contadores não entram.
