@@ -1535,6 +1535,17 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE zur_review_settings ADD COLUMN last_result TEXT`,
     ],
   },
+  {
+    version: 33,
+    name: "sync_intervals",
+    statements: [
+      // The owner picks how often each sync runs (Settings, 11/11/2026), in minutes. The defaults are the
+      // intervals of migration 32, so nothing changes until the owner changes it. Neither column is in the
+      // area triggers of migrations 23 and 26: the route that saves one answers with the new state.
+      `ALTER TABLE zur_contact_sync ADD COLUMN sync_every_min INTEGER NOT NULL DEFAULT 5`,
+      `ALTER TABLE zur_review_settings ADD COLUMN check_every_min INTEGER NOT NULL DEFAULT 10`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

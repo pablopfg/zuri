@@ -109,6 +109,7 @@ interface SettingsRow {
   running_since: number | null;
   next_check: number | null;
   checked_now_at: number | null;
+  check_every_min: number;
   listed_at: number | null;
   saved_read_at: number | null;
   last_ok_at: number | null;
@@ -214,6 +215,31 @@ export class ReviewService {
     return this.db.one<SettingsRow>(`SELECT * FROM zur_review_settings WHERE id = 1`);
   }
 
+  /** The owner's interval between two checks, in ms; a value out of the allowed range (a restored row) is brought into it. */
+  private every(row: SettingsRow | null): number {
+    const minutes = row?.check_every_min ?? REVIEW_LIMITS.checkEveryMs / 60_000;
+    return Math.min(REVIEW_LIMITS.checkEveryMaxMinutes, Math.max(REVIEW_LIMITS.checkEveryMinMinutes, Math.trunc(minutes) || 0)) * 60_000;
+  }
+
+  /**
+   * The owner's new interval. The check already planned moves to the last one plus the new interval
+   * (never into the past); one waiting for something else (a retry after a failure, a problem that
+   * needs the owner) keeps its time. The same value again writes nothing.
+   */
+  setInterval(minutes: number): ReviewsStatus {
+    const before = this.settings();
+    if (minutes * 60_000 === this.every(before)) return this.status();
+    const now = this.clock();
+    const last = Math.max(before.checked_at ?? 0, before.last_ok_at ?? 0) || now;
+    this.db.run(`UPDATE zur_review_settings SET check_every_min = ? WHERE id = 1`, minutes);
+    this.db.run(
+      `UPDATE zur_review_settings SET next_check = ? WHERE id = 1 AND enabled = 1 AND next_check IS NOT NULL AND next_check > ? AND failures = 0 AND problem IS NULL`,
+      Math.max(now, last + minutes * 60_000),
+      now,
+    );
+    return this.status();
+  }
+
   private onRow(): SettingsRow | null {
     if (this.knownOff) return null;
     const row = this.row();
@@ -306,6 +332,7 @@ export class ReviewService {
       lastCheckAt: last ? new Date(last).toISOString() : null,
       nextSyncAt: enabled && connected && granted && typeof row?.next_check === "number" ? new Date(row.next_check).toISOString() : null,
       lastResult: enabled && (row?.last_result === "unchanged" || row?.last_result === "changed" || row?.last_result === "failed") ? row.last_result : null,
+      syncEveryMinutes: this.every(row) / 60_000,
       locations: granted ? this.locations() : [],
       pattern: this.pattern(row),
       needs: enabled ? this.needs() : 0,
@@ -560,7 +587,7 @@ export class ReviewService {
         `UPDATE zur_review_settings SET failures = 0, checked_at = ?, last_result = ?, next_check = ? WHERE id = 1 AND running_since = ?`,
         done,
         moved ? "changed" : "unchanged",
-        more ? done : done + REVIEW_LIMITS.checkEveryMs,
+        more ? done : done + this.every(this.row()),
         stamp,
       );
       this.db.run(
@@ -699,6 +726,15 @@ export class ReviewService {
     const row = this.existing(review.name);
     if (row) {
       if (row.updated_at === updated && row.rating === rating && row.comment === comment) {
+        if (reply !== row.reply) this.applyReply(row, reply);
+        return;
+      }
+      // Only Google's time moved (the reviewer saved the same stars and the same text again): not an
+      // edit. The time is kept, so the approval's version and the next check see the review as Google
+      // has it; the triage, the draft and the proposal were made for this same text and stay.
+      if (row.rating === rating && row.comment === comment && row.first_name === name && row.anonymous === anonymous) {
+        if (row.state === "sending") return;
+        this.db.run(`UPDATE zur_reviews SET updated_at = ? WHERE id = ?`, updated, row.id);
         if (reply !== row.reply) this.applyReply(row, reply);
         return;
       }
@@ -1365,7 +1401,8 @@ export class ReviewService {
     }
     const row = this.settings();
     const failures = row.failures + 1;
-    // 429 and 5xx: the wait doubles from the check's own interval (10, 20, 40 minutes…), up to 6 hours.
+    // 429 and 5xx: the wait doubles from the default interval (10, 20, 40 minutes…), up to 6 hours,
+    // whatever the owner's interval.
     const wait = Math.min(BACKOFF_MAX_MS, REVIEW_LIMITS.checkEveryMs * 2 ** Math.min(failures - 1, 20));
     this.db.run(`UPDATE zur_review_settings SET failures = ?, next_check = ?, last_result = 'failed' WHERE id = 1`, failures, now + wait);
     log("warn", "reviews_check_failed", { error, count: failures });

@@ -173,6 +173,15 @@ Como cheguei nos números:
   chamadas ao Google. A leitura sem novidade não sobe o número da área, e a
   tela não recarrega. Sem a permissão dos contatos no Google, nenhuma
   sincronização fica vencida (não há despertar por minuto à toa).
+- **Intervalo escolhido pelo dono (de 5 a 1.440 minutos cada).** O pior caso
+  são as duas leituras a cada 5 minutos: 576 despertares por dia (0,6% das
+  100.000 requisições), perto de 11.000 linhas gravadas (11% da cota) e 62.000
+  lidas (1,2%), pela mesma conta acima, mais 576 chamadas ao Google. O piso de
+  5 minutos existe por causa da diferença de 2 min 30 s entre as duas
+  leituras: abaixo dele, a conferência das avaliações ficaria sem despertar
+  próprio. Intervalo maior só reduz esses números. Um contato com `etag` novo
+  e os mesmos dados custa 1 linha gravada, em vez das 13 de um contato
+  regravado.
 - **Leitura inteira por campo novo (PR S09).** Na primeira leitura depois da
   atualização, todos os contatos são lidos de novo, uma vez. Só é regravado
   inteiro (umas 12 linhas) o contato que tem algo nos campos novos; os outros

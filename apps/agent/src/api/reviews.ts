@@ -1,4 +1,4 @@
-import { reviewApproveSchema, reviewSettingsSchema, reviewsQuerySchema } from "@zuri/shared";
+import { reviewApproveSchema, reviewIntervalSchema, reviewSettingsSchema, reviewsQuerySchema } from "@zuri/shared";
 import type { Context, Hono } from "hono";
 import type { ClientInfo } from "../auth/client.ts";
 import { toAppError } from "../google/errors.ts";
@@ -63,6 +63,17 @@ export function registerReviewRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     await reviews.firstRead();
     await deps().rearm();
     return Response.json(reviews.status());
+  });
+
+  /**
+   * How often the reviews are checked, within the limits of shared/reviews.ts. No password asked: it
+   * changes only when Zuri reads Google, never what is published.
+   */
+  app.patch("/reviews/interval", async (c) => {
+    const { syncEveryMinutes } = await readJson(c.req.raw, reviewIntervalSchema, 1024);
+    const status = deps().reviews.setInterval(syncEveryMinutes);
+    await deps().rearm();
+    return Response.json(status);
   });
 
   /** Turns the reviews off and forgets their copy (Google keeps the originals). */

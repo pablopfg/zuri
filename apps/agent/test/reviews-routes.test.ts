@@ -120,6 +120,33 @@ describe("/api/reviews", () => {
     expect(((await (await api("POST", "/reviews/resume")).json()) as ReviewsStatus).paused).toBe(false);
   });
 
+  it("saves the owner's interval between two checks, within 5 minutes and a day, and plans the next check by it", async () => {
+    const on = await turnOn();
+    expect(on.syncEveryMinutes).toBe(10);
+    for (const body of [{}, { syncEveryMinutes: 4 }, { syncEveryMinutes: 1_441 }, { syncEveryMinutes: 7.5 }, { syncEveryMinutes: "15" }, { syncEveryMinutes: 15, level: "auto" }]) {
+      const res = await api("PATCH", "/reviews/interval", body);
+      expect(res.status, JSON.stringify(body)).toBe(400);
+      expect((await errorBody(res)).code).toBe("VALIDATION_FAILED");
+    }
+    expect(((await (await api("GET", "/reviews/status")).json()) as ReviewsStatus).syncEveryMinutes).toBe(10);
+    for (const minutes of [5, 1_440, 15]) {
+      const res = await api("PATCH", "/reviews/interval", { syncEveryMinutes: minutes });
+      expect(res.status).toBe(200);
+      const status = (await res.json()) as ReviewsStatus;
+      expect(status.syncEveryMinutes).toBe(minutes);
+      expect(Date.parse(status.nextSyncAt ?? "") - Date.parse(status.lastCheckAt ?? "")).toBe(minutes * 60_000);
+    }
+    const status = (await (await api("GET", "/reviews/status")).json()) as ReviewsStatus;
+    expect(await inOwner((agent) => agent.store.reviews.nextDue())).toBe(Date.parse(status.nextSyncAt ?? ""));
+    // The level, the profile and the reply style are untouched: the interval never unlocks publishing.
+    expect(status).toMatchObject({ level: on.level, enabled: true });
+    // Without a session, or without the CSRF header, nothing.
+    expect((await api("PATCH", "/reviews/interval", { syncEveryMinutes: 30 }, false)).status).toBe(401);
+    expect((await call(`${ORIGIN}/api/reviews/interval`, { method: "PATCH", headers: { cookie, "cf-connecting-ip": IP, "content-type": "application/json" }, body: JSON.stringify({ syncEveryMinutes: 30 }) })).status).toBe(403);
+    expect(((await (await api("GET", "/reviews/status")).json()) as ReviewsStatus).syncEveryMinutes).toBe(15);
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_review_settings SET check_every_min = 10 WHERE id = 1`));
+  });
+
   it("refuses malformed input", async () => {
     await turnOn();
     for (const body of [

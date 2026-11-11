@@ -340,7 +340,8 @@ describe("the labels once an hour", () => {
         world.clock.now += EVERY;
         world.googleSim.people.update("people/c1", { memberships: member(CLIENTS, group, "contactGroups/myContacts") });
         expect(await world.contacts.sync("alarm")).toBe("ok");
-        expect(world.contacts.status().lastResult).toBe("changed");
+        // Google moved the etag, but a group of its own is nothing Zuri keeps: the contact isn't stored again.
+        expect(world.contacts.status().lastResult).toBe("unchanged");
       }
       expect(labelCalls(world)).toBe(start);
     }));

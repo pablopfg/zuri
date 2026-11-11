@@ -95,6 +95,32 @@ describe("/api/google/contacts", () => {
     expect((await errorBody(res)).code).toBe("CONFLICT");
   });
 
+  it("saves the owner's interval between two reads, within 5 minutes and a day, and plans the next read by it", async () => {
+    const on = await turnOn();
+    expect(on.syncEveryMinutes).toBe(5);
+    for (const body of [{ syncEveryMinutes: 4 }, { syncEveryMinutes: 1_441 }, { syncEveryMinutes: 7.5 }, { syncEveryMinutes: "15" }, { syncEveryMinutes: null }, { syncEveryMs: 60_000 }]) {
+      const res = await api("PATCH", "/google/contacts/settings", body);
+      expect(res.status, JSON.stringify(body)).toBe(400);
+      expect((await errorBody(res)).code).toBe("VALIDATION_FAILED");
+    }
+    // Nothing of a refused body was kept.
+    expect(((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).syncEveryMinutes).toBe(5);
+    for (const minutes of [5, 1_440, 15]) {
+      const res = await api("PATCH", "/google/contacts/settings", { syncEveryMinutes: minutes });
+      expect(res.status).toBe(200);
+      const status = (await res.json()) as ContactsStatus;
+      expect(status.syncEveryMinutes).toBe(minutes);
+      expect(Date.parse(status.nextSyncAt ?? "") - Date.parse(status.lastSyncAt ?? "")).toBe(minutes * 60_000);
+    }
+    // The alarm follows: what is due next is the read the screen was told of.
+    const status = (await (await api("GET", "/google/contacts")).json()) as ContactsStatus;
+    expect(await inOwner((agent) => agent.store.contacts.nextDue())).toBe(Date.parse(status.nextSyncAt ?? ""));
+    // Without a session, nothing.
+    expect((await api("PATCH", "/google/contacts/settings", { syncEveryMinutes: 30 }, false)).status).toBe(401);
+    expect(((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).syncEveryMinutes).toBe(15);
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET sync_every_min = 5 WHERE id = 1`));
+  });
+
   it("asks for the password typed recently to turn the contacts on, to add a label and to turn them off", async () => {
     expect((await consent("/google/connect")).status).toBe(200);
     await stale();
@@ -194,7 +220,7 @@ describe("/api/google/contacts", () => {
     expect(status).toMatchObject({ status: "ok", lastResult: "changed", refreshing: false });
     const wait = Date.parse(status.nextSyncAt ?? "") - Date.parse(status.lastSyncAt ?? "");
     expect(wait).toBe(5 * 60_000);
-    expect(Object.keys(status).sort()).toEqual(["connected", "contacts", "enabled", "labels", "lastResult", "lastSyncAt", "nextSyncAt", "onAdded", "outcome", "problem", "refreshing", "reminders", "status"]);
+    expect(Object.keys(status).sort()).toEqual(["connected", "contacts", "enabled", "labels", "lastResult", "lastSyncAt", "nextSyncAt", "onAdded", "outcome", "problem", "refreshing", "reminders", "status", "syncEveryMinutes"]);
     expect(JSON.stringify(status)).not.toMatch(/sync\.\d|people_sync_token|page_token/);
   });
 
