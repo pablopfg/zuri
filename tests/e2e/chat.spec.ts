@@ -36,6 +36,12 @@ async function send(page: Page, text: string) {
 
 const log = (page: Page) => page.getByRole("log");
 
+/** Picks an action from the "Mais opções" menu beside the open conversation's title (the rows' menus come before it). */
+async function openConversationAction(page: Page, name: string) {
+  await page.getByRole("button", { name: /^Mais opções para/ }).last().click();
+  await page.getByRole("menu").getByRole("menuitem", { name, exact: true }).click();
+}
+
 test("a new conversation streams the answer, gets its own address and shows up in the list @mobile", async ({ page, isMobile }) => {
   const word = tag();
   await openChat(page);
@@ -50,7 +56,8 @@ test("a new conversation streams the answer, gets its own address and shows up i
   await expect(page).toHaveTitle(`Olá ${word} · Zuri`);
 
   if (isMobile) await page.getByRole("button", { name: "Ver conversas" }).click();
-  const list = isMobile ? page.getByRole("dialog", { name: "Conversas" }) : page.getByRole("complementary", { name: "Conversas" });
+  // On a phone the list takes the conversation's place (conversa.spec.ts); Esc brings the conversation back.
+  const list = page.getByRole("complementary", { name: "Conversas" });
   await expect(list.getByRole("link", { name: new RegExp(`Olá ${word}`) })).toHaveAttribute("aria-current", "page");
   if (isMobile) await page.keyboard.press("Escape");
 
@@ -214,7 +221,7 @@ test("rename and delete a conversation", async ({ page }) => {
   const word = tag();
   await openChat(page);
   await send(page, `Assunto ${word}`);
-  await page.getByRole("button", { name: "Renomear" }).click();
+  await openConversationAction(page, "Renomear");
   const rename = page.getByRole("dialog", { name: "Renomear" });
   await rename.getByLabel("Nome da conversa").fill(`Renomeada ${word}`);
   await rename.getByRole("button", { name: "Salvar" }).click();
@@ -222,7 +229,7 @@ test("rename and delete a conversation", async ({ page }) => {
   await expect(page.getByRole("status").filter({ hasText: "Conversa renomeada" })).toBeVisible();
   await expect(page.getByRole("complementary", { name: "Conversas" }).getByRole("link", { name: new RegExp(`Renomeada ${word}`) })).toBeVisible();
 
-  await page.getByRole("button", { name: "Apagar conversa" }).click();
+  await openConversationAction(page, "Apagar conversa");
   const confirm = page.getByRole("dialog", { name: "Apagar esta conversa?" });
   // The standard confirmation (stage 26b): opening focuses Cancelar, not the verb.
   await expect(confirm.getByRole("button", { name: "Cancelar" })).toBeFocused();
@@ -265,7 +272,7 @@ test("a rename right after a turn stays when an older refresh of the conversatio
   await box.press("Enter");
   await expect(log(page).getByText("(IA simulada)", { exact: false })).toBeVisible();
   await expect(page.getByRole("button", { name: "Parar" })).toHaveCount(0, { timeout: 15_000 });
-  await page.getByRole("button", { name: "Renomear" }).click();
+  await openConversationAction(page, "Renomear");
   const rename = page.getByRole("dialog", { name: "Renomear" });
   await rename.getByLabel("Nome da conversa").fill(`Renomeada ${word}`);
   await rename.getByRole("button", { name: "Salvar" }).click();

@@ -20,6 +20,10 @@
  * - `painel-da-conta=/`: the account panel (a sheet on a phone), opened on that page.
  * - `folha-mais=/`: the "Mais" sheet of the phone's bottom bar (phone only).
  * - `menu-recolhido=/`: the side menu as a rail of icons, with one name showing (computer only).
+ * - `conversa-aberta=/conversa`: the sample conversation ("Organizar a mudança"), open.
+ * - `conversa-anterior=/conversa`: the same, as if it had last been used yesterday (the notice under its messages).
+ * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
+ * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
  *   page's day and its line of now come out the same at any hour the script runs).
  * - `--exemplos`: fills the empty database with the sample data of
@@ -29,7 +33,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, devices } from "@playwright/test";
 import { routeFakeTurnstile } from "../tests/e2e/fixtures.ts";
-import { signIn } from "../tests/e2e/ui-helpers.ts";
+import { CSRF, signIn } from "../tests/e2e/ui-helpers.ts";
 import { seed } from "./dados-de-exemplo.ts";
 
 const BASE = "http://127.0.0.1:4173";
@@ -140,7 +144,29 @@ for (const [device, options] of [
       // Shots that exist on one size only.
       if (screen.name === "folha-mais" && device !== "celular") continue;
       if (screen.name === "menu-recolhido" && device !== "computador") continue;
-      await page.goto(BASE + screen.path);
+      if (screen.name === "conversas" && device !== "celular") continue;
+      let path = screen.path;
+      if (screen.name === "conversa-menu" && device !== "computador") continue;
+      if (/^conversa-(aberta|anterior|menu)$/.test(screen.name)) {
+        const list = (await (await page.request.get(`${BASE}/api/conversations`, { headers: CSRF })).json()) as { conversations: { id: string; title: string }[] };
+        const sample = list.conversations.find((conversation) => conversation.title === "Organizar a mudança");
+        if (!sample) throw new Error("conversa-aberta needs --exemplos");
+        path = `/conversa/${sample.id}`;
+        if (screen.name === "conversa-anterior")
+          // Only the answers change: the server still has it as today's.
+          await page.route(/\/api\/conversations(\/[0-9a-f-]{36})?$/, async (route) => {
+            if (route.request().method() !== "GET") return route.fallback();
+            const response = await route.fetch();
+            const yesterday = (iso: string) => new Date(Date.parse(iso) - 86_400_000).toISOString();
+            const aged = <T extends { createdAt: string; updatedAt?: string }>(item: T): T => ({ ...item, createdAt: yesterday(item.createdAt), ...(item.updatedAt ? { updatedAt: yesterday(item.updatedAt) } : {}) });
+            const body = await response.json();
+            await route.fulfill({
+              response,
+              json: { ...body, ...(body.conversations ? { conversations: body.conversations.map(aged) } : {}), ...(body.conversation ? { conversation: aged(body.conversation), messages: body.messages.map(aged) } : {}) },
+            });
+          });
+      }
+      await page.goto(BASE + path);
       await page.getByRole("heading", { level: 1 }).first().waitFor();
       if (screen.name === "painel-de-avisos") {
         await page.getByRole("button", { name: /^Abrir avisos/ }).first().click();
@@ -158,12 +184,18 @@ for (const [device, options] of [
         await page.getByRole("button", { name: "Recolher menu" }).click();
         await page.locator("aside").getByRole("link", { name: "Agenda", exact: true }).hover();
       }
+      if (screen.name === "conversa-menu") await page.getByRole("complementary", { name: "Conversas" }).getByRole("button", { name: /^Mais opções/ }).click();
+      if (screen.name === "conversas") {
+        await page.getByRole("button", { name: "Ver conversas" }).click();
+        await page.getByRole("link", { name: /Organizar a mudança/ }).waitFor();
+      }
       if (screen.region) {
         const region = page.getByRole("region", { name: screen.region });
         await region.waitFor();
         await region.evaluate((box: HTMLElement) => box.scrollIntoView({ block: "start" }));
       }
       await shot(screen.name);
+      if (screen.name === "conversa-anterior") await page.unrouteAll({ behavior: "wait" });
       // The rail is remembered on the device: the next shots get the wide menu back.
       if (screen.name === "menu-recolhido") await page.getByRole("button", { name: "Expandir menu" }).click();
     }

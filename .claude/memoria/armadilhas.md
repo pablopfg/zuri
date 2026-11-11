@@ -456,3 +456,11 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
   "hoje"): guarde a cópia local até a consulta refeita trazê-lo de volta ao
   desmarcar. Sem isso a linha sumia por um instante e o foco ia embora (S04,
   `DayCard.tsx`).
+- `<Dialog>` montado só enquanto aberto (`{aberto && <Dialog open …/>}`): ao
+  desmontar, o `<dialog>` some sem `close()` e o navegador não devolve o foco
+  a quem abriu. Guarde o `document.activeElement` ao abrir e devolva o foco
+  depois de um `flushSync` do fechamento (S05, `ChatPage.tsx`; os testes de
+  teclado de `conversa.spec.ts` pegam).
+- Script que mata o servidor do e2e procurando "wrangler dev" na linha de
+  comando mata também o shell que o chamou se o texto estiver no próprio
+  comando. Deixe o texto num arquivo e chame só o arquivo (S05).

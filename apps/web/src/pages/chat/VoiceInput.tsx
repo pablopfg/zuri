@@ -1,0 +1,66 @@
+import { VOICE_LIMITS } from "@zuri/shared";
+import { LoaderCircle, Mic, Square, X } from "lucide-react";
+import { Button } from "../../components/ui.tsx";
+import { useI18n } from "../../lib/i18n.tsx";
+import { type useVoice, voiceSupported } from "./voice.ts";
+
+type Voice = ReturnType<typeof useVoice>;
+
+/**
+ * The one recording control of the app (Sinal, PR S05): every field that takes
+ * voice shows this button and this line, so recording looks and reads the same
+ * wherever the owner speaks. The button starts and stops; the line says the
+ * time while it records, that the audio is becoming text, or what failed.
+ * Nothing shows where the browser can't record.
+ */
+export function VoiceButton({ voice, disabled = false }: { voice: Voice; disabled?: boolean }) {
+  const { t } = useI18n();
+  if (!voiceSupported()) return null;
+  const recording = voice.state.phase === "recording";
+  return (
+    <Button
+      variant="ghost"
+      className="h-11 w-11 shrink-0 rounded-2xl px-0"
+      aria-label={recording ? t("web.chat.voice.stop") : t("web.chat.voice.start")}
+      aria-pressed={recording}
+      disabled={disabled || voice.state.phase === "transcribing"}
+      onClick={() => (recording ? voice.stop() : void voice.start())}
+    >
+      {recording ? <Square className="h-4 w-4 fill-current text-danger" aria-hidden /> : <Mic className="h-5 w-5" aria-hidden />}
+    </Button>
+  );
+}
+
+/** What the recording is doing, above the field it writes to; empty while nothing happens. */
+export function VoiceStatus({ voice }: { voice: Voice }) {
+  const { t } = useI18n();
+  const { state } = voice;
+  const error = voice.error ? ("key" in voice.error ? t(voice.error.key) : voice.error.message) : null;
+  if (state.phase === "idle" && !error) return null;
+  return (
+    <div aria-live="polite" className="flex items-center justify-between gap-2 px-3 pt-1 text-sm">
+      {state.phase === "recording" && (
+        <span className="inline-flex items-center gap-2 font-medium text-danger">
+          <span className="h-2 w-2 rounded-full bg-danger motion-safe:animate-pulse" aria-hidden />
+          {t("web.chat.voice.recording", { seconds: state.seconds, max: VOICE_LIMITS.maxClipSeconds })}
+        </span>
+      )}
+      {state.phase === "transcribing" && (
+        <span className="inline-flex items-center gap-2 text-fg-muted">
+          <LoaderCircle className="h-4 w-4 motion-safe:animate-spin" aria-hidden />
+          {t("web.chat.voice.transcribing")}
+        </span>
+      )}
+      {error && state.phase === "idle" && (
+        <span role="alert" className="flex-1 text-danger">
+          {error}
+        </span>
+      )}
+      {error && (
+        <Button variant="ghost" className="h-11 w-11 px-0" aria-label={t("web.close")} onClick={voice.clearError}>
+          <X className="h-4 w-4" aria-hidden />
+        </Button>
+      )}
+    </div>
+  );
+}
