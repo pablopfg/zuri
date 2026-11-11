@@ -32,15 +32,56 @@ subagente `qa-senior` e registra o resultado no PR.
 | Unitário | Vitest | Funções puras: recorrência, i18n, schemas, criptografia, parsers do Telegram | Todo PR |
 | Integração | Vitest + `@cloudflare/vitest-pool-workers` (workerd) | Rotas Hono, Durable Object, SQLite, migrations, alarmes, webhook do Telegram | Todo PR |
 | Contrato da API | Vitest + schemas Zod | Formato de pedidos e respostas, códigos de erro do catálogo | Todo PR |
-| E2E | Playwright (Chromium) | Fluxos do dono na interface: login, chat, tarefas, aprovações, configurações | Todo PR |
+| E2E | Playwright (Chromium) | Fluxos do dono na interface: login, chat, tarefas, aprovações, configurações | Todo PR que muda algo além de texto (veja abaixo) |
 | Acessibilidade | `@axe-core/playwright` | Telas novas sem violação séria ou crítica | Todo PR que muda tela |
 | i18n | Teste de cobertura + lint de texto | Chaves iguais em `pt-BR` e `en`, nada de texto solto | Todo PR |
 | Segurança | Vitest (casos de abuso) | Autenticação, CSRF, sessão, webhook, aprovações, injeção de prompt, limites | Todo PR |
 | Migrations | Vitest | Banco vazio e banco com dados de todas as versões anteriores sobem para a última | PR com migration |
 | Desempenho | Vitest com orçamento | Subrequests por invocação, tamanho do bundle, consultas sem varredura completa | Etapas marcadas |
-| Lighthouse | `lighthouse` via Playwright (`npm run test:lighthouse`) | Entrar, Início, Tarefas, Notas e Configurações: acessibilidade ≥ 95, boas práticas ≥ 95, desempenho ≥ 60 | Todo PR (job `lighthouse`) |
-| CSP | Playwright (`csp.spec.ts`) | Nenhuma página dispara violação da CSP | Todo PR |
+| Lighthouse | `lighthouse` via Playwright (`npm run test:lighthouse`) | Entrar, Início, Tarefas, Notas e Configurações: acessibilidade ≥ 95, boas práticas ≥ 95, desempenho ≥ 60 | Como o E2E (job `lighthouse`) |
+| CSP | Playwright (`csp.spec.ts`) | Nenhuma página dispara violação da CSP | Como o E2E |
 | Cobertura | Istanbul (`npm run test:coverage`) | Pisos por área: agente, shared e `apps/web/src/lib` | Todo PR (job `test`) |
+
+## Quando os testes no navegador rodam na CI
+
+Os jobs `e2e` (que inclui `a11y.spec.ts` e `csp.spec.ts`) e `lighthouse` sobem o
+Worker de verdade com a interface construída. Num PR que não muda nada disso
+eles não têm o que achar, e a suíte leva de 22 a 29 minutos. Por isso o primeiro
+passo dos dois jobs é `node scripts/precisa-de-e2e.ts`, que lê os arquivos do PR
+e decide.
+
+Os testes no navegador **não rodam** só quando todos os arquivos do PR são:
+
+- texto que ninguém constrói nem serve: `docs/`, `changelog/`, `CHANGELOG.md`,
+  `.claude/` (memória, regras e skills do agente), os `.md` da raiz e o
+  `LICENSE`;
+- ou os arquivos que guardam o número da versão (`version.ts`, o
+  `package.json` da raiz e de cada workspace e o `package-lock.json`), quando
+  a única diferença é esse número. É o caso do PR `chore(release)`. O script refaz o arquivo da
+  `develop` com o número novo e exige que o resultado seja igual, byte a byte,
+  ao do PR: uma dependência, um script ou uma chave a mais já faz rodar.
+
+Qualquer outro caminho roda tudo: `apps/`, `packages/`, `tests/`, `scripts/`,
+`.github/`, `playwright*.config.ts`, `wrangler`, `biome.json`, `tsconfig*`,
+`.nvmrc` e o que mais aparecer. A lista é do que se sabe que é texto, nunca do
+que é código, então um arquivo novo num lugar inesperado roda. Também roda
+tudo em cada push na `develop`, na execução antes do deploy, em PR para
+qualquer branch que não seja a `develop` ou a `main` (o check verde fica no
+commit e seguiria a PR se a base fosse trocada depois) e sempre que o script
+não consegue ler as mudanças.
+
+A mesclagem feita por um workflow (o PR `chore(release)` e o do README) não
+gera push, então depois dela não há execução na `develop`. O que garante o PR
+de versão é a comparação byte a byte acima, não uma execução posterior.
+
+O job continua aparecendo verde no PR nos dois casos, porque as rulesets
+exigem os checks `e2e` e `lighthouse`; o resumo do job diz se a suíte rodou e
+por quê. `typecheck`, `lint` (que confere os `.html` de `docs/`), `test`,
+`i18n`, `build` (com o teto do JavaScript, que o número da versão pode mexer),
+`audit` e o CodeQL rodam em todo PR, sem exceção.
+
+Mudar essa lista é mudar o que protege a `develop`: só com teste em
+`tests/repo/precisa-de-e2e.test.ts` e aviso no PR.
 
 ## Casos de borda obrigatórios (lista do QA)
 

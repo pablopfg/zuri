@@ -9,6 +9,9 @@ export const readJson = (path: string) => JSON.parse(readText(path));
 export const readYaml = (path: string) => parse(readText(path));
 
 export interface Step {
+  id?: string;
+  if?: string;
+  "continue-on-error"?: unknown;
   uses?: string;
   run?: string;
   with?: Record<string, unknown>;
@@ -16,6 +19,9 @@ export interface Step {
 }
 export interface Job {
   name?: string;
+  if?: string;
+  needs?: unknown;
+  "continue-on-error"?: unknown;
   permissions?: unknown;
   environment?: unknown;
   steps?: Step[];
