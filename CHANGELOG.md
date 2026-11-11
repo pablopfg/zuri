@@ -19,6 +19,22 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) por alguns minutos, até o workflow de versão escrever a seção.
 
+## [0.46.2] - 2026-11-11
+
+Mesclada às 05:56 (UTC-3) · commit [`6c38d29`](https://github.com/pablopfg/Zuri/commit/6c38d299bee9600bc67e13ed165f6578ef41397d) · PR [#280](https://github.com/pablopfg/Zuri/pull/280) · E2e e lighthouse só rodam quando o PR muda algo além de texto ou da versão
+
+### Alterado
+
+- CI: os testes no navegador (`e2e` e `lighthouse`) deixam de rodar em PR que só muda texto (documentação, changelog, memória do agente) ou só o número da versão, como o PR `chore(release)`. Esses PRs ficam prontos em cerca de 5 minutos, em vez de 22 a 29. Qualquer outra mudança roda a suíte inteira, como antes, e os outros checks rodam em todo PR.
+
+## [0.46.1] - 2026-11-11
+
+Mesclada às 05:25 (UTC-3) · commit [`35534b5`](https://github.com/pablopfg/Zuri/commit/35534b534a761bcef0c3e25bcc384b44f53bc257) · PR [#279](https://github.com/pablopfg/Zuri/pull/279) · Renomear conversa não conta mais como uso
+
+### Corrigido
+
+- Renomear uma conversa não conta mais como uso. Ela continua no mesmo lugar da lista, no mesmo grupo (Hoje, Ontem…) e com a hora da última mensagem. Antes, uma conversa de ontem subia para "Hoje" só por ganhar um nome novo e perdia o aviso de conversa anterior (#272).
+
 ## [0.46.0] - 2026-11-11
 
 Mesclada às 04:25 (UTC-3) · commit [`4c7598c`](https://github.com/pablopfg/Zuri/commit/4c7598c7d5b2b4f3c512e22b1d983d216317bdc9) · PR [#277](https://github.com/pablopfg/Zuri/pull/277) · Tarefas e Notas do Sinal, com nota que salva sozinha (S07)
@@ -3083,7 +3099,9 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.46.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.46.2...develop
+[0.46.2]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.2
+[0.46.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.1
 [0.46.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.46.0
 [0.45.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.45.0
 [0.44.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.44.0
