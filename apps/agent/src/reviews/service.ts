@@ -497,10 +497,15 @@ export class ReviewService {
 
   /** From the alarm: the check, when due. True when it ran (the next time moved). */
   async tick(): Promise<boolean> {
-    const row = this.onRow();
-    if (!row || !this.enabled() || row.next_check === null || row.next_check > this.clock()) return false;
+    if (!this.due()) return false;
     await this.check("alarm");
     return true;
+  }
+
+  /** The alarm's check is due now: with the contacts read every minute it takes the wake and the sync waits for the next. */
+  due(): boolean {
+    const row = this.onRow();
+    return Boolean(row && this.enabled() && row.next_check !== null && row.next_check <= this.clock());
   }
 
   /** The first read right after saving, once a minute at most (its own room, beside "check now"'s): saving again and again can't spend Google's quota. */

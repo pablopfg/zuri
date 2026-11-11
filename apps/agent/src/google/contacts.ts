@@ -505,13 +505,14 @@ export class GoogleContacts {
   }
 
   /** From the alarm: the sync when it is due, then the notice of the day. True when it did either (the times moved). */
-  async tick(): Promise<boolean> {
+  async tick(options: { sync?: boolean } = {}): Promise<boolean> {
     const row = this.onRow();
     if (!row || !this.deps.google.connected()) return false;
     const now = this.clock();
     let worked = false;
     this.reached = false;
-    if (row.next_sync !== null && row.next_sync <= now && this.deps.google.granted(CONTACTS_SCOPE)) {
+    // `sync: false`: this wake is the reviews' check's, and the sync stays due for the next one.
+    if (options.sync !== false && row.next_sync !== null && row.next_sync <= now && this.deps.google.granted(CONTACTS_SCOPE)) {
       const outcome = await this.sync("alarm");
       // Only a sync that ended, well or not: "busy" and "off" never left for Google, and a read cut in
       // pages comes back every minute until it ends (holding the reviews each time would starve them).

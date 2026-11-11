@@ -157,8 +157,9 @@ interface Store {
 const RETRY_FLOOR_MS = 60_000;
 /**
  * The reviews' check waits this long after a wake that synced the contacts, or half the contacts' interval
- * when that is shorter (a sync every minute leaves it 30 s): the two Google reads never share a wake, and
- * the check always has a wake of its own before the next sync.
+ * when that is shorter: the two Google reads never share a wake. With the contacts read every minute no
+ * wait fits before the next sync (the alarm comes back a minute out at the soonest), so there the check
+ * takes the wake it is due in and the sync waits for the next one.
  */
 const SYNC_GAP_MS = 150_000;
 
@@ -392,9 +393,11 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     try {
       // The alarm was set by `wake` while this work was still due (a retry a minute out):
       // set again from the times the sync and the notice just moved, so no empty wake follows.
-      if (await this.store.contacts.tick()) {
-        // The reviews' check never shares a wake with a contacts' sync that went to Google: it waits two
-        // and a half minutes. A wake that only sent the notice of the day, or found the sync busy, holds nothing.
+      // A sync due again at every wake would hold the check off for ever: the check goes first, the sync next wake.
+      const checkFirst = this.store.contacts.everyMs() < 2 * RETRY_FLOOR_MS && this.store.reviews.due();
+      if (await this.store.contacts.tick({ sync: !checkFirst })) {
+        // The reviews' check never shares a wake with a contacts' sync that went to Google: it waits two and a
+        // half minutes, or half the sync's interval. A wake that only sent the notice of the day, or found the sync busy, holds nothing.
         if (this.store.contacts.readGoogle) this.store.reviews.holdOff(Math.min(SYNC_GAP_MS, this.store.contacts.everyMs() / 2));
         await automations.rearm();
       }
@@ -765,9 +768,14 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           // Work already past due is only left there when its step failed on the last
           // alarm (a full disk, say): wait a minute before trying again, never at once,
           // so a step that keeps failing can't spin the alarm through the day's quota.
-          const floor = new Date(Date.now() + RETRY_FLOOR_MS).toISOString();
-          // ISO strings in UTC sort as times: the later of the two.
-          return [due, floor].sort()[1] ?? floor;
+          const now = Date.now();
+          const floor = new Date(now + RETRY_FLOOR_MS).toISOString();
+          // ISO strings in UTC sort as times.
+          if (due >= floor) return due;
+          // An alarm already waiting inside that minute stays where it is: asking again (saving a setting,
+          // an event coming in) never pushes it further out, or asking every 50 s would hold every wake off.
+          const waiting = automations.alarmAt();
+          return waiting !== null && waiting > new Date(now).toISOString() && waiting <= floor ? waiting : floor;
         },
         finished: (automation, outcome) => noticeForRun(alerts, diagnostics, automation, outcome),
         alarm: {

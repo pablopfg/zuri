@@ -184,15 +184,22 @@ Como cheguei nos números:
   das 37.400 que fluxos e leituras somavam no pior dia de antes, e faz 1.909
   chamadas ao Google e o mesmo número de despertares (1,9% das 100.000
   requisições). A folga entre as duas leituras é de 2 min 30 s ou metade do
-  intervalo dos contatos, o que for menor. O parágrafo abaixo descreve a conta
-  de antes, que continua valendo para intervalos de 5 minutos ou mais.
-- **Intervalo escolhido pelo dono (de 5 a 1.440 minutos cada).** O pior caso
+  intervalo dos contatos, o que for menor. Com os contatos a cada minuto, a
+  conferência das avaliações fica com o despertar em que vence e os contatos
+  esperam o seguinte, então o dia nunca passa de 1.440 despertares. Pedir o
+  alarme de novo (salvar um ajuste, um evento chegando) não adia um despertar
+  que já espera dentro do próximo minuto. As 19 linhas de uma leitura sem
+  novidade são medidas em `apps/agent/test/alarm-two-reads.test.ts`. A
+  conferir no painel depois do deploy: com um despertar por minuto o objeto
+  pode ficar mais tempo na memória, e a duração (GB-s) do plano gratuito só
+  aparece lá. O parágrafo abaixo descreve a conta de antes, que continua
+  valendo para intervalos de 5 minutos ou mais.
+- **Intervalo de 5 a 1.440 minutos (a conta de antes do mínimo de 1 minuto).** O pior caso
   são as duas leituras a cada 5 minutos: 576 despertares por dia (0,6% das
   100.000 requisições), perto de 11.000 linhas gravadas (11% da cota) e 62.000
   lidas (1,2%), pela mesma conta acima, mais 576 chamadas ao Google. O piso de
-  5 minutos existe por causa da diferença de 2 min 30 s entre as duas
-  leituras: abaixo dele, a conferência das avaliações ficaria sem despertar
-  próprio. Intervalo maior só reduz esses números. Um contato com `etag` novo
+  5 minutos existia por causa da diferença de 2 min 30 s entre as duas
+  leituras; abaixo dele vale o parágrafo acima. Intervalo maior só reduz esses números. Um contato com `etag` novo
   e os mesmos dados custa 1 linha gravada, em vez das 13 de um contato
   regravado.
 - **Leitura inteira por campo novo (PR S09).** Na primeira leitura depois da
