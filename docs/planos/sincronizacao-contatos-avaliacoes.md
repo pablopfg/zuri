@@ -116,7 +116,7 @@ Novos no catálogo (`pt-BR-contacts.ts`, `pt-BR-reviews.ts` e `en`): "Próxima e
 ### Rotas e contratos
 
 - `GET /api/contacts/status` e `GET /api/reviews/status` ganham `nextSyncAt` (ISO) e `lastResult` (`unchanged` \| `changed` \| `failed`).
-- `GET /api/reviews/metrics?period=…` → `{ period, ratings: [n5,n4,n3,n2,n1], byBucket: [{ key, promoters, neutrals, detractors }], replied, medianReplyMinutes, requests: { sent, opened, reviewed } }`. Só números.
+- `GET /api/reviews/metrics?period=…` → `{ period, ratings: [n5,n4,n3,n2,n1], byBucket: [{ key, promoters, neutrals, detractors }], replied, medianReplyMinutes, requests: { sent, opened, reviewed } }`. Só números. (Como ficou na PR S11: `byBucket` virou `buckets`, `requests` vem `null` até existirem pedidos, e a migration 35 criou um índice. Veja "Diferenças da S11" em [implementacao-frontend-sinal.md](implementacao-frontend-sinal.md).)
 - `POST /api/contacts/sync` e `POST /api/reviews/check`: 1 por minuto; 429 `RATE_LIMITED` com `retryAfter`.
 
 ### Banco

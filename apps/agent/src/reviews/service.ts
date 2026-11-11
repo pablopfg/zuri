@@ -10,6 +10,8 @@ import {
   type ReviewItem,
   type ReviewLevel,
   type ReviewLocation,
+  type ReviewMetricPeriod,
+  type ReviewMetrics,
   type ReviewPage,
   type ReviewPattern,
   type ReviewProblem,
@@ -29,6 +31,7 @@ import { type GoogleCalendar, GoogleError, GoogleMeter, GOOGLE_ACCOUNTS_API, GOO
 import { AppError } from "../http/errors.ts";
 import { log } from "../log.ts";
 import { type GuardContext, guard, languageOf, withSignature } from "./guard.ts";
+import { readMetrics } from "./metrics.ts";
 import { type ReviewAi, ReviewResponder } from "./responder.ts";
 import { forgetReviews } from "./store.ts";
 import { firstName, ratingOf, suspicious, triage } from "./triage.ts";
@@ -189,6 +192,8 @@ const parseList = <T>(raw: string | null | undefined): T[] => {
 
 /** An instant as Zuri keeps it: Google's may carry nanoseconds, so string order needs one shape. */
 const instant = (value: string) => new Date(Date.parse(value)).toISOString();
+/** When Google says the reply was written (or last edited), for the overview's "time to reply". */
+const replyTime = (review: GoogleReview) => (review.reviewReply?.updateTime ? instant(review.reviewReply.updateTime) : null);
 
 export class ReviewService {
   private readonly clock: () => number;
@@ -698,16 +703,24 @@ export class ReviewService {
     if (!row) return;
     const reply = cleanBlock(review.reviewReply?.comment, REVIEW_LIMITS.commentMax) || null;
     if (reply === row.reply) return;
-    this.applyReply(row, reply);
+    this.applyReply(row, reply, replyTime(review));
   }
 
-  /** Someone answered (or the answer went) at Google. */
-  private applyReply(row: ReviewRow, reply: string | null): void {
+  /** Someone answered (or the answer went) at Google. `at`: Google's time of the reply, kept only when Zuri has none yet (its own publication's, or the one first seen). */
+  private applyReply(row: ReviewRow, reply: string | null, at: string | null = null): void {
     if (row.state === "sending") return;
     if (reply) {
       const mine = row.reply_hash !== null && ReviewService.replyHash(reply) === row.reply_hash;
       const state: ReviewState = mine ? "replied" : row.state === "history" || row.state === "resolved" || row.state === "removed" ? row.state : "replied_elsewhere";
-      this.db.run(`UPDATE zur_reviews SET reply = ?, state = ?, needs_draft = 0, auto = CASE WHEN ? THEN auto ELSE 0 END WHERE id = ?`, reply, state, mine ? 1 : 0, row.id);
+      this.db.run(
+        `UPDATE zur_reviews SET reply = ?, state = ?, needs_draft = 0, auto = CASE WHEN ? THEN auto ELSE 0 END, replied_at = COALESCE(replied_at, ?) WHERE id = ?`,
+        reply,
+        state,
+        mine ? 1 : 0,
+        // Only of a reply seen for the first time: Google's time moves when a reply is edited.
+        row.reply === null ? at : null,
+        row.id,
+      );
       if (state !== row.state) this.event(row.id, state === "replied" ? "replied" : "replied_elsewhere", "check");
       // A reply of Zuri's someone replaced at Google is as good as deleted: nothing more goes out by itself.
       if (!mine && row.state === "replied" && row.reply_hash !== null) this.trip("deleted");
@@ -733,7 +746,7 @@ export class ReviewService {
     const row = this.existing(review.name);
     if (row) {
       if (row.updated_at === updated && row.rating === rating && row.comment === comment) {
-        if (reply !== row.reply) this.applyReply(row, reply);
+        if (reply !== row.reply) this.applyReply(row, reply, replyTime(review));
         return;
       }
       // Only Google's time moved (the reviewer saved the same stars and the same text again): not an
@@ -745,10 +758,10 @@ export class ReviewService {
       if (row.rating === rating && row.comment === comment && row.first_name === name && row.anonymous === anonymous && marked === row.reasons.includes("suspicious")) {
         if (row.state === "sending") return;
         this.db.run(`UPDATE zur_reviews SET updated_at = ? WHERE id = ?`, updated, row.id);
-        if (reply !== row.reply) this.applyReply(row, reply);
+        if (reply !== row.reply) this.applyReply(row, reply, replyTime(review));
         return;
       }
-      this.changed(row, { rating, name, anonymous, comment, raw: typeof review.comment === "string" ? review.comment : "", updated, reply }, found);
+      this.changed(row, { rating, name, anonymous, comment, raw: typeof review.comment === "string" ? review.comment : "", updated, reply, repliedAt: replyTime(review) }, found);
       return;
     }
     // Written before the owner turned the profile on and left out of the first read (only one page): never new.
@@ -776,8 +789,8 @@ export class ReviewService {
     }
     if (this.level(this.row()) === "off" && state === "new") needsDraft = 0;
     this.db.run(
-      `INSERT INTO zur_reviews (id, location, google_name, rating, first_name, anonymous, comment, created_at, updated_at, state, reasons, needs_draft, reply, seen_at, escalated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO zur_reviews (id, location, google_name, rating, first_name, anonymous, comment, created_at, updated_at, state, reasons, needs_draft, reply, replied_at, seen_at, escalated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       location.google_name,
       review.name,
@@ -791,6 +804,7 @@ export class ReviewService {
       JSON.stringify(reasons),
       needsDraft,
       reply,
+      reply ? replyTime(review) : null,
       now,
       escalatedAt,
     );
@@ -798,7 +812,7 @@ export class ReviewService {
   }
 
   /** A review edited at Google. One already answered keeps its reply (never replaced by Zuri); one waiting is triaged again. */
-  private changed(row: ReviewRow, next: { rating: number; name: string; anonymous: number; comment: string; raw?: string; updated: string; reply: string | null }, found: Found): void {
+  private changed(row: ReviewRow, next: { rating: number; name: string; anonymous: number; comment: string; raw?: string; updated: string; reply: string | null; repliedAt?: string | null }, found: Found): void {
     const now = this.clock();
     if (row.state === "sending") return;
     this.db.run(
@@ -810,7 +824,7 @@ export class ReviewService {
       next.updated,
       row.id,
     );
-    if (next.reply !== row.reply) this.applyReply({ ...row, rating: next.rating }, next.reply);
+    if (next.reply !== row.reply) this.applyReply({ ...row, rating: next.rating }, next.reply, next.repliedAt ?? null);
     const current = this.byId(row.id) as ReviewRow;
     if (ANSWERED.includes(current.state) || current.state === "history" || current.state === "resolved" || current.state === "removed") {
       // Answered and now 3 stars or fewer: the team hears of it; the reply stays as it is.
@@ -1497,6 +1511,11 @@ export class ReviewService {
       nextCursor: rows.length > REVIEW_LIMITS.screenPage && last ? `${last.updated_at}|${last.id}` : null,
       counts: { needs: count(NEEDS), answered: count(ANSWERED), auto: this.enabled() ? this.autoCount() : 0, all: count(null) },
     };
+  }
+
+  /** The overview's numbers of a period (PR S11), in the owner's zone; zeros while the module is off. */
+  metrics(period: ReviewMetricPeriod): ReviewMetrics {
+    return readMetrics(this.db, period, this.clock(), this.deps.timeZone(), this.enabled());
   }
 
   /** The /status line: how many wait, and whether replies are paused. */

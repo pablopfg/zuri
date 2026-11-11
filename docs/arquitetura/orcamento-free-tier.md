@@ -173,6 +173,17 @@ Como cheguei nos números:
   chamadas ao Google. A leitura sem novidade não sobe o número da área, e a
   tela não recarrega. Sem a permissão dos contatos no Google, nenhuma
   sincronização fica vencida (não há despertar por minuto à toa).
+- **Visão geral das avaliações (PR S11, `GET /api/reviews/metrics`).** A rota
+  lê uma linha do índice `zur_reviews_metrics` (migration 35) por avaliação do
+  período, nunca a tabela nem o texto, e não grava nada: 59 linhas lidas com
+  55 avaliações no período e 1.000 mais antigas na cópia, medido no teste de
+  orçamento. O teto é de 5.000 avaliações por pedido (as mais novas; a resposta
+  avisa com `partial`). Um consultório com 300 avaliações em 12 meses lê umas
+  300 linhas por abertura da tela, 0,006% das 5 milhões do dia. O índice custa
+  uma linha gravada a mais quando uma avaliação entra, muda de nota ou de
+  estado, ou ganha resposta (regra P4). Criar o índice grava, uma única
+  vez, uma linha por avaliação já copiada, no primeiro acesso depois da
+  atualização: 1.000 avaliações são 1% das 100.000 escritas do dia.
 - **Intervalo a partir de 1 minuto (decisão do Pablo, 11/11/2026).** Abaixo
   de 5 minutos, a leitura é paga por uma conta única do dia (`DAY_BUDGET`,
   `apps/agent/src/db/day-slots.ts`): cada leitura do Google pesa 3 e cada
