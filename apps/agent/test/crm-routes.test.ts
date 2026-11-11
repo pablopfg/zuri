@@ -182,7 +182,15 @@ describe("/api/crm", () => {
     const signed = { "content-type": "application/json", "cf-connecting-ip": IP, "x-zuri-timestamp": timestamp, "x-zuri-signature": signature };
     // With no session it is any other API address: refused before anything is read.
     const outside = await call(`${ORIGIN}/api/crm/events/${key}`, { method: "POST", headers: signed, body });
-    expect([401, 403]).toContain(outside.status);
+    expect(outside.status).toBe(403);
+    expect((await errorBody(outside)).code).toBe("CSRF_FAILED");
+    const noCookie = await call(`${ORIGIN}/api/crm/events/${key}`, { method: "POST", headers: { ...signed, ...CSRF }, body });
+    expect(noCookie.status).toBe(401);
+    expect((await errorBody(noCookie)).code).toBe("UNAUTHORIZED");
+    // With Cloudflare Access on, the signature is no way round it any more.
+    const behindAccess = await call(`${ORIGIN}/api/crm/events/${key}`, { method: "POST", headers: { ...signed, ...CSRF }, body }, { ACCESS_TEAM_DOMAIN: "equipe.cloudflareaccess.com", ACCESS_AUD: "a".repeat(64) });
+    expect(behindAccess.status).toBe(403);
+    expect((await errorBody(behindAccess)).code).toBe("FORBIDDEN");
     // With the owner's session there is no such route.
     expect((await api("POST", `/crm/events/${key}`, JSON.parse(body))).status).toBe(404);
     expect((await api("POST", "/crm/events-key")).status).toBe(404);

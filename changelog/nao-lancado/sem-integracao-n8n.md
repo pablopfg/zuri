@@ -5,3 +5,7 @@
 ### Segurança
 
 - O endereço `POST /api/crm/events/<chave>`, que aceitava eventos assinados sem sessão, e as rotas da chave dos eventos deixaram de existir. Uma chave que estivesse ligada não abre mais nada.
+
+### Atualização
+
+- Se você usa o Cloudflare Access e criou um aplicativo com **Bypass** para `api/crm/events/*`, apague-o no painel: esse endereço não existe mais.

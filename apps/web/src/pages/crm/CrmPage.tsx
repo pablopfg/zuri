@@ -5,7 +5,7 @@ import { CrmCards } from "./CrmCards.tsx";
 
 /**
  * CRM (Sinal shell): for now the flows and their connections, the screen that
- * lived under Automações › Fluxos, and the two controls of the internal CRM
+ * lived under Automações › Fluxos, and the notices' card of the internal CRM
  * left by the Clients tab (S10). /crm, /crm/fluxos and /crm/credenciais open
  * this same screen until the CRM's own (S15) splits them; App.tsx checks the
  * address, so no router here (armadilhas.md, "Pacote da interface").

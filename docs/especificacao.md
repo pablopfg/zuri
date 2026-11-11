@@ -121,7 +121,7 @@ Tudo roda num **único Worker** que serve a interface e a API, com **um único D
 
 1. Host permitido (só o domínio configurado; `workers.dev` e previews desligados quando há domínio próprio).
 2. HTTP para HTTPS (301 em GET/HEAD anônimo, 403 com corpo ou credencial).
-3. Cloudflare Access, quando ligado (com bypass só para o webhook do Telegram com o cabeçalho secreto e sem cookie, e para os eventos do CRM com assinatura válida, conferida no Worker antes de qualquer outra coisa).
+3. Cloudflare Access, quando ligado (com bypass só para o webhook do Telegram com o cabeçalho secreto e sem cookie, e para os avisos da agenda do Google com o token do canal, conferidos no Worker antes de qualquer outra coisa).
 4. Cabeçalhos de segurança (CSP estrita, HSTS, `frame-ancestors 'none'`, `Permissions-Policy`), espelhados em `_headers` e conferidos por teste.
 5. Autenticação: sessão por cookie `__Host-` + CSRF, token pessoal (`Authorization: Bearer`) ou cabeçalho secreto do Telegram, cada um alcançando só as suas rotas.
 6. Repasse ao Durable Object, que roda o app Hono ao lado do banco.

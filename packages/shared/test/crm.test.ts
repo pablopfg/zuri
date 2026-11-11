@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { catalogs } from "../i18n/index.ts";
 import {
+  AUTH_EVENT_KINDS,
   birthdayMonthDay,
   birthdaySchema,
   CRM_LIMITS,
@@ -13,10 +15,11 @@ import {
   crmSettingsSchema,
   crmStagesSchema,
   crmTagSchema,
+  NOTICE_KINDS,
   phoneDigits,
 } from "../src/index.ts";
 
-// Step 22b: what the Clients tab, the chat and n8n may send to the CRM, at the exact limits.
+// Step 22b: what the screen and the chat may send to the CRM, at the exact limits.
 
 const ok = (schema: z.ZodType, value: unknown) => schema.safeParse(value).success;
 
@@ -120,6 +123,18 @@ describe("no door for other systems", () => {
     const shared = (await import("../src/index.ts")) as Record<string, unknown>;
     for (const name of ["crmEventSchema", "CRM_EVENTS_PATH", "CRM_EVENTS_KEY", "CRM_SIGNATURE_HEADER", "CRM_TIMESTAMP_HEADER", "CRM_ACTIVITY_KINDS"]) expect(shared[name], name).toBeUndefined();
     for (const limit of ["eventsPerHour", "eventsPerDay", "eventBodyBytes", "eventId", "signatureWindowMs", "dedupeMs", "newClientNoticesPerDay"]) expect(limit in CRM_LIMITS, limit).toBe(false);
+  });
+
+  it("records from when the events existed still read: their kinds and their texts stay, in both languages", () => {
+    expect(NOTICE_KINDS).toContain("crm.newClient");
+    expect(AUTH_EVENT_KINDS).toContain("crm_events_key");
+    for (const locale of ["pt-BR", "en"] as const) {
+      for (const key of ["notice.crm.newClient.title", "notice.crm.newClient.body", "notice.security.crm_events_key.title", "notice.security.crm_events_key.body", "web.activity.kind.crm_events_key"]) {
+        const text = (catalogs[locale] as Record<string, string>)[key];
+        expect(text, `${locale} ${key}`).toBeTruthy();
+        expect(text, `${locale} ${key}`).not.toMatch(/n8n/i);
+      }
+    }
   });
 
   it("the notices' settings take only the two notices left", () => {
