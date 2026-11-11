@@ -11,6 +11,8 @@ export type ActivityKind = "settings.updated" | "trash.restored" | "trash.purged
   | "flow.changed"
   | "flow.deleted"
   | "flow.paused"
+  | "flow.settings"
+  | "crm.settings"
   | "flow.connection_added"
   | "flow.connection_changed"
   | "flow.connection_removed";

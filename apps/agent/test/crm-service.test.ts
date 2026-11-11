@@ -409,6 +409,15 @@ describe("notices", () => {
       expect(db.usage.rowsWritten).toBe(usage);
     }));
 
+  it("SEC-A1-01: a change of settings goes to the activity log with the names of the fields, and the same values leave nothing", () =>
+    withCrm(({ crm, db }) => {
+      const trail = () => db.all<{ detail: string }>(`SELECT detail FROM zur_activity WHERE kind = 'crm.settings' ORDER BY id`).map((row) => JSON.parse(row.detail));
+      crm.updateSettings({ birthdayTime: "10:15", newClientNoticesPerDay: 7, eventsPerDay: 50, eventsPerHour: 10, newClients: false, followUps: true });
+      expect(trail()).toEqual([{ fields: ["newClients", "birthdayTime", "newClientNoticesPerDay", "eventLimits"] }]);
+      crm.updateSettings({ birthdayTime: "10:15", newClientNoticesPerDay: 7, eventsPerDay: 50, eventsPerHour: 10, newClients: false, followUps: true });
+      expect(trail()).toHaveLength(1);
+    }));
+
   it("falls back to 9 h when the stored time is not a time, and the table refuses a number outside 1 to 20", () =>
     withCrm(({ crm, db }) => {
       crm.create({ name: "Ana", birthday: "11-04" }, "app");

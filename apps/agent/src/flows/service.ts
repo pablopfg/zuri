@@ -299,13 +299,16 @@ export class FlowService {
     const before = this.settings();
     const next = { ...before };
     for (const key of FLOW_SETTING_KEYS) next[key] = patch[key] ?? before[key];
-    if (FLOW_SETTING_KEYS.some((key) => next[key] !== before[key])) {
+    const changed = FLOW_SETTING_KEYS.filter((key) => next[key] !== before[key]);
+    if (changed.length > 0) {
       const columns = FLOW_SETTING_KEYS.map((key) => SETTING_COLUMNS[key]);
       this.db.run(
         `INSERT INTO zur_flow_settings (id, ${columns.join(", ")}) VALUES (1, ${columns.map(() => "?").join(", ")})
          ON CONFLICT (id) DO UPDATE SET ${columns.map((column) => `${column} = excluded.${column}`).join(", ")}`,
         ...FLOW_SETTING_KEYS.map((key) => next[key]),
       );
+      // SEC-A1-01: no password here, so a change leaves a trace the owner can read.
+      recordActivity(this.db, "flow.settings", { fields: changed });
     }
     return this.settings();
   }
@@ -315,7 +318,7 @@ export class FlowService {
     return this.db
       .all<{ id: string; definition: string }>(`SELECT id, definition FROM zur_flows WHERE enabled = 1 LIMIT ?`, FLOW_LIMITS.flows)
       .filter((row) => row.id !== except)
-      .reduce((sum, row) => sum + flowSlotsPerDay(JSON.parse(row.definition) as FlowDefinition), 0);
+      .reduce((sum, row) => sum + flowSlotsPerDay(safeDefinition(row.definition)), 0);
   }
 
   /** The owner's shortest interval, for a flow being saved or turned on: 400 with the number the screen shows. */

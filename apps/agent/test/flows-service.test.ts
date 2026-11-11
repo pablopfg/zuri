@@ -568,6 +568,27 @@ describe("the schedule", () => {
     });
   });
 
+  it("SEC-A1-01: a change of settings goes to the activity log with the names of the fields, and the same numbers leave nothing", async () => {
+    await withFlowWorld(async (world) => {
+      const trail = () => world.db.all<{ detail: string }>(`SELECT detail FROM zur_activity WHERE kind = 'flow.settings' ORDER BY id`).map((row) => JSON.parse(row.detail));
+      world.flows.updateSettings({ neuronsPerDay: 100, runsPerDay: 50, attempts: START.attempts });
+      expect(trail()).toEqual([{ fields: ["runsPerDay", "neuronsPerDay"] }]);
+      world.flows.updateSettings({ neuronsPerDay: 100, runsPerDay: 50 });
+      expect(trail()).toHaveLength(1);
+    });
+  });
+
+  it("SEC-A2-01: a stored flow that cannot be read counts as no scheduled time, and the others can still be turned on", async () => {
+    await withFlowWorld(async (world) => {
+      const ping = (minutes: number) => every(minutes, [{ type: "wait", minutes: 1 }]);
+      const broken = await world.flows.create({ name: "Quebrado", definition: ping(15) });
+      await world.flows.update(broken.id, { enabled: true });
+      world.db.run(`UPDATE zur_flows SET definition = '{' WHERE id = ?`, broken.id);
+      const flow = await world.flows.create({ name: "Certo", definition: ping(15) });
+      expect((await world.flows.update(flow.id, { enabled: true })).enabled).toBe(true);
+    });
+  });
+
   it("holds the owner's shortest interval on saving and on turning on (n-1, n), and leaves a flow already on alone", async () => {
     await withFlowWorld(async (world) => {
       const ping = (minutes: number) => every(minutes, [{ type: "wait", minutes: 1 }]);

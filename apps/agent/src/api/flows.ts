@@ -48,7 +48,7 @@ export function registerFlowRoutes(app: Hono<ApiEnv>, deps: () => FlowRouteDeps,
 
   app.get("/flows/runs", (c) => Response.json(deps().flows.runs(c.req.query())));
 
-  // Before "/flows/:id". No password: both numbers stay inside FLOW_LIMITS, and neither sends data anywhere.
+  // Before "/flows/:id". No password: every number stays inside FLOW_LIMITS and none sends data anywhere; a change goes to the activity log.
   app.patch("/flows/settings", async (c) => {
     const input = await readJson(c.req.raw, flowSettingsSchema, 1024);
     return Response.json({ settings: deps().flows.updateSettings(input) });

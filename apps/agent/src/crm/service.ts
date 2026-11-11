@@ -18,6 +18,7 @@ import {
   t,
   zonedParts,
 } from "@zuri/shared";
+import { recordActivity } from "../db/activity.ts";
 import { now as isoNow, type Database, type SqlValue } from "../db/database.ts";
 import { dayKeys, searchText } from "../google/contacts.ts";
 import { cleanText } from "../google/events.ts";
@@ -630,20 +631,28 @@ export class CrmService {
       ["birthdays", "birthdays"],
       ["newClients", "new_clients"],
     ] as const;
+    const changed: string[] = [];
     for (const [key, column] of map) {
       const value = patch[key];
-      if (value !== undefined) this.db.run(`UPDATE zur_crm_settings SET ${column} = ? WHERE id = 1`, value ? 1 : 0);
+      if (value === undefined) continue;
+      this.db.run(`UPDATE zur_crm_settings SET ${column} = ? WHERE id = 1`, value ? 1 : 0);
+      if ((before[column] === 1) !== value) changed.push(key);
     }
     // The same value writes nothing: the screen saves on every "Salvar".
     if (patch.birthdayTime !== undefined && patch.birthdayTime !== before.reminder_time) {
       this.db.run(`UPDATE zur_crm_settings SET reminder_time = ? WHERE id = 1`, patch.birthdayTime);
+      changed.push("birthdayTime");
     }
     if (patch.newClientNoticesPerDay !== undefined && patch.newClientNoticesPerDay !== before.new_client_notices) {
       this.db.run(`UPDATE zur_crm_settings SET new_client_notices = ? WHERE id = 1`, patch.newClientNoticesPerDay);
+      changed.push("newClientNoticesPerDay");
     }
     if (perHour !== before.events_per_hour || perDay !== before.events_per_day) {
       this.db.run(`UPDATE zur_crm_settings SET events_per_hour = ?, events_per_day = ? WHERE id = 1`, perHour, perDay);
+      changed.push("eventLimits");
     }
+    // SEC-A1-01: no password here, so a change leaves a trace the owner can read.
+    if (changed.length > 0) recordActivity(this.db, "crm.settings", { fields: changed });
     this.planReminder();
     return this.settings();
   }
