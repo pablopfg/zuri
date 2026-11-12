@@ -66,6 +66,39 @@ cada agenda, embaixo, escondem ou mostram os eventos dela só na tela.
   a marca de hoje passa para o dia seguinte sozinha; se você estava vendo hoje,
   a tela acompanha.
 
+#### Situação do atendimento
+
+Nas agendas abertas para edição, a **cor do evento no Google** é a situação
+dele. São os nomes e os números de cor do próprio Google Agenda:
+
+| Situação | Cor no Google |
+| --- | --- |
+| Agendado | Pavão (7), ou nenhuma cor |
+| Confirmado | Manjericão (10) |
+| Reagendado | Banana (5) |
+| Cancelado | Tomate (11), com o nome riscado |
+
+- Clique num evento para ver os detalhes e mude a situação com um toque. A cor
+  troca no Google na mesma hora, e ninguém recebe aviso.
+- Vale nos dois sentidos: mudar a cor no Google Agenda muda a situação aqui.
+- Evento sem cor própria conta como Agendado. Outra cor do Google (Uva,
+  Tangerina…) aparece com a cor dela, sem situação.
+- Em agenda que está como "Só ler", o evento fica com a cor da agenda e não tem
+  situação.
+- Se o evento mudou no Google enquanto os detalhes estavam abertos, a Zuri não
+  grava por cima: avisa, fecha os detalhes e mostra o evento como ficou.
+
+#### Fins de semana e feriados
+
+Sábados e domingos têm um fundo cinza, e os **feriados nacionais** um fundo
+âmbar com o nome do feriado: na linha "Dia inteiro" da semana, embaixo do número
+no mês e numa faixa em cima da lista do dia. No mês do celular fica só o fundo.
+
+Os feriados são calculados pela data, sem consultar nada: 1/1, Sexta-feira
+Santa (pela Páscoa de cada ano), 21/4, 1/5, 7/9, 12/10, 2/11, 15/11, 20/11
+(desde 2024) e 25/12. Carnaval e Corpus Christi são ponto facultativo e não
+entram; feriados estaduais e municipais também não.
+
 #### Configurações › Agenda
 
 | Opção | O que faz |
@@ -169,6 +202,7 @@ passo a passo está em [avaliacoes-google.md](avaliacoes-google.md#para-quem-ins
 | --- | --- |
 | OAuth (PKCE S256, `state` de uso único por 10 min, preso à sessão), tokens, agendas, eventos, canais de push | `apps/agent/src/google/service.ts` |
 | Datas dos eventos, limpeza de texto | `apps/agent/src/google/events.ts` |
+| Situação pela cor (`EVENT_STATUS_COLOR`, `eventStatus`) e feriados nacionais (`nationalHoliday`) | `packages/shared/src/google.ts`, `packages/shared/src/holidays.ts` |
 | Rotas `/api/google/*` e o aviso de push | `apps/agent/src/api/google.ts`, `apps/agent/src/gates/google-push.ts` |
 | Ferramentas do agente | `apps/agent/src/tools/calendar.ts` |
 | Google simulado (desenvolvimento, e2e e testes) | `apps/agent/src/google/dev-google.ts` |
@@ -179,6 +213,9 @@ passo a passo está em [avaliacoes-google.md](avaliacoes-google.md#para-quem-ins
   `MCP_CREDENTIAL_KEY` com um `info` próprio (`google-v1`). Nunca voltam para
   o navegador, para o log nem para o backup.
 - Os eventos não ficam guardados aqui: cada leitura vai ao Google.
+- `GET /api/google/events` devolve o `colorId` de cada evento (de "1" a "11",
+  ou vazio). `PATCH /api/google/events` aceita `colorId` só com "5", "7", "10",
+  "11" ou vazio (tira a cor), sempre com o `etag` que a tela leu.
 - Cada chamada ao Google vai para um endereço fixo, com 10 s de prazo, sem
   seguir redirecionamento e até 1 MB de resposta (uma resposta que não é
   JSON conta como falha). Um turno da conversa faz no máximo 8 chamadas (6
