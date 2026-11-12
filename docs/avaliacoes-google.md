@@ -77,9 +77,10 @@ lido, a hora da última leitura, a contagem para a próxima e dois botões:
   - **Avaliações recebidas** em cada período, com a parte que recomenda (5
     estrelas), a neutra (4) e a que não recomenda (1 a 3).
   - **Estrelas**: quantas avaliações de cada nota.
-  - Toda cor vem com o nome ou o número, e cada gráfico tem **Ver em tabela**.
+  - Toda cor vem com o nome ou o número, a parte que não recomenda e a faixa
+    Crítico são listradas, e cada gráfico tem **Ver em tabela**.
   - **Estatísticas do período**: satisfeitos (4 e 5 estrelas), margem do
-    índice (95% de confiança: com poucas avaliações ela é larga), tendência do
+    índice (95% de confiança, a partir de 10 avaliações: com poucas ela é larga), tendência do
     índice (a reta de mínimos quadrados pelas barras, a partir de três com
     avaliações), mediana, nota mais comum, desvio padrão e a média de
     avaliações por período, com o de maior movimento. As contas são da tela
