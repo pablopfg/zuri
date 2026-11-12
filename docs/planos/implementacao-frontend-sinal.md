@@ -379,6 +379,8 @@ Diferenças da S14 (Rotinas) para o protótipo, para as PRs seguintes não as de
 - **"Escolher os canais" não entrou no passo "Avisos".** O link sairia da tela e perderia o que foi preenchido; a opção Normal já diz onde ficam os canais.
 - **"Fluxo" no passo 1 abre CRM › Fluxos com "Novo fluxo"**, sem as sugestões do protótipo (elas dependem do servidor das automações do CRM, S18).
 - **"Duplicar" faz duas chamadas** (criar e pausar), porque o servidor não cria rotina pausada. Uma rota própria fica para quando houver PR de servidor das rotinas.
+- **Se a cópia não puder ser pausada, ela é desfeita** (SEC-S14-01): nunca fica rodando ao lado da original. Com 50 rotinas ativas o servidor recusa duplicar, porque a cópia nasce ativa por um instante.
+- **"Uma vez" com horário já passado** avisa no passo "Quando" e deixa seguir; a recusa do servidor aparece em "Revisar", com "Voltar" para corrigir.
 - **O fuso aparece como o sistema o nomeia** ("Sao Paulo (GMT-3)"), só para leitura. Ele muda em Configurações › Conta.
 - **O histórico mantém o texto que cada execução entregou** embaixo da linha; o protótipo mostra só hora, rotina e situação.
 - **Textos:** "automação" virou "rotina" na tela, na paleta, nos erros do servidor, nas ferramentas da conversa, no backup e no Telegram. "Automação" fica só para as do CRM.
