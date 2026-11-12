@@ -2625,6 +2625,62 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .ag2-bar h2{margin-right:0;min-width:0}
 .ag2-bar .navgrp{margin-right:auto}
 .ag-sync{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-sm);color:var(--muted);white-space:nowrap}
+/* 12/11/2026, à tarde · sinais da sincronização e formulário do agendamento */
+.ag-sync{white-space:normal}
+.sync-chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:var(--t-sm);font-weight:500;cursor:pointer}
+.sync-chip:hover{background:var(--hover)}
+.sync-chip.t-ok .ic,.sync-ic.t-ok{color:var(--ok-ink)}
+.sync-chip.t-info .ic,.sync-ic.t-info{color:var(--accent)}
+.sync-chip.t-warn{border-color:var(--warn-line);background:var(--warn-soft);color:var(--warn-ink)}
+.sync-chip.t-danger{border-color:var(--danger-line);background:var(--danger-soft);color:var(--danger-ink)}
+.sync-ic.t-warn{color:var(--warn-ink)}.sync-ic.t-danger{color:var(--danger-ink)}.sync-ic.t-muted{color:var(--muted)}
+.sync-ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--sunken)}
+.sync-now{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--sunken)}
+.sync-now.t-warn{border-color:var(--warn-line);background:var(--warn-soft)}
+.sync-now.t-danger{border-color:var(--danger-line);background:var(--danger-soft)}
+.sync-now b,.sync-leg b{display:block;font-weight:600}
+.sync-now .grow>span{display:block;font-size:var(--t-sm);color:var(--ink-2)}
+.sync-h{margin:var(--s5) 0 var(--s2);font-size:var(--t-sm);font-weight:600}
+.sync-log,.sync-legs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.sync-log li{display:flex;align-items:center;gap:8px;font-size:var(--t-sm);color:var(--ink-2)}
+.sync-log .num{color:var(--muted);min-width:40px}
+.sync-all{margin-top:var(--s5)}
+.sync-all summary{cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center}
+.sync-leg{display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:var(--r-md)}
+.sync-leg.is-now{background:var(--accent-soft)}
+.sync-leg .hint{display:block;margin:0}
+.dlg-box.dlg-ee{width:min(680px,100%);max-height:min(760px,100%)}
+.dlg-ee .form-grid{margin-top:var(--s4)}
+.ee-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.ee-dur{margin:6px 0 0;text-align:right}
+.ee-obs{margin-top:var(--s4)}
+.dlg-ee.is-plain .pt-link,.dlg-ee.is-plain .ee-grid.form-3>.field:nth-child(-n+3),.dlg-ee.is-plain .ee-4>.field:nth-child(2),.dlg-ee.is-plain .ee-4>.field:last-child{display:none}
+.sync-leg .proto-only{flex:none;margin-left:auto}
+.pt-field{position:relative}
+.cb{position:relative}
+.cb-list{position:absolute;z-index:5;left:0;right:0;top:calc(100% + 4px);margin:0;padding:4px;list-style:none;max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-md)}
+[data-tema="escuro"] .cb-list{background:var(--raised)}
+.cb-opt{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 8px;border-radius:var(--r-sm, 8px);cursor:pointer}
+.cb-opt:hover,.cb-opt[aria-selected="true"]{background:var(--hover)}
+.cb-opt[aria-selected="true"]{box-shadow:inset 0 0 0 2px var(--accent)}
+.cb-opt b{display:block;font-weight:600}
+.cb-opt .hint{display:block;margin:0}
+.cb-none{padding:8px;font-size:var(--t-sm);color:var(--muted)}
+.pt-link{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-height:32px;margin-top:6px}
+.pt-link .hint{margin:0}
+.pt-why,.pt-note{flex:1 1 100%}
+.pt-chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;background:var(--sunken);color:var(--ink-2);font-size:var(--t-sm);font-weight:600}
+.pt-chip.on{background:var(--accent-soft);color:var(--accent-soft-ink)}
+.pt-chip.warn{background:var(--warn-soft);color:var(--warn-ink)}
+.pt-later{display:flex;align-items:center;gap:10px;margin-top:var(--s4);padding:10px 12px;border-radius:var(--r-md);background:var(--sunken);font-size:var(--t-sm)}
+.ev-dl dd a{color:inherit}
+.ev-dl dd .ic{vertical-align:-3px;margin-right:4px}
+@media (max-width:820px){
+  .sync-chip span{max-width:60vw;overflow:hidden;text-overflow:ellipsis}
+  .ee-4{grid-template-columns:1fr 1fr}
+  .dlg-ee .form-3{grid-template-columns:1fr 1fr}
+  .dlg-ee .form-3>.field:nth-child(3),.dlg-ee .form-3>.field:nth-child(4){grid-column:1 / -1}
+}
 .ag2 .ev{border:0;font:inherit;font-size:var(--t-xs);text-align:left;cursor:grab;right:auto;display:block;padding:5px 8px 5px 10px;background:color-mix(in srgb,var(--evc) 15%,var(--surface));color:var(--ink);box-shadow:inset 3px 0 0 var(--evc),inset 0 0 0 1px color-mix(in srgb,var(--evc) 40%,transparent);touch-action:manipulation;z-index:1}
 .ag2 .ev b{color:var(--ink)}
 .ag2 .ev .num{display:block;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -6055,7 +6111,47 @@ function lanes(list) {
   return out;
 }
 const AG_HR = 48;
-const syncTxt = () => (st.sync === "saving" ? `${ic("loader-circle", "ic-sm spin")}Salvando no Google…` : st.sync === "ok" ? `${ic("circle-check", "ic-sm")}Salvo no Google agora` : `${ic("refresh-cw", "ic-sm")}Em dia com o Google`);
+/* Ícones que faltavam no conjunto do protótipo (Lucide). */
+Object.assign(ICONS.lucide, {
+  "circle-x": '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  "cloud-off": '<path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/>',
+  "link-2-off": '<path d="M9 17H7A5 5 0 0 1 7 7"/><path d="M15 7h2a5 5 0 0 1 4 8"/><path d="M8 12h4"/><path d="m2 2 20 20"/>',
+  hourglass: '<path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>',
+  "user-round-check": '<path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="m16 19 2 2 4-4"/>',
+  unlink: '<path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><path d="M8 2v3"/><path d="M2 8h3"/><path d="M16 19v3"/><path d="M19 16h3"/>'
+});
+/* Sincronização com o Google: cada situação tem um sinal (ícone e cor), um nome curto e o que fazer.
+   [ícone, tom, nome, o que houve, ação (texto e alvo) ou nada]. O tom vale a cor: ok verde, info azul, warn âmbar, danger vermelho. */
+const SYNCS = {
+  ok: ["circle-check", "ok", "Sincronizado", "Tudo igual ao Google Agenda. Conferido às 14:10."],
+  saving: ["loader-circle", "info", "Salvando…", "A mudança está indo para o Google Agenda."],
+  saved: ["circle-check", "ok", "Salvo no Google", "A última mudança chegou ao Google Agenda agora."],
+  pulling: ["refresh-cw", "info", "Atualizando…", "A Zuri está trazendo o que mudou no Google Agenda."],
+  offline: ["wifi-off", "warn", "Sem internet", "1 mudança não foi enviada. Ela continua na tela, marcada, até você tentar de novo.", ["Tentar de novo", "retry"]],
+  failed: ["circle-x", "danger", "Falha ao salvar", "O Google recusou a mudança de “Paula Régis Amaral”. O evento voltou ao que era.", ["Tentar de novo", "retry"]],
+  changed: ["refresh-ccw", "warn", "Mudou no Google", "“Diego Fontes Arruda” foi mudado no Google enquanto você mexia aqui. A Zuri mostra a versão de lá e não gravou a sua.", ["Ver o evento", "show"]],
+  paused: ["hourglass", "warn", "Em pausa", "O Google pediu um intervalo depois de muitas mudanças seguidas. A Zuri tenta de novo sozinha em 1 min.", null],
+  stale: ["cloud-off", "warn", "Desatualizada", "Sem notícias do Google desde 13:40. Algum evento pode estar diferente lá.", ["Atualizar agora", "pull"]],
+  expired: ["link-2-off", "danger", "Conexão expirou", "A Zuri perdeu o acesso ao Google Agenda. Nada é lido nem gravado até você conectar de novo.", ["Conectar de novo", "cfg"]]
+};
+const SYNC_RO = ["lock", "muted", "Só leitura", "Eventos de outra agenda, só para leitura. Mude no Google Agenda."];
+st.sync = pick(params.get("sync"), Object.keys(SYNCS));
+const SYNC_LOG = [["14:02", "circle-check", "“Lívia Antunes Rocha” ficou como Confirmado."], ["13:58", "circle-check", "“Tiago Bessa Leal” agora vai até 14:00."], ["13:40", "refresh-cw", "2 eventos novos vieram do Google."]];
+const syncTxt = () => {
+  const [i, tone, l] = SYNCS[st.sync || "ok"];
+  return `<button type="button" class="sync-chip t-${tone}" data-sync-open aria-haspopup="dialog" aria-label="Sincronização com o Google: ${l}. Ver detalhes">${ic(i, `ic-sm${i === "loader-circle" || (i === "refresh-cw" && st.sync === "pulling") ? " spin" : ""}`)}<span>${l}</span></button>`;
+};
+/* O sinal abre o painel: a situação de agora, o que fazer, as últimas mudanças e o que cada sinal quer dizer. */
+function syncDlg(opener) {
+  const k = st.sync || "ok";
+  const [i, tone, l, d, act] = SYNCS[k];
+  const row = ([ri, rt, rl, rd], key) => `<li class="sync-leg${key === k ? " is-now" : ""}"><span class="sync-ic t-${rt}">${ic(ri, "ic-sm")}</span><span class="grow"><b>${rl}</b><span class="hint">${rd}</span></span>${key ? `<button type="button" class="btn btn-quiet btn-sm proto-only" data-sync-sim="${key}" aria-label="Simular ${rl} no protótipo">Simular</button>` : ""}</li>`;
+  dlgShow({ t: "Sincronização com o Google", sub: "Tudo o que você muda na Agenda vai na hora para o Google Agenda, e o que muda lá aparece aqui.",
+    body: `<div class="sync-now t-${tone}" role="status"><span class="sync-ic t-${tone}">${ic(i, `ic-sm${i === "loader-circle" ? " spin" : ""}`)}</span><span class="grow"><b>${l}</b><span>${d}</span></span>${act ? `<button type="button" class="btn ${tone === "danger" ? "btn-primary" : "btn-secondary"} btn-sm" data-sync-act="${act[1]}">${act[0]}</button>` : ""}</div>
+      <h3 class="sync-h">Últimas mudanças</h3>
+      <ul class="sync-log">${SYNC_LOG.slice(0, 5).map(([h, li, t]) => `<li><span class="num">${h}</span>${ic(li, "ic-sm")}<span>${t}</span></li>`).join("")}</ul>
+      <details class="sync-all"><summary>O que cada sinal quer dizer</summary><ul class="sync-legs">${Object.entries(SYNCS).filter(([key]) => key !== "saved").map(([key, v]) => row(v, key)).join("")}${row(SYNC_RO, "")}</ul></details>` }, opener);
+}
 function agenda2() {
   const { de, ate } = st.ag;
   const n = ate - de;
@@ -6116,12 +6212,13 @@ SCREEN.agenda = agenda2;
 function evCommit(msg, change, focusId) {
   const before = JSON.stringify(EV);
   change();
+  evCommit.last = msg || evCommit.msg || "";
   const sync = () => {
     st.sync = "saving";
     render();
     if (focusId) refocus(`.ag2 [data-ev="${focusId}"], .ag2-list [data-ev="${focusId}"]`);
     clearTimeout(evCommit.t);
-    evCommit.t = setTimeout(() => { st.sync = "ok"; const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); }, CAP ? 0 : 800);
+    evCommit.t = setTimeout(() => { st.sync = "saved"; SYNC_LOG.unshift([hm(nowMin()), "circle-check", evCommit.last]); const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); }, CAP ? 0 : 800);
   };
   sync();
   toast(msg, () => { EV = JSON.parse(before); sync(); });
@@ -6146,54 +6243,241 @@ function evMove(e, day, mins, dur, opener) {
 /* A mensagem depende do que mudou, então o aviso lê evCommit.msg quando o texto vem vazio. */
 function toast(msg, undo) { toast0(msg || evCommit.msg || "", undo); }
 
+/* ===== 12/11/2026, à tarde · pedidos do dono depois da entrega 3: formulário no padrão do outro sistema,
+   horário de 24 h, duração de 1 h que se ajusta, paciente vinculado a Contatos (ou não) e sinais da sincronização ===== */
+/* Pacientes inventados que também estão em Contatos, para mostrar o vínculo. A segunda Carla Mendes é outra pessoa, com o mesmo nome. */
+PEOPLE.push(
+  { id: "helena-p", n: "Helena Duarte Prado", i: "HD", c: 2, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0121")], emails: [["helena.prado@exemplo.com.br", "Pessoal"]], updated: "05/11, 10:00" },
+  { id: "paula", n: "Paula Régis Amaral", i: "PR", c: 1, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0122")], updated: "03/11, 09:30" },
+  { id: "diego", n: "Diego Fontes Arruda", i: "DF", c: 4, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0123")], emails: [["diego@exemplo.com.br", "Pessoal"]], updated: "01/11, 18:00" },
+  { id: "carla2", n: "Carla Mendes", i: "CM", c: 2, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0124")], emails: [["carla.m@exemplo.com.br", "Pessoal"]], updated: "09/11, 11:20" }
+);
+const DDIS = [["+55", "Brasil"], ["+351", "Portugal"], ["+1", "Estados Unidos"], ["+54", "Argentina"], ["+595", "Paraguai"], ["+598", "Uruguai"]];
+const FIN = ["Não pago", "Pago", "Isento"];
+const KINDS = ["Consulta", "Retorno", "Avaliação física"];
+const kindOf = (t) => (t ? t.split(" | ")[0] : "");
+const atendOf = (t) => (t && t.split(" | ")[1] === "Online" ? "Online" : "Presencial");
+const tipoOf = (k, a) => (k ? `${k} | ${a === "Online" ? "Online" : "Consultório"}` : "");
+const pById = (id) => PEOPLE.find((p) => p.id === id);
+const cellOf = (p) => ((p.phones || []).find((x) => isCell(x.n)) || (p.phones || [])[0] || { n: "" }).n;
+const mailOf = (p) => ((p.emails || [])[0] || [""])[0];
+/* Quem já está na agenda com o nome de um único contato fica vinculado; homônimos nunca se vinculam sozinhos. */
+for (const e of EV) { if (!e.tipo) continue; const same = PEOPLE.filter((p) => p.n && fold(p.n) === fold(e.t)); if (same.length === 1) e.pid = same[0].id; }
+for (const e of EV) { e.fin = e.fin || (e.day < dkey(AG_NOW) ? "Pago" : "Não pago"); e.ddi = e.ddi || "+55"; }
+const brDate = (k) => k.split("-").reverse().join("/");
+const isoDate = (v) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v); if (!m) return ""; const k = `${m[3]}-${m[2]}-${m[1]}`; const d = dOf(k); return d.getDate() === Number(m[1]) && d.getMonth() + 1 === Number(m[2]) ? k : ""; };
+const minOf = (v) => { const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(v); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+const durTxt = (m) => (m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)} h ${p2(m % 60)}` : `${m / 60} h`);
+/* Máscaras: só números; a barra, os dois pontos e os parênteses entram sozinhos. Horário sempre de 0:00 a 23:59, sem AM e PM. */
+const MASK = {
+  date: (v) => { const d = v.replace(/\D/g, "").slice(0, 8); return d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d; },
+  time: (v) => { const d = v.replace(/\D/g, "").slice(0, 4); return d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d; },
+  cel: (v) => { const d = v.replace(/\D/g, "").slice(0, 11); if (!d) return ""; if (d.length <= 2) return `(${d}`; if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`; const n = d.length === 11 ? 7 : 6; return `(${d.slice(0, 2)}) ${d.slice(2, n)}-${d.slice(n)}`; }
+};
+/* Busca em Contatos: cada palavra digitada casa com o começo de uma palavra do nome, sem acento. Clientes do consultório primeiro. */
+function ptFind(q) {
+  const words = fold(q).trim().split(/\s+/).filter(Boolean);
+  if (!words.length || fold(q).trim().length < 2) return [];
+  return PEOPLE.filter((p) => p.n && (p.phones?.length || p.emails?.length) && words.every((w) => fold(p.n).split(/\s+/).some((x) => x.startsWith(w))))
+    .sort((a, b) => Number((b.tags || []).includes("Consultório")) - Number((a.tags || []).includes("Consultório")) || a.n.localeCompare(b.n, "pt-BR")).slice(0, 6);
+}
+const ptLast = (p) => { const l = EV.filter((e) => e.pid === p.id && e.day < dkey(AG_NOW)).sort((a, b) => (a.day < b.day ? -1 : 1)).pop(); return l ? `última consulta em ${brDate(l.day).slice(0, 5)}` : p.sub || ""; };
+/* Estado do formulário aberto: o contato vinculado e a duração (1 h até a pessoa mudar o término). */
+const FORM = { pid: "", dur: 60, own: false, opt: -1, list: [], note: "" };
+
 function evDlg(e, opener) {
   const d = dOf(e.day);
-  const rows = [["Quando", `${dayLong(d)}, ${evWhen(e)}`], ["Tipo", e.tipo || "Sem tipo"], ["Agenda", e.ro ? "Curso e esporte, só leitura" : "Consultório, no Google Agenda"]];
+  const p = e.pid && pById(e.pid);
+  const rows = [["Quando", `${dayLong(d)}, ${evWhen(e)}`], ["Tipo", e.tipo ? `${kindOf(e.tipo)}, ${atendOf(e.tipo).toLowerCase()}` : "Sem tipo"], ["Agenda", e.ro ? "Curso e esporte, só leitura" : "Consultório, no Google Agenda"]];
+  if (e.tipo) rows.push(["Paciente", p ? `${ic("user-round-check", "ic-sm")}Vinculado a ${p.n} · <a href="${href("contatos")}">Abrir em Contatos</a>` : `Sem vínculo com Contatos${e.cel ? ` · ${e.ddi} ${e.cel}` : ""}`]);
+  if (e.tipo) rows.push(["Financeiro", e.fin]);
+  if (e.obs) rows.push(["Observação", e.obs]);
   if (e.rec) rows.push(["Repete", "Toda semana"]);
   if (!e.ro) rows.push(["Cor no Google", `${STS[e.s][1]} (${STS[e.s][0]})`]);
   dlgShow({ t: e.t, sub: e.ro ? "Este evento vem de uma agenda só para leitura. Para mudar, abra o Google Agenda." : "Mude a situação com um toque. Ela vira a cor do evento no Google Agenda.",
     body: `${e.ro ? "" : `<div class="ev-sts" role="group" aria-label="Situação">${Object.entries(STS).map(([k, [l]]) => `<button type="button" class="st-${k}" data-ev-st="${k}" data-id="${e.id}" aria-pressed="${e.s === k}"><i aria-hidden="true"></i>${l}</button>`).join("")}</div>`}
-      <dl class="ev-dl">${rows.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join("")}</dl>`,
-    foot: e.ro ? `<span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Fechar</button>` : `<button class="btn btn-quiet danger" type="button" data-ev-del="${e.id}">${ic("trash-2", "ic-sm")}Apagar</button><span class="grow"></span><button class="btn btn-secondary" type="button" data-ev-edit="${e.id}">${ic("pencil", "ic-sm")}Editar</button><button class="btn btn-primary" type="button" data-dlg-x>Fechar</button>` }, opener);
+      <dl class="ev-dl">${rows.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join("")}</dl>
+      ${!e.ro && e.tipo && !p ? `<p class="pt-later">${ic("link", "ic-sm")}<span class="grow">Este agendamento não está ligado a um contato.</span><button class="btn btn-secondary btn-sm" type="button" data-ev-edit="${e.id}" data-ev-link>Vincular</button></p>` : ""}`,
+    foot: e.ro ? "" : `<button class="btn btn-quiet danger" type="button" data-ev-del="${e.id}">${ic("trash-2", "ic-sm")}Apagar</button><span class="grow"></span><button class="btn btn-primary" type="button" data-ev-edit="${e.id}">${ic("pencil", "ic-sm")}Editar</button>` }, opener);
 }
-const DURS = [[0.25, "15 min"], [0.5, "30 min"], [0.75, "45 min"], [1, "1 hora"], [1.5, "1 h 30"], [2, "2 horas"], [3, "3 horas"]];
+
+/* A faixa embaixo do nome diz se o agendamento está ligado a um contato e o que fazer. */
+function ptLinkHtml() {
+  const note = FORM.note && !FORM.pid ? `<span class="hint pt-note">${FORM.note}</span>` : "";
+  return ptLinkBase() + note;
+}
+function ptLinkBase() {
+  const q = dlgRaw("[data-pt-q]");
+  const p = FORM.pid && pById(FORM.pid);
+  if (p) return `<span class="pt-chip on">${ic("user-round-check", "ic-sm")}Vinculado a ${p.n}</span><button type="button" class="btn btn-quiet btn-sm" data-pt-unlink>${ic("unlink", "ic-sm")}Remover vínculo</button><span class="hint pt-why">Celular e e-mail vêm de Contatos. Para mudar, edite o contato no Google.</span>`;
+  if (!q) return `<span class="hint">Digite o nome para buscar em Contatos. Quem ainda não está lá pode ser agendado só com o nome.</span>`;
+  const same = PEOPLE.filter((x) => x.n && fold(x.n) === fold(q));
+  if (same.length === 1) return `<span class="pt-chip">${ic("link", "ic-sm")}Sem vínculo</span><span class="hint">“${esc(same[0].n)}” está em Contatos, ${esc(cellOf(same[0]))}.</span><button type="button" class="btn btn-secondary btn-sm" data-pt-pick="${same[0].id}">Vincular</button>`;
+  if (same.length > 1) return `<span class="pt-chip warn">${ic("users", "ic-sm")}${same.length} contatos com este nome</span><span class="hint">Escolha o certo na lista, pelo telefone, ou siga sem vínculo.</span><button type="button" class="btn btn-secondary btn-sm" data-pt-open>Ver os ${same.length}</button>`;
+  return `<span class="pt-chip">${ic("link", "ic-sm")}Sem vínculo</span><span class="hint">Fica só com o nome e o que você digitar abaixo. Dá para vincular depois.</span>`;
+}
+function ptRender(open) {
+  const box = document.querySelector("#dlg-host [data-pt-link]");
+  if (box) box.innerHTML = ptLinkHtml();
+  const q = dlgRaw("[data-pt-q]");
+  const inp = document.querySelector("#dlg-host [data-pt-q]");
+  const ul = document.querySelector("#dlg-host #pt-list");
+  if (!inp || !ul) return;
+  const plain = !dlgRaw("[data-ee-k]");
+  FORM.list = FORM.pid || plain ? [] : ptFind(q);
+  const show = open && !FORM.pid && !plain && q.length >= 2;
+  ul.hidden = !show;
+  inp.setAttribute("aria-expanded", String(show));
+  if (!show) { inp.removeAttribute("aria-activedescendant"); return; }
+  if (FORM.opt >= FORM.list.length + 1) FORM.opt = -1;
+  const opt = (k, html, data) => `<li role="option" id="pt-o${k}" class="cb-opt" ${data} aria-selected="${FORM.opt === k}">${html}</li>`;
+  ul.innerHTML = `${FORM.list.map((p, k) => opt(k, `${pav(p)}<span class="grow"><b>${p.n}</b><span class="hint">${cellOf(p) || mailOf(p)}${ptLast(p) ? ` · ${ptLast(p)}` : ""}</span></span>`, `data-pt-opt="${p.id}"`)).join("")}
+    ${FORM.list.length ? "" : `<li class="cb-none" role="presentation">Ninguém com esse nome em Contatos.</li>`}
+    ${opt(FORM.list.length, `<span class="pav" aria-hidden="true">${ic("user-plus", "ic-sm")}</span><span class="grow"><b>Agendar “${esc(q)}” sem vínculo</b><span class="hint">Para quem ainda não está em Contatos</span></span>`, "data-pt-free")}`;
+  if (FORM.opt >= 0) inp.setAttribute("aria-activedescendant", `pt-o${FORM.opt}`); else inp.removeAttribute("aria-activedescendant");
+}
+/* Vincular preenche o nome, o celular e o e-mail do contato e os deixa só para leitura. */
+function ptPick(id) {
+  const p = pById(id);
+  if (!p) return;
+  FORM.pid = id; FORM.opt = -1;
+  const set = (sel, v, ro) => { const x = document.querySelector(`#dlg-host ${sel}`); if (x) { x.value = v; if (x.tagName === "SELECT") x.disabled = ro; else x.readOnly = ro; } };
+  set("[data-pt-q]", p.n, false); set("[data-ee-ddi]", "+55", true); set("[data-ee-cel]", cellOf(p), true); set("[data-ee-mail]", mailOf(p), true);
+  FORM.note = "";
+  ptRender(false);
+}
+function ptUnlink(why) {
+  FORM.pid = "";
+  /* O celular e o e-mail eram do contato: saem junto, para não ficarem com outra pessoa. */
+  for (const sel of ["[data-ee-ddi]", "[data-ee-cel]", "[data-ee-mail]"]) { const x = document.querySelector(`#dlg-host ${sel}`); if (x) { x.readOnly = false; x.disabled = false; x.value = sel === "[data-ee-ddi]" ? "+55" : ""; } }
+  FORM.note = why || "";
+  ptRender(false);
+}
+/* Término: 1 h depois do início, até a pessoa escolher outro. Mudar o início leva o término junto, com a mesma duração. */
+function eeTimes(from) {
+  const h = document.querySelector("#dlg-host [data-ee-h]"), f = document.querySelector("#dlg-host [data-ee-f]"), hint = document.querySelector("#dlg-host [data-ee-dur]");
+  if (!h || !f || !hint) return;
+  const s = minOf(h.value), e = minOf(f.value);
+  if (from === "h" && s !== null) f.value = hmm(Math.min(s + FORM.dur, 24 * 60 - 1));
+  if (from === "f" && s !== null && e !== null && e > s) { FORM.dur = e - s; FORM.own = FORM.dur !== 60; }
+  const fs = document.querySelector("#dlg-host #ee-fs");
+  if (fs && s !== null) fs.innerHTML = [15, 30, 45, 60, 90, 120, 180].filter((m) => s + m < 24 * 60).map((m) => `<option value="${hmm(s + m)}">${durTxt(m)}</option>`).join("");
+  hint.innerHTML = FORM.own ? `Dura ${durTxt(FORM.dur)}. <button type="button" class="linkbtn" data-ee-dur1>Voltar para 1 h</button>` : "Dura 1 h, o padrão.";
+}
+
 function evEdit(ev, pre, opener) {
-  const e = ev || { day: pre.day || dkey(st.agd), h: pre.h ?? 11, m: pre.m ?? 0, dur: 1, t: "", tipo: TIPOS[0], s: "agendado" };
-  const durs = DURS.some(([v]) => v === e.dur) ? DURS : [...DURS, [e.dur, `${Math.round(e.dur * 60)} min`]].sort((a, b) => a[0] - b[0]);
-  dlgShow({ t: ev ? "Editar evento" : "Novo evento", sub: "O que você salvar vai na hora para o Google Agenda.",
-    body: `<label class="field"><span class="label">Título</span><input class="input" data-ee-t value="${e.t}" placeholder="Nome completo do cliente" data-autofocus></label>
-      <div class="form-grid form-3"><label class="field"><span class="label">Dia</span><input class="input num" type="date" data-ee-d value="${e.day}"></label>
-      <label class="field"><span class="label">Começa</span><input class="input num" type="time" step="900" data-ee-h value="${hmm(e.h * 60 + e.m)}"></label>
-      <label class="field"><span class="label">Dura</span><select class="input" data-ee-m>${durs.map(([v, l]) => `<option value="${v}"${v === e.dur ? " selected" : ""}>${l}</option>`).join("")}</select></label></div>
-      <div class="form-grid"><label class="field"><span class="label">Tipo</span><select class="input" data-ee-k>${TIPOS.map((t) => `<option value="${t}"${t === e.tipo ? " selected" : ""}>${t || "Sem tipo"}</option>`).join("")}</select></label>
-      <label class="field"><span class="label">Situação</span><select class="input" data-ee-s>${Object.entries(STS).map(([k, [l]]) => `<option value="${k}"${k === e.s ? " selected" : ""}>${l}</option>`).join("")}</select></label></div>
+  const e = ev || { day: pre.day || dkey(st.agd), h: pre.h ?? 11, m: pre.m ?? 0, dur: 1, t: "", tipo: TIPOS[0], s: "agendado", fin: "Não pago", ddi: "+55" };
+  const p = e.pid && pById(e.pid);
+  Object.assign(FORM, { note: "", pid: p ? p.id : "", dur: Math.round(e.dur * 60), own: Math.round(e.dur * 60) !== 60, opt: -1, list: [] });
+  const s0 = e.h * 60 + e.m;
+  const sel = (attr, label, opts, v) => `<label class="field"><span class="label">${label}</span><select class="input" ${attr}>${opts.map(([ov, ol]) => `<option value="${ov}"${ov === v ? " selected" : ""}>${ol}</option>`).join("")}</select></label>`;
+  dlgShow({ t: ev ? "Editar agendamento" : "Novo agendamento", sub: "O que você salvar vai na hora para o Google Agenda.",
+    body: `<div class="field pt-field"><label class="label" for="pt-q">Nome completo do paciente</label>
+        <div class="cb"><input class="input" id="pt-q" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pt-list" aria-describedby="pt-link" autocomplete="off" spellcheck="false" data-pt-q value="${e.t}" placeholder="Digite para buscar em Contatos" data-autofocus>
+        <ul id="pt-list" class="cb-list" role="listbox" aria-label="Contatos com esse nome" hidden></ul></div>
+        <div class="pt-link" id="pt-link" data-pt-link aria-live="polite"></div></div>
+      <div class="form-grid form-3 ee-grid">
+        ${sel("data-ee-ddi", "DDI do paciente", DDIS.map(([v, l]) => [v, `${l} (${v})`]), p ? "+55" : e.ddi || "+55")}
+        <label class="field"><span class="label">Celular com DDD</span><input class="input num" inputmode="tel" autocomplete="off" data-ee-cel data-mask="cel" value="${p ? cellOf(p) : e.cel || ""}" placeholder="(41) 99999-0000"${p ? " readonly" : ""}></label>
+        <label class="field"><span class="label">E-mail de contato</span><input class="input" type="email" autocomplete="off" data-ee-mail value="${p ? mailOf(p) : e.mail || ""}" placeholder="nome@exemplo.com.br"${p ? " readonly" : ""}></label>
+        <label class="field"><span class="label">Data da consulta</span><input class="input num" inputmode="numeric" autocomplete="off" data-ee-d data-mask="date" value="${brDate(e.day)}" placeholder="dd/mm/aaaa" maxlength="10"></label>
+        <label class="field"><span class="label">Hora do início</span><input class="input num" inputmode="numeric" autocomplete="off" list="ee-hs" data-ee-h data-mask="time" value="${hmm(s0)}" placeholder="00:00" maxlength="5"></label>
+        <label class="field"><span class="label">Hora do término</span><input class="input num" inputmode="numeric" autocomplete="off" list="ee-fs" data-ee-f data-mask="time" value="${hmm(s0 + FORM.dur)}" placeholder="00:00" maxlength="5"></label>
+      </div>
+      <datalist id="ee-hs">${Array.from({ length: 96 }, (_, k) => `<option value="${hmm(k * 15)}"></option>`).join("")}</datalist><datalist id="ee-fs"></datalist>
+      <p class="hint ee-dur" data-ee-dur aria-live="polite"></p>
+      <div class="form-grid ee-grid ee-4">
+        ${sel("data-ee-k", "Tipo", [...KINDS.map((k) => [k, k]), ["", "Sem tipo"]], kindOf(e.tipo))}
+        ${sel("data-ee-a", "Atendimento", [["Presencial", "Presencial"], ["Online", "Online"]], atendOf(e.tipo))}
+        ${sel("data-ee-s", "Situação", Object.entries(STS).map(([k, [l]]) => [k, l]), e.s)}
+        ${sel("data-ee-fin", "Financeiro", FIN.map((x) => [x, x]), e.fin || "Não pago")}
+      </div>
+      <label class="field ee-obs"><span class="label">Observação (opcional)</span><textarea class="input" rows="2" data-ee-obs maxlength="500">${e.obs || ""}</textarea></label>
       <p class="hint" data-ee-err role="status"></p>`,
-    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>${ev ? "Salvar" : "Criar evento"}</button>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>${ev ? "Salvar" : "Agendar"}</button>`,
     ok: () => {
-      const fail = (m, sel) => { const x = document.querySelector("[data-ee-err]"); x.textContent = m; x.classList.add("err"); document.querySelector(sel).focus(); return false; };
-      const t = dlgVal("[data-ee-t]");
-      if (!t) return fail("Dê um título ao evento.", "[data-ee-t]");
-      const day = dlgRaw("[data-ee-d]");
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(dOf(day).getTime())) return fail("Escolha o dia.", "[data-ee-d]");
-      const tm = /^(\d{2}):(\d{2})$/.exec(dlgRaw("[data-ee-h]"));
-      if (!tm) return fail("Escolha a hora de começar.", "[data-ee-h]");
-      const dur = Number(dlgRaw("[data-ee-m]"));
-      const mins = Number(tm[1]) * 60 + Number(tm[2]);
-      if (mins + dur * 60 > 24 * 60) return fail("O evento precisa terminar no mesmo dia.", "[data-ee-h]");
-      const tipo = pick(dlgRaw("[data-ee-k]"), TIPOS), s = pick(dlgRaw("[data-ee-s]"), Object.keys(STS));
+      const fail = (m, s) => { const x = document.querySelector("[data-ee-err]"); x.textContent = m; x.classList.add("err"); document.querySelector(`#dlg-host ${s}`).focus(); return false; };
+      const t = dlgVal("[data-pt-q]");
+      if (!t) return fail(dlgRaw("[data-ee-k]") ? "Escreva o nome completo do paciente." : "Dê um título ao evento.", "[data-pt-q]");
+      const day = isoDate(dlgRaw("[data-ee-d]"));
+      if (!day) return fail("Escreva a data como dd/mm/aaaa, por exemplo 12/11/2026.", "[data-ee-d]");
+      const mins = minOf(dlgRaw("[data-ee-h]")), end = minOf(dlgRaw("[data-ee-f]"));
+      if (mins === null) return fail("Escreva a hora do início de 00:00 a 23:59, por exemplo 14:30.", "[data-ee-h]");
+      if (end === null) return fail("Escreva a hora do término de 00:00 a 23:59.", "[data-ee-f]");
+      if (end <= mins) return fail("O término precisa ser depois do início, no mesmo dia.", "[data-ee-f]");
+      const plain = !dlgRaw("[data-ee-k]");
+      const cel = plain ? "" : dlgRaw("[data-ee-cel]"), mail = plain ? "" : dlgRaw("[data-ee-mail]"), ddi = pick(dlgRaw("[data-ee-ddi]"), DDIS.map((x) => x[0]));
+      if (!FORM.pid && cel && (ddi === "+55" ? !/^\(\d{2}\) \d{4,5}-\d{4}$/.test(cel) : cel.replace(/\D/g, "").length < 6)) return fail("Confira o celular: DDD e número, por exemplo (41) 99999-0000.", "[data-ee-cel]");
+      if (!FORM.pid && mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail("Confira o e-mail, por exemplo nome@exemplo.com.br.", "[data-ee-mail]");
+      const tipo = tipoOf(pick(dlgRaw("[data-ee-k]"), [...KINDS, ""]), dlgRaw("[data-ee-a]")), s = pick(dlgRaw("[data-ee-s]"), Object.keys(STS)), fin = pick(dlgRaw("[data-ee-fin]"), FIN);
+      const pid = tipo ? FORM.pid : "", obs = dlgVal("[data-ee-obs]");
+      const twin = !pid && tipo && PEOPLE.filter((x) => x.n && fold(x.n) === fold(t)).length;
       const apply = (extra) => {
         const target = ev || { id: `e${++evSeq}` };
         evCommit("", () => {
-          Object.assign(target, { day, h: Math.floor(mins / 60), m: mins % 60, dur, t, tipo, s });
+          Object.assign(target, { day, h: Math.floor(mins / 60), m: mins % 60, dur: (end - mins) / 60, t, tipo, s, fin, pid, obs, ddi: pid ? "+55" : ddi, cel: pid ? "" : esc(cel), mail: pid ? "" : esc(mail) });
           if (!ev) EV.push(target);
           st.agd = dOf(day);
-          evCommit.msg = `${ev ? `“${t}” atualizado.` : `“${t}” criado em ${dayShort(dOf(day))} às ${hmm(mins)}.`}${extra}${evClash(target)}`;
+          evCommit.msg = `${ev ? `“${t}” atualizado.` : `“${t}” ${tipo ? "agendado para" : "criado em"} ${dayShort(dOf(day))} às ${hmm(mins)}.`}${pid || !tipo ? "" : twin ? " Ficou sem vínculo: há mais de um contato com esse nome." : " Ficou sem vínculo com Contatos."}${extra}${evClash(target)}`;
         }, target.id);
       };
       if (ev && ev.rec) { const op = DLG.opener; dlgClose(); evScope(ev, apply, op); return false; }
       apply("");
     } }, opener);
+  document.querySelector("#dlg-host .dlg-box").classList.add("dlg-ee");
+  eePlain();
+  ptRender(false);
+  eeTimes("");
 }
+/* Sem tipo é um compromisso comum (reunião, curso): só título, data, horário, situação e observação. */
+function eePlain() {
+  const box = document.querySelector("#dlg-host .dlg-ee");
+  if (!box) return;
+  const plain = !dlgRaw("[data-ee-k]");
+  box.classList.toggle("is-plain", plain);
+  box.querySelector("label[for=pt-q]").textContent = plain ? "Título" : "Nome completo do paciente";
+  box.querySelector("[data-pt-q]").placeholder = plain ? "Por exemplo, Reunião da equipe" : "Digite para buscar em Contatos";
+  const h = box.querySelector("#dlg-h");
+  h.textContent = `${/^Editar/.test(h.textContent) ? "Editar" : "Novo"} ${plain ? "evento" : "agendamento"}`;
+  box.querySelector("label:has([data-ee-d]) .label").textContent = plain ? "Data" : "Data da consulta";
+  const ok = box.querySelector("[data-dlg-ok]");
+  if (ok && !/^Editar/.test(h.textContent)) ok.textContent = plain ? "Criar evento" : "Agendar";
+  if (plain && FORM.pid) ptUnlink("");
+}
+document.addEventListener("change", (ev) => { if (ev.target.matches && ev.target.matches("#dlg-host [data-ee-k]")) eePlain(); });
+/* Digitar: máscaras, busca no nome e término que acompanha o início. */
+document.addEventListener("input", (ev) => {
+  const t = ev.target;
+  if (!t.closest || !t.closest("#dlg-host")) return;
+  if (t.dataset.mask && !(ev.inputType || "").startsWith("delete")) t.value = MASK[t.dataset.mask](t.value);
+  if (t.matches("[data-pt-q]")) {
+    if (FORM.pid) { const p = pById(FORM.pid); if (p && fold(t.value.trim()) !== fold(p.n)) ptUnlink("O nome mudou, então o vínculo saiu, junto com o celular e o e-mail do contato."); }
+    else FORM.note = "";
+    FORM.opt = -1;
+    ptRender(true);
+  }
+  if (t.matches("[data-ee-h]") && minOf(t.value) !== null) eeTimes("h");
+  if (t.matches("[data-ee-f]") && minOf(t.value) !== null) eeTimes("f");
+});
+document.addEventListener("focusout", (ev) => { if (ev.target.matches && ev.target.matches("[data-pt-q]")) setTimeout(() => { if (document.activeElement !== ev.target) ptRender(false); }, 120); });
+/* Lista de contatos pelo teclado: setas andam, Enter escolhe, Esc fecha só a lista (o segundo Esc fecha o diálogo). */
+window.addEventListener("keydown", (ev) => {
+  const t = ev.target;
+  if (!t.matches || !t.matches("[data-pt-q]")) return;
+  const ul = document.querySelector("#dlg-host #pt-list");
+  const open = ul && !ul.hidden;
+  const n = FORM.list.length + 1;
+  if (ev.key === "ArrowDown" || ev.key === "ArrowUp") { ev.preventDefault(); if (!open) { ptRender(true); return; } FORM.opt = ev.key === "ArrowDown" ? (FORM.opt + 1) % n : (FORM.opt - 1 + n) % n; ptRender(true); return; }
+  if (!open) return;
+  if (ev.key === "Escape") { ev.preventDefault(); ev.stopImmediatePropagation(); ptRender(false); return; }
+  if (ev.key === "Enter" && FORM.opt >= 0) { ev.preventDefault(); ev.stopImmediatePropagation(); if (FORM.opt < FORM.list.length) ptPick(FORM.list[FORM.opt].id); else { FORM.note = "Fica sem vínculo com Contatos."; ptRender(false); } }
+}, true);
+document.addEventListener("mousedown", (ev) => {
+  const o = ev.target.closest && ev.target.closest("#pt-list [data-pt-opt], #pt-list [data-pt-free]");
+  if (!o) return;
+  ev.preventDefault();
+  if (o.dataset.ptOpt) ptPick(o.dataset.ptOpt); else { FORM.note = "Fica sem vínculo com Contatos."; ptRender(false); }
+});
 const evById = (id) => EV.find((x) => x.id === id);
 let agNoClick = 0;
 const ACT1211 = [
@@ -6286,6 +6570,22 @@ document.addEventListener("keydown", (e) => {
   evMove(ev, day, mins, ev.dur, b);
 });
 
+/* Por último, para vir antes dos atalhos da agenda registrados acima. */
+ACT.unshift(
+  [(t) => t.matches("[data-pt-pick]"), (t) => { ptPick(t.dataset.ptPick); document.querySelector("#dlg-host [data-ee-d]")?.focus(); }],
+  [(t) => t.matches("[data-pt-unlink]"), () => { ptUnlink("Vínculo removido. O celular e o e-mail do contato saíram deste agendamento."); document.querySelector("#dlg-host [data-pt-q]")?.focus(); }],
+  [(t) => t.matches("[data-pt-open]"), () => { const q = document.querySelector("#dlg-host [data-pt-q]"); q.focus(); FORM.opt = 0; ptRender(true); }],
+  [(t) => t.matches("[data-ee-dur1]"), () => { FORM.dur = 60; FORM.own = false; eeTimes("h"); document.querySelector("#dlg-host [data-ee-f]")?.focus(); }],
+  [(t) => t.matches("[data-ev-link]"), (t) => { const e = evById(t.dataset.evEdit), op = DLG.opener; dlgClose(); if (!e) return; evEdit(e, {}, op); const q = document.querySelector("#dlg-host [data-pt-q]"); q.focus(); q.select(); ptRender(true); }],
+  [(t) => t.matches("[data-sync-open]"), (t) => syncDlg(t)],
+  [(t) => t.matches("[data-sync-sim]"), (t) => { st.sync = pick(t.dataset.syncSim, Object.keys(SYNCS)); const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); syncDlg(DLG.opener); }],
+  [(t) => t.matches("[data-sync-act]"), (t) => {
+    const a = t.dataset.syncAct;
+    if (a === "cfg") { dlgClose(); go("configuracoes"); return; }
+    if (a === "show") { const e = EV.find((x) => x.t === "Diego Fontes Arruda"); dlgClose(); st.sync = "ok"; if (e) { st.agd = dOf(e.day); render(); evDlg(e, document.querySelector(`[data-ev="${e.id}"]`)); } return; }
+    busy(t, 900, () => { st.sync = a === "pull" ? "ok" : "saved"; SYNC_LOG.unshift([hm(nowMin()), a === "pull" ? "refresh-cw" : "circle-check", a === "pull" ? "Nada mudou no Google desde 13:40." : "A mudança que faltava chegou ao Google."]); const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); syncDlg(DLG.opener); });
+  }]
+);
 render();
 </script>
 </body>

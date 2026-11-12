@@ -158,8 +158,9 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 | --- | --- |
 | 1. Áudio de 120 s e sons | mesclada (#315) |
 | 2. Situação por cor, feriados e fins de semana | mesclada (#319) |
-| 3. Arrastar, duração, desfazer e avisos de sincronização | em revisão |
+| 3. Arrastar, duração, desfazer e avisos de sincronização | mesclada (#321) |
 | 4. Menu por áreas | a fazer |
+| 3b. Formulário do agendamento, paciente vinculado e sinais da sincronização | protótipo, esperando o Pablo aprovar |
 
 ### Diferenças da entrega 1
 
@@ -207,6 +208,42 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 - **O aviso de falha tem marca própria** (triângulo vermelho, e não o visto verde), e o de conexão fica até ser fechado.
 - **Horário em conflito:** o aviso acrescenta "Atenção: há outro evento neste horário", como no protótipo. Não impede a mudança.
 
+### Ajustes pedidos depois da entrega 3 (12/11/2026, à tarde)
+
+O Pablo viu a entrega 3 e pediu cinco ajustes, com um print do formulário do outro sistema do consultório como modelo. Pela regra de 12/11, eles entram primeiro no protótipo (bloco "12/11/2026, à tarde" no fim do script de `prototipo-interativo.html`); o código só começa depois da aprovação, numa PR própria (3b).
+
+1. **Horário de 24 horas, sem AM e PM.** Hoje os campos de data e hora são os do navegador, que seguem o idioma do aparelho: num navegador em inglês aparecem "10:00 AM" e "11/12/2026". Eles saem. Data e hora viram campos de texto com máscara: "dd/mm/aaaa" e "hh:mm", de 00:00 a 23:59, sempre. Digitar só números basta (1430 vira 14:30). A hora do início sugere os horários de 15 em 15 minutos, e a do término sugere 15 min, 30 min, 45 min, 1 h, 1 h 30, 2 h e 3 h depois do início.
+2. **Duração padrão de 1 hora, ajustável.** O campo "Dura" dá lugar à "Hora do término", como no outro sistema. O término começa 1 h depois do início e acompanha o início quando ele muda, mantendo a duração. Mudar o término ajusta a duração daquele agendamento ("Dura 1 h 30. Voltar para 1 h"). Término antes do início é recusado.
+3. **Mesmo padrão do outro sistema.** Ordem dos campos: nome completo do paciente; DDI, celular com DDD e e-mail; data da consulta, hora do início e hora do término; tipo, atendimento (presencial ou online), situação e financeiro; observação. O "Tipo" (Consulta, Retorno, Avaliação física) continua, e o atendimento vira a segunda parte da linha do tipo na descrição ("Consulta | Consultório" ou "Consulta | Online"), a mesma regra que a ficha do contato já lê. Com "Sem tipo" o formulário vira o de um compromisso comum (reunião, curso): título, data, horário, situação e observação, sem paciente, contato nem financeiro.
+4. **Sinais da sincronização.** A linha "Em dia com o Google" vira um botão com ícone, cor e nome curto. Ele abre um painel com a situação de agora, o que fazer, as últimas mudanças e "O que cada sinal quer dizer":
+
+   | Sinal | Quando | O que a pessoa pode fazer |
+   | --- | --- | --- |
+   | ✓ verde, Sincronizado | tudo igual ao Google, com a hora da última conferência | nada |
+   | ⟳ azul, Salvando… | uma mudança está indo para o Google | esperar |
+   | ✓ verde, Salvo no Google | a última mudança chegou agora | nada |
+   | ⟳ azul, Atualizando… | a Zuri está trazendo o que mudou no Google | esperar |
+   | Wi-Fi cortado, âmbar, Sem internet | uma mudança não foi enviada e continua na tela, marcada | Tentar de novo |
+   | ✕ vermelho, Falha ao salvar | o Google recusou; o evento voltou ao que era | Tentar de novo |
+   | ↺ âmbar, Mudou no Google | o evento foi mudado lá enquanto a pessoa mexia aqui; vale a versão de lá | Ver o evento |
+   | Ampulheta âmbar, Em pausa | o Google pediu um intervalo depois de muitas mudanças seguidas | nada; a Zuri tenta de novo em 1 min |
+   | Nuvem cortada, âmbar, Desatualizada | sem notícias do Google há mais de 15 min | Atualizar agora |
+   | Corrente partida, vermelho, Conexão expirou | a Zuri perdeu o acesso ao Google Agenda; nada é lido nem gravado | Conectar de novo (Configurações › Integrações) |
+   | Cadeado cinza, Só leitura | eventos de outra agenda, só para leitura | mudar no Google Agenda |
+
+   As cores nunca andam sozinhas: todo sinal tem ícone e nome, e o leitor de tela lê "Sincronização com o Google: Sem internet. Ver detalhes". O aviso com "Desfazer" de cada mudança continua como na entrega 3. No protótipo, o botão "Simular" de cada linha do painel (e o parâmetro `sync=`) mostra cada sinal; ele não vai para o sistema.
+5. **Vincular o agendamento ao paciente, ou não.**
+   - Ao digitar duas letras do nome, a Zuri procura em Contatos (a cópia que já existe, sem chamar o Google), sem acento e pelo começo de cada palavra ("carla m" acha "Carla Mendes"). Clientes do consultório vêm primeiro. Cada linha mostra o nome, o celular e a última consulta, para separar homônimos. A última linha da lista é sempre "Agendar “nome” sem vínculo".
+   - Escolher um contato preenche o nome, o DDI, o celular e o e-mail, que ficam só para leitura com "Vinculado a …" e "Remover vínculo". Os dados continuam sendo os de Contatos: para mudar, o Pablo edita o contato no Google (a Zuri só lê Contatos).
+   - Nada se vincula sozinho. Nome igual ao de um único contato mostra "“Paula Régis Amaral” está em Contatos" com o botão "Vincular". Nome igual ao de dois ou mais contatos mostra "2 contatos com este nome" e abre a lista para escolher pelo telefone (regra de homônimos de 12/11: são pessoas diferentes e nunca se ligam sozinhas).
+   - Mudar o nome depois de vincular desfaz o vínculo e limpa o celular e o e-mail que vieram do contato, para que os dados de uma pessoa nunca fiquem no agendamento de outra. "Remover vínculo" faz o mesmo.
+   - Sem vínculo vale sempre: paciente novo, que ainda não está em Contatos, ou quem o Pablo preferir não ligar. O agendamento fica com o nome e com o celular e o e-mail digitados (o celular é conferido: DDD e número no Brasil). Nos detalhes, um agendamento sem vínculo mostra "Vincular", que abre o formulário já com a busca.
+   - **Onde fica cada dado:** o nome continua sendo o título do evento e o tipo continua na primeira linha da descrição, como hoje; a observação vem depois. O vínculo (id do contato), o DDI, o celular, o e-mail e o financeiro vão para as propriedades privadas do evento no Google (`extendedProperties.private`): viajam com o evento, não aparecem no Google Agenda e não pedem tabela nova nem migration. A lista fixa de campos do `PATCH` e do `POST` ganha esses campos, com Zod e limites de tamanho.
+
+**O que não muda:** arrastar, Alt com as setas, "Desfazer", "mover marca Reagendado", a cor de cada situação e a agenda só de leitura. O primeiro carregamento também não, porque o formulário está no pedaço da Agenda, que carrega sob demanda; a busca usa a lista de Contatos que a tela já lê, sem chamada nova ao Google.
+
+**Perguntas ao Pablo** (seção 14).
+
 ## 12. Riscos
 
 - **Som bloqueado pelo navegador** antes do primeiro clique: o aviso chega sem som. Mitigação: o cartão explica e o "Testar" destrava.
@@ -232,4 +269,8 @@ O Pablo respondeu "siga as recomendações":
 
 ### Perguntas abertas
 
-Nenhuma.
+Sobre os ajustes de 12/11 à tarde, com a recomendação entre parênteses:
+
+1. **O protótipo está aprovado?** Formulário, vínculo com o paciente e sinais da sincronização. (Sim, para começar a PR 3b.)
+2. **Financeiro:** as opções "Não pago", "Pago" e "Isento" servem, e o campo entra já agora, guardado no evento, para a Gestão ler depois? (Sim: mantém o padrão do outro sistema e não depende da Gestão.)
+3. **Atendimento online** grava "Online" no lugar de "Consultório" na linha do tipo ("Consulta | Online")? (Sim: é a mesma linha que a ficha do contato já lê.)
