@@ -395,7 +395,7 @@ linha lida nem escrita a mais.
 
 `POST /memories/:id/local-only` e `POST /notes/:id/local-only`
 (`{ "localOnly": true | false }`): liga ou desliga "Nunca enviar para fora", sem
-mudar a data da última edição. Ficam fora dos tokens de acesso remoto.
+mudar a data da última edição.
 
 ## Custo no plano Free
 

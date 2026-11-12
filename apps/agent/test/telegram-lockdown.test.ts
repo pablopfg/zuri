@@ -7,10 +7,10 @@ import { InternalState } from "../src/db/internal-state.ts";
 import { telegramWebhookSecret } from "../src/gates/telegram.ts";
 import { maskAddress } from "../src/telegram/security.ts";
 import startCode from "./fixtures/telegram/start-code.json?raw";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Step 16b: the bot's security commands (/acessos, /sessoes, /encerrar_sessoes,
-// /tokens, /pausar_rotinas, /bloquear), the lockdown as the bot and the API see
+// /pausar_rotinas, /bloquear), the lockdown as the bot and the API see
 // it, the relock that suspends the link, and the bot's security alerts that only
 // the app acknowledges. The Bot API is answered here, never on the network.
 
@@ -92,11 +92,10 @@ afterEach(async () => {
       "zur_automation_runs",
       "zur_auth_events",
       "zur_sessions",
-      "zur_remote_tokens",
     ]) {
       db.run(`DELETE FROM ${table}`);
     }
-    db.run(`DELETE FROM zur_settings WHERE key LIKE 'telegram_%' OR key LIKE 'lockdown_%' OR key IN ('bot_read_lock_hours', 'bot_unlocked_until', 'remote_enabled')`);
+    db.run(`DELETE FROM zur_settings WHERE key LIKE 'telegram_%' OR key LIKE 'lockdown_%' OR key IN ('bot_read_lock_hours', 'bot_unlocked_until')`);
     await agent.store.automations.rearm();
   });
   vi.restoreAllMocks();
@@ -122,7 +121,7 @@ async function signIn(): Promise<string> {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status, await res.clone().text()).toBe(200);
-  return res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  return signedCookies(res);
 }
 
 let nextId = 610_000;
@@ -209,7 +208,7 @@ beforeAll(async () => {
   secret = await telegramWebhookSecret(testEnv.SESSION_SECRET);
 });
 
-describe("/acessos and /tokens", () => {
+describe("/acessos", () => {
   it("/acessos lists the 10 newest access events with the network summarized, never the whole address", async () => {
     await linkOwner();
     expect(await command("/acessos")).toBe("Nenhum acesso registrado ainda.");
@@ -238,58 +237,13 @@ describe("/acessos and /tokens", () => {
     expect(maskAddress("64:ff9b::203.0.113.77")).toBe("203.0.x.x");
   });
 
-  it("/acessos, /sessoes and /tokens ask to unlock after the bot sat unused; /tokens shows the empty state", async () => {
+  it("/acessos and /sessoes ask to unlock after the bot sat unused", async () => {
     await linkOwner();
-    expect(await command("/tokens")).toBe("Nenhum token de acesso remoto ativo.");
     await idle(13 * HOUR);
-    for (const name of ["/acessos", "/sessoes", "/tokens"]) {
+    for (const name of ["/acessos", "/sessoes"]) {
       expect(await command(name)).toContain("travei a leitura por segurança");
     }
-    expect((await audit()).filter((row) => row.result === "locked").map((row) => row.name)).toEqual(["acessos", "sessoes", "tokens"]);
-  });
-});
-
-describe("/tokens with Revogar (step 20)", () => {
-  it("lists the active tokens, and Revogar removes that one at once with the bot's alert", async () => {
-    await linkOwner();
-    const made = await inOwner(async (agent) => {
-      agent.store.remoteTokens.setEnabled(true);
-      const n8n = await agent.store.remoteTokens.create({ name: "n8n", scope: "events" });
-      const casa = await agent.store.remoteTokens.create({ name: "Casa", scope: "read" });
-      return { n8n: n8n.secret, casa: casa.secret };
-    });
-    const out = await command("/tokens");
-    expect(out).toBe("Tokens de acesso remoto ativos\n\n1. n8n (só eventos), último uso: nunca\n2. Casa (só ler), último uso: nunca\n\nToque em Revogar e o token para de funcionar na hora. Para criar outro, só pelo app.");
-    expect(lastKeyboard().map((row) => row[0]?.text)).toEqual(["Revogar 1", "Revogar 2"]);
-    for (const b of lastKeyboard().flat()) expect(b.callback_data).toMatch(/^v1:token_revoke:[A-Za-z0-9_-]{16}$/);
-    const rows = lastKeyboard();
-    await press("Revogar 1");
-    expect(answers()).toEqual(["Token revogado"]);
-    expect(keyboard(sent("editMessageReplyMarkup")[0]).map((row) => row[0]?.text)).toEqual(["Revogar 2"]);
-    const bearer = (token: string) => call(`${ORIGIN}/api/remote/events`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json", "cf-connecting-ip": "198.51.100.61" }, body: JSON.stringify({ title: "Oi" }) });
-    expect((await bearer(made.n8n)).status).toBe(401);
-    // The same button again: already used.
-    botCalls.length = 0;
-    await tap(rows[0]?.[0]?.callback_data ?? "", rows);
-    expect(answers()).toEqual(["Isso já foi feito."]);
-    expect((await securityNotices()).filter((n) => n.origin === "bot").map((n) => JSON.parse(n.params).event)).toEqual(["telegram_token_revoked"]);
-    expect((await events("telegram_token_revoked")).map((e) => e.reason)).toEqual(["events"]);
-    expect(aiCalls).toBe(0);
-  });
-
-  it("shows only tokens that work now: none while remote access is off or during a lockdown", async () => {
-    await linkOwner();
-    await inOwner(async (agent) => {
-      agent.store.remoteTokens.setEnabled(true);
-      await agent.store.remoteTokens.create({ name: "Casa", scope: "read" });
-      agent.store.remoteTokens.setEnabled(false);
-    });
-    expect(await command("/tokens")).toBe("Nenhum token de acesso remoto ativo.");
-    await inOwner((agent) => agent.store.remoteTokens.setEnabled(true));
-    await command("/bloquear");
-    await press("Bloquear agora");
-    expect(await command("/tokens")).not.toContain("Casa");
-    expect((await inOwner((agent) => agent.store.remoteTokens.list()))[0]?.suspended).toBe(true);
+    expect((await audit()).filter((row) => row.result === "locked").map((row) => row.name)).toEqual(["acessos", "sessoes"]);
   });
 });
 
@@ -364,6 +318,11 @@ describe("/sessoes and /encerrar_sessoes", () => {
 });
 
 describe("empty states and stale buttons", () => {
+  it("/tokens is gone with the access by token: typed, it is a command the bot doesn't know", async () => {
+    await linkOwner();
+    expect(await command("/tokens")).toBe("Ainda não conheço esse comando. Use /ajuda para ver o que eu faço por aqui.");
+  });
+
   it("say so instead of acting: nothing open, nothing to pause, a session already gone, a button past its 10 minutes", async () => {
     await linkOwner();
     expect(await command("/pausar_rotinas")).toBe("Nenhuma rotina da Zuri ativa.");
@@ -593,7 +552,7 @@ describe("/bloquear and the lockdown", () => {
     expect((await api("POST", "/lockdown/exit", {}, fresh)).status).toBe(409);
     expect((await events("lockdown_exited")).length).toBe(1);
     // The bot answers again, with reading locked until a new unlock (SEC-A5-02): the account may still be in other hands.
-    expect(await command("/tokens")).toMatch(/^Faz um tempo que você não usa o bot/);
+    expect(await command("/sessoes")).toMatch(/^Faz um tempo que você não usa o bot/);
   });
 
   it("leaving asks for the password typed in the last 15 minutes", async () => {

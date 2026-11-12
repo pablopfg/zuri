@@ -6,7 +6,7 @@ import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { AgentConfigs } from "../src/specialists/configs.ts";
 import { SUMMARY_SPECIALIST } from "../src/specialists/summary.ts";
-import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // The AI screen's agents (docs/planos/guardrails-especialistas-ia.md, PR 2, CA11 to CA14) through the Worker.
 
@@ -37,7 +37,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 });
 
 beforeEach(fresh);

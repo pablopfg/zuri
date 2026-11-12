@@ -4,7 +4,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { LIVE_TAG } from "../src/live/channel.ts";
-import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Nova UI, PR 3: the live channel. One WebSocket per browser, held while the
 // object hibernates, that only writes the areas' numbers when one moved. It
@@ -39,7 +39,7 @@ async function signIn() {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 }
 
 /** The upgrade as a browser on the site sends it; `headers` replace or drop (null) any of them. */
@@ -142,6 +142,21 @@ describe("opening the live channel", () => {
     }
   });
 
+  it("a copied session cookie alone opens no channel: without the browser's device cookie the session ends and the owner is told", async () => {
+    await signIn();
+    const session = cookie.split("; ").find((part) => part.startsWith("__Host-zuri_session=")) ?? "";
+    expect(session).not.toBe("");
+    const blocked = () => inOwner((agent) => agent.sql<{ n: number }>`SELECT count(*) AS n FROM zur_auth_events WHERE kind = 'session_blocked' AND reason = 'other_browser'`[0]?.n ?? 0);
+    const before = await blocked();
+    const res = await upgrade({ cookie: session });
+    expect(res.status).toBe(401);
+    expect(res.webSocket).toBeNull();
+    expect(await blocked()).toBe(before + 1);
+    // Ended for the owner's browser too.
+    expect((await upgrade()).status).toBe(401);
+    await signIn();
+  });
+
   it("is the only upgrade: other paths, a trailing slash and other methods stay refused at the Worker", async () => {
     for (const [path, method] of [
       ["/api/live/", "GET"],
@@ -163,6 +178,17 @@ describe("opening the live channel", () => {
     );
     expect(res.status).toBe(403);
     expect(res.webSocket).toBeNull();
+  });
+
+  it("a request with Authorization is refused by the object too, when it arrives without the Worker (an empty header included)", async () => {
+    for (const authorization of ["Bearer x", ""]) {
+      const res = await inOwner((agent) =>
+        agent.fetch(new Request(`${ORIGIN}/api/auth/session`, { headers: { ...CSRF, "cf-connecting-ip": IP, cookie, authorization } })),
+      );
+      expect(res.status, authorization).toBe(401);
+    }
+    const plain = await inOwner((agent) => agent.fetch(new Request(`${ORIGIN}/api/auth/session`, { headers: { ...CSRF, "cf-connecting-ip": IP, cookie } })));
+    expect(plain.status).toBe(200);
   });
 
   it("without the upgrade, the path is just an unknown route", async () => {

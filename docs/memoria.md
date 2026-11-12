@@ -210,8 +210,8 @@ começa por "dra". Tocar no contato abre a ficha dele em Contatos. Sem a permiss
 contatos (conta desconectada ou permissão retirada), nenhum contato aparece,
 e um e-mail que está no lugar do nome nunca conta como nome.
 
-A rota só atende a sessão do dono. Um token de acesso pela API não chega a ela,
-porque a resposta traz títulos de outras áreas.
+A rota só atende a sessão do dono, porque a resposta traz títulos de outras
+áreas.
 
 O que fica de fora por enquanto: contatos (entram com a tela nova de Contatos)
 e a conversa em que a memória nasceu, que o banco não guarda. A ligação com uma

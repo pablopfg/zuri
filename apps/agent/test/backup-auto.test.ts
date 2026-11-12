@@ -8,7 +8,7 @@ import { MemoryBucket } from "../src/backup/dev-bucket.ts";
 import { exportBackup } from "../src/backup/export.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import type { TelegramClient } from "../src/telegram/client.ts";
-import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Step 23b: the automatic backup. A sealed copy a day in the bucket, the newest 7
 // kept, nothing deleted when an upload fails; the month's copy to Telegram, the
@@ -34,7 +34,7 @@ async function signIn(): Promise<void> {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 }
 
 const fresh = () => inOwner((agent) => agent.store.db.run(`UPDATE zur_sessions SET confirmed_at = ?`, Date.now()));

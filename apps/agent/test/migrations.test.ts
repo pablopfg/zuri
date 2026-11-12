@@ -117,6 +117,7 @@ describe("the migration list", () => {
       33: "b281d8f2f11df4452a26166f2f4d1368e5bc09a0a16fb72f8171a377c991048d",
       34: "ead4c0e3131aa24742f95906ead330a3e3ff9374127373d88b46a9c54741e620",
       35: "3998d5ed76fae99d51060677c3bf8136d5d4aeddbd7948ceb40678ba91b53a35",
+      36: "64fd3437ebdb5d557cfa14e43bd3fba622c72473dcfaea78e40aea871363b8fb",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -132,7 +133,7 @@ describe("migrate", () => {
       expect(zurObjects(db)).toEqual([]);
 
       expect(migrate(db)).toBe(LATEST_SCHEMA_VERSION);
-      expect(schemaVersion(db)).toBe(35);
+      expect(schemaVersion(db)).toBe(36);
       // FTS5 keeps shadow tables of its own (zur_notes_fts_data and others): only ours are listed.
       expect(zurObjects(db).filter((name) => !/^table:zur_(notes|memories)_fts_/.test(name))).toEqual([
         "table:zur_activity",
@@ -1294,6 +1295,34 @@ describe("migrate", () => {
     });
   });
 
+  it("upgrades a database at version 35 to 36: an open session keeps its row, with no browser recorded, and a new row takes the binding", async () => {
+    await withEmptyDatabase("from-35", (db) => {
+      expect(migrate(db, MIGRATIONS.slice(0, 35))).toBe(35);
+      db.run(`INSERT INTO zur_sessions (id, created_at, last_seen_at, last_presence_at, expires_at, confirmed_at, user_agent, network) VALUES ('s1', 1, 2, 3, 4, 5, 'ua', '203.0.113.7')`);
+      expect(migrate(db)).toBe(36);
+      expect(db.one(`SELECT * FROM zur_sessions`)).toEqual({
+        id: "s1",
+        created_at: 1,
+        last_seen_at: 2,
+        last_presence_at: 3,
+        expires_at: 4,
+        confirmed_at: 5,
+        user_agent: "ua",
+        network: "203.0.113.7",
+        device: null,
+        country: "",
+        networks: "",
+        confirmed_network: null,
+      });
+      db.run(
+        `INSERT INTO zur_sessions (id, created_at, last_seen_at, last_presence_at, expires_at, confirmed_at, user_agent, network, device, country, networks, confirmed_network) VALUES ('s2', 1, 2, 3, 4, 5, 'ua', 'n', 'd', 'BR', 'n', 'n')`,
+      );
+      expect(db.one(`SELECT device, country, networks, confirmed_network FROM zur_sessions WHERE id = 's2'`)).toEqual({ device: "d", country: "BR", networks: "n", confirmed_network: "n" });
+      // Running it again changes nothing.
+      expect(migrate(db)).toBe(36);
+    });
+  });
+
   it("upgrades a database at version 32 to 33: each sync keeps its interval of before (5 and 10 minutes), and a new one doesn't move the screens' numbers", async () => {
     await withEmptyDatabase("from-32", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 32))).toBe(32);
@@ -1374,7 +1403,7 @@ describe("migrate", () => {
       const before = db.all(`SELECT * FROM zur_reviews ORDER BY id`);
       const counts = db.all(`SELECT kind, n FROM zur_counts WHERE kind LIKE 'reviews%' ORDER BY kind`);
       const number = db.one(`SELECT reviews FROM zur_area_versions WHERE id = 1`);
-      expect(migrate(db)).toBe(35);
+      expect(migrate(db, MIGRATIONS.slice(0, 35))).toBe(35);
       expect(db.all(`SELECT * FROM zur_reviews ORDER BY id`)).toEqual(before);
       expect(db.all(`SELECT kind, n FROM zur_counts WHERE kind LIKE 'reviews%' ORDER BY kind`)).toEqual(counts);
       expect(db.one(`SELECT reviews FROM zur_area_versions WHERE id = 1`)).toEqual(number);

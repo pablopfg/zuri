@@ -2,7 +2,7 @@ import { AGENT_INSTANCE_NAME, apiErrorSchema, type DiagnosticsReport, type Notic
 import { runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // The notice center, Settings > Notices and the Diagnóstico tab through the Worker,
 // as the interface calls them, and the object's own wiring (access alerts, failures).
@@ -42,7 +42,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 });
 
 const MISSING = "0b8f8a52-5b2c-4c55-9a4c-2f1f3e1f4a10";

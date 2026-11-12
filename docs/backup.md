@@ -109,7 +109,7 @@ O código do formato está em `packages/shared/src/backup-file.ts`.
 | `crm` | etapas do funil, clientes com etiquetas e histórico, e os interruptores dos avisos | |
 
 Nunca vão: senha, segredo do 2FA, códigos de recuperação, passkeys, sessões,
-aparelhos, tokens de acesso remoto, vínculo e estado do Telegram, servidores MCP
+aparelhos, vínculo e estado do Telegram, servidores MCP
 e suas credenciais, conexão Google e credenciais dos fluxos, fluxos e conexões,
 contatos e avaliações do Google, fila de eventos do CRM, avisos, uso da IA,
 atividade, diagnóstico, chaves dos modelos pagos nem os valores internos que o

@@ -5,7 +5,7 @@ import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { MockAIProvider } from "../src/ai/mock.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { type DevGoogle, devGoogle, googleNetwork } from "../src/google/dev-google.ts";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 import { LOCATION, PATTERN } from "./reviews-world.ts";
 
 // PR S09: the contacts' sync and the reviews' check both due in one wake of the alarm, with the real
@@ -35,7 +35,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
   google = devGoogle({ clientId: testEnv.GOOGLE_CLIENT_ID, clientSecret: testEnv.GOOGLE_CLIENT_SECRET });
   google.people.groups.push({ resourceName: CLIENTS, name: "Clientes", groupType: "USER_CONTACT_GROUP", memberCount: 1 });
   google.people.add({ resourceName: "people/c1", names: [{ displayName: "Ana Souza" }], memberships: [{ contactGroupMembership: { contactGroupResourceName: CLIENTS } }] });

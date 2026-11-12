@@ -304,6 +304,121 @@ describe("brute force: 3 failures per network in 15 minutes", () => {
   });
 });
 
+describe("the day's cap: 5 wrong passwords per network in 24 hours", () => {
+  const HOUR_MS = 60 * MINUTE;
+  /** One wrong password, then far enough ahead for the 15-minute window to be empty. */
+  const wrongAnHourApart = async (h: { auth: { login: (...args: never[]) => Promise<unknown> }; clock: { advance(ms: number): void } }, times: number, net = NET) => {
+    for (let i = 0; i < times; i++) {
+      expect(await outcome((h.auth.login as (...args: unknown[]) => Promise<unknown>)(wrong(), client(net), noCookies))).toBe("INVALID_CREDENTIALS");
+      h.clock.advance(HOUR_MS);
+    }
+  };
+
+  it("lets the 5th wrong password through (n), and makes the 6th try wait even with the right password (n+1)", async () => {
+    await withAuth("daily-5", async (h) => {
+      await wrongAnHourApart(h, 4);
+      // n−1: four in the day, none in the window: the network still has its tries.
+      expect(await outcome(h.auth.login(wrong(), client(NET), noCookies))).toBe("INVALID_CREDENTIALS");
+      h.clock.advance(HOUR_MS);
+      const refusal = await h.auth.login(right(), client(NET), noCookies).catch((e: AppError) => e);
+      expect(refusal).toBeInstanceOf(AppError);
+      expect((refusal as AppError).code).toBe("RATE_LIMITED");
+      // The first of the five was 5 hours ago: 19 hours to go.
+      expect((refusal as AppError).details).toEqual({ retryAfter: 19 * 3600, daily: true });
+      // Another network is not affected.
+      expect(await outcome(h.auth.login(right(), client(OTHER), noCookies))).toBe("ok");
+      expect(h.events().filter((e) => e.kind === "login_rate_limited").map((e) => e.reason)).toEqual(["network_daily_cap"]);
+    });
+  });
+
+  it("counts the /aprovar page's refused tries too: guessing a link five times in a day closes the sign-in from that network", async () => {
+    await withAuth("daily-approvals", async (h) => {
+      for (let i = 0; i < 5; i++) {
+        // What api/approvals.ts writes for an unknown token or a refused passkey.
+        h.service.limiter.assertAllowed(NET);
+        h.service.limiter.begin(NET);
+        h.clock.advance(HOUR_MS);
+      }
+      expect(() => h.service.limiter.assertAllowed(NET)).toThrow(AppError);
+      expect(await outcome(h.auth.login(right(), client(NET), noCookies))).toBe("RATE_LIMITED");
+      expect(await outcome(h.auth.login(right(), client(OTHER), noCookies))).toBe("ok");
+    });
+  });
+
+  it("opens again the millisecond the oldest of the five is a day old, for one more try", async () => {
+    await withAuth("daily-window", async (h) => {
+      await wrongAnHourApart(h, 5);
+      h.clock.advance(19 * HOUR_MS - 1);
+      expect(await outcome(h.auth.login(right(), client(NET), noCookies))).toBe("RATE_LIMITED");
+      h.clock.advance(1);
+      expect(await outcome(h.auth.login(wrong(), client(NET), noCookies))).toBe("INVALID_CREDENTIALS");
+      // Five in the day again: the second oldest is the one to wait for now, an hour later.
+      const refusal = await h.auth.login(right(), client(NET), noCookies).catch((e: AppError) => e);
+      expect((refusal as AppError).details).toEqual({ retryAfter: 3600, daily: true });
+      h.clock.advance(HOUR_MS);
+      expect(await outcome(h.auth.login(right(), client(NET), noCookies))).toBe("ok");
+    });
+  });
+
+  it("checks the cap before any PBKDF2, and counts concurrent tries before the slow check", async () => {
+    await withAuth("daily-race", async (h) => {
+      await wrongAnHourApart(h, 3);
+      // Two left in the day, three in the window: 10 at once get only the two.
+      const results = await Promise.all(Array.from({ length: 10 }, () => outcome(h.auth.login(wrong(), client(NET), noCookies))));
+      expect(results.filter((r) => r === "INVALID_CREDENTIALS")).toHaveLength(2);
+      expect(results.filter((r) => r === "RATE_LIMITED")).toHaveLength(8);
+      h.clock.advance(HOUR_MS);
+      const derive = vi.spyOn(crypto.subtle, "deriveBits");
+      expect(await outcome(h.auth.login(right(), client(NET), noCookies))).toBe("RATE_LIMITED");
+      expect(derive).not.toHaveBeenCalled();
+      derive.mockRestore();
+    });
+  });
+
+  it("never locks one of the owner's networks for a day: a sign-in in the last 30 days keeps only the 15-minute rule", async () => {
+    await withAuth("daily-owner", async (h) => {
+      expect(await outcome(h.auth.login(right(), client(NET), noCookies))).toBe("ok");
+      h.clock.advance(HOUR_MS);
+      await wrongAnHourApart(h, 7);
+      expect(await outcome(h.auth.login(right(), client(NET), noCookies))).toBe("ok");
+      // The 15-minute rule still holds there.
+      for (let i = 0; i < 3; i++) await outcome(h.auth.login(wrong(), client(NET), noCookies));
+      const refusal = await h.auth.login(right(), client(NET), noCookies).catch((e: AppError) => e);
+      expect((refusal as AppError).details).toEqual({ retryAfter: 15 * 60 });
+    });
+  });
+
+  it("a browser that signed in before gets no exemption on a new network: only the network's own sign-in counts", async () => {
+    await withAuth("daily-cookie", async (h) => {
+      const signed = await h.auth.login(right(), client(OTHER), noCookies);
+      const cookies = { session: null, device: signed.deviceToken };
+      for (let i = 0; i < 5; i++) {
+        expect(await outcome(h.auth.login(wrong(), client(NET), cookies))).toBe("INVALID_CREDENTIALS");
+        h.clock.advance(HOUR_MS);
+      }
+      expect(await outcome(h.auth.login(right(), client(NET), cookies))).toBe("RATE_LIMITED");
+    });
+  });
+
+  it("SEC-A3-P1: someone spending the cap on a shared network doesn't lock the owner's open session out of its password there", async () => {
+    await withAuth("daily-confirm", async (h) => {
+      const signed = await h.auth.login(right(), client(OTHER), noCookies);
+      // A stranger on the hotel's Wi-Fi spends the day's five.
+      await wrongAnHourApart(h, 5);
+      const again = await h.auth.login(right(), client(OTHER), { session: signed.token, device: signed.deviceToken });
+      const row = await live(h.service, again.token);
+      // A new sign-in from there waits for a day, even from the owner's browser.
+      const refusal = await h.auth.login(right(), client(NET), { session: null, device: signed.deviceToken }).catch((e: AppError) => e);
+      expect((refusal as AppError).details).toMatchObject({ daily: true });
+      // The session the owner brought along still confirms its password there, under the 15-minute rule alone.
+      expect(await outcome(h.service.confirm(row, { password: TEST_PASSWORD }, client(NET)))).toBe("ok");
+      for (let i = 0; i < 3; i++) expect(await outcome(h.service.confirm(row, { password: "senha errada de teste aqui" }, client(NET)))).toBe("INVALID_CREDENTIALS");
+      const wait = await h.service.confirm(row, { password: TEST_PASSWORD }, client(NET)).catch((e: AppError) => e);
+      expect((wait as AppError).details).toEqual({ retryAfter: 15 * 60 });
+    });
+  });
+});
+
 describe("Turnstile on every sign-in", () => {
   it("is asked for on the very first try of a clean network, and lets a good token through", async () => {
     const turnstile = fakeTurnstile();

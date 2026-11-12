@@ -7,7 +7,7 @@ import type { Transcriber } from "../src/ai/transcription.ts";
 import { telegramWebhookSecret } from "../src/gates/telegram.ts";
 import recorded from "./fixtures/telegram/gravadas.json?raw";
 import startCode from "./fixtures/telegram/start-code.json?raw";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Step 25: the webhook fed a recorded stream of real Bot API updates (the
 // shapes Telegram sends, with invented ids and no real token), one after the
@@ -114,7 +114,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(login.status).toBe(200);
-  cookie = login.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(login);
   await inOwner((agent) => {
     agent.testProvider = new MockAIProvider(() => "pt-BR", { record: (prompt) => prompts.push(prompt) });
     agent.testTranscriber = transcriber;

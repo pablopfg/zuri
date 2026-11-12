@@ -29,8 +29,8 @@ import { SUMMARY_SPECIALIST } from "./summary.ts";
  * 20 newest are kept.
  *
  * Only the AI screen's routes change them, behind the password typed again
- * (requireRecentAuth) and outside the lockdown: no tool, bot command, MCP,
- * flow or remote token reaches this class.
+ * (requireRecentAuth) and outside the lockdown: no tool, bot command, MCP
+ * or flow reaches this class.
  */
 
 /** The texts of each agent's prompt: the chat's from prompt.ts, the specialists' from their own files. */

@@ -6,7 +6,7 @@ import { exportBackup, portable } from "../src/backup/export.ts";
 import { BACKUP_CONTAINERS_MAX, BACKUP_DEPTH_MAX } from "../src/backup/import.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { LATEST_SCHEMA_VERSION } from "../src/db/migrations.ts";
-import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Step 23: the portable backup. Export, import into an empty database and compare;
 // a malicious file is refused whole; export and import are sensitive routes.
@@ -60,7 +60,7 @@ async function signIn(): Promise<void> {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 }
 
 beforeAll(signIn);

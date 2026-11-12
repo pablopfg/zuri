@@ -1,24 +1,6 @@
 import { LOCKDOWN_RELOCK_MS, LOCKDOWN_STRICT_MS, type LockdownInfo } from "@zuri/shared";
 import type { InternalState } from "../db/internal-state.ts";
 
-/**
- * Remote access tokens (step 20) during a lockdown: suspended, never revoked,
- * and back when the owner leaves it. A new password (changed, recovered or
- * reset) revokes them all. Tests of other areas run without tokens.
- */
-export interface RemoteTokenHook {
-  /** Suspends every active token; returns how many. */
-  suspendAll(): number;
-  /** Brings back the tokens the lockdown suspended; returns how many. */
-  resumeAll(): number;
-  /** Tokens active now (for /tokens). */
-  active(): number;
-  /** Deletes every token: the password they were made under is gone. */
-  revokeAll(): number;
-}
-
-export const NO_REMOTE_TOKENS: RemoteTokenHook = { suspendAll: () => 0, resumeAll: () => 0, active: () => 0, revokeAll: () => 0 };
-
 /** What entering a lockdown did. */
 export type LockdownEntered =
   | { status: "already" }

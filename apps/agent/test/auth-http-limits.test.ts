@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createApi } from "../src/api/app.ts";
 import type { AuthService } from "../src/auth/service.ts";
 import { fakeTurnstile, type Harness, withAuth } from "./auth-harness.ts";
-import { CSRF, errorBody, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { CSRF, errorBody, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // The answers of the robot check and the shared limit as HTTP: status, body and
 // headers. The API runs over a service with a fake Turnstile, in the test's own
@@ -38,7 +38,7 @@ function api(auth: AuthService) {
 
 function post(h: Harness, path: string, ip: string, body: unknown, cookie?: string) {
   const headers: Record<string, string> = { ...CSRF, "content-type": "application/json", "cf-connecting-ip": ip };
-  if (cookie) headers.cookie = `__Host-zuri_session=${cookie}`;
+  if (cookie) headers.cookie = cookie;
   return api(h.auth).fetch(new Request(`${ORIGIN}/api${path}`, { method: "POST", headers, body: JSON.stringify(body) }), testEnv);
 }
 
@@ -86,7 +86,7 @@ describe("the shared limit over HTTP", () => {
   it("POST /api/auth/confirm answers 429 with Retry-After once the network has 3 failures", async () => {
     await withAuth("http-confirm-429", async (h) => {
       const signIn = await post(h, "/auth/login", "192.0.2.62", rightBody);
-      const token = signIn.headers.getSetCookie()[0]?.split(";")[0]?.split("=")[1] ?? "";
+      const token = signedCookies(signIn);
       for (let i = 0; i < 3; i++) {
         expect((await post(h, "/auth/confirm", "192.0.2.62", { password: "errada errada errada" }, token)).status).toBe(401);
       }

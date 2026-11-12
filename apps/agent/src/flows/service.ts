@@ -124,7 +124,7 @@ const SETTING_COLUMNS: Record<keyof FlowSettings, string> = {
 
 /**
  * The flows (step 22a): the rules of every change and every run. Changes come
- * only from the screen's routes (no tool, no bot command, no remote token);
+ * only from the screen's routes (no tool, no bot command);
  * runs come from the shared alarm or from "Executar agora". A scheduled time
  * runs at most once, whatever restarts in between, and a run that waits keeps
  * its place in the database.

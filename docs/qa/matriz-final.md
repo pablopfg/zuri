@@ -153,7 +153,7 @@ Nome do teste = título do `it`/`test` (início literal).
 | 16b | /bloquear com IA fora do ar | A/telegram-lockdown.test.ts › "works with the AI down and reading locked: sessions end, routines with AI wait, the alert goes out" |
 | 16b | Login no bloqueio: 2FA recusado, recuperação aceita | A/auth-lockdown.test.ts › "takes no passkey nor the app's code, costs no try for them, and a recovery code signs in and ends it" |
 | 16b | Rebloqueio em 24 h suspende o vínculo | A/telegram-lockdown.test.ts › "a second /bloquear within 24 hours of leaving, from the same link, suspends the link; …"; A/auth-lockdown.test.ts › "is a second lockdown from the same link within 24 hours of leaving; …" |
-| 16b | Tokens suspensos voltam ao sair | A/auth-lockdown.test.ts › "suspends them once on entering, and brings them back once on leaving, …"; A/remote-routes.test.ts › "a lockdown suspends the tokens and leaving it brings them back" |
+| 16b | Tokens suspensos voltam ao sair | Removido em 11/11/2026 com o acesso por token (decisão do Pablo): não há mais token para suspender |
 | 16b | Alerta do bot não se reconhece pelo bot | A/telegram-lockdown.test.ts › "are not acknowledged through the bot, and in the app only with the password typed recently"; A/telegram-alerts.test.ts › "a security alert the bot caused gets no buttons …"; E/lockdown.spec.ts › "a security alert the bot caused is confirmed in the app; …" |
 | 16b | Comandos de segurança | A/telegram-lockdown.test.ts › "/acessos lists …"; "/sessoes lists …"; "/encerrar_sessoes works …"; "/tokens …"; "works with reading locked and pauses only the routines with AI" |
 | 16b | Tela Sair do bloqueio | E/lockdown.spec.ts › "the app opens on Sair do bloqueio, asks for the code and opens again once out"; "without two-step sign-in it is one tap; Não fui eu unlinks Telegram, …" |
@@ -195,11 +195,11 @@ Nome do teste = título do `it`/`test` (início literal).
 | 19d | Com senha recente e alerta | A/reviews-routes.test.ts › "unlocks publishing by itself only after the trial, with the password typed recently and a security alert (step 19d)" |
 | 19d | Até 10/dia | A/reviews-autonomy.test.ts › "publishes at most 10 a day: the 11th waits for the owner, …"; "starts the day over at midnight in the owner's zone, not in UTC" |
 | 19d | Disjuntor volta a "Perguntar sempre" | A/reviews-autonomy.test.ts › "goes back to asking after 3 failed drafts in a row, not after 2 and a good one"; "goes back to asking when Google refuses a reply, …"; "goes back to asking when the owner deletes a reply of Zuri's on the screen" |
-| 20 | Token `read` = 403 em toda rota de escrita | A/remote-routes.test.ts › "no token reaches the forbidden areas, read gets 403 on every write, and only the allowed routes run" |
-| 20 | Nenhum token alcança rotas proibidas (percorre todas) | A/remote-routes.test.ts › (o mesmo) + "matches the path as it came: encoded, doubled or trailing slashes are refused, …" |
-| 20 | 90 dias, só hash | A/remote-routes.test.ts › "turns remote access on with the password typed recently, makes a token shown once and keeps only its HMAC"; "answers 401 to a token that is wrong, malformed, expired or suspended, …" |
-| 20 | Eventos 60/h, 100/dia, metade do canal | A/remote-events.test.ts › "takes 60 an hour (n-1, n, n+1) and 100 a day, with Retry-After"; "uses at most half of each channel's limit, …" |
-| 20 | Cartão em Segurança | E/acesso-remoto.spec.ts › "turns remote access on, makes an events token shown once, …" |
+| 20 | Token `read` = 403 em toda rota de escrita | Removido em 11/11/2026 com o acesso por token (decisão do Pablo); hoje vale A/auth-password-route.test.ts › "refuses a request that carries Authorization, even with a live session: there is no access by token" |
+| 20 | Nenhum token alcança rotas proibidas (percorre todas) | Removido em 11/11/2026 com o acesso por token (decisão do Pablo); hoje vale A/auth-password-route.test.ts › "refuses a request that carries Authorization, even with a live session: there is no access by token" |
+| 20 | 90 dias, só hash | Removido em 11/11/2026 com o acesso por token (decisão do Pablo); hoje vale A/auth-password-route.test.ts › "refuses a request that carries Authorization, even with a live session: there is no access by token" |
+| 20 | Eventos 60/h, 100/dia, metade do canal | Removido em 11/11/2026 com o acesso por token (decisão do Pablo); hoje vale A/auth-password-route.test.ts › "refuses a request that carries Authorization, even with a live session: there is no access by token" |
+| 20 | Cartão em Segurança | Removido em 11/11/2026 com o acesso por token (decisão do Pablo); hoje vale A/auth-password-route.test.ts › "refuses a request that carries Authorization, even with a live session: there is no access by token" |
 | 21 | Só modelos com preço conhecido | A/ai-paid.test.ts › "has a dated price for every paid id, …"; A/ai-routes.test.ts › "takes only chat models of the list: no mock, no paid provider, no other text" |
 | 21 | Fallback antes de responder | A/ai-fallback.test.ts › "hands a busy model's request to the fallback before anything is shown, …"; "does not switch once the answer has started: no answer twice" |
 | 21 | Teto em US$ (opcional) | A/ai-paid.test.ts › "with a ceiling, allows the call that lands exactly on it and refuses the one that would pass it (n−1, n, n+1)"; A/ai-routes.test.ts › "asks for the password again before the US$ ceiling changes, and never for a free model" |
@@ -252,7 +252,7 @@ Nome do teste = título do `it`/`test` (início literal).
 | 26b | Diálogo com X no canto, Esc, foco no 1º campo | E/dialogs.spec.ts › "a dialog closes from the X in the corner or with Esc, and opens on its first field"; "the X stays in view while a long dialog scrolls" |
 | 26b | Painel com X (avisos, gaveta) | E/notices.spec.ts › "a reminder's run reaches the bell: …" (X no canto); E/sidebar.spec.ts › "on a phone the sidebar is a drawer …" |
 | 26b | Toast com X | E/toasts.spec.ts › "a saved setting confirms with a toast that holds while hovered and then leaves" |
-| 26b | Confirmação repete o verbo e foca Cancelar | E/backup.spec.ts › "shows the storage use, downloads a backup and imports one with a confirmation; …"; E/chat.spec.ts (confirm, linha 228); E/acesso-remoto.spec.ts › "turns remote access on, …" (no lugar, `group` com a pergunta) |
+| 26b | Confirmação repete o verbo e foca Cancelar | E/backup.spec.ts › "shows the storage use, downloads a backup and imports one with a confirmation; …"; E/chat.spec.ts (confirm, linha 228) |
 | 26c | Menu "Mais opções" (⋯) | E/actions-menu.spec.ts › "the row menu floats over the list, keeps Apagar last and answers the keyboard" |
 | 26c | IA dividida: "Uso da IA" (/configuracoes/ia) e "Modelos e limites" (/configuracoes/modelos) | E/shell.spec.ts › "settings has the nine sections, …"; E/a11y.spec.ts › "sign-in, home, settings and dialogs have no serious violation (${scheme})" (ia e modelos, claro e escuro); E/csp.spec.ts › "no page breaks the Content Security Policy"; E/ai-settings.spec.ts › "the model and the limits: …"; "the usage card warns near and at the limit, …"; E/shell.spec.ts confere que "Uso de hoje" não está em Modelos e o seletor de modelo não está em Uso da IA |
 | 26c | "Nova memória" em diálogo | E/memory.spec.ts › "memories: save, duplicate, …" (abre/cancela o diálogo); "memory: search, empty filter, the conflict review switch and keyboard only" (foco no diálogo) |
@@ -261,7 +261,7 @@ Nome do teste = título do `it`/`test` (início literal).
 | 26c | Configurações no celular com o título da seção | E/shell.spec.ts › "settings has the nine sections, …" (ramo celular) |
 | 26c | Um só "Nova nota" | E/productivity.spec.ts › "a note: write Markdown, …" |
 | 26c | Avisos na ordem de configurar; Conta sem "Sair deste aparelho"; Dados em 2 colunas; abas de Tarefas rolam; um só "Nova conversa" na Conversa | Só capturas da PR #232 (baixo, na lista da auditoria) |
-| 26c | Confirmações no lugar em `group` com a pergunta | E/acesso-remoto.spec.ts (revogar); passkey, agenda, cliente e reindexar só nas capturas (baixo, na lista da auditoria) |
+| 26c | Confirmações no lugar em `group` com a pergunta | passkey, agenda, cliente e reindexar só nas capturas (baixo, na lista da auditoria) |
 | Transv. | Toda rota com sessão bloqueada pela troca de senha | A/auth-password-route.test.ts › "blocks every registered signed-in route but the four allowed, without running it" |
 | Transv. | Corpos hostis | A/http-hardening.test.ts (todo); A/body-read.test.ts (todo) |
 | Transv. | Sessão em várias abas | E/session-background.spec.ts (3 testes) |

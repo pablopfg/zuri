@@ -5,7 +5,7 @@ import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { MockAIProvider } from "../src/ai/mock.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { type DevGoogle, devGoogle, googleNetwork } from "../src/google/dev-google.ts";
-import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 import { LOCATION, PATTERN } from "./reviews-world.ts";
 
 // Step 19c: Settings › Integrations › Google › Reviews and the Reviews tab, through the Worker.
@@ -86,7 +86,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 });
 
 beforeEach(async () => {
@@ -347,7 +347,7 @@ describe("/api/reviews", () => {
     expect(((await (await api("GET", "/reviews/status")).json()) as ReviewsStatus).trial).toEqual({ approved: 10, needed: 10 });
     await stale();
     expect((await errorBody(await api("PATCH", "/reviews/settings", auto))).code).toBe("RECENT_AUTH_REQUIRED");
-    // A remote token (step 20) or anything without the owner's session never reaches it.
+    // A request with Authorization never reaches it: Zuri has no access by token.
     const bearer = await call(`${ORIGIN}/api/reviews/settings`, { method: "PATCH", headers: { ...headers(false), authorization: "Bearer zur_pat_0000000000000000" }, body: JSON.stringify(auto) });
     expect(bearer.status).toBe(401);
     await fresh();
