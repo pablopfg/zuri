@@ -1,6 +1,8 @@
 import { type MessageKey, type Transcription, VOICE_LIMITS } from "@zuri/shared";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "../../lib/api.ts";
+import { recordingSound } from "../../lib/sounds.ts";
 
 export type VoiceState = { phase: "idle" } | { phase: "recording"; seconds: number } | { phase: "transcribing" };
 
@@ -22,9 +24,11 @@ export function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
- * Voice input for a text field: one clip at a time, at most 60 s (it stops on
+ * Voice input for a text field: one clip at a time, at most 120 s (it stops on
  * its own there) and 2 MB. The audio goes to the server to become text, which
- * `onText` puts in the field for the owner to read; it is never stored.
+ * `onText` puts in the field for the owner to read; it is never stored. A
+ * short sound says when the recording starts and when it ends (the owner can
+ * turn it off in Configurações › Avisos).
  */
 export function useVoice(onText: (text: string) => void) {
   const [state, setState] = useState<VoiceState>({ phase: "idle" });
@@ -33,6 +37,7 @@ export function useVoice(onText: (text: string) => void) {
   const timer = useRef<number | null>(null);
   const started = useRef(0);
   const cancelled = useRef(false);
+  const qc = useQueryClient();
 
   const cleanup = useCallback(() => {
     if (timer.current !== null) window.clearInterval(timer.current);
@@ -88,6 +93,7 @@ export function useVoice(onText: (text: string) => void) {
       const seconds = Math.min(VOICE_LIMITS.maxClipSeconds, Math.max(0.1, (performance.now() - started.current) / 1000));
       cleanup();
       if (cancelled.current) return;
+      recordingSound(qc, "stop");
       const blob = new Blob(chunks, { type: media.mimeType || "audio/webm" });
       if (blob.size === 0) {
         setState({ phase: "idle" });
@@ -113,6 +119,7 @@ export function useVoice(onText: (text: string) => void) {
     };
     started.current = performance.now();
     media.start(1_000);
+    recordingSound(qc, "start");
     setState({ phase: "recording", seconds: 0 });
     timer.current = window.setInterval(() => {
       const seconds = Math.floor((performance.now() - started.current) / 1000);
@@ -123,7 +130,7 @@ export function useVoice(onText: (text: string) => void) {
       }
       setState({ phase: "recording", seconds });
     }, 250);
-  }, [cleanup, onText, stop]);
+  }, [cleanup, onText, stop, qc]);
 
   return { state, error, start, stop, clearError: () => setError(null) };
 }

@@ -301,8 +301,8 @@ export const conversationRenameSchema = /* @__PURE__ */ z.object({ title: line(C
 
 // ---------- Voice ----------
 
-/** Voice input in the app ("Constantes padrão"): one clip at a time, at most 60 s and 2 MB. */
-export const VOICE_LIMITS = { maxClipSeconds: 60, maxClipBytes: 2 * 1024 * 1024 } as const;
+/** Voice input in the app ("Constantes padrão"): one clip at a time, at most 120 s and 2 MB (about 480 kB at the 32 kbit/s the browser records at). */
+export const VOICE_LIMITS = { maxClipSeconds: 120, maxClipBytes: 2 * 1024 * 1024 } as const;
 /** The base64 text of the largest clip. */
 export const VOICE_BASE64_MAX = Math.ceil(VOICE_LIMITS.maxClipBytes / 3) * 4;
 
@@ -321,8 +321,8 @@ export const transcribeRequestSchema = /* @__PURE__ */ z
       .regex(/^[A-Za-z0-9+/]+={0,2}$/)
       // Whole base64 only, and never a byte over the clip cap (n+1 is refused).
       .refine((value) => value.length % 4 === 0 && base64Length(value) <= VOICE_LIMITS.maxClipBytes),
-    /** The length the browser measured, in seconds; the longer of it and the server's estimate is charged. */
-    seconds: z.number().positive().max(VOICE_LIMITS.maxClipSeconds + 1),
+    /** The length the browser measured, in seconds (it never sends more than the cap); the longer of it and the server's estimate is charged. */
+    seconds: z.number().positive().max(VOICE_LIMITS.maxClipSeconds),
   })
   .strict();
 

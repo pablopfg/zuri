@@ -137,6 +137,27 @@ describe("SettingsRepository", () => {
     });
   });
 
+  it("saves the sounds whole in one row without a migration, and reads a stored one that no longer fits as the default (CA2)", async () => {
+    await withRepository("sounds", (settings, db) => {
+      expect(settings.get().sounds).toEqual({ notice: true, pick: "sino", recording: true });
+      expect(settings.field("sounds")).toEqual(DEFAULT_SETTINGS.sounds);
+      const sounds = { notice: false, pick: "marimba" as const, recording: false };
+      expect(settings.update({ sounds }).sounds).toEqual(sounds);
+      expect(db.all(`SELECT key, value FROM zur_settings`)).toEqual([{ key: "sounds", value: JSON.stringify(sounds) }]);
+      // The same choice saved again writes nothing.
+      const before = db.all(`SELECT * FROM zur_activity`).length;
+      settings.update({ sounds });
+      expect(db.all(`SELECT * FROM zur_activity`)).toHaveLength(before);
+      for (const patch of [{ ...sounds, pick: "buzina" }, { pick: "gota" }, { ...sounds, notice: 1 }, { ...sounds, file: "som.mp3" }]) {
+        expect(() => settings.update({ sounds: patch } as never), JSON.stringify(patch)).toThrow(AppError);
+      }
+      expect(settings.get().sounds).toEqual(sounds);
+      // A sound a hand-edited row names, or an older version allowed, never reaches the screen.
+      db.run(`UPDATE zur_settings SET value = ? WHERE key = 'sounds'`, JSON.stringify({ ...sounds, pick: "sirene" }));
+      expect(settings.get().sounds).toEqual(DEFAULT_SETTINGS.sounds);
+    });
+  });
+
   it("reads a corrupt or no longer valid stored value as the default", async () => {
     await withRepository("corrupt", (settings, db) => {
       db.run(`INSERT INTO zur_settings (key, value, updated_at) VALUES ('language', '"fr"', 'x'), ('time_zone', '{not json', 'x')`);

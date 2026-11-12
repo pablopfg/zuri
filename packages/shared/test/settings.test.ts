@@ -47,6 +47,7 @@ describe("default settings", () => {
       alertLearning: true,
       alertFullText: [],
       agenda: { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, allDay: true, outside: true },
+      sounds: { notice: true, pick: "sino", recording: true },
     });
     expect(DEFAULT_TIME_ZONE).toBe("America/Sao_Paulo");
     expect(settingsSchema.parse(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS);
@@ -70,6 +71,18 @@ describe("default settings", () => {
     for (const alertRoutes of [{ security: ["sms"] }, { other: ["push"] }, { tasks: ["push", "push", "push", "push"] }, { tasks: "push" }]) {
       expect(settingsUpdateSchema.safeParse({ alertRoutes }).success, JSON.stringify(alertRoutes)).toBe(false);
     }
+  });
+
+  it("take the sounds whole: one of the three notice sounds, two switches, nothing extra (CA2)", () => {
+    const sounds = DEFAULT_SETTINGS.sounds;
+    const ok = (patch: object) => settingsUpdateSchema.safeParse({ sounds: { ...sounds, ...patch } });
+    for (const pick of ["sino", "gota", "marimba"]) expect(ok({ pick }).success, pick).toBe(true);
+    expect(ok({ notice: false, recording: false }).data?.sounds).toEqual({ notice: false, pick: "sino", recording: false });
+    for (const bad of [{ pick: "buzina" }, { pick: "" }, { pick: "Sino" }, { pick: 1 }, { pick: null }, { notice: "true" }, { notice: 1 }, { recording: null }, { volume: 11 }, { pick: "https://exemplo.com.br/som.mp3" }]) {
+      expect(ok(bad).success, JSON.stringify(bad)).toBe(false);
+    }
+    // A piece alone is refused, like the Agenda's: a half never lands.
+    for (const half of [{ pick: "gota" }, { notice: false }, {}, null, "sino", []]) expect(settingsUpdateSchema.safeParse({ sounds: half }).success, JSON.stringify(half)).toBe(false);
   });
 
   it("take the Agenda's preferences whole: hours in order, a known view, week days tidied, nothing extra", () => {

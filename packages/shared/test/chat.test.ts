@@ -34,7 +34,7 @@ describe("the chat's constants", () => {
     for (const name of DESTRUCTIVE_TOOLS) expect(TOOL_NAMES).toContain(name);
     expect(PENDING_ACTION_TTL_MS).toBe(30 * 60_000);
     expect(TASK_PLAN_TTL_MS).toBe(24 * 3_600_000);
-    expect(VOICE_LIMITS).toEqual({ maxClipSeconds: 60, maxClipBytes: 2 * 1024 * 1024 });
+    expect(VOICE_LIMITS).toEqual({ maxClipSeconds: 120, maxClipBytes: 2 * 1024 * 1024 });
     expect(VOICE_BASE64_MAX).toBe(2_796_204);
     expect(AI_LIMIT_RANGES.aiMaxToolCalls).toEqual({ min: 1, max: 20, default: 6 });
     expect(AI_LIMIT_RANGES.aiMaxIterations).toEqual({ min: 1, max: 10, default: 4 });
@@ -139,11 +139,11 @@ describe("taskPlanContentSchema", () => {
 });
 
 describe("transcribeRequestSchema", () => {
-  it("takes base64 audio and the measured seconds, up to 61 (n+1 of the clip's 60 for rounding), not 62", () => {
-    expect(transcribeRequestSchema.safeParse({ audio: "AAAA", seconds: 60 }).success).toBe(true);
-    expect(transcribeRequestSchema.safeParse({ audio: "AAAA", seconds: 61 }).success).toBe(true);
+  it("takes base64 audio and the measured seconds: 119 and 120 (n) pass, 121 (n+1) and a tenth over do not (CA3)", () => {
+    for (const seconds of [0.1, 60, 119, 119.9, 120]) expect(transcribeRequestSchema.safeParse({ audio: "AAAA", seconds }).success, String(seconds)).toBe(true);
     for (const body of [
-      { audio: "AAAA", seconds: 62 },
+      { audio: "AAAA", seconds: 121 },
+      { audio: "AAAA", seconds: 120.1 },
       { audio: "AAAA", seconds: 0 },
       { audio: "AAAA", seconds: -1 },
       { audio: "AA!A", seconds: 1 },
