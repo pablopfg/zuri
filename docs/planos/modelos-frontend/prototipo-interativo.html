@@ -6617,6 +6617,8 @@ const CF_CLINIC = { n: "Consultório Exemplo", addr: "Rua das Flores, 120, sala 
 /* Cancelar pelo link: até 12 horas antes e nunca no próprio dia da consulta (regra do Pablo, 12/11).
    O prazo é o que vier primeiro: 12 horas antes ou o fim do dia anterior. */
 const CF_LIMIT_H = 12;
+/* O link deixa de valer sozinho 1 hora antes do início e quando a consulta é cancelada. */
+const CF_EXPIRE_H = 1;
 /* Mensagem modelo da confirmação. A mesma vai pelo Chatwoot (automático) e pelo botão do WhatsApp. */
 const CF_TPL_DEFAULT = "Olá, {nome}! Sua *{tipo}* no *{consultorio}* está marcada para *{dia}, às {hora}*.\n{local}\n\nConfirme sua presença por este link:\n{link}\n\nSe não puder vir, cancele pelo mesmo link até {prazo}. Para mudar o dia ou o horário, fale com a nossa equipe: {whatsapp}.";
 const CF_VARS = [["nome", "Primeiro nome do paciente"], ["tipo", "Tipo do agendamento, como consulta ou retorno"], ["dia", "Dia da semana e data"], ["hora", "Hora do início"], ["local", "Endereço, ou “Atendimento online”"], ["link", "Link de confirmação (obrigatório)"], ["prazo", "Até quando dá para cancelar pelo link"], ["consultorio", "Nome do consultório"], ["whatsapp", "WhatsApp da equipe"]];
@@ -6627,7 +6629,8 @@ const cfFirst = (e) => { const p = e.pid && pById(e.pid); return (p ? p.n : e.t)
 const cfLink = (e) => `exemplo.com.br/c/${(`k7Qx${e.id}Vt3mZ9rWp2aLs8YdN4` + e.id).slice(0, 22)}`;
 const cfStart = (e) => { const d = dOf(e.day); d.setHours(e.h, e.m, 0, 0); return d; };
 const cfNow = () => { const d = new Date(AG_NOW); const m = nowMin(); d.setHours(Math.floor(m / 60), m % 60, 0, 0); return d; };
-const cfPast = (e) => cfStart(e) <= cfNow();
+const cfExpired = (e) => e.s === "cancelado" || cfStart(e) - CF_EXPIRE_H * 3600000 <= cfNow();
+const cfExpTxt = (e) => { const d = new Date(cfStart(e) - CF_EXPIRE_H * 3600000); return `${dayShort(d)}, às ${hmm(d.getHours() * 60 + d.getMinutes())}`; };
 const cfDeadline = (e) => { const a = new Date(cfStart(e) - CF_LIMIT_H * 3600000), b = dOf(e.day); b.setMinutes(-1); return a < b ? a : b; };
 const cfLate = (e) => cfNow() > cfDeadline(e);
 const cfWhen = (e) => `${dayShort(dOf(e.day))} às ${hmm(e.h * 60 + e.m)}`;
@@ -6656,15 +6659,16 @@ function cfBox(e) {
   /* Tudo que vai para o HTML sai escapado, mesmo o que a própria Zuri gerou. */
   const id = escH(e.id);
   const cf = e.cf || {};
-  const past = cfPast(e);
+  const past = cfExpired(e);
+  const done = cf.st === "confirmou";
   const via = cf.via === "chatwoot" ? "pelo Chatwoot" : "pelo WhatsApp";
   const lbl = cf.st === "confirmou" ? ["on", `Confirmou pelo link ${cf.w}`] : cf.st === "cancelou" ? ["bad", `Cancelou pelo link ${cf.w}`] : cf.st === "enviado" ? ["wait", `Enviado ${via} ${cf.w}. Ainda sem resposta.`] : ["off", "Ainda não enviado"];
   const cel = cfCel(e);
-  const auto = CFM.auto && !cf.st && !past && e.s !== "cancelado" && cel ? `<p class="hint">${ic("send-horizontal", "ic-sm")}Sai sozinho pelo Chatwoot em ${escH(dayShort(cfSendDay(e)))}, às ${hh2(CFM.hour)}. Se você enviar antes pelo WhatsApp, o automático não repete.</p>` : "";
-  const acts = past || e.s === "cancelado" ? "" : `<div class="cf-acts">${cel ? `<a class="btn btn-secondary btn-sm" href="${escH(cfWaHref(e))}" target="_blank" rel="noopener" data-cf-wa="${id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</a>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${id}">${ic("copy", "ic-sm")}Copiar mensagem</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
+  const auto = CFM.auto && !cf.st && !past && cel ? `<p class="hint">${ic("send-horizontal", "ic-sm")}Sai sozinho pelo Chatwoot em ${escH(dayShort(cfSendDay(e)))}, às ${hh2(CFM.hour)}. Se você enviar antes pelo WhatsApp, o automático não repete.</p>` : CFM.auto && cf.st && !past && !done ? `<p class="hint">${ic("send-horizontal", "ic-sm")}${cf.via === "chatwoot" ? "O Chatwoot já enviou e não repete." : "Já foi pelo WhatsApp: o Chatwoot não envia de novo."}</p>` : "";
+  const acts = past ? "" : done ? `<p class="hint">Já confirmou pelo link: não precisa enviar de novo, nem pelo WhatsApp nem pelo Chatwoot. O link continua valendo para cancelar até ${escH(cfDeadTxt(e))}.</p>` : `<div class="cf-acts">${cel ? `<a class="btn btn-secondary btn-sm" href="${escH(cfWaHref(e))}" target="_blank" rel="noopener" data-cf-wa="${id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</a>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${id}">${ic("copy", "ic-sm")}Copiar mensagem</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
     <p class="hint">${cel ? "Abre o WhatsApp Web com a mensagem modelo já preenchida. Você confere e envia." : "Sem celular neste agendamento: copie a mensagem e envie por onde preferir."} <button class="linkbtn" type="button" data-cfg-go-to="consultorio">Editar a mensagem modelo</button></p>`;
   return `<section class="cf-box" aria-labelledby="cf-h"><p class="cf-h" id="cf-h">${ic("calendar-check", "ic-sm")}Confirmação do paciente</p>
-    <p class="cf-st"><span class="pill ${lbl[0]}"><i></i>${escH(lbl[1])}</span></p>${past ? `<p class="hint">A consulta já passou. O link não vale mais.</p>` : ""}${auto}${acts}</section>`;
+    <p class="cf-st"><span class="pill ${lbl[0]}"><i></i>${escH(lbl[1])}</span></p>${past ? `<p class="hint">${e.s === "cancelado" ? "Consulta cancelada: o link deixou de valer." : "O link expirou 1 hora antes da consulta."}</p>` : `<p class="hint">Link só deste agendamento. Expira ${escH(cfExpTxt(e))} ou se a consulta for cancelada.</p>`}${auto}${acts}</section>`;
 }
 /* Configurações › Consultório: os dados que o sistema inteiro usa, a mensagem modelo e como ela sai. */
 function cfExample() { const k = dkey(AG_NOW); return EV.filter((x) => x.tipo && x.s === "agendado" && x.day > k).sort((a, b) => (a.day < b.day ? -1 : 1))[0] || EV.find((x) => x.tipo); }
@@ -6672,7 +6676,7 @@ function cfNextRun() {
   let d = new Date(AG_NOW);
   if (fimDeSemana(d) || feriado(d) || nowMin() >= CFM.hour * 60) d = addD(d, 1);
   while (fimDeSemana(d) || feriado(d)) d = addD(d, 1);
-  const k = dkey(d), n = EV.filter((e) => e.tipo && !e.ro && (e.s === "agendado" || e.s === "reagendado") && cfCel(e) && !cfPast(e) && dkey(cfSendDay(e)) === k).length;
+  const k = dkey(d), n = EV.filter((e) => e.tipo && !e.ro && (e.s === "agendado" || e.s === "reagendado") && !(e.cf && e.cf.st) && cfCel(e) && !cfExpired(e) && dkey(cfSendDay(e)) === k).length;
   return { d, n };
 }
 function cfgConsultorio() {
@@ -6692,7 +6696,7 @@ function cfgConsultorio() {
     `<button class="btn btn-quiet" type="button" data-cf-tpl-reset>Voltar ao modelo padrão</button><span class="grow"></span><button class="btn btn-primary" type="button" data-cf-tpl-save>Salvar a mensagem</button>`)
   + sec("h-cs", "Como a confirmação sai", "Dois jeitos, com a mesma mensagem e o mesmo link. A resposta pelo link muda a situação e a cor na agenda e chega em Avisos.",
     `<div class="set-row"><div class="grow"><p class="t">${WA}Pelo WhatsApp, por você</p><p class="hint">Nos detalhes de cada agendamento, “Enviar pelo WhatsApp” abre o WhatsApp Web com a mensagem pronta para o paciente. Você confere e envia.</p></div><span class="pill on"><i></i>Sempre disponível</span></div>
-      ${swRow("cf-auto-t", "Automático, pelo Chatwoot", `Na véspera útil, a Zuri envia a mensagem pela caixa do WhatsApp no Chatwoot para quem tem consulta ou retorno Agendado ou Reagendado e tem celular. Quem já recebeu pelo WhatsApp, cancelou ou já passou fica de fora. Uma mensagem por vez, no intervalo da credencial.`, CFM.auto)}
+      ${swRow("cf-auto-t", "Automático, pelo Chatwoot", `Na véspera útil, a Zuri envia a mensagem pela caixa do WhatsApp no Chatwoot para quem tem consulta ou retorno Agendado ou Reagendado e tem celular. Quem já confirmou pelo link, já recebeu pelo WhatsApp ou pelo Chatwoot, cancelou ou tem o link expirado fica de fora: ninguém recebe duas vezes. Uma mensagem por vez, no intervalo da credencial.`, CFM.auto)}
       ${ctlRow("Horário do envio automático", `Próximo envio: ${dayShort(nx.d)}, às ${hh2(CFM.hour)}, para ${nx.n} ${nx.n === 1 ? "paciente" : "pacientes"}. Sábado, domingo e feriado não têm envio: a consulta de segunda recebe na sexta.`, `<label class="sr" for="cf-hour">Horário do envio automático</label><select id="cf-hour" class="input input-sm" data-cf-hour>${hours}</select>`)}
       ${ctlRow("Credencial", "A chave do Chatwoot fica no servidor e nunca aparece aqui.", `<button class="btn btn-secondary btn-sm" type="button" data-cf-cred>${ic("key-round", "ic-sm")}Chatwoot · caixa do WhatsApp</button>`)}`);
 }
@@ -6704,18 +6708,18 @@ function confirmar() {
   const ini = CF_CLINIC.n.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
   const head = `<header class="cf-brand"><span class="cf-logo" aria-hidden="true">${escH(ini)}</span><span>${escH(CF_CLINIC.n)}</span></header>`;
   const team = `<a class="btn btn-secondary btn-block" href="${waLink(CF_CLINIC.wa)}" target="_blank" rel="noopener">${WA}Falar com a equipe</a>`;
-  const proto = `<div class="cf-proto proto-only"><div class="seg" role="group" aria-label="Ver o link no protótipo">${[["valido", "Link válido"], ["prazo", "Fora do prazo"], ["passou", "Consulta passou"], ["invalido", "Link inválido"]].map(([k, l]) => `<button type="button" data-cf-v="${k}" aria-pressed="${mode === k}">${l}</button>`).join("")}</div><a class="btn btn-quiet btn-sm" href="${href("agenda")}">${ic("arrow-left", "ic-sm")}Voltar para a Agenda</a></div>`;
+  const proto = `<div class="cf-proto proto-only"><div class="seg" role="group" aria-label="Ver o link no protótipo">${[["valido", "Link válido"], ["prazo", "Fora do prazo"], ["expirou", "Link expirado"], ["invalido", "Link inválido"]].map(([k, l]) => `<button type="button" data-cf-v="${k}" aria-pressed="${mode === k}">${l}</button>`).join("")}</div><a class="btn btn-quiet btn-sm" href="${href("agenda")}">${ic("arrow-left", "ic-sm")}Voltar para a Agenda</a></div>`;
   let body;
   if (!e || mode === "invalido") body = `<div class="cf-state">${ic("link-2-off")}<h1 tabindex="-1">Este link não vale mais</h1><p>Ele pode ter sido digitado errado ou a consulta pode ter mudado. Fale com a nossa equipe pelo WhatsApp.</p></div>${team}`;
-  else if (mode === "passou" || cfPast(e)) body = `<div class="cf-state">${ic("clock")}<h1 tabindex="-1">Esta consulta já passou</h1><p>Para marcar uma nova, fale com a nossa equipe pelo WhatsApp.</p></div>${team}`;
+  else if (e.s === "cancelado" && st.cfJust === e.id) body = `<div class="cf-state">${ic("calendar-x")}<h1 tabindex="-1">Consulta cancelada</h1><p>Pronto, o horário ficou livre. Este link deixou de valer. Para marcar outro dia, fale com a nossa equipe pelo WhatsApp.</p></div>${team}`;
+  else if (mode === "expirou" || cfExpired(e)) body = `<div class="cf-state">${ic("clock")}<h1 tabindex="-1">Este link expirou</h1><p>O link vale até 1 hora antes da consulta e deixa de valer se ela for cancelada. Fale com a nossa equipe pelo WhatsApp.</p></div>${team}`;
   else {
     const online = /Online/.test(e.tipo);
     const card = `<dl class="cf-det"><div>${ic("calendar-days", "ic-sm")}<dt class="sr">Dia</dt><dd>${dayLong(dOf(e.day))}</dd></div><div>${ic("clock", "ic-sm")}<dt class="sr">Horário</dt><dd>${evWhen(e)}</dd></div><div>${ic(online ? "video" : "stethoscope", "ic-sm")}<dt class="sr">Tipo</dt><dd>${escH(e.tipo.replace(" | ", " · "))}</dd></div><div>${ic(online ? "monitor" : "map-pin", "ic-sm")}<dt class="sr">Onde</dt><dd>${online ? "Online: a equipe envia o link da chamada" : `${escH(CF_CLINIC.addr)}<span class="cf-city">${escH(CF_CLINIC.city)}</span>`}</dd></div></dl>`;
     const late = mode === "prazo" || cfLate(e);
     const lateNote = `<p class="cf-note">${ic("info", "ic-sm")}<span>O prazo para cancelar por aqui acabou: vai até 12 horas antes e só até o dia anterior. Se não puder vir, fale com a nossa equipe pelo WhatsApp.</span></p>`;
     const cancelBtn = (l) => `<button class="btn btn-quiet btn-block cf-cancel" type="button" data-cf-ask>${ic("calendar-x", "ic-sm")}${l}</button><p class="cf-note cf-dead">Dá para cancelar por aqui até ${cfDeadTxt(e)}.</p>`;
-    if (e.s === "cancelado") body = `<div class="cf-state">${ic("calendar-x")}<h1 tabindex="-1">Consulta cancelada</h1><p>Para marcar outro dia, fale com a nossa equipe pelo WhatsApp.</p></div>${card}${team}`;
-    else if (e.s === "confirmado") body = `<div class="cf-ok" role="status" tabindex="-1">${ic("circle-check")}<span><b>Presença confirmada.</b> Até lá, ${escH(cfFirst(e))}!</span></div>${card}
+    if (e.s === "confirmado") body = `<div class="cf-ok" role="status" tabindex="-1">${ic("circle-check")}<span><b>Presença confirmada.</b> Até lá, ${escH(cfFirst(e))}!</span></div>${card}
         <p class="cf-note">${ic("calendar-clock", "ic-sm")}<span>Precisa mudar o dia ou o horário? Fale com a nossa equipe pelo WhatsApp ${escH(CF_CLINIC.wa)}.</span></p>${team}
         <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Não vou mais poder ir: cancelar a consulta")}</div>`;
     else body = `<h1 class="cf-t" tabindex="-1">Olá, ${escH(cfFirst(e))}!</h1><p class="cf-sub">Confirme sua presença na consulta.</p>${card}
@@ -6723,7 +6727,7 @@ function confirmar() {
         <p class="cf-note">${ic("calendar-clock", "ic-sm")}<span>Precisa mudar o dia ou o horário? Fale com a nossa equipe pelo WhatsApp ${escH(CF_CLINIC.wa)}.</span></p>${team}
         <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Não vou poder ir: cancelar a consulta")}</div>`;
   }
-  return `<main id="conteudo" class="cf-page">${proto}<div class="cf-card">${head}${body}<p class="cf-foot">Este link é só seu. Não mostra seu telefone nem outros dados.</p></div></main>`;
+  return `<main id="conteudo" class="cf-page">${proto}<div class="cf-card">${head}${body}<p class="cf-foot">Este link é só deste agendamento. Não mostra seu telefone nem outros dados.</p></div></main>`;
 }
 /* Cancelar pede uma segunda confirmação numa janela, com o foco em "manter": dois toques sem querer não cancelam. */
 function cfAsk(opener) {
@@ -6731,7 +6735,7 @@ function cfAsk(opener) {
   if (!e) return;
   dlgShow({ t: "Cancelar a consulta?", sub: `${escH(cfFirst(e))}, a consulta de ${dayLong(dOf(e.day)).toLowerCase()}, às ${hmm(e.h * 60 + e.m)}, será cancelada e o horário fica livre para outra pessoa. Para marcar de novo, você vai precisar falar com a equipe.`,
     body: "", foot: `<button class="btn btn-danger" type="button" data-dlg-ok>Sim, cancelar a consulta</button><span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Não, manter a consulta</button>`,
-    ok: () => { if (cfLate(e) || st.cfv === "prazo") { say("O prazo para cancelar por aqui acabou."); return; } DLG.opener = null; cfAnswer(e, "cancelar"); render(); refocus(".cf-state h1"); } }, opener);
+    ok: () => { if (cfLate(e) || st.cfv === "prazo") { say("O prazo para cancelar por aqui acabou."); return; } DLG.opener = null; cfAnswer(e, "cancelar"); st.cfJust = e.id; render(); refocus(".cf-state h1"); } }, opener);
   const box = document.querySelector("#dlg-host .dlg-box");
   if (box) { box.setAttribute("role", "alertdialog"); box.classList.add("dlg-sm"); }
 }
@@ -7010,8 +7014,8 @@ const ACT1211 = [
   [(t) => t.matches("[data-agendar]"), (t) => agFromContact(t.dataset.agendar)],
   [(t) => t.matches("[data-cf-wa]"), (t) => { const e = evById(t.dataset.cfWa); if (!e) return; e.cf = { st: "enviado", via: "whatsapp", w: `hoje às ${hm(nowMin())}` }; const op = DLG.opener; evDlg(e, op); refocus("[data-cf-wa]"); say(`WhatsApp aberto com a mensagem para ${cfFirst(e)}. Confira e envie.`); }],
   [(t) => t.matches("[data-cf-copy]"), (t) => { const e = evById(t.dataset.cfCopy); if (!e) return; try { navigator.clipboard.writeText(cfMsg(e)); } catch (_) { /* sem permissão */ } say("Mensagem com o link copiada."); }],
-  [(t) => t.matches("[data-cf-see]"), (t) => { st.cfe = t.dataset.cfSee; st.cfv = "valido"; DLG.opener = null; dlgClose(); goTo("confirmar"); }],
-  [(t) => t.matches("[data-cf-v]"), (t) => { st.cfv = pick(t.dataset.cfV, ["valido", "prazo", "passou", "invalido"]); render(); refocus(`[data-cf-v="${st.cfv}"]`); }],
+  [(t) => t.matches("[data-cf-see]"), (t) => { st.cfe = t.dataset.cfSee; st.cfv = "valido"; st.cfJust = ""; DLG.opener = null; dlgClose(); goTo("confirmar"); }],
+  [(t) => t.matches("[data-cf-v]"), (t) => { st.cfv = pick(t.dataset.cfV, ["valido", "prazo", "expirou", "invalido"]); st.cfJust = ""; render(); refocus(`[data-cf-v="${st.cfv}"]`); }],
   [(t) => t.matches("[data-cf-ask]"), (t) => cfAsk(t)],
   [(t) => t.matches("[data-cf-do]"), () => { const e = evById(st.cfe); if (!e) return; cfAnswer(e, "confirmar"); render(); refocus(".cf-ok"); }],
   [(t) => t.matches("[data-cc-save]"), () => {
