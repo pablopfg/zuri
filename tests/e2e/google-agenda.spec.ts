@@ -153,6 +153,26 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   const renamed = page.getByRole("button", { name: /^Consulta remarcada/ });
   await expect(renamed).toBeVisible();
 
+  // The status is the event's color at Google: a new event counts as "Agendado", one tap confirms it,
+  // and a color changed elsewhere shows here as its status.
+  await renamed.click();
+  const marked = page.getByRole("dialog", { name: "Consulta remarcada" });
+  const status = marked.getByRole("group", { name: "Situação" });
+  await expect(status.getByRole("button", { name: "Agendado", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await status.getByRole("button", { name: "Confirmado" }).click();
+  await expect(marked.getByRole("status")).toHaveText("Situação salva");
+  await expect(status.getByRole("button", { name: "Confirmado" })).toHaveAttribute("aria-pressed", "true");
+  await expect(marked.getByText("Cor no Google: Manjericão (Confirmado)")).toBeVisible();
+  await marked.getByRole("button", { name: "Fechar" }).click();
+  await expect(renamed).toContainText("Confirmado · até 21:00");
+  const now = (await (await page.request.get(`/api/google/events?from=${day}&to=${day}`, { headers: CSRF })).json()) as { events: { id: string; calendarId: string; etag: string; title: string; colorId: string }[] };
+  const confirmed = now.events.find((event) => event.title === "Consulta remarcada");
+  expect(confirmed?.colorId).toBe("10");
+  expect((await page.request.patch("/api/google/events", { headers: CSRF, data: { calendarId: confirmed?.calendarId, eventId: confirmed?.id, etag: confirmed?.etag, colorId: "11" } })).ok()).toBe(true);
+  // Read again on coming back to the screen (the computer reopens on the week, the phone on the day).
+  await page.reload();
+  await expect(renamed).toContainText("Cancelado");
+
   // Delete, after a confirmation inside the dialog.
   await renamed.click();
   const toDelete = page.getByRole("dialog", { name: "Consulta remarcada" });

@@ -1,4 +1,4 @@
-import { type AgendaEvent, AGENDA_LIMITS, type AgendaPrefs, type AgendaView, zonedParts } from "@zuri/shared";
+import { type AgendaEvent, AGENDA_LIMITS, type AgendaPrefs, type AgendaView, type EventStatus, eventStatus, type GoogleCalendarInfo, zonedParts } from "@zuri/shared";
 
 /**
  * The Agenda screen's dates (step 19). Days are "YYYY-MM-DD" in the owner's
@@ -320,4 +320,52 @@ export function nowAt(now: number, day: string, hours: { from: number; to: numbe
   const minute = p.hour * 60 + p.minute;
   if (minute < hours.from * 60 || minute >= hours.to * 60) return null;
   return (minute - hours.from * 60) / ((hours.to - hours.from) * 60);
+}
+
+/**
+ * Google's colors for an event, by their number there (the names are in the
+ * catalog). Basil is a token: it gets lighter in the dark theme.
+ */
+export const EVENT_COLORS: Readonly<Record<string, string>> = {
+  "1": "#7986cb",
+  "2": "#33b679",
+  "3": "#8e24aa",
+  "4": "#e67c73",
+  "5": "#f6bf26",
+  "6": "#f4511e",
+  "7": "#039be5",
+  "8": "#616161",
+  "9": "#3f51b5",
+  "10": "var(--color-basil)",
+  "11": "#d50000",
+};
+/** An event without a color of its own counts as "Agendado", which is Peacock. */
+const NO_COLOR = "7";
+
+export interface EventLook {
+  /** Whether the event is in a calendar open for editing: only there the color means a status and can change. */
+  editable: boolean;
+  status: EventStatus | null;
+  /** What paints the event: its color at Google where it means a status, its calendar's elsewhere. */
+  color: string | undefined;
+}
+
+/**
+ * How an event shows. In a calendar open for editing, its color at Google is
+ * the appointment's status (none counts as "Agendado"; a color outside the four
+ * shows as it is, without a status). In any other calendar the event keeps its
+ * calendar's color and has no status.
+ */
+export function eventLook(event: Pick<AgendaEvent, "colorId">, calendar: Pick<GoogleCalendarInfo, "mode" | "writable" | "color"> | undefined): EventLook {
+  const editable = !!calendar && calendar.mode === "write" && calendar.writable;
+  if (!editable) return { editable, status: null, color: calendar?.color };
+  // An event read before the color existed in the answer has none.
+  const colorId = event.colorId ?? "";
+  return { editable, status: eventStatus(colorId), color: EVENT_COLORS[colorId || NO_COLOR] };
+}
+
+/** Saturday or Sunday, whatever the owner's working days are. */
+export function isWeekend(day: string): boolean {
+  const n = weekday(day);
+  return n === 0 || n === 6;
 }

@@ -907,6 +907,12 @@ A etapa 19 liga a conta Google do dono pelo cliente OAuth dele mesmo
   `sendUpdates=none`; o corpo mandado ao Google passa por uma lista fixa de
   campos. Editar e apagar mandam o `etag` visto (`If-Match`): se o evento
   mudou no Google, nada é sobrescrito nem apagado (`TARGET_CHANGED`).
+- **A cor do evento só muda pela tela.** A situação do atendimento é a cor do
+  evento no Google (`colorId`). A rota da Agenda aceita só "5", "7", "10", "11"
+  ou vazio, e a lista fixa de campos recusa qualquer outro valor, venha de onde
+  vier. O que o Google devolve só vale se for um número de 1 a 11, e nunca vai
+  cru para o estilo da página: escolhe uma cor de uma tabela fixa. O campo não
+  chega ao modelo, às ferramentas, aos fluxos nem ao bot.
 - **O modelo não escreve sozinho onde outras pessoas veem.** Uma mudança num
   evento aparece para os convidados e para quem o organiza, mesmo sem e-mail.
   Por isso, na conversa, mudar evento com convidados, evento que outra pessoa
