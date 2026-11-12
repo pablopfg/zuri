@@ -131,7 +131,7 @@ const recordHourSql = `INSERT INTO zur_usage_hourly (hour, day, ${HOUR_COLUMNS.j
     day = excluded.day`;
 
 /** The columns of a day that a month adds up, and the two reads of them: closed days into months, open days as they are. */
-const MONTH_SUMS = `COUNT(*) AS days, SUM(ai_requests) AS requests, SUM(ai_errors) AS errors, SUM(ai_aborted) AS aborted, SUM(ai_fallbacks) AS fallbacks,
+const MONTH_SUMS = `SUM(ai_requests > 0 OR ai_errors > 0 OR ai_aborted > 0 OR audio_seconds > 0 OR neurons > 0 OR paid_usd > 0) AS days, SUM(ai_requests) AS requests, SUM(ai_errors) AS errors, SUM(ai_aborted) AS aborted, SUM(ai_fallbacks) AS fallbacks,
   SUM(neurons) AS neurons, SUM(paid_usd) AS paid_usd, SUM(audio_seconds) AS audio_seconds`;
 const MONTH_COLUMNS = ["days", ...HOUR_COLUMNS] as const;
 
@@ -181,6 +181,8 @@ export class UsageMeter {
   ) {}
 
   #writes = 0;
+  /** The day whose closed days this wake already summed into the months. */
+  #closed: string | null = null;
   #base: number | null = null;
 
   /**
@@ -251,6 +253,7 @@ export class UsageMeter {
       if (usd > 0 && cents > 0 && Math.round(((row?.paid_usd ?? 0) + usd) * 1_000_000) > cents * 10_000) throw this.limitReached("usd", cents / 100);
     }
     if (!row) this.startDay(day);
+    else this.closeMonths(day);
     this.write(
       // A try the fallback took over is counted in the same write (rule P4).
       `INSERT INTO zur_usage_daily (day, ai_requests, neurons, paid_usd, ai_fallbacks) VALUES (?, 1, ?, ?, ?)
@@ -275,6 +278,7 @@ export class UsageMeter {
     if ((row?.audio_seconds ?? 0) + seconds > AUDIO_SECONDS_PER_DAY) throw this.limitReached("audio", AUDIO_SECONDS_PER_DAY);
     if ((row?.neurons ?? 0) + estimate > limits.neuronsPerDay) throw this.limitReached("neurons", limits.neuronsPerDay);
     if (!row) this.startDay(day);
+    else this.closeMonths(day);
     this.write(
       `INSERT INTO zur_usage_daily (day, audio_seconds, neurons) VALUES (?, ?, ?)
        ON CONFLICT (day) DO UPDATE SET audio_seconds = audio_seconds + excluded.audio_seconds, neurons = neurons + excluded.neurons`,
@@ -298,6 +302,7 @@ export class UsageMeter {
     const cap = Math.min(ceiling, limits.neuronsPerDay);
     if ((row?.neurons ?? 0) + estimate > cap) throw this.limitReached("neurons", limits.neuronsPerDay);
     if (!row) this.startDay(day);
+    else this.closeMonths(day);
     this.write(
       `INSERT INTO zur_usage_daily (day, neurons) VALUES (?, ?)
        ON CONFLICT (day) DO UPDATE SET neurons = neurons + excluded.neurons`,
@@ -597,6 +602,8 @@ export class UsageMeter {
       from,
       to,
       months: [...months.values()]
+        // A day whose only reservation was given back used nothing: it is not a day, nor a month, with use.
+        .filter((r) => r.days > 0)
         .sort((a, b) => (a.month < b.month ? -1 : 1))
         .map((r) => ({
           month: r.month,
@@ -624,6 +631,10 @@ export class UsageMeter {
    * would miss that. `months()` reads the open days themselves, so the year is never behind.
    */
   private closeMonths(day: string): void {
+    // Once a day at a day's first call, and once more per wake (one row read): an instance updated on a
+    // day it had already used would otherwise read every day at each look at the year until tomorrow.
+    if (this.#closed === day) return;
+    this.#closed = day;
     const through = UsageMeter.day(Date.parse(`${day}T00:00:00Z`) - 2 * DAY_MS);
     const last = this.db.one<{ last_day: string }>(`SELECT last_day FROM zur_usage_monthly ORDER BY month DESC LIMIT 1`)?.last_day ?? "";
     if (through > last) {
@@ -634,9 +645,10 @@ export class UsageMeter {
         last,
         through,
       );
+      // A month out of the year the panel shows is of no use to anyone (rule P13). Only a new day
+      // to sum can push one out, and the read of the year never goes past its 12 months anyway.
+      this.write(`DELETE FROM zur_usage_monthly WHERE month < ?`, shiftMonth(day, 1 - USAGE_MONTHS));
     }
-    // A month out of the year the panel shows is of no use to anyone (rule P13).
-    this.write(`DELETE FROM zur_usage_monthly WHERE month < ?`, shiftMonth(day, 1 - USAGE_MONTHS));
   }
 
   private row(day: string): DayRow | null {

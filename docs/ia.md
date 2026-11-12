@@ -366,7 +366,6 @@ transcrição devolve um texto fixo do catálogo.
 | --- | --- | --- |
 | `zur_usage_daily` | uma por dia UTC | Pedidos, falhas, interrompidas, segundos de áudio, Neurons (reservados + gastos) e US$ estimados |
 | `zur_model_usage_daily` | uma por dia, modelo, tipo e cobrável | Chamadas, tokens informados e estimados, segundos de áudio, Neurons e US$ |
-
 | `zur_usage_hourly` (migration 37) | uma por hora UTC, 24 no máximo | O dia de hoje por hora: pedidos, falhas, interrompidas, vezes da reserva, Neurons gastos, US$ pagos e segundos de áudio |
 | `zur_usage_monthly` (migration 37) | uma por mês, 12 no máximo | Os mesmos números somados por mês, com quantos dias tiveram uso e o último dia já somado |
 
@@ -383,6 +382,9 @@ transcrição devolve um texto fixo do catálogo.
   pode ser acertada nele; a leitura do ano junta os meses já somados com os dias ainda abertos, então
   o número nunca fica atrás. Quem atualiza de uma versão anterior ganha os meses dos 90 dias que
   ainda tem, na primeira chamada depois da atualização.
+- Limite conhecido: uma chamada acertada mais de um dia depois de começar (o prazo das chamadas é
+  de minutos) entraria na linha do dia, mas não no mês já somado. Um dia cuja única reserva foi
+  devolvida não conta como dia com uso.
 - Não entram no backup (são medidas, não dados do dono).
 - A migration 29 acrescenta `paid_usd` (gasto dos modelos pagos no dia) e
   `ai_fallbacks` (vezes que a reserva assumiu) em `zur_usage_daily`, e
@@ -425,7 +427,10 @@ mudar a data da última edição.
 - Cada chamada lê as três configurações e a linha do dia e grava de 3 a 4
   linhas (reserva, acerto e a linha da hora). `GET /api/usage` lê cerca de 10 linhas.
 - `GET /api/usage/hours` lê até 25 linhas (a sessão e as 24 horas) e `GET /api/usage/months` até
-  16 (a sessão, 12 meses e os dias abertos). Nenhuma grava.
+  16 (a sessão, 12 meses e os dias abertos). Nenhuma grava. Entre a atualização e a primeira
+  chamada de IA depois dela, os meses ainda não foram somados e a leitura do ano passa pelos dias
+  guardados (90 no máximo), uma vez por abertura do painel.
 - A primeira chamada de um dia lê mais 8 linhas e grava mais 1 (o mês do dia que fechou). Só a
   primeira depois da atualização lê os 90 dias de uma vez (181 linhas medidas) para montar os meses.
+  A primeira chamada de cada despertar do objeto confere se há dia a somar (1 linha lida).
 - Medido em `apps/agent/test/free-tier-budget.test.ts`.

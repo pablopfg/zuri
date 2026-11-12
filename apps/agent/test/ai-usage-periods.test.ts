@@ -264,6 +264,48 @@ describe("the year by the month", () => {
     });
   });
 
+  it("sums the months on a day already in use too (an update in the middle of the day), and the year stops reading every day", async () => {
+    await withAiWorld(({ db, clock }) => {
+      for (let i = 0; i < 90; i++) seedDay(db, UsageMeter.day(NOON - i * DAY));
+      // A meter that wakes with today's row already there, as after an update.
+      const meter = new UsageMeter(db, () => clock.now);
+      db.usage.rowsRead = 0;
+      const before = meter.months();
+      // Not summed yet: the year reads the days kept, each twice (the read and the grouping). Never more than the 90.
+      expect(db.usage.rowsRead).toBeLessThanOrEqual(190);
+      call(meter);
+      expect(monthly(db).map((m) => m.last_day)).toEqual(["2026-08-31", "2026-09-30", "2026-10-29"]);
+      db.usage.rowsRead = 0;
+      const after = meter.months();
+      expect(db.usage.rowsRead).toBeLessThanOrEqual(8);
+      expect(after.months.map((m) => [m.month, m.days, m.requests])).toEqual(before.months.map((m, i) => [m.month, m.days, m.requests + (i === 2 ? 1 : 0)]));
+      // The same wake does not look again; another wake looks once and writes nothing.
+      db.usage.rowsRead = 0;
+      db.usage.rowsWritten = 0;
+      meter.reserveChat(chat(), LIMITS);
+      expect([db.usage.rowsRead, db.usage.rowsWritten]).toEqual([1, 1]);
+      db.usage.rowsRead = 0;
+      db.usage.rowsWritten = 0;
+      new UsageMeter(db, () => clock.now).reserveChat(chat(), LIMITS);
+      expect(db.usage.rowsRead).toBeLessThanOrEqual(2);
+      expect(db.usage.rowsWritten).toBe(1);
+    });
+  });
+
+  it("does not take a day whose only reservation was given back for a day, or a month, with use", async () => {
+    await withAiWorld(({ db, meter, clock }) => {
+      meter.release(meter.reserveChat(chat(), LIMITS));
+      expect(db.one<{ n: number }>(`SELECT ai_requests AS n FROM zur_usage_daily`)?.n).toBe(0);
+      expect(meter.months().months).toEqual([]);
+      clock.now = NOON + DAY;
+      call(meter);
+      clock.now = NOON + 3 * DAY;
+      call(meter);
+      // October's day closed with nothing in it; November has two days with use.
+      expect(meter.months().months.map((m) => [m.month, m.days, m.requests])).toEqual([["2026-11", 2, 2]]);
+    });
+  });
+
   it("counts a call that ended after midnight in the month's total, though its day had already closed", async () => {
     await withAiWorld(({ db, meter, clock }) => {
       clock.now = Date.parse("2026-10-31T23:59:00Z");
