@@ -235,7 +235,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S08 | mesclada (#282) |
 | S09 | mesclada (#286) |
 | S10 | mesclada (#291) |
-| S11 | em revisão |
+| S11 | mesclada (#299) |
+| S12 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -350,6 +351,21 @@ Diferenças da S11 (servidor das métricas), para a S12 não as desfazer:
 - "Tempo até responder" passa a valer também para a resposta dada direto no Google: a Zuri guarda a hora que o Google informa na primeira vez que vê a resposta (`replied_at`, coluna que já existia e só era preenchida nas respostas da própria Zuri). Respostas copiadas antes desta PR contam em `replied`, mas não no tempo; por isso `medianReplyMinutes` pode ser `null` com `replied` maior que zero, e a tela precisa de um texto para esse caso.
 - "As que precisam de você" não vem nesta rota: é o `needs` de `GET /api/reviews/status`, que a tela já lê.
 - Acima de 5.000 avaliações no período a resposta conta só as mais novas e marca `partial: true`.
+
+Diferenças da S12 (Avaliações), para as PRs seguintes não as desfazerem:
+
+- **Só interface.** A S12 monta a área sobre o servidor que já existe. Ficam para uma PR de servidor, antes da S12b, as partes de `avaliacoes-conexao-e-respostas.md` que pedem rota, migration ou mudança no modelo do agente: "Testar conexão", "Importar avaliações", "Análise do Google", "Sobre o consultório" (fatos, canal oficial, atendimento de saúde), "Variar o começo das respostas", o teste do rascunho antes de salvar e as instruções do agente dentro de Avaliações (por ora a tela leva a Configurações › IA). Nada disso aparece na tela até o servidor chegar, como as partes do CRM.
+- **Endereços:** `/avaliacoes` (Visão geral), `/avaliacoes/lista` e `/avaliacoes/lista/<id>` (a avaliação aberta), `/avaliacoes/ajustes` (Conexão) e `/avaliacoes/ajustes/responder`. Qualquer outro vai para o endereço real mais próximo; a conferência fica em `pages/reviews/numbers.ts` (`reviewAddress`), dentro da tela, e o `App.tsx` ficou menor.
+- **Abas:** Visão geral, Avaliações e Ajustes. "Pedidos" e "Pedidos e link" entram com a S20; "Agente e segurança", com a S12b.
+- **Visão geral:** o funil dos pedidos não aparece enquanto `requests` vier `null`. Sem avaliações, o índice mostra um traço e "Sem avaliações". A variação compara o último grupo com avaliação ao primeiro. Com `medianReplyMinutes` nulo e respostas no período, a tela diz que não tem a hora das respostas mais antigas. As barras vão de −100 (rente à base) a 100 (topo), para o índice negativo também aparecer; o protótipo só desenhava valores positivos. Semana ou mês sem avaliação fica sem barra. "Ver em tabela" traz os mesmos números.
+- **Lista:** abre em "Precisa de você" quando há algo esperando, e em "Todas" quando não há (o protótipo abre sempre em "Todas"). A partir de 1.101 px a primeira avaliação aparece aberta; até 1.100 px a lista ocupa a coluna e a avaliação aberta toma o lugar dela, com "Avaliações" para voltar. Quando a avaliação aberta sai do filtro (foi respondida, por exemplo), o endereço volta para a lista. O servidor só manda o primeiro nome, então a marca redonda tem uma letra e a tela não mostra "Ligada ao contato" nem "Editou hoje" (dados que o servidor não tem).
+- **C7:** "Respondidas" é um dos filtros, e "Apagar resposta" é um botão na resposta publicada pela Zuri, não um item de menu ⋯: é a única ação dali, e o menu com um item só custaria um toque a mais.
+- **Ajustes › Conexão:** os quatro passos saem do estado que a tela já lê (`connected`, `granted`, `problem`, `locations`); o e-mail da conta e a data da permissão não vêm nele e não aparecem. A chave "Publicar no Google as respostas que você aprova" troca o nível entre "só lê e avisa" e "rascunhos para aprovar". O texto do protótipo ("a Zuri só prepara os rascunhos e você copia") não é o que o servidor faz com o nível desligado, e foi trocado pelo que acontece de verdade.
+- **Primeira vez:** escolher o perfil pede também a assinatura, porque o servidor guarda perfil, jeito de responder e nível numa rota só e toda resposta termina com a assinatura. O resto começa com os três modelos sugeridos e "rascunhos para aprovar".
+- **Integrações:** a seção "Avaliações do Google" do cartão do Google ficou só com a hora da última leitura, o intervalo entre as leituras (decisão de 11/11) e o caminho para Avaliações.
+- **"Ajustes"** é o nome da aba, como no protótipo. O glossário reserva "Configurações" para a página do menu; a exceção está em `i18n-ignore.json` só para o nome da aba, e os outros textos dizem "em Avaliações" ou "em Como responder".
+- **Contador no menu lateral** (o "3" ao lado de Avaliações no protótipo): não entrou. Pediria uma leitura a mais em toda tela e código no pacote inicial, que está no teto. O número aparece na aba "Avaliações" da área.
+- **JS inicial:** 140.867 bytes, 8 a menos que a develop. Ícone usado por outra tela sob demanda cria pedaço comum e pesa no pacote inicial; por isso a área usa ícones só dela (`SlidersVertical`, `PlugZap`, `CirclePause`, `Timer`, `ChevronsLeft`, `SendHorizontal`, `Hourglass`, `CircleDashed`) e não usa o `ActionsMenu`.
 
 ## 12. Riscos
 

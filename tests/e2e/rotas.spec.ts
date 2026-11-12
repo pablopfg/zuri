@@ -37,6 +37,20 @@ test("the new places answer at their addresses, each with its title @mobile", as
   await expect(page).toHaveURL(/\/crm$/);
   await page.goto("/avaliacoes/nada");
   await expect(page).toHaveURL(/\/avaliacoes$/);
+  // The reviews' own parts open, and what cannot follow one of them goes to that part.
+  for (const [from, to] of [
+    ["/avaliacoes/lista", "/avaliacoes/lista"],
+    ["/avaliacoes/ajustes/responder", "/avaliacoes/ajustes/responder"],
+    ["/avaliacoes/ajustes/agente", "/avaliacoes/ajustes"],
+    ["/avaliacoes/lista/nada", "/avaliacoes/lista"],
+    // A slash hidden in the last part is another address altogether: it never leaves the area.
+    ["/avaliacoes/lista/..%2Fentrar", "/avaliacoes"],
+    ["/avaliacoes/nada/responder", "/avaliacoes"],
+  ] as const) {
+    await page.goto(from);
+    await expect.poll(() => new URL(page.url()).pathname, { message: from }).toBe(to);
+    await expect(page.getByRole("heading", { level: 1, name: "Avaliações" })).toBeVisible();
+  }
 });
 
 test("every address that changed name sends to the new one, for good, keeping what came after it @mobile", async ({ page }) => {
