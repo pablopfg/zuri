@@ -1,6 +1,6 @@
 # Plano · Sons, áudio de 2 minutos, menu por áreas e agenda que edita
 
-Situação: esperando o Pablo (protótipo publicado em 12/11/2026 para aprovação)
+Situação: aprovado em 12/11/2026 (o Pablo seguiu as três recomendações; implementação nas quatro entregas da seção 11)
 Origem: pedido do Pablo em 12/11/2026
 Dependências: nenhuma PR aberta. A área "Consultório" do menu depende do plano da Gestão do consultório, que corre à parte.
 
@@ -166,8 +166,15 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 
 ## 14. Entrevista com o Pablo
 
+### Respostas (12/11/2026, 03:25 UTC)
+
+O Pablo respondeu "siga as recomendações":
+
+1. **Som dos avisos:** Sino.
+2. **Menu:** proposta A, grupos por área.
+3. **Agenda:** as quatro cores valem (Pavão, Manjericão, Banana, Tomate) e mover marca Reagendado sozinho.
+4. **Áudio:** sobe para 120 segundos.
+
 ### Perguntas abertas
 
-1. **Som dos avisos:** qual dos três? Recomendação: Sino.
-2. **Menu:** A, B ou C? Recomendação: A.
-3. **Agenda:** as quatro cores servem (Pavão, Manjericão, Banana, Tomate), e mover deve marcar Reagendado sozinho? Recomendação: sim para os dois.
+Nenhuma.
