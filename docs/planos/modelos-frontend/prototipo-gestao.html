@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zuri Gestão</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Protótipo da área Gestão no visual Sinal: menu lateral à esquerda, uma tela por vez à direita.
+   Todos os dados são inventados. Tokens copiados de prototipo-interativo.html. */
+:root{
+  color-scheme:light;
+  --f-ui:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r-sm:8px;--r-md:10px;--r-lg:14px;--r-pill:999px;
+  --t-xs:13px;--t-sm:14px;--t-md:16px;--t-lg:18px;--t-xl:22px;--t-2xl:28px;
+  --bg:#f1f1f3;--surface:#ffffff;--sunken:#e8e8eb;--hover:#e6e6ea;
+  --line:#d0d0d6;--line-soft:#e0e0e5;--line-strong:#b4b4bd;
+  --ink:#0f0f12;--ink-2:#2e2e35;--muted:#4d4d57;
+  --accent:#15803d;--accent-hover:#14532d;--on-accent:#ffffff;--accent-ink:#166534;--accent-soft:#dcfce7;--accent-soft-ink:#14532d;--focus:#15803d;
+  --warn-ink:#92400e;--warn-soft:#fef3c7;--warn-line:#e5b84a;--danger-ink:#b91c1c;--danger-soft:#fee2e2;--danger-line:#f5a3a3;--ok-ink:#166534;
+  --info-ink:#0c4a6e;--info-soft:#e0f2fe;
+  --side-bg:#e9e9ec;--side-ink:#2e2e35;--side-head:#0f0f12;--side-muted:#4d4d57;--side-hover:#dcdce1;--side-active-bg:#ffffff;--side-line:#d0d0d6;
+  --side-active-shadow:0 1px 2px rgb(24 24 27 / .10),0 0 0 1px rgb(24 24 27 / .12);
+  --tile:#18181b;--mark:#ffffff;--signal:#22c55e;
+  /* séries dos gráficos (ordem fixa por entidade) */
+  --s-in:#2a78d6;--s-out:#eb6834;--s-est:#1baf7a;--s-cmp:#8a8a94;
+  --s-came:#1baf7a;--s-open:#eda100;--s-miss:#e87ba4;--s-off:#6250d6;
+  --grid:#e0e0e5;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#111113;--surface:#18181b;--sunken:#222226;--hover:#26262b;
+  --line:rgb(255 255 255 / .08);--line-soft:rgb(255 255 255 / .05);--line-strong:rgb(255 255 255 / .14);
+  --ink:#ededef;--ink-2:#c9c9cf;--muted:#a1a1aa;
+  --accent:#4ade80;--accent-hover:#86efac;--on-accent:#052e16;--accent-ink:#4ade80;--accent-soft:#12291c;--accent-soft-ink:#bbf7d0;--focus:#4ade80;
+  --warn-ink:#fbbf24;--warn-soft:#2a210f;--warn-line:#5c4614;--danger-ink:#fca5a5;--danger-soft:#2a1414;--danger-line:#5c2323;--ok-ink:#4ade80;
+  --info-ink:#bae6fd;--info-soft:#0f2433;
+  --side-bg:#0c0c0e;--side-ink:#c9c9cf;--side-head:#ededef;--side-muted:#a1a1aa;--side-hover:#1a1a1e;--side-active-bg:#222226;--side-line:rgb(255 255 255 / .06);
+  --side-active-shadow:inset 0 0 0 1px rgb(255 255 255 / .06);
+  --tile:#26262b;--mark:#fafafa;--signal:#4ade80;
+  --s-in:#3987e5;--s-out:#d95926;--s-est:#199e70;--s-cmp:#8a8a94;
+  --s-came:#199e70;--s-open:#c98500;--s-miss:#d55181;--s-off:#9085e9;
+  --grid:rgb(255 255 255 / .08);
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111113;--surface:#18181b;--sunken:#222226;--hover:#26262b;
+  --line:rgb(255 255 255 / .08);--line-soft:rgb(255 255 255 / .05);--line-strong:rgb(255 255 255 / .14);
+  --ink:#ededef;--ink-2:#c9c9cf;--muted:#a1a1aa;
+  --accent:#4ade80;--accent-hover:#86efac;--on-accent:#052e16;--accent-ink:#4ade80;--accent-soft:#12291c;--accent-soft-ink:#bbf7d0;--focus:#4ade80;
+  --warn-ink:#fbbf24;--warn-soft:#2a210f;--warn-line:#5c4614;--danger-ink:#fca5a5;--danger-soft:#2a1414;--danger-line:#5c2323;--ok-ink:#4ade80;
+  --info-ink:#bae6fd;--info-soft:#0f2433;
+  --side-bg:#0c0c0e;--side-ink:#c9c9cf;--side-head:#ededef;--side-muted:#a1a1aa;--side-hover:#1a1a1e;--side-active-bg:#222226;--side-line:rgb(255 255 255 / .06);
+  --side-active-shadow:inset 0 0 0 1px rgb(255 255 255 / .06);
+  --tile:#26262b;--mark:#fafafa;--signal:#4ade80;
+  --s-in:#3987e5;--s-out:#d95926;--s-est:#199e70;--s-cmp:#8a8a94;
+  --s-came:#199e70;--s-open:#c98500;--s-miss:#d55181;--s-off:#9085e9;
+  --grid:rgb(255 255 255 / .08);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:400 var(--t-md)/1.5 var(--f-ui);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+button,input,select{font:inherit;color:inherit}
+h1,h2,h3,p{margin:0}
+h1,h2,h3{font-weight:600;text-wrap:balance}
+ul{margin:0;padding:0;list-style:none}
+a{color:var(--accent-ink);text-underline-offset:3px}
+.num{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:var(--r-sm)}
+
+.proto{margin:0;border:0;min-width:0;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:8px 16px;background:#0b0f19;color:#f8fafc;font:500 13px/1.4 system-ui,sans-serif}
+.proto select{background:#1a2233;color:#f8fafc;border:1px solid #56627a;border-radius:6px;padding:4px 8px;min-height:32px}
+.proto span{opacity:.85}
+[data-captura] .proto{display:none}
+
+.app{flex:1;min-height:0;display:grid;grid-template-columns:272px minmax(0,1fr)}
+.side{background:var(--side-bg);color:var(--side-ink);border-right:1px solid var(--side-line);padding:12px;overflow:auto;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;color:var(--side-head);font:600 19px/1 var(--f-ui);padding:4px 4px 12px}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--tile);position:relative;flex:none}
+.logo::before{content:"";position:absolute;inset:8px 8px 13px 8px;border-top:3px solid var(--mark);border-bottom:3px solid var(--mark);transform:skewY(-28deg)}
+.logo::after{content:"";position:absolute;right:5px;top:5px;width:6px;height:6px;border-radius:50%;background:var(--signal)}
+.nav-h{font:600 var(--t-xs)/1 var(--f-ui);color:var(--side-muted);padding:20px 10px 8px;display:flex;align-items:center;gap:8px}
+.nav-h .new{font-weight:600;color:var(--accent-soft-ink);background:var(--accent-soft);border-radius:var(--r-pill);padding:3px 8px}
+.nav{display:grid;gap:2px}
+.nav a,.nav span.off{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 10px;border-radius:var(--r-md);color:var(--side-ink);text-decoration:none;font-weight:500}
+.nav span.off{color:var(--side-muted)}
+.nav a:hover{background:var(--side-hover);color:var(--side-head)}
+.nav a[aria-current="page"]{background:var(--side-active-bg);color:var(--side-head);box-shadow:var(--side-active-shadow)}
+.nav .count{margin-left:auto;font-size:var(--t-xs);font-weight:600;color:var(--side-muted)}
+.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.ic-sm{width:16px;height:16px}
+.side-note{margin-top:auto;padding:12px 10px 4px;font-size:var(--t-xs);color:var(--side-muted)}
+
+.main{min-width:0;overflow:auto}
+.page{max-width:1120px;margin:0 auto;padding:32px;display:grid;gap:24px}
+.head{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end}
+.head>div:first-child{margin-right:auto;min-width:0}
+.head h1{font-size:var(--t-2xl);line-height:1.2}
+.head p{color:var(--muted)}
+.tabbar{display:none}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:var(--r-md);border:1px solid transparent;font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--on-accent)}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-secondary{background:var(--surface);color:var(--ink);border-color:var(--line-strong)}
+.btn-secondary:hover{background:var(--hover)}
+.btn-quiet{background:transparent;color:var(--ink-2)}
+.btn-quiet:hover{background:var(--hover)}
+.btn-sm{min-height:36px;padding:0 12px;font-size:14px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.input{min-height:44px;padding:0 12px;border-radius:var(--r-md);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);min-width:0}
+.field{display:grid;gap:6px;min-width:0}
+.field>span{font-size:var(--t-sm);font-weight:600}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:var(--r-md);background:var(--sunken);max-width:100%;overflow-x:auto}
+.seg button{min-height:36px;padding:0 14px;border:0;border-radius:7px;background:transparent;color:var(--ink-2);font-weight:500;font-size:14px;cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .08),0 0 0 1px var(--line)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;min-width:0}
+.card>h2{font-size:var(--t-lg);margin-bottom:4px}
+.card>.sub{color:var(--muted);font-size:var(--t-sm);margin-bottom:12px}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:var(--t-xs);font-weight:500;color:var(--ink-2);background:var(--sunken);border-radius:var(--r-pill);padding:2px 9px;line-height:20px;white-space:nowrap}
+.tag.ok{background:var(--accent-soft);color:var(--accent-soft-ink)}
+.tag.warn{background:var(--warn-soft);color:var(--warn-ink)}
+.tag.bad{background:var(--danger-soft);color:var(--danger-ink)}
+.tag.info{background:var(--info-soft);color:var(--info-ink)}
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-md);background:var(--warn-soft);color:var(--warn-ink);border:1px solid var(--warn-line);font-size:var(--t-sm)}
+.note.ok{background:var(--accent-soft);color:var(--accent-soft-ink);border-color:transparent}
+.muted{color:var(--muted)}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+/* indicadores */
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.kpi{box-shadow:0 0 0 .5px var(--line);padding:16px;display:grid;gap:2px;align-content:start}
+.kpi .l{font-size:var(--t-xs);color:var(--muted);font-weight:500}
+.kpi .v{font-size:var(--t-xl);font-weight:600;line-height:1.2}
+.kpi .d{font-size:var(--t-xs);color:var(--muted)}
+.kpi .d b{font-weight:600}
+.kpi .d .up{color:var(--ok-ink)}.kpi .d .down{color:var(--danger-ink)}
+
+/* filtros */
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.filters .field{flex:1 1 180px}
+
+/* gráficos */
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font:500 12px var(--f-ui);fill:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:var(--t-xs);color:var(--ink-2);margin-bottom:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend i.ln{height:2px;width:14px;border-radius:0;vertical-align:3px}
+.hb{display:grid;gap:10px}
+.hb-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;font-size:var(--t-sm)}
+.hb-row .track{grid-column:1 / -1;grid-row:2}
+.hb-bar{height:10px;border-radius:0 4px 4px 0;background:var(--s-in);min-width:2px}
+.hb-row.out .hb-bar{background:var(--s-out)}
+details.tbl{margin-top:12px;font-size:var(--t-sm)}
+details.tbl summary{cursor:pointer;color:var(--accent-ink);font-weight:500;width:fit-content}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:var(--t-sm)}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line-soft);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:var(--t-xs)}
+#tip{position:fixed;z-index:50;pointer-events:none;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:8px 10px;font-size:var(--t-xs);box-shadow:0 8px 24px -6px rgb(0 0 0 / .25);min-width:140px}
+#tip b{display:block;margin-bottom:4px}
+#tip div{display:flex;justify-content:space-between;gap:16px}
+
+/* atendimentos */
+.progress{display:grid;gap:8px}
+.bar{height:8px;border-radius:var(--r-pill);background:var(--sunken);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:var(--r-pill)}
+.slots{display:grid;gap:12px}
+.slot{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;display:grid;gap:12px}
+.slot.next{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.slot-top{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.slot-top .hr{font-weight:600;font-size:var(--t-lg)}
+.slot-top .tags{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px}
+.slot h3{font-size:var(--t-lg)}
+.slot .meta{color:var(--muted);font-size:var(--t-sm);display:flex;flex-wrap:wrap;gap:4px 14px}
+.opts{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:0}
+.opts label{position:relative;flex:1 1 110px}
+.opts input{position:absolute;opacity:0;inset:0}
+.opts span{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;border:1px solid var(--line-strong);border-radius:var(--r-md);font-weight:500;cursor:pointer}
+.opts input:checked+span{background:var(--accent-soft);color:var(--accent-soft-ink);border-color:var(--accent)}
+.opts input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
+.pay{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.slot-actions{display:flex;flex-wrap:wrap;gap:8px}
+details.earlier>summary{cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;border:1px dashed var(--line-strong);border-radius:var(--r-lg);font-weight:500;list-style:none}
+details.earlier>summary::-webkit-details-marker{display:none}
+details.earlier[open]>summary{margin-bottom:12px}
+.nowline{display:flex;align-items:center;gap:10px;color:var(--danger-ink);font-size:var(--t-xs);font-weight:600}
+.nowline::after{content:"";flex:1;height:1px;background:currentColor;opacity:.5}
+
+/* financeiro */
+.rows{display:grid}
+.day-h{font-size:var(--t-xs);font-weight:600;color:var(--muted);padding:14px 0 6px;border-bottom:1px solid var(--line-soft)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;padding:12px 0;border-bottom:1px solid var(--line-soft);align-items:center}
+.row .t{font-weight:500;min-width:0;overflow-wrap:anywhere}
+.row .m{color:var(--muted);font-size:var(--t-sm);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.row .a{font-weight:600;text-align:right;grid-row:span 2}
+.row .a.out{color:var(--danger-ink)}
+.drop{border:1.5px dashed var(--line-strong);border-radius:var(--r-lg);padding:32px 20px;text-align:center;display:grid;gap:12px;justify-items:center;background:var(--surface)}
+.steps{display:flex;flex-wrap:wrap;gap:8px;font-size:var(--t-sm);color:var(--muted)}
+.steps li{display:flex;align-items:center;gap:8px}
+.steps li b{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--sunken);font-size:12px;color:var(--ink-2)}
+.steps li[aria-current="step"]{color:var(--ink);font-weight:600}
+.steps li[aria-current="step"] b{background:var(--accent);color:var(--on-accent)}
+.steps li+li::before{content:"";width:20px;height:1px;background:var(--line-strong)}
+.check{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.check div{padding:14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+.check .l{font-size:var(--t-xs);color:var(--muted)}
+.check .v{font-weight:600;font-size:var(--t-lg)}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px 16px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:var(--t-sm)}
+.kv b{font-weight:600}
+
+/* relatório */
+.report{max-width:760px}
+.report h2{font-size:var(--t-lg);margin:8px 0}
+.hl{display:grid;gap:8px;padding-left:18px;list-style:disc}
+.stmt td:last-child,.stmt th:last-child{width:1%}
+.stmt tr.total td{font-weight:600;border-top:1px solid var(--line-strong)}
+
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{display:none}
+  .page{padding:20px 16px 96px}
+  .tabbar{display:grid;grid-template-columns:repeat(3,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:20}
+  .tabbar a{display:grid;justify-items:center;gap:2px;padding:8px 4px;font-size:12px;font-weight:500;color:var(--muted);text-decoration:none}
+  .tabbar a[aria-current="page"]{color:var(--accent-ink)}
+  .g2,.g3{grid-template-columns:minmax(0,1fr)}
+  .pay{grid-template-columns:minmax(0,1fr)}
+  .head .btn{flex:1 1 auto}
+}
+[hidden],.pay[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.btn,.nav a{transition:background-color 150ms}}
+</style>
+</head>
+<body>
+<fieldset class="proto">
+  <legend class="sr">Opções do protótipo</legend>
+  <strong>Protótipo · Gestão</strong>
+  <label>Tema <select id="tema"><option value="">Do sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></select></label>
+  <span>Dados inventados. Nada aqui grava de verdade.</span>
+</fieldset>
+<div class="app">
+  <aside class="side" id="side"></aside>
+  <main class="main" id="main" tabindex="-1"></main>
+</div>
+<nav class="tabbar" id="tabbar" aria-label="Gestão"></nav>
+<div id="tip" hidden></div>
+
+<script>
+"use strict";
+/* ---------- utilidades ---------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const brl = (v) => (v == null ? "—" : "R$ " + Math.round(v).toLocaleString("pt-BR"));
+const brl2 = (c) => "R$ " + (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+const num = (v) => (v == null ? "—" : Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 }));
+const pct = (v) => (v == null ? "—" : (v * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%");
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MESES_L = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const ICONS = {
+  house: '<path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
+  chat: '<path d="M4 5h12v9H8l-4 3z"/><path d="M20 9v10l-3-2h-6"/>',
+  list: '<path d="M4 6h3M4 12h3M4 18h3M11 6h9M11 12h9M11 18h9"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  note: '<path d="M6 3h12v18H6zM3 8h3M3 16h3M10 8h5M10 12h5"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.900 2.100 6.500 5.500M16 5a3.500 3.500 0 0 1 0 6.500M18 14.800c2 .7 3.200 2.500 3.500 5.200"/>',
+  star: '<path d="M12 3l2.700 5.600 6.100.8-4.500 4.300 1.100 6.100L12 16.900 6.600 19.800l1.100-6.100L3.200 9.400l6.100-.8z"/>',
+  hand: '<path d="M3 12l5-5 4 3 4-3 5 5-9 8z"/>',
+  clip: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.500h6V4M8.500 12l2.500 2.500 4.500-5"/>',
+  wallet: '<path d="M3 7a2 2 0 0 1 2-2h13v4"/><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 13.500h2"/>',
+  chart: '<path d="M4 20V4M4 20h16M8 16v-5M12 16V8M16 16v-8"/>',
+  up: '<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
+  check: '<path d="M5 12.500l4.500 4.500L19 7.500"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  pin: '<path d="M12 21s7-6.200 7-11a7 7 0 1 0-14 0c0 4.800 7 11 7 11z"/><circle cx="12" cy="10" r="2.500"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>',
+  warn: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.500"/>'
+};
+const ic = (n, c) => `<svg class="ic ${c || ""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+
+/* ---------- dados inventados (gerador com semente fixa) ---------- */
+let seed = 20261112;
+const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+const HOJE = { a: 2026, m: 10, d: 12 }; // 12/11/2026
+const months = []; // 24 meses até nov/2026
+for (let i = 23; i >= 0; i--) {
+  const idx = HOJE.a * 12 + HOJE.m - i, a = Math.floor(idx / 12), m = idx % 12;
+  const growth = 1 + (23 - i) * 0.012, season = [0.82, 0.95, 1.05, 1, 1.02, 0.96, 0.9, 1.04, 1.08, 1.06, 1, 0.78][m];
+  const partial = i === 0 ? HOJE.d / 30 : 1;
+  const consultas = Math.round((48 + rnd() * 10) * growth * season * partial);
+  const retornos = Math.round(consultas * (0.55 + rnd() * 0.15));
+  const faltas = Math.round((consultas + retornos) * (0.05 + rnd() * 0.04));
+  const preco = a === 2026 ? 280 : 250;
+  const estimado = consultas * preco;
+  const entradas = Math.round(estimado * (0.93 + rnd() * 0.1));
+  const saidas = Math.round((3100 + rnd() * 900) * partial + estimado * 0.06);
+  months.push({ a, m, key: a + "-" + String(m + 1).padStart(2, "0"), consultas, retornos, faltas, cancelados: Math.round(faltas * 0.8), abertos: i === 0 ? 7 : Math.round(rnd() * 2),
+    estimado, entradas, saidas, novos: Math.round(consultas * (0.3 + rnd() * 0.1)), aval: Math.round(2 + rnd() * 5), nota: 4.7 + rnd() * 0.3 });
+}
+const FORMAS = [["Pix", 0.56], ["Cartão de crédito", 0.21], ["Cartão de débito", 0.12], ["Dinheiro", 0.08], ["Transferência", 0.03]];
+const TIPOS = [["Consulta", 0.78], ["Bioimpedância", 0.14], ["Antropometria", 0.05], ["Outro", 0.03]];
+const SAIDAS = [["Aluguel", 0.44], ["Impostos", 0.2], ["Sistema de prontuário", 0.1], ["Material de escritório", 0.08], ["Contabilidade", 0.08], ["Internet e telefone", 0.06], ["Limpeza", 0.04]];
+const DIAS_SEM = [["seg", 0.2], ["ter", 0.24], ["qua", 0.19], ["qui", 0.22], ["sex", 0.13], ["sáb", 0.02]];
+
+/* agenda de hoje: nomes inventados */
+const visits = [
+  { id: "e1", h: "08:00", f: "09:00", nome: "Helena Prates Moura", tipo: "Consulta", local: "Consultório", st: "attended", cents: 28000, forma: "Pix" },
+  { id: "e2", h: "09:00", f: "09:30", nome: "Otávio Lins Barreto", tipo: "Retorno", local: "Consultório", st: "attended" },
+  { id: "e3", h: "09:30", f: "10:30", nome: "Marina Teles Couto", tipo: "Consulta", local: "Clínica parceira", st: "missed" },
+  { id: "e4", h: "10:30", f: "11:00", nome: "Caio Farias Neves", tipo: "Bioimpedância", local: "Consultório", st: "" },
+  { id: "e5", h: "14:00", f: "15:00", nome: "Lívia Dantas Rocha", tipo: "Consulta", local: "Consultório", st: "", arrived: "13:52" },
+  { id: "e6", h: "15:00", f: "15:30", nome: "Renato Sá Queiroz", tipo: "Retorno", local: "Consultório", st: "" },
+  { id: "e7", h: "15:30", f: "16:30", nome: "Bianca Viana Lopes", tipo: "Consulta", local: "Clínica parceira", st: "" },
+  { id: "e8", h: "16:30", f: "17:00", nome: "Otávio Lins Barreto", tipo: "Retorno", local: "Consultório", st: "", homonimo: true },
+  { id: "e9", h: "17:00", f: "18:00", nome: "Sofia Medeiros Paz", tipo: "Consulta", local: "Consultório", st: "" }
+];
+const AGORA = "13:40";
+const PRECO = { "Consultório": 28000, "Clínica parceira": 22000 };
+const ST = { attended: ["Compareceu", "ok"], missed: ["Faltou", "bad"], cancelled: ["Cancelou", "warn"], "": ["Agendado", ""] };
+
+const entries = [
+  { d: "12/11", t: "Consulta", m: "Pix · Consultório", o: "Atendimento", who: "Helena Prates Moura", c: 28000 },
+  { d: "11/11", t: "Consulta", m: "Cartão de crédito · Consultório", o: "Atendimento", who: "Davi Nogueira Sales", c: 28000 },
+  { d: "11/11", t: "Bioimpedância", m: "Pix · Consultório", o: "Atendimento", who: null, c: 9000 },
+  { d: "11/11", t: "Material de escritório", m: "Cartão de débito", o: "Manual", who: null, c: -18490 },
+  { d: "10/11", t: "Aluguel", m: "Transferência", o: "Manual", who: null, c: -180000 },
+  { d: "10/11", t: "Consulta", m: "Dinheiro · Clínica parceira", o: "Atendimento", who: "Íris Campos Brito", c: 22000 },
+  { d: "30/10", t: "Consulta", m: "Pix · Consultório", o: "Planilha", who: "Ravi Azevedo Luz", c: 28000 },
+  { d: "30/10", t: "Consulta", m: "Pix · Consultório", o: "Planilha", who: null, c: 28000 },
+  { d: "30/10", t: "Devolução a paciente", m: "Pix", o: "Planilha", who: null, c: -14000 }
+];
+
+/* ---------- estado e rotas ---------- */
+const st = { view: "atendimentos", fin: "lancamentos", res: "painel", imp: 0, preset: "ultimos6", cmp: "ano", report: null };
+const VIEWS = [["atendimentos", "clip", "Atendimentos"], ["financeiro", "wallet", "Financeiro"], ["resultados", "chart", "Resultados"]];
+function fromHash() {
+  const h = location.hash.slice(1);
+  if (VIEWS.some((v) => v[0] === h)) st.view = h;
+}
+function go(v) { st.view = v; try { history.replaceState(null, "", "#" + v); } catch (e) { location.hash = v; } render(); $("#main").scrollTop = 0; }
+
+function side() {
+  const off = (i, l) => `<li><span class="off">${ic(i)}${l}</span></li>`;
+  return `<div class="brand"><span class="logo"></span>Zuri</div>
+  <nav aria-label="Seções">
+    <ul class="nav">${off("house", "Início")}${off("chat", "Conversa")}</ul>
+    <p class="nav-h">Organizar</p><ul class="nav">${off("list", "Tarefas")}${off("cal", "Agenda")}${off("note", "Notas")}</ul>
+    <p class="nav-h">Relacionamento</p><ul class="nav">${off("users", "Contatos")}${off("star", "Avaliações")}${off("hand", "CRM")}</ul>
+    <p class="nav-h" id="nav-g">Gestão <span class="new">novo</span></p>
+    <ul class="nav" aria-labelledby="nav-g">${VIEWS.map(([v, i, l]) => `<li><a href="#${v}" data-go="${v}"${st.view === v ? ' aria-current="page"' : ""}>${ic(i)}${l}${v === "atendimentos" ? '<span class="count num" title="sem registro hoje">' + visits.filter((x) => !x.st && x.h < AGORA).length + "</span>" : ""}</a></li>`).join("")}</ul>
+  </nav>
+  <p class="side-note">Os outros itens estão aqui só para mostrar onde a Gestão entra. O lugar final no menu sai da revisão do menu lateral.</p>`;
+}
+function tabbar() { return VIEWS.map(([v, i, l]) => `<a href="#${v}" data-go="${v}"${st.view === v ? ' aria-current="page"' : ""}>${ic(i)}${l}</a>`).join(""); }
+
+/* ---------- Atendimentos ---------- */
+function slotCard(v, isNext) {
+  const done = Boolean(v.st), [lab, cls] = ST[v.st];
+  const pays = v.tipo === "Consulta" || v.tipo === "Bioimpedância";
+  const sug = v.tipo === "Consulta" ? (PRECO[v.local] / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "";
+  const controls = `<fieldset class="opts"><legend class="sr">Situação de ${esc(v.nome)}</legend>
+      ${[["attended", "check", "Compareceu"], ["missed", "x", "Faltou"], ["cancelled", "clock", "Cancelou"]].map(([k, i, l]) => `<label><input type="radio" name="st-${v.id}" value="${k}"${v.st === k ? " checked" : ""}><span>${ic(i, "ic-sm")}${l}</span></label>`).join("")}
+    </fieldset>
+    ${pays ? `<div class="pay" data-pay="${v.id}"${v.st === "attended" ? "" : " hidden"}>
+      <label class="field"><span>Valor recebido (R$)</span><input class="input num" id="val-${v.id}" inputmode="decimal" placeholder="0,00" value="${v.cents ? (v.cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : sug}"></label>
+      <label class="field"><span>Forma de pagamento</span><select class="input" id="forma-${v.id}"><option value="">Selecione</option>${["Pix", "Dinheiro", "Cartão de débito", "Cartão de crédito"].map((f) => `<option${v.forma === f ? " selected" : ""}>${f}</option>`).join("")}</select></label>
+    </div>` : ""}
+    <p class="muted" id="msg-${v.id}" role="status" style="font-size:var(--t-sm)"></p>
+    <div class="slot-actions"><button class="btn btn-primary btn-sm" type="button" data-save="${v.id}">${done ? "Salvar alteração" : "Registrar"}</button>
+      ${!done && !v.arrived ? `<button class="btn btn-secondary btn-sm" type="button" data-arrived="${v.id}">Chegou</button>` : ""}</div>`;
+  return `<li class="slot${isNext ? " next" : ""}">
+    <div class="slot-top"><span class="hr num">${v.h}</span><span class="muted num">até ${v.f}</span>
+      <span class="tags">${isNext ? `<span class="tag ok">Próximo · em 20 min</span>` : ""}${v.arrived && !done ? `<span class="tag info">Chegou às ${v.arrived}</span>` : ""}<span class="tag ${cls}">${lab}</span></span></div>
+    <div><h3>${esc(v.nome)}</h3>
+      <p class="meta"><span>${v.tipo}</span><span>${ic("pin", "ic-sm")} ${v.local}</span>${v.st === "attended" && v.cents ? `<span class="num">${brl2(v.cents)} · ${v.forma}</span>` : ""}${v.homonimo ? `<span class="tag warn">Dois contatos com este nome</span>` : ""}</p></div>
+    ${done ? `<details><summary class="muted" style="cursor:pointer;width:fit-content">Alterar registro</summary><div style="display:grid;gap:12px;margin-top:12px">${controls}</div></details>` : controls}
+  </li>`;
+}
+function viewAtend() {
+  const done = visits.filter((v) => v.st).length, earlier = visits.filter((v) => v.h < AGORA), later = visits.filter((v) => v.h >= AGORA);
+  const pend = earlier.filter((v) => !v.st).length, next = later.find((v) => !v.st);
+  const got = visits.reduce((s, v) => s + (v.st === "attended" ? v.cents || 0 : 0), 0);
+  return `<div class="page">
+    <header class="head"><div><h1>Atendimentos</h1><p>Quinta-feira, 12 de novembro · atualizado às ${AGORA}</p></div>
+      <div class="seg" role="group" aria-label="Dia"><button type="button" aria-pressed="false">Ontem</button><button type="button" aria-pressed="true">Hoje</button><button type="button" aria-pressed="false">Amanhã</button></div></header>
+    <section class="card progress" aria-label="Progresso do dia"><div style="display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between"><strong class="num">${done} de ${visits.length} registrados</strong><span class="muted num">Recebido hoje: ${brl2(got)}</span></div><div class="bar"><i style="width:${(done / visits.length) * 100}%"></i></div></section>
+    <details class="earlier"${pend ? " open" : ""}><summary>${ic("clock")}<span>${earlier.length} horários anteriores</span>${pend ? `<span class="tag warn">${pend} sem registro</span>` : `<span class="tag ok">registrados</span>`}</summary>
+      <ul class="slots">${earlier.map((v) => slotCard(v, false)).join("")}</ul></details>
+    <p class="nowline num">Agora · ${AGORA}</p>
+    <ul class="slots">${later.map((v) => slotCard(v, v === next)).join("")}</ul>
+    <p class="muted" style="font-size:var(--t-sm)">Cada registro muda a cor do evento na sua agenda do Google e, quando há valor, cria o lançamento no Financeiro.</p>
+  </div>`;
+}
+
+/* ---------- Financeiro ---------- */
+function viewFin() {
+  const tabs = [["lancamentos", "Lançamentos"], ["importar", "Importar planilha"], ["precos", "Preços e despesas"]];
+  let body = "";
+  if (st.fin === "lancamentos") {
+    const m = months[23], days = [...new Set(entries.map((e) => e.d))];
+    body = `<div class="kpis"><div class="kpi"><span class="l">Entradas em novembro</span><span class="v num">${brl(m.entradas)}</span></div><div class="kpi"><span class="l">Saídas</span><span class="v num">${brl(m.saidas)}</span></div><div class="kpi"><span class="l">Saldo</span><span class="v num">${brl(m.entradas - m.saidas)}</span></div></div>
+    <div class="filters"><label class="field"><span>Período</span><select class="input" id="f-per"><option>Este mês</option><option>Mês passado</option><option>Este ano</option></select></label><label class="field"><span>Tipo</span><select class="input" id="f-tipo"><option>Entradas e saídas</option><option>Só entradas</option><option>Só saídas</option></select></label><label class="field"><span>Origem</span><select class="input" id="f-or"><option>Todas</option><option>Atendimento</option><option>Planilha</option><option>Manual</option></select></label></div>
+    <section class="card" aria-label="Lançamentos"><div class="rows">${days.map((d) => `<p class="day-h num">${d}</p>` + entries.filter((e) => e.d === d).map((e) => `<div class="row"><span class="t">${esc(e.t)}</span><span class="a num${e.c < 0 ? " out" : ""}">${e.c < 0 ? "− " : ""}${brl2(Math.abs(e.c))}</span><span class="m"><span>${e.m}</span><span class="tag">${e.o}</span>${e.c > 0 ? (e.who ? `<a href="#financeiro">${esc(e.who)}</a>` : `<span class="muted">sem contato ligado</span>`) : ""}</span></div>`).join("")).join("")}</div></section>`;
+  } else if (st.fin === "importar") {
+    const steps = ["Escolher", "Conferir", "Gravar"];
+    const head = `<ol class="steps" aria-label="Etapas">${steps.map((s, i) => `<li${i === Math.min(st.imp, 2) ? ' aria-current="step"' : ""}><b>${i + 1}</b>${s}</li>`).join("")}</ol>`;
+    if (st.imp === 0) body = head + `<div class="drop">${ic("up", "ic-lg")}<strong>Arraste a planilha para cá</strong><p class="muted">.xlsx ou .csv, até 5 MB e 5.000 linhas. A leitura acontece no seu navegador.</p><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center"><button class="btn btn-primary" type="button" data-imp="1">Escolher arquivo</button><button class="btn btn-quiet" type="button" data-imp="1">Usar planilha de exemplo</button></div></div>
+      <section class="card"><h2>Colunas aceitas</h2><p class="sub">As do relatório financeiro do sistema de prontuário. Data, Nome, Tipo de movimentação e Valor são obrigatórias.</p><p style="display:flex;flex-wrap:wrap;gap:6px">${["Data", "Hora", "Nome", "CPF do paciente", "Tipo de movimentação", "Valor", "Emitiu recibo?", "Forma de pagamento", "Observação"].map((c) => `<span class="tag">${c}</span>`).join("")}</p></section>
+      <section class="card"><h2>Importações anteriores</h2><div class="kv"><span>02/01/2025 a 30/09/2026</span><span class="num muted">1.812 gravados</span><span class="muted num">03/10/2026</span></div><div class="kv"><span>01/10/2026 a 30/10/2026</span><span class="num muted">143 gravados · 2 já estavam aqui</span><span class="muted num">02/11/2026</span></div></section>`;
+    else if (st.imp === 1) body = head + `<div class="note ok">${ic("file")}<div><strong>financeiro-outubro.xlsx</strong> · lido no seu navegador. Nada foi gravado ainda.</div></div>
+      <section aria-label="Conferência"><div class="check">
+        <div><p class="l">Período</p><p class="v num">01/10 a 12/11/2026</p></div>
+        <div><p class="l">Entradas</p><p class="v num">171 · R$ 44.860,00</p></div>
+        <div><p class="l">Saídas</p><p class="v num">23 · R$ 6.412,90</p></div>
+        <div><p class="l">Já estavam gravadas</p><p class="v num">145</p><p class="l">não entram de novo</p></div>
+        <div><p class="l">Ligadas a um contato pelo CPF</p><p class="v num">158 de 171</p></div>
+        <div><p class="l">Linhas ignoradas</p><p class="v num">3</p><p class="l">2 por data inválida, 1 por valor inválido</p></div>
+      </div></section>
+      <div class="note">${ic("warn")}<div><strong>4 entradas parecem repetir pagamentos já registrados em Atendimentos</strong> (mesmo dia, mesmo valor, mesma pessoa). Elas ficam de fora, a não ser que você marque. <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="rep"> Gravar essas 4 também</label></div></div>
+      <section class="card"><h2>Amostra do que será gravado</h2><p class="sub">Sem nome e sem CPF: cada lançamento guarda só o vínculo com o contato.</p><div class="scroll"><table><thead><tr><th>Dia</th><th>Tipo</th><th>Forma</th><th>Atendimento</th><th>Local</th><th>Valor</th></tr></thead><tbody>
+        <tr><td class="num">02/11</td><td>Entrada</td><td>Pix</td><td>Consulta</td><td>Consultório</td><td class="num">R$ 280,00</td></tr>
+        <tr><td class="num">02/11</td><td>Entrada</td><td>Cartão de crédito</td><td>Bioimpedância</td><td>Consultório</td><td class="num">R$ 90,00</td></tr>
+        <tr><td class="num">03/11</td><td>Saída</td><td>Transferência</td><td>Contabilidade</td><td>—</td><td class="num">R$ 420,00</td></tr>
+        <tr><td class="num">03/11</td><td>Saída</td><td>Pix</td><td>Devolução a paciente</td><td>—</td><td class="num">R$ 140,00</td></tr>
+        <tr><td class="num">04/11</td><td>Entrada</td><td>Dinheiro</td><td>Consulta</td><td>Clínica parceira</td><td class="num">R$ 220,00</td></tr>
+      </tbody></table></div></section>
+      <div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn btn-primary" type="button" data-imp="2">Gravar 45 lançamentos</button><button class="btn btn-secondary" type="button" data-imp="0">Trocar de arquivo</button></div>`;
+    else body = head + `<div class="note ok">${ic("check")}<div><strong>45 lançamentos gravados.</strong> 145 já estavam aqui. A planilha não foi guardada: se não precisar mais dela, apague do seu computador.</div></div><div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn btn-primary" type="button" data-fin="lancamentos">Ver lançamentos</button><button class="btn btn-secondary" type="button" data-imp="0">Importar outra</button></div>`;
+  } else {
+    body = `<div class="grid g2"><section class="card"><h2>Preço da consulta por local</h2><p class="sub">Usado no faturamento estimado. Retorno não fatura.</p>
+      <div class="kv"><b>Consultório</b><span class="num">R$ 280,00</span><span class="muted num">desde 01/01/2026</span></div>
+      <div class="kv"><span class="muted">Consultório</span><span class="num muted">R$ 250,00</span><span class="muted num">desde 01/01/2025</span></div>
+      <div class="kv"><b>Clínica parceira</b><span class="num">R$ 220,00</span><span class="muted num">desde 01/03/2026</span></div>
+      <div class="kv"><b>Domiciliar</b><span class="tag warn">sem preço</span><span class="muted num">2 consultas em out</span></div>
+      <p style="margin-top:12px"><button class="btn btn-secondary btn-sm" type="button">${ic("plus", "ic-sm")}Novo preço</button></p></section>
+    <section class="card"><h2>Despesas</h2><p class="sub">Fixas por mês, percentuais sobre o faturamento e pontuais.</p>
+      <div class="kv"><b>Aluguel</b><span class="num">R$ 1.800,00 por mês</span><span class="muted num">desde 01/01/2026</span></div>
+      <div class="kv"><b>Impostos</b><span class="num">6% do faturamento</span><span class="muted num">desde 01/01/2025</span></div>
+      <div class="kv"><b>Sistema de prontuário</b><span class="num">R$ 189,00 por mês</span><span class="muted num">desde 01/06/2025</span></div>
+      <div class="kv"><b>Balança nova</b><span class="num">R$ 2.400,00 uma vez</span><span class="muted num">10/09/2026</span></div>
+      <p style="margin-top:12px"><button class="btn btn-secondary btn-sm" type="button">${ic("plus", "ic-sm")}Nova despesa</button></p></section></div>
+    <div class="note">${ic("warn")}<div>Mudar um valor pede a data em que a mudança começou. Os meses já fechados não mudam sozinhos.</div></div>`;
+  }
+  return `<div class="page"><header class="head"><div><h1>Financeiro</h1><p>Entradas e saídas do consultório</p></div>${st.fin === "lancamentos" ? `<button class="btn btn-secondary" type="button" data-fin="importar">${ic("up")}Importar planilha</button><button class="btn btn-primary" type="button">${ic("plus")}Novo lançamento</button>` : ""}</header>
+    <div class="seg" role="group" aria-label="Partes do financeiro">${tabs.map(([k, l]) => `<button type="button" data-fin="${k}" aria-pressed="${st.fin === k}">${l}</button>`).join("")}</div>${body}</div>`;
+}
+
+/* ---------- Resultados ---------- */
+const PRESETS = { esteMes: ["Este mês", 1, 0], mesPassado: ["Mês passado", 1, 1], ultimos3: ["Últimos 3 meses", 3, 0], ultimos6: ["Últimos 6 meses", 6, 0], ultimos12: ["Últimos 12 meses", 12, 0], esteAno: ["Este ano", 11, 0] };
+function slice() {
+  const [, n, back] = PRESETS[st.preset], end = 24 - back, cur = months.slice(end - n, end);
+  const shift = st.cmp === "ano" ? 12 : n;
+  const cmp = st.cmp === "nada" || end - n - shift < 0 ? null : months.slice(end - n - shift, end - shift);
+  return { cur, cmp };
+}
+function agg(list) {
+  if (!list) return null;
+  const s = (k) => list.reduce((t, x) => t + x[k], 0);
+  const cons = s("consultas"), ret = s("retornos"), fal = s("faltas"), ent = s("entradas"), sai = s("saidas"), est = s("estimado");
+  const desp = list.reduce((t, x) => t + 1989 + x.estimado * 0.06, 0), av = s("aval");
+  return { ent, sai, saldo: ent - sai, est, res: est - desp, atend: cons + ret, faltas: fal / (cons + ret + fal), novos: s("novos"), ticket: est / cons, aval: av, nota: list.reduce((t, x) => t + x.nota * x.aval, 0) / av };
+}
+const KPIS = [["ent", "Recebido", brl, 1], ["sai", "Saídas", brl, -1], ["saldo", "Saldo do caixa", brl, 1], ["est", "Faturamento estimado", brl, 1], ["res", "Resultado estimado", brl, 1], ["atend", "Atendimentos", num, 1], ["faltas", "Taxa de faltas", pct, -1], ["novos", "Pacientes novos", num, 1], ["ticket", "Ticket médio", brl, 1], ["aval", "Avaliações novas", num, 1], ["nota", "Nota média", (v) => v.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + " ★", 1]];
+
+function chart(labels, series, fmt, stacked, W = 640) {
+  const H = 230, ml = 56, mr = 8, mt = 8, mb = 24, w = W - ml - mr, h = H - mt - mb, n = labels.length;
+  const bars = series.filter((s) => s.type === "bar"), lines = series.filter((s) => s.type === "line");
+  let max = 0;
+  for (let i = 0; i < n; i++) { max = Math.max(max, stacked ? bars.reduce((t, s) => t + s.v[i], 0) : Math.max(0, ...bars.map((s) => s.v[i])), ...lines.map((s) => s.v[i] || 0)); }
+  const raw = max / 4 || 1, mag = Math.pow(10, Math.floor(Math.log10(raw))), step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((k) => k >= raw), top = Math.ceil(max / step) * step || 1;
+  const y = (v) => mt + h - (v / top) * h, px = w / n, x = (i) => ml + px * (i + 0.5);
+  let g = "";
+  for (let v = 0; v <= top + 1e-9; v += step) g += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${ml - 8}" y="${y(v) + 4}" text-anchor="end">${fmt(v).replace("R$ ", "")}</text>`;
+  const every = Math.ceil(n / 8);
+  labels.forEach((l, i) => { if (i % every === 0) g += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${l}</text>`; });
+  const bw = Math.min(28, (px - 8) / (stacked ? 1 : Math.max(1, bars.length)));
+  for (let i = 0; i < n; i++) {
+    let base = 0;
+    bars.forEach((s, k) => {
+      const v = s.v[i]; if (!v) return;
+      const hh = (v / top) * h, bx = stacked ? x(i) - bw / 2 : x(i) - (bars.length * bw + (bars.length - 1) * 2) / 2 + k * (bw + 2);
+      const by = stacked ? y(base + v) : y(v), lastTop = !stacked || k === bars.length - 1 || bars.slice(k + 1).every((o) => !o.v[i]);
+      const r = lastTop ? Math.min(4, bw / 2, hh) : 0, hd = Math.max(1, hh - (stacked && k > 0 ? 2 : 0));
+      g += `<path d="M${bx},${by + hd}V${by + r}q0,-${r} ${r},-${r}h${bw - 2 * r}q${r},0 ${r},${r}V${by + hd}z" fill="${s.c}"/>`;
+      base += v;
+    });
+  }
+  lines.forEach((s) => {
+    const pts = s.v.map((v, i) => (v == null ? null : x(i) + "," + y(v))).filter(Boolean);
+    g += `<polyline points="${pts.join(" ")}" fill="none" stroke="${s.c}" stroke-width="2"${s.dash ? ' stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`;
+    if (!s.dash && n <= 14) s.v.forEach((v, i) => { g += `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${s.c}" stroke="var(--surface)" stroke-width="2"/>`; });
+  });
+  for (let i = 0; i < n; i++) g += `<rect x="${ml + px * i}" y="${mt}" width="${px}" height="${h}" fill="transparent" data-tip="${esc(JSON.stringify([labels[i], series.map((s) => [s.c, s.name, fmt(s.v[i])])]))}"/>`;
+  const legend = series.length > 1 ? `<div class="legend">${series.map((s) => `<span><i class="${s.type === "line" ? "ln" : ""}" style="background:${s.c}"></i>${s.name}</span>`).join("")}</div>` : "";
+  const table = `<details class="tbl"><summary>Ver tabela</summary><div class="scroll"><table><thead><tr><th>Período</th>${series.map((s) => `<th>${s.name}</th>`).join("")}</tr></thead><tbody>${labels.map((l, i) => `<tr><td>${l}</td>${series.map((s) => `<td class="num">${fmt(s.v[i])}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`;
+  return `<div class="chart">${legend}<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map((s) => s.name).join(", "))}">${g}</svg>${table}</div>`;
+}
+function hbars(items, total, out) {
+  const max = Math.max(...items.map((x) => x[1]));
+  return `<div class="hb">${items.map(([l, p]) => `<div class="hb-row${out ? " out" : ""}"><span>${l}</span><span class="num">${brl(p * total)}</span><span class="track"><span class="hb-bar" style="display:block;width:${(p / max) * 100}%"></span></span></div>`).join("")}</div>`;
+}
+const REPORTS = [["mensal", "2026-10", "Outubro 2026", "Mensal", true], ["trimestral", "2026-T3", "3T26", "Trimestral", false], ["mensal", "2026-09", "Setembro 2026", "Mensal", false], ["mensal", "2026-08", "Agosto 2026", "Mensal", false], ["trimestral", "2026-T2", "2T26", "Trimestral", false], ["anual", "2025", "2025", "Anual", false]];
+function viewReport() {
+  const m = months[22], y = months[10], d = (a, b) => { const r = (a - b) / b; return `<span class="num ${r >= 0 ? "" : ""}">${r >= 0 ? "▲" : "▼"} ${pct(Math.abs(r))}</span>`; };
+  const fix = 1989, varr = Math.round(m.estimado * 0.06), res = m.estimado - fix - varr, tick = m.estimado / m.consultas;
+  return `<div class="page"><header class="head"><div><p><a href="#resultados" data-res="relatorios">Relatórios</a> · Mensal</p><h1>Outubro 2026</h1><p>Comparado com outubro de 2025 · fechado em 01/11/2026 às 07:04</p></div><button class="btn btn-secondary" type="button">Gerar de novo</button></header>
+  <div class="report grid">
+    <section class="card"><h2>Destaques</h2><ul class="hl">
+      <li>Outubro fechou com <b class="num">${m.consultas} consultas</b>, ${m.consultas - y.consultas} a mais que em outubro de 2025.</li>
+      <li>O faturamento estimado foi de <b class="num">${brl(m.estimado)}</b>; o caixa registrou <b class="num">${brl(m.entradas)}</b> de entradas.</li>
+      <li>A taxa de faltas ficou em <b class="num">${pct(m.faltas / (m.consultas + m.retornos + m.faltas))}</b>.</li>
+      <li><b class="num">${m.novos} pacientes novos</b> e ${m.aval} avaliações novas no Google, com nota média ${m.nota.toFixed(2).replace(".", ",")}.</li></ul></section>
+    <section class="card"><h2>Demonstrativo</h2><div class="scroll"><table class="stmt"><thead><tr><th>Item</th><th>Out/26</th><th>Out/25</th><th>Variação</th></tr></thead><tbody>
+      <tr><td>Faturamento estimado</td><td class="num">${brl(m.estimado)}</td><td class="num">${brl(y.estimado)}</td><td>${d(m.estimado, y.estimado)}</td></tr>
+      <tr><td>Despesas fixas</td><td class="num">${brl(fix)}</td><td class="num">${brl(1689)}</td><td>${d(fix, 1689)}</td></tr>
+      <tr><td>Despesas variáveis (6%)</td><td class="num">${brl(varr)}</td><td class="num">${brl(y.estimado * 0.06)}</td><td>${d(varr, y.estimado * 0.06)}</td></tr>
+      <tr class="total"><td>Resultado estimado</td><td class="num">${brl(res)}</td><td class="num">${brl(y.estimado * 0.94 - 1689)}</td><td>${d(res, y.estimado * 0.94 - 1689)}</td></tr>
+      <tr><td>Margem</td><td class="num">${pct(res / m.estimado)}</td><td class="num">${pct((y.estimado * 0.94 - 1689) / y.estimado)}</td><td></td></tr>
+      <tr><td>Ponto de equilíbrio</td><td class="num">${Math.ceil(fix / (tick * 0.94))} consultas</td><td class="num">8 consultas</td><td></td></tr>
+    </tbody></table></div></section>
+    <section class="card"><h2>Atendimentos e pacientes</h2><div class="scroll"><table><thead><tr><th>Indicador</th><th>Out/26</th><th>Out/25</th></tr></thead><tbody>
+      <tr><td>Consultas</td><td class="num">${m.consultas}</td><td class="num">${y.consultas}</td></tr><tr><td>Retornos</td><td class="num">${m.retornos}</td><td class="num">${y.retornos}</td></tr>
+      <tr><td>Faltas</td><td class="num">${m.faltas}</td><td class="num">${y.faltas}</td></tr><tr><td>Ticket médio</td><td class="num">${brl(tick)}</td><td class="num">R$ 250</td></tr>
+      <tr><td>Pacientes novos</td><td class="num">${m.novos}</td><td class="num">${y.novos}</td></tr><tr><td>Consultas de reativados (mais de 12 meses sem vir)</td><td class="num">5</td><td class="num">3</td></tr>
+      <tr><td>Dias até o retorno (mediana)</td><td class="num">31</td><td class="num">34</td></tr></tbody></table></div></section>
+    <section class="card"><h2>De onde veio a variação do faturamento</h2><p class="sub">Outubro de 2025 para outubro de 2026.</p>
+      <div class="kv"><span>Volume (mais consultas)</span><b class="num">+ ${brl((m.consultas - y.consultas) * 250)}</b><span></span></div><div class="kv"><span>Preço e mistura de locais</span><b class="num">+ ${brl(m.estimado - y.estimado - (m.consultas - y.consultas) * 250)}</b><span></span></div></section>
+    <section class="card"><h2>Qualidade dos dados</h2><ul class="hl"><li>2 consultas em local sem preço (Domiciliar) ficaram fora do faturamento.</li><li>1 evento fora do padrão: "Retorno previsto para…".</li><li>Todos os horários de outubro têm registro.</li></ul></section>
+  </div></div>`;
+}
+function viewRes() {
+  if (st.report) return viewReport();
+  const tabs = `<div class="seg" role="group" aria-label="Partes dos resultados"><button type="button" data-res="painel" aria-pressed="${st.res === "painel"}">Painel</button><button type="button" data-res="relatorios" aria-pressed="${st.res === "relatorios"}">Relatórios <span class="num">· 1 novo</span></button></div>`;
+  if (st.res === "relatorios") return `<div class="page"><header class="head"><div><h1>Resultados</h1><p>Fechamentos do mês, do trimestre e do ano</p></div></header>${tabs}
+    <section class="card"><h2>Relatórios</h2><p class="sub">Saem sozinhos no dia 1º: mensal todo mês, trimestral em abril, julho e outubro, anual em janeiro.</p>
+    <div class="rows">${REPORTS.map(([k, p, l, t, novo]) => `<div class="row"><span class="t"><a href="#resultados" data-report="${p}">${l}</a></span><span class="a">${novo ? '<span class="tag ok">novo</span>' : ""}</span><span class="m"><span class="tag">${t}</span><span>${k === "anual" ? "comparado com 2024" : "comparado com o mesmo período do ano anterior"}</span></span></div>`).join("")}</div></section></div>`;
+  const { cur, cmp } = slice(), A = agg(cur), B = agg(cmp), labels = cur.map((x) => MESES[x.m] + "/" + String(x.a).slice(2));
+  const kp = KPIS.map(([k, l, f, dir]) => {
+    let d = cmp ? "sem comparação" : "";
+    if (B) { const dif = A[k] - B[k], rel = Math.abs(dif / B[k]), good = dif * dir >= 0; d = `<b class="${good ? "up" : "down"}">${dif >= 0 ? "▲" : "▼"} ${pct(rel)}</b> ${good ? "melhor" : "pior"} · antes ${f(B[k])}`; }
+    return `<div class="kpi"><span class="l">${l}</span><span class="v num">${f(A[k])}</span><span class="d num">${d}</span></div>`;
+  }).join("");
+  const sR = [{ name: "Recebido", c: "var(--s-in)", type: "bar", v: cur.map((x) => x.entradas) }, { name: "Faturamento estimado", c: "var(--s-est)", type: "line", v: cur.map((x) => x.estimado) }];
+  if (cmp) sR.push({ name: "Recebido (comparação)", c: "var(--s-cmp)", type: "line", dash: true, v: cmp.map((x) => x.entradas) });
+  const cap = cur[cur.length - 1].key === "2026-11" ? '<p class="sub">Novembro vai até o dia 12.</p>' : "";
+  return `<div class="page"><header class="head"><div><h1>Resultados</h1><p class="num">${MESES_L[cur[0].m]} de ${cur[0].a} a ${MESES_L[cur[cur.length - 1].m].toLowerCase()} de ${cur[cur.length - 1].a}${cmp ? " · comparando com " + MESES[cmp[0].m] + "/" + String(cmp[0].a).slice(2) + " a " + MESES[cmp[cmp.length - 1].m] + "/" + String(cmp[cmp.length - 1].a).slice(2) : ""}</p></div></header>${tabs}
+    <div class="filters"><label class="field"><span>Período</span><select class="input" id="preset">${Object.entries(PRESETS).map(([k, v]) => `<option value="${k}"${st.preset === k ? " selected" : ""}>${v[0]}</option>`).join("")}</select></label>
+      <label class="field"><span>Comparar com</span><select class="input" id="cmp"><option value="ano"${st.cmp === "ano" ? " selected" : ""}>Mesmo período do ano anterior</option><option value="anterior"${st.cmp === "anterior" ? " selected" : ""}>Período anterior</option><option value="nada"${st.cmp === "nada" ? " selected" : ""}>Nada</option></select></label>
+      <label class="field"><span>Agrupar por</span><select class="input" id="grao"><option>Automático (mês)</option><option>Dia</option><option>Semana</option><option>Mês</option></select></label></div>
+    <section class="kpis" aria-label="Indicadores">${kp}</section>
+    <section class="card"><h2>Receita</h2>${cap || '<p class="sub">O que entrou no caixa e o que a agenda deveria ter rendido.</p>'}${chart(labels, sR, brl)}</section>
+    <div class="grid g2">
+      <section class="card"><h2>Entradas e saídas</h2><p class="sub">Caixa registrado.</p>${chart(labels, [{ name: "Entradas", c: "var(--s-in)", type: "bar", v: cur.map((x) => x.entradas) }, { name: "Saídas", c: "var(--s-out)", type: "bar", v: cur.map((x) => x.saidas) }], brl, false, 440)}</section>
+      <section class="card"><h2>Agenda por situação</h2><p class="sub">Registros da tela Atendimentos.</p>${chart(labels, [{ name: "Compareceram", c: "var(--s-came)", type: "bar", v: cur.map((x) => x.consultas + x.retornos) }, { name: "Sem registro", c: "var(--s-open)", type: "bar", v: cur.map((x) => x.abertos) }, { name: "Faltaram", c: "var(--s-miss)", type: "bar", v: cur.map((x) => x.faltas) }, { name: "Cancelados ou remarcados", c: "var(--s-off)", type: "bar", v: cur.map((x) => x.cancelados) }], num, true, 440)}</section>
+    </div>
+    <div class="grid g3">
+      <section class="card"><h2>Por forma de pagamento</h2><p class="sub">Entradas do período.</p>${hbars(FORMAS, A.ent)}</section>
+      <section class="card"><h2>Por tipo de atendimento</h2><p class="sub">Entradas do período.</p>${hbars(TIPOS, A.ent)}</section>
+      <section class="card"><h2>Maiores saídas</h2><p class="sub">Descrição das saídas.</p>${hbars(SAIDAS, A.sai, true)}</section>
+    </div>
+    <div class="grid g2">
+      <section class="card"><h2>Atendimentos por dia da semana</h2><p class="sub">Consultas e retornos realizados.</p>${chart(DIAS_SEM.map((x) => x[0]), [{ name: "Atendimentos", c: "var(--s-in)", type: "bar", v: DIAS_SEM.map((x) => Math.round(x[1] * A.atend)) }], num, false, 440)}</section>
+      <section class="card"><h2>Qualidade dos dados</h2><p class="sub">O que pode estar distorcendo os números.</p><ul class="hl"><li><b>Domiciliar</b> está sem preço: 2 consultas fora do faturamento. <a href="#financeiro" data-fin="precos" data-go="financeiro">Cadastrar preço</a></li><li>3 eventos fora do padrão "Consulta | Local".</li><li>${visits.filter((v) => !v.st && v.h < AGORA).length} horário de hoje sem registro. <a href="#atendimentos" data-go="atendimentos">Registrar</a></li><li>Histórico da agenda lido até jan/2024.</li></ul></section>
+    </div>
+    <section class="card"><h2>Resumo mês a mês</h2><div class="scroll"><table><thead><tr><th>Mês</th><th>Atendimentos</th><th>Faltas</th><th>Fat. estimado</th><th>Recebido</th><th>Saídas</th><th>Saldo</th><th>Pacientes novos</th></tr></thead><tbody>${cur.slice().reverse().map((x) => `<tr><td>${MESES[x.m]}/${String(x.a).slice(2)}</td><td class="num">${x.consultas + x.retornos}</td><td class="num">${x.faltas}</td><td class="num">${brl(x.estimado)}</td><td class="num">${brl(x.entradas)}</td><td class="num">${brl(x.saidas)}</td><td class="num">${brl(x.entradas - x.saidas)}</td><td class="num">${x.novos}</td></tr>`).join("")}</tbody></table></div></section>
+  </div>`;
+}
+
+/* ---------- desenho e eventos ---------- */
+function render() {
+  $("#side").innerHTML = side();
+  $("#tabbar").innerHTML = tabbar();
+  $("#main").innerHTML = st.view === "financeiro" ? viewFin() : st.view === "resultados" ? viewRes() : viewAtend();
+}
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-go],[data-fin],[data-res],[data-imp],[data-save],[data-arrived],[data-report]");
+  if (!t) return;
+  const d = t.dataset;
+  if (t.tagName === "A") ev.preventDefault();
+  if (d.fin) { st.fin = d.fin; if (d.fin !== "importar") st.imp = 0; }
+  if (d.res) { st.res = d.res; st.report = null; }
+  if (d.imp) st.imp = Number(d.imp);
+  if (d.report) st.report = d.report;
+  if (d.arrived) visits.find((v) => v.id === d.arrived).arrived = AGORA;
+  if (d.save) {
+    const v = visits.find((x) => x.id === d.save), pick = $(`input[name="st-${v.id}"]:checked`), msg = $("#msg-" + v.id);
+    if (!pick) { msg.textContent = "Escolha compareceu, faltou ou cancelou."; return; }
+    const val = $("#val-" + v.id), forma = $("#forma-" + v.id);
+    let cents = 0;
+    if (pick.value === "attended" && val && val.value.trim()) {
+      cents = Math.round(Number(val.value.replace(/\./g, "").replace(",", ".")) * 100);
+      if (!(cents > 0) || cents > 10000000) { msg.textContent = "Valor inválido. Use até R$ 100.000,00, por exemplo 280,00."; return; }
+      if (!forma.value) { msg.textContent = "Informe a forma de pagamento do valor recebido."; return; }
+    }
+    v.st = pick.value; v.cents = cents; v.forma = cents ? forma.value : "";
+  }
+  if (d.go) { go(d.go); return; }
+  render();
+});
+document.addEventListener("change", (ev) => {
+  const t = ev.target;
+  if (t.id === "tema") { if (t.value) document.documentElement.dataset.theme = t.value; else delete document.documentElement.dataset.theme; }
+  if (t.id === "preset") { st.preset = t.value; render(); }
+  if (t.id === "cmp") { st.cmp = t.value; render(); }
+  if (t.name?.startsWith("st-")) { const pay = $(`[data-pay="${t.name.slice(3)}"]`); if (pay) pay.hidden = t.value !== "attended"; }
+});
+const tip = $("#tip");
+document.addEventListener("mousemove", (ev) => {
+  const r = ev.target.closest?.("[data-tip]");
+  if (!r) { tip.hidden = true; return; }
+  const [title, rows] = JSON.parse(r.dataset.tip);
+  tip.innerHTML = `<b>${esc(title)}</b>` + rows.map(([c, n, v]) => `<div><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${c}"></i>${esc(n)}</span><span class="num">${esc(v)}</span></div>`).join("");
+  tip.hidden = false;
+  tip.style.left = Math.min(ev.clientX + 14, window.innerWidth - tip.offsetWidth - 8) + "px";
+  tip.style.top = Math.min(ev.clientY + 14, window.innerHeight - tip.offsetHeight - 8) + "px";
+});
+window.addEventListener("hashchange", () => { fromHash(); render(); });
+fromHash();
+render();
+</script>
+</body>
+</html>
