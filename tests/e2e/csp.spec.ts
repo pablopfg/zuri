@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "./fixtures.ts";
-import { settingsHasTabs, signIn } from "./ui-helpers.ts";
+import { signIn } from "./ui-helpers.ts";
 
 // The CSP is strict (no inline script, no eval). A violation means code that
 // tries something the policy forbids: it either breaks a feature or, at best,
@@ -43,15 +43,17 @@ test("no page breaks the Content Security Policy @mobile", async ({ page }) => {
     ["/contatos/clientes", "Contatos"],
     ["/agenda", "Agenda"],
     ["/acessos", "Acessos"],
-    ["/configuracoes/conta", settingsHasTabs(page) ? "Configurações" : "Conta"],
-    ["/configuracoes/integracoes", settingsHasTabs(page) ? "Configurações" : "Integrações"],
-    ["/configuracoes/seguranca", settingsHasTabs(page) ? "Configurações" : "Segurança"],
-    ["/configuracoes/ia", settingsHasTabs(page) ? "Configurações" : "Uso da IA"],
-    ["/configuracoes/modelos", settingsHasTabs(page) ? "Configurações" : "Modelos e limites"],
-    ["/configuracoes/dados", settingsHasTabs(page) ? "Configurações" : "Dados"],
-    ["/configuracoes/agenda", settingsHasTabs(page) ? "Configurações" : "Agenda"],
-    ["/configuracoes/avisos", settingsHasTabs(page) ? "Configurações" : "Avisos"],
-    ["/configuracoes/diagnostico", settingsHasTabs(page) ? "Configurações" : "Diagnóstico"],
+    ["/configuracoes/conta", "Configurações"],
+    ["/configuracoes/integracoes", "Configurações"],
+    ["/configuracoes/seguranca", "Configurações"],
+    ["/configuracoes/ia", "Configurações"],
+    ["/configuracoes/modelos", "Configurações"],
+    ["/configuracoes/dados", "Configurações"],
+    ["/configuracoes/agenda", "Configurações"],
+    ["/configuracoes/avisos", "Configurações"],
+    ["/configuracoes/diagnostico", "Configurações"],
+    ["/configuracoes/assistente", "Configurações"],
+    ["/configuracoes/sobre", "Configurações"],
   ] as const;
   // Every page of the interface is here (stage 25): a new one can't skip the policy check.
   const pages = [...readFileSync(new URL("../../apps/web/src/App.tsx", import.meta.url), "utf8").matchAll(/path="([a-z-]+)/g)].map((m) => `/${m[1]}`);

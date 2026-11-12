@@ -53,7 +53,6 @@ export const ptBRCore = {
   "web.nav.signOut": "Sair",
   "web.nav.collapse": "Recolher menu",
   "web.nav.expand": "Expandir menu",
-  "web.nav.version": "Versão {version}",
   "web.nav.newChat": "Nova conversa",
   "web.nav.more": "Mais",
   "web.nav.groupOrganize": "Organizar",

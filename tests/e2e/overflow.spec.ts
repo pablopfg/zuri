@@ -38,6 +38,8 @@ const SCREENS = [
   "/configuracoes/integracoes",
   "/configuracoes/dados",
   "/configuracoes/diagnostico",
+  "/configuracoes/assistente",
+  "/configuracoes/sobre",
 ];
 
 test("no screen scrolls sideways, from a small phone to a wide or a short window", async ({ page }) => {

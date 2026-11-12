@@ -82,7 +82,7 @@ test("a reminder's run reaches the bell: open, read, delete and read all @mobile
   expect((await page.request.delete(`/api/automations/${id}`, { headers: CSRF })).status()).toBe(204);
 });
 
-test("Settings > Avisos: the daily summary and the watchers are saved; the channels say which are ready @mobile", async ({ page }) => {
+test("Settings > Avisos and Assistente: the daily summary and the watchers are saved; the channels say which are ready @mobile", async ({ page }) => {
   await signedIn(page, "/configuracoes");
   await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
   await openSettingsSection(page, "Avisos");
@@ -98,19 +98,29 @@ test("Settings > Avisos: the daily summary and the watchers are saved; the chann
   await expectAccessible(page, "configurações de avisos");
   expect(await tooSmallControls(page), "every control of Settings > Avisos is a 44 px target").toEqual([]);
 
+  // Connecting the bot lives in Integrações (PR S16): Avisos says so and leads there.
+  await expect(page.getByText("Conectar o Telegram fica em Integrações.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Horário do resumo")).toHaveValue("06:45");
+  await page.getByRole("link", { name: "Abrir Integrações" }).click();
+  await expect(page).toHaveURL(/\/configuracoes\/integracoes$/);
+
+  // What the Zuri watches on her own moved to Assistente (PR S16).
+  await openSettingsSection(page, "Assistente");
   const watchers = page.getByRole("switch", { name: "Deixar a Zuri avisar por conta própria" });
   await watchers.click();
   await expect(watchers).not.toBeChecked();
   await page.reload();
-  await expect(page.getByLabel("Horário do resumo")).toHaveValue("06:45");
   await expect(page.getByRole("switch", { name: "Deixar a Zuri avisar por conta própria" })).not.toBeChecked();
+  await expectAccessible(page, "assistente");
+  expect(await tooSmallControls(page), "every control of Settings > Assistente is a 44 px target").toEqual([]);
 
   // Back to the defaults: the database is shared by the runs and the projects.
   const reset = await page.request.patch("/api/settings", { headers: CSRF, data: { digestTime: "07:30", watchersEnabled: true } });
   expect(reset.status()).toBe(200);
 });
 
-test("Settings > Avisos: the priorities Zuri learned are listed with a way back, and the learning can be turned off @mobile", async ({ page }) => {
+test("Settings > Assistente: the priorities Zuri learned are listed with a way back, and the learning can be turned off @mobile", async ({ page }) => {
   // What was learned takes weeks of notices: the list comes from a stubbed overview, the undo goes through the stub too.
   const key = "automation:11111111-2222-4333-8444-555555555555";
   const undone: string[] = [];
@@ -126,14 +136,14 @@ test("Settings > Avisos: the priorities Zuri learned are listed with a way back,
   });
   await signedIn(page, "/configuracoes");
   await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
-  await openSettingsSection(page, "Avisos");
+  await openSettingsSection(page, "Assistente");
   const card = page.getByRole("region", { name: "Prioridades que a Zuri aprendeu" });
   const item = card.getByRole("list", { name: "Avisos com prioridade ajustada" }).getByRole("listitem");
   await expect(item).toHaveCount(1);
   await expect(item.getByText("Resumo das notícias")).toBeVisible();
   await expect(item.getByText(/^Desceu um nível · /)).toBeVisible();
   await expectAccessible(page, "prioridades aprendidas");
-  expect(await tooSmallControls(page), "every control of Settings > Avisos is a 44 px target").toEqual([]);
+  expect(await tooSmallControls(page), "every control of Settings > Assistente is a 44 px target").toEqual([]);
   await item.getByRole("button", { name: "Desfazer o ajuste de Resumo das notícias" }).click();
   await expect(toast(page, "Pronto, voltou à prioridade de antes. A Zuri não mexe nela por uma semana.")).toBeVisible();
   expect(undone).toEqual([`/api/alerts/learning/${encodeURIComponent(key)}`]);
@@ -165,8 +175,23 @@ test("Settings > Diagnóstico shows a screen's failure by name only, and marks i
   await expect(entry.getByText(/^Tela/)).toBeVisible();
   // Only the screen: the record's id in the path never reaches the log.
   await expect(entry.getByText("/notas/id", { exact: true })).toBeVisible();
-  // Reporting opens GitHub's filled-in form in a new tab; nothing is sent from here.
-  const report = entry.getByRole("link", { name: "Relatar no GitHub (abre em outra aba)" });
+  // The version line leads to Sobre a Zuri.
+  await expect(page.getByRole("region", { name: "Diagnóstico", exact: true }).getByRole("link", { name: "Sobre a Zuri", exact: true })).toHaveAttribute("href", "/configuracoes/sobre");
+  // Reporting first shows each field as it will reach GitHub (PR S16); then opens the filled-in form in a new tab.
+  await entry.getByRole("button", { name: "Relatar no GitHub" }).click();
+  const preview = page.getByRole("dialog", { name: "Relatar no GitHub" });
+  await expect(preview.getByRole("term")).toHaveText(["Título", "Contexto", "Passos para reproduzir", "Esperado", "Obtido", "Código do erro"]);
+  await expect(preview.getByRole("definition").first()).toHaveText(`[erro] CLIENT_ERROR ${name} (tela)`);
+  await expect(preview.getByText("2. Usar a parte de tela (rota /notas/id).", { exact: false })).toBeVisible();
+  await expect(preview.getByText(/escolha também onde aconteceu e o impacto/)).toBeVisible();
+  await expect(preview).not.toContainText("0b8f8a52");
+  await expectAccessible(page, "prévia do relato");
+  // Cancelar closes it, and the focus goes back to the button.
+  await preview.getByRole("button", { name: "Cancelar" }).click();
+  await expect(preview).toBeHidden();
+  await expect(entry.getByRole("button", { name: "Relatar no GitHub" })).toBeFocused();
+  await entry.getByRole("button", { name: "Relatar no GitHub" }).click();
+  const report = preview.getByRole("link", { name: "Abrir no GitHub (abre em outra aba)" });
   await expect(report).toHaveAttribute("target", "_blank");
   await expect(report).toHaveAttribute("rel", "noopener noreferrer");
   const href = new URL((await report.getAttribute("href")) ?? "");
@@ -174,14 +199,17 @@ test("Settings > Diagnóstico shows a screen's failure by name only, and marks i
   expect(href.searchParams.get("template")).toBe("erro.yml");
   expect(href.searchParams.get("title")).toBe(`[erro] CLIENT_ERROR ${name} (tela)`);
   expect(href.searchParams.get("contexto")).toContain("Rota: /notas/id");
+  expect(href.searchParams.get("passos")).toContain("rota /notas/id");
   expect(href.toString()).not.toContain("0b8f8a52");
-  await expect(page.getByText(/^Relatar no GitHub abre o formulário público de erro/)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(preview).toBeHidden();
+  await expect(page.getByText(/^Relatar mostra antes o que vai no formulário público de erro/)).toBeVisible();
   await expectAccessible(page, "diagnóstico");
   expect(await tooSmallControls(page), "every control of Settings > Diagnóstico is a 44 px target").toEqual([]);
   await entry.getByRole("button", { name: "Marcar como resolvida" }).click();
   await expect(toast(page, "Falha marcada como resolvida")).toBeVisible();
   await expect(entry.getByText(/^Resolvida em /)).toBeVisible();
-  await expect(entry.getByRole("link", { name: /Relatar no GitHub/ })).toHaveCount(0);
+  await expect(entry.getByRole("button", { name: "Relatar no GitHub" })).toHaveCount(0);
 });
 
 /**

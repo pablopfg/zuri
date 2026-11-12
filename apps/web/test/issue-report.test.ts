@@ -1,6 +1,6 @@
 import { APP_VERSION, type DiagnosticEntry } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { ISSUE_REPOSITORY, issueReportUrl } from "../src/lib/issue-report.ts";
+import { ISSUE_FIELDS, ISSUE_REPOSITORY, issueReportFields, issueReportUrl } from "../src/lib/issue-report.ts";
 
 const entry = (extra: Partial<DiagnosticEntry> = {}): DiagnosticEntry => ({
   id: "0123456789abcdef",
@@ -28,12 +28,12 @@ describe("issueReportUrl", () => {
     expect(url.searchParams.get("template")).toBe("erro.yml");
   });
 
-  it("fills only text fields of the form, by their ids", async () => {
+  it("fills only text fields of the form, by their ids, steps and expected included (PR S16)", async () => {
     const p = params(entry());
-    expect([...p.keys()].sort()).toEqual(["codigo", "contexto", "obtido", "template", "title"]);
+    expect([...p.keys()].sort()).toEqual(["codigo", "contexto", "esperado", "obtido", "passos", "template", "title"]);
     const { readFileSync } = await import("node:fs");
     const form = readFileSync(new URL("../../../.github/ISSUE_TEMPLATE/erro.yml", import.meta.url), "utf8");
-    for (const id of ["contexto", "obtido", "codigo"]) expect(form).toMatch(new RegExp(`- type: (textarea|input)\\n\\s+id: ${id}\\n`));
+    for (const id of ["contexto", "passos", "esperado", "obtido", "codigo"]) expect(form).toMatch(new RegExp(`- type: (textarea|input)\\n\\s+id: ${id}\\n`));
   });
 
   it("writes the record's fields, dates to the minute in UTC", () => {
@@ -91,5 +91,28 @@ describe("issueReportUrl", () => {
   it("stays far below the length GitHub accepts in a link", () => {
     const long = entry({ route: `/${"a".repeat(119)}`, code: "SERVICE_UNAVAILABLE", errorName: "A".repeat(40) });
     expect(issueReportUrl(long).length).toBeLessThan(2000);
+  });
+});
+
+describe("issueReportFields (PR S16)", () => {
+  it("fills steps and expected from the record alone, in the form's order", () => {
+    const fields = issueReportFields(entry());
+    expect(Object.keys(fields)).toEqual([...ISSUE_FIELDS]);
+    expect(fields.passos).toBe(
+      [`1. Usar a Zuri na versão ${APP_VERSION}.`, "2. Usar a parte de tela (rota /notas/id).", "3. A falha aparece em Configurações › Diagnóstico."].join("\n"),
+    );
+    expect(fields.esperado).toBe("A ação termina sem erro e nada aparece no Diagnóstico.");
+    expect(issueReportFields(entry({ route: null })).passos).toContain("2. Usar a parte de tela.");
+  });
+
+  it("leaves the two lists of the form (where and impact) for the owner, as GitHub can't fill them", () => {
+    expect(params(entry()).has("onde")).toBe(false);
+    expect(params(entry()).has("impacto")).toBe(false);
+  });
+
+  it("puts in the link exactly what the preview shows", () => {
+    const fields = issueReportFields(entry());
+    const p = params(entry());
+    for (const id of ISSUE_FIELDS) expect(p.get(id), id).toBe(fields[id]);
   });
 });

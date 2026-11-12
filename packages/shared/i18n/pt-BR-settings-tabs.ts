@@ -4,6 +4,7 @@
 export const ptBRSettingsTabs = {
   "web.settings.tab.account": "Conta",
   "web.settings.tab.security": "Segurança",
+  "web.settings.tab.assistant": "Assistente",
   "web.settings.tab.ai": "Uso da IA",
   "web.settings.tab.models": "Modelos e limites",
   "web.settings.tab.agenda": "Agenda",
@@ -11,4 +12,5 @@ export const ptBRSettingsTabs = {
   "web.settings.tab.integrations": "Integrações",
   "web.settings.tab.data": "Dados",
   "web.settings.tab.diagnostics": "Diagnóstico",
+  "web.settings.tab.about": "Sobre a Zuri",
 } as const;

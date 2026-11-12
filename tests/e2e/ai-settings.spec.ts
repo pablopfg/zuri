@@ -252,11 +252,22 @@ test("a paid model: the warning on what leaves comes before the save, and the sp
   const panel = page.getByRole("region", { name: "Consumo por período" });
   await expect(panel.getByRole("figure", { name: "Gasto por dia com modelos pagos" }).getByText("Claude Haiku 5.5")).toBeVisible();
   await expect(panel.getByRole("table").last().getByRole("rowheader").filter({ hasText: "Claude Haiku 5.5" })).toBeVisible();
-  await panel.getByRole("button", { name: "30 dias" }).click();
-  await expect(panel.getByRole("button", { name: "30 dias" })).toHaveAttribute("aria-pressed", "true");
+  await panel.getByRole("button", { name: "Mês" }).click();
+  await expect(panel.getByRole("button", { name: "Mês" })).toHaveAttribute("aria-pressed", "true");
   // The numbers behind the bars, a row per day with use.
   await panel.getByText("Ver os números de cada dia").click();
   await expect(panel.getByRole("table").first().getByRole("row")).not.toHaveCount(1);
+  // Dia: today by the hour, in the owner's time zone (São Paulo: the counters' day starts at 21:00).
+  await panel.getByRole("button", { name: "Dia" }).click();
+  await expect(panel.getByRole("figure", { name: "Neurons por hora" })).toBeVisible();
+  await expect(panel.getByText("No seu fuso, a contagem do dia recomeça às 21:00.")).toBeVisible();
+  await panel.getByText("Ver os números de cada hora").click();
+  await expect(panel.getByRole("table").first().getByRole("row")).not.toHaveCount(1);
+  // Ano: by the month, with the models of the last 90 days, said so.
+  await panel.getByRole("button", { name: "Ano" }).click();
+  await expect(panel.getByRole("figure", { name: "Neurons por mês" })).toBeVisible();
+  await expect(panel.getByRole("heading", { name: "Modelos mais usados nos últimos 90 dias" })).toBeVisible();
+  await expect(panel.getByRole("table").last().getByRole("rowheader").filter({ hasText: "Claude Haiku 5.5" })).toBeVisible();
   await expectAccessible(page, "ia-consumo-pago");
   expect(await tooSmallControls(page), "every control of the AI tab is a 44 px target").toEqual([]);
 

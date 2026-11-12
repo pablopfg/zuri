@@ -4,6 +4,9 @@ import {
   Activity,
   Bell,
   Bot,
+  Gauge,
+  BadgeInfo,
+  Sparkle,
   Brain,
   CalendarDays,
   CalendarPlus,
@@ -18,9 +21,7 @@ import {
   Plug,
   Plus,
   Search,
-  Shield,
   ShieldCheck,
-  SlidersHorizontal,
   User,
 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -110,15 +111,18 @@ export function CommandPalette({
     return [
       ...places.map(({ id, to, label, icon }) => ({ id, group: go, label: t(label), icon, to })),
       { id: "access", group: go, label: t("web.nav.accessLog"), icon: ShieldCheck, to: "/acessos" },
+      // The sections in the settings menu's order and with its icons (PR S16).
       section("conta", "web.settings.tab.account", User),
-      section("seguranca", "web.settings.tab.security", Shield),
-      section("ia", "web.settings.tab.ai", Bot),
-      section("modelos", "web.settings.tab.models", SlidersHorizontal),
+      section("seguranca", "web.settings.tab.security", ShieldCheck),
+      section("assistente", "web.settings.tab.assistant", Bot),
+      section("ia", "web.settings.tab.ai", Gauge),
+      section("modelos", "web.settings.tab.models", Sparkle),
       section("agenda", "web.settings.tab.agenda", CalendarDays),
       section("avisos", "web.settings.tab.notifications", Bell),
       section("integracoes", "web.settings.tab.integrations", Plug),
       section("dados", "web.settings.tab.data", Database),
       section("diagnostico", "web.settings.tab.diagnostics", Activity),
+      section("sobre", "web.settings.tab.about", BadgeInfo),
       { id: "new-chat", group: t("web.palette.groupCreate"), label: t("web.palette.newChat"), icon: Plus, to: "/conversa" },
       { id: "new-task", group: t("web.palette.groupCreate"), label: t("web.palette.newTask"), icon: ListPlus, to: "/tarefas", state: { newTask: true } },
       {

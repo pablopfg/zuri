@@ -33,7 +33,7 @@ export function ActivityCard() {
         <ul className="divide-y divide-border rounded-xl border border-border">
           {activity.data.events.slice(0, PREVIEW).map((event) => {
             const device = deviceText(event, (browser, system) => t("web.activity.device", { browser, system }));
-            const details = [placeText(event, locale), event.ip, device].filter(Boolean).join(" · ");
+            const details = [device, placeText(event, locale)].filter(Boolean).join(" · ");
             return (
               <li key={event.id} className="flex flex-col gap-1 p-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
@@ -48,6 +48,8 @@ export function ActivityCard() {
                       {details}
                     </p>
                   )}
+                  {/* The address on its own line (PR S16), as the access log's column shows it. */}
+                  {event.ip && <p className="break-all font-mono text-xs text-fg-muted">{t("web.activity.ip", { ip: event.ip })}</p>}
                 </div>
                 <time dateTime={event.at} className="shrink-0 text-sm text-fg-muted">
                   {dateTime(event.at)}

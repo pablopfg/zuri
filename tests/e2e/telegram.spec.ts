@@ -12,7 +12,8 @@ test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 const toast = (page: Page, text: string | RegExp) => page.getByRole("status").filter({ hasText: text });
 
 async function openCard(page: Page) {
-  await openSettingsSection(page, "Avisos");
+  // In Integrações since PR S16 (it was in Avisos).
+  await openSettingsSection(page, "Integrações");
   const card = page.getByRole("region", { name: "Telegram", exact: true });
   await expect(card).toBeVisible();
   return card;
@@ -30,7 +31,7 @@ async function start(page: Page, code: string, from = 424242) {
   expect(res.status()).toBe(200);
 }
 
-test("Settings > Avisos: the owner connects Telegram with a code, confirms the account, sends a test and unlinks", async ({ page }) => {
+test("Settings > Integrações: the owner connects Telegram with a code, confirms the account, sends a test and unlinks", async ({ page }) => {
   await page.goto("/configuracoes");
   await signIn(page);
   await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
@@ -158,7 +159,7 @@ function status(fields: Record<string, unknown>) {
 }
 
 // Stage 25: every state of the card has its text and passes the axe ("Telas e estados" of the spec).
-test("Settings > Avisos: the Telegram card says when the bot isn't set up, when the link is suspended and when updates don't arrive", async ({ page }) => {
+test("Settings > Integrações: the Telegram card says when the bot isn't set up, when the link is suspended and when updates don't arrive", async ({ page }) => {
   let current: Record<string, unknown> = status({});
   await page.route("**/api/telegram", (route) => (route.request().method() === "GET" ? route.fulfill({ json: current }) : route.continue()));
   await page.goto("/configuracoes");
@@ -170,7 +171,7 @@ test("Settings > Avisos: the Telegram card says when the bot isn't set up, when 
     ["sem webhook", { webhookMissing: true }, "O bot não está recebendo mensagens neste endereço. Toque em Reconectar."],
   ] as const) {
     current = status(fields);
-    await page.goto("/configuracoes/avisos");
+    await page.goto("/configuracoes/integracoes");
     const card = page.getByRole("region", { name: "Telegram", exact: true });
     await expect(card.getByText(text, { exact: false }), name).toBeVisible();
     await expectAccessible(page, `telegram ${name}`);

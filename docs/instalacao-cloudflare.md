@@ -277,7 +277,7 @@ e-mail. É gratuito para até 50 pessoas.
 4. Grave como **Secret** no Worker: `TELEGRAM_BOT_TOKEN` e
    `TELEGRAM_ADMIN_ID`. Rode o deploy.
 5. Com o Access ligado, crie a exceção `api/telegram/webhook` (seção acima).
-6. Na Zuri, em **Configurações > Avisos**, toque em **Conectar** no cartão do
+6. Na Zuri, em **Configurações > Integrações**, toque em **Conectar** no cartão do
    Telegram, abra o link no celular e confirme a conta no app. O próprio
    Worker registra o webhook; nada a fazer no GitHub.
 
