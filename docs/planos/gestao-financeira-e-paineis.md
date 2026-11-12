@@ -26,11 +26,11 @@ Hoje o financeiro e os painéis do consultório vivem em quatro fluxos do n8n, c
 - **Agenda do Google**, lida na hora: `apps/agent/src/google/service.ts`, `events.ts` e as rotas `GET/POST/PATCH/DELETE /api/google/events` em `apps/agent/src/api/google.ts`. O título do evento é o nome completo e a observação traz o tipo e o local ("Consulta | Consultório", "Retorno | Consultório").
 - **Leitura do tipo e do local de um evento**, já testada com todas as bordas: `readType`, `kindOf` e `plainLines` em `apps/agent/src/google/appointments.ts` (ficha do contato, PR #295). O classificador da Gestão reaproveita essas funções em vez de copiar a expressão regular do n8n.
 - **Contatos do Google** com CPF e data de nascimento no JSON `data` (`apps/agent/src/google/contacts-store.ts`, `contact-name.ts` com `splitName` e `cpfsIn`). Homônimos são pessoas diferentes (decisão de 11/11): nome sozinho nunca liga ninguém.
-- **Números das avaliações por período** (S11, migration 35 `review_metrics`), que entram no painel de Resultados sem conta nova.
+- **Números das avaliações por período** (S11, migration 35 `review_metrics`), que continuam na tela de Avaliações (Resultados ficou só com o financeiro, decisão de 12/11).
 - **Banco**: migrations só de acréscimo em `apps/agent/src/db/migrations.ts`; a última na `develop` é a 36 (`session_binding`). A próxima livre é a **37**, a conferir de novo no dia da implementação.
 - **Limite de corpo** por rota em `apps/agent/src/gates/body.ts` (`API_BODY_MAX_BYTES`): a importação respeita esse teto mandando as linhas em lotes, sem rota de envio grande nova.
 - **Backup** em `apps/agent/src/backup/export.ts` (lista explícita de tabelas; a de contatos fica fora).
-- **Central de avisos** e bot do Telegram para o aviso de relatório pronto; **canal de tempo real** `/api/live` para a tela de Atendimentos se atualizar.
+- **Central de avisos** e bot do Telegram para o aviso de relatório pronto; **canal de tempo real** `/api/live` para Atendimentos e Resultados se atualizarem na hora.
 - **Interface**: telas sob demanda, textos em `packages/shared/i18n/pt-BR-<tela>.ts`, `PageHeader` e `sections`. O JS inicial está no teto (140,9 kB): nada da Gestão entra no primeiro carregamento.
 
 ### Decisões que valem aqui
@@ -50,17 +50,18 @@ Hoje o financeiro e os painéis do consultório vivem em quatro fluxos do n8n, c
 | CA3 | Valores viram centavos inteiros sem erro: `150`, `150,5`, `R$ 1.234,56`, `1.234` (milhar), `-150` (saída) e número do Excel | GES - 29 |
 | CA4 | Datas em `dd/mm/aaaa`, `aaaa-mm-dd` e número de série do Excel viram o dia certo; data inválida, anterior a 2000 ou futura ignora a linha e conta em "ignoradas" | GES - 29 |
 | CA5 | Nome e CPF da planilha nunca são gravados nos lançamentos, não aparecem em log e não saem do navegador em texto puro além do pedido de gravação; o lançamento guarda só o vínculo com o contato (quando o CPF acha um único contato) e uma chave sem volta | Pablo / GES - 29 |
-| CA6 | A tela Atendimentos lista os horários de hoje com tipo e local, destaca o próximo e deixa registrar compareceu, faltou ou cancelado; valor e forma de pagamento só com "compareceu" | Pablo / GES - 28 |
+| CA6 | A tela Atendimentos lista os horários de hoje, uma linha por horário, em três grupos (para registrar, a seguir, registrados), destaca o próximo e deixa registrar compareceu, faltou ou cancelou com um toque e com "Desfazer"; valor e forma de pagamento só com "compareceu"; só um horário fica aberto por vez | Pablo (11/11 e 12/11) / GES - 28 |
 | CA7 | Registrar um valor cria um lançamento de entrada ligado ao evento; alterar o registro corrige o mesmo lançamento, sem criar outro | plano (novo) |
 | CA8 | Dois registros do mesmo horário ao mesmo tempo (duas abas) não se atropelam: o segundo recebe "atualizado em outra aba" e a lista nova | GES - 28 |
 | CA9 | Depois do registro, a cor do evento no Google Agenda segue a situação; falha na troca de cor não desfaz o registro e fica avisada | GES - 28 |
 | CA10 | Preços por local e despesas (fixa, percentual, pontual) têm data de vigência; mudar um valor pede a data em que a mudança começou e nunca altera um mês já fechado | GES - 30 |
-| CA11 | Resultados mostra os indicadores, a comparação e os gráficos da seção 5 para os nove períodos, agrupados por dia, semana ou mês, e cada gráfico tem a tabela equivalente | Pablo / GES - 31 |
+| CA11 | Resultados mostra **só o financeiro**: quatro indicadores (recebido, saídas, saldo, faturamento estimado), a comparação e os gráficos da seção 5, cada gráfico com a tabela equivalente. Os números da agenda ficam em Atendimentos › Indicadores e os das avaliações continuam em Avaliações | Pablo (12/11) / GES - 31 |
 | CA12 | No dia 1º (com nova tentativa nos dias 2 e 3) o relatório mensal do mês anterior fica pronto; em abril, julho e outubro também o trimestral; em janeiro o anual. Cada um é gerado uma vez e gera um aviso | Pablo / GES - 30 |
 | CA13 | O faturamento estimado conta só consultas realizadas, pelo preço do local vigente na data; retorno não fatura; local sem preço fica fora da conta e aparece em "Qualidade dos dados" | GES - 30 |
 | CA14 | Paciente novo, reativado e recorrente saem certos mesmo com homônimos: a contagem usa o contato ligado e, sem ele, a chave do nome; nunca junta duas pessoas por nome quando há contato ligado diferente | Pablo (11/11) / plano |
 | CA15 | Todas as telas funcionam vazias, carregando e com erro, por teclado e leitor de tela, no celular, em tema claro e escuro, em pt-BR e en | padrão do projeto |
 | CA16 | Nenhuma tela ou rota da Gestão soma ao JS inicial; uma importação de 5.000 linhas fica abaixo de 20% da cota diária de escritas | regras P1, P4 e P11 |
+| CA17 | Com Resultados ou Atendimentos aberto, um lançamento ou registro novo (de outra aba, do celular ou de uma importação) aparece nos indicadores e nos gráficos em até 2 segundos, sem recarregar a página e sem consulta periódica; a tela mostra a hora do último lançamento | Pablo (12/11) |
 
 ## 4. Escopo
 
@@ -109,26 +110,32 @@ Estados: vazio (explica as colunas e oferece um modelo .csv com dados inventados
 
 ### Fluxo 3 · Atendimentos do dia
 
-1. A tela abre em hoje, com a faixa de progresso ("6 de 9 registrados") e os cartões por horário: hora, nome, tipo, local e situação. O próximo sem registro vem destacado ("Próximo · em 20 min"). Os horários que já passaram ficam recolhidos em "4 horários anteriores · 1 sem registro".
-2. Em cada cartão: **Compareceu**, **Faltou**, **Cancelou**. Com "Compareceu" em consulta ou bioimpedância aparecem **Valor recebido** e **Forma de pagamento** (o valor vem sugerido pelo preço do local). **Registrar** grava.
-3. **Chegou** marca a hora da chegada sem registrar mais nada.
-4. Registrado, o cartão encolhe e mostra a situação; "Alterar registro" reabre. A cor do evento no Google Agenda acompanha.
-5. Setas ou o seletor de data levam a outro dia (para registrar ontem, por exemplo). Dia futuro só mostra a agenda.
-6. Com tudo registrado e o último horário iniciado: "Dia registrado", com o total recebido no dia e o resumo por forma de pagamento.
+Redesenhado em 12/11/2026 a pedido do Pablo: menos informação por tela e um registro por vez.
+
+1. A tela tem duas abas: **Hoje** e **Indicadores**. Hoje abre no dia atual, com **Ontem · Hoje · Amanhã** no topo (e o seletor de data para outro dia).
+2. A lista tem uma linha por horário (hora, nome, tipo e local) em três grupos, nesta ordem: **Para registrar** (o horário já passou e falta o registro), **A seguir** (o próximo vem destacado, com "em 20 min") e **Registrados** (com a situação e, se houve, o valor e a forma).
+3. Só uma linha fica aberta por vez. Aberta, ela mostra **Compareceu**, **Faltou** e **Cancelou**. Faltou e Cancelou gravam no toque. Compareceu em consulta ou bioimpedância mostra o **valor** (sugerido pelo preço do local) e as formas de pagamento; tocar na forma grava. "Sem pagamento agora" grava só a presença.
+4. Todo registro mostra um aviso com **Desfazer** por alguns segundos, e a linha vai para Registrados. Tocar numa linha registrada reabre para corrigir. A cor do evento no Google Agenda acompanha.
+5. **Chegou** marca a hora da chegada nos horários que ainda vão acontecer, sem registrar mais nada.
+6. Ao lado (no celular, em cima) ficam dois quadros pequenos: **Registrados** ("3 de 8", com a barra por situação) e **Recebido hoje** (total e por forma de pagamento). Dia futuro só mostra a agenda.
+7. **Indicadores** reúne o que é da agenda e saiu de Resultados: atendimentos (consultas e retornos), taxa de faltas, pacientes novos, dias até o retorno, agenda por situação mês a mês e atendimentos por dia da semana.
 
 Estados: sem agenda conectada (leva a Configurações › Integrações), dia sem horários, carregando, Google fora do ar (mostra o último retrato com a hora e avisa), registro que mudou em outra aba.
 
 ### Fluxo 4 · Resultados (painel)
 
-1. No topo, uma linha de filtros: **Período** (este mês, mês passado, últimos 30 dias, 3, 6 e 12 meses, este ano, ano passado, personalizado), **Comparar com** (período anterior, mesmo período do ano anterior, nada) e **Agrupar por** (automático, dia, semana, mês). Os filtros ficam no endereço da página.
-2. Indicadores, cada um com o valor, a variação e se isso é melhor ou pior: recebido (entradas), saídas, saldo, faturamento estimado, resultado estimado, atendimentos, taxa de faltas, pacientes novos, ticket médio, avaliações novas e nota média.
-3. Gráficos, cada um com "Ver tabela": **Receita** (recebido por período, com a linha do faturamento estimado quando agrupado por mês e a comparação tracejada), **Entradas e saídas**, **Agenda por situação** (compareceram, sem registro, faltaram, cancelados ou remarcados), **Entradas por forma de pagamento**, **Entradas por tipo de atendimento**, **Maiores saídas**, **Atendimentos por dia da semana** e **Resumo mês a mês** (tabela).
-4. Quadro **Qualidade dos dados**: locais sem preço, eventos fora do padrão ("Retorno previsto para…"), eventos sem local, horários sem registro, meses sem despesas cadastradas (resultado em branco, nunca 100% de margem).
+Redesenhado em 12/11/2026 a pedido do Pablo: só o financeiro, poucos números grandes e atualização ao vivo.
+
+1. No topo, uma linha só: **Período** (este mês, 3, 6 e 12 meses), **Comparar com o ano anterior** e o indicador **Ao vivo · último lançamento às 14:32**. Os filtros ficam no endereço da página.
+2. Quatro indicadores, cada um com o valor e a variação: **Recebido**, **Saídas**, **Saldo** e **Faturamento estimado**.
+3. Um gráfico principal com a troca **Receita | Entradas e saídas** (por dia em "este mês", por mês nos outros períodos; com a comparação e a linha do faturamento estimado quando fizer sentido) e dois quadros menores: **Por forma de pagamento** e **Maiores saídas**. Cada gráfico tem "Ver tabela". O **resumo mês a mês** fica recolhido no fim.
+4. **Ao vivo:** quando um pagamento é registrado em Atendimentos, um lançamento é criado ou uma importação termina, os indicadores e as barras se ajustam na hora, com uma animação curta (desligada para quem pede menos movimento). Nada pisca nem recarrega.
+5. O que não é financeiro mora no seu setor: agenda e pacientes em **Atendimentos › Indicadores**; avaliações em **Avaliações**. O aviso de **qualidade dos dados** (local sem preço, mês sem despesas, horários sem registro) aparece só quando existe problema, como uma linha com link para onde se corrige.
 
 ### Fluxo 5 · Relatórios
 
 1. Aba **Relatórios** em Resultados: lista dos fechamentos (Outubro 2026, 3T26, 2025…), do mais novo para o mais antigo, com "novo" no que ainda não foi aberto.
-2. Cada relatório abre numa página de leitura com: destaques em frases ("Outubro fechou com 62 consultas, 9 a mais que outubro de 2025"), demonstrativo (faturamento, despesas, resultado, margem, ponto de equilíbrio), atendimentos e pacientes, ponte do faturamento (volume × preço), locais, caixa registrado ao lado do estimado, avaliações do Google, melhor e pior mês (no anual), projeção do período seguinte pela agenda já marcada, e qualidade dos dados.
+2. Cada relatório abre numa página de leitura com: destaques em três frases e o demonstrativo (faturamento estimado, despesas fixas e variáveis, resultado, caixa registrado). O detalhe fica recolhido em "Ver mais": ponto de equilíbrio, ticket médio, ponte do faturamento (volume × preço), locais, melhor e pior mês (no anual) e projeção do período seguinte. O relatório também é só financeiro; ele cita a quantidade de consultas apenas para explicar o faturamento.
 3. No dia 1º, perto das 07:00, o aviso chega na central e no bot: "O relatório de outubro está pronto." O texto do aviso não leva valores.
 4. **Gerar de novo** refaz um relatório depois de corrigir um preço ou um registro; o anterior fica guardado com a data.
 
@@ -196,6 +203,8 @@ Três fronteiras, cada uma com uma porta pequena:
 3. **Atendimentos** (`apps/agent/src/finance/visits.ts`): o espelho da agenda sem nomes e o registro do dia. É quem responde "o que aconteceu neste horário" para o painel e os relatórios.
 
 As contas (`apps/agent/src/finance/metrics.ts`) leem as duas últimas e não escrevem em nenhuma.
+
+**Tempo real.** As telas usam o canal que já existe (`/api/live`, `apps/agent/src/live/channel.ts`): ele manda só o número da versão de cada área. Entram duas áreas novas em `packages/shared/src/areas.ts`, `finance` e `visits`. O livro-caixa sobe `finance` a cada escrita (uma vez por lote na importação, não por linha) e o registro do dia sobe `visits` e `finance`. A tela aberta vê o número mudar e busca de novo só os agregados do período (TanStack Query), e as barras animam do valor antigo para o novo. Sem consulta periódica (P11), sem conexão nova e sem valor nenhum trafegando no canal. Se o canal cair, a tela mostra "Reconectando" no lugar de "Ao vivo" e busca tudo ao voltar.
 
 Termos novos para `.claude/memoria/glossario.md`: **Lançamento**, **Livro-caixa**, **Atendimento (espelho)**, **Registro do dia**, **Faturamento estimado** (agenda × preço) e **Recebido** (caixa), **Fechamento**, **Chave do paciente**. ADR `docs/adr/` novo: "Lançamentos sem nome nem CPF; vínculo por contato".
 
@@ -382,6 +391,8 @@ Limites exatos com n−1, n e n+1: 5 MB, 5.000 linhas, 10.000 por dia, lote de 2
 | 12/11/2026 | 1. Nome e CPF da planilha: a Zuri **não guarda** nos lançamentos; liga ao contato do Google quando o CPF bate com um só e, sem isso, o lançamento fica "sem contato". Recomendo assim (igual ao que o fluxo fazia). A outra saída é guardar o nome cifrado para aparecer mesmo sem contato. | aguardando |
 | 12/11/2026 | 2. Atendimentos: só você registra presença e pagamento, dentro da Zuri. Recomendo assim. Abrir a tela para a recepção pede outro tipo de acesso e um estudo de segurança à parte. | aguardando |
 | 12/11/2026 | 3. Relatórios ficam dentro da Zuri, com aviso na central e no Telegram (sem valores no aviso). Recomendo assim; o e-mail pode vir depois. | aguardando |
+
+| 12/11/2026 | Retorno do Pablo sobre o protótipo: muita informação na tela e encaixe desproporcional; Resultados só com o financeiro; painel de presença mais organizado; gráficos atualizados em tempo real. | Atendido na segunda versão do protótipo: seções 3 (CA6, CA11, CA17), 5 (fluxos 3, 4 e 5) e 7 (Tempo real). Aguardando a aprovação dele. |
 
 ### Perguntas abertas
 
