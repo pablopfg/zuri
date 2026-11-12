@@ -17,12 +17,12 @@ export function TabBar({ moreOpen, onMore }: { moreOpen: boolean; onMore: () => 
   const inMore = [...MORE_ITEMS.map((item) => item.to), "/configuracoes"].some((to) => isInside(pathname, to));
   return (
     <nav aria-label={t("web.nav.main")} className="zuri-tab-bar">
-      {TAB_ITEMS.map(({ id, to, label, icon: Icon }) => (
-        <NavLink key={id} to={to} end={to === "/"} className="zuri-tab">
+      {TAB_ITEMS.map(({ to, label, icon: Icon }) => (
+        <NavLink key={to} to={to} end={to === "/"} className="zuri-tab">
           <Icon aria-hidden />
           <span>{t(label)}</span>
           {/* Read with the name, like the menu of a computer: "Tarefas 3". The dot is its picture. */}
-          {id === "tasks" && !!today && (
+          {to === "/tarefas" && !!today && (
             <>
               <span className="sr-only"> {today}</span>
               <span aria-hidden />

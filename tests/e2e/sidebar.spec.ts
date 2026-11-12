@@ -4,18 +4,19 @@ import { expectAccessible, openAccountMenu, signIn, tooSmallControls } from "./u
 
 // The shell of the Sinal interface (docs/planos/implementacao-frontend-sinal.md, S02).
 // On a computer: the side menu with the mark, the bell and the toggle on top,
-// "Nova conversa", the search, the places in three groups and the account at
+// "Nova conversa", the search, the places in areas and the account at
 // the foot; it collapses to a rail of icons (remembered on this device, every
 // control keeps its name and shows it on hover and keyboard focus). On a phone:
 // a top bar that leaves while the content scrolls down, a bottom bar with four
 // places and "Mais". The account and the notices open as a panel, a sheet on a
-// phone. Only the content scrolls. The titles "Organizar" and "Relacionamento"
-// are buttons that close and open their group, remembered on this device; a
-// closed group still shows the place in view, and the rail shows every place.
+// phone. Only the content scrolls. The areas' titles ("Meu dia",
+// "Relacionamento", "Assistente") are buttons that close and open their group,
+// remembered on this device; a closed group still shows the place in view, and
+// the rail shows every place. "Mais" lists its places under the same areas.
 
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
-const PLACES = ["Início", "Conversa", "Tarefas", "Agenda", "Notas", "Memória", "Rotinas", "Contatos", "Avaliações", "CRM"];
+const PLACES = ["Início", "Conversa", "Tarefas", "Agenda", "Notas", "Contatos", "Avaliações", "CRM", "Memória", "Rotinas"];
 /** A place as its link reads: Tarefas may carry today's count. */
 const asLink = (place: string) => (place === "Tarefas" ? /^Tarefas( \d+)?$/ : place);
 
@@ -27,7 +28,7 @@ async function openHome(page: Page) {
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
 }
 
-test("the side menu holds Nova conversa, the search, the ten places in three groups and the account", async ({ page }) => {
+test("the side menu holds Nova conversa, the search, the ten places in four areas and the account", async ({ page }) => {
   await openHome(page);
   const aside = sidebar(page);
   await expect(aside.getByRole("link", { name: "Nova conversa" })).toHaveAttribute("href", "/conversa");
@@ -35,10 +36,13 @@ test("the side menu holds Nova conversa, the search, the ten places in three gro
   await expect(aside.getByRole("button", { name: /^Abrir avisos/ })).toBeVisible();
   const nav = aside.getByRole("navigation", { name: "Navegação principal" });
   await expect(nav.getByRole("link")).toHaveText(PLACES.map(asLink));
-  // Three groups: the first has no title, the others are lists named by theirs.
-  await expect(nav.getByRole("list")).toHaveCount(3);
-  await expect(nav.getByRole("list", { name: "Organizar" }).getByRole("link")).toHaveText([asLink("Tarefas"), "Agenda", "Notas", "Memória", "Rotinas"]);
+  // Four areas: the first has no title, the others are lists named by theirs.
+  // Consultório only comes with its first screen.
+  await expect(nav.getByRole("list")).toHaveCount(4);
+  await expect(nav.getByRole("list", { name: "Meu dia" }).getByRole("link")).toHaveText([asLink("Tarefas"), "Agenda", "Notas"]);
   await expect(nav.getByRole("list", { name: "Relacionamento" }).getByRole("link")).toHaveText(["Contatos", "Avaliações", "CRM"]);
+  await expect(nav.getByRole("list", { name: "Assistente" }).getByRole("link")).toHaveText(["Memória", "Rotinas"]);
+  await expect(nav.getByText("Consultório")).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Início" })).toHaveAttribute("aria-current", "page");
   // Settings and sign-out live in the account panel, never loose in the menu.
   await expect(aside.getByRole("link", { name: "Configurações" })).toHaveCount(0);
@@ -242,8 +246,9 @@ test("on the rail the keyboard reaches every control, each icon shows its name o
   await expect(aside.locator('.zuri-tip > [aria-hidden="true"]')).toHaveCount(0);
 });
 
-const ORGANIZE = ["Tarefas", "Agenda", "Notas", "Memória", "Rotinas"];
+const MY_DAY = ["Tarefas", "Agenda", "Notas"];
 const RELATIONS = ["Contatos", "Avaliações", "CRM"];
+const ASSISTANT = ["Memória", "Rotinas"];
 const group = (page: Page, name: string) => sidebar(page).getByRole("button", { name, exact: true });
 const place = (page: Page, name: string) => sidebar(page).getByRole("navigation", { name: "Navegação principal" }).getByRole("link", { name: asLink(name), exact: true });
 /** The height a place takes in the menu: its list item (by tag: a folded one has no role left), which a closed group folds to nothing. */
@@ -257,20 +262,20 @@ test("a group's title closes and opens the group, by pointer and by keyboard, an
   await openHome(page);
   const nav = sidebar(page).getByRole("navigation", { name: "Navegação principal" });
   // Only the groups with a title can close: Início and Conversa are always there.
-  await expect(nav.getByRole("button")).toHaveText(["Organizar", "Relacionamento"]);
-  await expect(group(page, "Organizar")).toHaveAttribute("aria-expanded", "true");
+  await expect(nav.getByRole("button")).toHaveText(["Meu dia", "Relacionamento", "Assistente"]);
+  await expect(group(page, "Meu dia")).toHaveAttribute("aria-expanded", "true");
   await expect(group(page, "Relacionamento")).toHaveAttribute("aria-expanded", "true");
   const before = (await group(page, "Relacionamento").boundingBox())?.y ?? 0;
 
-  await group(page, "Organizar").click();
-  await expect(group(page, "Organizar")).toHaveAttribute("aria-expanded", "false");
-  for (const name of ORGANIZE) await expect(place(page, name)).toBeHidden();
-  for (const name of ["Início", "Conversa", ...RELATIONS]) await expect(place(page, name)).toBeVisible();
+  await group(page, "Meu dia").click();
+  await expect(group(page, "Meu dia")).toHaveAttribute("aria-expanded", "false");
+  for (const name of MY_DAY) await expect(place(page, name)).toBeHidden();
+  for (const name of ["Início", "Conversa", ...RELATIONS, ...ASSISTANT]) await expect(place(page, name)).toBeVisible();
   // The places fold to nothing: the next group moves up to the title.
   await expect.poll(() => rowHeight(page, "/tarefas")).toBe(0);
-  await expect.poll(async () => (await group(page, "Relacionamento").boundingBox())?.y).toBeLessThan(before - 200);
+  await expect.poll(async () => (await group(page, "Relacionamento").boundingBox())?.y).toBeLessThan(before - 100);
   // Folded places leave the keyboard's way too: Tab goes from one title to the next.
-  await group(page, "Organizar").focus();
+  await group(page, "Meu dia").focus();
   await page.keyboard.press("Tab");
   await expect(group(page, "Relacionamento")).toBeFocused();
   // The list keeps its name for screen readers, and the menu its target sizes.
@@ -280,15 +285,15 @@ test("a group's title closes and opens the group, by pointer and by keyboard, an
   // Remembered on this device, apart from the rail's choice.
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
-  await expect(group(page, "Organizar")).toHaveAttribute("aria-expanded", "false");
+  await expect(group(page, "Meu dia")).toHaveAttribute("aria-expanded", "false");
   await expect(place(page, "Tarefas")).toBeHidden();
   await expect(sidebar(page)).toHaveAttribute("data-collapsed", "false");
 
   // The keyboard opens it again, and closes the other one with the space bar.
-  await group(page, "Organizar").focus();
+  await group(page, "Meu dia").focus();
   await page.keyboard.press("Enter");
-  await expect(group(page, "Organizar")).toHaveAttribute("aria-expanded", "true");
-  for (const name of ORGANIZE) await expect(place(page, name)).toBeVisible();
+  await expect(group(page, "Meu dia")).toHaveAttribute("aria-expanded", "true");
+  for (const name of MY_DAY) await expect(place(page, name)).toBeVisible();
   await expect.poll(() => rowHeight(page, "/tarefas")).toBe(44);
   await page.keyboard.press("Tab");
   await expect(place(page, "Tarefas")).toBeFocused();
@@ -296,7 +301,7 @@ test("a group's title closes and opens the group, by pointer and by keyboard, an
   await page.keyboard.press("Space");
   await expect(group(page, "Relacionamento")).toHaveAttribute("aria-expanded", "false");
   for (const name of RELATIONS) await expect(place(page, name)).toBeHidden();
-  for (const name of ORGANIZE) await expect(place(page, name)).toBeVisible();
+  for (const name of [...MY_DAY, ...ASSISTANT]) await expect(place(page, name)).toBeVisible();
   await group(page, "Relacionamento").click();
   for (const name of PLACES) await expect(place(page, name)).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("zuri.sidebar.groups"))).toBe("");
@@ -306,10 +311,10 @@ test("a closed group still shows the place in view, and only it", async ({ page 
   await openHome(page);
   await place(page, "Agenda").click();
   await expect(page.getByRole("heading", { level: 1, name: "Agenda" })).toBeVisible();
-  await group(page, "Organizar").click();
+  await group(page, "Meu dia").click();
   await expect(place(page, "Agenda")).toBeVisible();
   await expect(place(page, "Agenda")).toHaveAttribute("aria-current", "page");
-  for (const name of ORGANIZE.filter((other) => other !== "Agenda")) await expect(place(page, name)).toBeHidden();
+  for (const name of MY_DAY.filter((other) => other !== "Agenda")) await expect(place(page, name)).toBeHidden();
   await expect.poll(() => rowHeight(page, "/agenda")).toBe(44);
   await expect.poll(() => rowHeight(page, "/notas")).toBe(0);
   await expect(place(page, "Agenda")).toBeInViewport({ ratio: 1 });
@@ -317,7 +322,7 @@ test("a closed group still shows the place in view, and only it", async ({ page 
   // Leaving the group folds it whole; the place now in view shows in its own closed group.
   await place(page, "Contatos").click();
   await expect(page.getByRole("heading", { level: 1, name: "Contatos" })).toBeVisible();
-  for (const name of ORGANIZE) await expect(place(page, name)).toBeHidden();
+  for (const name of MY_DAY) await expect(place(page, name)).toBeHidden();
   await group(page, "Relacionamento").click();
   await expect(place(page, "Contatos")).toBeVisible();
   await expect(place(page, "Avaliações")).toBeHidden();
@@ -334,11 +339,22 @@ test("a closed group still shows the place in view, and only it", async ({ page 
   await page.goto("/crm/credenciais");
   await expect(place(page, "CRM")).toBeVisible();
   await expect(place(page, "Notas")).toBeHidden();
+
+  // The last area folds the same way, and keeps the place in view after a reload.
+  await place(page, "Rotinas").click();
+  await expect(page).toHaveURL(/\/rotinas$/);
+  await group(page, "Assistente").click();
+  await expect(group(page, "Assistente")).toHaveAttribute("aria-expanded", "false");
+  await expect(place(page, "Memória")).toBeHidden();
+  await page.reload();
+  await expect(group(page, "Assistente")).toHaveAttribute("aria-expanded", "false");
+  await expect(place(page, "Rotinas")).toHaveAttribute("aria-current", "page");
+  await expect(place(page, "Memória")).toBeHidden();
 });
 
 test("the rail shows every place whatever group is closed, and the wide menu gets the choice back", async ({ page }) => {
   await openHome(page);
-  await group(page, "Organizar").click();
+  await group(page, "Meu dia").click();
   await group(page, "Relacionamento").click();
   await expect(place(page, "Tarefas")).toBeHidden();
   await sidebar(page).getByRole("button", { name: "Recolher menu" }).click();
@@ -346,14 +362,15 @@ test("the rail shows every place whatever group is closed, and the wide menu get
   for (const name of PLACES) await expect(place(page, name)).toBeVisible();
   await expect.poll(() => rowHeight(page, "/tarefas")).toBe(44);
   // No title to click on the rail, for the pointer or for a screen reader; the lists keep their names.
-  await expect(sidebar(page).getByRole("button", { name: "Organizar", exact: true })).toHaveCount(0);
-  await expect(sidebar(page).getByRole("list", { name: "Organizar" }).getByRole("link")).toHaveCount(5);
+  await expect(sidebar(page).getByRole("button", { name: "Meu dia", exact: true })).toHaveCount(0);
+  await expect(sidebar(page).getByRole("list", { name: "Meu dia" }).getByRole("link")).toHaveCount(3);
   expect(await tooSmallControls(page)).toEqual([]);
 
   await sidebar(page).getByRole("button", { name: "Expandir menu" }).click();
-  await expect(group(page, "Organizar")).toHaveAttribute("aria-expanded", "false");
+  await expect(group(page, "Meu dia")).toHaveAttribute("aria-expanded", "false");
   await expect(group(page, "Relacionamento")).toHaveAttribute("aria-expanded", "false");
-  for (const name of [...ORGANIZE, ...RELATIONS]) await expect(place(page, name)).toBeHidden();
+  for (const name of [...MY_DAY, ...RELATIONS]) await expect(place(page, name)).toBeHidden();
+  for (const name of ASSISTANT) await expect(place(page, name)).toBeVisible();
 });
 
 test("another tab follows a group closed here", async ({ page, context }) => {
@@ -364,20 +381,21 @@ test("another tab follows a group closed here", async ({ page, context }) => {
   await group(page, "Relacionamento").click();
   await expect(group(other, "Relacionamento")).toHaveAttribute("aria-expanded", "false");
   await expect(place(other, "Contatos")).toBeHidden();
-  await expect(group(other, "Organizar")).toHaveAttribute("aria-expanded", "true");
+  await expect(group(other, "Meu dia")).toHaveAttribute("aria-expanded", "true");
   await group(page, "Relacionamento").click();
   await expect(place(other, "Contatos")).toBeVisible();
 });
 
-test("anything else stored as the closed groups opens them all and runs nothing", async ({ page }) => {
+test("anything else stored as the closed groups opens them all and runs nothing, the groups of the old menu too", async ({ page }) => {
   await page.goto("/entrar");
-  await page.evaluate(() => localStorage.setItem("zuri.sidebar.groups", '"><img src=x onerror="window.pwned=1">,web.nav.group'));
+  // "web.nav.groupOrganize" is a group the menu had before the areas.
+  await page.evaluate(() => localStorage.setItem("zuri.sidebar.groups", '"><img src=x onerror="window.pwned=1">,web.nav.groupweb.nav.groupOrganize'));
   await openHome(page);
   for (const name of PLACES) await expect(place(page, name)).toBeVisible();
   expect(await page.evaluate(() => (window as { pwned?: number }).pwned)).toBeUndefined();
   await expect(sidebar(page).locator("img")).toHaveCount(0);
   // And the titles still work from there.
-  await group(page, "Organizar").click();
+  await group(page, "Meu dia").click();
   await expect(place(page, "Tarefas")).toBeHidden();
 });
 
@@ -392,7 +410,7 @@ test("the groups fold with a short transition, and with none for who asks for le
   expect(await sidebar(page).locator("nav li").first().evaluate((item) => getComputedStyle(item).transitionProperty)).toBe("grid-template-rows, visibility");
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(await durations()).toEqual(["0s"]);
-  await group(page, "Organizar").click();
+  await group(page, "Meu dia").click();
   // No waiting: the places are gone at once.
   expect(await rowHeight(page, "/tarefas")).toBe(0);
   await expect(place(page, "Tarefas")).toBeHidden();
@@ -402,29 +420,38 @@ for (const scheme of ["light", "dark"] as const) {
   test(`the menu with a group closed has no serious violation (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto("/entrar");
-    await page.evaluate(() => localStorage.setItem("zuri.sidebar.groups", "web.nav.groupOrganize"));
+    await page.evaluate(() => localStorage.setItem("zuri.sidebar.groups", "web.nav.groupMyDay"));
     await page.goto("/agenda");
     await signIn(page);
     await expect(page.getByRole("heading", { level: 1, name: "Agenda" })).toBeVisible();
     await expect(place(page, "Agenda")).toBeVisible();
     await expect(place(page, "Notas")).toBeHidden();
     await expectAccessible(page, `menu com grupo recolhido (${scheme})`);
-    await group(page, "Organizar").focus();
+    await group(page, "Meu dia").focus();
     await expectAccessible(page, `título do grupo com foco (${scheme})`);
     expect(await tooSmallControls(page)).toEqual([]);
   });
 }
 
-test("on a phone nothing folds: Mais lists every place, even with groups closed on a computer before @mobile", async ({ page }) => {
+test("on a phone nothing folds: Mais lists every place under the same areas, even with groups closed on a computer before @mobile", async ({ page }) => {
   await page.goto("/entrar");
-  await page.evaluate(() => localStorage.setItem("zuri.sidebar.groups", "web.nav.groupOrganizeweb.nav.groupRelations"));
+  await page.evaluate(() => localStorage.setItem("zuri.sidebar.groups", "web.nav.groupMyDayweb.nav.groupRelationsweb.nav.groupAssistant"));
   await page.setViewportSize({ width: 390, height: 844 });
   await openHome(page);
   const bar = page.getByRole("navigation", { name: "Navegação principal" });
   await expect(bar.getByRole("link")).toHaveText(["Início", "Conversa", asLink("Tarefas"), "Agenda"]);
   await bar.getByRole("button", { name: "Mais", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Mais" }).getByRole("link")).toHaveText(["Notas", "Memória", "Rotinas", "Contatos", "Avaliações", "CRM", "Configurações"]);
-  await expect(page.getByRole("button", { name: /^(Organizar|Relacionamento)$/ })).toHaveCount(0);
+  const sheet = page.getByRole("dialog", { name: "Mais" });
+  await expect(sheet.getByRole("link")).toHaveText(["Notas", "Contatos", "Avaliações", "CRM", "Memória", "Rotinas", "Configurações"]);
+  // The areas of the menu, each a list named by its title; the bar's places are left out, so is an area left empty.
+  await expect(sheet.getByRole("heading", { level: 3 })).toHaveText(["Meu dia", "Relacionamento", "Assistente", "Sistema"]);
+  await expect(sheet.getByRole("list", { name: "Meu dia" }).getByRole("link")).toHaveText(["Notas"]);
+  await expect(sheet.getByRole("list", { name: "Relacionamento" }).getByRole("link")).toHaveText(RELATIONS);
+  await expect(sheet.getByRole("list", { name: "Assistente" }).getByRole("link")).toHaveText(ASSISTANT);
+  await expect(sheet.getByRole("list", { name: "Sistema" }).getByRole("link")).toHaveText(["Configurações"]);
+  await expect(page.getByRole("button", { name: /^(Meu dia|Relacionamento|Assistente)$/ })).toHaveCount(0);
+  await expectAccessible(page, "Mais por áreas");
+  expect(await tooSmallControls(page)).toEqual([]);
 });
 
 test("another tab follows the change", async ({ page, context }) => {
@@ -501,12 +528,12 @@ test("on a phone: a top bar, a bottom bar with four places and Mais, and no side
   const box = await bar.boundingBox();
   expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(844);
 
-  // "Mais": the other places from the same list, and the settings.
+  // "Mais": the other places from the same list, by area, and the settings.
   await more.click();
   const sheet = page.getByRole("dialog", { name: "Mais" });
   await expect(sheet).toBeVisible();
   await expect(more).toHaveAttribute("aria-expanded", "true");
-  await expect(sheet.getByRole("link")).toHaveText(["Notas", "Memória", "Rotinas", "Contatos", "Avaliações", "CRM", "Configurações"]);
+  await expect(sheet.getByRole("link")).toHaveText(["Notas", "Contatos", "Avaliações", "CRM", "Memória", "Rotinas", "Configurações"]);
   await expect(sheet.getByRole("link", { name: "Notas" })).toBeFocused();
   // Tab stays inside the sheet.
   await sheet.getByRole("button", { name: "Fechar" }).focus();

@@ -20,7 +20,7 @@
  * - `painel-da-conta=/`: the account panel (a sheet on a phone), opened on that page.
  * - `folha-mais=/`: the "Mais" sheet of the phone's bottom bar (phone only).
  * - `menu-recolhido=/`: the side menu as a rail of icons, with one name showing (computer only).
- * - `menu-grupo-fechado=/…`: the side menu with the group "Organizar" closed by its title
+ * - `menu-grupo-fechado=/…`: the side menu with the area "Meu dia" closed by its title
  *   (computer only); at an address inside the group, the place in view stays.
  * - `conversa-aberta=/conversa`: the sample conversation ("Organizar a mudança"), open.
  * - `conversa-anterior=/conversa`: the same, as if it had last been used yesterday (the notice under its messages).
@@ -232,7 +232,7 @@ for (const [device, options] of [
         await page.getByRole("button", { name: "Recolher menu" }).click();
         await page.locator("aside").getByRole("link", { name: "Agenda", exact: true }).hover();
       }
-      const group = page.locator("aside").getByRole("button", { name: "Organizar", exact: true });
+      const group = page.locator("aside").getByRole("button", { name: "Meu dia", exact: true });
       if (screen.name.startsWith("menu-grupo-fechado")) {
         await group.click();
         await page.locator("aside").getByRole("link", { name: "Notas", exact: true }).waitFor({ state: "hidden" });
