@@ -416,6 +416,11 @@ export class AutomationService {
     this.state.set("automation_alarm", `${due}|${id}`);
   }
 
+  /** The time the one alarm is set for, or null with none. */
+  alarmAt(): string | null {
+    return this.storedAlarm()?.at ?? null;
+  }
+
   private storedAlarm(): { at: string; id: string } | null {
     const value = this.state.get<string>("automation_alarm");
     if (typeof value !== "string") return null;
