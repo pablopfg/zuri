@@ -42,6 +42,8 @@ describe("release notes for Sobre a Zuri (PR S16)", () => {
     expect(plainText("Rota `POST /api/crm/events/<chave>` nova")).toBe("Rota POST /api/crm/events/<chave> nova");
     expect(plainText("5 < 10 itens e 20 > 15")).toBe("5 < 10 itens e 20 > 15");
     expect(plainText("<b>forte</b> e <img src=x onerror=alert(1)>fim")).toBe("forte e fim");
+    // A tag split by another one never comes back together once the inner one goes.
+    expect(plainText("<scr<b>ipt>alert(1)</scr</b>ipt>")).not.toMatch(/<\/?script/i);
   });
 
   it("lists the same line once", () => {

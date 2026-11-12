@@ -11,6 +11,17 @@ export const RELEASE_NOTES_MAX = 6;
 /** A longer first sentence is cut at a word, with an ellipsis. */
 const MAX_CHARS = 160;
 
+/** Tags out until none is left: "<scr<b>ipt>" must not turn into a tag once "<b>" goes. */
+function withoutTags(text: string): string {
+  let before: string;
+  let after = text;
+  do {
+    before = after;
+    after = before.replace(/<\/?[a-zA-Z][^<>]*>/g, "");
+  } while (after !== before);
+  return after;
+}
+
 /**
  * Links, code, bold and italics as their text only. Only real tags go (outside code spans):
  * `/eventos/<chave>` and "5 < 10" keep their text.
@@ -18,7 +29,7 @@ const MAX_CHARS = 160;
 export function plainText(markdown: string): string {
   return markdown
     .split(/(`[^`]*`)/)
-    .map((part) => (part.startsWith("`") && part.endsWith("`") && part.length > 1 ? part : part.replace(/<\/?[a-zA-Z][^<>]*>/g, "")))
+    .map((part) => (part.startsWith("`") && part.endsWith("`") && part.length > 1 ? part : withoutTags(part)))
     .join("")
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/`([^`]*)`/g, "$1")
