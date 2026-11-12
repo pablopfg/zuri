@@ -174,7 +174,10 @@ Como cheguei nos números:
   55 avaliações no período e 1.000 mais antigas na cópia, medido no teste de
   orçamento. O teto é de 5.000 avaliações por pedido (as mais novas; a resposta
   avisa com `partial`). Um consultório com 300 avaliações em 12 meses lê umas
-  300 linhas por abertura da tela, 0,006% das 5 milhões do dia. O índice custa
+  300 linhas por abertura da tela, 0,006% das 5 milhões do dia. Os períodos
+  longos (`24m` por semestre e `5y` por ano) leem do mesmo jeito, uma linha por
+  avaliação contada, com o mesmo teto: no pior caso são 5.001 linhas por
+  pedido, 0,1% do dia, e a tela guarda a resposta por 15 segundos. O índice custa
   uma linha gravada a mais quando uma avaliação entra, muda de nota ou de
   estado, ou ganha resposta (regra P4). Criar o índice grava, uma única
   vez, uma linha por avaliação já copiada, no primeiro acesso depois da
@@ -292,7 +295,7 @@ Numeradas para o PR poder citar ("segue P2 e P4").
   A CI confere com `npm run size`: o teto em `scripts/check-bundle-size.ts`
   começou em 175 kB (a develop estava em 172,8 kB depois do menu recolhível) e
   só desce; estava em 139,9 kB e subiu uma vez, para 140,9 kB, com a casca do
-  Sinal (OK do Pablo em 10/11/2026 para até 141 kB; medido em 140,8 kB). Os schemas que a interface usa em tempo de execução
+  Sinal (OK do Pablo em 10/11/2026 para até 141 kB; medido em 140,8 kB), e para 141 kB em 12/11/2026, o topo do que ele aprovou, com o som dos avisos (33 bytes: dois nomes na lista de arquivos do primeiro carregamento; medido em 140.891 bytes). Os schemas que a interface usa em tempo de execução
   (sessão, segundo passo, opções de login, atividade de acesso e erro da API)
   são escritos com `zod/mini`, e todo schema de `packages/shared` leva
   `/* @__PURE__ */` para o bundler descartar o que a interface não usa. Assim o

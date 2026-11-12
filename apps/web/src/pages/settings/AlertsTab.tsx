@@ -9,6 +9,7 @@ import { api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { PushCard } from "./PushCard.tsx";
 import { RoutesCard } from "./RoutesCard.tsx";
+import { SoundsCard } from "./SoundsCard.tsx";
 import { TelegramCard } from "./TelegramCard.tsx";
 import { Switch } from "../../components/Switch.tsx";
 
@@ -16,7 +17,8 @@ import { Switch } from "../../components/Switch.tsx";
 addMessages(ptBRAlerts);
 
 /**
- * Settings > Avisos, in the order the owner sets them up (stage 26c): where notices
+ * Settings > Avisos, in the order the owner sets them up (stage 26c): the sound of
+ * a notice in the open app (12/11/2026, first as in the prototype), where notices
  * can go and how each channel is, push on this device, the Telegram bot, which kind
  * goes to which channel, then the daily summary, what the Zuri watches on her own
  * and the priorities she learned; the recent sends last.
@@ -27,6 +29,7 @@ export function AlertsTab() {
   if (settings.isError) return <ErrorNotice error={settings.error} onRetry={() => void settings.refetch()} />;
   return (
     <>
+      <SoundsCard settings={settings.data} />
       <ChannelsCard />
       <PushCard />
       <TelegramCard />

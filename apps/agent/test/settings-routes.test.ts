@@ -76,6 +76,8 @@ describe("GET and PATCH /api/settings", () => {
     ["a number as text", { sessionIdleMinutes: "30" }],
     ["Agenda hours that end before they start", { agenda: { from: 18, to: 8, view: "week", weekStart: 1, workDays: [1], daysOff: true, allDay: true, outside: true } }],
     ["a piece of the Agenda's preferences alone", { agenda: { from: 9 } }],
+    ["a notice sound that is not one of the three", { sounds: { notice: true, pick: "https://exemplo.com.br/som.mp3", recording: true } }],
+    ["a piece of the sounds alone", { sounds: { pick: "gota" } }],
   ])("refuses %s with 400 VALIDATION_FAILED, naming fields and never values", async (_name, body) => {
     const ip = "192.0.2.82";
     const cookie = await signIn(ip);

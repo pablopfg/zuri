@@ -152,6 +152,26 @@ Nenhum agendamento novo. Google Agenda: as mesmas chamadas de hoje (`events.get`
 
 Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 
+### Andamento
+
+| Entrega | Situação |
+| --- | --- |
+| 1. Áudio de 120 s e sons | em revisão |
+| 2. Situação por cor, feriados e fins de semana | a fazer |
+| 3. Arrastar, duração, desfazer e avisos de sincronização | a fazer |
+| 4. Menu por áreas | a fazer |
+
+### Diferenças da entrega 1
+
+- **O som acompanha o sino, não um canal próprio.** Os avisos não passam pelo canal de tempo real (ele só leva os números das áreas), então o som toca quando o número do sino sobe: ao voltar para a aba ou no sinal de presença, até um minuto depois. Tocar na hora pede uma coluna nova em `zur_area_versions` (migration), que ficou fora desta entrega.
+- **O som conta pelo número do sino.** Se entre duas leituras o Pablo ler um aviso e chegar outro, o número fica igual e esse aviso chega sem som. Some junto com o item acima, quando os avisos tiverem o próprio número no canal de tempo real. Gravar nos primeiros instantes depois de abrir a Zuri, antes de as configurações chegarem, usa o padrão (toque ligado).
+- **121 segundos é recusado de verdade.** O servidor aceitava um segundo além do limite, por arredondamento. Como o navegador nunca manda mais que o limite, a folga saiu: 120 passa, 120,1 não. A recusa vale para a duração que o navegador informa; a duração real continua limitada pelos 2 MB do arquivo e é cobrada pelo que o modelo ouvir, como já era.
+- **Relógio da gravação em minutos:** "Gravando: 0:03 de 2:00", como no protótipo.
+- **Preferência dos sons no backup**, como as da Agenda.
+- **Teto do JS inicial em 141 kB**, o topo do que o Pablo aprovou em 10/11/2026: o som acrescenta 33 bytes ao primeiro carregamento (dois nomes na lista de arquivos) e deixaria 9 bytes de folga no teto de 140,9 kB.
+- **"Testar um aviso agora"** toca o som escolhido e mostra uma confirmação, sem criar um aviso de verdade.
+- **Suposição ainda aberta:** falta o Pablo gravar um áudio real de 2 minutos depois do primeiro deploy para conferir a transcrição (seção 13). Em desenvolvimento a transcrição é simulada.
+
 ## 12. Riscos
 
 - **Som bloqueado pelo navegador** antes do primeiro clique: o aviso chega sem som. Mitigação: o cartão explica e o "Testar" destrava.

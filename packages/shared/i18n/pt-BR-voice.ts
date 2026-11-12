@@ -3,7 +3,7 @@
 export const ptBRVoice = {
   "web.voice.start": "Falar em vez de digitar",
   "web.voice.stop": "Parar e transcrever",
-  "web.voice.recording": "Gravando: {seconds} s de {max} s",
+  "web.voice.recording": "Gravando: {time} de {max}",
   "web.voice.transcribing": "Transcrevendo o áudio…",
   "web.voice.denied": "Sem acesso ao microfone. Libere nas permissões do navegador.",
   "web.voice.unsupported": "Este navegador não grava áudio.",

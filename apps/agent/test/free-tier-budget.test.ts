@@ -1004,6 +1004,15 @@ describe("Google reviews (step 19c)", () => {
         expect(world.db.usage.rowsRead - start.rowsRead).toBeLessThanOrEqual(70);
         expect(world.db.usage.rowsWritten - start.rowsWritten).toBe(0);
       }
+      // The long periods (by half year and by year) read one row of the index per review they count, and no more.
+      for (const period of ["24m", "5y"] as const) {
+        const start = { ...world.db.usage };
+        const metrics = world.reviews.metrics(period);
+        const counted = metrics.ratings.reduce((sum, n) => sum + n, 0);
+        expect(counted).toBeGreaterThanOrEqual(55);
+        expect(world.db.usage.rowsRead - start.rowsRead).toBeLessThanOrEqual(counted + 15);
+        expect(world.db.usage.rowsWritten - start.rowsWritten).toBe(0);
+      }
       expect(world.sim.seen.length).toBe(calls);
     }));
 });
