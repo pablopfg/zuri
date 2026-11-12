@@ -259,6 +259,26 @@ O Pablo viu a entrega 3 e pediu cinco ajustes, com um print do formulário do ou
 
 **Gestão dentro do protótipo (12/11/2026, 17:48 UTC).** A pedido do Pablo, a área Consultório do menu abre as três telas do protótipo da Gestão (Atendimentos, Financeiro e Resultados), no lugar das telas "Em planejamento". O protótipo principal mostra `prototipo-gestao.html` num quadro, sem o menu e a barra dele, no mesmo tema; o desenho e o plano da Gestão continuam em [gestao-financeira-e-paineis.md](gestao-financeira-e-paineis.md) e na PR #311. Enquanto a #311 não estiver na `develop`, o quadro só abre no protótipo publicado.
 
+**Contato que agenda e contagem dos avisos (12/11/2026, 18:45 UTC).** Mais três pedidos do Pablo, já no protótipo:
+
+- **Ficha do contato só com o que está preenchido.** A linha "Vazio no Google" sai. Campo vazio no Google não aparece.
+- **"Agendar" na ficha do contato**, entre "Perguntar à Zuri" e "Telefone". Um toque leva à Agenda e abre "Novo agendamento" já preenchido. A lógica, pensada para não dar erro:
+  - Contato com nome: o agendamento já vem vinculado a ele, pelo id. Nome, DDI, celular e e-mail vêm de Contatos e ficam só para leitura, como no "Vincular". Como o vínculo é pelo contato aberto, homônimo não confunde. O foco vai direto para a data.
+  - Contato sem nome no Google: não vincula, porque o nome é o título do evento. O celular e o e-mail vêm preenchidos e a Zuri pede o nome completo.
+  - Dia e hora: o primeiro horário livre de 1 h a partir de agora, de 30 em 30 min. Precisa ser dia útil, sem feriado nacional, dentro do horário da agenda (08:00 às 18:00 por padrão) e sem outro evento no meio (cancelado não conta). A Agenda abre na semana desse horário. O texto do diálogo diz qual horário foi escolhido e pede para conferir.
+  - Já tem consulta marcada daqui para frente: o diálogo avisa ("Atenção: já existe “Consulta | Consultório” em sex, 13/11 às 09:00"), para não marcar duas vezes. O aviso não impede: retorno e consulta na mesma semana são possíveis.
+  - Tipo "Consulta | Consultório", situação Agendado e financeiro Não pago, que são os padrões do formulário. Tudo dá para mudar antes de salvar.
+  - Cancelar volta para a mesma ficha, com o foco no "Agendar". Agendar fica na Agenda, com o aviso de "Desfazer" de sempre.
+  - No celular, "Perguntar à Zuri" e "Agendar" ficam na primeira linha e os três canais (Ligar, WhatsApp, E-mail) na segunda.
+  - No sistema: a ficha manda o id do contato pelo endereço (`/agenda?novo=1&contato=<id>`). A Agenda confere que o contato existe na cópia de Contatos antes de vincular. Id que não existe abre o formulário vazio, sem erro. Os dados nunca vão no endereço: só o id.
+- **Número de avisos não vistos no sino.** O sino mostra quantos avisos chegaram e ainda não foram vistos (até "99+"), e o título da aba ganha "(3)". O leitor de tela lê "Avisos: 3 não vistos". As regras:
+  - Um aviso só conta como visto quando o Pablo abre o sino e o aviso aparece na lista por pelo menos 0,6 s, com mais da metade dele na tela. Abrir e fechar na hora não conta. Aviso que fica abaixo da dobra só conta quando a lista rola até ele.
+  - Aviso que chega com o painel aberto entra na lista e conta como visto do mesmo jeito.
+  - Push, Telegram e e-mail não contam como visto. Só o sino conta.
+  - "Visto" é diferente de "lido". O número do sino é dos não vistos. O destaque verde e "N novos" dentro do painel continuam até o Pablo abrir o aviso ou tocar em "Marcar como lidos", que também marca todos como vistos.
+  - No protótipo, o botão "Simular aviso" da barra de cima faz chegar um aviso novo.
+  - No sistema: a tabela de avisos ganha a coluna `seen_at`, numa migration nova de acréscimo (a próxima livre, 38 hoje; conferir na `develop`). A interface manda `POST /api/notices/seen` com os ids vistos (lista com Zod, até 50 por vez, só avisos da própria conta). O número vem com a lista de avisos e chega pelo canal ao vivo (`/api/live`), então ver num aparelho zera o sino nos outros. O ícone do app instalado (`navigator.setAppBadge`) mostra o mesmo número onde o navegador permitir. Tudo é texto e um número: o JS inicial não cresce de forma relevante.
+
 **O que não muda:** arrastar, Alt com as setas, "Desfazer", "mover marca Reagendado", a cor de cada situação e a agenda só de leitura. O primeiro carregamento também não, porque o formulário está no pedaço da Agenda, que carrega sob demanda; a busca usa a lista de Contatos que a tela já lê, sem chamada nova ao Google.
 
 **Perguntas ao Pablo** (seção 14).

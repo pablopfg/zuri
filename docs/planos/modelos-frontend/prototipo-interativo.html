@@ -34,6 +34,8 @@ a:hover{text-decoration-thickness:2px}
 .picker{margin:0;border:0;min-width:0;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:8px 16px;background:#0b0f19;color:#f8fafc;font:500 13px/1.4 system-ui,sans-serif}
 .picker label{display:flex;gap:6px;align-items:center}
 .picker select{background:#1a2233;color:#f8fafc;border:1px solid #56627a;border-radius:6px;padding:4px 8px;min-height:32px}
+.picker .proto-btn{background:#1a2233;color:#f8fafc;border:1px solid #56627a;border-radius:6px;padding:4px 10px;min-height:32px;font:inherit;cursor:pointer}
+.picker .proto-btn:hover{background:#26304a}
 [data-captura] .proto{display:none}
 
 /* ============ moldura ============ */
@@ -666,6 +668,8 @@ kbd{font:500 12px/1 var(--f-ui);padding:3px 6px;border-radius:6px;border:1px sol
 .iconbtn:active{background:var(--press)}
 .badge{top:9px;right:9px;min-width:8px;width:8px;height:8px;padding:0;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px var(--side-bg)}
 .main .badge{box-shadow:0 0 0 2px var(--bg)}
+/* Com número: avisos que chegaram e você ainda não viu no painel. */
+.badge.badge-n{top:3px;right:1px;width:auto;min-width:18px;height:18px;padding:0 5px;border-radius:999px;color:#fff;font:700 11px/18px var(--f-ui);text-align:center}
 
 /* ---------- campos: borda com 3:1, anel de foco largo ---------- */
 .input{min-height:44px;border-radius:var(--r-md);border:1px solid var(--control);background:var(--surface);transition:border-color var(--dur-1) var(--ease-out),box-shadow var(--dur-1) var(--ease-out)}
@@ -1214,7 +1218,9 @@ kbd{font:500 12px/1 var(--f-ui);padding:3px 6px;border-radius:6px;border:1px sol
 .person-head .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .person-head .meta .tag{display:inline-flex;align-items:center;gap:4px}
 .back-m,.ct-h1-m{display:none}
-.qa{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2);max-width:600px;margin:var(--s6) 0}
+.qa{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s2);max-width:680px;margin:var(--s6) 0}
+/* Ficha estreita: Perguntar e Agendar em cima, os três canais embaixo. */
+@container (max-width:520px){.qa{grid-template-columns:repeat(6,minmax(0,1fr))}.qa>li{grid-column:span 2}.qa>li:nth-child(-n+2){grid-column:span 3}.qa>li:nth-child(-n+2) .qa-btn{flex-direction:row;min-height:52px}}
 .qa-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;min-height:72px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);color:var(--ink);font:500 var(--t-sm)/1.2 var(--f-ui);text-align:center;text-decoration:none;cursor:pointer;transition:background-color var(--dur-1) var(--ease-out),transform var(--dur-1) var(--ease-out)}
 .qa-btn:hover{background:var(--hover)}
 .qa-btn:active{transform:translateY(1px)}
@@ -2817,6 +2823,7 @@ ol.pk-list{list-style:none;margin:0;padding:0}
   <label>Menu
     <select id="pm"><option value="a">A · Grupos por área</option><option value="b">B · Trilho de áreas</option><option value="c">C · Dois espaços</option><option value="atual">Como é hoje</option></select>
   </label>
+  <button type="button" class="proto-btn" id="pav">Simular aviso</button>
   <span class="ptip">Tudo é clicável. No celular aparece o menu de baixo.</span>
 </fieldset></aside>
 <div id="app"></div>
@@ -2901,7 +2908,7 @@ function side0() {
   return `<aside class="side" aria-label="Menu da Zuri">
     <div class="side-head">
       <a class="brand" href="${href("inicio")}">${logo()}<span class="wm">Zuri</span></a>
-      <button class="iconbtn side-bell" type="button" aria-label="Avisos: 2 novos" aria-haspopup="dialog" data-menu="avisos">${ic("bell")}<span class="badge" aria-hidden="true"></span></button>
+      <button class="iconbtn side-bell" type="button" aria-label="${bellLbl()}" aria-haspopup="dialog" data-menu="avisos">${ic("bell")}${bellBadge()}</button>
       <button class="iconbtn side-collapse" type="button" aria-label="Recolher o menu">${ic("panel-left")}</button>
     </div>
     <a class="btn btn-secondary btn-block side-new" href="${href("conversa")}">${ic("square-pen")}<span class="lbl">Nova conversa</span></a>
@@ -2914,7 +2921,7 @@ function topbar() {
   return `<header class="topbar">
     <a class="brand" href="${href("inicio")}">${logo()}<span class="wm">Zuri</span></a>
     <button class="iconbtn" type="button" aria-label="Buscar">${ic("search")}</button>
-    <button class="iconbtn" type="button" aria-label="Avisos: 2 novos" aria-haspopup="dialog" data-menu="avisos">${ic("bell")}<span class="badge" aria-hidden="true"></span></button>
+    <button class="iconbtn" type="button" aria-label="${bellLbl()}" aria-haspopup="dialog" data-menu="avisos">${ic("bell")}${bellBadge()}</button>
     <button class="iconbtn" type="button" aria-label="Conta de Ana" aria-haspopup="dialog" data-menu="conta"><span class="avatar" aria-hidden="true">A</span></button>
   </header>`;
 }
@@ -3228,11 +3235,64 @@ function wizard() {
 
 /* ---------- Conta e avisos ---------- */
 const AVISOS = [
-  { id: "a1", ic: "clipboard-list", t: "Plano “Organizar a mudança” espera você", d: "4 tarefas para revisar. Nada foi criado ainda.", w: "Hoje, 08:14", s: "conversa", b: "Revisar", unread: true },
-  { id: "a2", ic: "alarm-clock", t: "Rotina “Revisão de sexta” espera aprovação", d: "Usa IA toda sexta às 17:00.", w: "Ontem, 18:02", s: "automacoes", b: "Revisar", unread: true },
-  { id: "a3", ic: "star", t: "Avaliação nova com nota 2", d: "De Pedro Henrique. A resposta espera você.", w: "Ontem, 17:41", s: "avaliacoes", b: "Ver" },
-  { id: "a4", ic: "database", t: "Cópia de segurança feita", d: "Tudo guardado. A próxima é amanhã às 03:00.", w: "Hoje, 03:00" }
+  { id: "a1", ic: "clipboard-list", t: "Plano “Organizar a mudança” espera você", d: "4 tarefas para revisar. Nada foi criado ainda.", w: "Hoje, 08:14", s: "conversa", b: "Revisar", unread: true, seen: false },
+  { id: "a2", ic: "alarm-clock", t: "Rotina “Revisão de sexta” espera aprovação", d: "Usa IA toda sexta às 17:00.", w: "Ontem, 18:02", s: "automacoes", b: "Revisar", unread: true, seen: false },
+  { id: "a3", ic: "star", t: "Avaliação nova com nota 2", d: "De Pedro Henrique. A resposta espera você.", w: "Ontem, 17:41", s: "avaliacoes", b: "Ver", seen: true },
+  { id: "a4", ic: "database", t: "Cópia de segurança feita", d: "Tudo guardado. A próxima é amanhã às 03:00.", w: "Hoje, 03:00", seen: true }
 ];
+/* Dois estados por aviso:
+   - visto (seen): apareceu na tela com o painel aberto por pelo menos 0,6 s. É o que o número do sino conta.
+   - lido (unread false): você abriu o aviso ou marcou como lido. É o destaque dentro da lista.
+   Push, Telegram e e-mail não contam como visto: só abrir o sino e ver o aviso na lista. */
+const unseen = () => AVISOS.filter((a) => !a.seen).length;
+const bellLbl = () => { const n = unseen(); return n ? `Avisos: ${n} ${n === 1 ? "não visto" : "não vistos"}` : "Avisos"; };
+const bellBadge = () => { const n = unseen(); return n ? `<span class="badge badge-n num" aria-hidden="true">${n > 99 ? "99+" : n}</span>` : ""; };
+const TITLE0 = document.title;
+/* Atualiza o sino e o título da aba sem redesenhar a tela (o painel continua aberto). */
+function avBadge() {
+  for (const b of document.querySelectorAll('[data-menu="avisos"]')) {
+    b.setAttribute("aria-label", bellLbl());
+    const old = b.querySelector(".badge");
+    if (old) old.remove();
+    b.insertAdjacentHTML("beforeend", bellBadge());
+  }
+  const n = unseen();
+  document.title = n ? `(${n > 99 ? "99+" : n}) ${TITLE0}` : TITLE0;
+}
+let avObs = null;
+const avTimers = new Map();
+function avSeenWatch() {
+  if (avObs) { avObs.disconnect(); avObs = null; }
+  for (const t of avTimers.values()) clearTimeout(t);
+  avTimers.clear();
+  const items = document.querySelectorAll(".pop-avisos .notif li[data-av]");
+  if (!items.length || !("IntersectionObserver" in window)) return;
+  avObs = new IntersectionObserver((list) => {
+    for (const x of list) {
+      const id = x.target.dataset.av;
+      if (!x.isIntersecting) { clearTimeout(avTimers.get(id)); avTimers.delete(id); continue; }
+      if (avTimers.has(id)) continue;
+      avTimers.set(id, setTimeout(() => {
+        avTimers.delete(id);
+        const a = AVISOS.find((y) => y.id === id);
+        if (a && !a.seen && st.menu === "avisos") { a.seen = true; avBadge(); }
+      }, 600));
+    }
+  }, { threshold: 0.6 });
+  for (const li of items) avObs.observe(li);
+}
+const AV_SIM = [
+  ["calendar-check", "Consulta confirmada", "Bruna Lacerda confirmou a consulta de amanhã às 09:00.", "agenda", "Ver"],
+  ["star", "Avaliação nova com nota 5", "De Otávio Prado. A Zuri já preparou uma resposta.", "avaliacoes", "Ver"],
+  ["alarm-clock", "Rotina “Resumo da manhã” terminou", "Leia o resumo de hoje na conversa.", "conversa", "Abrir"]
+];
+let avSeq = 0;
+function avSimulate() {
+  const [i, t, d, s, b] = AV_SIM[avSeq % AV_SIM.length];
+  AVISOS.unshift({ id: `as${++avSeq}`, ic: i, t, d, w: `Hoje, ${hm(nowMin())}`, s, b, unread: true, seen: false });
+  if (st.menu === "avisos") { const f = document.activeElement && document.activeElement.closest(".pop-avisos") ? ".pop-avisos [data-close-pop]" : ""; render(); if (f) refocus(f); } else avBadge();
+  hint("Chegou um aviso novo.");
+}
 function pops() {
   if (st.menu === "conta") return `<div class="pop-wrap" data-scrim="menu"><div class="pop pop-conta" role="dialog" aria-modal="true" aria-label="Sua conta">
       <div class="pop-head"><span class="avatar avatar-lg" aria-hidden="true">A</span><div><p class="t">Ana</p><p class="d">ana@exemplo.com.br</p></div><button class="iconbtn pop-x" type="button" data-close-pop aria-label="Fechar">${ic("x", "ic-sm")}</button></div>
@@ -3248,7 +3308,7 @@ function pops() {
     const n = AVISOS.filter((a) => a.unread).length;
     return `<div class="pop-wrap" data-scrim="menu"><div class="pop pop-avisos" role="dialog" aria-modal="true" aria-labelledby="h-av">
       <div class="pop-top"><h2 id="h-av">Avisos</h2>${n ? `<span class="pill on"><i></i>${n} novos</span>` : ""}<span class="grow"></span>${n ? `<button class="btn btn-quiet btn-sm" type="button" data-read-all>Marcar como lidos</button>` : ""}<button class="iconbtn" type="button" data-close-pop aria-label="Fechar os avisos">${ic("x", "ic-sm")}</button></div>
-      <ul class="notif">${AVISOS.map((a) => `<li class="${a.unread ? "unread" : ""}"><span class="tile">${ic(a.ic, "ic-sm")}</span><div class="nt"><p class="t">${a.unread ? '<span class="sr">Novo: </span>' : ""}${a.t}</p><p class="d">${a.d}</p><p class="w num">${a.w}</p></div>${a.s ? `<a class="btn btn-secondary btn-sm" href="${href(a.s)}" data-aviso="${a.id}">${a.b}</a>` : ""}</li>`).join("")}</ul>
+      <ul class="notif">${AVISOS.map((a) => `<li class="${a.unread ? "unread" : ""}" data-av="${a.id}"><span class="tile">${ic(a.ic, "ic-sm")}</span><div class="nt"><p class="t">${a.unread ? '<span class="sr">Novo: </span>' : ""}${a.t}</p><p class="d">${a.d}</p><p class="w num">${a.w}</p></div>${a.s ? `<a class="btn btn-secondary btn-sm" href="${href(a.s)}" data-aviso="${a.id}">${a.b}</a>` : ""}</li>`).join("")}</ul>
       <a class="more pop-more" href="${href("configuracoes")}" data-cfg-go="avisos">Escolher o que avisar${ic("chevron-right", "ic-sm")}</a></div></div>`;
   }
   return "";
@@ -3580,6 +3640,7 @@ function person(p) {
   const off = (i, l) => `<button class="qa-btn" type="button" disabled>${i}<span>${l}</span></button>`;
   const qa = `<ul class="qa" aria-label="Ações rápidas">
       <li><a class="qa-btn qa-main" href="${href("conversa")}">${ic("sparkles")}<span>Perguntar à Zuri<span class="sr"> sobre ${name}</span></span></a></li>
+      <li class="qa-ag"><button class="qa-btn" type="button" data-agendar="${p.id}">${ic("calendar-plus")}<span>Agendar<span class="sr"> com ${name}</span></span></button></li>
       <li class="qa-telw">${main ? `<a class="qa-btn qa-tel" href="tel:${tel}" data-num="${main.n}">${ic("phone")}<span><span class="only-d">Telefone</span><span class="only-m">Ligar</span></span></a>
         <div class="qa-menu" hidden><button type="button" data-copy="${main.n}">${ic("copy", "ic-sm")}Copiar ${main.n}</button><a href="tel:${tel}">${ic("phone", "ic-sm")}Ligar pelo computador</a></div>` : off(ic("phone"), "Sem telefone")}</li>
       <li>${cell ? `<a class="qa-btn" href="${waLink(cell.n)}" target="_blank" rel="noopener" data-wa>${WA}<span>WhatsApp</span></a>` : off(WA, "Sem WhatsApp")}</li>
@@ -3593,8 +3654,7 @@ function person(p) {
   const seen = p.seen ? `<section class="card p-sec" aria-labelledby="h-seen"><h3 id="h-seen">Onde aparece</h3><ul class="seen">${p.seen.map(([i, k, t, s]) => `<li><a href="${href(s)}">${ic(i, "ic-sm")}<span><span class="k">${k}</span><span class="t">${t}</span></span>${ic("chevron-right", "ic-sm")}</a></li>`).join("")}</ul></section>` : "";
   const phoneRow = (x) => `<li class="ch"><span class="num v">${x.n}</span><span class="ty">${x.type}</span><span class="ch-acts">${isCell(x.n) ? `<a class="iconbtn wa-btn" href="${waLink(x.n)}" target="_blank" rel="noopener" data-wa aria-label="Abrir conversa no WhatsApp com ${x.n}">${WA}</a>` : ""}<button class="iconbtn" type="button" data-copy="${x.n}" aria-label="Copiar ${x.n}">${ic("copy", "ic-sm")}</button></span></li>`;
   const pairs = (arr) => (arr && arr.length ? arr.map(([a, b]) => `<span class="pair"><span class="pk">${a}</span>${b}</span>`).join("") : "");
-  /* Os mesmos campos do Google Contatos, na ordem de lá. Campo vazio não vira linha em branco:
-     entra na lista "Vazio no Google", para ficar claro que o campo existe e só não foi preenchido. */
+  /* Os mesmos campos do Google Contatos, na ordem de lá. Campo vazio não aparece. */
   const F = [
     ["user", "Nome", pairs(p.nm)],
     ["smartphone", phones.length > 1 ? "Telefones" : "Telefone", phones.length ? `<ul class="chs">${phones.map(phoneRow).join("")}</ul>` : ""],
@@ -3611,9 +3671,7 @@ function person(p) {
     ["notebook", "Observações", p.notes || ""]
   ];
   const filled = F.filter((f) => f[2]);
-  const empty = F.filter((f) => !f[2]).map((f) => f[1].replace("Telefones", "Telefone"));
   const dados = `<dl class="dl-groups">${filled.map(([i, k, body]) => `<div class="dg"><dt>${ic(i, "ic-sm")}${k}</dt><dd>${body}</dd></div>`).join("")}</dl>
-      ${empty.length ? `<p class="f-empty"><span class="k">Vazio no Google</span>${empty.join(", ")}.</p>` : ""}
       <p class="ro">${ic("lock", "ic-sm")}<span>Só leitura, do Google Contatos. Mudou lá em ${p.updated}.</span></p>`;
   const rvLink = p.nps ? `<button class="linkbtn" type="button" data-go-ped="${p.id}">Ver em Avaliações${ic("chevron-right", "ic-sm")}</button>` : "";
   return `<article class="person" aria-labelledby="h-p">${back()}
@@ -4238,9 +4296,9 @@ document.addEventListener("click", (e) => {
   if (t.matches("[data-au-done]")) { st.au = 0; render(); refocus("[data-au-open]"); hint("Rotina criada. A primeira vez é amanhã, às 07:30."); return; }
   if (t.matches("[data-menu]")) { st.menu = st.menu === t.dataset.menu ? "" : t.dataset.menu; lastOpener = `[data-menu="${t.dataset.menu}"]`; render(); refocus(".pop a, .pop button"); return; }
   if (t.matches("[data-close-pop]")) { closeLayer(); return; }
-  if (t.matches("[data-read-all]")) { AVISOS.forEach((a) => { a.unread = false; }); render(); refocus(".pop-avisos [data-close-pop]"); hint("Avisos marcados como lidos."); return; }
+  if (t.matches("[data-read-all]")) { for (const a of AVISOS) { a.unread = false; a.seen = true; } render(); refocus(".pop-avisos [data-close-pop]"); hint("Avisos marcados como lidos."); return; }
   if (t.matches("[data-cfg-go]")) { e.preventDefault(); st.menu = ""; const k = t.dataset.cfgGo; st.au = 0; st.cfg = k in CFG_VIEW ? k : "conta"; if (typeof go === "function") go("configuracoes"); else { st.s = "configuracoes"; render(); } return; }
-  if (t.matches("[data-aviso]")) { const a = AVISOS.find((x) => x.id === t.dataset.aviso); a.unread = false; st.menu = ""; if (a.id === "a3") { st.rvv = "avaliacoes"; st.p = "pedro"; } e.preventDefault(); if (typeof go === "function") go(a.s); else { st.s = a.s; render(); } return; }
+  if (t.matches("[data-aviso]")) { const a = AVISOS.find((x) => x.id === t.dataset.aviso); a.unread = false; a.seen = true; st.menu = ""; if (a.id === "a3") { st.rvv = "avaliacoes"; st.p = "pedro"; } e.preventDefault(); if (typeof go === "function") go(a.s); else { st.s = a.s; render(); } return; }
   if (t.matches("[data-logout]")) { e.preventDefault(); st.menu = ""; if (typeof go === "function") go("entrar"); else { st.s = "entrar"; render(); } return; }
   if (t.matches("[data-wa]")) { e.preventDefault(); hint(window.matchMedia("(max-width: 820px), (pointer: coarse)").matches ? "No celular, isto abre a conversa no WhatsApp." : "No computador, isto abre o WhatsApp Web ou o app do WhatsApp."); return; }
   if (t.matches(".qa-tel")) {
@@ -4302,6 +4360,9 @@ function dlgClose() {
   DLG.def = null;
   const o = DLG.opener;
   DLG.opener = null;
+  /* Agendar pela ficha e desistir: volta para o mesmo contato. */
+  const back = DLG.back;
+  if (back) { DLG.back = ""; st.p = back; window.addEventListener("hashchange", () => refocus(`[data-agendar="${back}"]`), { once: true }); goTo("contatos"); return; }
   if (o && o.isConnected) o.focus();
 }
 /* O que se digita volta escapado: pode ir para HTML. Só dlgRaw, para textContent, devolve o texto puro. */
@@ -5683,6 +5744,8 @@ function toast0(msg, undo) {
 
 /* Depois de cada render, devolve o que a pessoa já mexeu */
 function afterRender() {
+  avSeenWatch();
+  avBadge();
   document.querySelectorAll(".check").forEach((b) => {
     const on = UI.checked.has(b.getAttribute("aria-label"));
     b.setAttribute("aria-checked", String(on));
@@ -6056,7 +6119,7 @@ function side() {
   return `<aside class="side side-${st.mn}" aria-label="Menu da Zuri">
     <div class="side-head">
       <a class="brand" href="${href("inicio")}">${logo()}<span class="wm">Zuri</span></a>
-      <button class="iconbtn side-bell" type="button" aria-label="Avisos: 2 novos" aria-haspopup="dialog" data-menu="avisos">${ic("bell")}<span class="badge" aria-hidden="true"></span></button>
+      <button class="iconbtn side-bell" type="button" aria-label="${bellLbl()}" aria-haspopup="dialog" data-menu="avisos">${ic("bell")}${bellBadge()}</button>
       <button class="iconbtn side-collapse" type="button" aria-label="Recolher o menu">${ic("panel-left")}</button>
     </div>
     <a class="btn btn-secondary btn-block side-new" href="${href("conversa")}">${ic("square-pen")}<span class="lbl">Nova conversa</span></a>
@@ -6132,6 +6195,7 @@ function renderSheet() {
   s.onclick = (e) => { if (e.target === s) { UI.sheet = false; renderSheet(); } };
 }
 document.getElementById("pm").value = st.mn;
+document.getElementById("pav").addEventListener("click", avSimulate);
 document.getElementById("pm").addEventListener("change", (e) => { st.mn = pick(e.target.value, ["a", "b", "c", "atual"]); st.area = undefined; st.space = undefined; render(); });
 document.getElementById("ps").insertAdjacentHTML("beforeend", '<option value="gestao">Gestão do consultório</option>');
 
@@ -6475,12 +6539,12 @@ function eeTimes(from) {
 }
 
 function evEdit(ev, pre, opener) {
-  const e = ev || { day: pre.day || dkey(st.agd), h: pre.h ?? 11, m: pre.m ?? 0, dur: 1, t: "", tipo: TIPOS[0], s: "agendado", fin: "Não pago", ddi: "BR" };
+  const e = ev || { day: pre.day || dkey(st.agd), h: pre.h ?? 11, m: pre.m ?? 0, dur: 1, t: pre.t || "", pid: pre.pid || "", cel: pre.cel || "", mail: pre.mail || "", tipo: TIPOS[0], s: "agendado", fin: "Não pago", ddi: "BR" };
   const p = e.pid && pById(e.pid);
   Object.assign(FORM, { note: "", pid: p ? p.id : "", dur: Math.round(e.dur * 60), own: Math.round(e.dur * 60) !== 60, opt: -1, list: [] });
   const s0 = e.h * 60 + e.m;
   const sel = (attr, label, opts, v) => `<label class="field"><span class="label">${label}</span><select class="input" ${attr}>${opts.map(([ov, ol]) => `<option value="${ov}"${ov === v ? " selected" : ""}>${ol}</option>`).join("")}</select></label>`;
-  dlgShow({ t: ev ? "Editar agendamento" : "Novo agendamento", sub: "O que você salvar vai na hora para o Google Agenda.",
+  dlgShow({ t: ev ? "Editar agendamento" : "Novo agendamento", sub: pre.sub || "O que você salvar vai na hora para o Google Agenda.",
     body: `<div class="field pt-field"><label class="label" for="pt-q">Nome completo do paciente</label>
         <div class="cb"><input class="input" id="pt-q" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pt-list" aria-describedby="pt-link" autocomplete="off" spellcheck="false" data-pt-q value="${e.t}" placeholder="Digite para buscar em Contatos" data-autofocus>
         <ul id="pt-list" class="cb-list" role="listbox" aria-label="Contatos com esse nome" hidden></ul></div>
@@ -6525,6 +6589,7 @@ function evEdit(ev, pre, opener) {
       const apply = (extra) => {
         const target = ev || { id: `e${++evSeq}` };
         evCommit("", () => {
+          DLG.back = "";
           Object.assign(target, { day, h: Math.floor(mins / 60), m: mins % 60, dur: (end - mins) / 60, t, tipo, s, fin, pid, obs, ddi: pid ? "BR" : ddi, cel: pid ? "" : esc(cel), mail: pid ? "" : esc(mail) });
           if (!ev) EV.push(target);
           st.agd = dOf(day);
@@ -6538,6 +6603,43 @@ function evEdit(ev, pre, opener) {
   eePlain();
   ptRender(false);
   eeTimes("");
+  /* Veio de um contato: o nome já está certo, então o foco vai para a data. */
+  if (pre.focus) document.querySelector(`#dlg-host ${pre.focus}`)?.focus();
+}
+/* Agendar pela ficha do contato.
+   - Horário: o primeiro livre a partir de agora, de 30 em 30 min, num dia útil sem feriado, dentro do horário da agenda.
+   - Contato com nome: já vem vinculado (celular e e-mail de Contatos, só leitura). É o contato escolhido, então homônimos não confundem.
+   - Contato sem nome no Google: não vincula (o título do evento é o nome); o celular e o e-mail vêm preenchidos e o nome fica para digitar.
+   - Já tem consulta marcada daqui para frente: o diálogo avisa, para não marcar duas vezes.
+   - Cancelar volta para a ficha; Agendar fica na Agenda, na semana do horário. */
+function agSlot() {
+  const busy = (k, m) => EV.some((o) => o.day === k && o.s !== "cancelado" && o.h * 60 + o.m < m + 60 && evEnd(o) > m);
+  for (let i = 0; i < 60; i++) {
+    const d = addD(AG_NOW, i), k = dkey(d);
+    if (fimDeSemana(d) || feriado(d)) continue;
+    const from = i ? st.ag.de * 60 : Math.max(st.ag.de * 60, Math.ceil((nowMin() + 1) / 30) * 30);
+    for (let m = from; m + 60 <= st.ag.ate * 60; m += 30) if (!busy(k, m)) return { day: k, h: Math.floor(m / 60), m: m % 60 };
+  }
+  return { day: dkey(addD(AG_NOW, 1)), h: st.ag.de, m: 0 };
+}
+function agFromContact(id) {
+  const p = pById(id);
+  if (!p) return;
+  const slot = agSlot(), today = dkey(AG_NOW);
+  const prox = EV.filter((e) => e.pid === p.id && e.tipo && e.s !== "cancelado" && e.day >= today).sort((a, b) => (a.day + p2(a.h) + p2(a.m) < b.day + p2(b.h) + p2(b.m) ? -1 : 1))[0];
+  const named = !!p.n;
+  const sub = [`${named ? `Já vem com os dados de ${p.n}` : "Já vem com o celular e o e-mail do contato"} e no primeiro horário livre: ${dayShort(dOf(slot.day))} às ${hmm(slot.h * 60 + slot.m)}. Confira antes de agendar.`,
+    prox ? ` Atenção: já existe “${prox.tipo}” em ${dayShort(dOf(prox.day))} às ${hmm(prox.h * 60 + prox.m)}.` : ""].join("");
+  st.agd = dOf(slot.day);
+  if (st.av === "mes") st.av = "semana";
+  const open = () => {
+    evEdit(null, { ...slot, pid: named ? p.id : "", t: named ? p.n : "", cel: named ? "" : cellOf(p), mail: named ? "" : mailOf(p), sub, focus: named ? "[data-ee-d]" : "[data-pt-q]" }, document.querySelector("[data-x=evento]"));
+    if (!named) { FORM.note = "Este contato não tem nome no Google. Escreva o nome completo do paciente."; ptRender(false); }
+    DLG.back = p.id;
+  };
+  if (st.s === "agenda") { render(); open(); return; }
+  window.addEventListener("hashchange", open, { once: true });
+  goTo("agenda");
 }
 /* Sem tipo é um compromisso comum (reunião, curso): só título, data, horário, situação e observação. */
 function eePlain() {
@@ -6611,7 +6713,8 @@ const ACT1211 = [
   [(t) => t.matches("[data-ev-st]"), (t) => { const e = evById(t.dataset.id), s = pick(t.dataset.evSt, Object.keys(STS)); if (!e || e.s === s) { dlgClose(); return; } DLG.opener = null; dlgClose(); evCommit(`“${e.t}” ficou como ${STS[s][0]}. A cor no Google mudou para ${STS[s][1]}.`, () => { e.s = s; }, e.id); }],
   [(t) => t.matches("[data-ev-edit]"), (t) => { const e = evById(t.dataset.evEdit), op = DLG.opener; dlgClose(); if (e) evEdit(e, {}, op); }],
   [(t) => t.matches("[data-ev-del]"), (t) => { const e = evById(t.dataset.evDel), op = DLG.opener; dlgClose(); if (e) confirmDlg("Apagar este evento?", "Ele sai também do Google Agenda. Para guardar o histórico do cliente, prefira marcar como Cancelado.", "Apagar", () => { DLG.opener = null; evCommit(`“${e.t}” apagado daqui e do Google Agenda.`, () => { EV = EV.filter((x) => x !== e); }); }, op); }],
-  [(t) => t.matches("[data-x=evento]"), (t) => evEdit(null, {}, t)]
+  [(t) => t.matches("[data-x=evento]"), (t) => evEdit(null, {}, t)],
+  [(t) => t.matches("[data-agendar]"), (t) => agFromContact(t.dataset.agendar)]
 ];
 ACT.unshift(...ACT1211);
 /* Clique num horário vazio abre "Novo evento" já com o dia e a hora. */
