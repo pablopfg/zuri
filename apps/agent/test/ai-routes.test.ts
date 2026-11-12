@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, AI_LIMIT_RANGES, apiErrorSchema, DEFAULT_CHAT_MODEL, DEFAULT_FALLBACK_MODEL, settingsSchema, usageHistorySchema, usageReportSchema } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, AI_LIMIT_RANGES, apiErrorSchema, DEFAULT_CHAT_MODEL, DEFAULT_FALLBACK_MODEL, settingsSchema, usageHistorySchema, usageHoursSchema, usageMonthsSchema, usageReportSchema } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -204,11 +204,71 @@ describe("the paid models through the routes (step 21)", () => {
       expect(res.headers.get("cache-control")).toBe("no-store");
       expect(usageHistorySchema.parse(await res.json())).toMatchObject({ days: [], models: [], paidByDay: [] });
     }
-    for (const days of ["8", "0", "abc", "7.0x"]) {
+    // The year is not a longer history: 365 days would read every day's row (PR S13).
+    for (const days of ["8", "0", "abc", "7.0x", "365", "366", "91", "-365", "365.0", "%20365", "365&days=7", "7&days=365"]) {
       const res = await call(`${ORIGIN}/api/usage/history?days=${days}`, { headers: headers(ip, cookie) });
+      if (days === "7&days=365") {
+        // A repeated parameter: the first one counts, and it is one of the three.
+        expect(res.status, days).toBe(200);
+        expect(usageHistorySchema.parse(await res.json()).days.length, days).toBeLessThanOrEqual(7);
+        continue;
+      }
       expect(res.status, days).toBe(400);
+      expect(apiErrorSchema.parse(await res.json()), days).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["days"] } });
     }
     expect((await call(`${ORIGIN}/api/usage/history`, { headers: headers(ip) })).status).toBe(401);
+  });
+
+  it("gives today by the hour and the year by the month, to the owner only, never cached (PR S13)", async () => {
+    const ip = "192.0.2.99";
+    const cookie = await signIn(ip);
+    const day = new Date().toISOString().slice(0, 10);
+    const hour = new Date().getUTCHours();
+    await runOwner((db) => {
+      db.run(`DELETE FROM zur_usage_hourly`);
+      db.run(`DELETE FROM zur_usage_monthly`);
+      db.run(`INSERT INTO zur_usage_hourly (hour, day, requests, neurons) VALUES (?, ?, 4, 12.5)`, hour, day);
+      // The same hour slot of another day is not today's.
+      db.run(`INSERT INTO zur_usage_hourly (hour, day, requests) VALUES (?, '2020-01-01', 9)`, (hour + 1) % 24);
+      db.run(`INSERT INTO zur_usage_monthly (month, last_day, days, requests, neurons) VALUES (?, ?, 3, 30, 300)`, day.slice(0, 7), "2020-01-01");
+    });
+    try {
+      const hours = await call(`${ORIGIN}/api/usage/hours`, { headers: headers(ip, cookie) });
+      expect(hours.status).toBe(200);
+      expect(hours.headers.get("cache-control")).toBe("no-store");
+      expect(usageHoursSchema.parse(await hours.json())).toEqual({
+        day,
+        hours: [{ hour, requests: 4, errors: 0, aborted: 0, fallbacks: 0, neurons: 12.5, paidUsd: 0, audioSeconds: 0 }],
+      });
+      const months = await call(`${ORIGIN}/api/usage/months?days=365&from=1999-01`, { headers: headers(ip, cookie) });
+      expect(months.status).toBe(200);
+      expect(months.headers.get("cache-control")).toBe("no-store");
+      const year = usageMonthsSchema.parse(await months.json());
+      expect(year.to).toBe(day.slice(0, 7));
+      // What the address says changes nothing: the period is the server's, 12 months ending in this one.
+      const first = Number(day.slice(0, 4)) * 12 + Number(day.slice(5, 7)) - 12;
+      expect(year.from).toBe(`${Math.floor(first / 12)}-${String((first % 12) + 1).padStart(2, "0")}`);
+      // The month already summed and the open days of the same month come as one line.
+      const open = await runOwner((db) => db.one<{ n: number }>(`SELECT COALESCE(SUM(ai_requests), 0) AS n FROM zur_usage_daily WHERE day > '2020-01-01' AND substr(day, 1, 7) = ?`, day.slice(0, 7))?.n ?? 0);
+      expect(year.months.filter((m) => m.month === day.slice(0, 7)).map((m) => m.requests)).toEqual([30 + open]);
+    } finally {
+      await runOwner((db) => {
+        db.run(`DELETE FROM zur_usage_hourly`);
+        db.run(`DELETE FROM zur_usage_monthly`);
+      });
+    }
+    for (const path of ["/usage/hours", "/usage/months"]) {
+      expect((await call(`${ORIGIN}/api${path}`, { headers: headers(ip) })).status, path).toBe(401);
+      // Read only: no other verb reaches them.
+      for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+        const res = await call(`${ORIGIN}/api${path}`, { method, headers: headers(ip, cookie) });
+        expect(res.status, `${method} ${path}`).toBe(404);
+      }
+      // SEC: a read from another site's page (no CSRF header) is refused before the route.
+      const forged = await call(`${ORIGIN}/api${path}`, { headers: { cookie, "cf-connecting-ip": ip, "user-agent": headers(ip)["user-agent"] } });
+      expect(forged.status, path).toBe(403);
+      expect(apiErrorSchema.parse(await forged.json()).code, path).toBe("CSRF_FAILED");
+    }
   });
 
   it("tries a company again on the owner's word, and only the two companies it knows", async () => {

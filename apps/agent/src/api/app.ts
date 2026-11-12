@@ -31,6 +31,8 @@ import {
   paidProviderOf,
   type UsageHistory,
   type UsageHistoryDays,
+  type UsageHours,
+  type UsageMonths,
   USAGE_HISTORY_DAYS,
 } from "@zuri/shared";
 import { type Context, Hono } from "hono";
@@ -95,6 +97,9 @@ export interface ApiDeps {
   aiUsage(): UsageReport;
   /** The usage panel's period (step 21). Absent only in tests of other routes. */
   aiHistory?(days: UsageHistoryDays): UsageHistory;
+  /** Today by the hour and the year by the month (PR S13). Absent only in tests of other routes. */
+  aiHours?(): UsageHours;
+  aiMonths?(): UsageMonths;
   /** Whether a paid company's key is set (step 21); absent, none is. */
   paidConfigured?(provider: PaidProviderId): boolean;
   /** The owner says a paid company may be tried again (topped up, new key). Absent only in tests of other routes. */
@@ -551,6 +556,13 @@ export function createApi(deps: ApiDeps) {
     if (period === undefined) throw new AppError("VALIDATION_FAILED", undefined, { fields: ["days"] });
     return Response.json(history(period));
   });
+
+  // PR S13: today by the hour and the year by the month. The year never reads 365 days: `days=365` is
+  // refused above and this reads the months already summed. No parameter, so nothing to validate.
+  const hours = deps.aiHours;
+  if (hours) app.get("/usage/hours", () => Response.json(hours()));
+  const months = deps.aiMonths;
+  if (months) app.get("/usage/months", () => Response.json(months()));
 
   // Step 21: "I topped up" / "new key": the paid company is tried again on the next call.
   const retry = deps.retryPaidProvider;
