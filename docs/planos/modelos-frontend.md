@@ -493,3 +493,12 @@ A revisão cruzada do plano de implementação (`docs/planos/implementacao-front
 - **CRM › Credenciais:** o cartão "n8n do consultório" mostra se os eventos estão ligados e o último recebido; no ⋯, "Trocar o segredo dos eventos" e "Desligar os eventos" (ou "Ligar"), com senha, e o endereço e o segredo aparecem uma única vez.
 - **CRM › Fluxos:** "Últimas execuções" embaixo da lista, com "Carregar mais".
 - **Avaliações:** o filtro da lista passou a funcionar e ganhou "Respondidas"; a resposta publicada tem ⋯ com "Apagar a resposta no Google".
+
+### Ajustes de 12/11: sons, menu por áreas e agenda que edita
+
+Pedido do Pablo em 12/11/2026. Entraram só no `prototipo-interativo.html` (o `prototipo-v5.html` das capturas antigas não mudou), para ele ver e aprovar antes do código. Plano: [sons-menu-e-agenda-editavel.md](sons-menu-e-agenda-editavel.md).
+
+- **Som dos avisos** (Configurações › Avisos): três sons para ouvir e escolher (Sino, Gota, Marimba), feitos pelo navegador, sem arquivo de áudio.
+- **Gravação de áudio:** toque curto ao começar e ao terminar; o relógio mostra o limite de 2:00.
+- **Menu por áreas:** três propostas no seletor "Menu" da barra do protótipo (A grupos por área, B trilho de áreas, C dois espaços), com a área Consultório (Painel, Agendamentos, Financeiro, Relatórios) como telas "Em planejamento".
+- **Agenda:** clicar, editar, arrastar para mudar o dia, a hora e a duração, situação pela cor do Google (Agendado, Confirmado, Reagendado, Cancelado), fins de semana e feriados nacionais marcados, aviso de "Salvo no Google" e "Desfazer". Os nomes dos eventos são inventados.
