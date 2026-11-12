@@ -7,6 +7,7 @@ import { ALERTS_KEY, useAlertOverview } from "../../hooks/notices.ts";
 import { useSettings, useSettingsMutation } from "../../hooks/settings.ts";
 import { api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
+import { CrmNoticesCard } from "./CrmNoticesCard.tsx";
 import { PushCard } from "./PushCard.tsx";
 import { RoutesCard } from "./RoutesCard.tsx";
 import { SoundsCard } from "./SoundsCard.tsx";
@@ -20,7 +21,7 @@ addMessages(ptBRAlerts);
  * Settings > Avisos, in the order the owner sets them up (stage 26c): the sound of
  * a notice in the open app (12/11/2026, first as in the prototype), where notices
  * can go and how each channel is, push on this device, the Telegram bot, which kind
- * goes to which channel, then the daily summary, what the Zuri watches on her own
+ * goes to which channel, what the CRM tells (S15), then the daily summary, what the Zuri watches on her own
  * and the priorities she learned; the recent sends last.
  */
 export function AlertsTab() {
@@ -34,6 +35,7 @@ export function AlertsTab() {
       <PushCard />
       <TelegramCard />
       <RoutesCard settings={settings.data} />
+      <CrmNoticesCard />
       <DigestCard settings={settings.data} />
       <WatchersCard settings={settings.data} />
       <LearningCard settings={settings.data} />

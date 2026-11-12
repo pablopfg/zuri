@@ -43,7 +43,7 @@ addMessages(ptBRSettingsTabs);
 const NEW_AUTOMATION = "nova-automacao";
 /** The same for the Agenda's "Novo evento" (AgendaPage.tsx, NEW_EVENT). */
 const NEW_EVENT = "novo-evento";
-/** And for "Novo fluxo", on the flows of the CRM (FlowsPanel.tsx, NEW_FLOW). */
+/** And for "Novo fluxo", on the flows of the CRM (CrmPage.tsx, NEW_FLOW). */
 const NEW_FLOW = "novo-fluxo";
 
 /** How many of each kind the search lists: a shortcut, not the full page. */
@@ -135,7 +135,7 @@ export function CommandPalette({
         group: t("web.palette.groupCreate"),
         label: t("web.palette.newFlow"),
         icon: Plus,
-        to: ["/crm", "/crm/fluxos", "/crm/credenciais"].includes(location.pathname) ? location.pathname : `/crm/fluxos#${NEW_FLOW}`,
+        to: ["/crm", "/crm/fluxos"].includes(location.pathname) ? location.pathname : `/crm/fluxos#${NEW_FLOW}`,
         before: () => window.dispatchEvent(new Event(NEW_FLOW)),
       },
       { id: "new-note", group: t("web.palette.groupCreate"), label: t("web.palette.newNote"), icon: FilePlus2, to: "/notas/nova" },

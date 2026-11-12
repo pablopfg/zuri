@@ -1,9 +1,15 @@
 # Fluxos e monitor de sites
 
-A partir da etapa 22a, a tela **CRM › Fluxos** (`/crm/fluxos`; antes uma aba de Automações) guarda passos que
-rodam sozinhos: olhar os seus sites, buscar dados de um serviço seu, filtrar o
-que interessa e avisar você. O primeiro modelo pronto é o **monitor de sites**.
-O plano técnico está em `docs/planos/etapa-22a-motor-de-fluxos.md`.
+A tela **CRM** tem duas partes. Em **Fluxos** (`/crm` e `/crm/fluxos`) ficam os
+passos que rodam sozinhos: olhar os seus sites, buscar dados de um serviço
+seu, filtrar o que interessa e avisar você. Em **Credenciais**
+(`/crm/credenciais`) ficam os serviços que um fluxo pode chamar. O primeiro
+modelo pronto é o **monitor de sites**. O plano técnico está em
+`docs/planos/etapa-22a-motor-de-fluxos.md`.
+
+Cada fluxo da lista tem o botão **Executar** e o menu **Mais opções**, com
+**Ligar** ou **Desligar**, **Editar**, **Duplicar** e **Apagar**. A cópia de um
+fluxo nasce desligada, com "(cópia)" no nome.
 
 ## Para o dono
 
@@ -35,7 +41,7 @@ passos, na ordem:
 
 | Passo | O que faz |
 | --- | --- |
-| Chamar um serviço | Chama uma conexão sua (veja abaixo) e transforma a resposta em itens |
+| Chamar um serviço | Chama uma credencial sua (veja abaixo) e transforma a resposta em itens |
 | Filtrar itens | Deixa passar só os itens que seguem as regras (igual, contém, maior, existe…) |
 | Montar campos | Cria ou ajusta campos de cada item |
 | Esperar | Pausa o fluxo por alguns minutos ou dias; ele continua sozinho |
@@ -79,10 +85,10 @@ Sem o Google conectado, o passo mostra onde conectar.
   item ganha `contact`, o primeiro contato achado pelo texto da busca (por
   exemplo `{{telefone}}`), ou vazio.
 
-### Conexões
+### Credenciais
 
-Uma conexão diz **onde** um fluxo pode chamar. Em **Conexões**, toque em
-**Nova conexão** e preencha:
+Uma credencial diz **onde** um fluxo pode chamar e guarda a chave desse
+serviço. Em **CRM › Credenciais**, toque em **Nova credencial** e preencha:
 
 - **Endereço do serviço**: só o começo, com `https://`, como
   `https://api.exemplo.com.br`.
@@ -91,18 +97,19 @@ Uma conexão diz **onde** um fluxo pode chamar. Em **Conexões**, toque em
 - **Caminhos permitidos**: um por linha, como `/v1/clientes`. O fluxo só
   chama o que começar por um deles, por partes inteiras (`/v1` não libera
   `/v10`).
-- **Credencial**: nenhuma, um token no cabeçalho `Authorization` ou um
-  cabeçalho com outro nome. Ela fica cifrada e nunca volta para a tela; para
-  trocar, digite a nova.
+- **Tipo de chave**: nenhuma, um token no cabeçalho `Authorization` ou um
+  cabeçalho com outro nome. A chave fica cifrada e nunca volta para a tela;
+  para trocar, digite a nova.
 
-Criar e mudar uma conexão pede a senha recente. Mudar o endereço ou o tipo de
-credencial apaga a credencial guardada, e você recebe um alerta de segurança
-quando uma conexão é criada ou muda de destino. Uma conexão usada por um fluxo
-não pode ser apagada.
+Criar e mudar uma credencial pede a senha recente. Mudar o endereço ou o tipo
+de chave apaga a chave guardada, e você recebe um alerta de segurança quando
+uma credencial é criada ou muda de destino. Uma credencial usada por um fluxo
+não pode ser apagada. **Editar** e **Apagar** ficam no menu **Mais opções** de
+cada credencial.
 
 ### Histórico e falhas
 
-O **Histórico dos fluxos** mostra as últimas execuções, com o passo em que
+**Últimas execuções**, embaixo da lista de fluxos, mostra o que cada um fez, com o passo em que
 pararam e o motivo. Uma chamada que falhou por um motivo passageiro (rede,
 excesso de pedidos ou erro do serviço) é tentada de novo 1 e 5 minutos
 depois. Se a IA estiver indisponível, a execução para na hora, sem tentar de
@@ -163,7 +170,7 @@ travada, mostra só as contagens, sem endereços nem nomes de fluxos.
 | --- | --- |
 | Fluxos | 20 |
 | Passos por fluxo | 20 |
-| Conexões | 20 |
+| Credenciais | 20 |
 | Sites, somando os monitores | 10 |
 | Intervalo mínimo | 15 min (60 min com passo de IA) |
 | Chamadas por execução | 40 |
@@ -179,19 +186,19 @@ travada, mostra só as contagens, sem endereços nem nomes de fluxos.
 
 ## Segurança
 
-- Só a tela muda fluxos, conexões e endereços. Nenhuma ferramenta da Zuri,
+- Só a tela muda fluxos, credenciais e endereços. Nenhuma ferramenta da Zuri,
   comando do bot ou token remoto cria, liga ou altera um fluxo.
 - Toda chamada passa pelo mesmo `fetch` protegido do MCP: o nome é conferido
   por DNS (nada de rede interna), redirecionamento não é seguido e o tamanho
   e o tempo têm teto.
-- A credencial nunca vai ao modelo, ao log, ao histórico nem ao backup.
+- A chave nunca vai ao modelo, ao log, ao histórico nem ao backup.
 - O que um serviço responde é dado: não muda os passos do fluxo e entra na IA
   dentro de `<data source="flow">`. Um valor de fora igual a `.` ou `..` num
   caminho encerra a execução, para não trocar o endereço chamado.
-- Se um serviço devolver na resposta a própria credencial, ela passa a fazer
-  parte dos itens. A Zuri não tem como impedir isso; use credenciais de
+- Se um serviço devolver na resposta a própria chave, ela passa a fazer
+  parte dos itens. A Zuri não tem como impedir isso; use chaves de
   serviços que não as repetem.
-- **Executar agora** não pede a senha, mesmo com o fluxo desligado (decisão do
+- **Executar** não pede a senha, mesmo com o fluxo desligado (decisão do
   dono, risco aceito). Criar, mudar e ligar pedem.
 - No modo de bloqueio nada roda (as execuções ficam como **Pulada**) e as
   rotas dos fluxos respondem 423.

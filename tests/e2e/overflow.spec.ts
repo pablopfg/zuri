@@ -22,6 +22,7 @@ const SCREENS = [
   "/contatos",
   "/rotinas",
   "/crm/fluxos",
+  "/crm/credenciais",
   "/avaliacoes",
   "/avaliacoes/lista",
   "/avaliacoes/ajustes",
