@@ -1,4 +1,4 @@
-import { REVIEW_LIMITS, type ReviewMetricBucket, type ReviewMetricPeriod, type ReviewMetrics, zonedParts, zonedTimeToUtc } from "@zuri/shared";
+import { REVIEW_LIMITS, type ReviewMetricBucket, type ReviewMetricPeriod, type ReviewMetrics, type ReviewMetricUnit, zonedParts, zonedTimeToUtc } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
 
 /**
@@ -21,7 +21,7 @@ export interface MetricRow {
 export interface MetricWindow {
   /** The first instant counted. */
   from: number;
-  unit: "week" | "month";
+  unit: ReviewMetricUnit;
   /** Oldest first: the local key and the instant each one starts. */
   buckets: { key: string; start: number }[];
 }
@@ -41,6 +41,8 @@ function dayStart(year: number, month: number, day: number, timeZone: string): {
  * The period ending now, in the owner's zone. 30 days: today and the 29 days
  * before, in weeks from Monday (the first and the last are cut by the period).
  * 6 and 12 months: this month and the 5 or 11 before, each one whole but this.
+ * 24 months: this half of the year (January to June, July to December) and the
+ * 3 before. 5 years: this year and the 4 before.
  */
 export function metricWindow(period: ReviewMetricPeriod, now: number, timeZone: string): MetricWindow {
   const today = zonedParts(new Date(now), timeZone);
@@ -51,6 +53,22 @@ export function metricWindow(period: ReviewMetricPeriod, now: number, timeZone: 
     const buckets = [];
     for (let offset = -29 - back; offset <= 0; offset += 7) buckets.push(dayStart(today.year, today.month, today.day + offset, timeZone));
     return { from: first.start, unit: "week", buckets };
+  }
+  if (period === "24m") {
+    const half = today.month <= 6 ? 0 : 1;
+    const buckets = [];
+    for (let back = 3; back >= 0; back--) {
+      // Halves counted from year 0, so going back crosses the year by itself.
+      const count = today.year * 2 + half - back;
+      const { start } = dayStart(Math.floor(count / 2), (count % 2) * 6 + 1, 1, timeZone);
+      buckets.push({ key: `${Math.floor(count / 2)}-S${(count % 2) + 1}`, start });
+    }
+    return { from: (buckets[0] as { start: number }).start, unit: "semester", buckets };
+  }
+  if (period === "5y") {
+    const buckets = [];
+    for (let back = 4; back >= 0; back--) buckets.push({ key: String(today.year - back), start: dayStart(today.year - back, 1, 1, timeZone).start });
+    return { from: (buckets[0] as { start: number }).start, unit: "year", buckets };
   }
   const months = period === "6m" ? 6 : 12;
   const buckets = [];
@@ -72,7 +90,7 @@ function median(values: number[]): number | null {
 /** The numbers of `rows` (reviews written from `window.from` on, with 1 to 5 stars). */
 export function summarize(period: ReviewMetricPeriod, window: MetricWindow, rows: readonly MetricRow[], partial = false): ReviewMetrics {
   const ratings: ReviewMetrics["ratings"] = [0, 0, 0, 0, 0];
-  const buckets: ReviewMetricBucket[] = window.buckets.map(({ key }) => ({ key, promoters: 0, neutrals: 0, detractors: 0 }));
+  const buckets: ReviewMetricBucket[] = window.buckets.map(({ key }) => ({ key, promoters: 0, neutrals: 0, detractors: 0, stars: 0 }));
   const waits: number[] = [];
   let replied = 0;
   for (const row of rows) {
@@ -82,6 +100,7 @@ export function summarize(period: ReviewMetricPeriod, window: MetricWindow, rows
     let index = window.buckets.length - 1;
     while (index > 0 && (window.buckets[index] as { start: number }).start > at) index--;
     const bucket = buckets[index] as ReviewMetricBucket;
+    bucket.stars += row.rating;
     if (row.rating === 5) bucket.promoters++;
     else if (row.rating === 4) bucket.neutrals++;
     else bucket.detractors++;

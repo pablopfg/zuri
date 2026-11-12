@@ -277,7 +277,7 @@ describe("/api/reviews", () => {
     expect((await api("POST", `/reviews/${item.id}/resolve`)).status).toBe(409);
   });
 
-  it("answers the overview's numbers for 30 days, 6 and 12 months, and nothing of a review but numbers (PR S11)", async () => {
+  it("answers the overview's numbers for every period, from 30 days to 5 years, and nothing of a review but numbers (PR S11)", async () => {
     // Off: zeros, in the period's shape.
     const off = (await (await api("GET", "/reviews/metrics")).json()) as ReviewMetrics;
     expect(off).toMatchObject({ period: "30d", unit: "week", ratings: [0, 0, 0, 0, 0], replied: 0, medianReplyMinutes: null, requests: null, partial: false });
@@ -293,24 +293,34 @@ describe("/api/reviews", () => {
     expect(Object.keys(thirty).sort()).toEqual(["buckets", "from", "medianReplyMinutes", "partial", "period", "ratings", "replied", "requests", "unit"]);
     expect(thirty.ratings).toEqual([1, 0, 0, 0, 1]);
     expect(thirty.buckets.at(-1)).toMatchObject({ promoters: 1, neutrals: 0, detractors: 1 });
-    expect(Object.keys(thirty.buckets[0] ?? {}).sort()).toEqual(["detractors", "key", "neutrals", "promoters"]);
+    expect(Object.keys(thirty.buckets[0] ?? {}).sort()).toEqual(["detractors", "key", "neutrals", "promoters", "stars"]);
     // No name, text, id of a review or of the profile.
     expect(text).not.toMatch(/Ana|Souza|segredo-do-texto|Demorou|accounts\/|locations\/|m1|m2/);
-    for (const [period, unit, buckets] of [
-      ["6m", "month", 6],
-      ["12m", "month", 12],
+    for (const [period, unit, buckets, key] of [
+      ["6m", "month", 6, /^\d{4}-\d{2}$/],
+      ["12m", "month", 12, /^\d{4}-\d{2}$/],
+      // SEC-GRAF-02: the long periods leave through the same door, with numbers only.
+      ["24m", "semester", 4, /^\d{4}-S[12]$/],
+      ["5y", "year", 5, /^\d{4}$/],
     ] as const) {
-      const metrics = (await (await api("GET", `/reviews/metrics?period=${period}`)).json()) as ReviewMetrics;
+      const answer = await api("GET", `/reviews/metrics?period=${period}`);
+      expect(answer.status).toBe(200);
+      expect(answer.headers.get("cache-control")).toContain("no-store");
+      const body = await answer.text();
+      const metrics = JSON.parse(body) as ReviewMetrics;
       expect(metrics).toMatchObject({ period, unit, ratings: [1, 0, 0, 0, 1] });
       expect(metrics.buckets).toHaveLength(buckets);
-      expect(metrics.buckets.map((bucket) => bucket.key).every((key) => /^\d{4}-\d{2}$/.test(key))).toBe(true);
+      expect(metrics.buckets.every((bucket) => key.test(bucket.key))).toBe(true);
+      expect(metrics.buckets.at(-1)).toMatchObject({ promoters: 1, detractors: 1, stars: 6 });
+      expect(Object.keys(metrics.buckets[0] ?? {}).sort()).toEqual(["detractors", "key", "neutrals", "promoters", "stars"]);
+      expect(body).not.toMatch(/Ana|Souza|segredo-do-texto|Demorou|accounts\/|locations\/|m1|m2/);
     }
     // Zuri's copy only: Google is never asked.
     expect(google.seen.length).toBe(calls);
   });
 
   it("refuses a period it doesn't know, an extra parameter, and an overview without a session (PR S11)", async () => {
-    for (const query of ["?period=7d", "?period=", "?period=30D", "?period=12m%00", "?period=30d&period=1y", "?period=30d&from=2020-01-01", "?days=365"]) {
+    for (const query of ["?period=7d", "?period=", "?period=30D", "?period=12m%00", "?period=30d&period=1y", "?period=30d&from=2020-01-01", "?days=365", "?period=24M", "?period=5Y", "?period=2y", "?period=24m&period=5y"]) {
       const res = await api("GET", `/reviews/metrics${query}`);
       expect(res.status, query).toBe(400);
       expect((await errorBody(res)).code).toBe("VALIDATION_FAILED");
