@@ -6709,12 +6709,12 @@ function eeTimes(from) {
 }
 
 function evEdit(ev, pre, opener) {
-  const e = ev || { day: pre.day || dkey(st.agd), h: pre.h ?? 11, m: pre.m ?? 0, dur: 1, t: pre.t || "", pid: pre.pid || "", cel: pre.cel || "", mail: pre.mail || "", tipo: TIPOS[0], s: "agendado", fin: "Não pago", ddi: "BR" };
+  const e = ev || { day: /^\d{4}-\d{2}-\d{2}$/.test(pre.day || "") ? pre.day : dkey(st.agd), h: Number(pre.h ?? 11), m: Number(pre.m ?? 0), dur: 1, t: esc(pre.t || ""), pid: pre.pid || "", cel: esc(pre.cel || ""), mail: esc(pre.mail || ""), tipo: TIPOS[0], s: "agendado", fin: "Não pago", ddi: "BR" };
   const p = e.pid && pById(e.pid);
   Object.assign(FORM, { note: "", pid: p ? p.id : "", dur: Math.round(e.dur * 60), own: Math.round(e.dur * 60) !== 60, opt: -1, list: [] });
   const s0 = e.h * 60 + e.m;
   const sel = (attr, label, opts, v) => `<label class="field"><span class="label">${label}</span><select class="input" ${attr}>${opts.map(([ov, ol]) => `<option value="${ov}"${ov === v ? " selected" : ""}>${ol}</option>`).join("")}</select></label>`;
-  dlgShow({ t: ev ? "Editar agendamento" : "Novo agendamento", sub: pre.sub || "O que você salvar vai na hora para o Google Agenda.",
+  dlgShow({ t: ev ? "Editar agendamento" : "Novo agendamento", sub: pre.sub ? esc(pre.sub) : "O que você salvar vai na hora para o Google Agenda.",
     body: `<div class="field pt-field"><label class="label" for="pt-q">Nome completo do paciente</label>
         <div class="cb"><input class="input" id="pt-q" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pt-list" aria-describedby="pt-link" autocomplete="off" spellcheck="false" data-pt-q value="${e.t}" placeholder="Digite para buscar em Contatos" data-autofocus>
         <ul id="pt-list" class="cb-list" role="listbox" aria-label="Contatos com esse nome" hidden></ul></div>
