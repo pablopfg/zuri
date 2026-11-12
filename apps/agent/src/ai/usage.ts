@@ -551,7 +551,8 @@ export class UsageMeter {
   /** Today by the hour (PR S13): the hours that had any use, out of 24 rows at most. Writes nothing. */
   hours(): UsageHours {
     const day = this.today();
-    const rows = this.db.all<{ hour: number; requests: number; errors: number; aborted: number; fallbacks: number; neurons: number; paid_usd: number; audio_seconds: number }>(
+    // The column only holds 0 to 23 (the hour of the UTC day the meter writes).
+    const rows = this.db.all<{ hour: UsageHours["hours"][number]["hour"]; requests: number; errors: number; aborted: number; fallbacks: number; neurons: number; paid_usd: number; audio_seconds: number }>(
       `SELECT hour, ${HOUR_COLUMNS.join(", ")} FROM zur_usage_hourly WHERE day = ? ORDER BY hour`,
       day,
     );

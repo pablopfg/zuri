@@ -27,9 +27,13 @@ const usageTotals = {
  * like the counters (Cloudflare's allocation starts over at 00:00 UTC); the screen shows them in the
  * owner's time zone.
  */
+// An hour of the day as one of its 24 values: a literal, whose check the first load already carries
+// (a `maximum` would pull zod's "less than" check into it, rule P11).
+const HOURS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] as const;
+
 export const usageHoursSchema = /* @__PURE__ */ mini.strictObject({
   day,
-  hours: mini.array(mini.strictObject({ hour: mini.int().check(mini.minimum(0), mini.maximum(23)), ...usageTotals })),
+  hours: mini.array(mini.strictObject({ hour: mini.literal(HOURS), ...usageTotals })),
 });
 
 export type UsageHours = mini.infer<typeof usageHoursSchema>;

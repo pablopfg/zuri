@@ -59,7 +59,7 @@ const ZERO = { requests: 0, errors: 0, aborted: 0, fallbacks: 0, neurons: 0, pai
  * hour it starts at in the owner's time zone, so for UTC−3 the "day" runs 21:00 to 20:59.
  */
 export function hourRows(data: UsageHours, locale: string, timeZone: string): UsageRow[] {
-  const byHour = new Map(data.hours.map((h) => [h.hour, h]));
+  const byHour = new Map<number, UsageHours["hours"][number]>(data.hours.map((h) => [h.hour, h]));
   const start = Date.parse(`${data.day}T00:00:00Z`);
   const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone });
   return Array.from({ length: 24 }, (_, hour) => {
