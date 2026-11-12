@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { isInside, MORE_ITEMS, NAV, NAV_ITEMS, TAB_ITEMS, topBarHidden } from "../src/lib/nav.ts";
+import { isInside, MORE_GROUPS, MORE_ITEMS, NAV, NAV_ITEMS, TAB_ITEMS, topBarHidden } from "../src/lib/nav.ts";
 
 describe("the one list of places", () => {
-  it("has three groups: the first without a title, then Organizar and Relacionamento", () => {
-    expect(NAV.map((group) => group.heading)).toEqual([undefined, "web.nav.groupOrganize", "web.nav.groupRelations"]);
+  it("has the areas in order: the first without a title, then Meu dia, Relacionamento and Assistente", () => {
+    expect(NAV.map((group) => group.heading)).toEqual([undefined, "web.nav.groupMyDay", "web.nav.groupRelations", "web.nav.groupAssistant"]);
     expect(NAV.map((group) => group.items.map((item) => item.to))).toEqual([
       ["/", "/conversa"],
-      ["/tarefas", "/agenda", "/notas", "/memoria", "/rotinas"],
+      ["/tarefas", "/agenda", "/notas"],
       ["/contatos", "/avaliacoes", "/crm"],
+      ["/memoria", "/rotinas"],
     ]);
+  });
+
+  it("draws no area without a place: Consultório waits for its first screen", () => {
+    for (const group of NAV) expect(group.items.length, group.heading).toBeGreaterThan(0);
   });
 
   it("names no group with a title that is part of another's: the closed groups are kept by title, one after the other (lib/sidebar.ts)", () => {
@@ -17,11 +22,21 @@ describe("the one list of places", () => {
   });
 
   it("gives the phone's bar the first four and the sheet the rest, with nothing left out or repeated", () => {
-    expect(TAB_ITEMS.map((item) => item.id)).toEqual(["home", "chat", "tasks", "agenda"]);
-    expect(MORE_ITEMS.map((item) => item.id)).toEqual(["notes", "memory", "routines", "contacts", "reviews", "crm"]);
+    expect(TAB_ITEMS.map((item) => item.to)).toEqual(["/", "/conversa", "/tarefas", "/agenda"]);
+    expect(MORE_ITEMS.map((item) => item.to)).toEqual(["/notas", "/contatos", "/avaliacoes", "/crm", "/memoria", "/rotinas"]);
     expect([...TAB_ITEMS, ...MORE_ITEMS]).toEqual(NAV_ITEMS);
-    expect(new Set(NAV_ITEMS.map((item) => item.id)).size).toBe(NAV_ITEMS.length);
     expect(new Set(NAV_ITEMS.map((item) => item.to)).size).toBe(NAV_ITEMS.length);
+  });
+
+  it("lists the sheet's places under the same areas as the menu, leaving out what the bar already holds", () => {
+    expect(MORE_GROUPS.map((group) => [group.heading, group.items.map((item) => item.to)])).toEqual([
+      ["web.nav.groupMyDay", ["/notas"]],
+      ["web.nav.groupRelations", ["/contatos", "/avaliacoes", "/crm"]],
+      ["web.nav.groupAssistant", ["/memoria", "/rotinas"]],
+    ]);
+    expect(MORE_GROUPS.flatMap((group) => group.items)).toEqual(MORE_ITEMS);
+    // The sheet names every list by its area: a place of the untitled first area must stay in the bar.
+    for (const group of MORE_GROUPS) expect(group.heading).toBeTruthy();
   });
 });
 

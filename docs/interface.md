@@ -76,28 +76,32 @@ A casca do Sinal (aprovada pelo Pablo em 10/11/2026; plano em
 `docs/planos/implementacao-frontend-sinal.md`, PR S02). Só o conteúdo rola: os
 menus nunca saem da tela.
 
-- **Uma lista só de lugares** (`apps/web/src/lib/nav.ts`): Início e Conversa;
-  em **Organizar**, Tarefas, Agenda, Notas, Memória e Rotinas; em
-  **Relacionamento**, Contatos, Avaliações e CRM. O menu lateral, o menu de
+- **Uma lista só de lugares, por áreas** (`apps/web/src/lib/nav.ts`, proposta
+  A aprovada pelo Pablo em 12/11/2026): Início e Conversa; em **Meu dia**,
+  Tarefas, Agenda e Notas; em **Relacionamento**, Contatos, Avaliações e CRM;
+  em **Assistente**, Memória e Rotinas. A área **Consultório** (Gestão do
+  consultório) entra entre Meu dia e Relacionamento junto com a primeira tela
+  dela: área sem tela não aparece. O menu lateral, o menu de
   baixo, a folha "Mais" e a paleta (Ctrl/⌘ K) leem essa lista, então um lugar
   novo aparece em todos com o mesmo nome e o mesmo ícone.
 - **Computador:** menu lateral de altura total (`shell/Sidebar.tsx`). No topo,
   a marca, o sino e o botão de recolher. Abaixo, "Nova conversa" (também com
-  Ctrl/⌘ ⇧ O) e a busca. No meio, os lugares nos três grupos. No pé, a conta.
+  Ctrl/⌘ ⇧ O) e a busca. No meio, os lugares nas áreas. No pé, a conta.
   Recolhido, o menu vira uma coluna só de ícones. Cada ícone mostra o nome ao
   lado ao passar o mouse ou focar pelo teclado (Esc esconde); o nome continua
   no controle para leitores de tela, e o Tab percorre tudo na mesma ordem. A
   escolha fica em `localStorage` (`zuri.sidebar`), só neste navegador, e as
   outras abas acompanham.
-- **Grupos que recolhem:** os títulos **Organizar** e **Relacionamento** são
-  botões. Um clique (ou Enter/Espaço) recolhe o grupo, outro exibe; a seta ao
+- **Grupos que recolhem:** os títulos das áreas (**Meu dia**, **Relacionamento**
+  e **Assistente**) são botões. Um clique (ou Enter/Espaço) recolhe o grupo, outro exibe; a seta ao
   lado mostra o estado e o leitor de tela anuncia "recolhido" ou "expandido".
   Com o grupo recolhido, a tela em que você está continua aparecendo, sozinha,
   para você não perder onde está. Os lugares recolhidos saem também do caminho
   do Tab. Início e Conversa não têm título e ficam sempre à vista. No menu só
   de ícones todos os lugares aparecem, e a escolha volta quando o menu abre de
-  novo. No celular nada recolhe: o menu de baixo e a folha "Mais" não têm
-  grupos. A escolha fica em `localStorage` (`zuri.sidebar.groups`), só neste
+  novo. No celular nada recolhe: a folha "Mais" mostra os lugares que não
+  cabem no menu de baixo com os mesmos títulos das áreas, e Configurações em
+  "Sistema". A escolha fica em `localStorage` (`zuri.sidebar.groups`), só neste
   navegador, e as outras abas acompanham. A animação é curta e some para quem
   pede menos movimento ao sistema. A aparência das partes do menu fica em
   `styles.css` (`.zuri-menu …`), para não pesar no primeiro carregamento.

@@ -75,7 +75,7 @@ export function CommandPalette({
   onClose: () => void;
   navigate: (to: string, options?: { state: unknown }) => void;
   /** The menu's own list (lib/nav.ts), handed over by the shell: the same places, names and icons, and no module shared with the first load. */
-  places: readonly { id: string; to: string; label: MessageKey; icon: LucideIcon }[];
+  places: readonly { to: string; label: MessageKey; icon: LucideIcon }[];
 }) {
   const { t } = useI18n();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -109,7 +109,7 @@ export function CommandPalette({
       to: `/configuracoes/${id}`,
     });
     return [
-      ...places.map(({ id, to, label, icon }) => ({ id, group: go, label: t(label), icon, to })),
+      ...places.map(({ to, label, icon }) => ({ id: to, group: go, label: t(label), icon, to })),
       { id: "access", group: go, label: t("web.nav.accessLog"), icon: ShieldCheck, to: "/acessos" },
       // The sections in the settings menu's order and with its icons (PR S16).
       section("conta", "web.settings.tab.account", User),
@@ -214,7 +214,7 @@ export function CommandPalette({
           ...meaning.memories.filter((m) => !listed.has(m.id)).map((memory) => ({ id: `meaning-memory-${memory.id}`, group, label: memory.content, detail: t("web.nav.memory"), icon: Brain, to: "/memoria", before: () => askMemorySearch([...memory.content].slice(0, 80).join("")) })),
           ...meaning.tasks.filter((task) => !listed.has(task.id)).map((task) => ({ id: `meaning-task-${task.id}`, group, label: task.title, detail: t("web.nav.tasks"), icon: ListTodo, to: "/tarefas", state: { openTask: task } })),
           ...meaning.notes.filter((note) => !listed.has(note.id)).map((note) => ({ id: `meaning-note-${note.id}`, group, label: note.title, detail: t("web.nav.notes"), icon: Notebook, to: `/notas/${note.id}` })),
-          ...meaning.automations.map((automation) => ({ id: `meaning-automation-${automation.id}`, group, label: automation.name, detail: t("web.nav.routines"), icon: places.find((place) => place.id === "routines")?.icon ?? Search, to: "/rotinas" })),
+          ...meaning.automations.map((automation) => ({ id: `meaning-automation-${automation.id}`, group, label: automation.name, detail: t("web.nav.routines"), icon: places.find((place) => place.to === "/rotinas")?.icon ?? Search, to: "/rotinas" })),
         ].slice(0, PER_KIND * 2)
       : [];
     return [

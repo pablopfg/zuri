@@ -1,6 +1,6 @@
 # Plano · Sons, áudio de 2 minutos, menu por áreas e agenda que edita
 
-Situação: aprovado em 12/11/2026 (o Pablo seguiu as três recomendações; implementação nas quatro entregas da seção 11)
+Situação: concluído em 12/11/2026 (o Pablo aprovou as três recomendações; as quatro entregas da seção 11 estão na develop)
 Origem: pedido do Pablo em 12/11/2026
 Dependências: nenhuma PR aberta. A área "Consultório" do menu depende do plano da Gestão do consultório, que corre à parte.
 
@@ -158,8 +158,8 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 | --- | --- |
 | 1. Áudio de 120 s e sons | mesclada (#315) |
 | 2. Situação por cor, feriados e fins de semana | mesclada (#319) |
-| 3. Arrastar, duração, desfazer e avisos de sincronização | em revisão |
-| 4. Menu por áreas | a fazer |
+| 3. Arrastar, duração, desfazer e avisos de sincronização | mesclada (#321) |
+| 4. Menu por áreas | mesclada (#322) |
 
 ### Diferenças da entrega 1
 
@@ -206,6 +206,15 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 - **A confirmação de "Editar" aparece na página**, porque o formulário fecha antes do envio: o aviso com "Desfazer" fica ao alcance. Se o Google recusar, o aviso diz o motivo e o evento continua como estava.
 - **O aviso de falha tem marca própria** (triângulo vermelho, e não o visto verde), e o de conexão fica até ser fechado.
 - **Horário em conflito:** o aviso acrescenta "Atenção: há outro evento neste horário", como no protótipo. Não impede a mudança.
+
+### Diferenças da entrega 4
+
+- **O que entrou:** o menu em quatro áreas (Início e Conversa sem título, "Meu dia", "Relacionamento" e "Assistente"), cada título recolhendo o grupo como antes, e o "Mais" do celular com as mesmas áreas. Sem migration e sem rota nova.
+- **Consultório fica fora até a primeira tela.** A Gestão do consultório ainda espera aprovação; a lista do menu (`apps/web/src/lib/nav.ts`) marca o lugar dela, entre "Meu dia" e "Relacionamento", e o teste confere que nenhuma área vazia aparece.
+- **"Mais" tem "Sistema" só com Configurações.** O protótipo põe ali também "Estados das telas" e "Identidade visual", que são páginas só do protótipo.
+- **No "Mais", área sem tela sobrando não aparece.** Tarefas e Agenda ficam na barra de baixo, então "Meu dia" mostra só Notas, e Início e Conversa não ganham título.
+- **Grupo recolhido do menu antigo abre de novo.** "Organizar" deixou de existir; quem o tinha recolhido vê o menu aberto na primeira visita.
+- **O lugar perdeu o `id`.** Para caber no teto de 141 kB do JS inicial (ficou em 140.989 B), cada lugar do menu passou a se identificar pelo endereço, que já era único. A paleta de comandos usa o endereço como chave.
 
 ## 12. Riscos
 
