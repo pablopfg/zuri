@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "./fixtures.ts";
+import { expect, type Page, routeFakeTurnstile, test } from "./fixtures.ts";
 import { expectAccessible, expectFits, signIn } from "./ui-helpers.ts";
 
 // The Agenda's status by color, national holidays and weekends (docs/planos/sons-menu-e-agenda-editavel.md,
@@ -48,18 +48,19 @@ const wire = (sample: Sample, index: number) => ({
 });
 
 /** Google as connected with two calendars and these events; a PATCH is answered by `change`. */
-async function routeAgenda(page: Page, samples: Sample[], change?: (body: Record<string, string>) => { status: number; json: unknown }) {
+async function routeAgenda(page: Page, samples: Sample[], change?: (body: Record<string, string>) => { status: number; json: unknown; wait?: Promise<void> }) {
   const events = samples.map(wire);
   const patches: Record<string, string>[] = [];
   await page.route("**/api/google", (route) =>
     route.fulfill({ json: { configured: true, connected: true, account: "dono@exemplo.com.br", status: "connected", problem: null, connectedAt: at("10", "10:00"), calendars: CALENDARS } }),
   );
   await page.route("**/api/google/events?*", (route) => route.fulfill({ json: { more: false, calendars: CALENDARS, events } }));
-  await page.route("**/api/google/events", (route) => {
+  await page.route("**/api/google/events", async (route) => {
     if (route.request().method() !== "PATCH" || !change) return route.fallback();
     const body = route.request().postDataJSON() as Record<string, string>;
     patches.push(body);
     const answer = change(body);
+    if (answer.wait) await answer.wait;
     if (answer.status === 200) {
       // As Google would: the color changes and the event gets a new version.
       const index = events.findIndex((event) => event.id === body.eventId);
@@ -98,7 +99,8 @@ test("the week paints each event by its status, names it for a screen reader, an
     ["Isadora Pires Falcão", "Agendado", "rgb(3, 155, 229)"],
   ];
   for (const [title, status, bar] of bars) {
-    await expect(event(page, title)).toHaveAccessibleName(new RegExp(`^${title}\\s*${status}`));
+    // The week's block writes the status after the hour: never by the color alone.
+    await expect(event(page, title)).toContainText(new RegExp(`\\d\\d:\\d\\d · ${status}$`));
     expect(await css(page, event(page, title), "border-left-color")).toBe(bar);
   }
   // Only the cancelled one is struck through.
@@ -179,7 +181,7 @@ test("the details change the status with one tap, send only the color with the v
   expect(patches).toHaveLength(2);
   expect(patches[1]).toEqual({ calendarId: "main", eventId: "e1", etag: '"v2-1"', colorId: "11" });
   await details.getByRole("button", { name: "Fechar" }).click();
-  await expect(event(page, "Marina Teles Barreto")).toHaveAccessibleName(/Cancelado/);
+  await expect(event(page, "Marina Teles Barreto")).toHaveAccessibleName(/^Marina Teles Barreto .+ · Cancelado$/);
   expect(await css(page, event(page, "Marina Teles Barreto"), "border-left-color")).toBe("rgb(213, 0, 0)");
 
   // A color outside the four: no status is on, and the color is named.
@@ -210,6 +212,14 @@ test("a status refused because the event changed at Google closes the details an
   await expect(event(page, "Helena Duarte Prado")).toHaveAccessibleName(/Confirmado/);
   expect(patches).toHaveLength(1);
 
+  // Deleted at Google meanwhile: the same, the details close.
+  answer = { status: 404, json: { code: "NOT_FOUND", message: "Este evento não existe mais no Google Agenda." } };
+  await event(page, "Renato Sampaio Cruz").click();
+  const gone = page.getByRole("dialog", { name: "Renato Sampaio Cruz" });
+  await gone.getByRole("group", { name: "Situação" }).getByRole("button", { name: "Confirmado" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Este evento não existe mais no Google Agenda." })).toBeVisible();
+  await expect(gone).toHaveCount(0);
+
   answer = { status: 503, json: { code: "SERVICE_UNAVAILABLE", message: "O Google não respondeu. Tente de novo em instantes." } };
   await event(page, "Helena Duarte Prado").click();
   const again = page.getByRole("dialog", { name: "Helena Duarte Prado" });
@@ -218,11 +228,45 @@ test("a status refused because the event changed at Google closes the details an
   await expect(again.getByRole("group", { name: "Situação" }).getByRole("button", { pressed: true })).toHaveText("Confirmado");
 });
 
+test("an answer that comes after the details were closed, or opened on another event, changes nothing there", async ({ page }) => {
+  let release = () => {};
+  const held = () => new Promise<void>((done) => (release = done));
+  let wait = held();
+  const patches = await routeAgenda(page, WEEK, () => ({ status: 200, json: {}, wait }));
+  await openAgenda(page);
+  // Closed while the change is on its way: the details stay closed, and the week shows the new status.
+  await event(page, "Marina Teles Barreto").click();
+  const first = page.getByRole("dialog", { name: "Marina Teles Barreto" });
+  await first.getByRole("group", { name: "Situação" }).getByRole("button", { name: "Confirmado" }).click();
+  await expect.poll(() => patches.length).toBe(1);
+  await first.getByRole("button", { name: "Fechar" }).click();
+  await expect(first).toHaveCount(0);
+  release();
+  await expect(event(page, "Marina Teles Barreto")).toContainText("Confirmado");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // Another event opened meanwhile: its details stay its own.
+  wait = held();
+  await event(page, "Marina Teles Barreto").click();
+  await page.getByRole("dialog", { name: "Marina Teles Barreto" }).getByRole("group", { name: "Situação" }).getByRole("button", { name: "Cancelado" }).click();
+  await expect.poll(() => patches.length).toBe(2);
+  await page.getByRole("dialog", { name: "Marina Teles Barreto" }).getByRole("button", { name: "Fechar" }).click();
+  await event(page, "Helena Duarte Prado").click();
+  const other = page.getByRole("dialog", { name: "Helena Duarte Prado" });
+  await expect(other).toBeVisible();
+  release();
+  await expect(event(page, "Marina Teles Barreto")).toContainText("Cancelado");
+  await expect(other).toBeVisible();
+  await expect(other.getByRole("group", { name: "Situação" }).getByRole("button", { pressed: true })).toHaveText("Confirmado");
+  await expect(page.getByRole("dialog", { name: "Marina Teles Barreto" })).toHaveCount(0);
+});
+
 test("the month fills weekends and holidays and names the holiday under its day", async ({ page }) => {
   await routeAgenda(page, WEEK);
   await openAgenda(page);
   await page.getByRole("radio", { name: "Mês" }).check({ force: true });
-  const cell = (day: string) => page.getByRole("main").getByRole("listitem").filter({ has: page.getByRole("button", { name: new RegExp(`^${day} ?, Ver o dia .+ de novembro`) }) });
+  const cellOf = (day: string, month = "dezembro") => page.getByRole("main").getByRole("listitem").filter({ has: page.getByRole("button", { name: new RegExp(`^${day} ?, Ver o dia .+ de ${month}`) }) });
+  const cell = (day: string) => cellOf(day, "novembro");
   const fill = (day: string) => css(page, cell(day), "background-color");
   const [weekday, saturday, sunday, friday, sundayHoliday] = [await fill("18"), await fill("21"), await fill("22"), await fill("20"), await fill("15")];
   expect(saturday).not.toBe(weekday);
@@ -235,9 +279,28 @@ test("the month fills weekends and holidays and names the holiday under its day"
     await expect(cell(day).getByText(name, { exact: true })).toBeVisible();
     await expect(cell(day).getByRole("button", { name: new RegExp(`Feriado nacional: ${name}`) })).toBeVisible();
   }
-  await expect(event(page, "Caio Vasques Lima")).toHaveAccessibleName(/Cancelado/);
+  await expect(event(page, "Caio Vasques Lima")).toHaveAccessibleName(/^Caio Vasques Lima\s*, Cancelado/);
   await expectFits(page, "agenda-situacao-mes");
+  // A holiday of another month at the edge of the grid (1/1/2027 in December's): spoken in the day's button,
+  // but not written nor filled, as every day outside the month.
+  await page.getByRole("button", { name: "Próximo período" }).click();
+  const newYear = page.getByRole("main").getByRole("listitem").filter({ has: page.getByRole("button", { name: /^1 ?, Ver o dia .+ de janeiro, Feriado nacional: Confraternização Universal$/ }) });
+  await expect(newYear).toHaveCount(1);
+  await expect(newYear.getByText("Confraternização Universal", { exact: true })).toHaveCount(0);
+  await expect(cellOf("25").getByText("Natal", { exact: true })).toBeVisible();
   await expectAccessible(page, "agenda-situacao-mes");
+});
+
+test("a device far from the owner's zone still marks the holiday on its day", async ({ browser }) => {
+  // Kiritimati is 17 hours ahead of São Paulo: the device is already on the next day.
+  const context = await browser.newContext({ locale: "pt-BR", timezoneId: "Pacific/Kiritimati", baseURL: test.info().project.use.baseURL ?? "" });
+  await routeFakeTurnstile(context);
+  const page = await context.newPage();
+  await routeAgenda(page, WEEK);
+  await openAgenda(page);
+  await expect(column(page, "20").getByText("Consciência Negra", { exact: true })).toBeVisible();
+  await expect(page.getByRole("main").getByText("Consciência Negra", { exact: true })).toHaveCount(1);
+  await context.close();
 });
 
 test.describe("on a phone", () => {

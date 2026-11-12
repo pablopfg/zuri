@@ -382,8 +382,18 @@ describe("/api/google/events: the Agenda screen", () => {
     const moved = ((await both.json()) as { event: AgendaEvent }).event;
     expect(moved).toMatchObject({ colorId: "5", start: "2026-11-05T19:00:00.000Z", end: "2026-11-05T20:00:00.000Z" });
 
+    // A change without a color leaves the color alone, and says nothing of it to Google.
+    const renamed = await api("PATCH", "/google/events", { ...target, etag: moved.etag, title: "Retorno" });
+    const kept = ((await renamed.json()) as { event: AgendaEvent }).event;
+    expect(kept).toMatchObject({ title: "Retorno", colorId: "5" });
+    expect(JSON.parse(google.seen.filter((r) => r.method === "PATCH").at(-1)?.body ?? "{}")).toEqual({ summary: "Retorno" });
+    // The color it already has: nothing to send.
+    const sentSoFar = google.seen.filter((r) => r.method === "PATCH").length;
+    expect((await api("PATCH", "/google/events", { ...target, etag: kept.etag, colorId: "5" })).status).toBe(200);
+    expect(google.seen.filter((r) => r.method === "PATCH").length).toBe(sentSoFar);
+
     // Empty takes the color off: the event follows its calendar's again.
-    const cleared = await api("PATCH", "/google/events", { ...target, etag: moved.etag, colorId: "" });
+    const cleared = await api("PATCH", "/google/events", { ...target, etag: kept.etag, colorId: "" });
     expect(((await cleared.json()) as { event: AgendaEvent }).event.colorId).toBe("");
     expect(JSON.parse(google.seen.filter((r) => r.method === "PATCH").at(-1)?.body ?? "{}")).toEqual({ colorId: null });
   });
@@ -394,9 +404,14 @@ describe("/api/google/events: the Agenda screen", () => {
     await setMode(PRIMARY, "write");
     seedEvent(READER, "Atendimento", 1);
     const event = google.events.get(READER)?.at(-1);
-    const res = await api("PATCH", "/google/events", { calendarId: READER, eventId: event?.id, etag: event?.etag, colorId: "10" });
+    if (!event) throw new Error("the seed laid no event");
+    const res = await api("PATCH", "/google/events", { calendarId: READER, eventId: event.id, etag: event.etag, colorId: "10" });
     expect(res.status).toBe(400);
-    expect(event?.colorId).toBeUndefined();
+    // Refused for the calendar, not for the shape of the request: Zuri read the event and stopped before writing.
+    expect((await errorBody(res)).code).toBe("VALIDATION_FAILED");
+    expect(google.seen.filter((r) => r.method === "PATCH")).toHaveLength(0);
+    expect(google.events.get(READER)?.at(-1)).toEqual(event);
+    expect(event.colorId).toBeUndefined();
     expect((await api("POST", "/google/events", { calendarId: PRIMARY, title: "X", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "10" })).status).toBe(400);
   });
 

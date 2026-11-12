@@ -141,6 +141,30 @@ describe("event ids that would leave /events/", () => {
       expect(world.googleSim.seen.filter((r) => r.url.includes("/events/") && !r.url.endsWith("/watch"))).toEqual([]);
     }));
 
+  it("the body sent to Google carries a color only when it is one of the four statuses or null, whoever built it", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      const created = await world.google.createEvent(PRIMARY, { summary: "Consulta", start: { dateTime: "2026-11-05T17:00:00.000Z" }, end: { dateTime: "2026-11-05T18:00:00.000Z" }, colorId: "3" }, new GoogleMeter(4));
+      expect(created.colorId).toBe("");
+      const sent = () => JSON.parse(world.googleSim.seen.filter((r) => r.method === "PATCH").at(-1)?.body ?? "{}") as Record<string, unknown>;
+      let etag = created.etag;
+      // As a stored proposal's patch could carry: any key, any value.
+      for (const colorId of ["3", "12", "", 7, ["7"], { a: 1 }, "7; x"]) {
+        const after = await world.google.updateEvent(PRIMARY, created.id, { summary: "Consulta", colorId, attendees: [{ email: "a@exemplo.com.br" }] }, etag, new GoogleMeter(4));
+        expect(sent()).toEqual({ summary: "Consulta" });
+        expect(after.colorId).toBe("");
+        etag = after.etag;
+      }
+      for (const colorId of ["5", "7", "10", "11"]) {
+        const after = await world.google.updateEvent(PRIMARY, created.id, { colorId }, etag, new GoogleMeter(4));
+        expect(sent()).toEqual({ colorId });
+        expect(after.colorId).toBe(colorId);
+        etag = after.etag;
+      }
+      expect((await world.google.updateEvent(PRIMARY, created.id, { colorId: null }, etag, new GoogleMeter(4))).colorId).toBe("");
+      expect(sent()).toEqual({ colorId: null });
+    }));
+
   it("a closed calendar doesn't even say whether an id exists there", () =>
     withChatWorld(async (world) => {
       await connect(world);

@@ -2227,7 +2227,7 @@ export const en: Messages = {
   "web.agenda.status.rescheduled": "Rescheduled",
   "web.agenda.status.cancelled": "Cancelled",
   "web.agenda.status.saved": "Status saved",
-  "web.agenda.event.color": "Color in Google",
+  "web.agenda.event.colorLine": "Color in Google: {color}",
   "web.agenda.event.colorStatus": "{color} ({status})",
   "web.agenda.color.none": "The calendar's",
   "web.agenda.color.1": "Lavender",

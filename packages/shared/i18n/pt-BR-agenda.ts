@@ -72,7 +72,7 @@ export const ptBRAgenda = {
   "web.agenda.status.rescheduled": "Reagendado",
   "web.agenda.status.cancelled": "Cancelado",
   "web.agenda.status.saved": "Situação salva",
-  "web.agenda.event.color": "Cor no Google",
+  "web.agenda.event.colorLine": "Cor no Google: {color}",
   "web.agenda.event.colorStatus": "{color} ({status})",
   "web.agenda.color.none": "A da agenda",
   "web.agenda.color.1": "Lavanda",

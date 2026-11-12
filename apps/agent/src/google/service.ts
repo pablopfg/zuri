@@ -12,6 +12,7 @@ import {
   sha256Hex,
   timingSafeEqualText,
   toBase64Url,
+  EVENT_STATUS_COLOR,
 } from "@zuri/shared";
 import { currentWake, type WakeBudget } from "../agent/wake-budget.ts";
 import type { Database } from "../db/database.ts";
@@ -1010,10 +1011,14 @@ function accessFrom(token: Record<string, unknown>, now: number): { token: strin
   return { token: token.access_token, expiresAt: now + seconds * 1000 };
 }
 
+const STATUS_COLORS: ReadonlySet<string> = new Set(Object.values(EVENT_STATUS_COLOR));
+
 /** Only the fields Zuri sets, whatever built the body: never attendees, conference data or anything that writes to others. */
 function safeBody(body: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const key of ["summary", "location", "description", "start", "end", "colorId"]) if (body[key] !== undefined) out[key] = body[key];
+  for (const key of ["summary", "location", "description", "start", "end"]) if (body[key] !== undefined) out[key] = body[key];
+  // The color is the appointment's status: one of its four, or null to take it off. Nothing else, whoever asks.
+  if (body.colorId === null || STATUS_COLORS.has(body.colorId as string)) out.colorId = body.colorId;
   return out;
 }
 

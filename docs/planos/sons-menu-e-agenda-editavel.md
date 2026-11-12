@@ -184,6 +184,10 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 - **Fim de semana é sempre sábado e domingo**, mesmo que os dias de trabalho das Configurações sejam outros.
 - **O rótulo do evento não traz o tipo** ("Consulta", "Retorno"). Ele continua na descrição, dentro dos detalhes; separar o tipo vem com o campo "Tipo" do formulário, na entrega 3.
 - **A legenda** (quatro situações, fim de semana e feriado) fica embaixo da Agenda.
+- **A situação aparece escrita, não só pela cor:** depois da hora no bloco da semana e na linha do dia. No mês, onde não cabe, ela é falada pelo leitor de tela e está na legenda.
+- **No dia do celular, o sábado ou domingo escolhido fica com a marca de escolhido** (fundo escuro), que vence o cinza do fim de semana; os outros dias da faixa mantêm o fundo.
+- **Feriado de outro mês na borda da grade do mês** (1/1 na grade de dezembro) não ganha fundo nem nome escrito, como todo dia fora do mês; o leitor de tela diz o nome.
+- **A lista fixa de campos que vai ao Google só aceita a cor se for uma das quatro ou vazio**, venha o pedido de onde vier (auditoria, item informativo).
 
 ## 12. Riscos
 

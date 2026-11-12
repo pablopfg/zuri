@@ -171,7 +171,7 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   expect((await page.request.patch("/api/google/events", { headers: CSRF, data: { calendarId: confirmed?.calendarId, eventId: confirmed?.id, etag: confirmed?.etag, colorId: "11" } })).ok()).toBe(true);
   // Read again on coming back to the screen (the computer reopens on the week, the phone on the day).
   await page.reload();
-  await expect(renamed).toHaveAccessibleName(/^Consulta remarcada\s*Cancelado/);
+  await expect(renamed).toContainText("Cancelado");
 
   // Delete, after a confirmation inside the dialog.
   await renamed.click();

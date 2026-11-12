@@ -351,7 +351,8 @@ export function AgendaPage() {
         event={open}
         calendar={open ? byId.get(open.calendarId) : undefined}
         onClose={() => setOpen(null)}
-        onChange={setOpen}
+        // Only while the details still show that event: closed, or on another one, the answer changes nothing here.
+        onChange={(saved) => setOpen((old) => (old && eventKey(old) === eventKey(saved) ? saved : old))}
         onEdit={(event) => {
           setOpen(null);
           setEditing({ mode: "edit", event });
@@ -570,10 +571,12 @@ function EventButton({
       style={{ "--event": look.color ?? "var(--color-accent)" } as CSSProperties}
     >
       <span className={cn("block truncate font-semibold", look.status === "cancelled" && "line-through")}>{event.title || t("web.agenda.event.untitled")}</span>
-      {look.status && <span className="sr-only">{t(STATUS_TEXT[look.status])}</span>}
+      {/* The status in words too, never by the color alone: written in a block, where there is room, and spoken in a chip. */}
+      {look.status && !block && <span className="sr-only">, {t(STATUS_TEXT[look.status])}</span>}
       {block ? (
         <span className="block truncate text-fg-muted">
           {when}
+          {look.status ? ` · ${t(STATUS_TEXT[look.status])}` : ""}
           {event.location ? ` · ${event.location}` : ""}
         </span>
       ) : (
@@ -847,7 +850,7 @@ function MonthView({
                 </span>
               </button>
               {/* The name is already in the day's button for whoever listens; a phone has no room for it and keeps the fill. */}
-              {holiday && (
+              {holiday && day.slice(0, 7) === month && (
                 <p aria-hidden className="hidden truncate px-1 text-[0.6875rem] leading-4 font-semibold text-holiday-text sm:block">
                   {holiday}
                 </p>
@@ -882,14 +885,15 @@ function MonthView({
   );
 }
 
-function Detail({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
+/** `label` names the line for a screen reader when the line itself does not say what it is. */
+function Detail({ icon, label, children }: { icon: ReactNode; label?: string; children: ReactNode }) {
   return (
     <div className="flex gap-3 text-sm">
       <span aria-hidden className="mt-0.5 text-fg-muted">
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="sr-only">{label}</p>
+        {label && <p className="sr-only">{label}</p>}
         <div className="break-words">{children}</div>
       </div>
     </div>
@@ -1005,13 +1009,13 @@ function EventDialog({
               {calendar?.name ?? event.calendarId}
             </Detail>
             {editable && (
-              <Detail icon={<Palette className="h-4 w-4" />} label={t("web.agenda.event.color")}>
+              <Detail icon={<Palette className="h-4 w-4" />}>
                 <span className="text-fg-muted">
-                  {t("web.agenda.event.color")}
-                  {": "}
-                  {look?.status
-                    ? t("web.agenda.event.colorStatus", { color: t(colorName ?? "web.agenda.color.none"), status: t(STATUS_TEXT[look.status]) })
-                    : t(colorName ?? "web.agenda.color.none")}
+                  {t("web.agenda.event.colorLine", {
+                    color: look?.status
+                      ? t("web.agenda.event.colorStatus", { color: t(colorName ?? "web.agenda.color.none"), status: t(STATUS_TEXT[look.status]) })
+                      : t(colorName ?? "web.agenda.color.none"),
+                  })}
                 </span>
               </Detail>
             )}
