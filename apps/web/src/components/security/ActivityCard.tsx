@@ -49,7 +49,7 @@ export function ActivityCard() {
                     </p>
                   )}
                   {/* The address on its own line (PR S16), as the access log's column shows it. */}
-                  {event.ip && <p className="break-all font-mono text-xs text-fg-muted">{t("web.activity.ip", { ip: event.ip })}</p>}
+                  {event.ip && <p className="break-all text-xs text-fg-muted tabular-nums">{t("web.activity.ip", { ip: event.ip })}</p>}
                 </div>
                 <time dateTime={event.at} className="shrink-0 text-sm text-fg-muted">
                   {dateTime(event.at)}
