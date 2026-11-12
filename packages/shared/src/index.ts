@@ -48,6 +48,7 @@ export {
 } from "../i18n/index.ts";
 export { AGENDA_VIEWS, type AgendaPrefs, type AgendaView, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
 export { AGENT_INSTANCE_NAME } from "./constants.ts";
+export { DEFAULT_SOUND_PREFS, NOTICE_SOUND_GAP_MS, NOTICE_SOUNDS, type NoticeSound, type SoundPrefs } from "./sounds.ts";
 export {
   API_ERROR_CODES,
   API_ERROR_STATUS,
@@ -134,6 +135,7 @@ export {
 export * from "./productivity.ts";
 export * from "./memory.ts";
 export * from "./ai.ts";
+export * from "./ai-usage-periods.ts";
 export * from "./agents.ts";
 export * from "./chat.ts";
 export * from "./automations.ts";

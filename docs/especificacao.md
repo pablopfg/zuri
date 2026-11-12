@@ -47,7 +47,7 @@ Cada linha é um requisito. A coluna da direita aponta onde o agente estuda a re
 | Área | O que precisa existir | Referência no Talorys |
 | --- | --- | --- |
 | Chat | Respostas em streaming (SSE), Markdown, atividade das ferramentas, parar resposta, resumo automático do histórico longo, uso e limites por conversa | `agent/runner.ts`, `api/routes/chat.ts`, `ChatPage.tsx` |
-| Voz | Microfone no chat (até 1 min), transcrição pelo Whisper do Workers AI, texto revisado antes de enviar, áudio nunca guardado, teto de 60 min/dia | `ai/transcription.ts`, `hooks/voice.ts` |
+| Voz | Microfone no chat (até 2 min), transcrição pelo Whisper do Workers AI, texto revisado antes de enviar, áudio nunca guardado, teto de 60 min/dia | `ai/transcription.ts`, `hooks/voice.ts` |
 | Memória | Fatos duráveis visíveis, editáveis e apagáveis; só as relevantes vão ao modelo; orçamento de contexto | `agent/memory.ts`, `MemoryPage.tsx` |
 | Histórico da memória | Fatos que mudam com o tempo (atual, incerto, passado), detecção de conflito por regras e opcionalmente por IA | `memory/`, `docs/memory-history.md` |
 | Busca semântica (opcional) | Embeddings guardados no SQLite do Durable Object, busca por significado em memórias, tarefas, notas e automações | `semantic/`, `docs/semantic-recall.md` |
@@ -281,7 +281,7 @@ Valores conferidos em `packages/shared/src/constants.ts` e `storage.ts` do Talor
 | Tokens de contexto | 6.000 | até 32.000 |
 | Tokens de saída | 1.024 | até 4.096 |
 | IA paga por dia (US$) | 0 (sem teto; decisão do dono, 04/11/2026) | até 10.000 |
-| Voz no app | 60 s e 2 MB por clipe | — |
+| Voz no app | 120 s e 2 MB por clipe | — |
 | Voz no bot | 5 min e 5 MB por mensagem; acima disso a Zuri pergunta antes de processar | — |
 | Arquivo acima do limite no bot | Pergunta com validade de 10 min; teto rígido de 20 MB (download da Bot API), do áudio que sobra no dia e dos Neurons que sobram no dia | — |
 | Áudio por dia (app + bot) | 3.600 s | — |
@@ -465,7 +465,7 @@ São 30 etapas (0 a 26, mais a 19b, a 19c e a 19d) em 5 fases, cada uma um PR pa
 - `runner.ts`: prompt de sistema (nome do agente na primeira linha), memórias relevantes em `<data>`, resumo corrente, histórico dentro do orçamento, SSE ponta a ponta, botão Parar.
 - Registro de ferramentas com permissão `read` / `write` / `destructive`, limite por turno, detecção de laço. Ferramentas: `create_task`, `list_tasks`, `update_task`, `complete_task`, `delete_task`, `replace_task_description`, `create_project`, `list_projects`, `create_note`, `read_note`, `update_note`, `replace_note_content`, `delete_note`, `search_notes`, `remember`, `search_memories`, `update_memory`, `forget_memory`, `search`, `propose_task_plan`.
 - Cartões de aprovação e de plano de tarefas, confirmação atômica.
-- Entrada por voz no chat (`POST /api/transcribe`, 60 s por clipe, 60 min por dia, um por vez).
+- Entrada por voz no chat (`POST /api/transcribe`, 120 s por clipe, 60 min por dia, um por vez).
 - Aceite: os cenários de prompt injection de `docs/security.md` do Talorys viram testes com o mock.
 
 **Etapa 10 · Automações** (`feat: adiciona lembretes, resumos e rotinas de IA`)

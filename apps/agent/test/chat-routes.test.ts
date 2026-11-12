@@ -465,12 +465,13 @@ describe("POST /api/transcribe", () => {
     expect(await inAgent((agent) => agent.store.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_messages`)?.n)).toBe(0);
   });
 
-  it("accepts 60 s (n) and up to 61 measured, refuses 62 s (n+1), malformed audio and an empty clip", async () => {
+  it("CA3: accepts 119 s (n-1) and 120 s (n), refuses 121 s (n+1), malformed audio and an empty clip", async () => {
     await useProvider(null, new MockTranscriber());
-    expect((await api("POST", "/transcribe", { audio: clip(300), seconds: 60 })).status).toBe(200);
-    expect((await api("POST", "/transcribe", { audio: clip(300), seconds: 61 })).status).toBe(200);
+    expect((await api("POST", "/transcribe", { audio: clip(300), seconds: 119 })).status).toBe(200);
+    expect((await api("POST", "/transcribe", { audio: clip(300), seconds: 120 })).status).toBe(200);
     for (const body of [
-      { audio: clip(300), seconds: 62 },
+      { audio: clip(300), seconds: 121 },
+      { audio: clip(300), seconds: 120.1 },
       { audio: clip(300), seconds: 0 },
       { audio: "não é base64!", seconds: 1 },
       { audio: "", seconds: 1 },
@@ -478,8 +479,8 @@ describe("POST /api/transcribe", () => {
     ]) {
       expect((await refusal(await api("POST", "/transcribe", body), 400)).code).toBe("VALIDATION_FAILED");
     }
-    // Charged at most 60 s per clip, whatever the browser says.
-    expect(await inAgent((agent) => agent.store.db.one(`SELECT audio_seconds FROM zur_usage_daily`))).toEqual({ audio_seconds: 120 });
+    // Only the two accepted clips were charged: a refused one costs nothing.
+    expect(await inAgent((agent) => agent.store.db.one(`SELECT audio_seconds FROM zur_usage_daily`))).toEqual({ audio_seconds: 239 });
   });
 
   it("takes a clip of exactly 2 MiB (n), refuses one byte more (n+1), broken base64, and a body over the read limit", async () => {

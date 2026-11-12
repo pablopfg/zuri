@@ -32,7 +32,7 @@ a tela ocupa a área inteira e só as mensagens rolam.
   aviso só explica: o campo continua funcionando.
 - **Campo de escrever.** Texto, microfone (onde o navegador grava) e
   **Enviar**. Não há anexo de arquivo. O botão do microfone e a linha
-  "Gravando: 3 s de 60 s" vêm de um componente só
+  "Gravando: 0:03 de 2:00" vêm de um componente só
   (`apps/web/src/pages/chat/VoiceInput.tsx`), para a gravação ser igual em
   todo campo que aceitar voz.
 
@@ -159,8 +159,9 @@ confirmação devolve o mesmo resultado (`replayed: true`) sem criar nada.
 
 ## Voz
 
-O microfone do compositor grava um áudio (no máximo 60 s, para sozinho no
-limite) e manda para `POST /api/transcribe`. O texto volta para o compositor e
+O microfone do compositor grava um áudio (no máximo 120 s, para sozinho no
+limite, com um toque curto ao começar e outro ao terminar, que dá para desligar em
+Configurações › Avisos) e manda para `POST /api/transcribe`. O texto volta para o compositor e
 o dono lê antes de enviar. O áudio não é guardado. Limites: 2 MB por áudio, um
 de cada vez e uma hora por dia. Cada áudio conta o maior entre o tempo medido
 pelo navegador e o que o tamanho indica, e é contado antes da chamada. A

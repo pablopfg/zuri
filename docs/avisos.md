@@ -24,7 +24,7 @@ quatro partes:
 - `apps/agent/src/alerts/automations.ts`: o que cada execução de automação vira (aviso, aviso de sistema ou falha no Diagnóstico).
 - `apps/agent/src/diagnostics/service.ts`: o registro próprio de falhas.
 - `apps/agent/src/api/notices.ts`: as rotas `/api/notices*`, `/api/alerts` e `/api/diagnostics*`.
-- `apps/web/src/components/NotificationCenter.tsx` (sino, no pacote inicial) e `NoticesPanel.tsx` (painel, sob demanda); `pages/settings/AlertsTab.tsx` (com `PushCard.tsx` e `RoutesCard.tsx`) e `DiagnosticsTab.tsx`; `public/sw.js` mostra a notificação.
+- `apps/web/src/components/NotificationCenter.tsx` (sino, no pacote inicial) e `NoticesPanel.tsx` (painel, sob demanda); `pages/settings/AlertsTab.tsx` (com `SoundsCard.tsx`, `PushCard.tsx` e `RoutesCard.tsx`); `lib/sounds.ts` (os sons, feitos na hora pelo navegador) e `DiagnosticsTab.tsx`; `public/sw.js` mostra a notificação.
 - Migration 13: coluna `learn_key` em `zur_notices` (com índice), tabela `zur_alert_learning` e coluna `priority` em `zur_automations` (padrão `normal`).
 - Migration 12: `zur_push_devices`.
 - Migration 11: `zur_notices`, `zur_alert_keys`, `zur_alert_deliveries`, `zur_diagnostics` e os contadores `notices`, `security_notices`, `notices_unread` e `alert_deliveries`.
@@ -55,6 +55,30 @@ em 24 horas. O resumo do dia sai uma vez por dia local, no horário escolhido
 Título e texto são escritos pelo servidor no idioma do dono. O texto que vem de
 automação é guardado como dado e mostrado como texto puro; o link de um aviso só
 pode apontar para uma das páginas da lista `NOTICE_LINKS`.
+
+## Som com a Zuri aberta
+
+Quando chega um aviso e a Zuri está aberta, toca um som curto. Em
+Configurações › Avisos, o cartão "Som dos avisos" tem a chave de ligar e
+desligar, três sons para ouvir e escolher (Sino, o padrão, Gota e Marimba) e
+"Testar um aviso agora". No mesmo cartão fica a chave do toque que avisa o
+começo e o fim da gravação de um áudio.
+
+- Os sons são feitos na hora pelo navegador (Web Audio): não há arquivo de
+  áudio para baixar, e o código só carrega depois da primeira tela.
+- O som acompanha o número do sino, que chega com a conferência da sessão (ao
+  voltar para a aba) e com o sinal de presença, uma vez por minuto. Por isso
+  pode tocar até um minuto depois de o aviso nascer. Abrir a Zuri com avisos
+  já esperando não toca nada. Como a conta é pelo número, um aviso que chega
+  no mesmo intervalo em que outro foi lido não toca.
+- No máximo um som a cada 3 segundos: avisos que chegam juntos tocam uma vez.
+  Com mais de uma aba aberta, toca só na aba que leu o número primeiro.
+- O navegador só deixa uma página tocar depois do primeiro clique ou toque
+  nela. Antes disso o aviso chega mudo, e o som não fica guardado para depois.
+- Com a Zuri fechada vale o som de notificação do aparelho, que o navegador
+  não deixa escolher.
+- A escolha fica em `zur_settings` (chave `sounds`), vai no backup e não
+  precisou de migration.
 
 ## Notificação no aparelho
 

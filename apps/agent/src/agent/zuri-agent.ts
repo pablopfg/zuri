@@ -202,6 +202,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     }),
     aiUsage: () => this.usageReport(),
     aiHistory: (days) => this.store.usage.history(days),
+    aiHours: () => this.store.usage.hours(),
+    aiMonths: () => this.store.usage.months(),
     paidConfigured: (provider) => this.paidConfigured(provider),
     retryPaidProvider: (provider) => this.breaker().reset(provider),
     versions: () => readAreaVersions(this.store.db, this.store.usage.version),

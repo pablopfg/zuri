@@ -236,7 +236,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S09 | mesclada (#286) |
 | S10 | mesclada (#291) |
 | S11 | mesclada (#299) |
-| S12 | em revisão |
+| S12 | mesclada (#310) |
+| S13 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -366,6 +367,17 @@ Diferenças da S12 (Avaliações), para as PRs seguintes não as desfazerem:
 - **"Ajustes"** é o nome da aba, como no protótipo. O glossário reserva "Configurações" para a página do menu; a exceção está em `i18n-ignore.json` só para o nome da aba, e os outros textos dizem "em Avaliações" ou "em Como responder".
 - **Contador no menu lateral** (o "3" ao lado de Avaliações no protótipo): não entrou. Pediria uma leitura a mais em toda tela e código no pacote inicial, que está no teto. O número aparece na aba "Avaliações" da área.
 - **JS inicial:** 140.867 bytes, 8 a menos que a develop. Ícone usado por outra tela sob demanda cria pedaço comum e pesa no pacote inicial; por isso a área usa ícones só dela (`SlidersVertical`, `PlugZap`, `CirclePause`, `Timer`, `ChevronsLeft`, `SendHorizontal`, `Hourglass`, `CircleDashed`) e não usa o `ActionsMenu`.
+
+Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
+
+- **Só servidor.** Duas rotas de leitura novas, `GET /api/usage/hours` e `GET /api/usage/months`, e a migration 37 com `zur_usage_hourly` e `zur_usage_monthly`. O painel de consumo de hoje continua como está; "Dia" e "Ano" no seletor entram com a S16. Semana e Mês já saem de `GET /api/usage/history?days=7|30`.
+- **As horas são UTC**, como o dia dos contadores (a cota da Cloudflare recomeça às 00:00 UTC). A resposta traz `day` e `hour` (0 a 23); a S16 mostra cada coluna no fuso do dono (para quem está em UTC−3, o "dia" vai das 21:00 de ontem às 20:59 de hoje) e diz na tela que a contagem recomeça nessa hora, como o cartão do uso de hoje já diz.
+- **Só vêm as horas e os meses com uso.** A tela preenche as colunas vazias (24 horas; 12 meses de `from` a `to`).
+- **A hora mostra o que foi gasto de fato**, depois que a chamada termina. O cartão "uso de hoje" inclui também o que está reservado para chamadas em andamento, então, com uma resposta sendo escrita, a soma das horas pode ficar um pouco abaixo do total do dia por alguns segundos.
+- **O mês não tem a divisão por modelo** nem o gasto pago por modelo (o plano pede duas tabelas pequenas). No "Ano", a S16 esconde a tabela de modelos ou mostra a dos últimos 90 dias dizendo o período. O mês traz `days`, os dias com uso, para a média.
+- **Ontem entra no mês um dia depois** (o plano dizia "a partir do dia anterior"): uma chamada que começou antes da meia-noite ainda pode ser acertada no dia de ontem, e a soma feita na hora perderia esse acerto. A leitura do ano junta os meses já somados com os dias ainda abertos, então o número na tela não atrasa.
+- **Quem já usava a Zuri** ganha os meses dos últimos 90 dias na primeira chamada depois da atualização. O mês mais antigo deles pode vir incompleto, porque os dias anteriores já tinham sido apagados.
+- **Custo:** cada chamada de IA grava uma linha a mais (a da hora). Os tetos do teste de orçamento subiram só essa linha.
 
 ## 12. Riscos
 

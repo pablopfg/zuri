@@ -315,6 +315,26 @@ describe("import", () => {
     expect(task?.project_id).toBeNull();
   });
 
+  it("the sounds go in the file and come back, an older file without them changes nothing, and a bad one is refused whole", async () => {
+    const sounds = { notice: false, pick: "gota", recording: false } as const;
+    const before = await inOwner((agent) => agent.store.settings.get().sounds);
+    try {
+      await inOwner((agent) => agent.store.settings.update({ sounds }));
+      expect((JSON.parse(await exported()) as { data: { settings: { sounds: unknown } } }).data.settings.sounds).toEqual(sounds);
+      await inOwner((agent) => agent.store.settings.update({ sounds: before }));
+      await ok(session("POST", "/backup/import", backup({ settings: { sounds } })));
+      expect(await inOwner((agent) => agent.store.settings.get().sounds)).toEqual(sounds);
+      // A file made before the sounds existed.
+      await ok(session("POST", "/backup/import", backup({ settings: { language: "pt-BR" } })));
+      expect(await inOwner((agent) => agent.store.settings.get().sounds)).toEqual(sounds);
+      const bad = await session("POST", "/backup/import", backup({ settings: { sounds: { ...sounds, pick: "sirene" } } }));
+      expect(bad.status).toBe(400);
+      expect(await inOwner((agent) => agent.store.settings.get().sounds)).toEqual(sounds);
+    } finally {
+      await inOwner((agent) => agent.store.settings.update({ sounds: before }));
+    }
+  });
+
   it("SEC-S08-01: the Agenda's preferences go in the file and come back, and a bad one is refused whole", async () => {
     const agenda = { from: 7, to: 20, view: "day", weekStart: 0, workDays: [1, 2, 3], daysOff: false, allDay: false, outside: false };
     const before = await inOwner((agent) => agent.store.settings.get().agenda);
