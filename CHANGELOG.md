@@ -19,6 +19,59 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) até juntar 10 merges, quando o workflow de versão escreve a seção.
 
+## [0.50.0] - 2026-11-12
+
+Mesclada às 08:11 (UTC-3) · commit [`57ad75f`](https://github.com/pablopfg/Zuri/commit/57ad75f5c647a2cf0a901ac8ef55972683d64c1a) · Reúne 10 mudanças (#307, #299, #304, #303, #310, #312, #313, #315, #314, #317)
+
+### Adicionado
+
+- A Zuri passa a calcular os números da visão geral das avaliações do Google: quantas de cada nota, o índice de recomendação por semana ou por mês, quantas foram respondidas e o tempo até a resposta, para os últimos 30 dias, 6 meses e 12 meses. A tela que mostra esses números chega na próxima etapa.
+- Avaliações ganhou área própria, em três partes. **Visão geral** mostra os números dos últimos 30 dias, 6 ou 12 meses: índice de recomendação, nota média, quantas foram respondidas, tempo até responder, o índice por semana ou por mês (em barras e em tabela), as estrelas e as avaliações que precisam de você. **Avaliações** traz a lista de um lado e a avaliação aberta, com a resposta, do outro. **Ajustes** reúne a conexão com o Perfil da Empresa, passo a passo, e o jeito de responder.
+- No alto da área aparecem o perfil lido, a hora da última leitura e a contagem para a próxima. Conferir agora e pausar as respostas viraram dois botões de ícone.
+- A Zuri passa a guardar o consumo da IA de hoje hora a hora e o do ano mês a mês. O histórico por dia continua indo até 90 dias; o resumo por mês guarda os últimos 12 meses. As opções "Dia" e "Ano" do painel de consumo chegam com a nova tela de Configurações.
+- Som quando chega um aviso e a Zuri está aberta. Em Configurações › Avisos, o cartão "Som dos avisos" tem a chave de ligar e desligar, três sons para ouvir e escolher (Sino, que é o padrão, Gota e Marimba) e um botão para testar. Avisos que chegam juntos tocam uma vez só, e com a Zuri fechada continua valendo o som de notificação do aparelho.
+- Um toque curto avisa quando a gravação de um áudio começa e outro quando termina. Dá para desligar no mesmo cartão.
+- **Avaliações › Visão geral** ganhou gráficos novos. O índice de recomendação e a nota média mostram a faixa em que estão, com cor e nome: Excelente, Muito bom, Razoável ou Crítico. Um gráfico novo mostra quantas avaliações chegaram em cada período, separadas em quem recomenda, quem é neutro e quem não recomenda.
+- Dois períodos novos: **Últimos 2 anos, por semestre** e **Últimos 5 anos, por ano**. Com os de 6 e 12 meses, dá para acompanhar mês a mês, semestre a semestre e ano a ano.
+- **Estatísticas do período**: satisfeitos (4 e 5 estrelas), margem do índice, tendência, mediana, nota mais comum, desvio padrão e média de avaliações por período, cada uma com uma linha que explica como ler.
+- **Criar rotina** agora pergunta uma coisa por vez, em cinco passos: o tipo, quando roda, o que faz, a prioridade dos avisos e uma revisão com o nome. Nada é gravado antes do último passo, e dá para voltar sem perder o que foi escrito.
+- Cada rotina ganhou **Duplicar** no menu. A cópia começa pausada.
+- A linha de uma Rotina da Zuri mostra "Usa IA", e o alto da tela diz quantas rotinas estão ativas.
+
+### Alterado
+
+- Uma versão nova (com a tag e a pré-release) só sai quando 10 mudanças mescladas na `develop` esperam por ela, em vez de uma a cada mudança. A versão reúne o changelog de todas elas. Para fechar uma versão antes disso, use **Actions > Versão > Run workflow** com "Criar a versão agora".
+- O tempo até a resposta conta também as respostas dadas direto no Google, pela hora que o Google informa. As que a Zuri já tinha copiado antes desta versão ficam fora dessa conta.
+- Saíram o cartão **Acesso remoto** de Configurações › Segurança, as rotas `/api/remote` e o comando `/tokens` do bot do Telegram (o menu do bot é atualizado sozinho).
+- O perfil, a assinatura, o tom, os modelos e o que a Zuri faz com cada avaliação saíram de Configurações › Integrações e foram para Avaliações › Ajustes. Em Integrações ficam a hora da última leitura, o intervalo entre as leituras e o caminho para Avaliações.
+- A lista de avaliações abre no que precisa de você quando há algo esperando. Os filtros (Precisa de você, Respondidas, Publicadas sozinha, Todas) e a nota passaram a ser duas caixas de escolha.
+- O áudio gravado na Zuri passou de 1 para 2 minutos. Aos 2 minutos a gravação para sozinha e o que foi dito é transcrito. O teto de uma hora de áudio por dia continua igual, então nada muda no custo.
+- O relógio da gravação mostra minutos e segundos: "Gravando: 0:03 de 2:00".
+- As barras das estrelas e os gráficos usam as mesmas três cores: verde para quem recomenda, cinza para neutros e vermelho para quem não recomenda. Toda cor vem com o nome ou o número, e cada gráfico tem a tabela.
+- Rotinas virou uma tela só: as sugestões da Zuri que esperam aprovação, a lista e as últimas execuções. Pausar e retomar passou a ser uma chave, e "Rodar agora" fica à vista em cada linha.
+- Onde a tela, a paleta, os avisos, o backup e o Telegram diziam "automação", agora dizem "rotina". "Automação" ficou para as do CRM.
+- Um modelo pronto de Rotina da Zuri só traz o horário dele se você ainda não escolheu um.
+
+### Corrigido
+
+- Com os contatos do Google lidos a cada minuto, a conferência das avaliações nunca rodava: toda vez que vencia, era adiada pela leitura dos contatos. Agora ela fica com o despertar em que vence e a leitura dos contatos passa para o minuto seguinte. As duas continuam sem ler o Google ao mesmo tempo.
+
+### Segurança
+
+- Salvar um ajuste várias vezes seguidas não adia mais o próximo despertar das automações, dos avisos e das sincronizações. Antes, um pedido a cada 50 segundos segurava todos eles.
+- **Sessão presa a onde foi aberta.** Copiar o cookie da sessão não basta mais. Se o pedido vier de outro navegador ou de outro país, a Zuri encerra a sessão e avisa você. Se só a rede mudar (do Wi-Fi para os dados do celular, por exemplo), a sessão continua, a mudança aparece em Acessos e as ações sensíveis pedem a senha de novo naquela rede. Rede que a Zuri ainda não conhecia gera um aviso de segurança. Uma sessão aceita até 5 redes.
+- **Teto diário de senhas erradas.** 5 senhas erradas em 24 horas bloqueiam aquela rede até a mais antiga completar um dia. As redes em que você entrou nos últimos 30 dias ficam de fora, então errar a senha em casa não tranca você.
+- **Sem acesso por token.** A Zuri não aceita mais nenhum pedido com token: só o navegador com a sua sessão entra. Qualquer pedido com o cabeçalho `Authorization` recebe 401.
+
+### Atualização
+
+- Migration 35: um índice novo na cópia das avaliações, pela data em que cada uma foi escrita. Nenhum dado muda e não há nada a fazer.
+- Migration 36 (`session_binding`): quatro colunas novas em `zur_sessions`. Só acréscimo. Sessões abertas antes da atualização são encerradas no primeiro pedido: é só entrar de novo.
+- As tabelas `zur_remote_tokens` e `zur_remote_failures` ficam no banco, sem uso. Tokens criados antes deixam de funcionar.
+- ⚠ Se algum script ou automação sua usava um token `zur_pat_`, ele para de funcionar com esta versão.
+- Migration 37: duas tabelas pequenas de contadores, uma com as 24 horas do dia e outra com os 12 meses. Guardam só números, nunca o que foi dito, e ficam fora do backup, como os outros contadores de uso. Não há nada a fazer: na primeira conversa depois de atualizar, a Zuri monta os meses com os dias que ainda tem guardados.
+- Cada chamada de IA grava uma linha a mais no banco (a da hora). Continua muito abaixo da cota gratuita.
+
 ## [0.49.6] - 2026-11-11
 
 Mesclada às 19:09 (UTC-3) · commit [`6aa51a9`](https://github.com/pablopfg/Zuri/commit/6aa51a918436972d29354fad90c524fe079b66b5) · PR [#298](https://github.com/pablopfg/Zuri/pull/298) · Tira a integração com o n8n (eventos assinados do CRM)
@@ -3286,7 +3339,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.49.6...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.50.0...develop
+[0.50.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.50.0
 [0.49.6]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.6
 [0.49.5]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.5
 [0.49.4]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.4
