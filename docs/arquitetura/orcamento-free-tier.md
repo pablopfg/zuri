@@ -174,7 +174,10 @@ Como cheguei nos números:
   55 avaliações no período e 1.000 mais antigas na cópia, medido no teste de
   orçamento. O teto é de 5.000 avaliações por pedido (as mais novas; a resposta
   avisa com `partial`). Um consultório com 300 avaliações em 12 meses lê umas
-  300 linhas por abertura da tela, 0,006% das 5 milhões do dia. O índice custa
+  300 linhas por abertura da tela, 0,006% das 5 milhões do dia. Os períodos
+  longos (`24m` por semestre e `5y` por ano) leem do mesmo jeito, uma linha por
+  avaliação contada, com o mesmo teto: no pior caso são 5.001 linhas por
+  pedido, 0,1% do dia, e a tela guarda a resposta por 15 segundos. O índice custa
   uma linha gravada a mais quando uma avaliação entra, muda de nota ou de
   estado, ou ganha resposta (regra P4). Criar o índice grava, uma única
   vez, uma linha por avaliação já copiada, no primeiro acesso depois da
