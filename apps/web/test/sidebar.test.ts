@@ -42,7 +42,7 @@ describe("sidebar preference", () => {
 });
 
 describe("closed groups of the menu", () => {
-  const ORGANIZE = "web.nav.groupOrganize";
+  const ORGANIZE = "web.nav.groupMyDay";
   const RELATIONS = "web.nav.groupRelations";
   const shut = (closed: string) => [ORGANIZE, RELATIONS].filter((group) => closed.includes(group));
 

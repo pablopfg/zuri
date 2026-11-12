@@ -107,10 +107,10 @@ export function Sidebar({
               </button>
             )}
             <ul aria-labelledby={heading ? `nav-${index}` : undefined}>
-              {items.map(({ id, to, label, icon: Icon }) => {
-                const count = id === "tasks" ? today : undefined;
+              {items.map(({ to, label, icon: Icon }) => {
+                const count = to === "/tarefas" ? today : undefined;
                 return (
-                  <li key={id}>
+                  <li key={to}>
                     <Tip label={tip(t(label))} quiet={tipsHidden}>
                       <NavLink to={to} end={to === "/"} data-rail={rail} className="zuri-menu-row zuri-menu-place">
                         <Icon aria-hidden />
