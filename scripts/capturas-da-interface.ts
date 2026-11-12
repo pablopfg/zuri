@@ -276,7 +276,9 @@ for (const [device, options] of [
           await event.click();
           await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("button", { name: "Editar" }).click();
           const form = page.getByRole("dialog", { name: "Editar evento" });
-          await form.getByLabel("Dura").selectOption("90");
+          // Another length than the one it has: the run before (the other theme) already changed it.
+          const length = form.getByLabel("Dura");
+          await length.selectOption((await length.inputValue()) === "90" ? "60" : "90");
           await form.getByRole("button", { name: "Salvar" }).click();
         }
         await page.getByRole("button", { name: "Desfazer" }).waitFor();
