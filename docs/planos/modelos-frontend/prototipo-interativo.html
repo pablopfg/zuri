@@ -2642,6 +2642,7 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .cf-note{display:flex;gap:8px;align-items:flex-start;margin:0;color:var(--ink-2);font-size:var(--t-sm)}
 .cf-note .ic{flex:none;margin-top:2px}
 .cf-ok{display:flex;gap:10px;align-items:flex-start;padding:var(--s4);border-radius:var(--r-lg);background:var(--accent-soft);color:var(--accent-soft-ink)}
+.cf-ok.cf-wait{background:var(--warn-soft);color:var(--warn-ink);box-shadow:inset 0 0 0 1px var(--warn-line)}
 .cf-ok .ic{flex:none;width:22px;height:22px}
 .cf-state{display:grid;gap:8px;justify-items:start}
 .cf-state>.ic{width:28px;height:28px;color:var(--ink-2)}
@@ -4704,7 +4705,7 @@ document.addEventListener("input", (e) => {
 });
 /* Conexões: um lugar só. A chave nunca volta para a tela; mudar o endereço pede a chave de novo. */
 const CONNS = [
-  { id: "cw", kind: "chatwoot", n: "Chatwoot do consultório", url: "https://chat.exemplo.com.br", info: "Conta 1 · caixa “WhatsApp do consultório” (API) · 30 s a 1 min entre mensagens", key: "Chave terminada em 4f2a", extra: [] },
+  { id: "cw", kind: "chatwoot", n: "Chatwoot do consultório", url: "https://chat.exemplo.com.br", info: "Conta 1 · caixa “WhatsApp do consultório” (API) · envios em massa: 30 a 60 s entre um e outro", key: "Chave terminada em 4f2a", extra: [] },
   { id: "passagens", kind: "http", n: "Preços de passagens", url: "https://api.exemplo.com.br", info: "Chave de API · só consulta preços, nunca muda nada", key: "Chave terminada em 91c0", extra: ["Preço da passagem · fluxo"] }
 ];
 function cwDlg(opener, c) {
@@ -5376,14 +5377,15 @@ function linkDlg(opener) {
 /* Intervalo entre mensagens: guardado na credencial do Chatwoot e respeitado pela fila do servidor. */
 st.cwMin = 30; st.cwMax = 60;
 const gapTxt = (s) => (s < 60 ? `${s} s` : s % 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s / 60} min`);
-const GAPS = [30, 40, 45, 50, 60];
-const paceHint = () => (st.cwMin > st.cwMax ? "O primeiro valor precisa ser menor ou igual ao segundo." : `Com várias mensagens na fila, a Zuri envia uma e espera um tempo sorteado entre ${gapTxt(st.cwMin)} e ${gapTxt(st.cwMax)} antes da próxima. Vale para todas as automações que usam esta caixa. Confirmações de consulta passam na frente dos pedidos de avaliação.`);
+/* Espera em segundos, só para envios em massa (a mesma mensagem para vários pacientes). Mensagem para uma pessoa só sai na hora. */
+const GAP_MIN = 5, GAP_MAX = 600;
+const gapClamp = (v, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n > 0 ? Math.min(GAP_MAX, Math.max(GAP_MIN, n)) : d; };
+const paceHint = () => (st.cwMin > st.cwMax ? "O primeiro valor precisa ser menor ou igual ao segundo." : `Quando a mesma mensagem vai para vários pacientes (confirmações da véspera, pedidos de avaliação, fluxos com várias pessoas), a Zuri envia uma e espera um tempo sorteado entre ${st.cwMin} e ${st.cwMax} segundos antes da próxima. Mensagem para uma pessoa só não espera. Vale para todas as automações que usam esta caixa, numa fila só.`);
 function cwPacing() {
-  const opt = (sel) => GAPS.map((s) => `<option value="${s}"${s === sel ? " selected" : ""}>${gapTxt(s)}</option>`).join("");
-  return `<fieldset class="field cw-pace"><legend class="label">Intervalo entre mensagens</legend>
-    <div class="grid-2"><label class="field"><span class="label">De</span><select class="input" data-cw-min>${opt(st.cwMin)}</select></label>
-    <label class="field"><span class="label">Até</span><select class="input" data-cw-max>${opt(st.cwMax)}</select></label></div>
-    <span class="hint" data-cw-pace-h role="status">${paceHint()}</span><span class="hint">De 30 s a 1 min. Mudar o intervalo não pede a chave de novo.</span></fieldset>`;
+  const num = (k, v, l) => `<label class="field"><span class="label">${l}</span><input class="input num" type="number" inputmode="numeric" min="${GAP_MIN}" max="${GAP_MAX}" step="1" value="${v}" data-cw-${k} aria-describedby="cw-pace-r"></label>`;
+  return `<fieldset class="field cw-pace"><legend class="label">Espera entre envios em massa (segundos)</legend>
+    <div class="grid-2">${num("min", st.cwMin, "De (segundos)")}${num("max", st.cwMax, "Até (segundos)")}</div>
+    <span class="hint" data-cw-pace-h role="status">${paceHint()}</span><span class="hint" id="cw-pace-r">De ${GAP_MIN} a ${GAP_MAX} segundos. Padrão: 30 a 60. Mudar a espera não pede a chave de novo.</span></fieldset>`;
 }
 /* ---------- CRM › Envios: a fila de saída num lugar só, com a situação de agora, o histórico e o que acontece quando falha ---------- */
 st.fq = pick(params.get("fq"), ["ok", "lenta", "parada", "pausada"]); st.fqP = pick(params.get("fqp"), ["hoje", "7d", "30d"]); st.fqF = "todas";
@@ -5474,7 +5476,8 @@ document.addEventListener("input", (e) => {
 });
 document.addEventListener("change", (e) => {
   if (!e.target.matches || !e.target.matches("[data-cw-min], [data-cw-max]")) return;
-  if (e.target.matches("[data-cw-min]")) st.cwMin = Number(e.target.value) || 30; else st.cwMax = Number(e.target.value) || 60;
+  if (e.target.matches("[data-cw-min]")) st.cwMin = gapClamp(e.target.value, 30); else st.cwMax = gapClamp(e.target.value, 60);
+  e.target.value = e.target.matches("[data-cw-min]") ? st.cwMin : st.cwMax;
   const h = document.querySelector("[data-cw-pace-h]");
   if (h) { h.textContent = paceHint(); h.classList.toggle("err", st.cwMin > st.cwMax); }
 });
@@ -6626,11 +6629,12 @@ const CF_TPL_MAX = 1000;
 const CFM = { tpl: CF_TPL_DEFAULT, hour: 7, get auto() { return UI.switches.get("cf-auto-t") === true; } };
 const cfCel = (e) => { const p = e.pid && pById(e.pid); return p ? cellOf(p) : e.ddi === "BR" || !e.ddi ? e.cel || "" : ""; };
 const cfFirst = (e) => { const p = e.pid && pById(e.pid); return (p ? p.n : e.t).replace(/^Dra?\. /, "").split(" ")[0]; };
-const cfLink = (e) => `exemplo.com.br/c/${(`k7Qx${e.id}Vt3mZ9rWp2aLs8YdN4` + e.id).slice(0, 22)}`;
+/* No sistema o token é aleatório (128 bits) e não sai do id. Aqui, só um texto com cara de token, sem o id dentro. */
+const CF_B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const cfLink = (e) => { let h = 2166136261; let t = ""; for (let i = 0; i < 22; i++) { for (const ch of `${e.id}:${i}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; t += CF_B64[h % 64]; } return `exemplo.com.br/c/${t}`; };
 const cfStart = (e) => { const d = dOf(e.day); d.setHours(e.h, e.m, 0, 0); return d; };
 const cfNow = () => { const d = new Date(AG_NOW); const m = nowMin(); d.setHours(Math.floor(m / 60), m % 60, 0, 0); return d; };
 const cfExpired = (e) => e.s === "cancelado" || cfStart(e) - CF_EXPIRE_H * 3600000 <= cfNow();
-const cfExpTxt = (e) => { const d = new Date(cfStart(e) - CF_EXPIRE_H * 3600000); return `${dayShort(d)}, às ${hmm(d.getHours() * 60 + d.getMinutes())}`; };
 const cfDeadline = (e) => { const a = new Date(cfStart(e) - CF_LIMIT_H * 3600000), b = dOf(e.day); b.setMinutes(-1); return a < b ? a : b; };
 const cfLate = (e) => cfNow() > cfDeadline(e);
 const cfWhen = (e) => `${dayShort(dOf(e.day))} às ${hmm(e.h * 60 + e.m)}`;
@@ -6662,13 +6666,13 @@ function cfBox(e) {
   const past = cfExpired(e);
   const done = cf.st === "confirmou";
   const via = cf.via === "chatwoot" ? "pelo Chatwoot" : "pelo WhatsApp";
-  const lbl = cf.st === "confirmou" ? ["on", `Confirmou pelo link ${cf.w}`] : cf.st === "cancelou" ? ["bad", `Cancelou pelo link ${cf.w}`] : cf.st === "enviado" ? ["wait", `Enviado ${via} ${cf.w}. Ainda sem resposta.`] : ["off", "Ainda não enviado"];
+  const lbl = cf.st === "remarcar" ? ["wait", `Pediu para remarcar pelo link ${cf.w}. Fale com o paciente.`] : cf.st === "confirmou" ? ["on", `Confirmou pelo link ${cf.w}`] : cf.st === "cancelou" ? ["bad", `Cancelou pelo link ${cf.w}`] : cf.st === "enviado" ? ["wait", `Enviado ${via} ${cf.w}. Ainda sem resposta.`] : ["off", "Ainda não enviado"];
   const cel = cfCel(e);
   const auto = CFM.auto && !cf.st && !past && cel ? `<p class="hint">${ic("send-horizontal", "ic-sm")}Sai sozinho pelo Chatwoot em ${escH(dayShort(cfSendDay(e)))}, às ${hh2(CFM.hour)}. Se você enviar antes pelo WhatsApp, o automático não repete.</p>` : CFM.auto && cf.st && !past && !done ? `<p class="hint">${ic("send-horizontal", "ic-sm")}${cf.via === "chatwoot" ? "O Chatwoot já enviou e não repete." : "Já foi pelo WhatsApp: o Chatwoot não envia de novo."}</p>` : "";
-  const acts = past ? "" : done ? `<p class="hint">Já confirmou pelo link: não precisa enviar de novo, nem pelo WhatsApp nem pelo Chatwoot. O link continua valendo para cancelar até ${escH(cfDeadTxt(e))}.</p>` : `<div class="cf-acts">${cel ? `<a class="btn btn-secondary btn-sm" href="${escH(cfWaHref(e))}" target="_blank" rel="noopener" data-cf-wa="${id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</a>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${id}">${ic("copy", "ic-sm")}Copiar mensagem</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
+  const acts = past ? "" : cf.st === "remarcar" ? `<div class="cf-acts">${cel ? `<a class="btn btn-secondary btn-sm" href="${escH(`https://wa.me/55${cel.replace(/\D/g, "")}`)}" target="_blank" rel="noopener">${WA}Falar com o paciente</a>` : ""}</div><p class="hint">Depois de combinar, arraste o agendamento para o novo horário. O link continua o mesmo e volta a pedir a confirmação.</p>` : done ? `<p class="hint">Já confirmou pelo link: não precisa enviar de novo, nem pelo WhatsApp nem pelo Chatwoot.</p>` : `<div class="cf-acts">${cel ? `<a class="btn btn-secondary btn-sm" href="${escH(cfWaHref(e))}" target="_blank" rel="noopener" data-cf-wa="${id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</a>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${id}">${ic("copy", "ic-sm")}Copiar mensagem</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
     <p class="hint">${cel ? "Abre o WhatsApp Web com a mensagem modelo já preenchida. Você confere e envia." : "Sem celular neste agendamento: copie a mensagem e envie por onde preferir."} <button class="linkbtn" type="button" data-cfg-go-to="consultorio">Editar a mensagem modelo</button></p>`;
   return `<section class="cf-box" aria-labelledby="cf-h"><p class="cf-h" id="cf-h">${ic("calendar-check", "ic-sm")}Confirmação do paciente</p>
-    <p class="cf-st"><span class="pill ${lbl[0]}"><i></i>${escH(lbl[1])}</span></p>${past ? `<p class="hint">${e.s === "cancelado" ? "Consulta cancelada: o link deixou de valer." : "O link expirou 1 hora antes da consulta."}</p>` : `<p class="hint">Link só deste agendamento. Expira ${escH(cfExpTxt(e))} ou se a consulta for cancelada.</p>`}${auto}${acts}</section>`;
+    <p class="cf-st"><span class="pill ${lbl[0]}"><i></i>${escH(lbl[1])}</span></p>${past ? `<p class="hint">${e.s === "cancelado" ? "Consulta cancelada: o link deixou de valer." : "O link expirou 1 hora antes da consulta."}</p>` : ""}${auto}${acts}</section>`;
 }
 /* Configurações › Consultório: os dados que o sistema inteiro usa, a mensagem modelo e como ela sai. */
 function cfExample() { const k = dkey(AG_NOW); return EV.filter((x) => x.tipo && x.s === "agendado" && x.day > k).sort((a, b) => (a.day < b.day ? -1 : 1))[0] || EV.find((x) => x.tipo); }
@@ -6696,7 +6700,7 @@ function cfgConsultorio() {
     `<button class="btn btn-quiet" type="button" data-cf-tpl-reset>Voltar ao modelo padrão</button><span class="grow"></span><button class="btn btn-primary" type="button" data-cf-tpl-save>Salvar a mensagem</button>`)
   + sec("h-cs", "Como a confirmação sai", "Dois jeitos, com a mesma mensagem e o mesmo link. A resposta pelo link muda a situação e a cor na agenda e chega em Avisos.",
     `<div class="set-row"><div class="grow"><p class="t">${WA}Pelo WhatsApp, por você</p><p class="hint">Nos detalhes de cada agendamento, “Enviar pelo WhatsApp” abre o WhatsApp Web com a mensagem pronta para o paciente. Você confere e envia.</p></div><span class="pill on"><i></i>Sempre disponível</span></div>
-      ${swRow("cf-auto-t", "Automático, pelo Chatwoot", `Na véspera útil, a Zuri envia a mensagem pela caixa do WhatsApp no Chatwoot para quem tem consulta ou retorno Agendado ou Reagendado e tem celular. Quem já confirmou pelo link, já recebeu pelo WhatsApp ou pelo Chatwoot, cancelou ou tem o link expirado fica de fora: ninguém recebe duas vezes. Uma mensagem por vez, no intervalo da credencial.`, CFM.auto)}
+      ${swRow("cf-auto-t", "Automático, pelo Chatwoot", `Na véspera útil, a Zuri envia a mensagem pela caixa do WhatsApp no Chatwoot para quem tem consulta ou retorno Agendado ou Reagendado e tem celular. Quem já confirmou pelo link, já recebeu pelo WhatsApp ou pelo Chatwoot, cancelou ou tem o link expirado fica de fora: ninguém recebe duas vezes. Uma mensagem por vez, com a espera em segundos da credencial do Chatwoot.`, CFM.auto)}
       ${ctlRow("Horário do envio automático", `Próximo envio: ${dayShort(nx.d)}, às ${hh2(CFM.hour)}, para ${nx.n} ${nx.n === 1 ? "paciente" : "pacientes"}. Sábado, domingo e feriado não têm envio: a consulta de segunda recebe na sexta.`, `<label class="sr" for="cf-hour">Horário do envio automático</label><select id="cf-hour" class="input input-sm" data-cf-hour>${hours}</select>`)}
       ${ctlRow("Credencial", "A chave do Chatwoot fica no servidor e nunca aparece aqui.", `<button class="btn btn-secondary btn-sm" type="button" data-cf-cred>${ic("key-round", "ic-sm")}Chatwoot · caixa do WhatsApp</button>`)}`);
 }
@@ -6718,13 +6722,17 @@ function confirmar() {
     const card = `<dl class="cf-det"><div>${ic("calendar-days", "ic-sm")}<dt class="sr">Dia</dt><dd>${dayLong(dOf(e.day))}</dd></div><div>${ic("clock", "ic-sm")}<dt class="sr">Horário</dt><dd>${evWhen(e)}</dd></div><div>${ic(online ? "video" : "stethoscope", "ic-sm")}<dt class="sr">Tipo</dt><dd>${escH(e.tipo.replace(" | ", " · "))}</dd></div><div>${ic(online ? "monitor" : "map-pin", "ic-sm")}<dt class="sr">Onde</dt><dd>${online ? "Online: a equipe envia o link da chamada" : `${escH(CF_CLINIC.addr)}<span class="cf-city">${escH(CF_CLINIC.city)}</span>`}</dd></div></dl>`;
     const late = mode === "prazo" || cfLate(e);
     const lateNote = `<p class="cf-note">${ic("info", "ic-sm")}<span>O prazo para cancelar por aqui acabou: vai até 12 horas antes e só até o dia anterior. Se não puder vir, fale com a nossa equipe pelo WhatsApp.</span></p>`;
+    const remBtn = `<button class="btn btn-secondary btn-block" type="button" data-cf-rem>${ic("calendar-clock", "ic-sm")}Preciso remarcar</button>`;
+    const remNote = `<p class="cf-note">${ic("info", "ic-sm")}<span>Para mudar o dia ou o horário, toque em “Preciso remarcar”: a nossa equipe fala com você pelo WhatsApp ${escH(CF_CLINIC.wa)} para combinar.</span></p>`;
     const cancelBtn = (l) => `<button class="btn btn-quiet btn-block cf-cancel" type="button" data-cf-ask>${ic("calendar-x", "ic-sm")}${l}</button><p class="cf-note cf-dead">Dá para cancelar por aqui até ${cfDeadTxt(e)}.</p>`;
-    if (e.s === "confirmado") body = `<div class="cf-ok" role="status" tabindex="-1">${ic("circle-check")}<span><b>Presença confirmada.</b> Até lá, ${escH(cfFirst(e))}!</span></div>${card}
-        <p class="cf-note">${ic("calendar-clock", "ic-sm")}<span>Precisa mudar o dia ou o horário? Fale com a nossa equipe pelo WhatsApp ${escH(CF_CLINIC.wa)}.</span></p>${team}
+    if (e.cf && e.cf.st === "remarcar") body = `<div class="cf-ok cf-wait" role="status" tabindex="-1">${ic("calendar-clock")}<span><b>Pedido recebido.</b> A nossa equipe vai falar com você pelo WhatsApp para combinar o novo dia e horário.</span></div>${card}${team}
+        <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Não vou poder ir: cancelar a consulta")}</div>`;
+    else if (e.s === "confirmado") body = `<div class="cf-ok" role="status" tabindex="-1">${ic("circle-check")}<span><b>Presença confirmada.</b> Até lá, ${escH(cfFirst(e))}!</span></div>${card}
+        ${remBtn}${remNote}${team}
         <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Não vou mais poder ir: cancelar a consulta")}</div>`;
     else body = `<h1 class="cf-t" tabindex="-1">Olá, ${escH(cfFirst(e))}!</h1><p class="cf-sub">Confirme sua presença na consulta.</p>${card}
         <div class="cf-btns"><button class="btn btn-primary btn-block btn-lg" type="button" data-cf-do="confirmar">${ic("check", "ic-sm")}Confirmar presença</button></div>
-        <p class="cf-note">${ic("calendar-clock", "ic-sm")}<span>Precisa mudar o dia ou o horário? Fale com a nossa equipe pelo WhatsApp ${escH(CF_CLINIC.wa)}.</span></p>${team}
+        ${remBtn}${remNote}${team}
         <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Não vou poder ir: cancelar a consulta")}</div>`;
   }
   return `<main id="conteudo" class="cf-page">${proto}<div class="cf-card">${head}${body}<p class="cf-foot">Este link é só deste agendamento. Não mostra seu telefone nem outros dados.</p></div></main>`;
@@ -6736,6 +6744,16 @@ function cfAsk(opener) {
   dlgShow({ t: "Cancelar a consulta?", sub: `${escH(cfFirst(e))}, a consulta de ${dayLong(dOf(e.day)).toLowerCase()}, às ${hmm(e.h * 60 + e.m)}, será cancelada e o horário fica livre para outra pessoa. Para marcar de novo, você vai precisar falar com a equipe.`,
     body: "", foot: `<button class="btn btn-danger" type="button" data-dlg-ok>Sim, cancelar a consulta</button><span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Não, manter a consulta</button>`,
     ok: () => { if (cfLate(e) || st.cfv === "prazo") { say("O prazo para cancelar por aqui acabou."); return; } DLG.opener = null; cfAnswer(e, "cancelar"); st.cfJust = e.id; render(); refocus(".cf-state h1"); } }, opener);
+  const box = document.querySelector("#dlg-host .dlg-box");
+  if (box) { box.setAttribute("role", "alertdialog"); box.classList.add("dlg-sm"); }
+}
+/* Pedir para remarcar também pede confirmação: a consulta continua marcada até a equipe combinar o novo horário. */
+function cfRemAsk(opener) {
+  const e = evById(st.cfe);
+  if (!e) return;
+  dlgShow({ t: "Pedir para remarcar?", sub: `${escH(cfFirst(e))}, a consulta de ${dayLong(dOf(e.day)).toLowerCase()}, às ${hmm(e.h * 60 + e.m)}, continua marcada até a nossa equipe combinar com você o novo dia e horário pelo WhatsApp.`,
+    body: "", foot: `<button class="btn btn-primary" type="button" data-dlg-ok>Sim, pedir para remarcar</button><span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x data-autofocus>Voltar</button>`,
+    ok: () => { if (cfExpired(e)) { say("Este link expirou."); return; } DLG.opener = null; cfAnswer(e, "remarcar"); render(); refocus(".cf-ok"); } }, opener);
   const box = document.querySelector("#dlg-host .dlg-box");
   if (box) { box.setAttribute("role", "alertdialog"); box.classList.add("dlg-sm"); }
 }
@@ -6767,8 +6785,9 @@ document.addEventListener("change", (ev) => { if (ev.target.matches && ev.target
 function cfAnswer(e, what) {
   const w = `hoje às ${hm(nowMin())}`;
   if (what === "confirmar") { e.s = "confirmado"; e.cf = { ...e.cf, st: "confirmou", w }; }
+  else if (what === "remarcar") { e.s = "reagendado"; e.cf = { ...e.cf, st: "remarcar", w }; }
   else { e.s = "cancelado"; e.cf = { ...e.cf, st: "cancelou", w }; }
-  AVISOS.unshift({ id: `cf${e.id}${what}`, ic: what === "confirmar" ? "calendar-check" : "calendar-x", t: `${e.t} ${what === "confirmar" ? "confirmou" : "cancelou"} pelo link`, d: `Consulta de ${cfWhen(e)}. A situação e a cor no Google já mudaram.`, w: `Hoje, ${hm(nowMin())}`, s: "agenda", b: "Ver", unread: true, seen: false });
+  AVISOS.unshift({ id: `cf${e.id}${what}`, ic: what === "confirmar" ? "calendar-check" : "calendar-x", t: `${e.t} ${what === "confirmar" ? "confirmou" : what === "remarcar" ? "pediu para remarcar" : "cancelou"} pelo link`, d: `Consulta de ${cfWhen(e)}. ${what === "remarcar" ? "Ficou amarela (Reagendado) na agenda: fale com o paciente pelo WhatsApp e mova para o novo horário." : "A situação e a cor no Google já mudaram."}`, w: `Hoje, ${hm(nowMin())}`, s: "agenda", b: "Ver", unread: true, seen: false });
 }
 
 /* A faixa embaixo do nome diz se o agendamento está ligado a um contato e o que fazer. */
@@ -7017,6 +7036,7 @@ const ACT1211 = [
   [(t) => t.matches("[data-cf-see]"), (t) => { st.cfe = t.dataset.cfSee; st.cfv = "valido"; st.cfJust = ""; DLG.opener = null; dlgClose(); goTo("confirmar"); }],
   [(t) => t.matches("[data-cf-v]"), (t) => { st.cfv = pick(t.dataset.cfV, ["valido", "prazo", "expirou", "invalido"]); st.cfJust = ""; render(); refocus(`[data-cf-v="${st.cfv}"]`); }],
   [(t) => t.matches("[data-cf-ask]"), (t) => cfAsk(t)],
+  [(t) => t.matches("[data-cf-rem]"), (t) => cfRemAsk(t)],
   [(t) => t.matches("[data-cf-do]"), () => { const e = evById(st.cfe); if (!e) return; cfAnswer(e, "confirmar"); render(); refocus(".cf-ok"); }],
   [(t) => t.matches("[data-cc-save]"), () => {
     const v = (k) => dlgRawIn(`[data-cc="${k}"]`);

@@ -316,7 +316,7 @@ O Pablo viu a entrega 3 e pediu cinco ajustes, com um print do formulário do ou
   - **Quando:** no último dia útil antes da consulta, na hora escolhida, pelo alarme único. Consulta de segunda sai na sexta; véspera em feriado nacional ou fim de semana recua para o dia útil anterior. Nunca sai no próprio dia, nunca depois do prazo de cancelar e nunca de madrugada.
   - **Quem recebe:** evento com tipo de atendimento (Consulta, Retorno, Avaliação física), situação Agendado ou Reagendado, com celular, com o link ainda valendo e sem envio nem resposta para este horário (regras de não duplicar na seção "Link único e expiração"). A chave de "já enviado" é o id do evento mais o início; mudar o horário permite um envio novo, com o mesmo link.
   - **Passos no Chatwoot** (API de conta, `api_access_token`): procurar o contato pelo celular em E.164 (`GET /contacts/search`), criar se não existir (`POST /contacts`, só nome e telefone), reaproveitar a conversa aberta da caixa ou abrir uma (`POST /conversations`) e enviar a mensagem (`POST /conversations/:id/messages`, `message_type: outgoing`). Caixa do WhatsApp Cloud oficial só aceita mensagem modelo aprovada fora da janela de 24 horas: nesse caso o envio usa o modelo aprovado com as mesmas variáveis, e a tela avisa se a caixa escolhida é desse tipo. Caixa do tipo API manda texto livre.
-  - **Ritmo:** uma mensagem por vez, com o intervalo da credencial (30 s a 1 min, a fila única do Chatwoot), no máximo 5 envios por despertar para caber nas 44 subrequisições. O que sobra sai no despertar seguinte, ainda antes do prazo.
+  - **Ritmo:** uma mensagem por vez, com a espera em segundos da credencial (seção seguinte), no máximo 5 envios por despertar para caber nas 44 subrequisições. O que sobra sai no despertar seguinte, ainda antes do prazo.
   - **Falha:** até 3 tentativas com espera crescente. Depois, um aviso ao Pablo ("Não deu para enviar a confirmação de Érica pelo Chatwoot") com o botão do WhatsApp, e o agendamento mostra "Não foi enviado".
   - **Registro:** cada envio guarda id do evento, início, canal (Chatwoot ou WhatsApp), hora e situação, sem o texto da mensagem e sem o telefone (tabela de acréscimo junto de `zur_appointment_links`, mesma migration).
   - **Regra de produto:** até aqui a Zuri só escrevia a pacientes para pedir avaliação. A confirmação de consulta passa a ser o segundo caso, decidido pelo Pablo, com o mesmo cuidado: só o modelo dele, só pelo Chatwoot, com tetos.
@@ -333,13 +333,32 @@ O Pablo viu a entrega 3 e pediu cinco ajustes, com um print do formulário do ou
   - 1 hora antes do início. Depois disso não confirma nem cancela, e a página diz "Este link expirou" e orienta a falar com a equipe.
   - Quando a consulta é cancelada, pelo link ou pela Agenda (cor Tomate). Quem acabou de cancelar vê "Consulta cancelada. Este link deixou de valer." Abrindo de novo, vê "Este link expirou".
   - O servidor confere a expiração a cada abertura e a cada `POST`, pelo horário do evento no Google naquele momento, no fuso do dono. A linha do link é marcada `revoked_at` no cancelamento e não volta a valer, nem se o evento for reaberto (um envio novo, depois de reagendar, gera link novo só nesse caso).
-  - Nos detalhes do agendamento aparece "Link só deste agendamento. Expira sáb, 14/11, às 08:00 ou se a consulta for cancelada."
 - **Chatwoot sem envio duplicado:** a mensagem é sempre a mensagem modelo de Configurações › Consultório. O Chatwoot NÃO envia quando:
   - o paciente já confirmou pelo link (não precisa de lembrete);
   - a mensagem já foi pelo botão do WhatsApp ou pelo próprio Chatwoot para este horário;
   - a consulta foi cancelada ou o link expirou.
   - A conferência é feita duas vezes: ao montar a fila do dia e de novo, no próprio banco, imediatamente antes de cada envio (o paciente pode confirmar ou o Pablo pode tocar no WhatsApp entre uma mensagem e outra da fila). O registro do envio é gravado antes da chamada ao Chatwoot, com a chave id do evento mais o início como `UNIQUE`: se dois despertares tentarem o mesmo, só um passa.
   - Nos detalhes, quem já confirmou não mostra mais o botão do WhatsApp: "Já confirmou pelo link: não precisa enviar de novo, nem pelo WhatsApp nem pelo Chatwoot."
+
+**Respostas do paciente nas cores, proteção do link e espera entre envios (12/11/2026, 22:11 UTC).** Pedidos do Pablo, já no protótipo:
+
+- **Cada resposta pelo link muda a cor na Agenda e no Google** (o mesmo `PATCH` com `colorId` e etag):
+  - Confirmar: Confirmado, Manjericão (verde).
+  - Cancelar: Cancelado, Tomate (vermelho). O link expira na hora.
+  - Remarcar: Reagendado, Banana (amarelo). A página ganhou "Preciso remarcar", que também pede confirmação num aviso ("Pedir para remarcar?", foco em "Voltar"). O horário continua reservado até a equipe combinar o novo; a página mostra "Pedido recebido. A nossa equipe vai falar com você pelo WhatsApp". O aviso ao Pablo diz "pediu para remarcar", e os detalhes do agendamento trocam o envio da mensagem por "Falar com o paciente" (WhatsApp sem texto pronto). Quando o Pablo move o agendamento, o link continua o mesmo, mostra o novo horário e volta a pedir a confirmação. Escolha minha: o paciente não escolhe o novo horário sozinho, porque o pedido anterior foi "para reagendar, orienta a falar com a equipe".
+  - A resposta guardada (`zur_appointment_links.situação`) e a cor do evento andam juntas: se o Google recusar, a Zuri tenta de novo e avisa depois da terceira falha (regra que já estava no plano).
+- **Proteção contra descobrir outros agendamentos mexendo no link:**
+  - O token é aleatório, 128 bits (22 caracteres base64url), sem relação com o id do evento, a data ou o paciente. Não existe sequência: trocar uma letra cai num token que não existe (chance de acertar um válido é de 1 em 2¹²⁸ por tentativa).
+  - O endereço é só `/c/<token>`. Nenhum outro parâmetro é lido: `?id=`, `?evento=`, caminho a mais ou token com tamanho ou caracteres fora do formato (Zod, exatamente 22 de `[A-Za-z0-9_-]`) recebem a mesma página de link inválido, sem tocar no banco.
+  - A busca é pelo SHA-256 do token, com índice `UNIQUE`; o token nunca é comparado em texto nem gravado nos registros. A resposta de inválido tem o mesmo tamanho, o mesmo código (404) e um tempo parecido com a de um link que existe mas expirou, para não dar pista.
+  - Freio de tentativas: por rede, 30 aberturas e 10 respostas a cada 10 minutos; 5 tokens inválidos em 10 minutos bloqueiam a rede por 1 hora na rota `/c/` (só nela), e a Zuri avisa o Pablo uma vez por dia se isso acontecer.
+  - Um link por agendamento (`UNIQUE` no id do evento), e o `POST` só age sobre o evento ligado ao token. Testes: token de A nunca abre nem muda B; tokens vizinhos e alterados dão a página de inválido; parâmetros extras são ignorados; o freio dispara no 6º token inválido.
+- **Detalhes do agendamento:** saiu a linha "Expira … ou se a consulta for cancelada" e a lembrança do prazo de cancelamento. Ficam só a situação e as ações.
+- **Espera entre envios em massa, em segundos (Chatwoot):**
+  - Fica na credencial do Chatwoot (CRM › Credenciais), um lugar só para todas as automações que usam a caixa: "Espera entre envios em massa (segundos)", com "De" e "Até". A Zuri sorteia um valor entre os dois a cada mensagem, para não parecer robô. Padrão de 30 a 60 s; aceita de 5 a 600 s, conferido no servidor (Zod, números inteiros, "De" menor ou igual a "Até").
+  - Vale só para mensagens que vão para vários pacientes: confirmações da véspera, pedidos de avaliação e fluxos com várias pessoas. Mensagem para uma pessoa só (por exemplo, um fluxo disparado por um paciente) sai na hora, sem espera.
+  - Como funciona no servidor: uma fila por credencial, já existente, com a hora da próxima saída guardada no banco. Cada envio em massa marca `próxima = agora + sorteio(De, Até)`, e o alarme único acorda nessa hora. Assim a espera é respeitada mesmo entre automações diferentes, sem `sleep` e sem segurar o despertar. Até 5 envios por despertar continuam valendo como teto; com espera de 5 s, um despertar pode mandar mais de uma, sempre respeitando a espera entre elas.
+  - Substitui o "30 s a 1 min" fixo da decisão de 10/11.
 
 **O que não muda:** arrastar, Alt com as setas, "Desfazer", "mover marca Reagendado", a cor de cada situação e a agenda só de leitura. O primeiro carregamento também não, porque o formulário está no pedaço da Agenda, que carrega sob demanda; a busca usa a lista de Contatos que a tela já lê, sem chamada nova ao Google.
 
