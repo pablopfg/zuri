@@ -1,12 +1,15 @@
 import { type ReviewMetrics, recommendationIndex } from "@zuri/shared";
 
-/** A week or a month of the chart: its estimate, or null when nobody reviewed then. */
+/** A week, month, half year or year of the charts: its estimate and average, or null when nobody reviewed then. */
 export interface Bar {
   key: string;
   index: number | null;
   promoters: number;
   neutrals: number;
   detractors: number;
+  total: number;
+  /** The average rating, from 1 to 5. */
+  average: number | null;
 }
 
 export interface Overview {
@@ -32,7 +35,11 @@ export function overview(metrics: ReviewMetrics): Overview {
   const [five, four, three, two, one] = metrics.ratings;
   const total = five + four + three + two + one;
   const counts = { promoters: five, neutrals: four, detractors: three + two + one };
-  const bars = metrics.buckets.map((bucket) => ({ ...bucket, index: recommendationIndex(bucket) }));
+  const bars = metrics.buckets.map((bucket) => {
+    const count = bucket.promoters + bucket.neutrals + bucket.detractors;
+    // An answer without the sum of the stars (an older server) has no average, never a NaN on the screen.
+    return { ...bucket, index: recommendationIndex(bucket), total: count, average: count > 0 && Number.isFinite(bucket.stars) ? bucket.stars / count : null };
+  });
   const known = bars.filter((bar) => bar.index !== null);
   return {
     total,
@@ -42,6 +49,93 @@ export function overview(metrics: ReviewMetrics): Overview {
     repliedPercent: total > 0 ? Math.round((metrics.replied / total) * 100) : null,
     ...counts,
     bars,
+  };
+}
+
+/** How good a number is, for its color and its name: the usual bands of a recommendation index. */
+export type Zone = "excellent" | "great" | "fair" | "poor";
+
+/** The band of an index: 75 and up, 50 to 74, 0 to 49, below zero. */
+export function indexZone(index: number): Zone {
+  return index >= 75 ? "excellent" : index >= 50 ? "great" : index >= 0 ? "fair" : "poor";
+}
+
+/** The band of an average rating as the screen writes it, with one decimal: 4.5 and up, 4 to 4.4, 3 to 3.9, below 3. */
+export function ratingZone(rating: number): Zone {
+  const average = Math.round(rating * 10) / 10;
+  return average >= 4.5 ? "excellent" : average >= 4 ? "great" : average >= 3 ? "fair" : "poor";
+}
+
+export interface Stats {
+  /** The middle rating; of an even count, the mean of the two in the middle. */
+  median: number;
+  /** The rating (or ratings, on a tie) given most often, highest first. */
+  modes: number[];
+  /** How far the ratings spread from the average (population standard deviation). */
+  deviation: number;
+  /** Whole percent of 4 and 5 stars. */
+  satisfied: number;
+  /** Half the width of the index's 95% interval, in points: few reviews, wide margin. Null below `MARGIN_MIN` reviews. */
+  margin: number | null;
+  /** Reviews per week, month, half year or year of the period. */
+  perBar: number;
+  /** The one with most reviews (the latest on a tie). */
+  peak: Bar;
+  /** Points the index gains or loses from one bar with reviews to the next (least squares); null with fewer than three. */
+  trend: number | null;
+}
+
+/** Below this many reviews a margin would be a guess: the screen says so instead. */
+export const MARGIN_MIN = 10;
+
+/**
+ * Half the width of the 95% interval of an index made of `yes` promoters and
+ * `no` detractors among `n` reviews. One review more is counted in each of the
+ * three groups before the spread is taken, so reviews that all agree never
+ * claim a margin of zero; the least it says is one point.
+ */
+export function indexMargin(yes: number, no: number, n: number): number | null {
+  if (n < MARGIN_MIN) return null;
+  const p = (yes + 1) / (n + 3);
+  const d = (no + 1) / (n + 3);
+  return Math.max(1, Math.round(1.96 * Math.sqrt((p + d - (p - d) ** 2) / (n + 3)) * 100));
+}
+
+/** More parameters out of the same counts; null without reviews. */
+export function stats(metrics: ReviewMetrics): Stats | null {
+  const view = overview(metrics);
+  const n = view.total;
+  // No bars with reviews counted is not an answer of this server (SEC-GRAF-03): no numbers rather than a crash.
+  if (n === 0 || view.average === null || view.bars.length === 0) return null;
+  // The ratings in order, as [stars, count], lowest first.
+  const counts = metrics.ratings.map((count, position) => [5 - position, count] as const).reverse();
+  const at = (rank: number) => {
+    let seen = 0;
+    for (const [stars, count] of counts) {
+      seen += count;
+      if (rank < seen) return stars;
+    }
+    return 5;
+  };
+  const most = Math.max(...metrics.ratings);
+  const variance = counts.reduce((sum, [stars, count]) => sum + count * (stars - (view.average as number)) ** 2, 0) / n;
+  const known = view.bars.map((bar, x) => ({ x, y: bar.index })).filter((point): point is { x: number; y: number } => point.y !== null);
+  let trend: number | null = null;
+  if (known.length >= 3) {
+    const meanX = known.reduce((sum, point) => sum + point.x, 0) / known.length;
+    const meanY = known.reduce((sum, point) => sum + point.y, 0) / known.length;
+    const spread = known.reduce((sum, point) => sum + (point.x - meanX) ** 2, 0);
+    trend = known.reduce((sum, point) => sum + (point.x - meanX) * (point.y - meanY), 0) / spread;
+  }
+  return {
+    median: (at(Math.floor((n - 1) / 2)) + at(Math.ceil((n - 1) / 2))) / 2,
+    modes: metrics.ratings.flatMap((count, position) => (count === most ? [5 - position] : [])),
+    deviation: Math.sqrt(variance),
+    satisfied: percent(metrics.ratings[0] + metrics.ratings[1], n),
+    margin: indexMargin(view.promoters, view.detractors, n),
+    perBar: n / Math.max(1, view.bars.length),
+    peak: view.bars.reduce((best, bar) => (bar.total >= best.total ? bar : best)),
+    trend,
   };
 }
 
@@ -62,8 +156,12 @@ export function replyTime(minutes: number): { n: number; unit: "minute" | "hour"
   return { n: Math.round(minutes / 1440), unit: "day" };
 }
 
-/** The server's key of a week ("2026-11-09") or a month ("2026-11") as the chart writes it: "09/11" or "nov." */
-export function barLabel(key: string, unit: "week" | "month", locale: string): string {
+/**
+ * The server's key of a week ("2026-11-09") or a month ("2026-11") as the chart writes it: "09/11" or "nov."
+ * A year ("2026") is its own name; a half year ("2026-S2") is written by the screen, which has the words.
+ */
+export function barLabel(key: string, unit: ReviewMetrics["unit"], locale: string): string {
+  if (unit === "year" || unit === "semester") return key;
   const [year, month, day] = key.split("-").map(Number);
   const date = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1));
   if (Number.isNaN(date.getTime())) return key;

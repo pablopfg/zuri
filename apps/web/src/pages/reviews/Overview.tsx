@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { REVIEW_LIMITS, REVIEW_METRIC_PERIODS, type ReviewMetricPeriod, type ReviewMetrics, type ReviewPage, type ReviewsStatus } from "@zuri/shared";
+import { type MessageKey, REVIEW_LIMITS, REVIEW_METRIC_PERIODS, type ReviewMetricPeriod, type ReviewMetrics, type ReviewMetricUnit, type ReviewPage, type ReviewsStatus } from "@zuri/shared";
 import { MessageSquareText, Star, ThumbsUp, Timer } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 import { Link } from "react-router";
@@ -7,14 +7,55 @@ import { buttonClass, cn, ErrorNotice, Loading, Notice } from "../../components/
 import { api } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
 import { REVIEWS_KEY } from "../../lib/reviews.ts";
-import { barHeight, barLabel, overview, percent, replyTime } from "./numbers.ts";
+import { type Bar, barHeight, barLabel, indexZone, MARGIN_MIN, overview, percent, ratingZone, replyTime, type Stats, stats, type Zone } from "./numbers.ts";
 import { Mark, Stars } from "./parts.tsx";
 
-const PERIOD_TEXT = { "30d": "web.reviews.period.30d", "6m": "web.reviews.period.6m", "12m": "web.reviews.period.12m" } as const;
+const PERIOD_TEXT = {
+  "30d": "web.reviews.period.30d",
+  "6m": "web.reviews.period.6m",
+  "12m": "web.reviews.period.12m",
+  "24m": "web.reviews.period.24m",
+  "5y": "web.reviews.period.5y",
+} as const;
+const ZONES = ["excellent", "great", "fair", "poor"] as const;
+const ZONE_TEXT: Record<Zone, MessageKey> = { excellent: "web.reviews.zone.excellent", great: "web.reviews.zone.great", fair: "web.reviews.zone.fair", poor: "web.reviews.zone.poor" };
+const ZONE_RANGE: Record<Zone, MessageKey> = {
+  excellent: "web.reviews.zone.excellent.range",
+  great: "web.reviews.zone.great.range",
+  fair: "web.reviews.zone.fair.range",
+  poor: "web.reviews.zone.poor.range",
+};
+const INDEX_TITLE: Record<ReviewMetricUnit, MessageKey> = { week: "web.reviews.chart.week", month: "web.reviews.chart.month", semester: "web.reviews.chart.semester", year: "web.reviews.chart.year" };
+const VOLUME_TITLE: Record<ReviewMetricUnit, MessageKey> = { week: "web.reviews.volume.week", month: "web.reviews.volume.month", semester: "web.reviews.volume.semester", year: "web.reviews.volume.year" };
+const UNIT_COLUMN: Record<ReviewMetricUnit, MessageKey> = {
+  week: "web.reviews.chart.col.week",
+  month: "web.reviews.chart.col.month",
+  semester: "web.reviews.chart.col.semester",
+  year: "web.reviews.chart.col.year",
+};
+const PER_UNIT: Record<ReviewMetricUnit, MessageKey> = { week: "web.reviews.stats.per.week", month: "web.reviews.stats.per.month", semester: "web.reviews.stats.per.semester", year: "web.reviews.stats.per.year" };
+/** The three parts of a bar of reviews, by the stars, and the color each one has everywhere on the screen. */
+const PARTS = [
+  ["yes", "web.reviews.chart.col.yes"],
+  ["neutral", "web.reviews.chart.col.neutral"],
+  ["no", "web.reviews.chart.col.no"],
+] as const;
+/** Below this the trend is noise: the screen says the index holds. */
+const TREND_FLAT = 0.5;
 /** How many of the waiting reviews the overview shows; the rest is in the list. */
 const NEEDS_SHOWN = 3;
 
-function Tile({ icon, label, value, note }: { icon: ReactNode; label: string; value: string; note?: string | undefined }) {
+/** The band of a number, by name; the dot only repeats it in color. */
+function ZoneTag({ zone }: { zone: Zone }) {
+  const { t } = useI18n();
+  return (
+    <span className="zuri-review-zone" data-zone={zone}>
+      {t(ZONE_TEXT[zone])}
+    </span>
+  );
+}
+
+function Tile({ icon, label, value, note, zone }: { icon: ReactNode; label: string; value: string; note?: string | undefined; zone?: Zone | undefined }) {
   return (
     <div className="zuri-review-tile">
       <dt>
@@ -22,7 +63,10 @@ function Tile({ icon, label, value, note }: { icon: ReactNode; label: string; va
         {label}
       </dt>
       <dd>
-        <span className="block text-3xl font-semibold tracking-tight tabular-nums text-fg">{value}</span>
+        <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-3xl font-semibold tracking-tight tabular-nums text-fg">{value}</span>
+          {zone && <ZoneTag zone={zone} />}
+        </span>
         {note && <span className="block text-sm text-fg-muted">{note}</span>}
       </dd>
     </div>
@@ -57,6 +101,13 @@ export function Overview({ status }: { status: ReviewsStatus }) {
   const view = data ? overview(data) : null;
   const one = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const time = data?.medianReplyMinutes != null ? replyTime(data.medianReplyMinutes) : null;
+  const numbers = data ? stats(data) : null;
+  // A half year has no name in Intl: "1º sem. 2026".
+  const label = (key: string) => {
+    if (data?.unit !== "semester") return barLabel(key, data?.unit ?? "week", locale);
+    const [year, half] = key.split("-S");
+    return t("web.reviews.chart.semester.label", { n: half ?? "", ano: year ?? "" });
+  };
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end gap-2">
@@ -84,6 +135,7 @@ export function Overview({ status }: { status: ReviewsStatus }) {
               icon={<ThumbsUp aria-hidden />}
               label={t("web.reviews.index")}
               value={view.index === null ? "–" : String(view.index).replace("-", "−")}
+              zone={view.index === null ? undefined : indexZone(view.index)}
               note={
                 view.index === null
                   ? t("web.reviews.none")
@@ -94,7 +146,10 @@ export function Overview({ status }: { status: ReviewsStatus }) {
                       : t(view.delta > 0 ? "web.reviews.index.up" : "web.reviews.index.down", { n: Math.abs(view.delta) })
               }
             />
-            <Tile icon={<Star aria-hidden />} label={t("web.reviews.average")} value={view.average === null ? "–" : one.format(view.average)} note={plural("web.reviews.count", view.total)} />
+            <Tile icon={<Star aria-hidden />} label={t("web.reviews.average")} value={view.average === null ? "–" : one.format(view.average)}
+              note={plural("web.reviews.count", view.total)}
+              zone={view.average === null ? undefined : ratingZone(view.average)}
+            />
             <Tile
               icon={<MessageSquareText aria-hidden />}
               label={t("web.reviews.replied")}
@@ -110,7 +165,7 @@ export function Overview({ status }: { status: ReviewsStatus }) {
           </dl>
 
           <div className="zuri-review-split">
-            <Chart bars={view.bars} unit={data.unit} />
+            <IndexChart bars={view.bars} unit={data.unit} label={label} />
             <section className="zuri-review-card" aria-labelledby={`${periodId}-stars`}>
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <h2 id={`${periodId}-stars`} className="text-base font-semibold">
@@ -128,15 +183,21 @@ export function Overview({ status }: { status: ReviewsStatus }) {
                         {stars}
                         <Star className="h-3.5 w-3.5 text-fg-muted" aria-hidden />
                       </span>
-                      <span aria-hidden className="h-2 overflow-hidden rounded-full bg-raised">
-                        <span className="block h-full rounded-full bg-fg" style={{ width: `${share}%` }} />
+                      <span aria-hidden className="zuri-review-meter">
+                        <span data-part={stars === 5 ? "yes" : stars === 4 ? "neutral" : "no"} style={{ width: `${share}%` }} />
                       </span>
                       <span className="text-right">{t("web.reviews.dist.row", { n: count, pct: share })}</span>
                     </li>
                   );
                 })}
               </ul>
+              <Legend />
             </section>
+          </div>
+
+          <div className="zuri-review-split">
+            <VolumeChart bars={view.bars} unit={data.unit} label={label} />
+            {numbers && <Statistics numbers={numbers} unit={data.unit} index={view.index} label={label} />}
           </div>
         </>
       )}
@@ -194,61 +255,84 @@ export function Overview({ status }: { status: ReviewsStatus }) {
   );
 }
 
+/** What the three colors of the reviews mean, once per card that uses them. */
+function Legend() {
+  const { t } = useI18n();
+  return (
+    <ul className="zuri-review-legend">
+      {PARTS.map(([part, text]) => (
+        <li key={part} data-part={part}>
+          {t(text)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+type Label = (key: string) => string;
+const shown = (index: number) => String(index).replace("-", "−");
+
 /**
- * The estimate by week or by month, as bars. The last one is the current
- * period, in the accent. A week or month nobody reviewed has no bar. The same
- * numbers come as a table for whoever cannot read a chart; the server may send
- * 5 or 6 weeks, or up to 12 months, so nothing here counts on a fixed number.
+ * The estimate by week, month, half year or year, as bars in the color of
+ * their band (the band's name is in the legend and in the table, never in the
+ * color alone). One nobody reviewed has no bar. The same numbers come as a
+ * table for whoever cannot read a chart; the server sends from 4 to 12 bars,
+ * so nothing here counts on a fixed number.
  */
-function Chart({ bars, unit }: { bars: ReturnType<typeof overview>["bars"]; unit: "week" | "month" }) {
+function IndexChart({ bars, unit, label }: { bars: Bar[]; unit: ReviewMetricUnit; label: Label }) {
   const { t, locale } = useI18n();
   const id = useId();
   const any = bars.some((bar) => bar.index !== null);
-  const shown = (index: number) => String(index).replace("-", "−");
+  const one = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   return (
     <section className="zuri-review-card" aria-labelledby={id}>
       <h2 id={id} className="text-base font-semibold">
-        {t(unit === "week" ? "web.reviews.chart.week" : "web.reviews.chart.month")}
+        {t(INDEX_TITLE[unit])}
       </h2>
       {!any ? (
         <p className="mt-2 text-sm text-fg-muted">{t("web.reviews.chart.empty")}</p>
       ) : (
         <>
           <div aria-hidden className="zuri-review-bars">
-            {bars.map((bar, position) => (
+            {bars.map((bar) => (
               <div key={bar.key}>
                 <div>
                   {bar.index !== null && (
                     <>
                       <span className="text-xs font-semibold tabular-nums">{shown(bar.index)}</span>
-                      <span data-bar data-last={position === bars.length - 1 ? "" : undefined} style={{ height: `${barHeight(bar.index)}%` }} />
+                      <span data-bar data-zone={indexZone(bar.index)} style={{ height: `${barHeight(bar.index)}%` }} />
                     </>
                   )}
                 </div>
-                <span className="truncate text-xs tabular-nums text-fg-muted">{barLabel(bar.key, unit, locale)}</span>
+                <span className="text-center text-xs leading-tight tabular-nums text-fg-muted">{label(bar.key)}</span>
               </div>
             ))}
           </div>
-          <details className="mt-3 text-sm">
+          <ul className="zuri-review-legend">
+            {ZONES.map((zone) => (
+              <li key={zone} data-zone={zone}>
+                {t(ZONE_RANGE[zone])}
+              </li>
+            ))}
+          </ul>
+          <details className="mt-1 text-sm">
             <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium text-fg-muted underline-offset-2 hover:underline">{t("web.reviews.chart.table")}</summary>
-            <div className="overflow-x-auto">
+            {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a table wider than a phone scrolls sideways, and the keyboard must reach it to scroll */}
+            <div className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" tabIndex={0}>
               <table className="w-full min-w-80 text-left tabular-nums">
                 <thead className="text-xs text-fg-muted">
                   <tr>
                     <th scope="col" className="py-1 pr-3 font-medium">
-                      {t(unit === "week" ? "web.reviews.chart.col.week" : "web.reviews.chart.col.month")}
+                      {t(UNIT_COLUMN[unit])}
                     </th>
                     <th scope="col" className="py-1 pr-3 font-medium">
                       {t("web.reviews.chart.col.index")}
                     </th>
                     <th scope="col" className="py-1 pr-3 font-medium">
-                      {t("web.reviews.chart.col.yes")}
-                    </th>
-                    <th scope="col" className="py-1 pr-3 font-medium">
-                      {t("web.reviews.chart.col.neutral")}
+                      {t("web.reviews.chart.col.zone")}
                     </th>
                     <th scope="col" className="py-1 font-medium">
-                      {t("web.reviews.chart.col.no")}
+                      {t("web.reviews.average")}
                     </th>
                   </tr>
                 </thead>
@@ -256,9 +340,89 @@ function Chart({ bars, unit }: { bars: ReturnType<typeof overview>["bars"]; unit
                   {bars.map((bar) => (
                     <tr key={bar.key} className="border-t border-border">
                       <th scope="row" className="py-1.5 pr-3 font-normal">
-                        {barLabel(bar.key, unit, locale)}
+                        {label(bar.key)}
                       </th>
                       <td className="py-1.5 pr-3">{bar.index === null ? t("web.reviews.none") : shown(bar.index)}</td>
+                      <td className="py-1.5 pr-3">{bar.index === null ? "–" : t(ZONE_TEXT[indexZone(bar.index)])}</td>
+                      <td className="py-1.5">{bar.average === null ? "–" : one.format(bar.average)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * How many reviews came in each week, month, half year or year: one bar each,
+ * as tall as its count against the busiest one, split in who recommends, who
+ * is neutral and who does not. The count sits on the bar and the table has
+ * every number.
+ */
+function VolumeChart({ bars, unit, label }: { bars: Bar[]; unit: ReviewMetricUnit; label: Label }) {
+  const { t } = useI18n();
+  const id = useId();
+  const most = Math.max(0, ...bars.map((bar) => bar.total));
+  return (
+    <section className="zuri-review-card" aria-labelledby={id}>
+      <h2 id={id} className="text-base font-semibold">
+        {t(VOLUME_TITLE[unit])}
+      </h2>
+      {most === 0 ? (
+        <p className="mt-2 text-sm text-fg-muted">{t("web.reviews.chart.empty")}</p>
+      ) : (
+        <>
+          <div aria-hidden className="zuri-review-bars">
+            {bars.map((bar) => (
+              <div key={bar.key}>
+                <div>
+                  {bar.total > 0 && (
+                    <>
+                      <span className="text-xs font-semibold tabular-nums">{bar.total}</span>
+                      <span data-stack style={{ height: `${Math.max(4, Math.round((bar.total / most) * 100))}%` }}>
+                        {bar.promoters > 0 && <span data-part="yes" style={{ flexGrow: bar.promoters }} />}
+                        {bar.neutrals > 0 && <span data-part="neutral" style={{ flexGrow: bar.neutrals }} />}
+                        {bar.detractors > 0 && <span data-part="no" style={{ flexGrow: bar.detractors }} />}
+                      </span>
+                    </>
+                  )}
+                </div>
+                <span className="text-center text-xs leading-tight tabular-nums text-fg-muted">{label(bar.key)}</span>
+              </div>
+            ))}
+          </div>
+          <Legend />
+          <details className="mt-1 text-sm">
+            <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium text-fg-muted underline-offset-2 hover:underline">{t("web.reviews.chart.table")}</summary>
+            {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a table wider than a phone scrolls sideways, and the keyboard must reach it to scroll */}
+            <div className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" tabIndex={0}>
+              <table className="w-full min-w-80 text-left tabular-nums">
+                <thead className="text-xs text-fg-muted">
+                  <tr>
+                    <th scope="col" className="py-1 pr-3 font-medium">
+                      {t(UNIT_COLUMN[unit])}
+                    </th>
+                    <th scope="col" className="py-1 pr-3 font-medium">
+                      {t("web.reviews.chart.col.total")}
+                    </th>
+                    {PARTS.map(([part, text]) => (
+                      <th key={part} scope="col" className="py-1 pr-3 font-medium last:pr-0">
+                        {t(text)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {bars.map((bar) => (
+                    <tr key={bar.key} className="border-t border-border">
+                      <th scope="row" className="py-1.5 pr-3 font-normal">
+                        {label(bar.key)}
+                      </th>
+                      <td className="py-1.5 pr-3">{bar.total}</td>
                       <td className="py-1.5 pr-3">{bar.promoters}</td>
                       <td className="py-1.5 pr-3">{bar.neutrals}</td>
                       <td className="py-1.5">{bar.detractors}</td>
@@ -270,6 +434,54 @@ function Chart({ bars, unit }: { bars: ReturnType<typeof overview>["bars"]; unit
           </details>
         </>
       )}
+    </section>
+  );
+}
+
+/** More parameters out of the period's counts, each with a line that says how to read it. */
+function Statistics({ numbers, unit, index, label }: { numbers: Stats; unit: ReviewMetricUnit; index: number | null; label: Label }) {
+  const { t, plural, locale } = useI18n();
+  const id = useId();
+  const one = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const two = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const list = new Intl.ListFormat(locale, { type: "conjunction" });
+  const low = Math.max(-100, (index ?? 0) - (numbers.margin ?? 0));
+  const high = Math.min(100, (index ?? 0) + (numbers.margin ?? 0));
+  const rows: [string, string, string][] = [
+    [t("web.reviews.stats.satisfied"), `${numbers.satisfied}%`, t("web.reviews.stats.satisfied.note")],
+    [
+      t("web.reviews.stats.margin"),
+      numbers.margin === null ? "–" : plural("web.reviews.stats.margin.value", numbers.margin),
+      numbers.margin === null ? t("web.reviews.stats.margin.few", { min: MARGIN_MIN }) : t("web.reviews.stats.margin.note", { de: shown(low), ate: shown(high) }),
+    ],
+    [
+      t("web.reviews.stats.trend"),
+      numbers.trend === null
+        ? "–"
+        : Math.abs(numbers.trend) < TREND_FLAT
+          ? t("web.reviews.stats.trend.flat")
+          : t(numbers.trend > 0 ? "web.reviews.stats.trend.up" : "web.reviews.stats.trend.down", { n: one.format(Math.abs(numbers.trend)) }),
+      t(numbers.trend === null ? "web.reviews.stats.trend.none" : "web.reviews.stats.trend.note"),
+    ],
+    [t("web.reviews.stats.median"), t("web.reviews.stats.of5", { n: one.format(numbers.median) }), t("web.reviews.stats.median.note")],
+    [t("web.reviews.stats.mode"), list.format(numbers.modes.map(String)), t("web.reviews.stats.mode.note")],
+    [t("web.reviews.stats.deviation"), two.format(numbers.deviation), t("web.reviews.stats.deviation.note")],
+    [t(PER_UNIT[unit]), one.format(numbers.perBar), t("web.reviews.stats.peak", { quando: label(numbers.peak.key), n: numbers.peak.total })],
+  ];
+  return (
+    <section className="zuri-review-card" aria-labelledby={id}>
+      <h2 id={id} className="text-base font-semibold">
+        {t("web.reviews.stats")}
+      </h2>
+      <dl className="mt-2 divide-y divide-border">
+        {rows.map(([name, value, note]) => (
+          <div key={name} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 py-2.5">
+            <dt className="text-sm font-medium">{name}</dt>
+            <dd className="text-right text-sm font-semibold tabular-nums">{value}</dd>
+            <dd className="col-span-2 text-xs leading-5 text-fg-muted">{note}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }

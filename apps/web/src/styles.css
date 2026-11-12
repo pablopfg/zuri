@@ -647,8 +647,73 @@ dialog::backdrop {
   .zuri-review-bars [data-bar] {
     @apply w-full max-w-9 rounded-t-md bg-border-strong;
   }
-  .zuri-review-bars [data-bar][data-last] {
-    @apply bg-accent;
+  /* A bar of reviews: who recommends at the bottom, who does not on top, a hairline between the parts. */
+  .zuri-review-bars [data-stack] {
+    @apply flex w-full max-w-9 flex-col-reverse gap-px overflow-hidden rounded-t-md;
+  }
+  .zuri-review-bars [data-stack] > span {
+    @apply min-h-px basis-0;
+  }
+  /*
+   * The colors of the numbers. A band of the index: excellent, great, fair, poor. A part of the
+   * reviews: recommends, neutral, does not. Each color always comes with its name or its number.
+   */
+  .zuri-review-card [data-zone="excellent"],
+  .zuri-review-tile [data-zone="excellent"],
+  .zuri-review-card [data-part="yes"] {
+    --mark: var(--color-success);
+  }
+  .zuri-review-card [data-zone="great"],
+  .zuri-review-tile [data-zone="great"] {
+    --mark: var(--color-chart-4);
+  }
+  .zuri-review-card [data-zone="fair"],
+  .zuri-review-tile [data-zone="fair"] {
+    --mark: var(--color-warning);
+  }
+  .zuri-review-card [data-zone="poor"],
+  .zuri-review-tile [data-zone="poor"],
+  .zuri-review-card [data-part="no"] {
+    --mark: var(--color-danger);
+  }
+  .zuri-review-card [data-part="neutral"] {
+    --mark: var(--color-border-strong);
+  }
+  .zuri-review-bars [data-zone],
+  .zuri-review-bars [data-part],
+  .zuri-review-meter > span {
+    background-color: var(--mark);
+  }
+  /* Who does not recommend and the critical band are striped too: red and green weigh the same to many eyes. */
+  .zuri-review-bars [data-part="no"],
+  .zuri-review-bars [data-zone="poor"],
+  .zuri-review-meter > [data-part="no"],
+  .zuri-review-legend > [data-part="no"]::before,
+  .zuri-review-legend > [data-zone="poor"]::before,
+  .zuri-review-zone[data-zone="poor"]::before {
+    background-image: repeating-linear-gradient(135deg, transparent 0 3px, var(--color-surface) 3px 5px);
+  }
+  .zuri-review-meter {
+    @apply h-2 overflow-hidden rounded-full bg-raised;
+  }
+  .zuri-review-meter > span {
+    @apply block h-full rounded-full;
+  }
+  .zuri-review-legend {
+    @apply mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted;
+  }
+  .zuri-review-legend > li,
+  .zuri-review-zone {
+    @apply inline-flex items-center gap-1.5;
+  }
+  .zuri-review-zone {
+    @apply text-xs font-medium text-fg-muted;
+  }
+  .zuri-review-legend > li::before,
+  .zuri-review-zone::before {
+    content: "";
+    background-color: var(--mark);
+    @apply h-2.5 w-2.5 shrink-0 rounded-sm;
   }
   /*
    * The list and the chosen review. Side by side above 1.100 px; below it the chosen review takes the

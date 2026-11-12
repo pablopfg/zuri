@@ -32,7 +32,10 @@ function parts(page: Page) {
   const detail = page.getByRole("region", { name: "Avaliação aberta" });
   /** Back to the list when the open review hides it (one column). */
   const back = async () => {
-    if (!(await list.isVisible())) await detail.getByRole("link", { name: "Avaliações" }).click();
+    await expect(page.locator(".zuri-reviews")).toBeVisible();
+    // Only one column has the way back: with two, a list still being drawn must not send the test after a link that is not there.
+    const link = detail.getByRole("link", { name: "Avaliações" });
+    if ((page.viewportSize()?.width ?? 0) < 1101 && (await link.isVisible())) await link.click();
   };
   /** Opens a reviewer's line, going back to the list first. */
   const open = async (name: string) => {
@@ -288,11 +291,11 @@ function metrics(over: Record<string, unknown> = {}) {
     unit: "week",
     ratings: [5, 1, 0, 1, 0],
     buckets: [
-      { key: "2026-10-12", promoters: 1, neutrals: 0, detractors: 1 },
-      { key: "2026-10-19", promoters: 0, neutrals: 0, detractors: 0 },
-      { key: "2026-10-26", promoters: 2, neutrals: 1, detractors: 0 },
-      { key: "2026-11-02", promoters: 0, neutrals: 0, detractors: 0 },
-      { key: "2026-11-09", promoters: 2, neutrals: 0, detractors: 0 },
+      { key: "2026-10-12", promoters: 1, neutrals: 0, detractors: 1, stars: 7 },
+      { key: "2026-10-19", promoters: 0, neutrals: 0, detractors: 0, stars: 0 },
+      { key: "2026-10-26", promoters: 2, neutrals: 1, detractors: 0, stars: 14 },
+      { key: "2026-11-02", promoters: 0, neutrals: 0, detractors: 0, stars: 0 },
+      { key: "2026-11-09", promoters: 2, neutrals: 0, detractors: 0, stars: 10 },
     ],
     replied: 6,
     medianReplyMinutes: 240,
@@ -377,6 +380,9 @@ test("the overview works the numbers out of the server's counts, for any number 
   await expect(tile("Índice de recomendação")).toContainText("57");
   // The change is the screen's sum: the last week with reviews (100) against the first one (0).
   await expect(tile("Índice de recomendação")).toContainText("+100 desde o começo do período");
+  // Each number says its band by name, not only by color: 57 and 4,4 are "very good".
+  await expect(tile("Índice de recomendação")).toContainText("Muito bom");
+  await expect(tile("Nota média")).toContainText("Muito bom");
   await expect(tile("Nota média")).toContainText("4,4");
   await expect(tile("Nota média")).toContainText("7 avaliações");
   await expect(tile("Respondidas")).toContainText("86%");
@@ -398,6 +404,31 @@ test("the overview works the numbers out of the server's counts, for any number 
   await expect(chart.getByRole("row", { name: /^12\/10/ }).getByRole("cell").first()).toHaveText("0");
   await expect(chart.getByRole("row", { name: /^19\/10/ })).toContainText("Sem avaliações");
   await expect(chart.getByRole("row", { name: /^09\/11/ })).toContainText("100");
+  // Each week's band and average rating; the legend names the four bands.
+  await expect(chart.getByRole("row", { name: /^12\/10/ }).getByRole("cell")).toHaveText(["0", "Razoável", "3,5"]);
+  await expect(chart.getByRole("row", { name: /^09\/11/ }).getByRole("cell")).toHaveText(["100", "Excelente", "5,0"]);
+  await expect(chart.getByRole("listitem")).toHaveText(["Excelente: 75 a 100", "Muito bom: 50 a 74", "Razoável: 0 a 49", "Crítico: abaixo de 0"]);
+
+  // How many reviews came each week, split by who recommends, with its own table.
+  const volume = page.getByRole("region", { name: "Avaliações recebidas por semana" });
+  await volume.getByText("Ver em tabela").click();
+  await expect(volume.getByRole("row", { name: /^26\/10/ }).getByRole("cell")).toHaveText(["3", "2", "1", "0"]);
+  await expect(volume.getByRole("row", { name: /^19\/10/ }).getByRole("cell")).toHaveText(["0", "0", "0", "0"]);
+  await expect(volume.getByRole("listitem")).toHaveText(["Recomendam", "Neutros", "Não recomendam"]);
+
+  // The statistics, worked out of the same counts (the sums are in apps/web/test/reviews-numbers.test.ts).
+  const figures = page.getByRole("region", { name: "Estatísticas do período" });
+  const figure = (name: string) => figures.locator("dl > div").filter({ has: page.locator("dt", { hasText: name }) });
+  await expect(figure("Satisfeitos")).toContainText("86%");
+  // Seven reviews are too few for a margin: the screen says so instead of guessing.
+  await expect(figure("Margem do índice")).toContainText("Com menos de 10 avaliações, a margem seria um palpite.");
+  await expect(figure("Margem do índice").locator("dd").first()).toHaveText("–");
+  await expect(figure("Tendência do índice")).toContainText("Sobe 25,0 por período");
+  await expect(figure("Mediana")).toContainText("5,0 de 5");
+  await expect(figure("Nota mais comum").locator("dd").first()).toHaveText("5");
+  await expect(figure("Desvio padrão")).toContainText("1,05");
+  await expect(figure("Avaliações por semana, em média")).toContainText("1,4");
+  await expect(figure("Avaliações por semana, em média")).toContainText("O maior movimento foi em 26/10, com 3.");
   // No funnel while the server sends no requests; nothing waiting says so.
   await expect(page.getByText("Pedidos de avaliação")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Precisa de você" }).getByText("Quando chegar uma avaliação nova, ela aparece aqui.")).toBeVisible();
@@ -408,7 +439,7 @@ test("the overview works the numbers out of the server's counts, for any number 
 
   // On a Monday the server sends six weeks; replies copied before the server kept their hour have no time.
   answer = metrics({
-    buckets: [...metrics().buckets, { key: "2026-11-16", promoters: 0, neutrals: 0, detractors: 1 }],
+    buckets: [...metrics().buckets, { key: "2026-11-16", promoters: 0, neutrals: 0, detractors: 1, stars: 1 }],
     ratings: [5, 1, 0, 1, 1],
     medianReplyMinutes: null,
     partial: true,
@@ -421,14 +452,56 @@ test("the overview works the numbers out of the server's counts, for any number 
   expect(asked.at(-1)).toBe("?period=6m");
 
   // Twelve months come by month; a period nobody reviewed in shows no zero index.
-  answer = metrics({ period: "12m", unit: "month", ratings: [0, 0, 0, 0, 0], buckets: [{ key: "2026-11", promoters: 0, neutrals: 0, detractors: 0 }], replied: 0, medianReplyMinutes: null });
+  answer = metrics({ period: "12m", unit: "month", ratings: [0, 0, 0, 0, 0], buckets: [{ key: "2026-11", promoters: 0, neutrals: 0, detractors: 0, stars: 0 }], replied: 0, medianReplyMinutes: null });
   await page.getByRole("combobox", { name: "Período" }).selectOption("12m");
   await expect(page.getByRole("heading", { level: 2, name: "Índice de recomendação por mês" })).toBeVisible();
   await expect(tile("Índice de recomendação")).toContainText("Sem avaliações");
   await expect(tile("Índice de recomendação")).not.toContainText("0");
   await expect(tile("Tempo até responder")).toContainText("Nenhuma resposta no período");
-  await expect(page.getByText("Nenhuma avaliação neste período.")).toBeVisible();
+  await expect(page.getByText("Nenhuma avaliação neste período.")).toHaveCount(2);
+  await expect(page.getByRole("region", { name: "Estatísticas do período" })).toHaveCount(0);
   await expectAccessible(page, "avaliacoes-visao-geral-vazia");
+
+  // Two years come by half year and five by year, each with its own words; an index below zero is "critical".
+  answer = metrics({
+    period: "24m",
+    unit: "semester",
+    ratings: [1, 0, 0, 0, 3],
+    buckets: [
+      { key: "2025-S1", promoters: 0, neutrals: 0, detractors: 0, stars: 0 },
+      { key: "2025-S2", promoters: 0, neutrals: 0, detractors: 2, stars: 2 },
+      { key: "2026-S1", promoters: 0, neutrals: 0, detractors: 1, stars: 1 },
+      { key: "2026-S2", promoters: 1, neutrals: 0, detractors: 0, stars: 5 },
+    ],
+  });
+  await page.getByRole("combobox", { name: "Período" }).selectOption("24m");
+  await expect.poll(() => asked.at(-1)).toBe("?period=24m");
+  const halves = page.getByRole("region", { name: "Avaliações recebidas por semestre" });
+  await expect(tile("Índice de recomendação")).toContainText("−50");
+  await expect(tile("Índice de recomendação")).toContainText("Crítico");
+  await halves.getByText("Ver em tabela").click();
+  await expect(halves.getByRole("row", { name: /^2º sem\. 2025/ }).getByRole("cell")).toHaveText(["2", "0", "0", "2"]);
+  await expect(page.getByRole("region", { name: "Estatísticas do período" }).getByText("O maior movimento foi em 2º sem. 2025, com 2.")).toBeVisible();
+  await expectAccessible(page, "avaliacoes-visao-geral-semestres");
+  // In a phone's width the four half years fit, each with its whole name.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(halves.getByText("2º sem. 2025", { exact: true }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "nothing scrolls sideways").toBe(true);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expectAccessible(page, "avaliacoes-visao-geral-semestres escuro");
+  await page.emulateMedia({ colorScheme: "light" });
+  answer = metrics({ period: "5y", unit: "year", ratings: [98, 21, 4, 7, 2], buckets: [2022, 2023, 2024, 2025].map((year) => ({ key: String(year), promoters: 0, neutrals: 0, detractors: 0, stars: 0 })).concat([{ key: "2026", promoters: 98, neutrals: 21, detractors: 13, stars: 602 }]) });
+  await page.getByRole("combobox", { name: "Período" }).selectOption("5y");
+  await expect.poll(() => asked.at(-1)).toBe("?period=5y");
+  const years = page.getByRole("region", { name: "Avaliações recebidas por ano" });
+  await years.locator("details").evaluate((details) => details.setAttribute("open", ""));
+  await expect(years.getByRole("row", { name: /^2026/ }).getByRole("cell")).toHaveText(["132", "98", "21", "13"]);
+  // With enough reviews the index has its margin: 64, give or take 11.
+  const margin = page.getByRole("region", { name: "Estatísticas do período" }).locator("dl > div").filter({ has: page.locator("dt", { hasText: "Margem do índice" }) });
+  await expect(margin).toContainText("±11 pontos");
+  await expect(margin).toContainText("o índice fica entre 53 e 75");
+  // One year with reviews draws no line: the trend says what it needs.
+  await expect(page.getByRole("region", { name: "Estatísticas do período" }).getByText("Precisa de pelo menos três barras com avaliações.")).toBeVisible();
 
   // The server refusing the numbers leaves a way to try again, and the rest of the area stays.
   await page.unroute(/\/api\/reviews\/metrics/);
