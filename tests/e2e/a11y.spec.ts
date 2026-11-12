@@ -124,6 +124,11 @@ for (const scheme of ["light", "dark"] as const) {
       await expect(page.getByText("Avaliações desligadas", { exact: true })).toBeVisible();
       await expectAccessible(page, "/avaliacoes");
       expect(await tooSmallControls(page)).toEqual([]);
+      // The settings are where it gets turned on: the connection's steps, each with its state.
+      await page.getByRole("link", { name: "Escolher perfil" }).click();
+      await expect(page.getByRole("heading", { level: 2, name: "Conexão com o Perfil da Empresa" })).toBeVisible();
+      await expectAccessible(page, "/avaliacoes/ajustes");
+      expect(await tooSmallControls(page)).toEqual([]);
     });
   });
 }

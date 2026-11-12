@@ -66,6 +66,11 @@
       "key": "web.reviews.card.template.default3",
       "rule": "exclamacao",
       "reason": "Modelo de resposta que o dono manda ao cliente no Google, na voz do negócio dele, não texto do sistema."
+    },
+    {
+      "key": "web.reviews.part.settings",
+      "rule": "glossario",
+      "reason": "Aba de Avaliações no protótipo aprovado pelo Pablo (10/11/2026): \"Ajustes\" é a parte da área, e \"Configurações\" continua sendo só a página do menu."
     }
   ]
 }
