@@ -2652,9 +2652,13 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .dlg-box.dlg-ee{width:min(680px,100%);max-height:min(760px,100%)}
 .dlg-ee .form-grid{margin-top:var(--s4)}
 .ee-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.ee-4{align-items:start}
+.ee-kind{grid-column:span 2;align-content:start}
+.ee-kind>.field+.field{margin-top:8px}
+.ee-kind>[hidden]{display:none}
 .ee-dur{margin:6px 0 0;text-align:right}
 .ee-obs{margin-top:var(--s4)}
-.dlg-ee.is-plain .pt-link,.dlg-ee.is-plain .ee-grid.form-3>.field:nth-child(-n+3),.dlg-ee.is-plain .ee-4>.field:nth-child(2),.dlg-ee.is-plain .ee-4>.field:last-child{display:none}
+.dlg-ee.is-plain .pt-link,.dlg-ee.is-plain .ee-grid.form-3>.field:nth-child(-n+3),.dlg-ee.is-plain .ee-4>.field:last-child{display:none}
 .sync-leg .proto-only{flex:none;margin-left:auto}
 .pt-field{position:relative}
 .cb{position:relative}
@@ -6252,18 +6256,26 @@ PEOPLE.push(
   { id: "diego", n: "Diego Fontes Arruda", i: "DF", c: 4, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0123")], emails: [["diego@exemplo.com.br", "Pessoal"]], updated: "01/11, 18:00" },
   { id: "carla2", n: "Carla Mendes", i: "CM", c: 2, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0124")], emails: [["carla.m@exemplo.com.br", "Pessoal"]], updated: "09/11, 11:20" }
 );
-const DDIS = [["+55", "Brasil"], ["+351", "Portugal"], ["+1", "Estados Unidos"], ["+54", "Argentina"], ["+595", "Paraguai"], ["+598", "Uruguai"]];
-const FIN = ["Não pago", "Pago", "Isento"];
-const KINDS = ["Consulta", "Retorno", "Avaliação física"];
-const kindOf = (t) => (t ? t.split(" | ")[0] : "");
-const atendOf = (t) => (t && t.split(" | ")[1] === "Online" ? "Online" : "Presencial");
-const tipoOf = (k, a) => (k ? `${k} | ${a === "Online" ? "Online" : "Consultório"}` : "");
+/* DDI de todos os países (código do país e código de discagem), com o nome em português pelo próprio navegador. Brasil primeiro e padrão. */
+/* Data de nascimento, como vem de Contatos: é o que separa dois pacientes com o mesmo nome. */
+const NASC = { carla: "14/03/1988", carla2: "02/09/1995", "helena-p": "21/06/1979", paula: "30/01/1990", diego: "08/11/1984", marina: "17/05/1992", pedro: "25/12/1987", luciana: "11/04/1983" };
+for (const p of PEOPLE) if (NASC[p.id]) p.nasc = NASC[p.id];
+const nascTxt = (p) => (p.nasc ? `nasc. ${p.nasc}` : "sem data de nascimento");
+const DDI_RAW = "AF93 ZA27 AL355 DE49 AD376 AO244 AI1264 AG1268 SA966 DZ213 AR54 AM374 AW297 AU61 AT43 AZ994 BS1242 BH973 BD880 BB1246 BE32 BZ501 BJ229 BM1441 BY375 BO591 BA387 BW267 BR55 BN673 BG359 BF226 BI257 BT975 CV238 CM237 KH855 CA1 QA974 KZ7 TD235 CL56 CN86 CY357 CO57 KM269 CG242 CD243 KP850 KR82 CI225 CR506 HR385 CU53 CW599 DK45 DJ253 DM1767 EG20 SV503 AE971 EC593 ER291 SK421 SI386 ES34 US1 EE372 SZ268 ET251 FJ679 PH63 FI358 FR33 GA241 GM220 GH233 GE995 GI350 GD1473 GR30 GL299 GP590 GU1671 GT502 GY592 GF594 GN224 GQ240 GW245 HT509 HN504 HK852 HU36 YE967 KY1345 CK682 FO298 FK500 MH692 SB677 IN91 ID62 IR98 IQ964 IE353 IS354 IL972 IT39 JM1876 JP81 JO962 KW965 LA856 LS266 LV371 LB961 LR231 LY218 LI423 LT370 LU352 MO853 MK389 MG261 MY60 MW265 MV960 ML223 MT356 MA212 MQ596 MU230 MR222 MX52 MM95 FM691 MZ258 MD373 MC377 MN976 ME382 MS1664 NA264 NR674 NP977 NI505 NE227 NG234 NO47 NC687 NZ64 OM968 NL31 PW680 PS970 PA507 PG675 PK92 PY595 PE51 PF689 PL48 PR1787 PT351 KE254 KG996 GB44 CF236 CZ420 DO1809 RE262 RO40 RW250 RU7 WS685 SM378 LC1758 KN1869 ST239 VC1784 SC248 SN221 SL232 RS381 SG65 SX1721 SY963 SO252 LK94 SD249 SS211 SE46 CH41 SR597 TH66 TW886 TJ992 TZ255 TL670 TG228 TO676 TT1868 TN216 TM993 TR90 TV688 UA380 UG256 UY598 UZ998 VU678 VA379 VE58 VN84 ZM260 ZW263";
+const regionName = (() => { try { const n = new Intl.DisplayNames(["pt-BR"], { type: "region" }); return (c) => n.of(c) || c; } catch { return (c) => c; } })();
+const DDIS = DDI_RAW.split(" ").map((x) => [x.slice(0, 2), `+${x.slice(2)}`, regionName(x.slice(0, 2))]).sort((a, b) => (a[0] === "BR" ? -1 : b[0] === "BR" ? 1 : a[2].localeCompare(b[2], "pt-BR")));
+const ddiOf = (iso) => (DDIS.find((d) => d[0] === iso) || DDIS[0])[1];
+const FIN = ["Não pago", "Pago", "Gratuito"];
+/* Tipos do evento: os do consultório, os que já aparecem na agenda e "Outro", para digitar. "Tipo | Lugar", como a ficha do contato lê. */
+const KINDS = ["Consulta | Consultório", "Consulta | Online", "Retorno | Consultório", "Retorno | Online", "Avaliação física | Consultório"];
+const kindList = (cur) => [...new Set([...KINDS, ...EV.map((e) => e.tipo).filter(Boolean), ...(cur ? [cur] : [])])];
+const tipoFix = (v) => { const t = v.replace(/\s+/g, " ").trim(); if (!t) return ""; const [a, b] = t.split("|").map((x) => x.trim()); return `${a} | ${b || "Consultório"}`; };
 const pById = (id) => PEOPLE.find((p) => p.id === id);
 const cellOf = (p) => ((p.phones || []).find((x) => isCell(x.n)) || (p.phones || [])[0] || { n: "" }).n;
 const mailOf = (p) => ((p.emails || [])[0] || [""])[0];
 /* Quem já está na agenda com o nome de um único contato fica vinculado; homônimos nunca se vinculam sozinhos. */
 for (const e of EV) { if (!e.tipo) continue; const same = PEOPLE.filter((p) => p.n && fold(p.n) === fold(e.t)); if (same.length === 1) e.pid = same[0].id; }
-for (const e of EV) { e.fin = e.fin || (e.day < dkey(AG_NOW) ? "Pago" : "Não pago"); e.ddi = e.ddi || "+55"; }
+for (const e of EV) { e.fin = e.fin || (e.day < dkey(AG_NOW) ? "Pago" : "Não pago"); e.ddi = e.ddi || "BR"; }
 const brDate = (k) => k.split("-").reverse().join("/");
 const isoDate = (v) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v); if (!m) return ""; const k = `${m[3]}-${m[2]}-${m[1]}`; const d = dOf(k); return d.getDate() === Number(m[1]) && d.getMonth() + 1 === Number(m[2]) ? k : ""; };
 const minOf = (v) => { const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(v); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
@@ -6272,7 +6284,14 @@ const durTxt = (m) => (m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)} h $
 const MASK = {
   date: (v) => { const d = v.replace(/\D/g, "").slice(0, 8); return d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d; },
   time: (v) => { const d = v.replace(/\D/g, "").slice(0, 4); return d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d; },
-  cel: (v) => { const d = v.replace(/\D/g, "").slice(0, 11); if (!d) return ""; if (d.length <= 2) return `(${d}`; if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`; const n = d.length === 11 ? 7 : 6; return `(${d.slice(0, 2)}) ${d.slice(2, n)}-${d.slice(n)}`; }
+  /* Brasil: (41) 99999-0000, e quem cola +55 na frente perde o 55. Outros países: blocos de 3, o último com até 4. */
+  cel: (v, iso = "BR") => {
+    let d = v.replace(/\D/g, "");
+    if (iso !== "BR") { d = d.slice(0, 15); const out = []; while (d.length > 4) { out.push(d.slice(0, 3)); d = d.slice(3); } if (d) out.push(d); return out.join(" "); }
+    if (d.length > 11 && d.startsWith("55")) d = d.slice(2);
+    d = d.slice(0, 11);
+    if (!d) return ""; if (d.length <= 2) return `(${d}`; if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`; const n = d.length === 11 ? 7 : 6; return `(${d.slice(0, 2)}) ${d.slice(2, n)}-${d.slice(n)}`;
+  }
 };
 /* Busca em Contatos: cada palavra digitada casa com o começo de uma palavra do nome, sem acento. Clientes do consultório primeiro. */
 function ptFind(q) {
@@ -6288,8 +6307,8 @@ const FORM = { pid: "", dur: 60, own: false, opt: -1, list: [], note: "" };
 function evDlg(e, opener) {
   const d = dOf(e.day);
   const p = e.pid && pById(e.pid);
-  const rows = [["Quando", `${dayLong(d)}, ${evWhen(e)}`], ["Tipo", e.tipo ? `${kindOf(e.tipo)}, ${atendOf(e.tipo).toLowerCase()}` : "Sem tipo"], ["Agenda", e.ro ? "Curso e esporte, só leitura" : "Consultório, no Google Agenda"]];
-  if (e.tipo) rows.push(["Paciente", p ? `${ic("user-round-check", "ic-sm")}Vinculado a ${p.n} · <a href="${href("contatos")}">Abrir em Contatos</a>` : `Sem vínculo com Contatos${e.cel ? ` · ${e.ddi} ${e.cel}` : ""}`]);
+  const rows = [["Quando", `${dayLong(d)}, ${evWhen(e)}`], ["Tipo", e.tipo || "Sem tipo"], ["Agenda", e.ro ? "Curso e esporte, só leitura" : "Consultório, no Google Agenda"]];
+  if (e.tipo) rows.push(["Paciente", p ? `${ic("user-round-check", "ic-sm")}Vinculado a ${p.n}, ${nascTxt(p)} · <a href="${href("contatos")}">Abrir em Contatos</a>` : `Sem vínculo com Contatos${e.cel ? ` · ${ddiOf(e.ddi)} ${e.cel}` : ""}`]);
   if (e.tipo) rows.push(["Financeiro", e.fin]);
   if (e.obs) rows.push(["Observação", e.obs]);
   if (e.rec) rows.push(["Repete", "Toda semana"]);
@@ -6309,11 +6328,11 @@ function ptLinkHtml() {
 function ptLinkBase() {
   const q = dlgRaw("[data-pt-q]");
   const p = FORM.pid && pById(FORM.pid);
-  if (p) return `<span class="pt-chip on">${ic("user-round-check", "ic-sm")}Vinculado a ${p.n}</span><button type="button" class="btn btn-quiet btn-sm" data-pt-unlink>${ic("unlink", "ic-sm")}Remover vínculo</button><span class="hint pt-why">Celular e e-mail vêm de Contatos. Para mudar, edite o contato no Google.</span>`;
+  if (p) return `<span class="pt-chip on">${ic("user-round-check", "ic-sm")}Vinculado a ${p.n}, ${nascTxt(p)}</span><button type="button" class="btn btn-quiet btn-sm" data-pt-unlink>${ic("unlink", "ic-sm")}Remover vínculo</button><span class="hint pt-why">Celular e e-mail vêm de Contatos. Para mudar, edite o contato no Google.</span>`;
   if (!q) return `<span class="hint">Digite o nome para buscar em Contatos. Quem ainda não está lá pode ser agendado só com o nome.</span>`;
   const same = PEOPLE.filter((x) => x.n && fold(x.n) === fold(q));
-  if (same.length === 1) return `<span class="pt-chip">${ic("link", "ic-sm")}Sem vínculo</span><span class="hint">“${esc(same[0].n)}” está em Contatos, ${esc(cellOf(same[0]))}.</span><button type="button" class="btn btn-secondary btn-sm" data-pt-pick="${same[0].id}">Vincular</button>`;
-  if (same.length > 1) return `<span class="pt-chip warn">${ic("users", "ic-sm")}${same.length} contatos com este nome</span><span class="hint">Escolha o certo na lista, pelo telefone, ou siga sem vínculo.</span><button type="button" class="btn btn-secondary btn-sm" data-pt-open>Ver os ${same.length}</button>`;
+  if (same.length === 1) return `<span class="pt-chip">${ic("link", "ic-sm")}Sem vínculo</span><span class="hint">“${esc(same[0].n)}” está em Contatos: ${esc(cellOf(same[0]))}, ${nascTxt(same[0])}.</span><button type="button" class="btn btn-secondary btn-sm" data-pt-pick="${same[0].id}">Vincular</button>`;
+  if (same.length > 1) return `<span class="pt-chip warn">${ic("users", "ic-sm")}${same.length} contatos com este nome</span><span class="hint">Escolha o certo na lista, pelo telefone e pela data de nascimento, ou siga sem vínculo.</span><button type="button" class="btn btn-secondary btn-sm" data-pt-open>Ver os ${same.length}</button>`;
   return `<span class="pt-chip">${ic("link", "ic-sm")}Sem vínculo</span><span class="hint">Fica só com o nome e o que você digitar abaixo. Dá para vincular depois.</span>`;
 }
 function ptRender(open) {
@@ -6331,7 +6350,7 @@ function ptRender(open) {
   if (!show) { inp.removeAttribute("aria-activedescendant"); return; }
   if (FORM.opt >= FORM.list.length + 1) FORM.opt = -1;
   const opt = (k, html, data) => `<li role="option" id="pt-o${k}" class="cb-opt" ${data} aria-selected="${FORM.opt === k}">${html}</li>`;
-  ul.innerHTML = `${FORM.list.map((p, k) => opt(k, `${pav(p)}<span class="grow"><b>${p.n}</b><span class="hint">${cellOf(p) || mailOf(p)}${ptLast(p) ? ` · ${ptLast(p)}` : ""}</span></span>`, `data-pt-opt="${p.id}"`)).join("")}
+  ul.innerHTML = `${FORM.list.map((p, k) => opt(k, `${pav(p)}<span class="grow"><b>${p.n}</b><span class="hint">${cellOf(p) || mailOf(p)} · ${nascTxt(p)}${ptLast(p) ? ` · ${ptLast(p)}` : ""}</span></span>`, `data-pt-opt="${p.id}"`)).join("")}
     ${FORM.list.length ? "" : `<li class="cb-none" role="presentation">Ninguém com esse nome em Contatos.</li>`}
     ${opt(FORM.list.length, `<span class="pav" aria-hidden="true">${ic("user-plus", "ic-sm")}</span><span class="grow"><b>Agendar “${esc(q)}” sem vínculo</b><span class="hint">Para quem ainda não está em Contatos</span></span>`, "data-pt-free")}`;
   if (FORM.opt >= 0) inp.setAttribute("aria-activedescendant", `pt-o${FORM.opt}`); else inp.removeAttribute("aria-activedescendant");
@@ -6342,14 +6361,14 @@ function ptPick(id) {
   if (!p) return;
   FORM.pid = id; FORM.opt = -1;
   const set = (sel, v, ro) => { const x = document.querySelector(`#dlg-host ${sel}`); if (x) { x.value = v; if (x.tagName === "SELECT") x.disabled = ro; else x.readOnly = ro; } };
-  set("[data-pt-q]", p.n, false); set("[data-ee-ddi]", "+55", true); set("[data-ee-cel]", cellOf(p), true); set("[data-ee-mail]", mailOf(p), true);
+  set("[data-pt-q]", p.n, false); set("[data-ee-ddi]", "BR", true); set("[data-ee-cel]", cellOf(p), true); set("[data-ee-mail]", mailOf(p), true);
   FORM.note = "";
   ptRender(false);
 }
 function ptUnlink(why) {
   FORM.pid = "";
   /* O celular e o e-mail eram do contato: saem junto, para não ficarem com outra pessoa. */
-  for (const sel of ["[data-ee-ddi]", "[data-ee-cel]", "[data-ee-mail]"]) { const x = document.querySelector(`#dlg-host ${sel}`); if (x) { x.readOnly = false; x.disabled = false; x.value = sel === "[data-ee-ddi]" ? "+55" : ""; } }
+  for (const sel of ["[data-ee-ddi]", "[data-ee-cel]", "[data-ee-mail]"]) { const x = document.querySelector(`#dlg-host ${sel}`); if (x) { x.readOnly = false; x.disabled = false; x.value = sel === "[data-ee-ddi]" ? "BR" : ""; } }
   FORM.note = why || "";
   ptRender(false);
 }
@@ -6366,7 +6385,7 @@ function eeTimes(from) {
 }
 
 function evEdit(ev, pre, opener) {
-  const e = ev || { day: pre.day || dkey(st.agd), h: pre.h ?? 11, m: pre.m ?? 0, dur: 1, t: "", tipo: TIPOS[0], s: "agendado", fin: "Não pago", ddi: "+55" };
+  const e = ev || { day: pre.day || dkey(st.agd), h: pre.h ?? 11, m: pre.m ?? 0, dur: 1, t: "", tipo: TIPOS[0], s: "agendado", fin: "Não pago", ddi: "BR" };
   const p = e.pid && pById(e.pid);
   Object.assign(FORM, { note: "", pid: p ? p.id : "", dur: Math.round(e.dur * 60), own: Math.round(e.dur * 60) !== 60, opt: -1, list: [] });
   const s0 = e.h * 60 + e.m;
@@ -6377,8 +6396,8 @@ function evEdit(ev, pre, opener) {
         <ul id="pt-list" class="cb-list" role="listbox" aria-label="Contatos com esse nome" hidden></ul></div>
         <div class="pt-link" id="pt-link" data-pt-link aria-live="polite"></div></div>
       <div class="form-grid form-3 ee-grid">
-        ${sel("data-ee-ddi", "DDI do paciente", DDIS.map(([v, l]) => [v, `${l} (${v})`]), p ? "+55" : e.ddi || "+55")}
-        <label class="field"><span class="label">Celular com DDD</span><input class="input num" inputmode="tel" autocomplete="off" data-ee-cel data-mask="cel" value="${p ? cellOf(p) : e.cel || ""}" placeholder="(41) 99999-0000"${p ? " readonly" : ""}></label>
+        ${sel("data-ee-ddi", "DDI do paciente", DDIS.map(([iso, code, name]) => [iso, `${iso} ${name} (${code})`]), p ? "BR" : e.ddi || "BR")}
+        <label class="field"><span class="label">Celular com DDD</span><input class="input num" inputmode="tel" autocomplete="off" data-ee-cel data-mask="cel" value="${p ? cellOf(p) : e.cel || ""}" placeholder="${!p && e.ddi && e.ddi !== "BR" ? "Número com código de área" : "(41) 99999-0000"}"${p ? " readonly" : ""}></label>
         <label class="field"><span class="label">E-mail de contato</span><input class="input" type="email" autocomplete="off" data-ee-mail value="${p ? mailOf(p) : e.mail || ""}" placeholder="nome@exemplo.com.br"${p ? " readonly" : ""}></label>
         <label class="field"><span class="label">Data da consulta</span><input class="input num" inputmode="numeric" autocomplete="off" data-ee-d data-mask="date" value="${brDate(e.day)}" placeholder="dd/mm/aaaa" maxlength="10"></label>
         <label class="field"><span class="label">Hora do início</span><input class="input num" inputmode="numeric" autocomplete="off" list="ee-hs" data-ee-h data-mask="time" value="${hmm(s0)}" placeholder="00:00" maxlength="5"></label>
@@ -6387,8 +6406,8 @@ function evEdit(ev, pre, opener) {
       <datalist id="ee-hs">${Array.from({ length: 96 }, (_, k) => `<option value="${hmm(k * 15)}"></option>`).join("")}</datalist><datalist id="ee-fs"></datalist>
       <p class="hint ee-dur" data-ee-dur aria-live="polite"></p>
       <div class="form-grid ee-grid ee-4">
-        ${sel("data-ee-k", "Tipo", [...KINDS.map((k) => [k, k]), ["", "Sem tipo"]], kindOf(e.tipo))}
-        ${sel("data-ee-a", "Atendimento", [["Presencial", "Presencial"], ["Online", "Online"]], atendOf(e.tipo))}
+        <div class="field ee-kind">${sel("data-ee-k", "Tipo do evento", [...kindList(e.tipo).map((k) => [k, k]), ["outro", "Outro, digitar"], ["", "Sem tipo (compromisso comum)"]], e.tipo || "")}
+          <label class="field" data-ee-k2-box hidden><span class="label">Escreva o tipo</span><input class="input" data-ee-k2 maxlength="80" placeholder="Por exemplo, Bioimpedância | Consultório"><span class="hint">Tipo e lugar separados por “|”. Sem o lugar, fica “| Consultório”.</span></label></div>
         ${sel("data-ee-s", "Situação", Object.entries(STS).map(([k, [l]]) => [k, l]), e.s)}
         ${sel("data-ee-fin", "Financeiro", FIN.map((x) => [x, x]), e.fin || "Não pago")}
       </div>
@@ -6406,16 +6425,17 @@ function evEdit(ev, pre, opener) {
       if (end === null) return fail("Escreva a hora do término de 00:00 a 23:59.", "[data-ee-f]");
       if (end <= mins) return fail("O término precisa ser depois do início, no mesmo dia.", "[data-ee-f]");
       const plain = !dlgRaw("[data-ee-k]");
+      if (dlgRaw("[data-ee-k]") === "outro" && !tipoFix(dlgRaw("[data-ee-k2]"))) return fail("Escreva o tipo do evento, por exemplo Bioimpedância | Consultório.", "[data-ee-k2]");
       const cel = plain ? "" : dlgRaw("[data-ee-cel]"), mail = plain ? "" : dlgRaw("[data-ee-mail]"), ddi = pick(dlgRaw("[data-ee-ddi]"), DDIS.map((x) => x[0]));
-      if (!FORM.pid && cel && (ddi === "+55" ? !/^\(\d{2}\) \d{4,5}-\d{4}$/.test(cel) : cel.replace(/\D/g, "").length < 6)) return fail("Confira o celular: DDD e número, por exemplo (41) 99999-0000.", "[data-ee-cel]");
+      if (!FORM.pid && cel && (ddi === "BR" ? !/^\(\d{2}\) \d{4,5}-\d{4}$/.test(cel) : cel.replace(/\D/g, "").length < 6)) return fail("Confira o celular: DDD e número, por exemplo (41) 99999-0000.", "[data-ee-cel]");
       if (!FORM.pid && mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail("Confira o e-mail, por exemplo nome@exemplo.com.br.", "[data-ee-mail]");
-      const tipo = tipoOf(pick(dlgRaw("[data-ee-k]"), [...KINDS, ""]), dlgRaw("[data-ee-a]")), s = pick(dlgRaw("[data-ee-s]"), Object.keys(STS)), fin = pick(dlgRaw("[data-ee-fin]"), FIN);
+      const kRaw = dlgRaw("[data-ee-k]"), tipo = kRaw === "outro" ? esc(tipoFix(dlgRaw("[data-ee-k2]"))) : kindList(ev && ev.tipo).includes(kRaw) ? kRaw : "", s = pick(dlgRaw("[data-ee-s]"), Object.keys(STS)), fin = pick(dlgRaw("[data-ee-fin]"), FIN);
       const pid = tipo ? FORM.pid : "", obs = dlgVal("[data-ee-obs]");
       const twin = !pid && tipo && PEOPLE.filter((x) => x.n && fold(x.n) === fold(t)).length;
       const apply = (extra) => {
         const target = ev || { id: `e${++evSeq}` };
         evCommit("", () => {
-          Object.assign(target, { day, h: Math.floor(mins / 60), m: mins % 60, dur: (end - mins) / 60, t, tipo, s, fin, pid, obs, ddi: pid ? "+55" : ddi, cel: pid ? "" : esc(cel), mail: pid ? "" : esc(mail) });
+          Object.assign(target, { day, h: Math.floor(mins / 60), m: mins % 60, dur: (end - mins) / 60, t, tipo, s, fin, pid, obs, ddi: pid ? "BR" : ddi, cel: pid ? "" : esc(cel), mail: pid ? "" : esc(mail) });
           if (!ev) EV.push(target);
           st.agd = dOf(day);
           evCommit.msg = `${ev ? `“${t}” atualizado.` : `“${t}” ${tipo ? "agendado para" : "criado em"} ${dayShort(dOf(day))} às ${hmm(mins)}.`}${pid || !tipo ? "" : twin ? " Ficou sem vínculo: há mais de um contato com esse nome." : " Ficou sem vínculo com Contatos."}${extra}${evClash(target)}`;
@@ -6444,12 +6464,18 @@ function eePlain() {
   if (ok && !/^Editar/.test(h.textContent)) ok.textContent = plain ? "Criar evento" : "Agendar";
   if (plain && FORM.pid) ptUnlink("");
 }
-document.addEventListener("change", (ev) => { if (ev.target.matches && ev.target.matches("#dlg-host [data-ee-k]")) eePlain(); });
+document.addEventListener("change", (ev) => {
+  const t = ev.target;
+  if (!t.matches) return;
+  if (t.matches("#dlg-host [data-ee-k]")) { eePlain(); const box = document.querySelector("#dlg-host [data-ee-k2-box]"); box.hidden = t.value !== "outro"; if (!box.hidden) box.querySelector("input").focus(); }
+  /* Trocar o país reformata o número já digitado. */
+  if (t.matches("#dlg-host [data-ee-ddi]")) { const c = document.querySelector("#dlg-host [data-ee-cel]"); c.value = MASK.cel(c.value, t.value); c.placeholder = t.value === "BR" ? "(41) 99999-0000" : "Número com código de área"; }
+});
 /* Digitar: máscaras, busca no nome e término que acompanha o início. */
 document.addEventListener("input", (ev) => {
   const t = ev.target;
   if (!t.closest || !t.closest("#dlg-host")) return;
-  if (t.dataset.mask && !(ev.inputType || "").startsWith("delete")) t.value = MASK[t.dataset.mask](t.value);
+  if (t.dataset.mask && !(ev.inputType || "").startsWith("delete")) t.value = MASK[t.dataset.mask](t.value, dlgRaw("[data-ee-ddi]"));
   if (t.matches("[data-pt-q]")) {
     if (FORM.pid) { const p = pById(FORM.pid); if (p && fold(t.value.trim()) !== fold(p.n)) ptUnlink("O nome mudou, então o vínculo saiu, junto com o celular e o e-mail do contato."); }
     else FORM.note = "";

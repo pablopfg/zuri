@@ -249,6 +249,14 @@ O Pablo viu a entrega 3 e pediu cinco ajustes, com um print do formulário do ou
    - Sem vínculo vale sempre: paciente novo, que ainda não está em Contatos, ou quem o Pablo preferir não ligar. O agendamento fica com o nome e com o celular e o e-mail digitados (o celular é conferido: DDD e número no Brasil). Nos detalhes, um agendamento sem vínculo mostra "Vincular", que abre o formulário já com a busca.
    - **Onde fica cada dado:** o nome continua sendo o título do evento e o tipo continua na primeira linha da descrição, como hoje; a observação vem depois. O vínculo (id do contato), o DDI, o celular, o e-mail e o financeiro vão para as propriedades privadas do evento no Google (`extendedProperties.private`): viajam com o evento, não aparecem no Google Agenda e não pedem tabela nova nem migration. A lista fixa de campos do `PATCH` e do `POST` ganha esses campos, com Zod e limites de tamanho.
 
+**Segunda rodada (12/11/2026, 17:32 UTC).** O Pablo respondeu às perguntas 2 e 3 e pediu mais quatro ajustes, já no protótipo:
+
+- **DDI de todos os países**, com o Brasil primeiro e como padrão ("BR Brasil (+55)", como no outro sistema). O valor guardado é o código do país (BR, PT, US), porque Estados Unidos e Canadá dividem o +1. Os nomes vêm do próprio navegador em português, sem lista de tradução.
+- **Celular formatado enquanto se digita:** no Brasil, "(41) 99999-0000" (quem cola "+55 41…" perde o 55); nos outros países, blocos de três números. Trocar o país reformata o que já foi digitado.
+- **Homônimos pela data de nascimento também:** cada linha da busca mostra o celular, a data de nascimento e a última consulta, e o vínculo mostra "Vinculado a Carla Mendes, nasc. 02/09/1995". Contato sem data aparece como "sem data de nascimento". No sistema, a cópia de Contatos passa a guardar o aniversário que o Google já tem (o campo novo sobe o `FIELDS_VERSION` de `google/contacts.ts`, que é o que manda regravar os contatos).
+- **Financeiro:** "Não pago", "Pago" e "Gratuito".
+- **Tipo do evento numa lista só**, que junta o tipo e o atendimento: "Consulta | Consultório", "Consulta | Online", "Retorno | Consultório", "Retorno | Online", "Avaliação física | Consultório", os tipos que já aparecem na agenda, "Outro, digitar" e "Sem tipo (compromisso comum)". O tipo digitado segue "Tipo | Lugar"; sem o lugar, fica "| Consultório". Depois de usado, ele entra na lista. O campo "Atendimento" sai.
+
 **O que não muda:** arrastar, Alt com as setas, "Desfazer", "mover marca Reagendado", a cor de cada situação e a agenda só de leitura. O primeiro carregamento também não, porque o formulário está no pedaço da Agenda, que carrega sob demanda; a busca usa a lista de Contatos que a tela já lê, sem chamada nova ao Google.
 
 **Perguntas ao Pablo** (seção 14).
@@ -280,6 +288,6 @@ O Pablo respondeu "siga as recomendações":
 
 Sobre os ajustes de 12/11 à tarde, com a recomendação entre parênteses:
 
-1. **O protótipo está aprovado?** Formulário, vínculo com o paciente e sinais da sincronização. (Sim, para começar a PR 3b.)
-2. **Financeiro:** as opções "Não pago", "Pago" e "Isento" servem, e o campo entra já agora, guardado no evento, para a Gestão ler depois? (Sim: mantém o padrão do outro sistema e não depende da Gestão.)
-3. **Atendimento online** grava "Online" no lugar de "Consultório" na linha do tipo ("Consulta | Online")? (Sim: é a mesma linha que a ficha do contato já lê.)
+1. **O protótipo está aprovado?** Formulário, vínculo com o paciente e sinais da sincronização. (Sim, para começar a PR 3b.) Em 12/11, 17:32 UTC, o Pablo pediu para ver antes a segunda rodada de ajustes.
+
+Respondidas em 12/11/2026, 17:32 UTC: o Financeiro fica com "Não pago", "Pago" e "Gratuito", guardado no evento; o atendimento online grava "Consulta | Online", e o tipo vira uma lista com "Retorno | Consultório" e a opção de digitar.
