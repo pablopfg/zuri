@@ -339,6 +339,17 @@ test("a closed group still shows the place in view, and only it", async ({ page 
   await page.goto("/crm/credenciais");
   await expect(place(page, "CRM")).toBeVisible();
   await expect(place(page, "Notas")).toBeHidden();
+
+  // The last area folds the same way, and keeps the place in view after a reload.
+  await place(page, "Rotinas").click();
+  await expect(page).toHaveURL(/\/rotinas$/);
+  await group(page, "Assistente").click();
+  await expect(group(page, "Assistente")).toHaveAttribute("aria-expanded", "false");
+  await expect(place(page, "Memória")).toBeHidden();
+  await page.reload();
+  await expect(group(page, "Assistente")).toHaveAttribute("aria-expanded", "false");
+  await expect(place(page, "Rotinas")).toHaveAttribute("aria-current", "page");
+  await expect(place(page, "Memória")).toBeHidden();
 });
 
 test("the rail shows every place whatever group is closed, and the wide menu gets the choice back", async ({ page }) => {

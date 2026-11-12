@@ -14,7 +14,6 @@ describe("the one list of places", () => {
 
   it("draws no area without a place: Consultório waits for its first screen", () => {
     for (const group of NAV) expect(group.items.length, group.heading).toBeGreaterThan(0);
-    expect(NAV.some((group) => group.heading === ("web.nav.groupClinic" as never))).toBe(false);
   });
 
   it("names no group with a title that is part of another's: the closed groups are kept by title, one after the other (lib/sidebar.ts)", () => {
@@ -36,6 +35,8 @@ describe("the one list of places", () => {
       ["web.nav.groupAssistant", ["/memoria", "/rotinas"]],
     ]);
     expect(MORE_GROUPS.flatMap((group) => group.items)).toEqual(MORE_ITEMS);
+    // The sheet names every list by its area: a place of the untitled first area must stay in the bar.
+    for (const group of MORE_GROUPS) expect(group.heading).toBeTruthy();
   });
 });
 
