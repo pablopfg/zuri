@@ -50,18 +50,19 @@ Hoje o financeiro e os painéis do consultório vivem em quatro fluxos do n8n, c
 | CA3 | Valores viram centavos inteiros sem erro: `150`, `150,5`, `R$ 1.234,56`, `1.234` (milhar), `-150` (saída) e número do Excel | GES - 29 |
 | CA4 | Datas em `dd/mm/aaaa`, `aaaa-mm-dd` e número de série do Excel viram o dia certo; data inválida, anterior a 2000 ou futura ignora a linha e conta em "ignoradas" | GES - 29 |
 | CA5 | Nome e CPF da planilha nunca são gravados nos lançamentos, não aparecem em log e não saem do navegador em texto puro além do pedido de gravação; o lançamento guarda só o vínculo com o contato (quando o CPF acha um único contato) e uma chave sem volta | Pablo / GES - 29 |
-| CA6 | A tela Atendimentos lista os horários de hoje, uma linha por horário, em três grupos (para registrar, a seguir, registrados), destaca o próximo e deixa registrar compareceu, faltou ou cancelou com um toque e com "Desfazer"; valor e forma de pagamento só com "compareceu"; só um horário fica aberto por vez | Pablo (11/11 e 12/11) / GES - 28 |
+| CA6 | A tela Atendimentos lista os horários de hoje, uma linha por horário, em três grupos (para registrar, a seguir, registrados), destaca o próximo e deixa registrar **compareceu**, ou uma das três formas de não vir (**faltou**, **cancelou**, **reagendou**), com um toque e com "Desfazer"; valor e forma de pagamento só com "compareceu"; "reagendou" aceita a data nova (opcional); só um horário fica aberto por vez | Pablo (11/11 e 12/11) / GES - 28 |
 | CA7 | Registrar um valor cria um lançamento de entrada ligado ao evento; alterar o registro corrige o mesmo lançamento, sem criar outro | plano (novo) |
 | CA8 | Dois registros do mesmo horário ao mesmo tempo (duas abas) não se atropelam: o segundo recebe "atualizado em outra aba" e a lista nova | GES - 28 |
 | CA9 | Depois do registro, a cor do evento no Google Agenda segue a situação; falha na troca de cor não desfaz o registro e fica avisada | GES - 28 |
 | CA10 | Preços por local e despesas (fixa, percentual, pontual) têm data de vigência; mudar um valor pede a data em que a mudança começou e nunca altera um mês já fechado | GES - 30 |
-| CA11 | Resultados mostra **só o financeiro**: quatro indicadores (recebido, saídas, saldo, faturamento estimado), a comparação e os gráficos da seção 5, cada gráfico com a tabela equivalente. Os números da agenda ficam em Atendimentos › Indicadores e os das avaliações continuam em Avaliações | Pablo (12/11) / GES - 31 |
+| CA11 | Resultados mostra **só o financeiro**: quatro indicadores (recebido, saídas, saldo, faturamento estimado), a comparação e os gráficos da seção 5. Todo gráfico da Gestão é por período, **Semana**, **Mês** (padrão) ou **Ano**, com setas para o período anterior; não há "Ver tabela" na tela (a tabela existe só para leitor de tela). Os números da agenda ficam em Atendimentos › Indicadores e os das avaliações continuam em Avaliações | Pablo (12/11) / GES - 31 |
 | CA12 | No dia 1º (com nova tentativa nos dias 2 e 3) o relatório mensal do mês anterior fica pronto; em abril, julho e outubro também o trimestral; em janeiro o anual. Cada um é gerado uma vez e gera um aviso | Pablo / GES - 30 |
 | CA13 | O faturamento estimado conta só consultas realizadas, pelo preço do local vigente na data; retorno não fatura; local sem preço fica fora da conta e aparece em "Qualidade dos dados" | GES - 30 |
 | CA14 | Paciente novo, reativado e recorrente saem certos mesmo com homônimos: a contagem usa o contato ligado e, sem ele, a chave do nome; nunca junta duas pessoas por nome quando há contato ligado diferente | Pablo (11/11) / plano |
 | CA15 | Todas as telas funcionam vazias, carregando e com erro, por teclado e leitor de tela, no celular, em tema claro e escuro, em pt-BR e en | padrão do projeto |
 | CA16 | Nenhuma tela ou rota da Gestão soma ao JS inicial; uma importação de 5.000 linhas fica abaixo de 20% da cota diária de escritas | regras P1, P4 e P11 |
 | CA17 | Com Resultados ou Atendimentos aberto, um lançamento ou registro novo (de outra aba, do celular ou de uma importação) aparece nos indicadores e nos gráficos em até 2 segundos, sem recarregar a página e sem consulta periódica; a tela mostra a hora do último lançamento | Pablo (12/11) |
+| CA18 | O botão **Ocultar valores** troca todo valor em dinheiro da Gestão (indicadores, listas, gráficos, avisos e relatórios) por "R$ •••••" na hora, sem nova consulta; os gráficos mantêm só a forma, sem números no eixo; a escolha fica guardada no aparelho e vale até ser desligada | Pablo (12/11) |
 
 ## 4. Escopo
 
@@ -69,7 +70,8 @@ Hoje o financeiro e os painéis do consultório vivem em quatro fluxos do n8n, c
 
 - Área **Gestão** com Atendimentos, Financeiro e Resultados.
 - Importação de .xlsx e .csv com conferência, lançamento manual (entrada e saída), edição e anulação de lançamento.
-- Registro de presença, falta, cancelamento, chegada e pagamento por horário.
+- Registro de presença, falta, cancelamento, reagendamento, chegada e pagamento por horário.
+- Botão "Ocultar valores" em todas as telas da Gestão.
 - Preços por local e despesas com vigência.
 - Painel com filtros, relatórios mensal, trimestral e anual dentro da Zuri, com aviso.
 - Ferramentas de leitura para a conversa ("quanto entrou em outubro?").
@@ -114,11 +116,11 @@ Redesenhado em 12/11/2026 a pedido do Pablo: menos informação por tela e um re
 
 1. A tela tem duas abas: **Hoje** e **Indicadores**. Hoje abre no dia atual, com **Ontem · Hoje · Amanhã** no topo (e o seletor de data para outro dia).
 2. A lista tem uma linha por horário (hora, nome, tipo e local) em três grupos, nesta ordem: **Para registrar** (o horário já passou e falta o registro), **A seguir** (o próximo vem destacado, com "em 20 min") e **Registrados** (com a situação e, se houve, o valor e a forma).
-3. Só uma linha fica aberta por vez. Aberta, ela mostra **Compareceu**, **Faltou** e **Cancelou**. Faltou e Cancelou gravam no toque. Compareceu em consulta ou bioimpedância mostra o **valor** (sugerido pelo preço do local) e as formas de pagamento; tocar na forma grava. "Sem pagamento agora" grava só a presença.
+3. Só uma linha fica aberta por vez. Aberta, ela mostra **Compareceu** separado das três formas de não vir: **Faltou**, **Cancelou** e **Reagendou**. Faltou e Cancelou gravam no toque. Reagendou pede a data e o horário novos (dá para gravar "Ainda sem data"); a linha mostra "para 19/11 às 11:30". Quando o evento é movido no Google Agenda, a Zuri marca "Reagendou" sozinha e o horário novo aparece no dia dele. Compareceu em consulta ou bioimpedância mostra o **valor** (sugerido pelo preço do local) e as formas de pagamento; tocar na forma grava. "Sem pagamento agora" grava só a presença.
 4. Todo registro mostra um aviso com **Desfazer** por alguns segundos, e a linha vai para Registrados. Tocar numa linha registrada reabre para corrigir. A cor do evento no Google Agenda acompanha.
 5. **Chegou** marca a hora da chegada nos horários que ainda vão acontecer, sem registrar mais nada.
 6. Ao lado (no celular, em cima) ficam dois quadros pequenos: **Registrados** ("3 de 8", com a barra por situação) e **Recebido hoje** (total e por forma de pagamento). Dia futuro só mostra a agenda.
-7. **Indicadores** reúne o que é da agenda e saiu de Resultados: atendimentos (consultas e retornos), taxa de faltas, pacientes novos, dias até o retorno, agenda por situação mês a mês e atendimentos por dia da semana.
+7. **Indicadores** reúne o que é da agenda e saiu de Resultados, com o mesmo seletor Semana | Mês | Ano: atendimentos (consultas e retornos), taxa de faltas, reagendamentos e cancelamentos, pacientes novos, agenda por situação no período e atendimentos por dia da semana.
 
 Estados: sem agenda conectada (leva a Configurações › Integrações), dia sem horários, carregando, Google fora do ar (mostra o último retrato com a hora e avisa), registro que mudou em outra aba.
 
@@ -126,11 +128,12 @@ Estados: sem agenda conectada (leva a Configurações › Integrações), dia se
 
 Redesenhado em 12/11/2026 a pedido do Pablo: só o financeiro, poucos números grandes e atualização ao vivo.
 
-1. No topo, uma linha só: **Período** (este mês, 3, 6 e 12 meses), **Comparar com o ano anterior** e o indicador **Ao vivo · último lançamento às 14:32**. Os filtros ficam no endereço da página.
+1. No topo, uma linha só: **Ver por** (**Semana**, **Mês** ou **Ano**; o padrão é Mês), as setas com o nome do período ("novembro de 2026", "9 a 15 de novembro"), **Comparar** e o indicador **Ao vivo · último lançamento às 14:32** (fora do período atual vira "Voltar para hoje"). A comparação é justa: semana com a semana anterior, mês e ano com o mesmo período do ano anterior, sempre até o dia equivalente a hoje. Os filtros ficam no endereço da página.
 2. Quatro indicadores, cada um com o valor e a variação: **Recebido**, **Saídas**, **Saldo** e **Faturamento estimado**.
-3. Um gráfico principal com a troca **Receita | Entradas e saídas** (por dia em "este mês", por mês nos outros períodos; com a comparação e a linha do faturamento estimado quando fizer sentido) e dois quadros menores: **Por forma de pagamento** e **Maiores saídas**. Cada gráfico tem "Ver tabela". O **resumo mês a mês** fica recolhido no fim.
-4. **Ao vivo:** quando um pagamento é registrado em Atendimentos, um lançamento é criado ou uma importação termina, os indicadores e as barras se ajustam na hora, com uma animação curta (desligada para quem pede menos movimento). Nada pisca nem recarrega.
-5. O que não é financeiro mora no seu setor: agenda e pacientes em **Atendimentos › Indicadores**; avaliações em **Avaliações**. O aviso de **qualidade dos dados** (local sem preço, mês sem despesas, horários sem registro) aparece só quando existe problema, como uma linha com link para onde se corrige.
+3. Um gráfico principal com a troca **Receita | Entradas e saídas**, com barras por dia (Semana), por semana (Mês; a sobra de 1 a 3 dias no fim do mês entra na última semana) ou por mês (Ano), a linha tracejada da comparação e a do faturamento estimado no Mês e no Ano. Ao lado, dois quadros menores: **Por forma de pagamento** e **Maiores saídas**. Sem "Ver tabela" e sem resumo em tabela: passar o mouse (ou tocar) numa barra mostra os valores.
+4. **Ocultar valores** (no topo de toda tela da Gestão): troca os valores em dinheiro por "R$ •••••" e tira os números do eixo dos gráficos, que ficam só com a forma. Serve para abrir a tela perto de outras pessoas. A escolha fica guardada no aparelho.
+5. **Ao vivo:** quando um pagamento é registrado em Atendimentos, um lançamento é criado ou uma importação termina, os indicadores e as barras se ajustam na hora, com uma animação curta (desligada para quem pede menos movimento). Nada pisca nem recarrega.
+6. O que não é financeiro mora no seu setor: agenda e pacientes em **Atendimentos › Indicadores**; avaliações em **Avaliações**. O aviso de **qualidade dos dados** (local sem preço, mês sem despesas, horários sem registro) aparece só quando existe problema, como uma linha com link para onde se corrige.
 
 ### Fluxo 5 · Relatórios
 
@@ -181,7 +184,7 @@ Lista inicial; o catálogo completo (pt-BR e en) sai em cada PR, em `packages/sh
 | Sem duplicar | impressão da linha = HMAC(dia, hora, tipo, centavos, forma, chave do paciente, atendimento, local, descrição, nº da ocorrência na planilha); índice único | linha repetida não grava e conta em "já estavam aqui" | — |
 | Provável repetida | entrada da planilha com o mesmo dia e os mesmos centavos de um pagamento registrado em Atendimentos para o mesmo contato (ou a mesma chave) | vem desmarcada na conferência | — |
 | Vínculo pelo CPF | CPF válido que aparece em **um** contato | dois contatos com o mesmo CPF: não liga e conta em "CPF em mais de um contato" | — |
-| Registro do atendimento | compareceu, faltou, cancelou; valor só com compareceu em consulta ou bioimpedância; forma obrigatória quando há valor | — | `validation_failed` |
+| Registro do atendimento | compareceu, faltou, cancelou, reagendou (com data nova opcional); valor só com compareceu em consulta ou bioimpedância; forma obrigatória quando há valor | — | `validation_failed` |
 | Concorrência do registro | versão do registro; pedido com versão antiga recusa | — | `conflict` |
 | Janela do registro | qualquer dia até hoje; futuro só leitura | registrar amanhã recusa | `validation_failed` |
 | O que conta como atendimento | evento com horário, não cancelado, cuja observação diz "Consulta" ou "Retorno" (`readType`); o registro da tela vale mais que o texto | "Retorno previsto para 10/11" não conta e vira aviso de qualidade | — |
@@ -391,8 +394,8 @@ Limites exatos com n−1, n e n+1: 5 MB, 5.000 linhas, 10.000 por dia, lote de 2
 | 12/11/2026 | 1. Nome e CPF da planilha: a Zuri **não guarda** nos lançamentos; liga ao contato do Google quando o CPF bate com um só e, sem isso, o lançamento fica "sem contato". Recomendo assim (igual ao que o fluxo fazia). A outra saída é guardar o nome cifrado para aparecer mesmo sem contato. | aguardando |
 | 12/11/2026 | 2. Atendimentos: só você registra presença e pagamento, dentro da Zuri. Recomendo assim. Abrir a tela para a recepção pede outro tipo de acesso e um estudo de segurança à parte. | aguardando |
 | 12/11/2026 | 3. Relatórios ficam dentro da Zuri, com aviso na central e no Telegram (sem valores no aviso). Recomendo assim; o e-mail pode vir depois. | aguardando |
-
 | 12/11/2026 | Retorno do Pablo sobre o protótipo: muita informação na tela e encaixe desproporcional; Resultados só com o financeiro; painel de presença mais organizado; gráficos atualizados em tempo real. | Atendido na segunda versão do protótipo: seções 3 (CA6, CA11, CA17), 5 (fluxos 3, 4 e 5) e 7 (Tempo real). Aguardando a aprovação dele. |
+| 12/11/2026 | Segundo retorno do Pablo: faltava a situação "Reagendou"; botão de privacidade para ocultar valores; tirar "Ver tabela" e mostrar os gráficos por período (semana ou mês como padrão). | Atendido na terceira versão do protótipo: CA6, CA11, CA18 e fluxos 3 e 4. Mês é o padrão. Aguardando a aprovação dele. |
 
 ### Perguntas abertas
 

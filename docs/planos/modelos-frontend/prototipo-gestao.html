@@ -26,7 +26,7 @@
   --tile:#18181b;--mark:#ffffff;--signal:#22c55e;
   /* séries dos gráficos (ordem fixa por entidade) */
   --s-in:#2a78d6;--s-out:#eb6834;--s-est:#1baf7a;--s-cmp:#8a8a94;
-  --s-came:#1baf7a;--s-open:#eda100;--s-miss:#e87ba4;--s-off:#6250d6;
+  --s-came:#1baf7a;--s-open:#eda100;--s-miss:#e87ba4;--s-off:#6250d6;--s-resch:#2a78d6;
   --grid:#e0e0e5;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -41,7 +41,7 @@
   --side-active-shadow:inset 0 0 0 1px rgb(255 255 255 / .06);
   --tile:#26262b;--mark:#fafafa;--signal:#4ade80;
   --s-in:#3987e5;--s-out:#d95926;--s-est:#199e70;--s-cmp:#8a8a94;
-  --s-came:#199e70;--s-open:#c98500;--s-miss:#d55181;--s-off:#9085e9;
+  --s-came:#199e70;--s-open:#c98500;--s-miss:#d55181;--s-off:#9085e9;--s-resch:#3987e5;
   --grid:rgb(255 255 255 / .08);
 }}
 :root[data-theme="dark"]{
@@ -56,7 +56,7 @@
   --side-active-shadow:inset 0 0 0 1px rgb(255 255 255 / .06);
   --tile:#26262b;--mark:#fafafa;--signal:#4ade80;
   --s-in:#3987e5;--s-out:#d95926;--s-est:#199e70;--s-cmp:#8a8a94;
-  --s-came:#199e70;--s-open:#c98500;--s-miss:#d55181;--s-off:#9085e9;
+  --s-came:#199e70;--s-open:#c98500;--s-miss:#d55181;--s-off:#9085e9;--s-resch:#3987e5;
   --grid:rgb(255 255 255 / .08);
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -251,6 +251,17 @@ li.next .v-row .hr{color:var(--accent-ink)}
   .v-form{padding:4px 12px 16px}
   .toast{bottom:84px}
 }
+.head-act{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.priv{gap:6px}
+.priv[aria-pressed="true"]{color:var(--accent-ink);background:var(--accent-soft)}
+.pnav{display:inline-flex;align-items:center;gap:2px;background:var(--sunken);border-radius:var(--r-md);padding:3px}
+.pnav button{display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:7px;background:transparent;color:var(--ink-2);cursor:pointer}
+.pnav button:hover:not(:disabled){background:var(--surface)}
+.pnav button:disabled{opacity:.35;cursor:default}
+.pnav b{min-width:150px;text-align:center;font-weight:600;font-size:var(--t-sm);padding:0 4px}
+.choice-sep{width:1px;align-self:stretch;background:var(--line-strong);margin:6px 4px}
+.resch-to{font-size:var(--t-sm);color:var(--muted)}
+.masked{letter-spacing:.08em}
 [hidden]{display:none}
 @media (prefers-reduced-motion:no-preference){
   .btn,.nav a,.chip{transition:background-color 150ms}
@@ -282,8 +293,10 @@ li.next .v-row .hr{color:var(--accent-ink)}
 /* ---------- utilidades ---------- */
 const $ = (s, r) => (r || document).querySelector(s);
 const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const brl = (v) => (v == null ? "—" : "R$ " + Math.round(v).toLocaleString("pt-BR"));
-const brl2 = (c) => "R$ " + (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+// com "Ocultar valores" ligado, todo valor em dinheiro vira pontos (gráficos mantêm só a forma)
+const MASK = "R$ •••••";
+const brl = (v) => (v == null ? "—" : st.hide ? MASK : "R$ " + Math.round(v).toLocaleString("pt-BR"));
+const brl2 = (c) => (st.hide ? MASK : "R$ " + (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 }));
 const num = (v) => (v == null ? "—" : Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 }));
 const pct = (v) => (v == null ? "—" : (v * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%");
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -307,7 +320,12 @@ const ICONS = {
   pin: '<path d="M12 21s7-6.200 7-11a7 7 0 1 0-14 0c0 4.800 7 11 7 11z"/><circle cx="12" cy="10" r="2.500"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>',
-  warn: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.500"/>'
+  warn: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.500"/>',
+  eye: '<path d="M2 12s3.500-7 10-7 10 7 10 7-3.500 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff: '<path d="M3 3l18 18M10.600 6.100A10 10 0 0 1 12 6c6.500 0 10 6 10 6a17 17 0 0 1-3.200 3.900M6.600 6.600C3.800 8.400 2 12 2 12s3.500 6 10 6a9.700 9.700 0 0 0 5.400-1.600M9.900 9.900a3 3 0 0 0 4.200 4.200"/>',
+  ban: '<circle cx="12" cy="12" r="9"/><path d="M5.600 5.600l12.800 12.800"/>',
+  left: '<path d="M15 6l-6 6 6 6"/>',
+  right: '<path d="M9 6l6 6-6 6"/>'
 };
 const ic = (n, c) => `<svg class="ic ${c || ""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
@@ -323,7 +341,7 @@ for (let i = 23; i >= 0; i--) {
   const retornos = Math.round(consultas * (0.55 + rnd() * 0.15));
   const faltas = Math.round((consultas + retornos) * (0.05 + rnd() * 0.04));
   const estimado = consultas * (a === 2026 ? 280 : 250);
-  months.push({ a, m, consultas, retornos, faltas, cancelados: Math.round(faltas * 0.8), abertos: Math.round(rnd() * 2), estimado,
+  months.push({ a, m, consultas, retornos, faltas, cancelados: Math.round(faltas * 0.8), reagendados: Math.round(faltas * 0.7), abertos: Math.round(rnd() * 2), estimado,
     entradas: Math.round(estimado * (0.93 + rnd() * 0.1)), saidas: Math.round(3100 + rnd() * 900 + estimado * 0.06), novos: Math.round(consultas * (0.3 + rnd() * 0.1)) });
 }
 /* novembro, dia a dia (até hoje); o mês corrente é a soma dos dias */
@@ -334,8 +352,63 @@ for (let d = 1; d <= HOJE.d; d++) {
 }
 const cur = months[23];
 function syncMonth() { cur.entradas = days.reduce((t, x) => t + x.entradas, 0); cur.saidas = days.reduce((t, x) => t + x.saidas, 0); }
-Object.assign(cur, { consultas: 19, retornos: 12, faltas: 2, cancelados: 1, abertos: 1, estimado: 19 * 280, novos: 7 });
+Object.assign(cur, { consultas: 36, retornos: 21, faltas: 3, cancelados: 2, reagendados: 2, abertos: 1, estimado: 36 * 280, novos: 12 });
 syncMonth();
+/* dia a dia de todo o histórico: cada mês repartido pelos dias úteis (semente própria) */
+let seed2 = 7;
+const rnd2 = () => { seed2 = (seed2 * 1664525 + 1013904223) % 4294967296; return seed2 / 4294967296; };
+const DAY = 86400000, T0 = Date.UTC(2024, 11, 1), TODAY = Date.UTC(2026, 10, 12);
+const KEYS = ["entradas", "saidas", "estimado", "consultas", "retornos", "faltas", "cancelados", "reagendados", "abertos", "novos"];
+const DAILY = {};
+months.forEach((mo) => {
+  const last = mo === cur ? HOJE.d : new Date(Date.UTC(mo.a, mo.m + 1, 0)).getUTCDate(), w = [];
+  for (let d = 1; d <= last; d++) { const wd = new Date(Date.UTC(mo.a, mo.m, d)).getUTCDay(); w.push(wd === 0 ? 0 : wd === 6 ? 0.15 : 0.7 + rnd2() * 0.6); }
+  const tw = w.reduce((t, x) => t + x, 0);
+  w.forEach((x, i) => { const r = {}; for (const k of KEYS) r[k] = (mo[k] * x) / tw; DAILY[Date.UTC(mo.a, mo.m, i + 1)] = r; });
+});
+// novembro usa o caixa de cada dia, que é o que muda ao vivo
+function dayVal(t) {
+  const r = DAILY[t];
+  if (!r) return null;
+  if (t < Date.UTC(2026, 10, 1)) return r;
+  const x = days[new Date(t).getUTCDate() - 1];
+  return { ...r, entradas: x.entradas, saidas: x.saidas };
+}
+function sumRange(from, to, k) { let v = 0, any = false; for (let t = from; t <= to; t += DAY) { const r = dayVal(t); if (r) { v += r[k]; any = true; } } return any ? v : null; }
+/* períodos: semana (barras por dia), mês (por semana) e ano (por mês); off = quantos períodos para trás */
+const DSEM = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const pad = (n) => String(n).padStart(2, "0");
+const lastYear = (t) => { const D = new Date(t); return Date.UTC(D.getUTCFullYear() - 1, D.getUTCMonth(), D.getUTCDate()); };
+function period(per, off) {
+  let buckets, label, cmpName, shift, unit;
+  if (per === "semana") {
+    const s = TODAY - ((new Date(TODAY).getUTCDay() + 6) % 7) * DAY + off * 7 * DAY, e = s + 6 * DAY, ds = new Date(s), de = new Date(e);
+    buckets = Array.from({ length: 7 }, (_, i) => { const t = s + i * DAY, D = new Date(t); return { l: `${DSEM[D.getUTCDay()]} ${pad(D.getUTCDate())}`, from: t, to: t }; });
+    label = ds.getUTCMonth() === de.getUTCMonth() ? `${ds.getUTCDate()} a ${de.getUTCDate()} de ${MESES_L[de.getUTCMonth()].toLowerCase()}` : `${pad(ds.getUTCDate())}/${pad(ds.getUTCMonth() + 1)} a ${pad(de.getUTCDate())}/${pad(de.getUTCMonth() + 1)}`;
+    cmpName = "Semana anterior"; shift = (t) => t - 7 * DAY; unit = "dia";
+  } else if (per === "mes") {
+    const idx = 2026 * 12 + 10 + off, a = Math.floor(idx / 12), m = idx % 12, n = new Date(Date.UTC(a, m + 1, 0)).getUTCDate();
+    buckets = [];
+    for (let d = 1; d <= n; d += 7) buckets.push({ d, e: Math.min(n, d + 6) });
+    // sobra curta no fim do mês (29–30, 29–31) entra na última semana
+    if (buckets.length > 4) { const z = buckets.pop(); buckets[buckets.length - 1].e = z.e; }
+    buckets = buckets.map(({ d, e }) => ({ l: `${pad(d)}–${pad(e)}`, from: Date.UTC(a, m, d), to: Date.UTC(a, m, e) }));
+    label = `${MESES_L[m].toLowerCase()} de ${a}`; cmpName = `${MESES[m]}/${String(a - 1).slice(2)}`; shift = lastYear; unit = "semana";
+  } else {
+    const a = 2026 + off;
+    buckets = MESES.map((l, m) => ({ l, from: Date.UTC(a, m, 1), to: Date.UTC(a, m + 1, 0) }));
+    label = String(a); cmpName = String(a - 1); shift = lastYear; unit = "mês";
+  }
+  const from = buckets[0].from, to = buckets[buckets.length - 1].to, upTo = Math.min(to, TODAY);
+  // comparação justa: o período anterior só até o dia equivalente a hoje
+  return { buckets, label, cmpName, unit, from, to, upTo, pFrom: shift(from), pUpTo: shift(upTo), shift, prevOk: shift(from) >= T0, current: from <= TODAY && TODAY <= to };
+}
+const canBack = (per, off) => period(per, off - 1).from >= T0;
+const perBar = () => {
+  const P = period(st.per, st.off);
+  return `<div class="toolbar">${seg("Ver por", "per", st.per, [["semana", "Semana"], ["mes", "Mês"], ["ano", "Ano"]])}
+    <div class="pnav"><button type="button" data-nav="-1" aria-label="Período anterior"${canBack(st.per, st.off) ? "" : " disabled"}>${ic("left")}</button><b class="num" aria-live="polite">${P.label}</b><button type="button" data-nav="1" aria-label="Próximo período"${st.off < 0 ? "" : " disabled"}>${ic("right")}</button></div>`;
+};
 const FORMAS = [["Pix", 0.56], ["Cartão de crédito", 0.21], ["Cartão de débito", 0.12], ["Dinheiro", 0.08], ["Transferência", 0.03]];
 const SAIDAS = [["Aluguel", 0.44], ["Impostos", 0.2], ["Sistema de prontuário", 0.1], ["Material de escritório", 0.09], ["Contabilidade", 0.09], ["Internet e telefone", 0.08]];
 const DIAS_SEM = [["seg", 0.2], ["ter", 0.24], ["qua", 0.19], ["qui", 0.22], ["sex", 0.13], ["sáb", 0.02]];
@@ -346,6 +419,7 @@ const visits = [
   { id: "e2", h: "09:00", nome: "Otávio Lins Barreto", tipo: "Retorno", local: "Consultório", st: "attended" },
   { id: "e3", h: "09:30", nome: "Marina Teles Couto", tipo: "Consulta", local: "Clínica parceira", st: "missed" },
   { id: "e4", h: "10:30", nome: "Caio Farias Neves", tipo: "Bioimpedância", local: "Consultório", st: "" },
+  { id: "e9", h: "11:30", nome: "Tomás Ribeiro Vale", tipo: "Retorno", local: "Consultório", st: "rescheduled", to: "19/11 às 11:30" },
   { id: "e5", h: "14:00", nome: "Lívia Dantas Rocha", tipo: "Consulta", local: "Consultório", st: "", arrived: "13:52" },
   { id: "e6", h: "15:00", nome: "Renato Sá Queiroz", tipo: "Retorno", local: "Consultório", st: "" },
   { id: "e7", h: "15:30", nome: "Bianca Viana Lopes", tipo: "Consulta", local: "Clínica parceira", st: "" },
@@ -353,7 +427,8 @@ const visits = [
 ];
 const AGORA = "13:40";
 const PRECO = { Consulta: { "Consultório": 28000, "Clínica parceira": 22000 }, "Bioimpedância": { "Consultório": 9000 } };
-const ST = { attended: ["Compareceu", "ok", "var(--s-came)"], missed: ["Faltou", "bad", "var(--s-miss)"], cancelled: ["Cancelou", "warn", "var(--s-off)"] };
+const ST = { attended: ["Compareceu", "ok", "var(--s-came)"], missed: ["Faltou", "bad", "var(--s-miss)"], cancelled: ["Cancelou", "warn", "var(--s-off)"], rescheduled: ["Reagendou", "info", "var(--s-resch)"] };
+const SUMK = [["attended", "Compareceram"], ["missed", "Faltaram"], ["cancelled", "Cancelaram"], ["rescheduled", "Reagendaram"]];
 const FORMAS_PG = ["Pix", "Dinheiro", "Débito", "Crédito"];
 const entries = [
   { d: "12/11", t: "Consulta", m: "Pix · Atendimento", who: "Helena Prates Moura", c: 28000 },
@@ -366,11 +441,12 @@ const entries = [
 ];
 
 /* ---------- estado ---------- */
-const st = { view: "atendimentos", at: "hoje", fin: "lancamentos", res: "painel", imp: 0, preset: "mes", cmp: true, chart: "receita", report: false, open: "e4", pick: "", err: "", last: "13:02", flash: false, prevBars: null };
+const st = { view: "atendimentos", at: "hoje", fin: "lancamentos", res: "painel", imp: 0, per: "mes", off: 0, hide: false, cmp: true, chart: "receita", report: false, open: "e4", pick: "", err: "", last: "13:02", flash: false, prevBars: null };
 const VIEWS = [["atendimentos", "clip", "Atendimentos"], ["financeiro", "wallet", "Financeiro"], ["resultados", "chart", "Resultados"]];
 const pend = () => visits.filter((v) => !v.st && v.h < AGORA);
 function fromHash() { const h = location.hash.slice(1); if (VIEWS.some((v) => v[0] === h)) st.view = h; }
 function go(v) { st.view = v; try { history.replaceState(null, "", "#" + v); } catch (e) { location.hash = v; } render(); $("#main").scrollTop = 0; }
+const privBtn = () => `<button class="btn btn-quiet btn-sm priv" type="button" data-priv aria-pressed="${st.hide}" title="Esconde os valores em dinheiro desta área">${ic(st.hide ? "eyeoff" : "eye", "ic-sm")}${st.hide ? "Mostrar valores" : "Ocultar valores"}</button>`;
 const seg = (label, key, cur2, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(([k, l]) => `<button type="button" data-set="${key}:${k}" aria-pressed="${String(cur2) === String(k)}">${l}</button>`).join("")}</div>`;
 
 function side() {
@@ -399,7 +475,8 @@ function chart(id, labels, series, fmt, stacked, W0 = 720, H0 = 260) {
   const raw = max / 4 || 1, mag = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((k) => k >= raw), top = Math.ceil(max / step) * step || 1;
   const y = (v) => mt + h - (v / top) * h, px = w / n, x = (i) => ml + px * (i + 0.5);
   let g = "";
-  for (let v = 0; v <= top + 1e-9; v += step) g += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${ml - 8}" y="${y(v) + 4}" text-anchor="end">${fmt(v).replace("R$ ", "")}</text>`;
+  const money = fmt === brl;
+  for (let v = 0; v <= top + 1e-9; v += step) g += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/>${money && st.hide ? "" : `<text x="${ml - 8}" y="${y(v) + 4}" text-anchor="end">${fmt(v).replace("R$ ", "")}</text>`}`;
   const every = Math.ceil(n / 12);
   labels.forEach((l, i) => { if (i % every === 0) g += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${l}</text>`; });
   const bw = Math.min(30, (px - 8) / (stacked ? 1 : Math.max(1, bars.length)));
@@ -415,12 +492,13 @@ function chart(id, labels, series, fmt, stacked, W0 = 720, H0 = 260) {
     });
   }
   lines.forEach((s) => {
-    g += `<polyline points="${s.v.map((v, i) => x(i) + "," + y(v)).join(" ")}" fill="none" stroke="${s.c}" stroke-width="2"${s.dash ? ' stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`;
-    if (!s.dash && n <= 14) s.v.forEach((v, i) => { g += `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${s.c}" stroke="var(--surface)" stroke-width="2"/>`; });
+    g += `<polyline points="${s.v.map((v, i) => (v == null ? "" : x(i) + "," + y(v))).filter(Boolean).join(" ")}" fill="none" stroke="${s.c}" stroke-width="2"${s.dash ? ' stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`;
+    if (!s.dash && n <= 14) s.v.forEach((v, i) => { if (v == null) return; g += `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${s.c}" stroke="var(--surface)" stroke-width="2"/>`; });
   });
   for (let i = 0; i < n; i++) g += `<rect x="${ml + px * i}" y="${mt}" width="${px}" height="${h}" fill="transparent" data-tip="${esc(JSON.stringify([labels[i], series.map((s) => [s.c, s.name, fmt(s.v[i])])]))}"/>`;
   const legend = series.length > 1 ? `<div class="legend">${series.map((s) => `<span><i class="${s.type === "line" ? "ln" : ""}" style="background:${s.c}"></i>${s.name}</span>`).join("")}</div>` : "";
-  const table = `<details class="more" style="margin-top:12px"><summary>Ver tabela</summary><div class="scroll"><table><thead><tr><th>Período</th>${series.map((s) => `<th>${s.name}</th>`).join("")}</tr></thead><tbody>${labels.map((l, i) => `<tr><td>${l}</td>${series.map((s) => `<td class="num">${fmt(s.v[i])}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`;
+  // sem "Ver tabela" na tela; a tabela fica só para leitor de tela
+  const table = `<div class="sr"><table><caption>Valores do gráfico</caption><thead><tr><th>Período</th>${series.map((s) => `<th>${s.name}</th>`).join("")}</tr></thead><tbody>${labels.map((l, i) => `<tr><td>${l}</td>${series.map((s) => `<td class="num">${fmt(s.v[i])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   return `<div class="chart">${legend}<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map((s) => s.name).join(", "))}">${g}</svg>${table}</div>`;
 }
 const hbars = (items, total, out) => { const max = Math.max(...items.map((x) => x[1])); return `<div class="hb">${items.map(([l, p]) => `<div class="hb-row${out ? " out" : ""}"><span>${l}</span><span class="num">${brl(p * total)}</span><span class="track"><span class="hb-bar" style="width:${(p / max) * 100}%"></span></span></div>`).join("")}</div>`; };
@@ -438,19 +516,24 @@ function animateBars() {
 /* ---------- Atendimentos ---------- */
 function vRow(v, next) {
   const open = st.open === v.id, s = ST[v.st], pays = Boolean(PRECO[v.tipo]);
-  const end = v.st ? `${v.st === "attended" && v.cents ? `<span class="num muted">${brl2(v.cents)} · ${v.forma}</span>` : ""}<span class="tag ${s[1]}">${s[0]}</span>`
+  const end = v.st ? `${v.st === "attended" && v.cents ? `<span class="num muted">${brl2(v.cents)} · ${v.forma}</span>` : ""}${v.st === "rescheduled" ? `<span class="resch-to num">${v.to ? "para " + v.to : "sem data nova"}</span>` : ""}<span class="tag ${s[1]}">${s[0]}</span>`
     : `${v.arrived ? `<span class="tag info">Chegou às ${v.arrived}</span>` : ""}${next ? '<span class="tag ok">em 20 min</span>' : ""}`;
   let form = "";
   if (open) {
     const sug = pays && PRECO[v.tipo][v.local] ? (PRECO[v.tipo][v.local] / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "";
     const pick = st.pick || v.st;
+    const chip = ([k, i, l]) => `<button class="chip" type="button" data-pick="${k}" aria-pressed="${pick === k}">${ic(i, "ic-sm")}${l}</button>`;
+    // veio de um lado; as três formas de não vir do outro
     form = `<div class="v-form">
       <div class="choice" role="group" aria-label="O que aconteceu com ${esc(v.nome)}">
-        ${[["attended", "check", "Compareceu"], ["missed", "x", "Faltou"], ["cancelled", "clock", "Cancelou"]].map(([k, i, l]) => `<button class="chip" type="button" data-pick="${k}" aria-pressed="${pick === k}">${ic(i, "ic-sm")}${l}</button>`).join("")}
+        ${chip(["attended", "check", "Compareceu"])}<span class="choice-sep" aria-hidden="true"></span>${[["missed", "x", "Faltou"], ["cancelled", "ban", "Cancelou"], ["rescheduled", "cal", "Reagendou"]].map(chip).join("")}
         ${!v.st && !v.arrived && v.h >= AGORA ? `<button class="chip" type="button" data-arrived="${v.id}">Só marcar que chegou</button>` : ""}
       </div>
       ${pick === "attended" && pays ? `<div class="payline"><span>Recebeu</span><label class="sr" for="val">Valor recebido em reais</label><input class="input num" id="val" inputmode="decimal" placeholder="0,00" value="${v.cents ? (v.cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : sug}"><span>em</span>
         ${FORMAS_PG.map((f) => `<button class="chip" type="button" data-pay="${f}">${f}</button>`).join("")}<button class="btn btn-quiet btn-sm" type="button" data-pay="">Sem pagamento agora</button></div>` : ""}
+      ${pick === "rescheduled" ? `<div class="payline"><span>Para</span><label class="sr" for="nd">Nova data</label><input class="input num" id="nd" type="date" value="2026-11-19" style="width:170px"><label class="sr" for="nt">Novo horário</label><input class="input num" id="nt" type="time" value="${v.h}" style="width:140px">
+        <button class="btn btn-primary btn-sm" type="button" data-resch="1">Registrar</button><button class="btn btn-quiet btn-sm" type="button" data-resch="">Ainda sem data</button></div>
+        <p class="muted" style="font-size:var(--t-sm)">Quando o evento é movido no Google Agenda, a Zuri já marca "Reagendou" sozinha.</p>` : ""}
       ${st.err ? `<p class="err" role="alert">${st.err}</p>` : ""}
     </div>`;
   }
@@ -458,16 +541,21 @@ function vRow(v, next) {
 }
 function viewAtend() {
   const tabs = seg("Partes dos atendimentos", "at", st.at, [["hoje", "Hoje"], ["indicadores", "Indicadores"]]);
+  const head = (sub, extra) => `<header class="head"><div><h1>Atendimentos</h1><p>${sub}</p></div><div class="head-act">${extra || ""}${privBtn()}</div></header>`;
   if (st.at === "indicadores") {
-    const list = months.slice(18), s = (k) => list.reduce((t, x) => t + x[k], 0), at = s("consultas") + s("retornos"), labels = list.map((x) => MESES[x.m]);
-    return `<div class="page"><header class="head"><div><h1>Atendimentos</h1><p>Como a agenda se comportou nos últimos 6 meses</p></div></header>${tabs}
-      <section class="kpis" aria-label="Indicadores"><div class="kpi"><span class="l">Atendimentos</span><span class="v num">${num(at)}</span><span class="d">${s("consultas")} consultas e ${s("retornos")} retornos</span></div>
-        <div class="kpi"><span class="l">Faltas</span><span class="v num">${pct(s("faltas") / (at + s("faltas")))}</span><span class="d">${s("faltas")} horários</span></div>
-        <div class="kpi"><span class="l">Pacientes novos</span><span class="v num">${s("novos")}</span><span class="d">primeira consulta</span></div>
-        <div class="kpi"><span class="l">Dias até o retorno</span><span class="v num">31</span><span class="d">mediana</span></div></section>
+    const P = period(st.per, st.off), S = (k) => Math.round(sumRange(P.from, P.upTo, k) || 0);
+    const at = S("consultas") + S("retornos"), falt = S("faltas"), all = at + falt + S("cancelados") + S("reagendados");
+    const B = (k) => P.buckets.map((b) => { const v = b.from > TODAY ? null : sumRange(b.from, b.to, k); return v == null ? null : Math.round(v); });
+    const ret = B("retornos"), came = B("consultas").map((v, i) => (v == null ? null : v + ret[i]));
+    const wk = [1, 2, 3, 4, 5, 6].map((wd) => { let v = 0; for (let t = P.from; t <= P.upTo; t += DAY) if (new Date(t).getUTCDay() === wd) { const r = dayVal(t); if (r) v += r.consultas + r.retornos; } return Math.round(v); });
+    return `<div class="page">${head(`Como a agenda se comportou em ${P.label}`)}${tabs}${perBar()}</div>
+      <section class="kpis" aria-label="Indicadores"><div class="kpi"><span class="l">Atendimentos</span><span class="v num">${num(at)}</span><span class="d">${S("consultas")} consultas e ${S("retornos")} retornos</span></div>
+        <div class="kpi"><span class="l">Faltas</span><span class="v num">${all ? pct(falt / all) : "—"}</span><span class="d">${falt} horários</span></div>
+        <div class="kpi"><span class="l">Reagendaram</span><span class="v num">${S("reagendados")}</span><span class="d">${S("cancelados")} cancelaram</span></div>
+        <div class="kpi"><span class="l">Pacientes novos</span><span class="v num">${S("novos")}</span><span class="d">primeira consulta</span></div></section>
       <div class="grid g2">
-        <section class="card"><div class="card-head"><h2>Agenda por situação</h2></div>${chart("ag", labels, [{ name: "Compareceram", c: "var(--s-came)", type: "bar", v: list.map((x) => x.consultas + x.retornos) }, { name: "Sem registro", c: "var(--s-open)", type: "bar", v: list.map((x) => x.abertos) }, { name: "Faltaram", c: "var(--s-miss)", type: "bar", v: list.map((x) => x.faltas) }, { name: "Cancelaram", c: "var(--s-off)", type: "bar", v: list.map((x) => x.cancelados) }], num, true, 460, 240)}</section>
-        <section class="card"><div class="card-head"><h2>Por dia da semana</h2></div>${chart("ds", DIAS_SEM.map((x) => x[0]), [{ name: "Atendimentos", c: "var(--s-in)", type: "bar", v: DIAS_SEM.map((x) => Math.round(x[1] * at)) }], num, false, 460, 240)}</section>
+        <section class="card"><div class="card-head"><h2>Agenda por ${P.unit}</h2></div>${chart("ag", P.buckets.map((b) => b.l), [{ name: "Compareceram", c: "var(--s-came)", type: "bar", v: came }, { name: "Sem registro", c: "var(--s-open)", type: "bar", v: B("abertos") }, { name: "Faltaram", c: "var(--s-miss)", type: "bar", v: B("faltas") }, { name: "Cancelaram", c: "var(--s-off)", type: "bar", v: B("cancelados") }, { name: "Reagendaram", c: "var(--s-resch)", type: "bar", v: B("reagendados") }], num, true, 460, 240)}</section>
+        <section class="card"><div class="card-head"><h2>Por dia da semana</h2></div>${chart("ds", DSEM.slice(1), [{ name: "Atendimentos", c: "var(--s-in)", type: "bar", v: wk }], num, false, 460, 240)}</section>
       </div></div>`;
   }
   const done = visits.filter((v) => v.st), p = pend(), later = visits.filter((v) => !v.st && v.h >= AGORA);
@@ -475,7 +563,7 @@ function viewAtend() {
   const got = visits.reduce((t, v) => t + (v.st === "attended" ? v.cents || 0 : 0), 0), byF = {};
   visits.forEach((v) => { if (v.st === "attended" && v.cents) byF[v.forma] = (byF[v.forma] || 0) + v.cents; });
   const group = (title, list, extra) => (list.length ? `<section><h2 class="group-h">${title}${extra || ""}</h2><ul class="list">${list.map((v) => vRow(v, v === later[0])).join("")}</ul></section>` : "");
-  return `<div class="page"><header class="head"><div><h1>Atendimentos</h1><p>Quinta-feira, 12 de novembro</p></div>${seg("Dia", "day", "hoje", [["ontem", "Ontem"], ["hoje", "Hoje"], ["amanha", "Amanhã"]])}</header>${tabs}
+  return `<div class="page">${head("Quinta-feira, 12 de novembro", seg("Dia", "day", "hoje", [["ontem", "Ontem"], ["hoje", "Hoje"], ["amanha", "Amanhã"]]))}${tabs}
     <div class="cols">
       <div class="grid" style="gap:24px">
         ${group("Para registrar", p, ` <span class="tag warn">${p.length}</span>`)}
@@ -485,28 +573,28 @@ function viewAtend() {
       </div>
       <aside class="rail" aria-label="Resumo do dia">
         <section class="card"><p class="muted" style="font-size:var(--t-sm)">Registrados</p><p class="big num">${done.length} de ${visits.length}</p>
-          <div class="stack" style="margin:12px 0" role="img" aria-label="${count("attended")} compareceram, ${count("missed")} faltaram, ${count("cancelled")} cancelaram, ${wait} aguardando">${["attended", "missed", "cancelled"].map((k) => (count(k) ? `<i style="flex:${count(k)};background:${ST[k][2]}"></i>` : "")).join("")}${wait ? `<i style="flex:${wait}"></i>` : ""}</div>
-          <div class="sum">${["attended", "missed", "cancelled"].map((k) => `<div><span><i style="background:${ST[k][2]}"></i>${k === "attended" ? "Compareceram" : k === "missed" ? "Faltaram" : "Cancelaram"}</span><b class="num">${count(k)}</b></div>`).join("")}<div><span><i style="background:var(--sunken)"></i>Aguardando</span><b class="num">${wait}</b></div></div></section>
+          <div class="stack" style="margin:12px 0" role="img" aria-label="${SUMK.map(([k, l]) => `${count(k)} ${l.toLowerCase()}`).join(", ")}, ${wait} aguardando">${SUMK.map(([k]) => (count(k) ? `<i style="flex:${count(k)};background:${ST[k][2]}"></i>` : "")).join("")}${wait ? `<i style="flex:${wait}"></i>` : ""}</div>
+          <div class="sum">${SUMK.map(([k, l]) => `<div><span><i style="background:${ST[k][2]}"></i>${l}</span><b class="num">${count(k)}</b></div>`).join("")}<div><span><i style="background:var(--sunken)"></i>Aguardando</span><b class="num">${wait}</b></div></div></section>
         <section class="card"><p class="muted" style="font-size:var(--t-sm)">Recebido hoje</p><p class="big num">${brl2(got)}</p>
           <div class="sum" style="margin-top:12px">${Object.entries(byF).map(([f, c]) => `<div><span>${f}</span><span class="num">${brl2(c)}</span></div>`).join("") || '<span class="muted">Nenhum pagamento ainda.</span>'}</div></section>
       </aside>
     </div></div>`;
 }
-function saveVisit(status, forma) {
-  const v = visits.find((x) => x.id === st.open), before = { st: v.st, cents: v.cents, forma: v.forma };
+function saveVisit(status, forma, to) {
+  const v = visits.find((x) => x.id === st.open), before = { st: v.st, cents: v.cents, forma: v.forma, to: v.to };
   let cents = 0;
   if (status === "attended" && forma) {
     cents = Math.round(Number($("#val").value.replace(/\./g, "").replace(",", ".")) * 100);
     if (!(cents > 0) || cents > 10000000) { st.err = "Valor inválido. Use até R$ 100.000,00, por exemplo 280,00."; render(); return; }
   }
   const delta = (cents - (before.st === "attended" ? before.cents || 0 : 0)) / 100;
-  Object.assign(v, { st: status, cents, forma: cents ? forma : "" });
+  Object.assign(v, { st: status, cents, forma: cents ? forma : "", to: status === "rescheduled" ? to : "" });
   days[days.length - 1].entradas += delta; syncMonth();
   if (cents && !before.cents) entries.unshift({ d: "12/11", t: v.tipo, m: forma + " · Atendimento", who: v.nome, c: cents });
   const nextOpen = pend()[0];
   Object.assign(st, { open: nextOpen ? nextOpen.id : "", pick: "", err: "", last: AGORA });
   render();
-  toast(`${v.nome.split(" ")[0]}: ${ST[status][0].toLowerCase()}${cents ? " · " + brl2(cents) + " em " + forma : ""}.`, () => { days[days.length - 1].entradas -= delta; syncMonth(); Object.assign(v, before); if (cents && !before.cents) entries.shift(); st.open = v.id; render(); });
+  toast(`${v.nome.split(" ")[0]}: ${ST[status][0].toLowerCase()}${cents ? " · " + brl2(cents) + " em " + forma : ""}${to ? " para " + to : ""}.`, () => { days[days.length - 1].entradas -= delta; syncMonth(); Object.assign(v, before); if (cents && !before.cents) entries.shift(); st.open = v.id; render(); });
 }
 let toastTimer = 0;
 function toast(text, undo) {
@@ -532,36 +620,35 @@ function viewFin() {
     else if (st.imp === 1) body = `<div class="narrow grid">${head}
       <section class="card"><div class="card-head"><h2>Confira antes de gravar</h2><span class="tag">financeiro-novembro.xlsx</span></div>
         <div class="kv"><b>45 lançamentos novos</b><span class="num">01/11 a 12/11/2026</span></div>
-        <div class="kv"><span>Entradas</span><span class="num">38 · R$ 9.860,00</span></div>
-        <div class="kv"><span>Saídas</span><span class="num">7 · R$ 3.412,90</span></div>
+        <div class="kv"><span>Entradas</span><span class="num">38 · ${brl2(986000)}</span></div>
+        <div class="kv"><span>Saídas</span><span class="num">7 · ${brl2(341290)}</span></div>
         <div class="kv"><span>Já estavam gravados</span><span class="num muted">145</span><small>Não entram de novo.</small></div>
         <div class="kv"><span>Linhas ignoradas</span><span class="num muted">3</span><small>2 por data inválida e 1 por valor inválido.</small></div>
         <details class="more" style="margin-top:12px"><summary>Ver uma amostra do que será gravado</summary><div class="scroll"><table><thead><tr><th>Dia</th><th>Tipo</th><th>Forma</th><th>Atendimento</th><th>Valor</th></tr></thead><tbody>
-          <tr><td class="num">02/11</td><td>Entrada</td><td>Pix</td><td>Consulta</td><td class="num">R$ 280,00</td></tr><tr><td class="num">03/11</td><td>Saída</td><td>Transferência</td><td>Contabilidade</td><td class="num">R$ 420,00</td></tr><tr><td class="num">04/11</td><td>Entrada</td><td>Dinheiro</td><td>Consulta</td><td class="num">R$ 220,00</td></tr></tbody></table></div><p class="muted" style="font-size:var(--t-sm);margin-top:8px">Nome e CPF não são gravados: fica só a ligação com o contato.</p></details></section>
+          <tr><td class="num">02/11</td><td>Entrada</td><td>Pix</td><td>Consulta</td><td class="num">${brl2(28000)}</td></tr><tr><td class="num">03/11</td><td>Saída</td><td>Transferência</td><td>Contabilidade</td><td class="num">${brl2(42000)}</td></tr><tr><td class="num">04/11</td><td>Entrada</td><td>Dinheiro</td><td>Consulta</td><td class="num">${brl2(22000)}</td></tr></tbody></table></div><p class="muted" style="font-size:var(--t-sm);margin-top:8px">Nome e CPF não são gravados: fica só a ligação com o contato.</p></details></section>
       <div class="note">${ic("warn")}<div><strong>4 entradas parecem repetir pagamentos já registrados em Atendimentos.</strong> Elas ficam de fora. <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="rep"> Gravar essas 4 também</label></div></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn btn-primary" type="button" data-set="imp:2">Gravar 45 lançamentos</button><button class="btn btn-secondary" type="button" data-set="imp:0">Trocar de arquivo</button></div></div>`;
     else body = `<div class="narrow grid">${head}<div class="note ok">${ic("check")}<div><strong>45 lançamentos gravados.</strong> A planilha não foi guardada: se não precisar mais dela, apague do seu computador.</div></div><div><button class="btn btn-primary" type="button" data-set="fin:lancamentos">Ver lançamentos</button></div></div>`;
   } else {
     body = `<div class="grid g2"><section class="card"><div class="card-head"><h2>Preço da consulta</h2><button class="btn btn-secondary btn-sm" type="button">${ic("plus", "ic-sm")}Novo</button></div>
-      <div class="kv"><b>Consultório</b><span class="num">R$ 280,00</span><small>Desde 01/01/2026. Antes, R$ 250,00.</small></div>
-      <div class="kv"><b>Clínica parceira</b><span class="num">R$ 220,00</span><small>Desde 01/03/2026.</small></div>
+      <div class="kv"><b>Consultório</b><span class="num">${brl2(28000)}</span><small>Desde 01/01/2026. Antes, ${brl2(25000)}.</small></div>
+      <div class="kv"><b>Clínica parceira</b><span class="num">${brl2(22000)}</span><small>Desde 01/03/2026.</small></div>
       <div class="kv"><b>Domiciliar</b><span class="tag warn">sem preço</span><small>2 consultas em outubro ficaram fora do faturamento estimado.</small></div></section>
     <section class="card"><div class="card-head"><h2>Despesas</h2><button class="btn btn-secondary btn-sm" type="button">${ic("plus", "ic-sm")}Nova</button></div>
-      <div class="kv"><b>Aluguel</b><span class="num">R$ 1.800,00 por mês</span></div>
+      <div class="kv"><b>Aluguel</b><span class="num">${brl2(180000)} por mês</span></div>
       <div class="kv"><b>Impostos</b><span class="num">6% do faturamento</span></div>
-      <div class="kv"><b>Sistema de prontuário</b><span class="num">R$ 189,00 por mês</span></div>
-      <div class="kv"><b>Balança nova</b><span class="num">R$ 2.400,00 em 10/09/2026</span></div></section></div>
+      <div class="kv"><b>Sistema de prontuário</b><span class="num">${brl2(18900)} por mês</span></div>
+      <div class="kv"><b>Balança nova</b><span class="num">${brl2(240000)} em 10/09/2026</span></div></section></div>
     <p class="muted" style="font-size:var(--t-sm)">Mudar um valor pede a data em que a mudança começou. Os meses já fechados não mudam sozinhos.</p>`;
   }
-  return `<div class="page"><header class="head"><div><h1>Financeiro</h1><p>Entradas e saídas do consultório</p></div>${st.fin === "lancamentos" ? `<button class="btn btn-primary" type="button">${ic("plus")}Novo lançamento</button>` : ""}</header>${tabs}${body}</div>`;
+  return `<div class="page"><header class="head"><div><h1>Financeiro</h1><p>Entradas e saídas do consultório</p></div><div class="head-act">${privBtn()}${st.fin === "lancamentos" ? `<button class="btn btn-primary" type="button">${ic("plus")}Novo lançamento</button>` : ""}</div></header>${tabs}${body}</div>`;
 }
 
 /* ---------- Resultados: só o financeiro ---------- */
-const PRESETS = [["mes", "Este mês", 1], ["3", "3 meses", 3], ["6", "6 meses", 6], ["12", "12 meses", 12]];
 function viewReport() {
   const m = months[22], y = months[10], d = (a, b) => { const r = (a - b) / b; return `<span class="num">${r >= 0 ? "▲" : "▼"} ${pct(Math.abs(r))}</span>`; };
   const fix = 1989, vr = Math.round(m.estimado * 0.06), res = m.estimado - fix - vr, resY = y.estimado * 0.94 - 1689;
-  return `<div class="page"><header class="head"><div><p><a href="#resultados" data-set="report:">Relatórios</a></p><h1>Outubro 2026</h1><p>Comparado com outubro de 2025</p></div></header>
+  return `<div class="page"><header class="head"><div><p><a href="#resultados" data-set="report:">Relatórios</a></p><h1>Outubro 2026</h1><p>Comparado com outubro de 2025</p></div><div class="head-act">${privBtn()}</div></header>
   <div class="narrow grid">
     <section class="card"><div class="card-head"><h2>Destaques</h2></div><ul class="hl">
       <li>O caixa registrou <b class="num">${brl(m.entradas)}</b> de entradas e <b class="num">${brl(m.saidas)}</b> de saídas.</li>
@@ -581,30 +668,34 @@ function viewReport() {
 }
 function viewRes() {
   if (st.report) return viewReport();
+  const head = (sub) => `<header class="head"><div><h1>Resultados</h1><p>${sub}</p></div><div class="head-act">${privBtn()}</div></header>`;
   const tabs = seg("Partes dos resultados", "res", st.res, [["painel", "Painel"], ["relatorios", "Relatórios"]]);
-  if (st.res === "relatorios") return `<div class="page"><header class="head"><div><h1>Resultados</h1><p>Fechamentos que saem sozinhos no dia 1º</p></div></header>${tabs}
+  if (st.res === "relatorios") return `<div class="page">${head("Fechamentos que saem sozinhos no dia 1º")}${tabs}
     <section class="card narrow"><div class="rows">${[["Outubro 2026", "Mensal", true], ["3º trimestre de 2026", "Trimestral"], ["Setembro 2026", "Mensal"], ["Agosto 2026", "Mensal"], ["2025", "Anual"]].map(([l, t, novo]) => `<div class="row"><span class="t"><a href="#resultados" data-set="report:1">${l}</a></span><span class="a">${novo ? '<span class="tag ok">novo</span>' : ""}</span><span class="m">${t}</span></div>`).join("")}</div></section></div>`;
-  const n = PRESETS.find((p) => p[0] === st.preset)[2], byDay = st.preset === "mes";
-  const list = months.slice(24 - n), prev = months.slice(24 - n - 12, 24 - 12), s = (l, k) => l.reduce((t, x) => t + x[k], 0);
-  const A = { ent: s(list, "entradas"), sai: s(list, "saidas"), est: s(list, "estimado") }, B = { ent: s(prev, "entradas"), sai: s(prev, "saidas"), est: s(prev, "estimado") };
-  if (byDay) { const f = HOJE.d / 30; B.ent = Math.round(B.ent * f); B.sai = Math.round(B.sai * f); B.est = Math.round(B.est * f); }
-  A.saldo = A.ent - A.sai; B.saldo = B.ent - B.sai;
-  const kpi = (k, l, dir, live) => { const dif = A[k] - B[k], good = dif * dir >= 0; return `<div class="kpi"><span class="l">${l}</span><span class="v num${live && st.flash ? " flash" : ""}">${brl(A[k])}</span><span class="d num">${st.cmp ? `<b class="${good ? "up" : "down"}">${dif >= 0 ? "▲" : "▼"} ${pct(Math.abs(dif / B[k]))}</b> que em ${byDay ? "nov" : "igual período de"} 2025` : "&nbsp;"}</span></div>`; };
-  const labels = byDay ? days.map((x) => String(x.d).padStart(2, "0")) : list.map((x) => MESES[x.m] + "/" + String(x.a).slice(2));
-  const ent = byDay ? days.map((x) => x.entradas) : list.map((x) => x.entradas), sai = byDay ? days.map((x) => x.saidas) : list.map((x) => x.saidas);
-  const series = st.chart === "receita" ? [{ name: "Recebido", c: "var(--s-in)", type: "bar", v: ent }] : [{ name: "Entradas", c: "var(--s-in)", type: "bar", v: ent }, { name: "Saídas", c: "var(--s-out)", type: "bar", v: sai }];
-  if (st.chart === "receita" && !byDay) series.push({ name: "Faturamento estimado", c: "var(--s-est)", type: "line", v: list.map((x) => x.estimado) });
-  if (st.chart === "receita" && !byDay && st.cmp) series.push({ name: "Recebido um ano antes", c: "var(--s-cmp)", type: "line", dash: true, v: prev.map((x) => x.entradas) });
-  return `<div class="page"><header class="head"><div><h1>Resultados</h1><p>O financeiro do consultório</p></div></header>${tabs}
-    <div class="toolbar">${seg("Período", "preset", st.preset, PRESETS)}<label style="display:flex;gap:8px;align-items:center;font-size:var(--t-sm)" class="grow"><input type="checkbox" id="cmp"${st.cmp ? " checked" : ""}> Comparar com o ano anterior</label>
-      <span class="live" role="status"><i></i>Ao vivo · último lançamento às <b class="num">${st.last}</b></span></div>
+  const P = period(st.per, st.off), K = { ent: "entradas", sai: "saidas", est: "estimado" }, A = {}, B = P.prevOk ? {} : null;
+  for (const [k, key] of Object.entries(K)) { A[k] = sumRange(P.from, P.upTo, key) || 0; if (B) B[k] = sumRange(P.pFrom, P.pUpTo, key) || 0; }
+  A.saldo = A.ent - A.sai; if (B) B.saldo = B.ent - B.sai;
+  const vs = st.per === "semana" ? "que na semana anterior" : `que em ${P.cmpName}`;
+  const kpi = (k, l, dir, live) => {
+    let d = "&nbsp;";
+    if (st.cmp && B && B[k]) { const dif = A[k] - B[k], good = dif * dir >= 0; d = `<b class="${good ? "up" : "down"}">${dif >= 0 ? "▲" : "▼"} ${pct(Math.abs(dif / B[k]))}</b> ${vs}`; }
+    else if (st.cmp) d = "sem dados do período anterior";
+    return `<div class="kpi"><span class="l">${l}</span><span class="v num${live && st.flash && P.current ? " flash" : ""}">${brl(A[k])}</span><span class="d num">${d}</span></div>`;
+  };
+  const bk = (key) => P.buckets.map((b) => (b.from > TODAY ? null : sumRange(b.from, b.to, key)));
+  const pk = (key) => P.buckets.map((b) => sumRange(P.shift(b.from), P.shift(b.to), key));
+  const series = st.chart === "receita" ? [{ name: "Recebido", c: "var(--s-in)", type: "bar", v: bk("entradas") }] : [{ name: "Entradas", c: "var(--s-in)", type: "bar", v: bk("entradas") }, { name: "Saídas", c: "var(--s-out)", type: "bar", v: bk("saidas") }];
+  if (st.chart === "receita" && st.per !== "semana") series.push({ name: "Faturamento estimado", c: "var(--s-est)", type: "line", v: bk("estimado") });
+  if (st.chart === "receita" && st.cmp && P.prevOk) series.push({ name: st.per === "semana" ? "Recebido na semana anterior" : `Recebido em ${P.cmpName}`, c: "var(--s-cmp)", type: "line", dash: true, v: pk("entradas") });
+  return `<div class="page">${head("O financeiro do consultório")}${tabs}
+    ${perBar()}<label style="display:flex;gap:8px;align-items:center;font-size:var(--t-sm)" class="grow"><input type="checkbox" id="cmp"${st.cmp ? " checked" : ""}> Comparar</label>
+      ${P.current ? `<span class="live" role="status"><i></i>Ao vivo · último lançamento às <b class="num">${st.last}</b></span>` : '<button class="btn btn-quiet btn-sm" type="button" data-set="off:0">Voltar para hoje</button>'}</div>
     <section class="kpis" aria-label="Indicadores">${kpi("ent", "Recebido", 1, true)}${kpi("sai", "Saídas", -1)}${kpi("saldo", "Saldo", 1, true)}${kpi("est", "Faturamento estimado", 1)}</section>
-    <section class="card"><div class="card-head"><h2>${st.chart === "receita" ? "Recebido" : "Entradas e saídas"}${byDay ? " em novembro, dia a dia" : ""}</h2>${seg("Gráfico", "chart", st.chart, [["receita", "Receita"], ["caixa", "Entradas e saídas"]])}</div>${chart("main", labels, series, brl)}</section>
+    <section class="card"><div class="card-head"><h2>${st.chart === "receita" ? "Recebido" : "Entradas e saídas"} por ${P.unit}</h2>${seg("Gráfico", "chart", st.chart, [["receita", "Receita"], ["caixa", "Entradas e saídas"]])}</div>${chart("main", P.buckets.map((b) => b.l), series, brl)}</section>
     <div class="grid g2">
       <section class="card"><div class="card-head"><h2>Por forma de pagamento</h2></div>${hbars(FORMAS, A.ent)}</section>
       <section class="card"><div class="card-head"><h2>Maiores saídas</h2></div>${hbars(SAIDAS, A.sai, true)}</section>
     </div>
-    ${byDay ? "" : `<details class="more"><summary>Ver resumo mês a mês</summary><section class="card"><div class="scroll"><table><thead><tr><th>Mês</th><th>Fat. estimado</th><th>Recebido</th><th>Saídas</th><th>Saldo</th></tr></thead><tbody>${list.slice().reverse().map((x) => `<tr><td>${MESES[x.m]}/${String(x.a).slice(2)}</td><td class="num">${brl(x.estimado)}</td><td class="num">${brl(x.entradas)}</td><td class="num">${brl(x.saidas)}</td><td class="num">${brl(x.entradas - x.saidas)}</td></tr>`).join("")}</tbody></table></div></section></details>`}
   </div>`;
 }
 
@@ -628,17 +719,24 @@ function arrive() {
 }
 setInterval(arrive, 7000);
 document.addEventListener("click", (ev) => {
-  const t = ev.target.closest("[data-go],[data-set],[data-open],[data-pick],[data-pay],[data-arrived]");
+  const t = ev.target.closest("[data-go],[data-set],[data-open],[data-pick],[data-pay],[data-arrived],[data-priv],[data-nav],[data-resch]");
   if (!t) return;
   const d = t.dataset;
   if (t.tagName === "A") ev.preventDefault();
   if (d.go) { go(d.go); return; }
-  if (d.set) { const [k, v] = d.set.split(":"); if (k in st) st[k] = k === "imp" ? Number(v) : k === "report" ? Boolean(v) : v; if (k === "fin" && v !== "importar") st.imp = 0; if (k === "res") st.report = false; st.prevBars = null; }
+  if (d.set) { const [k, v] = d.set.split(":"); if (k in st) st[k] = k === "imp" || k === "off" ? Number(v) : k === "report" ? Boolean(v) : v; if (k === "per") st.off = 0; if (k === "fin" && v !== "importar") st.imp = 0; if (k === "res") st.report = false; st.prevBars = null; }
+  if ("priv" in d) st.hide = !st.hide;
+  if (d.nav) { st.off = Math.min(0, st.off + Number(d.nav)); st.prevBars = null; }
   if (d.open) { st.open = st.open === d.open ? "" : d.open; st.pick = ""; st.err = ""; }
   if (d.arrived) { visits.find((v) => v.id === d.arrived).arrived = AGORA; st.open = ""; }
   if (d.pick) {
     const v = visits.find((x) => x.id === st.open);
-    if (d.pick === "attended" && PRECO[v.tipo]) { st.pick = "attended"; st.err = ""; } else { saveVisit(d.pick, ""); return; }
+    if ((d.pick === "attended" && PRECO[v.tipo]) || d.pick === "rescheduled") { st.pick = d.pick; st.err = ""; } else { saveVisit(d.pick, ""); return; }
+  }
+  if ("resch" in d) {
+    let to = "";
+    if (d.resch) { const [, mm, dd] = ($("#nd").value || "").split("-"); to = dd ? `${dd}/${mm}${$("#nt").value ? " às " + $("#nt").value : ""}` : ""; }
+    saveVisit("rescheduled", "", to); return;
   }
   if ("pay" in d) { saveVisit("attended", d.pay); return; }
   render();
