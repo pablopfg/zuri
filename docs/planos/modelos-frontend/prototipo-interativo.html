@@ -2576,6 +2576,128 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .evk code{display:block;padding:10px 12px;border-radius:var(--r-md);background:var(--sunken);font-size:var(--t-sm);overflow-wrap:anywhere}
 .runs-more{display:flex;justify-content:center;margin-top:var(--s3)}
 </style>
+<style>
+/* 12/11/2026 · som dos avisos, menu por áreas e agenda que edita */
+.snd-list{list-style:none;margin:0;padding:0;display:grid;gap:8px;padding-bottom:var(--s4)}
+.snd-list li{display:flex;align-items:center;gap:var(--s3)}
+.snd-opt{flex:1;min-width:0;display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.snd-opt:hover{background:var(--hover)}
+.snd-opt[aria-checked="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.snd-opt:disabled{opacity:.55;cursor:default}
+.snd-opt b{display:block;font-weight:600}
+.snd-opt .hint{display:block;margin:0}
+.snd-dot{flex:none;width:18px;height:18px;border-radius:50%;border:2px solid var(--muted);display:grid;place-items:center}
+.snd-opt[aria-checked="true"] .snd-dot{border-color:var(--accent)}
+.snd-opt[aria-checked="true"] .snd-dot::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.rec-max{color:var(--muted)}
+/* menu */
+.nav-hp{padding:0;margin-bottom:0}
+.nav-hb{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:32px;padding:0 10px 0 12px;border:0;border-radius:var(--r-md);background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
+.nav-hb:hover{background:var(--side-hover);color:var(--side-head)}
+.nav-hb .ic{transition:rotate var(--dur) var(--ease)}
+.nav-hb[aria-expanded="false"] .ic{rotate:-90deg}
+.app.is-collapsed .nav-hp,.app.is-collapsed .sp-seg,.app.is-collapsed .sb-panel{display:none}
+.side nav.sb{display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px;overflow:visible;margin-top:var(--s3)}
+.sb-rail{display:flex;flex-direction:column;gap:6px;padding-right:8px;border-right:1px solid var(--side-line)}
+.sb-rail button{position:relative;width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:var(--r-md);background:transparent;color:var(--side-muted);cursor:pointer}
+.sb-rail button:hover{background:var(--side-hover);color:var(--side-head)}
+.sb-rail button[aria-pressed="true"]{background:var(--side-active-bg);color:var(--side-active-ink);box-shadow:var(--side-active-shadow)}
+.sb-rail .badge{position:absolute;top:6px;right:6px}
+.sb-panel{min-width:0;overflow:auto}
+.sb-panel .nav-h{margin-top:0}
+.app.is-collapsed .side nav.sb{grid-template-columns:1fr}
+.app.is-collapsed .sb-rail{border-right:0;padding-right:0;align-items:center}
+.sp-seg{display:flex;margin:var(--s3) 0 var(--s2);width:100%}
+.sp-seg button{flex:1;justify-content:center;padding:0 8px}
+.gs-soon{padding:var(--s5);display:grid;gap:var(--s3);justify-items:start;max-width:640px}
+.gs-soon h2{font-size:var(--t-lg)}
+.gs-soon p{color:var(--ink-2);margin:0}
+.gs-soon ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.gs-soon li{display:flex;align-items:center;gap:8px}
+.gs-soon li .ic{color:var(--accent-ink)}
+.sheet-gh{margin:var(--s3) var(--s4) 4px;font-size:var(--t-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.picker select#pm{max-width:190px}
+/* agenda */
+:root{--st-agendado:#039be5;--st-confirmado:#0b8043;--st-reagendado:#f6bf26;--st-cancelado:#d50000;--off-bg:rgb(100 116 139 / .09);--hol-bg:rgb(245 158 11 / .13);--hol-ink:#92400e}
+:root[data-tema="escuro"]{--off-bg:rgb(148 163 184 / .09);--hol-bg:rgb(245 158 11 / .13);--hol-ink:#fcd34d;--st-confirmado:#33b679}
+.st-agendado{--evc:var(--st-agendado)}.st-confirmado{--evc:var(--st-confirmado)}.st-reagendado{--evc:var(--st-reagendado)}.st-cancelado{--evc:var(--st-cancelado)}
+.ag2 .ev.ro,.ag2-row.ro,.m-ev.ro{--evc:var(--muted)}
+.ag2-bar h2{margin-right:0;min-width:0}
+.ag2-bar .navgrp{margin-right:auto}
+.ag-sync{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-sm);color:var(--muted);white-space:nowrap}
+.ag2 .ev{border:0;font:inherit;font-size:var(--t-xs);text-align:left;cursor:grab;right:auto;display:block;padding:5px 8px 5px 10px;background:color-mix(in srgb,var(--evc) 15%,var(--surface));color:var(--ink);box-shadow:inset 3px 0 0 var(--evc),inset 0 0 0 1px color-mix(in srgb,var(--evc) 40%,transparent);touch-action:manipulation;z-index:1}
+.ag2 .ev b{color:var(--ink)}
+.ag2 .ev .num{display:block;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag2 .ev:hover{background:color-mix(in srgb,var(--evc) 24%,var(--surface))}
+.ag2 .ev:focus-visible{outline:2px solid var(--accent);outline-offset:1px;z-index:3}
+.ag2 .ev.ev-s{padding-top:1px;padding-bottom:1px;display:flex;align-items:center;gap:6px}
+.ag2 .ev.ev-s .num{display:none}
+.ag2 .ev.st-cancelado{opacity:.78}
+.ag2 .ev.st-cancelado b,.ag2-row.st-cancelado b,.m-ev.st-cancelado{text-decoration:line-through}
+.ag2 .ev.ro{cursor:default}
+.ag2 .ev.drag{cursor:grabbing;z-index:4;opacity:.92;box-shadow:inset 3px 0 0 var(--evc),0 8px 20px rgb(0 0 0 / .22)}
+.ag2 .ev .ev-i{position:absolute;top:5px;right:5px;width:12px;height:12px;color:var(--ink-2)}
+.ag2 .ev-rz{position:absolute;left:0;right:0;bottom:0;height:7px;cursor:ns-resize}
+.ag-dragging{user-select:none;cursor:grabbing}
+.ag2 .col{cursor:cell}
+.ag2 .col.off,.ag2 .dh.off,.ag2 .ad-c.off,.ag2-m .m-cell.off{background-color:var(--off-bg)}
+.ag2 .col.hol,.ag2 .dh.hol,.ag2 .ad-c.hol,.ag2-m .m-cell.hol{background-color:var(--hol-bg)}
+.ag2 .dh.hol{color:var(--hol-ink)}
+.ag2 .allday .ad-c{border-left:1px solid var(--line);min-width:0}
+.ag2 .hol-chip{cursor:default;background:transparent;box-shadow:none;color:var(--hol-ink);padding:4px 6px;min-width:0}
+.ag2 .hol-chip b{color:var(--hol-ink);font-size:12px;white-space:normal;line-height:1.25}
+.ag2-leg{list-style:none;margin:var(--s3) 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px var(--s4);font-size:var(--t-sm);color:var(--ink-2)}
+.ag2-leg li{display:inline-flex;align-items:center;gap:8px}
+.ag2-leg i{flex:none;width:10px;height:10px;border-radius:50%;background:var(--evc)}
+.ag2-leg i.leg-ro{background:var(--muted)}
+.ag2-leg i.sw{width:16px;height:12px;border-radius:3px;box-shadow:inset 0 0 0 1px var(--line)}
+.ag2-leg i.sw.off{background:var(--off-bg)}.ag2-leg i.sw.hol{background:var(--hol-bg)}
+.ag2-leg .legend-r{margin-left:auto}
+.ag2-leg a{display:inline-flex;align-items:center;gap:6px;color:inherit}
+.ag2-hol{display:none;align-items:center;gap:8px;margin:0 0 var(--s3);padding:8px 12px;border-radius:var(--r-md);background:var(--hol-bg);color:var(--hol-ink);font-size:var(--t-sm);font-weight:500}
+.ag2-list{list-style:none;margin:0;padding:0}
+.ag2-list li+li{border-top:1px solid var(--line-soft)}
+.ag2-row{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:8px 12px 8px 16px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer;position:relative}
+.ag2-row:hover{background:var(--hover)}
+.ag2-row .bar{position:absolute;left:6px;top:10px;bottom:10px;width:4px;border-radius:2px;background:var(--evc)}
+.ag2-row .when{display:grid;font-weight:600;min-width:52px}
+.ag2-row .when small{font-weight:400;font-size:var(--t-xs);color:var(--muted)}
+.ag2-row b{display:block;font-weight:600}
+.ag2-row .hint{display:block;margin:0}
+.ag2-row .grow{min-width:0}
+.st-pill{flex:none;display:inline-flex;align-items:center;gap:4px;font-size:var(--t-xs);font-weight:600;padding:2px 10px;line-height:20px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--evc) 15%,var(--surface));color:var(--ink);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--evc) 45%,transparent)}
+.ag-dia .daystrip.ag2-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--s4)}
+.ag-dia .ag2-strip button{display:grid;gap:2px;justify-items:center;padding:8px 0;min-height:56px;border:0;border-radius:12px;background:transparent;color:var(--muted);font-size:var(--t-xs);cursor:pointer}
+.ag-dia .ag2-strip button b{font-size:var(--t-lg);color:var(--ink);font-weight:600}
+.ag-dia .ag2-strip button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.ag-dia .ag2-strip button[aria-pressed="true"] b{color:var(--surface)}
+.ag-dia .ag2-list{display:block}
+.ag-dia .ag2-hol{display:flex}
+.ag2-strip button.off:not([aria-pressed="true"]){background:var(--off-bg)}
+.ag2-strip button.hol:not([aria-pressed="true"]){background:var(--hol-bg)}
+.ag2-m .m-hol{display:block;font-size:11px;font-weight:600;color:var(--hol-ink);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ag2-m .m-ev{background:color-mix(in srgb,var(--evc) 16%,var(--surface));color:var(--ink);box-shadow:inset 2px 0 0 var(--evc)}
+.ev-sts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ev-sts button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 8px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--t-sm);font-weight:500;cursor:pointer}
+.ev-sts button i{flex:none;width:10px;height:10px;border-radius:50%;background:var(--evc)}
+.ev-sts button:hover{background:var(--hover)}
+.ev-sts button[aria-pressed="true"]{border-color:var(--evc);box-shadow:inset 0 0 0 1px var(--evc);background:color-mix(in srgb,var(--evc) 12%,var(--surface));font-weight:600}
+.ev-dl{margin:var(--s4) 0 0;display:grid;gap:0}
+.ev-dl div{display:grid;grid-template-columns:120px minmax(0,1fr);gap:var(--s3);padding:10px 0;border-top:1px solid var(--line-soft)}
+.ev-dl dt{color:var(--muted);font-size:var(--t-sm)}
+.ev-dl dd{margin:0}
+.dlg-box .form-grid .field{min-width:0}
+.dlg-box .form-grid .input{width:100%;min-width:0}
+.btn.danger{color:var(--danger,#b91c1c)}
+@media (max-width:820px){
+  .ag2-hol{display:flex}
+  .ag2-m .m-ev{background:var(--evc);box-shadow:none}
+  .ag2-m .m-hol{font-size:0;width:6px;height:6px;border-radius:50%;background:var(--hol-ink)}
+  .ev-sts{grid-template-columns:1fr 1fr}
+  .ag-sync{order:4;width:100%}
+  .ag2-leg .legend-r{margin-left:0}
+}
+</style>
 </head>
 <body>
 <a class="skip" href="#inicio" data-skip>Pular para o conteúdo</a>
@@ -2591,6 +2713,9 @@ ol.pk-list{list-style:none;margin:0;padding:0}
   </label>
   <label>Tema
     <select id="pt"><option value="sistema">Sistema</option><option value="claro">Claro</option><option value="escuro">Escuro</option></select>
+  </label>
+  <label>Menu
+    <select id="pm"><option value="a">A · Grupos por área</option><option value="b">B · Trilho de áreas</option><option value="c">C · Dois espaços</option><option value="atual">Como é hoje</option></select>
   </label>
   <span class="ptip">Tudo é clicável. No celular aparece o menu de baixo.</span>
 </fieldset></aside>
@@ -2664,7 +2789,7 @@ const ATTN = [
 ];
 
 /* ---------- moldura ---------- */
-function side() {
+function side0() {
   const navLi = (arr) => arr.map(([s, i, l, n, why, alert]) => {
     const cur = s === st.s ? ' aria-current="page"' : "";
     const count = n ? `<span class="count${alert ? " alert" : ""}">${n}<span class="sr"> ${why}</span></span>` : "";
@@ -2931,7 +3056,7 @@ function weekLoading() {
 /* ---------- Microfone: o mesmo jeito de gravar em todo lugar (conversa e memória) ---------- */
 const recUI = () => `<div class="rec" role="status" aria-label="Gravando"><span class="rec-dot" aria-hidden="true"></span><span class="rec-t">Ouvindo… <span class="num" data-rec-t>0:03</span></span><span class="wave" aria-hidden="true">${"<i></i>".repeat(14)}</span><button class="btn btn-secondary btn-sm" type="button" data-mic-stop>${ic("check", "ic-sm")}Pronto</button></div>`;
 let recTimer, recBox;
-function micStart(btn) {
+function micStart0(btn) {
   const box = btn.closest("[data-mic-box]");
   if (!box) return;
   if (recBox && recBox !== box) micStop();
@@ -2943,7 +3068,7 @@ function micStart(btn) {
   recTimer = setInterval(() => { s++; const t = box.querySelector("[data-rec-t]"); if (t) t.textContent = `0:${String(s).padStart(2, "0")}`; if (s >= 4) micStop(); }, 1000);
   const b = box.querySelector("[data-mic-stop]"); if (b) b.focus();
 }
-function micStop() {
+function micStop0() {
   clearInterval(recTimer);
   const box = recBox;
   recBox = null;
@@ -5443,7 +5568,7 @@ new MutationObserver(() => { if (st.pref === "sistema" && document.documentEleme
 
 /* Avisos curtos com desfazer */
 let toastTimer;
-function toast(msg, undo) {
+function toast0(msg, undo) {
   let host = document.getElementById("toasts");
   if (!host) { host = document.createElement("div"); host.id = "toasts"; host.setAttribute("role", "status"); host.setAttribute("aria-live", "polite"); document.body.appendChild(host); }
   host.innerHTML = `<div class="toast">${ic("circle-check", "ic-sm")}<span>${msg}</span>${undo ? `<button class="btn btn-quiet btn-sm" type="button" data-undo>${ic("undo-2", "ic-sm")}Desfazer</button>` : ""}<button class="iconbtn" type="button" aria-label="Fechar o aviso" data-close-toast>${ic("x", "ic-sm")}</button></div>`;
@@ -5536,7 +5661,7 @@ function openPalette() {
 function closePalette() { const p = document.getElementById("palette"); if (p) p.remove(); }
 
 /* Folha "Mais" no celular */
-function renderSheet() {
+function renderSheet0() {
   let s = document.getElementById("sheet");
   if (!UI.sheet) { if (s) s.remove(); return; }
   if (!s) { s = document.createElement("div"); s.id = "sheet"; s.className = "overlay overlay-sheet"; document.body.appendChild(s); }
@@ -5706,6 +5831,459 @@ ACT.unshift(...ACT28);
 document.addEventListener("change", (e) => {
   const el = e.target;
   if (el.matches && el.matches("#rv-f")) { st.rvf = pick(el.value, ["all", "need", "auto", "done"]); render(); refocus("#rv-f"); }
+});
+
+
+/* ===== 12/11/2026 · ajustes pedidos pelo dono: som dos avisos e da gravação, menu por áreas e agenda que edita ===== */
+Object.assign(ICONS.lucide, {
+  "volume-2": '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" /> <path d="M16 9a5 5 0 0 1 0 6" /> <path d="M19.364 18.364a9 9 0 0 0 0-12.728" />',
+  wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /> <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />'
+});
+
+/* ---------- Sons: feitos na hora pelo navegador, sem arquivo de áudio ---------- */
+st.snd = { on: true, pick: pick(params.get("som"), ["sino", "gota", "marimba"]), rec: true };
+const SND_LOG = [];
+let AC = null;
+function sndCtx() {
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) return null;
+  if (!AC) AC = new C();
+  if (AC.state === "suspended") AC.resume();
+  return AC;
+}
+function tone(a, f, at, dur, o = {}) {
+  const t0 = a.currentTime + at;
+  const osc = a.createOscillator();
+  const g = a.createGain();
+  osc.type = o.type || "sine";
+  osc.frequency.setValueAtTime(f, t0);
+  if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(o.g || 0.18, t0 + (o.att || 0.008));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g).connect(a.destination);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.02);
+}
+const SOUNDS = {
+  sino: ["Sino", "Duas notas suaves, como um sino pequeno.", (a) => { tone(a, 987.77, 0, 0.9, { g: 0.16 }); tone(a, 1975.5, 0, 0.5, { g: 0.04 }); tone(a, 1318.5, 0.16, 1.1, { g: 0.15 }); tone(a, 2637, 0.16, 0.6, { g: 0.035 }); }],
+  gota: ["Gota", "Um toque curto e discreto.", (a) => { tone(a, 1500, 0, 0.11, { to: 620, g: 0.2 }); tone(a, 760, 0.1, 0.2, { to: 1480, g: 0.16 }); }],
+  marimba: ["Marimba", "Três notas que sobem, mais fácil de notar.", (a) => [[783.99, 0], [987.77, 0.11], [1174.66, 0.22]].forEach(([f, at]) => { tone(a, f, at, 0.42, { type: "triangle", g: 0.2, att: 0.004 }); tone(a, f * 4, at, 0.08, { g: 0.05, att: 0.002 }); })]
+};
+const REC_SND = {
+  start: (a) => { tone(a, 620, 0, 0.07, { g: 0.16 }); tone(a, 930, 0.075, 0.1, { g: 0.16 }); },
+  stop: (a) => { tone(a, 930, 0, 0.07, { g: 0.14 }); tone(a, 620, 0.075, 0.1, { g: 0.14 }); }
+};
+function playSnd(k) { SND_LOG.push(k); const a = sndCtx(); if (a) SOUNDS[k][2](a); }
+function playRec(k, force) { if (!st.snd.rec && !force) return; SND_LOG.push(`rec-${k}`); const a = sndCtx(); if (a) REC_SND[k](a); }
+
+const sndSwitch = (k, id, t, h, extra = "") => `<div class="set-row"><div class="grow"><p class="t" id="${id}">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div>${extra}<button class="switch" type="button" role="switch" aria-checked="${st.snd[k]}" aria-labelledby="${id}" data-snd-sw="${k}"></button></div>`;
+const cfgAvisos0 = cfgAvisos;
+CFG_VIEW.avisos = () => sec("h-som", "Som dos avisos", "Toca quando chega um aviso e a Zuri está aberta. Com ela fechada, vale o som de notificação do seu aparelho.",
+  sndSwitch("on", "som-on", "Tocar um som quando chegar um aviso", "")
+  + `<ul class="snd-list" role="radiogroup" aria-label="Som do aviso">${Object.entries(SOUNDS).map(([k, [n, d]]) => `<li><button class="snd-opt" type="button" role="radio" aria-checked="${st.snd.pick === k}" data-snd-pick="${k}"${st.snd.on ? "" : " disabled"}><span class="snd-dot" aria-hidden="true"></span><span class="grow"><b>${n}</b><span class="hint">${d}</span></span></button><button class="btn btn-secondary btn-sm" type="button" data-snd-play="${k}" aria-label="Ouvir o som ${n}">${ic("play", "ic-sm")}Ouvir</button></li>`).join("")}</ul>`
+  + sndSwitch("rec", "som-rec", "Som ao começar e ao terminar de gravar um áudio", "Um toque curto avisa que a Zuri já está ouvindo, e outro quando ela para.", `<button class="btn btn-secondary btn-sm" type="button" data-snd-play="rec" aria-label="Ouvir o som da gravação">${ic("play", "ic-sm")}Ouvir</button>`),
+  `<button class="btn btn-secondary" type="button" data-snd-test>${ic("bell", "ic-sm")}Testar um aviso agora</button>`) + cfgAvisos0();
+
+function micStart(btn) {
+  micStart0(btn);
+  playRec("start");
+  /* O relógio mostra o limite novo de 2 minutos. */
+  const t = recBox && recBox.querySelector(".rec-t");
+  if (t && !t.querySelector("[data-rec-max]")) t.insertAdjacentHTML("beforeend", '<span class="num rec-max" data-rec-max> de 2:00</span>');
+}
+function micStop() { const was = recBox; micStop0(); if (was) playRec("stop"); }
+
+/* ---------- Menu lateral por áreas (três propostas, trocadas no seletor "Menu" do protótipo) ---------- */
+const GS = [
+  ["painel", "layout-dashboard", "Painel", "O resumo do consultório num lugar só.", ["Receita, despesas e saldo do mês", "Consultas, retornos e avaliações físicas feitas", "Quem faltou, remarcou ou cancelou"]],
+  ["agendamentos", "calendar-check", "Agendamentos", "O registro de cada atendimento, tirado da agenda.", ["Situação de cada horário: agendado, confirmado, reagendado ou cancelado", "Comparecimento e faltas por cliente", "Recebimento confirmado de cada atendimento"]],
+  ["financeiro", "wallet", "Financeiro", "Entradas e saídas do consultório.", ["Histórico importado de uma planilha", "Lançamentos por categoria e forma de pagamento", "O que está para receber e o que está para pagar"]],
+  ["relatorios", "chart-column", "Relatórios", "Os relatórios do período, prontos para ler.", ["Semanal, mensal e anual", "Comparação com o período anterior", "Para baixar ou receber por aviso"]]
+];
+SCREENS.push("gestao");
+st.gs = pick(params.get("gs"), GS.map((x) => x[0]));
+st.mn = pick(params.get("mn"), ["a", "b", "c", "atual"]);
+st.mclosed = new Set();
+if (location.hash.slice(1) === "gestao") st.s = "gestao";
+const AREAS = [
+  ["", "house", "Início", ["inicio", "conversa"]],
+  ["Meu dia", "sun", "Meu dia", ["tarefas", "agenda", "notas"]],
+  ["Consultório", "building-2", "Consultório", GS.map((x) => `g:${x[0]}`)],
+  ["Relacionamento", "handshake", "Relacionamento", ["contatos", "avaliacoes", "crm"]],
+  ["Assistente", "bot", "Assistente", ["memoria", "automacoes"]]
+];
+const SPACES = [["pessoal", "Pessoal", [0, 1, 4]], ["consultorio", "Consultório", [2, 3]]];
+const navItem = (k) => (k.startsWith("g:") ? ((g) => [k, g[1], g[2]])(GS.find((x) => x[0] === k.slice(2))) : NAV.find((x) => x[0] === k));
+const navIsCur = (k) => (k.startsWith("g:") ? st.s === "gestao" && st.gs === k.slice(2) : k === st.s);
+const areaOf = () => Math.max(0, AREAS.findIndex((a) => a[3].some(navIsCur)));
+function navLi2(keys, onlyCur) {
+  return keys.map((k) => {
+    const [s, i, l, n, why, alert] = navItem(k);
+    const cur = navIsCur(k);
+    if (onlyCur && !cur) return "";
+    const count = n ? `<span class="count${alert ? " alert" : ""}">${n}<span class="sr"> ${why}</span></span>` : "";
+    const sub = s === "crm" && cur ? `<ul class="nav-sub" aria-label="Partes de ${l}">${CF.map(([c, si, sl]) => `<li><button type="button" data-af="${c}" aria-pressed="${st.af === c}">${ic(si, "ic-sm")}<span>${sl}</span></button></li>`).join("")}</ul>` : "";
+    const to = k.startsWith("g:") ? `href="#gestao" data-gs="${k.slice(2)}"` : `href="${href(s)}"`;
+    return `<li><a ${to}${cur ? ' aria-current="page"' : ""}>${ic(i)}<span>${l}</span>${count}</a>${sub}</li>`;
+  }).join("");
+}
+const areaCount = (a) => a[3].some((k) => navItem(k)[5]);
+function menuNav() {
+  if (st.mn === "b") {
+    const cur = st.area ?? areaOf();
+    const a = AREAS[cur];
+    return `<nav class="sb" aria-label="Seções"><div class="sb-rail" role="group" aria-label="Áreas">${AREAS.map((x, k) => `<button type="button" data-area="${k}" aria-pressed="${k === cur}" aria-label="${x[2]}" title="${x[2]}">${ic(x[1])}${areaCount(x) ? '<span class="badge" aria-hidden="true"></span>' : ""}</button>`).join("")}</div>
+      <div class="sb-panel"><p class="nav-h" id="sb-h">${a[2]}</p><ul class="nav nav-g" aria-labelledby="sb-h">${navLi2(a[3])}</ul></div></nav>`;
+  }
+  if (st.mn === "c") {
+    const sp = st.space ?? (SPACES[1][2].includes(areaOf()) ? "consultorio" : "pessoal");
+    const list = SPACES.find((x) => x[0] === sp)[2].map((k) => [k, AREAS[k]]);
+    return `<div class="seg sp-seg" role="group" aria-label="Espaço">${SPACES.map(([k, l]) => `<button type="button" data-space="${k}" aria-pressed="${k === sp}">${ic(k === "pessoal" ? "user" : "building-2", "ic-sm")}${l}</button>`).join("")}</div>
+      <nav aria-label="Seções">${list.map(([k, a]) => `${a[0] ? `<p class="nav-h" id="nav-h${k}">${a[0]}</p>` : ""}<ul class="nav nav-g"${a[0] ? ` aria-labelledby="nav-h${k}"` : ""}>${navLi2(a[3])}</ul>`).join("")}</nav>`;
+  }
+  return `<nav aria-label="Seções">${AREAS.map((a, k) => {
+    const shut = st.mclosed.has(k);
+    return `${a[0] ? `<p class="nav-h nav-hp"><button class="nav-hb" type="button" id="nav-h${k}" data-area-t="${k}" aria-expanded="${!shut}">${a[0]}${ic("chevron-down", "ic-sm")}</button></p>` : ""}<ul class="nav nav-g"${a[0] ? ` aria-labelledby="nav-h${k}"` : ""}>${navLi2(a[3], shut)}</ul>`;
+  }).join("")}</nav>`;
+}
+function side() {
+  if (st.mn === "atual") return side0();
+  return `<aside class="side side-${st.mn}" aria-label="Menu da Zuri">
+    <div class="side-head">
+      <a class="brand" href="${href("inicio")}">${logo()}<span class="wm">Zuri</span></a>
+      <button class="iconbtn side-bell" type="button" aria-label="Avisos: 2 novos" aria-haspopup="dialog" data-menu="avisos">${ic("bell")}<span class="badge" aria-hidden="true"></span></button>
+      <button class="iconbtn side-collapse" type="button" aria-label="Recolher o menu">${ic("panel-left")}</button>
+    </div>
+    <a class="btn btn-secondary btn-block side-new" href="${href("conversa")}">${ic("square-pen")}<span class="lbl">Nova conversa</span></a>
+    <button class="searchbtn" type="button">${ic("search", "ic-sm")}<span>Buscar</span></button>
+    ${menuNav()}
+    <button class="account" type="button" aria-label="Conta de Ana" aria-haspopup="dialog" data-menu="conta"><span class="avatar" aria-hidden="true">A</span><span class="acct-txt"><b>Ana</b></span>${ic("chevron-down", "ic-sm")}</button>
+  </aside>`;
+}
+function gestao() {
+  const [, i, l, lead, items] = GS.find((x) => x[0] === st.gs);
+  return `<div class="page"><header class="pagehead"><div><h1>${l}</h1><p>${lead}</p></div></header>
+    <section class="card gs-soon" aria-labelledby="gs-h"><span class="tile">${ic(i)}</span><h2 id="gs-h">Em planejamento</h2>
+      <p>Esta tela faz parte da Gestão do consultório, que ainda está sendo planejada. Ela aparece aqui só para você avaliar o lugar dela no menu.</p>
+      <ul>${items.map((x) => `<li>${ic("check", "ic-sm")}${x}</li>`).join("")}</ul></section></div>`;
+}
+SCREEN.gestao = gestao;
+/* No celular, "Mais" segue as mesmas áreas do menu. */
+function renderSheet() {
+  if (st.mn === "atual" || !UI.sheet) return renderSheet0();
+  let s = document.getElementById("sheet");
+  if (!s) { s = document.createElement("div"); s.id = "sheet"; s.className = "overlay overlay-sheet"; document.body.appendChild(s); }
+  const row = (k) => { const [key, i, l] = navItem(k); const g = k.startsWith("g:"); return `<li><a href="#${g ? "gestao" : key}" ${g ? `data-gs="${k.slice(2)}"` : `data-sheet="${key}"`}${navIsCur(k) ? ' aria-current="page"' : ""}>${ic(i)}<span>${l}</span>${ic("chevron-right", "ic-sm")}</a></li>`; };
+  const groups = AREAS.map((a) => [a[2], a[3].filter((k) => !TABS.some(([t]) => t === k))]).filter(([, ks]) => ks.length);
+  s.innerHTML = `<div class="sheet sheet-g" role="dialog" aria-modal="true" aria-labelledby="sheet-h"><span class="grab" aria-hidden="true"></span><div class="sheet-top"><p class="sheet-h" id="sheet-h">Mais</p><button class="iconbtn" type="button" data-sheet-x aria-label="Fechar">${ic("x", "ic-sm")}</button></div>
+    ${groups.map(([g, ks], k) => `<p class="sheet-gh" id="sheet-g${k}">${g}</p><ul aria-labelledby="sheet-g${k}">${ks.map(row).join("")}</ul>`).join("")}
+    <p class="sheet-gh" id="sheet-gz">Sistema</p><ul aria-labelledby="sheet-gz">${[["configuracoes", "settings", "Configurações"], ["estados", "layout-grid", "Estados das telas"], ["identidade", "sparkles", "Identidade visual"]].map(([k, i, l]) => `<li><a href="#${k}" data-sheet="${k}"${k === st.s ? ' aria-current="page"' : ""}>${ic(i)}<span>${l}</span>${ic("chevron-right", "ic-sm")}</a></li>`).join("")}</ul></div>`;
+  s.onclick = (e) => { if (e.target === s) { UI.sheet = false; renderSheet(); } };
+}
+document.getElementById("pm").value = st.mn;
+document.getElementById("pm").addEventListener("change", (e) => { st.mn = pick(e.target.value, ["a", "b", "c", "atual"]); st.area = undefined; st.space = undefined; render(); });
+document.getElementById("ps").insertAdjacentHTML("beforeend", '<option value="gestao">Gestão (em planejamento)</option>');
+
+/* ---------- Agenda: clicar, editar, mover e mudar a situação; fins de semana e feriados marcados ---------- */
+const p2 = (n) => String(n).padStart(2, "0");
+const dkey = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+const dOf = (k) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const addD = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const monOf = (d) => addD(d, -((d.getDay() + 6) % 7));
+const hmm = (min) => `${p2(Math.floor(min / 60))}:${p2(min % 60)}`;
+/* Feriados nacionais: as datas fixas da lei e a Sexta-feira Santa, calculada pela Páscoa. Não dependem da rede. */
+function pascoa(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(y, mo - 1, da);
+}
+const FERIADOS = {};
+function feriados(y) {
+  if (FERIADOS[y]) return FERIADOS[y];
+  const m = { "01-01": "Confraternização Universal", "04-21": "Tiradentes", "05-01": "Dia do Trabalho", "09-07": "Independência do Brasil", "10-12": "Nossa Senhora Aparecida", "11-02": "Finados", "11-15": "Proclamação da República", "11-20": "Consciência Negra", "12-25": "Natal" };
+  m[dkey(addD(pascoa(y), -2)).slice(5)] = "Sexta-feira Santa";
+  FERIADOS[y] = m;
+  return m;
+}
+const feriado = (d) => feriados(d.getFullYear())[dkey(d).slice(5)] || "";
+const fimDeSemana = (d) => d.getDay() === 0 || d.getDay() === 6;
+/* Situação do agendamento = cor do evento no Google Agenda (nome e número da cor de lá). */
+const STS = { agendado: ["Agendado", "Pavão", 7], confirmado: ["Confirmado", "Manjericão", 10], reagendado: ["Reagendado", "Banana", 5], cancelado: ["Cancelado", "Tomate", 11] };
+const TIPOS = ["Consulta | Consultório", "Retorno | Consultório", "Avaliação física | Consultório", ""];
+const tipoTxt = (t) => (t ? t.split(" | ")[0] : "Compromisso");
+const WD = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const WDL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const AG_M0 = monOf(AG_NOW);
+let evSeq = 0;
+const mkEv = (off, h, m, dur, t, tipo, s, x = {}) => ({ id: `e${++evSeq}`, day: dkey(addD(AG_M0, off)), h, m, dur, t, tipo, s, ...x });
+/* Nomes inventados. O título é o nome completo e a observação traz o tipo, como na agenda do consultório. */
+let EV = [
+  mkEv(0, 8, 0, 1, "Helena Duarte Prado", TIPOS[0], "confirmado"), mkEv(0, 9, 30, 0.5, "Otávio Lins Moreira", TIPOS[1], "confirmado"), mkEv(0, 14, 0, 1, "Marina Teles Barreto", TIPOS[0], "agendado"), mkEv(0, 16, 0, 1, "Caio Vasques Lima", TIPOS[2], "cancelado"),
+  mkEv(1, 9, 0, 1, "Lívia Antunes Rocha", TIPOS[0], "confirmado"), mkEv(1, 10, 30, 0.5, "Renato Sampaio Cruz", TIPOS[1], "reagendado"), mkEv(1, 15, 0, 1, "Isadora Pires Falcão", TIPOS[0], "agendado"),
+  mkEv(2, 8, 30, 1, "Bruno Macedo Teixeira", TIPOS[2], "confirmado"), mkEv(2, 11, 0, 1, "Reunião da equipe", "", "agendado", { rec: true }), mkEv(2, 14, 30, 1, "Clara Nóbrega Dias", TIPOS[0], "agendado"),
+  mkEv(3, 9, 0, 1, "Diego Fontes Arruda", TIPOS[0], "confirmado"), mkEv(3, 10, 30, 1, "Paula Régis Amaral", TIPOS[0], "agendado"), mkEv(3, 13, 30, 0.5, "Tiago Bessa Leal", TIPOS[1], "agendado"), mkEv(3, 16, 0, 1.5, "Aula de fotografia", "", "agendado", { ro: true }),
+  mkEv(4, 8, 0, 1, "Sofia Quintela Maia", TIPOS[0], "reagendado"), mkEv(4, 10, 0, 0.5, "Vítor Aguiar Pena", TIPOS[1], "confirmado"), mkEv(4, 15, 30, 1, "Laís Coutinho Braga", TIPOS[2], "cancelado"),
+  mkEv(5, 9, 0, 1, "Érica Valadão Sena", TIPOS[0], "agendado"),
+  mkEv(7, 9, 0, 1, "Murilo Esteves Paz", TIPOS[0], "agendado"), mkEv(8, 14, 0, 1, "Helena Duarte Prado", TIPOS[1], "agendado"), mkEv(9, 11, 0, 1, "Reunião da equipe", "", "agendado", { rec: true }), mkEv(10, 10, 0, 1, "Nina Torquato Reis", TIPOS[2], "confirmado"),
+  mkEv(-4, 9, 0, 1, "Otávio Lins Moreira", TIPOS[0], "confirmado"), mkEv(-3, 15, 0, 1, "Clara Nóbrega Dias", TIPOS[2], "confirmado"), mkEv(15, 9, 30, 1, "Diego Fontes Arruda", TIPOS[1], "agendado"), mkEv(17, 14, 0, 1, "Paula Régis Amaral", TIPOS[1], "agendado")
+];
+st.agd = new Date(AG_NOW);
+if (params.get("agd")) { const d = dOf(params.get("agd")); if (!Number.isNaN(d.getTime())) st.agd = d; }
+st.sync = "";
+const evOn = (k) => EV.filter((e) => e.day === k).sort((a, b) => a.h * 60 + a.m - (b.h * 60 + b.m));
+const evEnd = (e) => e.h * 60 + e.m + Math.round(e.dur * 60);
+const evWhen = (e) => `${hmm(e.h * 60 + e.m)} até ${hmm(evEnd(e))}`;
+const dayLong = (d) => `${WDL[d.getDay()]}, ${d.getDate()} de ${AG_MESES[d.getMonth()]}`;
+const dayShort = (d) => `${WD[d.getDay()]}, ${p2(d.getDate())}/${p2(d.getMonth() + 1)}`;
+/* Eventos no mesmo horário ficam lado a lado. */
+function lanes(list) {
+  const out = [];
+  let cluster = [], end = -1;
+  const flush = () => { const n = Math.max(...cluster.map((c) => c.lane)) + 1; for (const c of cluster) c.n = n; cluster = []; };
+  for (const e of list) {
+    const s = e.h * 60 + e.m, f = evEnd(e);
+    if (cluster.length && s >= end) { flush(); end = -1; }
+    const used = cluster.filter((c) => c.f > s).map((c) => c.lane);
+    let lane = 0;
+    while (used.includes(lane)) lane++;
+    const c = { e, s, f, lane, n: 1 };
+    cluster.push(c); out.push(c); end = Math.max(end, f);
+  }
+  if (cluster.length) flush();
+  return out;
+}
+const AG_HR = 48;
+const syncTxt = () => (st.sync === "saving" ? `${ic("loader-circle", "ic-sm spin")}Salvando no Google…` : st.sync === "ok" ? `${ic("circle-check", "ic-sm")}Salvo no Google agora` : `${ic("refresh-cw", "ic-sm")}Em dia com o Google`);
+function agenda2() {
+  const { de, ate } = st.ag;
+  const n = ate - de;
+  const av = st.av || "semana";
+  const A = st.agd;
+  const days = Array.from({ length: 7 }, (_, i) => addD(monOf(A), i));
+  const today = dkey(AG_NOW);
+  const cls = (d) => `${fimDeSemana(d) ? " off" : ""}${feriado(d) ? " hol" : ""}`;
+  const hh = (h) => `${p2(h)}:00`;
+  const evLabel = (e) => `${e.t}, ${tipoTxt(e.tipo)}, ${evWhen(e)}, ${e.ro ? "só leitura" : STS[e.s][0]}`;
+  const head = `<header class="pagehead ph-acts"><div><h1>Agenda</h1><p>Seus eventos do Google Agenda. Clique num evento para ver, editar ou mudar a situação; arraste para trocar o dia ou a hora. Tudo vai na hora para o Google.</p></div>
+    <div class="actions"><button class="btn btn-primary btn-sm" type="button" data-x="evento" aria-label="Novo evento" title="Novo evento">${ic("calendar-plus", "ic-sm")}<span class="lbl-d">Novo evento</span></button></div></header>`;
+  const title = av === "mes" ? `${AG_MESES[A.getMonth()][0].toUpperCase()}${AG_MESES[A.getMonth()].slice(1)} de ${A.getFullYear()}` : av === "dia" ? `${dayLong(A)}${feriado(A) ? ` · ${feriado(A)}` : ""}` : `${days[0].getDate()}${days[0].getMonth() === days[6].getMonth() ? "" : ` de ${AG_MESES[days[0].getMonth()]}`} a ${days[6].getDate()} de ${AG_MESES[days[6].getMonth()]}`;
+  const unit = av === "mes" ? "Mês" : av === "dia" ? "Dia" : "Semana";
+  const bar = `<div class="agenda-bar ag2-bar"><h2>${title}</h2>
+    <div class="navgrp"><button class="iconbtn" type="button" aria-label="${unit} anterior" data-agn="-1">${ic("chevron-left")}</button><button class="btn btn-secondary btn-sm" type="button" data-agn="0">Hoje</button><button class="iconbtn" type="button" aria-label="${av === "semana" ? "Próxima semana" : `Próximo ${unit.toLowerCase()}`}" data-agn="1">${ic("chevron-right")}</button></div>
+    <span class="ag-sync" role="status" data-ag-sync>${syncTxt()}</span>
+    <div class="seg" role="group" aria-label="Visualização">${[["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"]].map(([k, l]) => `<button type="button" data-av="${k}" aria-pressed="${k === av}">${l}</button>`).join("")}</div></div>`;
+  const hours = Array.from({ length: n }, (_, k) => `<span>${hh(de + k)}</span>`).join("");
+  const y = (min) => ((min - de * 60) / 60) * AG_HR;
+  const col = (d) => {
+    const k = dkey(d);
+    const list = lanes(evOn(k).filter((e) => evEnd(e) > de * 60 && e.h * 60 + e.m < ate * 60));
+    return `<div class="col${cls(d)}" role="cell" data-col="${k}" style="height:${n * AG_HR}px">${list.map(({ e, s, f, lane, n: w }) => {
+      const top = Math.max(y(s), 0), bottom = Math.min(y(f), n * AG_HR);
+      return `<button type="button" class="ev st-${e.s}${e.ro ? " ro" : ""}${bottom - top < 40 ? " ev-s" : ""}" data-ev="${e.id}" aria-label="${evLabel(e)}" style="top:${top + 2}px;height:${bottom - top - 4}px;left:calc(${(lane / w) * 100}% + 3px);width:calc(${100 / w}% - 6px)"><b>${e.t}</b><span class="num">${hmm(s)} · ${tipoTxt(e.tipo)}</span>${e.rec ? ic("repeat", "ic-sm ev-i") : e.ro ? ic("lock", "ic-sm ev-i") : ""}${e.ro ? "" : '<i class="ev-rz" data-rz aria-hidden="true"></i>'}</button>`;
+    }).join("")}${k === today ? `<div class="nowline" data-de="${de}" data-ate="${ate}" data-hr="${AG_HR}" style="top:${y(nowMin())}px"${nowMin() < de * 60 || nowMin() >= ate * 60 ? " hidden" : ""} aria-hidden="true"><span class="num">${hm(nowMin())}</span></div>` : ""}</div>`;
+  };
+  const week = `<div class="week ag2" role="table" aria-label="Semana de ${title}, das ${hh(de)} até ${hh(ate)}" data-de="${de}" data-ate="${ate}">
+    <div role="row" style="display:contents"><div class="corner" role="columnheader"><span class="sr">Hora</span></div>${days.map((d) => `<div class="dh${dkey(d) === today ? " today" : ""}${cls(d)}" role="columnheader"${dkey(d) === today ? ' aria-current="date"' : ""}>${WD[d.getDay()]}<b>${dkey(d) === today ? `<span>${d.getDate()}</span>` : d.getDate()}</b></div>`).join("")}</div>
+    <div class="allday" role="row"><span class="lbl" role="rowheader">Dia todo</span>${days.map((d) => `<div role="cell" class="ad-c${cls(d)}">${feriado(d) ? `<div class="ev ad hol-chip" title="Feriado nacional: ${feriado(d)}"><b><span class="sr">Feriado nacional: </span>${feriado(d)}</b></div>` : ""}</div>`).join("")}</div>
+    <div role="row" style="display:contents"><div class="hours" role="rowheader" aria-hidden="true" style="grid-template-rows:repeat(${n},${AG_HR}px)">${hours}</div>${days.map(col).join("")}</div>
+  </div>`;
+  const legend = `<ul class="ag2-leg" aria-label="Legenda">${Object.entries(STS).map(([k, [l]]) => `<li><i class="st-${k}"></i>${l}</li>`).join("")}<li><i class="leg-ro"></i>Outra agenda, só leitura</li><li><i class="sw off"></i>Fim de semana</li><li><i class="sw hol"></i>Feriado nacional</li><li class="legend-r"><a href="${href("configuracoes")}" data-cfg-open>${ic("settings", "ic-sm")}Configurações</a></li></ul>`;
+  const strip = `<div class="daystrip ag2-strip" role="group" aria-label="Dia">${days.map((d) => `<button type="button" data-agd="${dkey(d)}" aria-pressed="${dkey(d) === dkey(A)}" class="${dkey(d) === today ? "is-today" : ""}${cls(d)}"${dkey(d) === today ? ' aria-current="date"' : ""}${feriado(d) ? ` title="${feriado(d)}"` : ""}><span>${WD[d.getDay()]}</span><b>${d.getDate()}</b></button>`).join("")}</div>
+    ${feriado(A) ? `<p class="ag2-hol">${ic("flag", "ic-sm")}Feriado nacional: ${feriado(A)}</p>` : ""}
+    <ul class="card daylist ag2-list">${evOn(dkey(A)).map((e) => `<li><button type="button" class="ag2-row st-${e.s}${e.ro ? " ro" : ""}" data-ev="${e.id}" aria-label="${evLabel(e)}"><i class="bar" aria-hidden="true"></i><span class="num when">${hmm(e.h * 60 + e.m)}<small>até ${hmm(evEnd(e))}</small></span><span class="grow"><b>${e.t}</b><span class="hint">${tipoTxt(e.tipo)}</span></span><span class="st-pill">${e.ro ? `${ic("lock", "ic-sm")}Só leitura` : STS[e.s][0]}</span></button></li>`).join("") || `<li class="empty-li">${ic("calendar-days", "ic-sm")}Nada marcado neste dia.</li>`}</ul>`;
+  const first = new Date(A.getFullYear(), A.getMonth(), 1);
+  const dim = new Date(A.getFullYear(), A.getMonth() + 1, 0).getDate();
+  const cells = [];
+  for (let k = 0; k < (first.getDay() + 6) % 7; k++) cells.push(null);
+  for (let d = 1; d <= dim; d++) cells.push(new Date(A.getFullYear(), A.getMonth(), d));
+  while (cells.length % 7) cells.push(null);
+  const mcell = (d) => {
+    if (!d) return `<div role="cell" class="m-cell m-out"></div>`;
+    const evs = evOn(dkey(d));
+    const hol = feriado(d);
+    return `<div role="cell" class="m-cell${cls(d)}"><button type="button" class="m-day${dkey(d) === today ? " today" : ""}${evs.length ? " has" : ""}" data-agd="${dkey(d)}" data-agv="dia" aria-label="${d.getDate()} de ${AG_MESES[d.getMonth()]}${hol ? `, feriado nacional: ${hol}` : ""}${evs.length ? `, ${evs.length === 1 ? "1 evento" : `${evs.length} eventos`}` : ", sem eventos"}"><b class="num">${d.getDate()}</b>${hol ? `<span class="m-hol">${hol}</span>` : ""}${evs.slice(0, hol ? 1 : 2).map((e) => `<span class="m-ev st-${e.s}${e.ro ? " ro" : ""}">${hmm(e.h * 60 + e.m)} ${e.t}</span>`).join("")}${evs.length > (hol ? 1 : 2) ? `<span class="m-more">+${evs.length - (hol ? 1 : 2)}</span>` : ""}</button></div>`;
+  };
+  const month = `<div class="month ag2-m" role="table" aria-label="${title}"><div role="row" class="m-row m-head">${["seg", "ter", "qua", "qui", "sex", "sáb", "dom"].map((d) => `<span role="columnheader">${d}</span>`).join("")}</div>
+    ${Array.from({ length: cells.length / 7 }, (_, w) => `<div role="row" class="m-row">${cells.slice(w * 7, w * 7 + 7).map(mcell).join("")}</div>`).join("")}</div>`;
+  const body = av === "mes" ? month : av === "dia" ? strip : `${week}${strip}`;
+  return `<div class="page page-wide ag-${av} ag2-page">${head}${bar}${body}${legend}</div>`;
+}
+SCREEN.agenda = agenda2;
+
+/* Toda mudança passa por aqui: muda, mostra "Salvando no Google…" e oferece desfazer. */
+function evCommit(msg, change, focusId) {
+  const before = JSON.stringify(EV);
+  change();
+  const sync = () => {
+    st.sync = "saving";
+    render();
+    if (focusId) refocus(`.ag2 [data-ev="${focusId}"], .ag2-list [data-ev="${focusId}"]`);
+    clearTimeout(evCommit.t);
+    evCommit.t = setTimeout(() => { st.sync = "ok"; const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); }, CAP ? 0 : 800);
+  };
+  sync();
+  toast(msg, () => { EV = JSON.parse(before); sync(); });
+}
+/* Evento que se repete: a pessoa escolhe o alcance antes de qualquer mudança. */
+function evScope(e, fn, opener) {
+  if (!e.rec) { fn(""); return; }
+  menuDlg("Este evento se repete toda semana", [["calendar-days", "Mudar só este dia", () => fn(" Só este dia mudou.")], ["repeat", "Mudar este e os próximos", () => fn(" Os próximos também mudaram.")]], opener);
+}
+const evClash = (e) => (e.s !== "cancelado" && EV.some((o) => o !== e && o.day === e.day && o.s !== "cancelado" && o.h * 60 + o.m < evEnd(e) && evEnd(o) > e.h * 60 + e.m) ? " Atenção: há outro evento neste horário." : "");
+/* Mudar o dia ou a hora de um horário agendado ou confirmado marca "Reagendado". */
+function evMove(e, day, mins, dur, opener) {
+  const moved = day !== e.day || mins !== e.h * 60 + e.m;
+  if (!moved && dur === e.dur) { render(); refocus(`.ag2 [data-ev="${e.id}"]`); return; }
+  evScope(e, (extra) => evCommit("", () => {
+    e.day = day; e.h = Math.floor(mins / 60); e.m = mins % 60; e.dur = dur;
+    const re = moved && e.tipo && (e.s === "agendado" || e.s === "confirmado");
+    if (re) e.s = "reagendado";
+    evCommit.msg = `${moved ? `“${e.t}” agora é ${dayShort(dOf(day))} às ${hmm(mins)}.` : `“${e.t}” agora vai até ${hmm(evEnd(e))}.`}${re ? " Ficou como Reagendado." : ""}${extra}${evClash(e)}`;
+  }, e.id), opener);
+}
+/* A mensagem depende do que mudou, então o aviso lê evCommit.msg quando o texto vem vazio. */
+function toast(msg, undo) { toast0(msg || evCommit.msg || "", undo); }
+
+function evDlg(e, opener) {
+  const d = dOf(e.day);
+  const rows = [["Quando", `${dayLong(d)}, ${evWhen(e)}`], ["Tipo", e.tipo || "Sem tipo"], ["Agenda", e.ro ? "Curso e esporte, só leitura" : "Consultório, no Google Agenda"]];
+  if (e.rec) rows.push(["Repete", "Toda semana"]);
+  if (!e.ro) rows.push(["Cor no Google", `${STS[e.s][1]} (${STS[e.s][0]})`]);
+  dlgShow({ t: e.t, sub: e.ro ? "Este evento vem de uma agenda só para leitura. Para mudar, abra o Google Agenda." : "Mude a situação com um toque. Ela vira a cor do evento no Google Agenda.",
+    body: `${e.ro ? "" : `<div class="ev-sts" role="group" aria-label="Situação">${Object.entries(STS).map(([k, [l]]) => `<button type="button" class="st-${k}" data-ev-st="${k}" data-id="${e.id}" aria-pressed="${e.s === k}"><i aria-hidden="true"></i>${l}</button>`).join("")}</div>`}
+      <dl class="ev-dl">${rows.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join("")}</dl>`,
+    foot: e.ro ? `<span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Fechar</button>` : `<button class="btn btn-quiet danger" type="button" data-ev-del="${e.id}">${ic("trash-2", "ic-sm")}Apagar</button><span class="grow"></span><button class="btn btn-secondary" type="button" data-ev-edit="${e.id}">${ic("pencil", "ic-sm")}Editar</button><button class="btn btn-primary" type="button" data-dlg-x>Fechar</button>` }, opener);
+}
+const DURS = [[0.25, "15 min"], [0.5, "30 min"], [0.75, "45 min"], [1, "1 hora"], [1.5, "1 h 30"], [2, "2 horas"], [3, "3 horas"]];
+function evEdit(ev, pre, opener) {
+  const e = ev || { day: pre.day || dkey(st.agd), h: pre.h ?? 11, m: pre.m ?? 0, dur: 1, t: "", tipo: TIPOS[0], s: "agendado" };
+  const durs = DURS.some(([v]) => v === e.dur) ? DURS : [...DURS, [e.dur, `${Math.round(e.dur * 60)} min`]].sort((a, b) => a[0] - b[0]);
+  dlgShow({ t: ev ? "Editar evento" : "Novo evento", sub: "O que você salvar vai na hora para o Google Agenda.",
+    body: `<label class="field"><span class="label">Título</span><input class="input" data-ee-t value="${e.t}" placeholder="Nome completo do cliente" data-autofocus></label>
+      <div class="form-grid form-3"><label class="field"><span class="label">Dia</span><input class="input num" type="date" data-ee-d value="${e.day}"></label>
+      <label class="field"><span class="label">Começa</span><input class="input num" type="time" step="900" data-ee-h value="${hmm(e.h * 60 + e.m)}"></label>
+      <label class="field"><span class="label">Dura</span><select class="input" data-ee-m>${durs.map(([v, l]) => `<option value="${v}"${v === e.dur ? " selected" : ""}>${l}</option>`).join("")}</select></label></div>
+      <div class="form-grid"><label class="field"><span class="label">Tipo</span><select class="input" data-ee-k>${TIPOS.map((t) => `<option value="${t}"${t === e.tipo ? " selected" : ""}>${t || "Sem tipo"}</option>`).join("")}</select></label>
+      <label class="field"><span class="label">Situação</span><select class="input" data-ee-s>${Object.entries(STS).map(([k, [l]]) => `<option value="${k}"${k === e.s ? " selected" : ""}>${l}</option>`).join("")}</select></label></div>
+      <p class="hint" data-ee-err role="status"></p>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>${ev ? "Salvar" : "Criar evento"}</button>`,
+    ok: () => {
+      const fail = (m, sel) => { const x = document.querySelector("[data-ee-err]"); x.textContent = m; x.classList.add("err"); document.querySelector(sel).focus(); return false; };
+      const t = dlgVal("[data-ee-t]");
+      if (!t) return fail("Dê um título ao evento.", "[data-ee-t]");
+      const day = dlgRaw("[data-ee-d]");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(dOf(day).getTime())) return fail("Escolha o dia.", "[data-ee-d]");
+      const tm = /^(\d{2}):(\d{2})$/.exec(dlgRaw("[data-ee-h]"));
+      if (!tm) return fail("Escolha a hora de começar.", "[data-ee-h]");
+      const dur = Number(dlgRaw("[data-ee-m]"));
+      const mins = Number(tm[1]) * 60 + Number(tm[2]);
+      if (mins + dur * 60 > 24 * 60) return fail("O evento precisa terminar no mesmo dia.", "[data-ee-h]");
+      const tipo = pick(dlgRaw("[data-ee-k]"), TIPOS), s = pick(dlgRaw("[data-ee-s]"), Object.keys(STS));
+      const apply = (extra) => {
+        const target = ev || { id: `e${++evSeq}` };
+        evCommit("", () => {
+          Object.assign(target, { day, h: Math.floor(mins / 60), m: mins % 60, dur, t, tipo, s });
+          if (!ev) EV.push(target);
+          st.agd = dOf(day);
+          evCommit.msg = `${ev ? `“${t}” atualizado.` : `“${t}” criado em ${dayShort(dOf(day))} às ${hmm(mins)}.`}${extra}${evClash(target)}`;
+        }, target.id);
+      };
+      if (ev && ev.rec) { const op = DLG.opener; dlgClose(); evScope(ev, apply, op); return false; }
+      apply("");
+    } }, opener);
+}
+const evById = (id) => EV.find((x) => x.id === id);
+let agNoClick = 0;
+const ACT1211 = [
+  [(t) => t.matches("[data-snd-sw]"), (t) => { const k = t.dataset.sndSw; st.snd[k] = !st.snd[k]; render(); refocus(`[data-snd-sw="${k}"]`); }],
+  [(t) => t.matches("[data-snd-pick]"), (t) => { st.snd.pick = pick(t.dataset.sndPick, Object.keys(SOUNDS)); playSnd(st.snd.pick); render(); refocus(`[data-snd-pick="${st.snd.pick}"]`); }],
+  [(t) => t.matches("[data-snd-play]"), (t) => { if (t.dataset.sndPlay === "rec") { playRec("start", true); setTimeout(() => playRec("stop", true), 900); } else playSnd(pick(t.dataset.sndPlay, Object.keys(SOUNDS))); }],
+  [(t) => t.matches("[data-snd-test]"), (t) => busy(t, 700, () => { if (st.snd.on) playSnd(st.snd.pick); toast(`Lembrete: ligar para a transportadora às 15:00.${st.snd.on ? "" : " O som está desligado."}`); })],
+  [(t) => t.matches("[data-gs]"), (t) => { st.gs = pick(t.dataset.gs, GS.map((x) => x[0])); if (UI.sheet) { UI.sheet = false; renderSheet(); } seen.add("gestao"); go("gestao"); refocus(`.side [data-gs="${st.gs}"]`); }],
+  [(t) => t.matches("[data-area]"), (t) => { st.area = Number(t.dataset.area); render(); refocus(`[data-area="${st.area}"]`); }],
+  [(t) => t.matches("[data-space]"), (t) => { st.space = pick(t.dataset.space, ["pessoal", "consultorio"]); render(); refocus(`[data-space="${st.space}"]`); }],
+  [(t) => t.matches("[data-area-t]"), (t) => { const k = Number(t.dataset.areaT); if (st.mclosed.has(k)) st.mclosed.delete(k); else st.mclosed.add(k); render(); refocus(`[data-area-t="${k}"]`); }],
+  [(t) => t.matches("[data-agn]"), (t) => { const n = Number(t.dataset.agn), A = st.agd; st.agd = n === 0 ? new Date(AG_NOW) : st.av === "mes" ? new Date(A.getFullYear(), A.getMonth() + n, 1) : addD(A, st.av === "dia" ? n : 7 * n); render(); refocus(`[data-agn="${n}"]`); }],
+  [(t) => t.matches("[data-agd]"), (t) => { st.agd = dOf(t.dataset.agd); if (t.dataset.agv) st.av = "dia"; render(); refocus(`.daystrip [data-agd="${t.dataset.agd}"]`); }],
+  [(t) => t.matches("[data-ev]"), (t) => { if (agNoClick) return; const e = evById(t.dataset.ev); if (e) evDlg(e, t); }],
+  [(t) => t.matches("[data-ev-st]"), (t) => { const e = evById(t.dataset.id), s = pick(t.dataset.evSt, Object.keys(STS)); if (!e || e.s === s) { dlgClose(); return; } DLG.opener = null; dlgClose(); evCommit(`“${e.t}” ficou como ${STS[s][0]}. A cor no Google mudou para ${STS[s][1]}.`, () => { e.s = s; }, e.id); }],
+  [(t) => t.matches("[data-ev-edit]"), (t) => { const e = evById(t.dataset.evEdit), op = DLG.opener; dlgClose(); if (e) evEdit(e, {}, op); }],
+  [(t) => t.matches("[data-ev-del]"), (t) => { const e = evById(t.dataset.evDel), op = DLG.opener; dlgClose(); if (e) confirmDlg("Apagar este evento?", "Ele sai também do Google Agenda. Para guardar o histórico do cliente, prefira marcar como Cancelado.", "Apagar", () => { DLG.opener = null; evCommit(`“${e.t}” apagado daqui e do Google Agenda.`, () => { EV = EV.filter((x) => x !== e); }); }, op); }],
+  [(t) => t.matches("[data-x=evento]"), (t) => evEdit(null, {}, t)]
+];
+ACT.unshift(...ACT1211);
+/* Clique num horário vazio abre "Novo evento" já com o dia e a hora. */
+document.addEventListener("click", (e) => {
+  const c = e.target;
+  if (!c.matches || !c.matches(".ag2 .col") || agNoClick) return;
+  const mins = st.ag.de * 60 + Math.floor(((e.clientY - c.getBoundingClientRect().top) / AG_HR) * 2) * 30;
+  evEdit(null, { day: c.dataset.col, h: Math.floor(mins / 60), m: mins % 60 }, document.querySelector("[data-x=evento]"));
+});
+/* Arrastar muda o dia e a hora, de 15 em 15 minutos; a borda de baixo muda a duração. No toque, use Editar. */
+let DRAG = null;
+document.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || e.pointerType === "touch" || !e.target.closest) return;
+  const b = e.target.closest(".ag2 .ev[data-ev]");
+  const ev = b && evById(b.dataset.ev);
+  if (!ev) return;
+  DRAG = { ev, b, x: e.clientX, y: e.clientY, rz: !!e.target.closest("[data-rz]"), on: false, top: parseFloat(b.style.top) - 2, res: null };
+});
+document.addEventListener("pointermove", (e) => {
+  const D = DRAG;
+  if (!D || D.dead) return;
+  if (!D.on) {
+    if (Math.hypot(e.clientX - D.x, e.clientY - D.y) < 5) return;
+    if (D.ev.ro) { D.dead = true; say("Esta agenda é só para leitura. Mude o evento no Google Agenda."); return; }
+    D.on = true;
+    D.b.classList.add("drag");
+    document.body.classList.add("ag-dragging");
+  }
+  e.preventDefault();
+  const { de, ate } = st.ag;
+  const snap = (px) => Math.round(((px / AG_HR) * 60) / 15) * 15;
+  const col = [...document.querySelectorAll(".ag2 .col")].find((c) => { const r = c.getBoundingClientRect(); return e.clientX >= r.left && e.clientX < r.right; }) || D.b.parentElement;
+  let mins = D.ev.h * 60 + D.ev.m, dur = D.ev.dur, day = D.ev.day;
+  if (D.rz) {
+    const end = Math.min(Math.max(de * 60 + snap(e.clientY - D.b.parentElement.getBoundingClientRect().top), mins + 15), ate * 60);
+    dur = (end - mins) / 60;
+    D.b.style.height = `${(dur * AG_HR) - 4}px`;
+  } else {
+    day = col.dataset.col;
+    mins = Math.min(Math.max(de * 60 + snap(D.top + e.clientY - D.y), de * 60), ate * 60 - Math.round(dur * 60));
+    if (D.b.parentElement !== col) col.appendChild(D.b);
+    D.b.style.top = `${((mins - de * 60) / 60) * AG_HR + 2}px`;
+    D.b.style.left = "3px"; D.b.style.width = "calc(100% - 6px)";
+  }
+  const lbl = D.b.querySelector(".num");
+  if (lbl) lbl.textContent = `${hmm(mins)} até ${hmm(mins + Math.round(dur * 60))}`;
+  D.res = { day, mins, dur };
+});
+document.addEventListener("pointerup", () => {
+  const D = DRAG;
+  DRAG = null;
+  if (!D || (!D.on && !D.dead)) return;
+  document.body.classList.remove("ag-dragging");
+  agNoClick = 1; setTimeout(() => { agNoClick = 0; }, 0);
+  if (D.dead) return;
+  if (D.ev.rec || !D.res) render();
+  if (D.res) evMove(D.ev, D.res.day, D.res.mins, D.res.dur, null);
+});
+/* Pelo teclado: Alt + setas move o evento em foco (15 minutos ou um dia). Enter abre. */
+document.addEventListener("keydown", (e) => {
+  if (!e.altKey || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const b = document.activeElement && document.activeElement.closest && document.activeElement.closest(".ag2 .ev[data-ev]");
+  const ev = b && evById(b.dataset.ev);
+  if (!ev) return;
+  e.preventDefault();
+  if (ev.ro) { say("Esta agenda é só para leitura. Mude o evento no Google Agenda."); return; }
+  const { de, ate } = st.ag;
+  const dx = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0, dy = e.key === "ArrowUp" ? -15 : e.key === "ArrowDown" ? 15 : 0;
+  const day = dkey(addD(dOf(ev.day), dx));
+  const mins = Math.min(Math.max(ev.h * 60 + ev.m + dy, de * 60), ate * 60 - Math.round(ev.dur * 60));
+  if (dx) st.agd = dOf(day);
+  evMove(ev, day, mins, ev.dur, b);
 });
 
 render();
