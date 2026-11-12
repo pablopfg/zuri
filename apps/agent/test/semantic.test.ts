@@ -431,8 +431,8 @@ describe("on", () => {
       await world.semantic.search("carro", ["memory", "task", "note", "automation"], 5);
       // The state row and 4 blocks (200 / 64), with their index entries: far from one per vector.
       expect(world.db.usage.rowsRead - before.rowsRead).toBeLessThanOrEqual(20);
-      // Only the day's count of searches (one row of zur_settings and its index).
-      expect(world.db.usage.rowsWritten - before.rowsWritten).toBeLessThanOrEqual(4);
+      // Only the day's count of searches (one row of zur_settings and its index) and, since PR S13, the hour's row of the query's embedding.
+      expect(world.db.usage.rowsWritten - before.rowsWritten).toBeLessThanOrEqual(5);
     });
   });
 });

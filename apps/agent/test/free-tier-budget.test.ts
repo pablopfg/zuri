@@ -401,6 +401,36 @@ describe("the Free plan budget of each route", () => {
     expect(report.written).toBe(0);
   });
 
+  it("AI usage by the hour and by the month (PR S13): the day reads its 24 rows, the year its 12 months and the open days, and neither writes", async () => {
+    await runInDurableObject(owner(), (agent: ZuriAgent) => {
+      const { db } = agent.store;
+      const now = Date.now();
+      const today = new Date(now).toISOString().slice(0, 10);
+      db.transaction(() => {
+        for (let hour = 0; hour < 24; hour++) {
+          db.run(`INSERT INTO zur_usage_hourly (hour, day, requests) VALUES (?, ?, 3) ON CONFLICT (hour) DO UPDATE SET day = excluded.day`, hour, today);
+        }
+        // A full year already summed, up to the day before yesterday; the 90 days of history are still there (the test above).
+        const last = new Date(now - 2 * 86_400_000).toISOString().slice(0, 10);
+        for (let back = 0; back < 12; back++) {
+          const total = Number(today.slice(0, 4)) * 12 + Number(today.slice(5, 7)) - 1 - back;
+          const month = `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`;
+          db.run(`INSERT INTO zur_usage_monthly (month, last_day, days, requests) VALUES (?, ?, 20, 200) ON CONFLICT (month) DO NOTHING`, month, back === 0 ? last : `${month}-28`);
+        }
+      });
+    });
+    const hours = await cost("GET", "/usage/hours");
+    expect(hours.status).toBe(200);
+    // The session's row and the 24 hours.
+    expect(hours.read).toBeLessThanOrEqual(25);
+    expect(hours.written).toBe(0);
+    const months = await cost("GET", "/usage/months");
+    expect(months.status).toBe(200);
+    // 12 months, yesterday and today: never the 90 days.
+    expect(months.read).toBeLessThanOrEqual(16);
+    expect(months.written).toBe(0);
+  });
+
   it("AI usage: counting a model call before it runs and settling it after writes a handful of rows", async () => {
     const spent = await runInDurableObject(owner(), async (agent: ZuriAgent) => {
       const { db, usage } = agent.store;
@@ -409,7 +439,8 @@ describe("the Free plan budget of each route", () => {
       await ai.generate({ system: "s", messages: [{ role: "user", content: "oi" }], maxOutputTokens: 100 });
       return { read: db.usage.rowsRead - before.rowsRead, written: db.usage.rowsWritten - before.rowsWritten };
     });
-    // The limits (3 settings), today's row, then one upsert to reserve and two to settle.
+    // The limits (3 settings), today's row, then one upsert to reserve, two to settle and the hour's row (PR S13).
+    // It is the day's first call: with the months summed up to the day before yesterday (the test above), it sums nothing.
     expect(spent.read).toBeLessThanOrEqual(8);
     expect(spent.written).toBeLessThanOrEqual(4);
   });
@@ -433,10 +464,10 @@ describe("the Free plan budget of each route", () => {
       for await (const _ of ai.stream(ask));
       return { switched, skipped: requests() - before };
     });
-    // Each try is reserved and settled like any call (P7): twice the single call's rows at most.
+    // Each try is reserved and settled like any call (P7): twice the single call's rows at most, the hour's row included (PR S13).
     expect(spent.switched.requests).toBe(2);
     expect(spent.switched.read).toBeLessThanOrEqual(16);
-    expect(spent.switched.written).toBeLessThanOrEqual(8);
+    expect(spent.switched.written).toBeLessThanOrEqual(10);
     // No health ping: with the breaker open only the fallback is called (P9, one subrequest).
     expect(spent.skipped).toBe(1);
   });
@@ -770,11 +801,11 @@ describe("the Free plan budget of each route", () => {
       expect(turn.status).toBe(200);
       expect(fixture.calls).toEqual([{ name: "lookup", args: {} }]);
       // A short conversation's window, the tools on, the server and the call's own rows; the same as a turn
-      // with one of the Zuri's own tools.
-      expect(turn.read).toBeLessThanOrEqual(80);
+      // with one of the Zuri's own tools. Each of the turn's two model calls also reads and writes its hour's row (PR S13).
+      expect(turn.read).toBeLessThanOrEqual(82);
       expect(turn.written).toBeLessThanOrEqual(30);
       const proposal = await cost("POST", "/chat", { conversationId, message: "call mcp_leve_file_ticket {}" });
-      expect(proposal.read).toBeLessThanOrEqual(80);
+      expect(proposal.read).toBeLessThanOrEqual(82);
       expect(proposal.written).toBeLessThanOrEqual(30);
       const actionId = await runInDurableObject(owner(), (agent: ZuriAgent) => agent.store.db.one<{ id: string }>(`SELECT id FROM zur_pending_actions WHERE substr(tool, 1, 4) = 'mcp_'`)?.id ?? "");
       const approve = await cost("POST", `/actions/${actionId}/approve`);
