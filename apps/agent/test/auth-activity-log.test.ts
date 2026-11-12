@@ -112,6 +112,20 @@ describe("the access log's pages and filters", () => {
     expect([...grouped].sort()).toEqual([...AUTH_EVENT_KINDS].sort());
   });
 
+  it("leaves out a row of a kind that no longer exists (the removed remote tokens'), so the screen's schema never meets it", async () => {
+    await withAuth("log-old-kind", async (h) => {
+      const now = h.clock.now();
+      insert(h, [
+        { at: now - 3000, kind: "logout" },
+        { at: now - 2000, kind: "remote_token_rejected" },
+        { at: now - 1000, kind: "telegram_token_revoked" },
+      ]);
+      const page = h.service.events.page({}, AUTH_ACTIVITY_LIMIT);
+      expect(page.events.map((e) => e.kind)).toEqual(["logout"]);
+      expect(authActivitySchema.safeParse(page).success).toBe(true);
+    });
+  });
+
   it.each([
     [AUTH_ACTIVITY_LIMIT - 1, false],
     [AUTH_ACTIVITY_LIMIT, false],
@@ -206,9 +220,10 @@ describe("GET /api/auth/activity's query", () => {
     ["an unknown parameter", "?limit=100000"],
   ])("refuses %s with 400 VALIDATION_FAILED, naming the parameter and never echoing it", async (_label, query) => {
     await withAuth("log-route", async (h) => {
-      const token = (await h.auth.login(right(), client("192.0.2.90"), noCookies)).token;
+      const signed = await h.auth.login(right(), client("192.0.2.90"), noCookies);
+      const cookie = `__Host-zuri_session=${signed.token}; __Host-zuri_device=${signed.deviceToken}`;
       const res = await api(h.service).fetch(
-        new Request(`${ORIGIN}/api/auth/activity${query}`, { headers: { ...CSRF, cookie: `__Host-zuri_session=${token}` } }),
+        new Request(`${ORIGIN}/api/auth/activity${query}`, { headers: { ...CSRF, cookie, "cf-connecting-ip": "192.0.2.90" } }),
         testEnv,
       );
       expect(res.status).toBe(400);
@@ -227,10 +242,11 @@ describe("GET /api/auth/activity's query", () => {
 
   it("answers a filtered page in the shared schema", async () => {
     await withAuth("log-route-ok", async (h) => {
-      const token = (await h.auth.login(right(), client("192.0.2.91"), noCookies)).token;
+      const signed = await h.auth.login(right(), client("192.0.2.91"), noCookies);
+      const cookie = `__Host-zuri_session=${signed.token}; __Host-zuri_device=${signed.deviceToken}`;
       const res = await api(h.service).fetch(
         new Request(`${ORIGIN}/api/auth/activity?days=7&group=success&ip=192.0.2.91`, {
-          headers: { ...CSRF, cookie: `__Host-zuri_session=${token}` },
+          headers: { ...CSRF, cookie, "cf-connecting-ip": "192.0.2.91" },
         }),
         testEnv,
       );

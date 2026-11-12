@@ -57,7 +57,8 @@ async function firstAccess(h: Harness) {
   const code = await send(h, "/api/setup/code", { body: { code: CODE } });
   const ticket = value(setCookie(code, "__Host-zuri_setup"));
   const created = await send(h, "/api/setup/owner", { body: OWNER, cookie: ticket });
-  return { code, ticket, created, session: value(setCookie(created, "__Host-zuri_session")) };
+  // The session and the device cookie it is tied to, as the browser sends both.
+  return { code, ticket, created, session: `${value(setCookie(created, "__Host-zuri_session"))}; ${value(setCookie(created, "__Host-zuri_device"))}` };
 }
 
 describe("first access over HTTP", () => {
@@ -232,7 +233,7 @@ describe("recovering the access over HTTP", () => {
       expect(done.status).toBe(204);
       expect(setCookie(done, "__Host-zuri_session")).toMatch(/Max-Age=0/);
       expect(setCookie(done, "__Host-zuri_setup")).toMatch(/Max-Age=0/);
-      expect(await other.validate(session.split("=")[1] ?? "", true)).toBeNull();
+      expect(await other.validate(session.split(";")[0]?.split("=")[1] ?? "", true)).toBeNull();
     }, fresh);
   });
 

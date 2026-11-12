@@ -265,9 +265,6 @@ e-mail. É gratuito para até 50 pessoas.
 5. Rode o deploy. Numa janela anônima, `https://zuri.exemplo.com.br` deve
    pedir o seu e-mail antes de mostrar a Zuri.
 
-Scripts com tokens de acesso remoto também passam pelo Access, com um
-*Service Token*: [acesso-remoto.md](acesso-remoto.md).
-
 ### Bot do Telegram
 
 1. No Telegram, abra o **@BotFather** e mande `/newbot`. Nome de exibição:
@@ -383,7 +380,7 @@ Zuri:
 | Deploy ruim | **Workers e Pages > zuri > Implantações**: escolha a versão anterior e **Reverter**. Vale só para o código: migrations do banco não voltam. |
 | Antes de o token vencer | Crie o novo, troque o segredo no ambiente `production`, rode o Deploy e só então apague o antigo. |
 | Todo mês | **Acessos** na Zuri e a aba **Security** do GitHub (Dependabot, CodeQL e secret scanning). |
-| Suspeita de vazamento | Token da Cloudflare: **Tokens de API da conta > Rolar** ou apague. Bot: `/revoke` no BotFather. Tokens remotos: **Revogar** em Acesso remoto. Senha: troque em Configurações > Segurança. |
+| Suspeita de vazamento | Token da Cloudflare: **Tokens de API da conta > Rolar** ou apague. Bot: `/revoke` no BotFather. Senha: troque em Configurações > Segurança. |
 
 Quando algo não funciona: [solucao-de-problemas.md](solucao-de-problemas.md).
 

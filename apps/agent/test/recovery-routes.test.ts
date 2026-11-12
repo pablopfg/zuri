@@ -2,7 +2,7 @@ import { AGENT_INSTANCE_NAME, apiErrorSchema, BREACH_API, MIN_BREACH_LINES } fro
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Password recovery by e-mail through the Worker, as the recovery page calls it (step 11c).
 
@@ -78,7 +78,7 @@ describe("the recovery routes", () => {
   it("set a new password from the link, end the sessions and refuse the link a second time", async () => {
     const login = await call(`${ORIGIN}/api/auth/login`, { method: "POST", headers: headers("192.0.2.206"), body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }) });
     expect(login.status).toBe(200);
-    const cookie = login.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+    const cookie = signedCookies(login);
     await post("/auth/recover/request", { email: TEST_EMAIL, turnstileToken: HUMAN_TOKEN }, "192.0.2.207");
     const token = linkIn(mails[0]?.text ?? "");
     expect(await (await post("/auth/recover/check", { token })).json()).toEqual({ secondStep: false });

@@ -14,7 +14,7 @@ import { runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { Database } from "../src/db/database.ts";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 import { softPasskey } from "./soft-passkey.ts";
 
 // Through the Worker, as a browser would. The owner's object is shared by the
@@ -62,7 +62,7 @@ const now = () => totpStep(Date.now());
 
 /** Signs in, turns the second step on through the API, and returns what the next steps need. */
 async function turnOn(ip: string) {
-  const session = `__Host-zuri_session=${cookieValue(await login(ip), "__Host-zuri_session")}`;
+  const session = signedCookies(await login(ip));
   const setup = mfaSetupSchema.parse(await (await post("/api/auth/mfa/setup", ip, session, { password: TEST_PASSWORD })).json());
   const enabled = await post("/api/auth/mfa/enable", ip, session, { code: await totpCode(setup.secret, now()) });
   expect(enabled.status).toBe(200);
@@ -246,7 +246,7 @@ describe("rules every second-step change follows", () => {
 });
 
 describe("adding a way in asks for the password typed right now", () => {
-  const signIn = async (ip: string) => `__Host-zuri_session=${cookieValue(await login(ip), "__Host-zuri_session")}`;
+  const signIn = async (ip: string) => signedCookies(await login(ip));
   const raw = (path: string, ip: string, cookie: string, body: string) => call(`${ORIGIN}${path}`, { method: "POST", headers: json(ip, { cookie }), body });
   const code = async (res: Response) => apiErrorSchema.parse(await res.json()).code;
 
@@ -339,7 +339,7 @@ describe("adding a way in asks for the password typed right now", () => {
     const first = await login(ip);
     const mfa = `__Host-zuri_mfa=${cookieValue(first, "__Host-zuri_mfa")}`;
     const done = await post("/api/auth/mfa", ip, mfa, { code: await totpCode(secret, now() + 1) });
-    const other = `__Host-zuri_session=${cookieValue(done, "__Host-zuri_session")}`;
+    const other = signedCookies(done);
     const key = await softPasskey();
     const { options } = (await (await post("/api/auth/passkeys/options", ip, session, { password: TEST_PASSWORD })).json()) as {
       options: { challenge: string; rp: { id: string } };

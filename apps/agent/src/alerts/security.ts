@@ -15,8 +15,6 @@ export const BOT_CAUSED: readonly SecurityAlertEvent[] = [
   "telegram_lockdown",
   "telegram_sessions_ended",
   "telegram_routines_paused",
-  // Step 20: Revogar under /tokens.
-  "telegram_token_revoked",
 ];
 
 /**

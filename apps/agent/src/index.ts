@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, REMOTE_BEARER, GOOGLE_CALLBACK_PATH, GOOGLE_RETURN_PAGE, LIVE_PATH, LOGIN_OPTIONS_PATH, type LoginOptions, TELEGRAM_LIMITS } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, GOOGLE_CALLBACK_PATH, GOOGLE_RETURN_PAGE, LIVE_PATH, LOGIN_OPTIONS_PATH, type LoginOptions, TELEGRAM_LIMITS } from "@zuri/shared";
 import { checkCsrf, readBodyLimited } from "./api/http.ts";
 import { CLIENT_GEO_HEADER, geoFromCf } from "./auth/client.ts";
 import { TURNSTILE_ORIGIN, turnstileSiteKey } from "./auth/turnstile.ts";
@@ -96,12 +96,11 @@ async function handle(request: Request, env: WorkerEnv): Promise<Response> {
   // Zuri has no sub-agents; the object refuses these too (onBeforeSubAgent).
   if (url.pathname.split("/").includes("sub")) return refuse(new AppError("NOT_FOUND"));
 
-  // Gate 5's cheap half for remote access (step 20): an Authorization that isn't shaped like a token
-  // is refused here, without an object request (P6). The object still checks the token itself.
-  const authorization = request.headers.get("authorization");
-  if (authorization !== null && !REMOTE_BEARER.test(authorization)) {
+  // Zuri has no access by token: the browser's session cookie is the only way in. A request that
+  // carries Authorization is refused here, without an object request (P6), and never falls back to the cookie.
+  if (request.headers.get("authorization") !== null) {
     await request.body?.cancel();
-    return refuse(new AppError("UNAUTHORIZED", "remote.invalidToken"));
+    return refuse(new AppError("UNAUTHORIZED"));
   }
 
   // Gate 6: the one instance, by a name no client can change. A plain stub, not

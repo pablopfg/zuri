@@ -63,9 +63,7 @@ import { FlowConnections } from "../flows/connections.ts";
 import { developmentFlowNetwork } from "../flows/dev-flows.ts";
 import { SiteStates } from "../flows/monitor.ts";
 import { type FlowNotice, FlowService } from "../flows/service.ts";
-import { RemoteEvents } from "../remote/events.ts";
 import { AgentConfigs } from "../specialists/configs.ts";
-import { RemoteTokens } from "../remote/tokens.ts";
 import { type CrmNotice, CrmService } from "../crm/service.ts";
 import { McpCredentials } from "../mcp/credentials.ts";
 import { dohResolver } from "../mcp/url.ts";
@@ -137,9 +135,6 @@ interface Store {
   flows: FlowService;
   /** The internal CRM (step 22b). */
   crm: CrmService;
-  /** Remote access tokens and the events they send (step 20). */
-  remoteTokens: RemoteTokens;
-  remoteEvents: RemoteEvents;
   /** Each agent's settings on the AI screen (guardrails, PR 2). */
   agents: AgentConfigs;
   /** The automatic backup to BACKUP_BUCKET (step 23b). */
@@ -155,8 +150,9 @@ interface Store {
 const RETRY_FLOOR_MS = 60_000;
 /**
  * The reviews' check waits this long after a wake that synced the contacts, or half the contacts' interval
- * when that is shorter (a sync every minute leaves it 30 s): the two Google reads never share a wake, and
- * the check always has a wake of its own before the next sync.
+ * when that is shorter: the two Google reads never share a wake. With the contacts read every minute no
+ * wait fits before the next sync (the alarm comes back a minute out at the soonest), so there the check
+ * takes the wake it is due in and the sync waits for the next one.
  */
 const SYNC_GAP_MS = 150_000;
 
@@ -189,6 +185,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     versions: () => readAreaVersions(this.store.db, this.store.usage.version),
     origin: () => this.publicUrl().origin,
     locale: () => this.locale(),
+    development: () => this.development(),
   });
   readonly #api = createApi({
     locale: () => this.locale(),
@@ -234,7 +231,6 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     mcp: () => ({ service: this.store.mcp, auth: this.store.auth, automations: this.store.automations }),
     flows: () => ({ flows: this.store.flows, connections: this.store.flows.connections, auth: this.store.auth, development: () => this.development() }),
     crm: () => ({ crm: this.store.crm, rearm: () => this.store.automations.rearm() }),
-    remote: () => ({ tokens: this.store.remoteTokens, events: this.store.remoteEvents }),
     backup: () => {
       const { db, settings, productivity, crm, auth, automations } = this.store;
       let zoneBefore: string | null = null;
@@ -390,9 +386,11 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     try {
       // The alarm was set by `wake` while this work was still due (a retry a minute out):
       // set again from the times the sync and the notice just moved, so no empty wake follows.
-      if (await this.store.contacts.tick()) {
-        // The reviews' check never shares a wake with a contacts' sync that went to Google: it waits two
-        // and a half minutes. A wake that only sent the notice of the day, or found the sync busy, holds nothing.
+      // A sync due again at every wake would hold the check off for ever: the check goes first, the sync next wake.
+      const checkFirst = this.store.contacts.everyMs() < 2 * RETRY_FLOOR_MS && this.store.reviews.due();
+      if (await this.store.contacts.tick({ sync: !checkFirst })) {
+        // The reviews' check never shares a wake with a contacts' sync that went to Google: it waits two and a
+        // half minutes, or half the sync's interval. A wake that only sent the notice of the day, or found the sync busy, holds nothing.
         if (this.store.contacts.readGoogle) this.store.reviews.holdOff(Math.min(SYNC_GAP_MS, this.store.contacts.everyMs() / 2));
         await automations.rearm();
       }
@@ -611,12 +609,9 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       // Each agent's settings: read once per wake, then from memory on every model call.
       const agents = new AgentConfigs(db);
       const env = this.env;
-      // Remote access tokens (step 20): the lockdown suspends them and a new password revokes them, through the auth.
-      const remoteTokens = new RemoteTokens({ db, state: new InternalState(db), secret: () => env.SESSION_SECRET });
       const auth = new AuthService({
         db,
         state: new InternalState(db),
-        remoteTokens,
         settings,
         secrets: {
           sessionSecret: env.SESSION_SECRET,
@@ -763,9 +758,14 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           // Work already past due is only left there when its step failed on the last
           // alarm (a full disk, say): wait a minute before trying again, never at once,
           // so a step that keeps failing can't spin the alarm through the day's quota.
-          const floor = new Date(Date.now() + RETRY_FLOOR_MS).toISOString();
-          // ISO strings in UTC sort as times: the later of the two.
-          return [due, floor].sort()[1] ?? floor;
+          const now = Date.now();
+          const floor = new Date(now + RETRY_FLOOR_MS).toISOString();
+          // ISO strings in UTC sort as times.
+          if (due >= floor) return due;
+          // An alarm already waiting inside that minute stays where it is: asking again (saving a setting)
+          // never pushes it further out, or asking every 50 s would hold every wake off.
+          const waiting = automations.alarmAt();
+          return waiting !== null && waiting > new Date(now).toISOString() && waiting <= floor ? waiting : floor;
         },
         finished: (automation, outcome) => noticeForRun(alerts, diagnostics, automation, outcome),
         alarm: {
@@ -863,8 +863,6 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       if (this.development()) flows.network = developmentFlowNetwork(flows.network);
       // The internal CRM (step 22b): its notices go to the center; nothing in it ever reaches a log.
       const crm = new CrmService({ db, timeZone: () => settings.field("timeZone"), locale: () => this.locale(), notify: (notice) => crmNotice(alerts, notice), assertBytes: () => productivity.storage.assertBytes() });
-      // Events from other systems with an events token (step 20): notices in the "events" category.
-      const remoteEvents = new RemoteEvents({ db, state, alerts, agentName: () => env.AGENT_NAME });
       // The owner's conversation in the bot (step 14): the same runner, meter and turns as the app.
       const telegramConversation = new TelegramConversation({
         db,
@@ -963,7 +961,6 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       // The security commands and the lockdown (step 16b): no AI, so they work with it down.
       const telegramSecurity = new TelegramSecurity({
         auth,
-        tokens: remoteTokens,
         automations,
         buttons: commandButtons,
         locale: () => this.locale(),
@@ -1018,7 +1015,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         },
         telegram: { chat: () => telegram.ownerChat(), client: (options) => telegram.client(options) },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, remoteTokens, remoteEvents, agents, backupAuto };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, agents, backupAuto };
     }
     return this.#store;
   }

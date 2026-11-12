@@ -28,6 +28,12 @@ function sessionToken(response: Response): string {
   return header?.split(";")[0]?.split("=")[1] ?? "";
 }
 
+/** The session's token followed by the device cookie: what `withSession` needs for the browser that signed in. */
+function browserCookies(response: Response): string {
+  const device = response.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_device="));
+  return `${sessionToken(response)}; ${device?.split(";")[0] ?? ""}`;
+}
+
 const withSession = (token: string, ip: string, extra: Record<string, string> = {}) => ({
   ...CSRF,
   cookie: `__Host-zuri_session=${token}`,
@@ -121,7 +127,7 @@ describe("POST /api/auth/login", () => {
 describe("signed-in routes", () => {
   it("GET /api/auth/session answers the session's state, and 401 without a valid cookie (clearing a stale one)", async () => {
     const ip = "192.0.2.20";
-    const token = sessionToken(await login(ip));
+    const token = browserCookies(await login(ip));
     const ok = await call(`${ORIGIN}/api/auth/session`, { headers: withSession(token, ip) });
     expect(ok.status).toBe(200);
     expect(sessionStateSchema.parse(await ok.json()).authenticated).toBe(true);
@@ -137,7 +143,7 @@ describe("signed-in routes", () => {
 
   it("POST /api/auth/heartbeat keeps presence and answers the deadlines", async () => {
     const ip = "192.0.2.21";
-    const token = sessionToken(await login(ip));
+    const token = browserCookies(await login(ip));
     const res = await call(`${ORIGIN}/api/auth/heartbeat`, {
       method: "POST",
       headers: { ...withSession(token, ip), "content-type": "application/json" },
@@ -156,7 +162,7 @@ describe("signed-in routes", () => {
 
   it("POST /api/auth/confirm answers 204 for the password and 401 for a wrong one", async () => {
     const ip = "192.0.2.22";
-    const token = sessionToken(await login(ip));
+    const token = browserCookies(await login(ip));
     const confirm = (body: unknown) =>
       call(`${ORIGIN}/api/auth/confirm`, {
         method: "POST",
@@ -174,7 +180,7 @@ describe("signed-in routes", () => {
 
   it("POST /api/auth/logout ends the session, clears the cookie and the cache, and the cookie opens nothing after", async () => {
     const ip = "192.0.2.23";
-    const token = sessionToken(await login(ip));
+    const token = browserCookies(await login(ip));
     const res = await call(`${ORIGIN}/api/auth/logout`, { method: "POST", headers: withSession(token, ip) });
     expect(res.status).toBe(204);
     expect(res.headers.getSetCookie()).toEqual(["__Host-zuri_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0; Secure"]);
@@ -184,7 +190,7 @@ describe("signed-in routes", () => {
 
   it("refuses CSRF on every signed-in route even with a valid session", async () => {
     const ip = "192.0.2.24";
-    const token = sessionToken(await login(ip));
+    const token = browserCookies(await login(ip));
     for (const [method, path] of [
       ["GET", "/api/auth/session"],
       ["POST", "/api/auth/heartbeat"],
@@ -204,6 +210,47 @@ describe("signed-in routes", () => {
     }
     // None of those ended the session.
     expect((await call(`${ORIGIN}/api/auth/session`, { headers: withSession(token, ip) })).status).toBe(200);
+  });
+});
+
+describe("a session stays where it was opened (over HTTP)", () => {
+  const events = (kind: string) => runOwner((db) => db.all<{ reason: string; network: string }>(`SELECT reason, network FROM zur_auth_events WHERE kind = ? ORDER BY id`, kind));
+
+  it("a copied session cookie alone answers 401, clears the cookie, ends the session for everyone and alerts the owner", async () => {
+    const ip = "192.0.2.25";
+    const token = browserCookies(await login(ip));
+    const before = (await events("session_blocked")).length;
+    // The thief copied the session cookie but not the device cookie, and asks from the same network.
+    const stolen = await call(`${ORIGIN}/api/tasks`, { headers: { ...CSRF, cookie: `__Host-zuri_session=${token.split(";")[0]}`, "cf-connecting-ip": ip } });
+    expect(stolen.status).toBe(401);
+    expect((await errorBody(stolen)).code).toBe("UNAUTHORIZED");
+    expect(stolen.headers.getSetCookie()).toEqual(["__Host-zuri_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0; Secure"]);
+    expect((await events("session_blocked")).slice(before)).toEqual([{ reason: "other_browser", network: ip }]);
+    // The alert reached the notices (the unit tests cover the mark itself).
+    expect(await runOwner((db) => db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_notices WHERE kind = 'security' AND params LIKE '%session_blocked%'`)?.n)).toBeGreaterThanOrEqual(1);
+    // The owner's own browser is signed out too.
+    expect((await call(`${ORIGIN}/api/auth/session`, { headers: withSession(token, ip) })).status).toBe(401);
+  });
+
+  it("another network keeps the session but not the password's window: a sensitive change asks for the password there", async () => {
+    const ip = "192.0.2.26";
+    const away = "198.51.100.26";
+    const token = browserCookies(await login(ip));
+    const state = async (from: string) => sessionStateSchema.parse(await (await call(`${ORIGIN}/api/auth/session`, { headers: withSession(token, from) })).json());
+    expect((await state(ip)).recentAuthUntil).not.toBeNull();
+    expect((await state(away)).recentAuthUntil).toBeNull();
+    const patch = (from: string) =>
+      call(`${ORIGIN}/api/settings`, { method: "PATCH", headers: { ...withSession(token, from), "content-type": "application/json" }, body: JSON.stringify({ sessionIdleMinutes: 30 }) });
+    const refused = await patch(away);
+    expect(refused.status).toBe(403);
+    expect((await errorBody(refused)).code).toBe("RECENT_AUTH_REQUIRED");
+    expect((await patch(ip)).status).toBe(200);
+    expect((await events("session_network_changed")).filter((e) => e.network === away)).toEqual([{ reason: "new_network", network: away }]);
+    // The password typed on the other network opens the window there.
+    const confirm = await call(`${ORIGIN}/api/auth/confirm`, { method: "POST", headers: { ...withSession(token, away), "content-type": "application/json" }, body: JSON.stringify({ password: TEST_PASSWORD }) });
+    expect(confirm.status).toBe(204);
+    expect((await patch(away)).status).toBe(200);
+    expect((await patch(ip)).status).toBe(403);
   });
 });
 

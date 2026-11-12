@@ -8,7 +8,7 @@ import { telegramWebhookSecret } from "../src/gates/telegram.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { TelegramClient } from "../src/telegram/client.ts";
 import startCode from "./fixtures/telegram/start-code.json?raw";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Step 14: the owner's conversation with the agent in the bot's private chat,
 // by text and by voice, and the question before an audio over the limit. The
@@ -209,7 +209,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 });
 
 describe("the conversation switch", () => {

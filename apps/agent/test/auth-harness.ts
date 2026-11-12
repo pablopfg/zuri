@@ -96,14 +96,6 @@ export interface Harness {
   breached: { answer: boolean | null; calls: number };
   /** The access activity, oldest first. */
   events: () => { kind: string; reason: string; network: string; alert_pending: number; count: number; known_device: number }[];
-  /** The remote tokens' hook handed to the service, if any (step 20); rebuilds keep it. */
-  remoteTokens?: AuthDeps["remoteTokens"];
-}
-
-/** A remote tokens' hook that counts how often every token was revoked (step 20). */
-export function remoteTokensSpy() {
-  const spy = { revoked: 0, suspendAll: () => 0, resumeAll: () => 0, active: () => 0, revokeAll: () => ++spy.revoked };
-  return spy;
 }
 
 /** The host and origin of TEST_ENV.PUBLIC_URL. */
@@ -118,8 +110,6 @@ export interface HarnessOptions {
   clock?: FakeClock;
   /** The recovery e-mail (step 11c); left out, the service has none. */
   recoveryMail?: AuthDeps["recoveryMail"];
-  /** The remote tokens a lockdown suspends (step 16b; the tokens arrive in step 20). */
-  remoteTokens?: AuthDeps["remoteTokens"];
 }
 
 const baseSecrets = (): AuthSecrets => ({
@@ -159,11 +149,10 @@ export function withAuth<T>(name: string, fn: (h: Harness) => Promise<T> | T, op
         },
         relyingParty: options.relyingParty ?? TEST_RP,
         recoveryMail: options.recoveryMail ?? null,
-        ...(options.remoteTokens ? { remoteTokens: options.remoteTokens } : {}),
       });
     const events = () => db.all<ReturnType<Harness["events"]>[number]>(`SELECT * FROM zur_auth_events ORDER BY id`);
     const service = build();
-    return fn({ auth: passwordOnly(service), service, db, state, settings, clock, breached, events, ...(options.remoteTokens ? { remoteTokens: options.remoteTokens } : {}) });
+    return fn({ auth: passwordOnly(service), service, db, state, settings, clock, breached, events });
   });
 }
 
@@ -186,7 +175,6 @@ export function rawRebuild(h: Harness, secrets: Partial<AuthSecrets>, turnstile:
       return h.breached.answer;
     },
     relyingParty: TEST_RP,
-    ...(h.remoteTokens ? { remoteTokens: h.remoteTokens } : {}),
   });
 }
 

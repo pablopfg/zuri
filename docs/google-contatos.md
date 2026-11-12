@@ -224,8 +224,10 @@ Os mesmos secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   de 5 minutos, qualquer que seja o intervalo. Tudo pelo alarme único. A
   conferência das avaliações nunca divide o despertar com os contatos: se as
   duas vencem juntas, a das avaliações espera 2 min 30 s, ou metade do
-  intervalo dos contatos quando ele é menor que 5 minutos (30 s com os
-  contatos a cada minuto). Intervalo abaixo de 5 minutos é pago pela conta do
+  intervalo dos contatos quando ele é menor que 5 minutos. Com os contatos a
+  cada minuto não sobra espera que caiba (o alarme volta em 1 minuto, no
+  mínimo): a conferência das avaliações fica com o despertar em que vence e a
+  leitura dos contatos passa para o seguinte. Intervalo abaixo de 5 minutos é pago pela conta do
   dia (`DAY_BUDGET`, `apps/agent/src/db/day-slots.ts`): uma leitura pesa 3 e um
   horário de fluxo pesa 2, num total de 5.728; o que não cabe responde 409
   `error.syncSlotsLimit`. Intervalo guardado fora da faixa (linha danificada)

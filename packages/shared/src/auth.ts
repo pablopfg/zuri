@@ -13,6 +13,13 @@ const isoInstant = /* @__PURE__ */ mini.iso.datetime();
 export const LOGIN_WINDOW_MS = 15 * 60_000;
 /** Wrong passwords per network in the window before it must wait. */
 export const MAX_FAILURES_PER_NETWORK = 3;
+/**
+ * Wrong passwords per network in a day before it waits until the oldest one is a
+ * day old (the owner's decision, 11/11/2026). Without it, a network that keeps to
+ * the 15-minute rule gets 288 guesses a day. The owner's own networks are exempt.
+ */
+export const LOGIN_DAY_MS = 24 * 3600_000;
+export const MAX_DAILY_FAILURES_PER_NETWORK = 5;
 /** This many wrong passwords across all networks in the window: refusals fold into one row for every network. */
 export const TURNSTILE_AFTER_GLOBAL_FAILURES = 10;
 /** Refused robot checks per network in the window before it must wait like a blocked network. */
@@ -28,6 +35,12 @@ export const GLOBAL_FAILURES_HARD = 100;
 export const TRUSTED_NETWORK_MS = 30 * 24 * 3600_000;
 /** Sensitive actions need the password typed this recently (rule 7). */
 export const STEP_UP_WINDOW_MS = 15 * 60_000;
+/**
+ * Networks one session may be used from (the owner's decision, 11/11/2026): the
+ * one it signed in on and four more (Wi-Fi to mobile data and back, IPv4 and
+ * IPv6 of the same line). A request from one more ends the session.
+ */
+export const MAX_SESSION_NETWORKS = 5;
 /** Sessions kept at once; the least recently used go first. */
 export const MAX_SESSIONS = 20;
 /** A session's use and presence are written at most this often (writes count on the Free plan). */

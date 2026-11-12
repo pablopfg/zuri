@@ -18,7 +18,7 @@ function agentId(value: string): AgentId {
  * The AI screen's agents (docs/planos/guardrails-especialistas-ia.md, PR 2).
  * Reading is open to the session; every change asks for the password typed in
  * the last minutes (requireRecentAuth). None of these routes is on the
- * lockdown's list (they answer 423 there) or in the remote tokens' allowlist.
+ * lockdown's list (they answer 423 there).
  */
 export function registerAgentRoutes(app: Hono<ApiEnv>, configs: () => AgentConfigs, auth: () => AuthService, client: (c: Context<ApiEnv>) => ClientInfo): void {
   // A change the owner didn't make (a session taken over, with the password typed recently) reaches them as a security alert.

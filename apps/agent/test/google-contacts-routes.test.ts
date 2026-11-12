@@ -4,7 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { type DevGoogle, devGoogle, googleNetwork } from "../src/google/dev-google.ts";
-import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Step 19b: Settings › Integrations › Google › Contacts and the Contacts screen, through the Worker.
 
@@ -73,7 +73,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 });
 
 beforeEach(async () => {
@@ -129,6 +129,18 @@ describe("/api/google/contacts", () => {
     }
     // Nothing of a refused body was kept.
     expect(((await (await api("GET", "/google/contacts")).json()) as ContactsStatus).syncEveryMinutes).toBe(5);
+    // A minute next to the reviews' own minute doesn't fit in the day: 409 with the count, and nothing of the body kept.
+    await inOwner((agent) => {
+      agent.store.db.run(`INSERT INTO zur_review_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING`);
+      agent.store.db.run(`UPDATE zur_review_settings SET check_every_min = 1 WHERE id = 1`);
+    });
+    const full = await api("PATCH", "/google/contacts/settings", { syncEveryMinutes: 1, daysAhead: 3 });
+    expect(full.status).toBe(409);
+    expect(await errorBody(full)).toMatchObject({ code: "CONFLICT", details: { limit: 5_728, cost: 8_640 } });
+    const kept = (await (await api("GET", "/google/contacts")).json()) as ContactsStatus;
+    expect(kept.syncEveryMinutes).toBe(5);
+    expect(kept.reminders.daysAhead).toBe(on.reminders.daysAhead);
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_review_settings SET check_every_min = 10 WHERE id = 1`));
     for (const minutes of [1, 5, 1_440, 15]) {
       const res = await api("PATCH", "/google/contacts/settings", { syncEveryMinutes: minutes });
       expect(res.status).toBe(200);

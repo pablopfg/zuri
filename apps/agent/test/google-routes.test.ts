@@ -5,7 +5,7 @@ import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { InternalState } from "../src/db/internal-state.ts";
 import { googlePushToken } from "../src/gates/google-push.ts";
 import { type DevGoogle, devGoogle, googleNetwork } from "../src/google/dev-google.ts";
-import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Step 19: the Google Calendar through the Worker, as Settings › Integrations and the Agenda screen call it.
 
@@ -65,7 +65,7 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 });
 
 beforeEach(async () => {

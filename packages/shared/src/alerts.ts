@@ -69,7 +69,6 @@ export const NOTICE_KINDS = [
   "reviews.problem",
   "reviews.auto",
   "reviews.breaker",
-  "remote.event",
   "security",
 ] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
@@ -77,6 +76,8 @@ export type NoticeKind = (typeof NOTICE_KINDS)[number];
 /** Access events that tell the owner out of band (`alert` in AuthEvents.record). Each one has a title and body in the catalog. */
 export const SECURITY_ALERT_EVENTS = [
   "login_success",
+  "session_blocked",
+  "session_network_changed",
   "login_attack",
   "password_changed",
   "credentials_reset",
@@ -113,9 +114,6 @@ export const SECURITY_ALERT_EVENTS = [
   "owner_created",
   "access_recovered",
   "password_recovered",
-  "remote_enabled",
-  "remote_token_created",
-  "telegram_token_revoked",
   "backup_exported",
   "backup_imported",
   "backup_key_set",

@@ -1,5 +1,6 @@
 import {
   AUTH_ACTIVITY_GROUPS,
+  AUTH_EVENT_KINDS,
   AUTH_EVENT_DETAIL_DAYS,
   type AuthActivity,
   type AuthActivityQuery,
@@ -22,6 +23,8 @@ const OWNER_KINDS: readonly AuthEventKind[] = [
   "login_success",
   "logout",
   "session_ended",
+  "session_blocked",
+  "session_network_changed",
   "confirm_success",
   "password_changed",
   "credentials_reset",
@@ -44,14 +47,9 @@ const OWNER_KINDS: readonly AuthEventKind[] = [
   "telegram_routines_paused",
   "lockdown_exited",
   "password_recovered",
-  "remote_enabled",
-  "remote_disabled",
-  "remote_token_created",
-  "remote_token_revoked",
-  "telegram_token_revoked",
 ];
 /** Repeated refusals from one network in the window fold into one row with a count. */
-const FOLDED_KINDS: readonly AuthEventKind[] = ["login_rate_limited", "login_turnstile", "setup_failure", "recovery_requested", "remote_token_rejected", "remote_write"];
+const FOLDED_KINDS: readonly AuthEventKind[] = ["login_rate_limited", "login_turnstile", "setup_failure", "recovery_requested"];
 /** A folded row's count reaches storage at most this often, so hammering a blocked sign-in costs no extra writes. */
 const FOLD_WRITE_INTERVAL_MS = 60_000;
 const PRUNE_INTERVAL_MS = 3600_000;
@@ -219,11 +217,11 @@ export class AuthEvents {
       where.push("at >= ?");
       params.push(this.clock() - query.days * DAY_MS);
     }
-    if (query.group !== undefined) {
-      const kinds = AUTH_ACTIVITY_GROUPS[query.group];
-      where.push(`kind IN (${kinds.map(() => "?").join(", ")})`);
-      params.push(...kinds);
-    }
+    // Always by kind: a row of a kind that no longer exists (the remote tokens', removed on 11/11/2026,
+    // kept for 90 days) would fail the screen's schema and take the whole page with it.
+    const kinds = query.group !== undefined ? AUTH_ACTIVITY_GROUPS[query.group] : AUTH_EVENT_KINDS;
+    where.push(`kind IN (${kinds.map(() => "?").join(", ")})`);
+    params.push(...kinds);
     if (query.ip !== undefined) {
       // A prefix compared as text: no LIKE, so "%" or "_" in the input mean nothing (CF-6-01 also caps LIKE patterns).
       where.push("substr(lower(ip), 1, ?) = ?");

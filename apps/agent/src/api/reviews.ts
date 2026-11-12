@@ -48,8 +48,8 @@ export function registerReviewRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
    * The profile, the reply style and the level (the password typed recently,
    * since replies go out in the owner's name), then a first read. Turning on
    * "publish positive ones by itself" (step 19d) also raises a security alert
-   * on every channel: only this route sets it, never the chat, the bot, a
-   * routine or a remote token.
+   * on every channel: only this route sets it, never the chat, the bot or a
+   * routine.
    */
   app.patch("/reviews/settings", async (c) => {
     const input = await readJson(c.req.raw, reviewSettingsSchema, 16 * 1024);

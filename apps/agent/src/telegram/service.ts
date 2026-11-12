@@ -35,7 +35,7 @@ import { ReadLock } from "./read-lock.ts";
 import { isSecurityAction, isSecurityCommand, OPEN_SECURITY_COMMANDS, type TelegramSecurity } from "./security.ts";
 
 /** Bump when the menu's commands change: the object re-sends it on start (setMyCommands). */
-export const TELEGRAM_MENU_VERSION = 6;
+export const TELEGRAM_MENU_VERSION = 7;
 
 /** The commands in the bot's menu. Steps 13 to 16 add theirs and bump TELEGRAM_MENU_VERSION. */
 const MENU: readonly { command: string; description: MessageKey }[] = [
@@ -58,7 +58,6 @@ const MENU: readonly { command: string; description: MessageKey }[] = [
   { command: "acessos", description: "telegram.menu.acessos" },
   { command: "sessoes", description: "telegram.menu.sessoes" },
   { command: "encerrar_sessoes", description: "telegram.menu.encerrar_sessoes" },
-  { command: "tokens", description: "telegram.menu.tokens" },
   { command: "pausar_rotinas", description: "telegram.menu.pausar_rotinas" },
   { command: "bloquear", description: "telegram.menu.bloquear" },
   { command: "ajuda", description: "telegram.menu.ajuda" },
@@ -533,7 +532,6 @@ export class TelegramService {
       case "acessos":
       case "sessoes":
       case "encerrar_sessoes":
-      case "tokens":
       case "pausar_rotinas":
       case "bloquear": {
         const security = this.deps.security;

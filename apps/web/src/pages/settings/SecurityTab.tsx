@@ -1,6 +1,5 @@
 import { ActivityCard } from "../../components/security/ActivityCard.tsx";
 import { PasskeysCard } from "../../components/security/PasskeysCard.tsx";
-import { RemoteAccessCard } from "../../components/security/RemoteAccessCard.tsx";
 import { SessionLimitsCard } from "../../components/security/SessionLimitsCard.tsx";
 import { TwoStepCard } from "../../components/security/TwoStepCard.tsx";
 
@@ -11,7 +10,6 @@ export function SecurityTab() {
       <PasskeysCard />
       <SessionLimitsCard />
       <ActivityCard />
-      <RemoteAccessCard />
     </>
   );
 }

@@ -5,7 +5,7 @@ import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { readAreaVersions } from "../src/db/area-versions.ts";
 import { Database } from "../src/db/database.ts";
 import { InternalState } from "../src/db/internal-state.ts";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Nova UI, PR 2: every change to a screen area moves its number, whoever made it,
 // and the numbers ride on the session check and the heartbeat. Plus the task counts.
@@ -60,7 +60,7 @@ async function signIn() {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  cookie = res.headers.getSetCookie().find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
+  cookie = signedCookies(res);
 }
 
 beforeAll(signIn);

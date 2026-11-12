@@ -1,5 +1,6 @@
 import { type AreaVersions, LIVE_CLOSE, LIVE_LIMITS, LIVE_PATH, LIVE_PING, LIVE_PONG } from "@zuri/shared";
-import { readSessionCookie } from "../api/http.ts";
+import { readDeviceCookie, readSessionCookie } from "../api/http.ts";
+import { clientInfo } from "../auth/client.ts";
 import type { AuthService } from "../auth/service.ts";
 import { AppError, errorResponse } from "../http/errors.ts";
 import { log } from "../log.ts";
@@ -24,6 +25,8 @@ export interface LiveDeps {
   /** The site's origin (PUBLIC_URL): the only Origin a channel may come from. */
   origin(): string;
   locale(): Parameters<typeof errorResponse>[1];
+  /** Local development over loopback http, where no edge names the visitor's address. */
+  development(): boolean;
   clock?(): number;
 }
 
@@ -75,7 +78,8 @@ export class LiveChannel {
     if (token === null) throw new AppError("UNAUTHORIZED");
     const auth = this.deps.auth();
     // Opening the channel is not the owner's use (the idle limit stays); like any request, it shows a tab is open.
-    const session = await auth.validate(token, false);
+    // Like any request, it must come from where the session was opened.
+    const session = await auth.validate(token, false, { client: clientInfo(request, this.deps.development()), device: readDeviceCookie(request) });
     if (!session) throw new AppError("UNAUTHORIZED");
     if (this.gated()) throw new AppError("FORBIDDEN");
 

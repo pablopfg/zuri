@@ -39,7 +39,7 @@ import { PushDevices } from "../push/devices.ts";
 import { type ClientInfo, stripControl } from "./client.ts";
 import { RecoveryLinks } from "./email-recovery.ts";
 import { AuthEvents } from "./events.ts";
-import { Lockdown, type LockdownEntered, NO_REMOTE_TOKENS, type RemoteTokenHook } from "./lockdown.ts";
+import { Lockdown, type LockdownEntered } from "./lockdown.ts";
 import { LoginLimiter } from "./login-limiter.ts";
 import { type ChallengeRow, type CodeOptions, type MfaFactor, TwoStep } from "./mfa.ts";
 import { Passkeys, type RelyingParty } from "./passkeys.ts";
@@ -95,8 +95,6 @@ export interface AuthDeps {
     /** Keeps the send running after the answer: the request answers as fast whether or not the e-mail matched. */
     defer(work: Promise<void>): void;
   } | null;
-  /** Remote access tokens (step 20), suspended during a lockdown; none until then. */
-  remoteTokens?: RemoteTokenHook;
 }
 
 /** A finished sign-in: what the route turns into cookies. */
@@ -123,10 +121,22 @@ export interface SignInCookies {
   device: string | null;
 }
 
+/** Where a request with a session cookie comes from: compared with where the session was opened. */
+export interface SessionSeen {
+  client: ClientInfo;
+  /** The browser's device cookie, as sent. */
+  device: string | null;
+}
+
 /** A device cookie that names a browser seen at an earlier sign-in, or nothing. */
 type KnownDevice = { known: true; token: string; id: string } | { known: false; token: null; id: null };
 
 type PasswordSource = { kind: "stored" | "hash"; hash: string } | { kind: "plain"; password: string };
+
+/** The access log's reason for a refusal of the day's cap (LoginLimiter.waitDaily); empty for the 15-minute wait. */
+function dailyCap(error: unknown): string {
+  return error instanceof AppError && error.details?.daily === true ? "network_daily_cap" : "";
+}
 
 function sameSource(a: PasswordSource, b: PasswordSource | null): boolean {
   if (!b || a.kind !== b.kind) return false;
@@ -231,14 +241,6 @@ export class AuthService {
     return source;
   }
 
-  /**
-   * Checks for a reset from the panel before anything that trusts what the old password opened. The remote
-   * tokens' gate calls it first (SEC-A3-02): otherwise a token kept working on a new object until a sign-in.
-   */
-  ensureSynced(): Promise<void> {
-    return this.sync();
-  }
-
   /** Once per object: secrets only change with a new deploy, which starts a new object. A failure retries. */
   private sync(): Promise<void> {
     this.#synced ??= this.syncFingerprint().catch((error) => {
@@ -275,8 +277,6 @@ export class AuthService {
         this.events.forgetDevices();
         this.#push.retireAll();
         this.#recovery.clear();
-        // Tokens made under the old password stop working with it (step 20).
-        (this.deps.remoteTokens ?? NO_REMOTE_TOKENS).revokeAll();
         this.events.record("credentials_reset", null, { alert: true, reason: newPepper ? "pepper" : "password" });
         // A new pepper is the full reset (lost password and phone): the sealed
         // secret can't be opened with it anyway, so the second step goes too.
@@ -344,7 +344,7 @@ export class AuthService {
     try {
       this.limiter.assertAllowed(client.network, context);
     } catch (error) {
-      this.recordRefusal("login_rate_limited", client);
+      this.recordRefusal("login_rate_limited", client, dailyCap(error));
       this.alertIfUnderAttack();
       throw error;
     }
@@ -353,7 +353,7 @@ export class AuthService {
     try {
       attempt = this.limiter.begin(client.network, context);
     } catch (error) {
-      this.recordRefusal("login_rate_limited", client);
+      this.recordRefusal("login_rate_limited", client, dailyCap(error));
       throw error;
     }
     const [passwordOk, emailOk] = await Promise.all([this.checkPassword(source, input.password), this.checkEmail(input.email)]);
@@ -587,7 +587,7 @@ export class AuthService {
     const known = device.known;
     const deviceToken = device.token ?? randomToken(32);
     const deviceId = device.id ?? (await this.deviceId(deviceToken));
-    const { token, row } = await this.sessions.create(client);
+    const { token, row } = await this.sessions.create({ userAgent: client.userAgent, network: client.network, device: deviceId, country: client.geo.country });
     const current = this.deps.db.transaction(() => {
       if (!stillValid()) {
         this.sessions.revoke(row.id);
@@ -610,7 +610,6 @@ export class AuthService {
       });
       // A recovery code proves the owner past any doubt: this sign-in also ends a lockdown (step 16).
       if (recovery && this.lockdown.clear()) {
-        (this.deps.remoteTokens ?? NO_REMOTE_TOKENS).resumeAll();
         this.events.record("lockdown_exited", client, { session: row.id.slice(0, 16), reason: "recovery_code", alert: true });
       }
       return true;
@@ -637,7 +636,7 @@ export class AuthService {
    * The live session for a cookie, or null. One past any limit is deleted here
    * and the end recorded. `activity`: the owner's own input started the request.
    */
-  async validate(token: string | null, activity: boolean): Promise<SessionRow | null> {
+  async validate(token: string | null, activity: boolean, seen?: SessionSeen): Promise<SessionRow | null> {
     if (!token || !this.passwordConfigured()) return null;
     await this.sync();
     const row = await this.sessions.find(token);
@@ -648,7 +647,44 @@ export class AuthService {
       this.events.record("session_ended", null, { reason: ended, session: row.id.slice(0, 16) });
       return null;
     }
-    return this.sessions.touch(row, activity);
+    // SEC-A3-P2: a session from before the binding (migration 34) has no browser to be compared with, and a
+    // password change in it would open another like it. It ends at its first request; the owner signs in again.
+    if (row.device === null) {
+      this.sessions.revoke(row.id);
+      this.events.record("session_ended", null, { reason: "unbound", session: row.id.slice(0, 16) });
+      return null;
+    }
+    if (seen && !(await this.sameOrigin(row, seen))) return null;
+    const touched = this.sessions.touch(row, activity);
+    return seen ? { ...touched, seen_network: seen.client.network } : touched;
+  }
+
+  /**
+   * A session is used where it was opened, so a copied cookie is not enough by
+   * itself. Another browser (the device cookie, which a thief must copy too) or
+   * another country ends it and tells the owner. Another network alone doesn't:
+   * a phone leaves the Wi-Fi all the time. The session goes on, the password's
+   * 15-minute window stays on the network it was typed on (recentAuthUntil),
+   * the access log shows the move and a network that isn't one of the owner's
+   * is an alert. More than MAX_SESSION_NETWORKS networks end it.
+   */
+  private async sameOrigin(row: SessionRow, seen: SessionSeen): Promise<boolean> {
+    const session = row.id.slice(0, 16);
+    const end = (reason: "other_browser" | "other_country" | "too_many_networks") => {
+      // Gone already when a request of the same moment got here first: one alert, not one per request.
+      if (this.sessions.revoke(row.id) > 0) this.events.record("session_blocked", seen.client, { reason, session, alert: true });
+      return false;
+    };
+    if ((await this.browserId(seen.device)) !== row.device) return end("other_browser");
+    const country = seen.client.geo.country;
+    if (row.country && country && country !== row.country) return end("other_country");
+    const noted = this.sessions.noteNetwork(row, seen.client.network);
+    if (noted === "full") return end("too_many_networks");
+    if (noted === "added") {
+      const owners = this.limiter.isTrusted(seen.client.network);
+      this.events.record("session_network_changed", seen.client, { session, reason: owners ? "" : "new_network", alert: !owners });
+    }
+    return true;
   }
 
   /** The open app's signal: presence always, use only when the owner used a tab since the last one. */
@@ -701,8 +737,8 @@ export class AuthService {
   // ---------- Lockdown and the bot's security commands (step 16) ----------
 
   /**
-   * /bloquear: in one transaction every web session ends and the remote
-   * tokens are suspended (not revoked); the alert goes on every channel. The
+   * /bloquear: in one transaction every web session ends and the alert goes on
+   * every channel. The
    * routines with AI stop by themselves while it is on (the executor asks).
    */
   enterLockdown(linkId: string, onRelock: () => void = () => undefined): LockdownEntered {
@@ -712,7 +748,6 @@ export class AuthService {
       // A relock suspends the bot's link in the same transaction: never a relock with the link still on.
       if (entered.relock) onRelock();
       this.sessions.revokeAll();
-      (this.deps.remoteTokens ?? NO_REMOTE_TOKENS).suspendAll();
       this.events.record("telegram_lockdown", null, { reason: entered.relock ? "relock" : "", alert: true });
       return entered;
     });
@@ -721,7 +756,6 @@ export class AuthService {
   /**
    * "Sair do bloqueio": the password typed recently, plus a current code or a
    * recovery code when two-step sign-in is on (both counted like any code).
-   * The tokens the lockdown suspended come back.
    */
   async exitLockdown(row: SessionRow, proof: LockdownExit, client: ClientInfo): Promise<void> {
     this.requireRecentAuth(row);
@@ -735,7 +769,6 @@ export class AuthService {
     }
     this.deps.db.transaction(() => {
       if (!this.lockdown.clear()) return;
-      (this.deps.remoteTokens ?? NO_REMOTE_TOKENS).resumeAll();
       this.events.record("lockdown_exited", client, { session: row.id.slice(0, 16), alert: true });
     });
   }
@@ -775,7 +808,7 @@ export class AuthService {
     } else {
       await this.checkConfirmPassword(row, source, proof.password, client);
     }
-    this.sessions.confirm(row.id);
+    this.sessions.confirm(row.id, client.network);
     this.events.record("confirm_success", client, { session: row.id.slice(0, 16) });
   }
 
@@ -802,17 +835,17 @@ export class AuthService {
     await this.sync();
     const source = this.requireConfigured();
     await this.checkConfirmPassword(row, source, proof.password, client);
-    this.sessions.confirm(row.id);
+    this.sessions.confirm(row.id, client.network);
     const current = this.sessions.get(row.id);
     if (!current) throw new AppError("UNAUTHORIZED");
     this.events.record("confirm_success", client, { reason, session: row.id.slice(0, 16) });
-    return current;
+    return { ...current, seen_network: client.network };
   }
 
   /** Behind a live session: the network's own 3 tries apply, the distributed-guess locks don't. */
   private beginChecked(client: ClientInfo, kind: "confirm_failure" | "password_change_failure" | "mfa_failure"): number {
     try {
-      return this.limiter.begin(client.network, { trusted: true });
+      return this.limiter.begin(client.network, { trusted: true, session: true });
     } catch (error) {
       this.events.record(kind, client, { reason: "rate_limited" });
       throw error;
@@ -848,7 +881,8 @@ export class AuthService {
     const hash = await hashPassword(input.newPassword, this.deps.secrets.pepper);
     // Read again after the awaits: a reset from the panel meanwhile must not be undone by this change.
     if (this.sessions.get(row.id) === null) throw new AppError("UNAUTHORIZED");
-    const next = await this.sessions.create(client);
+    // The new session stays in the browser the old one was in.
+    const next = await this.sessions.create({ userAgent: client.userAgent, network: client.network, device: row.device, country: client.geo.country });
     this.deps.db.transaction(() => {
       this.deps.state.set("auth_password_hash", hash);
       this.deps.state.delete("auth_password_change_required");
@@ -859,8 +893,6 @@ export class AuthService {
       this.events.forgetDevices();
       this.#push.retireAll();
       this.#recovery.clear();
-      // Tokens made under the old password stop working with it (step 20).
-      (this.deps.remoteTokens ?? NO_REMOTE_TOKENS).revokeAll();
       this.events.record("password_changed", client, { session: next.row.id.slice(0, 16), alert: true });
     });
     return { token: next.token, session: next.row };
@@ -967,8 +999,6 @@ export class AuthService {
       this.events.forgetDevices();
       this.#push.retireAll();
       this.#recovery.clear();
-      // Tokens made under the old password stop working with it (step 20).
-      (this.deps.remoteTokens ?? NO_REMOTE_TOKENS).revokeAll();
       this.events.record("password_recovered", client, { alert: true });
     });
     if (!used) throw this.recoveryExpired();
@@ -1146,8 +1176,6 @@ export class AuthService {
       this.events.forgetDevices();
       this.#push.retireAll();
       this.#recovery.clear();
-      // Tokens made under the old password stop working with it (step 20).
-      (this.deps.remoteTokens ?? NO_REMOTE_TOKENS).revokeAll();
       this.events.record("access_recovered", client, { alert: true });
       return true;
     });
@@ -1230,7 +1258,7 @@ export class AuthService {
   private assertStillRecent(row: SessionRow): void {
     const current = this.sessions.get(row.id);
     if (!current) throw new AppError("UNAUTHORIZED");
-    this.requireRecentAuth(current);
+    this.requireRecentAuth({ ...current, seen_network: row.seen_network });
   }
 
   /** Turning the second step on or off ends every other session, and the owner is told. */

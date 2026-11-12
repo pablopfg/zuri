@@ -74,11 +74,6 @@ Medido dentro do workerd por `apps/agent/test/free-tier-budget.test.ts`, com
 | `PATCH /api/mcp/servers/:id/tools/:tool` | até 20 | até 3 |
 | `POST /api/chat` com uma ferramenta externa (conversa curta) | 41 (teto 80) | 18 (teto 30) |
 | `POST /api/actions/:id/approve` de uma chamada externa | 13 (teto 25) | 2 (teto 12) |
-| `PATCH /api/remote` (ligar) e `POST /api/remote/tokens` (etapa 20) | 22 (teto 30) | 27 (teto 32: estado, evento de acesso e alerta) |
-| Pedido com token (porteiro, além da própria rota) | 1 a 3 | até 2 (`last_used_at` e a conta do dia, cada um no máximo 1 vez por minuto) |
-| `POST /api/tasks` com token `write` | 10 (teto 15) | 12 (teto 16) |
-| Token recusado | 6 (teto 10) | 5 (teto 6); 0 com o acesso desligado, de rede já segura ou passado o teto global de 200 tentativas |
-| `POST /api/remote/events` | 21 (teto 30) | 19 (teto 24) |
 
 Os números contam só o SQL do Zuri (`Database.usage`): a cada despertar o
 Agents SDK lê algumas linhas das tabelas `cf_agents_*`, quase vazias hoje. O
@@ -195,15 +190,22 @@ Como cheguei nos números:
   das 37.400 que fluxos e leituras somavam no pior dia de antes, e faz 1.909
   chamadas ao Google e o mesmo número de despertares (1,9% das 100.000
   requisições). A folga entre as duas leituras é de 2 min 30 s ou metade do
-  intervalo dos contatos, o que for menor. O parágrafo abaixo descreve a conta
-  de antes, que continua valendo para intervalos de 5 minutos ou mais.
-- **Intervalo escolhido pelo dono (de 5 a 1.440 minutos cada).** O pior caso
+  intervalo dos contatos, o que for menor. Com os contatos a cada minuto, a
+  conferência das avaliações fica com o despertar em que vence e os contatos
+  esperam o seguinte, então o dia nunca passa de 1.440 despertares. Pedir o
+  alarme de novo (salvar um ajuste) não adia um despertar
+  que já espera dentro do próximo minuto. As 19 linhas de uma leitura sem
+  novidade são medidas em `apps/agent/test/alarm-two-reads.test.ts`. A
+  conferir no painel depois do deploy: com um despertar por minuto o objeto
+  pode ficar mais tempo na memória, e a duração (GB-s) do plano gratuito só
+  aparece lá. O parágrafo abaixo descreve a conta de antes, que continua
+  valendo para intervalos de 5 minutos ou mais.
+- **Intervalo de 5 a 1.440 minutos (a conta de antes do mínimo de 1 minuto).** O pior caso
   são as duas leituras a cada 5 minutos: 576 despertares por dia (0,6% das
   100.000 requisições), perto de 11.000 linhas gravadas (11% da cota) e 62.000
   lidas (1,2%), pela mesma conta acima, mais 576 chamadas ao Google. O piso de
-  5 minutos existe por causa da diferença de 2 min 30 s entre as duas
-  leituras: abaixo dele, a conferência das avaliações ficaria sem despertar
-  próprio. Intervalo maior só reduz esses números. Um contato com `etag` novo
+  5 minutos existia por causa da diferença de 2 min 30 s entre as duas
+  leituras; abaixo dele vale o parágrafo acima. Intervalo maior só reduz esses números. Um contato com `etag` novo
   e os mesmos dados custa 1 linha gravada, em vez das 13 de um contato
   regravado.
 - **Leitura inteira por campo novo (PR S09).** Na primeira leitura depois da

@@ -2,7 +2,7 @@ import { AGENT_INSTANCE_NAME, apiErrorSchema, type NoticePage, type PushDevice, 
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
-import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
+import { call, CSRF, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 
 // Settings > Notices, push part, through the Worker as the interface calls it (step 11b).
 
@@ -57,11 +57,9 @@ beforeAll(async () => {
     body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }),
   });
   expect(res.status).toBe(200);
-  const set = res.headers.getSetCookie();
-  cookie = set.find((c) => c.startsWith("__Host-zuri_session="))?.split(";")[0] ?? "";
-  const device = set.find((c) => c.startsWith("__Host-zuri_device="))?.split(";")[0] ?? "";
-  expect(device).not.toBe("");
-  withDevice = `${cookie}; ${device}`;
+  cookie = signedCookies(res);
+  expect(cookie).toContain("__Host-zuri_device=");
+  withDevice = cookie;
 });
 
 // Adding a device raises a security alert, which goes out by push at once: the push
@@ -163,12 +161,15 @@ describe("the push routes", () => {
     const { device } = await json<{ device: PushDevice }>(await api("POST", "/push/devices", await subscription(), true), 201);
     expect(device.current).toBe(true);
     expect((await json<PushStatus>(await api("GET", "/push", undefined, true), 200)).devices.map((d) => d.current)).toEqual([true]);
-    // Without the device cookie (another browser) it isn't this one.
-    expect((await json<PushStatus>(await api("GET", "/push"), 200)).devices.map((d) => d.current)).toEqual([false]);
+    // Another browser of the owner's (its own sign-in and device cookie) isn't this one.
+    const signIn = await call(`${ORIGIN}/api/auth/login`, { method: "POST", headers: headers(false), body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, turnstileToken: HUMAN_TOKEN }) });
+    const other = signedCookies(signIn);
+    const fromOther = (path: string) => call(`${ORIGIN}/api${path}`, { headers: { ...headers(false), cookie: other } });
+    expect((await json<PushStatus>(await fromOther("/push"), 200)).devices.map((d) => d.current)).toEqual([false]);
     const lastSeen = () => inOwner((agent) => agent.store.db.one<{ at: string }>(`SELECT last_seen_at AS at FROM zur_push_devices`)?.at ?? "");
     await inOwner((agent) => agent.store.db.run(`UPDATE zur_push_devices SET last_seen_at = '2026-01-01T00:00:00.000Z'`));
     // A session check from another browser leaves it; from its own browser it moves.
-    expect((await api("GET", "/auth/session")).status).toBe(200);
+    expect((await fromOther("/auth/session")).status).toBe(200);
     expect(await lastSeen()).toBe("2026-01-01T00:00:00.000Z");
     expect((await api("GET", "/auth/session", undefined, true)).status).toBe(200);
     expect((await lastSeen()) > "2026-01-01T00:00:00.000Z").toBe(true);

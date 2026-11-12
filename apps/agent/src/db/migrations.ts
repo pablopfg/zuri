@@ -1581,6 +1581,21 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS zur_reviews_metrics ON zur_reviews (created_at, rating, state, replied_at, (reply IS NOT NULL))`,
     ],
   },
+  {
+    version: 36,
+    name: "session_binding",
+    statements: [
+      // A session is tied to where it was opened (the owner's decision, 11/11/2026), so a copied cookie is
+      // not enough by itself: `device` is the HMAC of the browser's device cookie (never the cookie),
+      // `country` the edge's country at sign-in, `networks` every network it was used from (one per line,
+      // the sign-in's first) and `confirmed_network` the one the password was last typed on. Sessions
+      // opened before this have none of it and end at their first request.
+      `ALTER TABLE zur_sessions ADD COLUMN device TEXT`,
+      `ALTER TABLE zur_sessions ADD COLUMN country TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE zur_sessions ADD COLUMN networks TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE zur_sessions ADD COLUMN confirmed_network TEXT`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */
