@@ -30,7 +30,7 @@ export const KIND_ICON: Record<AutomationKind, typeof Bell> = { reminder: Bell, 
 /** Monday first, as the week reads in a calendar. */
 const WEEK = [1, 2, 3, 4, 5, 6, 0] as const;
 
-/** Where "Fluxo" leads: the flows' own editor, opened on a new flow (FlowsPanel.tsx). */
+/** Where "Fluxo" leads: the flows' own editor, opened on a new flow (CrmPage.tsx). */
 const NEW_FLOW_HREF = "/crm/fluxos#novo-fluxo";
 
 export type Editing = { mode: "new" } | { mode: "edit"; automation: Automation };

@@ -141,6 +141,10 @@ tarefas, sistema, segurança e eventos da agenda) e cada canal. O padrão manda
 tudo para o push e o Telegram; segurança vai sempre por todos e não muda. Os
 limites por canal (padrão 6 por hora e 30 por dia) ficam logo abaixo.
 
+Depois da tabela vem o grupo **CRM**: os avisos de retorno e de aniversário
+dos clientes e a hora do aviso de aniversários
+([docs/crm.md](crm.md)).
+
 ## Prioridade que aprende
 
 Cada aviso guarda a sua origem (`learn_key`): a automação que o gerou

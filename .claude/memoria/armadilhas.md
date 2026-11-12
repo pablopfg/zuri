@@ -305,6 +305,12 @@ acrescente aqui cada armadilha nova que encontrar (sem dados pessoais).
   400 bytes): não é o caminho.
 - O axe rodando no meio da animação de entrada (opacidade baixa) acusa
   contraste falso. `expectAccessible` espera as animações finitas terminarem.
+- Ícone do lucide usado por duas telas sob demanda vira um pedaço próprio
+  (`globe-*.js`, `lock-*.js`), e o nome dele entra na lista de pedaços do JS
+  inicial: cerca de 20 B por ícone. Na S15 do Sinal, três ícones assim
+  passaram o teto por 11 B. Numa tela sob demanda, prefira um ícone que só ela
+  usa ou um que já tem pedaço próprio (veja `apps/web/dist/assets`), e meça
+  com `npm run size`.
 
 ## Navegador e CSP
 

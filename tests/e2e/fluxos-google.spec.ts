@@ -106,14 +106,14 @@ test("a flow reads a calendar and creates a follow-up once; the Google steps say
   await expect(toast(page, "Fluxo criado, ainda desligado")).toBeVisible();
 
   const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
-  await rowAction(row, page, "Executar agora");
+  await row.getByRole("button", { name: "Executar", exact: true }).click();
   await expect(toast(page, "Fluxo executado")).toBeVisible();
-  const history = page.getByRole("region", { name: "Histórico dos fluxos" });
+  const history = page.getByRole("region", { name: "Últimas execuções" });
   await expect(history.getByRole("listitem").filter({ hasText: name }).first().getByText("Concluída")).toBeVisible();
   expect(await followUps(page)).toEqual(["Retorno Atendimento"]);
 
   // Again: the key keeps it to one.
-  await rowAction(row, page, "Executar agora");
+  await row.getByRole("button", { name: "Executar", exact: true }).click();
   await expect(history.getByRole("listitem").filter({ hasText: name })).toHaveCount(2);
   expect(await followUps(page)).toEqual(["Retorno Atendimento"]);
 

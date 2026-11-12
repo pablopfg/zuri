@@ -94,13 +94,16 @@ for (const scheme of ["light", "dark"] as const) {
     });
 
     // A test of its own, so each group above keeps its time on a phone.
-    test(`the flows screen of the CRM has no serious violation (${scheme}) @mobile`, async ({ page }) => {
+    test(`the two parts of the CRM have no serious violation (${scheme}) @mobile`, async ({ page }) => {
       await page.goto("/crm/fluxos");
       await signIn(page);
-      await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
-      await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
-      await expectAccessible(page, "/crm/fluxos");
-      expect(await tooSmallControls(page)).toEqual([]);
+      for (const address of ["/crm/fluxos", "/crm/credenciais"]) {
+        await page.goto(address);
+        await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
+        await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
+        await expectAccessible(page, address);
+        expect(await tooSmallControls(page), address).toEqual([]);
+      }
     });
 
     // The screens of steps 19, 19b and 22b, in both themes (stage 25).

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Schedule } from "@zuri/shared";
 import { createTranslator, type MessageKey, ptBRCore, ptBRSchedule, t } from "../../../packages/shared/i18n/index.ts";
 import { DAY_SHORT } from "../src/pages/automations/labels.ts";
-import { AUTOMATION_LIMITS } from "@zuri/shared";
+import { AUTOMATION_LIMITS, FLOW_LIMITS } from "@zuri/shared";
 import { automationAnchor, copyName, describeSchedule, draftOf, emptyDraft, joinList, scheduleOf, stepReady, suggestName, wizardSteps, zoneLabel } from "../src/lib/automations.ts";
 
 const SP = "America/Sao_Paulo";
@@ -185,6 +185,19 @@ describe("the steps of “Criar rotina”", () => {
     const emoji = copyName(`${"b".repeat(AUTOMATION_LIMITS.name - 9)}💊`, (name) => `${name} (cópia)`);
     expect(emoji).not.toMatch(LONE_HALF);
     expect(emoji).toBe(`${"b".repeat(AUTOMATION_LIMITS.name - 9)} (cópia)`);
+  });
+
+  it("names the copy of a flow within the shorter limit of a flow's name (S15)", () => {
+    const mark = (name: string) => `${name} (cópia)`;
+    // One under the room, exactly the room, one over and a full name: never past the limit.
+    for (const length of [FLOW_LIMITS.name - 9, FLOW_LIMITS.name - 8, FLOW_LIMITS.name - 7, FLOW_LIMITS.name]) {
+      const copy = copyName("f".repeat(length), mark, FLOW_LIMITS.name);
+      expect(copy, String(length)).toHaveLength(Math.min(length + 8, FLOW_LIMITS.name));
+      expect(copy.endsWith(" (cópia)"), String(length)).toBe(true);
+    }
+    expect(copyName(`${"f".repeat(FLOW_LIMITS.name - 9)}💊`, mark, FLOW_LIMITS.name)).not.toMatch(LONE_HALF);
+    // The limit of a routine's name is longer: without the flow's own, the server would refuse the copy.
+    expect(FLOW_LIMITS.name).toBeLessThan(AUTOMATION_LIMITS.name);
   });
 
   it("shows the owner's zone as a city and its distance from UTC", () => {

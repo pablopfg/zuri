@@ -181,9 +181,9 @@ export function suggestName(kind: AutomationKind, message: string, digest: strin
 }
 
 /** The name of a copy, cut on the original's side so the mark of the copy always shows. */
-export function copyName(name: string, mark: (name: string) => string): string {
+export function copyName(name: string, mark: (name: string) => string, max: number = AUTOMATION_LIMITS.name): string {
   const extra = mark("").length;
-  return mark(cut(name, AUTOMATION_LIMITS.name - extra).trimEnd());
+  return mark(cut(name, max - extra).trimEnd());
 }
 
 /** "Sao Paulo (GMT-3)": the owner's zone at the wizard's "Quando", where the hours are read. */

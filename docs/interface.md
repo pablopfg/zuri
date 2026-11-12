@@ -117,6 +117,11 @@ menus nunca saem da tela.
   depois deles (`packages/shared/src/pages.ts`); aviso guardado com endereço
   antigo sai com o novo. Um teste percorre todo endereço que o servidor
   escreve (`tests/e2e/rotas.spec.ts`).
+- **CRM:** duas partes, cada uma no seu endereço: Fluxos (`/crm` e
+  `/crm/fluxos`) e Credenciais (`/crm/credenciais`), com a contagem ao lado do
+  nome e o botão do cabeçalho criando o que a parte aberta lista. Automações e
+  Envios só aparecem quando o servidor deles chegar. Os avisos do CRM ficam em
+  Configurações › Avisos.
 - **Carregamento:** `Loading` mostra linhas cinzas no formato de uma lista,
   com um brilho suave; `ScreenLoading` soma uma linha verde fina no topo
   enquanto uma tela sob demanda baixa. Nada aparece nos primeiros 300 ms (uma
