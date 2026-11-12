@@ -596,6 +596,112 @@ dialog::backdrop {
   }
 
   /*
+   * Avaliações (Sinal, S12). The parts of the area are a row of links; the open one is a card. On a
+   * phone they share the width, so nothing scrolls sideways.
+   */
+  .zuri-seg {
+    @apply flex w-full flex-wrap gap-1 rounded-2xl border border-border bg-raised p-1 sm:w-fit;
+  }
+  .zuri-seg > a {
+    @apply inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-transparent px-3 text-sm font-medium whitespace-nowrap text-fg-muted hover:text-fg sm:flex-none;
+  }
+  .zuri-seg > a > svg {
+    @apply h-4 w-4 shrink-0;
+  }
+  .zuri-seg > a[aria-current] {
+    @apply border-border bg-surface font-semibold text-fg shadow-sm;
+  }
+  .zuri-review-card {
+    @apply min-w-0 rounded-2xl border border-border bg-surface p-5 shadow-sm;
+  }
+  .zuri-review-select {
+    @apply min-h-11 w-full rounded-xl border border-border-strong bg-surface px-3 text-[15px] text-fg focus:border-accent focus:ring-2 focus:ring-accent/30 focus:outline-none;
+  }
+  /* One number of the overview: what it is, the number, and a line of context. */
+  .zuri-review-tile {
+    @apply min-w-0 space-y-1 rounded-2xl border border-border bg-surface p-4 shadow-sm;
+  }
+  .zuri-review-tile > dt {
+    @apply flex items-start gap-2 text-sm text-fg-muted;
+  }
+  .zuri-review-tile > dt > svg {
+    @apply mt-0.5 h-4 w-4 shrink-0;
+  }
+  /*
+   * Two cards side by side only with room for both: one column up to 1.100 px, where the menu already
+   * takes its share of the window. Each card is as tall as its content, so a short window has no empty band.
+   */
+  .zuri-review-split {
+    @apply grid items-start gap-4 min-[1101px]:grid-cols-[minmax(0,3fr)_minmax(0,2fr)];
+  }
+  /* The chart: one column per week or month, however many the server sends. */
+  .zuri-review-bars {
+    @apply mt-4 flex h-44 items-stretch gap-2 border-b border-border;
+  }
+  .zuri-review-bars > div {
+    @apply flex min-w-0 flex-1 flex-col items-center gap-1;
+  }
+  .zuri-review-bars > div > div {
+    @apply flex min-h-0 w-full flex-1 flex-col items-center justify-end gap-1;
+  }
+  .zuri-review-bars [data-bar] {
+    @apply w-full max-w-9 rounded-t-md bg-border-strong;
+  }
+  .zuri-review-bars [data-bar][data-last] {
+    @apply bg-accent;
+  }
+  /*
+   * The list and the chosen review. Side by side above 1.100 px; below it the chosen review takes the
+   * list's place (data-open) and a link goes back.
+   */
+  .zuri-reviews {
+    @apply grid overflow-hidden rounded-2xl border border-border bg-surface shadow-sm min-[1101px]:grid-cols-[20rem_minmax(0,1fr)];
+  }
+  .zuri-reviews > * {
+    @apply min-w-0 p-4;
+  }
+  .zuri-reviews-list {
+    @apply space-y-3 min-[1101px]:border-r min-[1101px]:border-border;
+  }
+  .zuri-reviews-detail {
+    @apply bg-bg max-[1101px]:hidden min-[1101px]:p-6;
+  }
+  .zuri-reviews[data-open] > .zuri-reviews-list {
+    @apply max-[1101px]:hidden;
+  }
+  .zuri-reviews[data-open] > .zuri-reviews-detail {
+    @apply max-[1101px]:block;
+  }
+  .zuri-reviews-back {
+    @apply mb-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold min-[1101px]:hidden;
+  }
+  .zuri-review-pill {
+    @apply inline-flex items-center rounded-full bg-raised px-2 py-0.5 text-xs font-medium text-fg-muted;
+  }
+  .zuri-review-pill[data-tone="accent"] {
+    @apply bg-accent-soft text-accent-text;
+  }
+  .zuri-review-pill[data-tone="danger"] {
+    @apply bg-danger-soft text-danger;
+  }
+  .zuri-review-pill[data-tone="warning"] {
+    @apply bg-warning-soft text-fg;
+  }
+  /* The mark of a step of the connection: done, waiting for Google, or still to do. */
+  .zuri-review-step {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-raised text-fg-muted;
+  }
+  .zuri-review-step > svg {
+    @apply h-4 w-4;
+  }
+  .zuri-review-step[data-state="ok"] {
+    @apply bg-success-soft text-success;
+  }
+  .zuri-review-step[data-state="waiting"] {
+    @apply bg-warning-soft text-fg;
+  }
+
+  /*
    * Memória (Sinal, S06). On a computer the list (or the map) and the panel of the chosen memory sit side
    * by side; on a phone the panel takes the list's place while a memory is open (data-open).
    */

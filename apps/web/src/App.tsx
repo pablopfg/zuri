@@ -78,12 +78,6 @@ function Crm() {
   return parte !== undefined && !CRM_PARTS.includes(parte) ? <Navigate to="/crm" replace /> : <CrmPage />;
 }
 
-/** The sub-addresses of Avaliações come with the area's own screen (S12); until then any of them opens the list. */
-function Reviews() {
-  const { aba } = useParams();
-  return aba !== undefined ? <Navigate to="/avaliacoes" replace /> : <ReviewsPage />;
-}
-
 export function App() {
   return (
     <Routes>
@@ -186,10 +180,10 @@ export function App() {
           }
         />
         <Route
-          path="avaliacoes/:aba?"
+          path="avaliacoes/:aba?/:item?"
           element={
             <Suspense fallback={<ScreenLoading />}>
-              <Reviews />
+              <ReviewsPage />
             </Suspense>
           }
         />

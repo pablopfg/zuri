@@ -14,14 +14,21 @@ Zuri a publicar sozinha as respostas às avaliações positivas (etapa 19d,
 
 1. Conecte o Google Agenda primeiro (veja [Google Agenda](google-agenda.md)).
    As avaliações usam a mesma conta, que precisa gerenciar o perfil.
-2. No cartão **Google Agenda e Contatos**, em **Avaliações do Google**, toque
-   em **Ligar avaliações**. Se a última senha foi digitada há mais de 15
-   minutos, a Zuri pede de novo.
-3. O Google mostra a permissão nova, "gerenciar seu Perfil da Empresa". As
+2. Abra **Avaliações › Ajustes** (o cartão **Google Agenda e Contatos**, em
+   Integrações, também leva para lá). A parte **Conexão** mostra quatro passos,
+   cada um com a situação: conta do Google, permissão para gerenciar o perfil,
+   acesso liberado pelo Google e perfil.
+3. Em **Permissão para gerenciar o perfil**, toque em **Dar permissão**. Se a
+   última senha foi digitada há mais de 15 minutos, a Zuri pede de novo. O
+   Google mostra a permissão nova, "gerenciar seu Perfil da Empresa". As
    permissões da agenda e dos contatos continuam como estavam.
-4. De volta a Integrações, marque o perfil (até 3), escreva a assinatura,
-   escolha o tom, confira os 3 a 5 modelos de agradecimento e toque em
-   **Salvar avaliações**.
+4. Em **Perfil**, toque em **Escolher perfil**, marque o perfil (até 3),
+   escreva a assinatura e toque em **Salvar perfis**.
+5. Em **Como responder** ficam o tom, a assinatura, o que a Zuri faz com cada
+   avaliação, os 3 a 5 modelos de agradecimento e as palavras que nunca
+   entram. **Salvar avaliações** guarda tudo de uma vez.
+
+O intervalo entre as leituras continua em Configurações › Integrações › Google.
 
 Ao salvar, a Zuri faz a primeira leitura na hora (no máximo uma por minuto;
 salvar de novo logo depois deixa a leitura para o alarme). O que já existe no perfil
@@ -54,13 +61,22 @@ cautelosa, nunca menos. Mais de 3 negativas numa leitura viram um aviso só, e
 
 ### A tela Avaliações
 
-Em **Avaliações** (`/avaliacoes`, no menu; o endereço antigo
-`/contatos/avaliacoes` leva para ela) ficam os filtros
-**Precisa de você**, **Respondidas**, **Publicadas sozinha** (quando o nível
-automático está ligado ou alguma resposta saiu assim) e **Todas**, e o filtro
-por nota. Cada
-avaliação mostra só o primeiro nome de quem avaliou, as estrelas, o texto
-como texto puro e o que a Zuri fez.
+**Avaliações** (`/avaliacoes`, no menu; o endereço antigo
+`/contatos/avaliacoes` leva para ela) tem três partes. No alto ficam o perfil
+lido, a hora da última leitura, a contagem para a próxima e dois botões:
+**Conferir agora** e **Pausar respostas**.
+
+- **Visão geral**: os números do período (30 dias ao abrir, 6 ou 12 meses):
+  índice de recomendação, nota média, respondidas e tempo até responder; o
+  índice por semana ou por mês, em barras e em tabela; quantas avaliações de
+  cada nota; e as que precisam de você, com **Revisar**.
+- **Avaliações** (`/avaliacoes/lista`): a lista de um lado e a avaliação
+  aberta do outro (em janela estreita, a aberta toma o lugar da lista). Os
+  filtros são **Precisa de você**, **Respondidas**, **Publicadas sozinha**
+  (quando o nível automático está ligado ou alguma resposta saiu assim) e
+  **Todas**, mais o filtro por nota. Cada avaliação mostra só o primeiro nome
+  de quem avaliou, as estrelas, o texto como texto puro e o que a Zuri fez.
+- **Ajustes** (`/avaliacoes/ajustes`): **Conexão** e **Como responder**.
 
 Num rascunho você pode:
 
@@ -76,7 +92,7 @@ Uma resposta publicada pela Zuri pode ser apagada pela tela, depois de ela
 conferir no Google que a resposta ainda é a dela. A resposta de outra pessoa
 nunca é apagada.
 
-**Pausar respostas** (na aba, ou `/pausar_rotinas` no Telegram) segura as
+**Pausar respostas** (no alto da tela, ou `/pausar_rotinas` no Telegram) segura as
 publicações. A leitura e os avisos continuam. Retomar é só pelo app.
 
 ### Publicar sozinha as positivas
@@ -120,8 +136,9 @@ no privado quando:
 Falta de Neurons ou a IA fora do ar não contam como reprovação: nesses casos a
 avaliação ganha um modelo seu e espera a sua aprovação.
 
-O motivo aparece na aba e em Integrações até você ligar de novo. Para voltar
-a publicar sozinha, escolha a opção outra vez (senha e alerta de novo).
+O motivo aparece no alto de Avaliações até você ligar de novo. Para voltar
+a publicar sozinha, escolha a opção outra vez em Ajustes › Como responder
+(senha e alerta de novo).
 
 ### A conferência de toda resposta
 
@@ -147,7 +164,7 @@ sem rascunho, se for negativa.
 
 ### Desligar
 
-- **Desligar avaliações** apaga a cópia das avaliações, os rascunhos, o
+- **Desligar avaliações** (em Ajustes › Conexão) apaga a cópia das avaliações, os rascunhos, o
   histórico e os avisos feitos a partir delas, e para a leitura. A conexão do
   Google continua.
 - **Desconectar** o Google também apaga tudo isso.
@@ -280,4 +297,4 @@ Google, lê cerca de 170 linhas e grava 5; uma leitura com 5 avaliações novas
 grava cerca de 60 linhas. A visão geral lê uma linha do índice por avaliação
 do período (59 linhas com 55 avaliações no período e 1.000 mais antigas na
 cópia) e não grava nada. Nenhuma mudança no JavaScript da primeira tela: a
-aba e a seção de Integrações carregam sob demanda.
+área de Avaliações e a seção de Integrações carregam sob demanda.

@@ -4,6 +4,8 @@ import { ApiError } from "./api.ts";
 /** Everything about the reviews starts with this key: the live channel's "reviews" area refreshes it (lib/versions.ts). */
 export const REVIEWS_KEY = ["reviews"] as const;
 export const REVIEWS_STATUS_KEY = [...REVIEWS_KEY, "status"] as const;
+/** For invalidateQueries after an answer that already brought the new state: everything of the reviews but the state itself. */
+export const REVIEWS_BUT_STATUS = { queryKey: REVIEWS_KEY, predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[1] !== "status" };
 
 export const REVIEW_PROBLEM_TEXT: Record<ReviewProblem, MessageKey> = {
   reconnect: "web.reviews.problem.reconnect",
