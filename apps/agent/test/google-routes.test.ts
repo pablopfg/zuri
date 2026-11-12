@@ -368,7 +368,7 @@ describe("/api/google/events: the Agenda screen", () => {
     const stale = await api("PATCH", "/google/events", { ...target, etag: event.etag, colorId: "11" });
     expect(stale.status).toBe(409);
     expect((await errorBody(stale)).code).toBe("TARGET_CHANGED");
-    expect((google.events.get(WORK)?.find((e) => e.id === event.id) as { colorId?: string }).colorId).toBe("10");
+    expect(google.events.get(WORK)?.find((e) => e.id === event.id)?.colorId).toBe("10");
 
     // A color outside the four, a number, a name: refused before Google hears of it.
     const patches = google.seen.filter((r) => r.method === "PATCH").length;
@@ -396,7 +396,7 @@ describe("/api/google/events: the Agenda screen", () => {
     const event = google.events.get(READER)?.at(-1);
     const res = await api("PATCH", "/google/events", { calendarId: READER, eventId: event?.id, etag: event?.etag, colorId: "10" });
     expect(res.status).toBe(400);
-    expect((event as { colorId?: string }).colorId).toBeUndefined();
+    expect(event?.colorId).toBeUndefined();
     expect((await api("POST", "/google/events", { calendarId: PRIMARY, title: "X", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "10" })).status).toBe(400);
   });
 
