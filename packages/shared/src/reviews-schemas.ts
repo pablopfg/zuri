@@ -2,7 +2,7 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { REVIEW_LEVELS, REVIEW_LIMITS, REVIEW_TABS, REVIEW_TONES } from "./reviews.ts";
+import { REVIEW_LEVELS, REVIEW_LIMITS, REVIEW_METRIC_PERIODS, REVIEW_TABS, REVIEW_TONES } from "./reviews.ts";
 
 /**
  * Google reviews (step 19c): the routes' request bodies, what Zuri reads of
@@ -75,6 +75,9 @@ export const reviewsQuerySchema = /* @__PURE__ */ (() =>
         .optional(),
     })
     .strict())();
+
+/** The overview's period; 30 days when none is asked. */
+export const reviewMetricsQuerySchema = /* @__PURE__ */ (() => z.object({ period: z.enum(REVIEW_METRIC_PERIODS).default("30d") }).strict())();
 
 /** A review as Google sends it (accounts.locations.reviews); what doesn't fit is skipped, never stored half read. */
 export const googleReviewSchema = /* @__PURE__ */ (() =>

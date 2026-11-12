@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { REVIEW_LIMITS } from "../src/reviews.ts";
-import { reviewApproveSchema, reviewSettingsSchema } from "../src/reviews-schemas.ts";
+import { REVIEW_LIMITS, recommendationIndex } from "../src/reviews.ts";
+import { reviewApproveSchema, reviewMetricsQuerySchema, reviewSettingsSchema } from "../src/reviews-schemas.ts";
 
 // Step 19c: the edges of what the owner may save and approve (n-1, n, n+1).
 
@@ -52,5 +52,31 @@ describe("an approval", () => {
     const version = "0".repeat(64);
     const parse = (n: number) => reviewApproveSchema.safeParse({ text: text(n), version }).success;
     expect([0, 1, REVIEW_LIMITS.replyBytes, REVIEW_LIMITS.replyBytes + 1].map(parse)).toEqual([false, true, true, false]);
+  });
+});
+
+describe("the overview's period (PR S11)", () => {
+  it("takes 30 days, 6 and 12 months, and 30 days when none is asked", () => {
+    expect(reviewMetricsQuerySchema.parse({})).toEqual({ period: "30d" });
+    for (const period of ["30d", "6m", "12m"]) expect(reviewMetricsQuerySchema.parse({ period })).toEqual({ period });
+  });
+
+  it("refuses any other period and any other field", () => {
+    for (const period of ["", "7d", "30D", "1y", " 30d", "12m\u0000", 30, null, ["30d"]]) expect(reviewMetricsQuerySchema.safeParse({ period }).success, String(period)).toBe(false);
+    expect(reviewMetricsQuerySchema.safeParse({ period: "30d", from: "2020-01-01" }).success).toBe(false);
+  });
+});
+
+describe("the recommendation index (PR S11)", () => {
+  it("is the share that recommends minus the share that does not, from -100 to 100", () => {
+    expect(recommendationIndex({ promoters: 5, neutrals: 1, detractors: 1 })).toBe(57);
+    expect(recommendationIndex({ promoters: 1, neutrals: 0, detractors: 2 })).toBe(-33);
+    expect(recommendationIndex({ promoters: 3, neutrals: 0, detractors: 0 })).toBe(100);
+    expect(recommendationIndex({ promoters: 0, neutrals: 0, detractors: 3 })).toBe(-100);
+    expect(recommendationIndex({ promoters: 0, neutrals: 2, detractors: 0 })).toBe(0);
+  });
+
+  it("is null without reviews, never a zero that would read as a bad score", () => {
+    expect(recommendationIndex({ promoters: 0, neutrals: 0, detractors: 0 })).toBeNull();
   });
 });

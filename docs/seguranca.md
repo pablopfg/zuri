@@ -232,7 +232,7 @@ e o e-mail do dono); sem ele, a página aponta para o código de instalação.
   O que isso não cobre: quem copia os dois cookies e usa da mesma rede e do
   mesmo país do dono. Para esse caso ficam os prazos curtos da sessão, a senha
   pedida de novo nas ações sensíveis e o alerta de rede nova. Sessões abertas
-  antes da migration 35 não têm o que comparar e são encerradas no primeiro
+  antes da migration 36 não têm o que comparar e são encerradas no primeiro
   pedido depois da atualização (SEC-A3-P2): é só entrar de novo.
   Sem `CF-Connecting-IP` (só fora da Cloudflare), um pedido com sessão recebe
   503, como o login. Trocar a senha mantém a sessão nova no mesmo navegador.

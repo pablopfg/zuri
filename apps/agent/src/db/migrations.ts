@@ -1572,6 +1572,17 @@ export const MIGRATIONS: readonly Migration[] = [
   },
   {
     version: 35,
+    name: "review_metrics",
+    statements: [
+      // The overview of the reviews (PR S11) reads a period by the day each review was written, and
+      // nothing else had an index on it. Everything the numbers need is in the index (the last item with
+      // the same text as the query in reviews/metrics.ts), so the read never touches the table nor a
+      // review's text. No new data: the copy of the reviews stays out of the backup as before.
+      `CREATE INDEX IF NOT EXISTS zur_reviews_metrics ON zur_reviews (created_at, rating, state, replied_at, (reply IS NOT NULL))`,
+    ],
+  },
+  {
+    version: 36,
     name: "session_binding",
     statements: [
       // A session is tied to where it was opened (the owner's decision, 11/11/2026), so a copied cookie is

@@ -964,6 +964,16 @@ describe("Google reviews (step 19c)", () => {
       // Two pages of 30 and their counts from zur_counts, whatever the copy holds (1,055 reviews; measured 147).
       expect(world.db.usage.rowsRead - before.rowsRead).toBeLessThanOrEqual(200);
       expect(world.db.all(`SELECT id FROM zur_reviews WHERE location = ?`, LOCATION)).toHaveLength(1_055);
+      // The overview (GET /api/reviews/metrics, PR S11): one row of its index per review of the period (the 55 of the
+      // last days), never the 1,000 older ones nor the table, and nothing written (measured 59 and 0).
+      for (const period of ["30d", "6m", "12m"] as const) {
+        const start = { ...world.db.usage };
+        const metrics = world.reviews.metrics(period);
+        expect(metrics.ratings.reduce((sum, n) => sum + n, 0)).toBe(55);
+        expect(world.db.usage.rowsRead - start.rowsRead).toBeLessThanOrEqual(70);
+        expect(world.db.usage.rowsWritten - start.rowsWritten).toBe(0);
+      }
+      expect(world.sim.seen.length).toBe(calls);
     }));
 });
 

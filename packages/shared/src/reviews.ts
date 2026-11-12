@@ -74,6 +74,8 @@ export const REVIEW_LIMITS = {
   trialWindow: 30,
   /** Step 19d: drafts of positive reviews failing the checks in a row that turn publishing by itself off. */
   breakerRejections: 3,
+  /** Reviews the overview's numbers read at most, newest first; past it the answer says it is partial. */
+  metricsRows: 5_000,
 } as const;
 
 /**
@@ -199,4 +201,43 @@ export interface ReviewPage {
   items: ReviewItem[];
   nextCursor: string | null;
   counts: Record<ReviewTab, number>;
+}
+
+/** The overview's periods (PR S11): the last 30 days by week, the last 6 and 12 months by month. */
+export const REVIEW_METRIC_PERIODS = ["30d", "6m", "12m"] as const;
+export type ReviewMetricPeriod = (typeof REVIEW_METRIC_PERIODS)[number];
+
+/** A week or a month of the period. By the stars: 5 recommends, 4 is neutral, 1 to 3 does not. */
+export interface ReviewMetricBucket {
+  /** The owner's local day the week starts on (a Monday, "2026-11-09") or the month ("2026-11"). */
+  key: string;
+  promoters: number;
+  neutrals: number;
+  detractors: number;
+}
+
+/** The overview of the reviews written in a period: numbers only, never a name or a text. */
+export interface ReviewMetrics {
+  period: ReviewMetricPeriod;
+  /** UTC ISO of the first instant counted (a midnight of the owner's). */
+  from: string;
+  unit: "week" | "month";
+  /** How many reviews got 5, 4, 3, 2 and 1 stars, in this order. */
+  ratings: [number, number, number, number, number];
+  /** Oldest first; a week or a month without reviews comes with zeros. The first and the last may be cut by the period. */
+  buckets: ReviewMetricBucket[];
+  /** Reviews of the period with a reply on Google, whoever wrote it. */
+  replied: number;
+  /** Half of the replies whose time Zuri knows went out within this many minutes; null when it knows none. */
+  medianReplyMinutes: number | null;
+  /** The requests' funnel (sent, opened, reviewed); null until Zuri sends review requests. */
+  requests: { sent: number; opened: number; reviewed: number } | null;
+  /** There were more reviews than `REVIEW_LIMITS.metricsRows`: only the newest were counted. */
+  partial: boolean;
+}
+
+/** The recommendation index, from -100 to 100: % that recommends minus % that does not. Null without reviews. */
+export function recommendationIndex(counts: { promoters: number; neutrals: number; detractors: number }): number | null {
+  const total = counts.promoters + counts.neutrals + counts.detractors;
+  return total > 0 ? Math.round(((counts.promoters - counts.detractors) / total) * 100) : null;
 }

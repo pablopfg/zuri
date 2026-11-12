@@ -234,7 +234,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S07 | mesclada (#277) |
 | S08 | mesclada (#282) |
 | S09 | mesclada (#286) |
-| S10 | em revisão |
+| S10 | mesclada (#291) |
+| S11 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -336,6 +337,19 @@ Diferenças da S10 (Contatos), para as PRs seguintes não as desfazerem:
 - Achados da revisão de QA e da auditoria, corrigidos nesta PR: "Perguntar à Zuri" só escreve a pergunta no campo da Conversa, pelo estado `draft` do endereço, e nunca envia sozinho, porque o nome vem do Google (SEC-S10-01); o mapa da Memória só cita contato enquanto a permissão dos contatos vale (SEC-S10-02); número escrito com código de outro país nunca abre o WhatsApp; ramal não entra no número de "Ligar"; e-mail no lugar do nome não liga memória a contato; contato sem nome, telefone nem e-mail aparece como "Sem nome no Google"; a nova consulta do estado segue até a terceira mesmo quando uma falha. Os cartões do CRM ganharam e2e próprio (`crm-cartoes.spec.ts`).
 - Fica como está, de propósito: aviso do CRM gravado antes desta PR abre Contatos (o endereço antigo da aba); os novos abrem o CRM. Falha ao carregar mais contatos ou ao copiar não mostra aviso.
 - A issue #287 (conversa longa abria antes do fim) é corrigida nesta PR: de longe, a Conversa pula para o fim em vez de deslizar, e acompanha o conteúdo que cresce depois de desenhado enquanto o dono está no fim.
+
+Diferenças da S11 (servidor das métricas), para a S12 não as desfazer:
+
+- A rota é `GET /api/reviews/metrics?period=30d|6m|12m` e devolve `{ period, from, unit, ratings, buckets, replied, medianReplyMinutes, requests, partial }`. O `byBucket` do plano virou `buckets`, e a resposta ganhou `from`, `unit` e `partial`. O contrato está em `ReviewMetrics` (`packages/shared/src/reviews.ts`) e explicado em `docs/avaliacoes-google.md`, "Números da visão geral".
+- **Migration 35**, só com o índice `zur_reviews_metrics`: não havia índice pela data em que a avaliação foi escrita. Nenhuma tabela nem coluna nova.
+- A rota manda contagens; o índice de recomendação, a nota média e as porcentagens são conta da tela. `recommendationIndex` (pacote comum, sem Zod) faz a do índice e devolve `null` sem avaliações: a tela mostra "sem avaliações" nesse caso, e não zero.
+- "30 dias" são hoje e os 29 dias antes, e os grupos são semanas de segunda a domingo. Como 30 não é múltiplo de 7, a primeira e a última semana vêm cortadas pelo período (o `from` diz onde começa), e os grupos somam o mesmo total dos quatro números. São 5 grupos, ou 6 quando hoje é segunda-feira: a tela não pode contar com um número fixo de colunas. A semana começa sempre na segunda, sem olhar o "primeiro dia" da Agenda.
+- "6 meses" e "12 meses" são o mês corrente, ainda incompleto, e os 5 ou 11 anteriores inteiros.
+- A variação do índice ("+N desde o começo do período") não vem pronta: a tela faz a conta entre o último e o primeiro grupo que tenham avaliação, como no protótipo.
+- `requests` vem `null` até a S20 (pedido de avaliação e link pessoal). A S12 esconde o funil enquanto for `null`, em vez de mostrar zeros que pareceriam "ninguém abriu".
+- "Tempo até responder" passa a valer também para a resposta dada direto no Google: a Zuri guarda a hora que o Google informa na primeira vez que vê a resposta (`replied_at`, coluna que já existia e só era preenchida nas respostas da própria Zuri). Respostas copiadas antes desta PR contam em `replied`, mas não no tempo; por isso `medianReplyMinutes` pode ser `null` com `replied` maior que zero, e a tela precisa de um texto para esse caso.
+- "As que precisam de você" não vem nesta rota: é o `needs` de `GET /api/reviews/status`, que a tela já lê.
+- Acima de 5.000 avaliações no período a resposta conta só as mais novas e marca `partial: true`.
 
 ## 12. Riscos
 
