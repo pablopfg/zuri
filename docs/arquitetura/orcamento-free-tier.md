@@ -292,7 +292,7 @@ Numeradas para o PR poder citar ("segue P2 e P4").
   A CI confere com `npm run size`: o teto em `scripts/check-bundle-size.ts`
   começou em 175 kB (a develop estava em 172,8 kB depois do menu recolhível) e
   só desce; estava em 139,9 kB e subiu uma vez, para 140,9 kB, com a casca do
-  Sinal (OK do Pablo em 10/11/2026 para até 141 kB; medido em 140,8 kB). Os schemas que a interface usa em tempo de execução
+  Sinal (OK do Pablo em 10/11/2026 para até 141 kB; medido em 140,8 kB), e para 141 kB em 12/11/2026, o topo do que ele aprovou, com o som dos avisos (33 bytes: dois nomes na lista de arquivos do primeiro carregamento; medido em 140.891 bytes). Os schemas que a interface usa em tempo de execução
   (sessão, segundo passo, opções de login, atividade de acesso e erro da API)
   são escritos com `zod/mini`, e todo schema de `packages/shared` leva
   `/* @__PURE__ */` para o bundler descartar o que a interface não usa. Assim o

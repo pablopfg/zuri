@@ -9,6 +9,9 @@ addMessages(ptBRVoice);
 
 type Voice = ReturnType<typeof useVoice>;
 
+/** Seconds as the recording clock shows them: 0:03, 2:00. */
+const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+
 /**
  * The one recording control of the app (Sinal, PRs S05 and S07): every field that
  * takes voice (the conversation, the Início, the text of a note) shows this
@@ -47,7 +50,7 @@ export function VoiceStatus({ voice }: { voice: Voice }) {
       {state.phase === "recording" && (
         <span className="inline-flex items-center gap-2 font-medium text-danger">
           <span className="h-2 w-2 rounded-full bg-danger motion-safe:animate-pulse" aria-hidden />
-          {t("web.voice.recording", { seconds: state.seconds, max: VOICE_LIMITS.maxClipSeconds })}
+          {t("web.voice.recording", { time: clock(state.seconds), max: clock(VOICE_LIMITS.maxClipSeconds) })}
         </span>
       )}
       {state.phase === "transcribing" && (

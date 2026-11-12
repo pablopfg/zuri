@@ -1,5 +1,6 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { AREAS, type Area, type AreaVersions, LIVE_CLOSE, LIVE_LIMITS, LIVE_PATH, LIVE_PING } from "@zuri/shared";
+import { resetSounds, watchNotices } from "./sounds.ts";
 
 /**
  * Refreshes only the screen areas that changed (nova UI, PR 2). The server
@@ -90,6 +91,8 @@ function apply(qc: QueryClient, next: AreaVersions, share: boolean): Area[] {
 export function seen(qc: QueryClient, input: unknown, share = true): Area[] {
   client = qc;
   bus();
+  // The notice sound listens from here on: this file is what every signed-in screen loads after the first one.
+  watchNotices(qc);
   const next = cleanVersions(input);
   // No numbers (lockdown, a password to change, a second step to set up): the server would refuse the channel too.
   if (Object.keys(next).length > 0) startLive(qc);
@@ -214,6 +217,7 @@ export function stopLive(): void {
 /** Tests only: forget the base and the channel. */
 export function resetVersions(): void {
   stopLive();
+  resetSounds();
   benched = false;
   known = null;
   client = null;

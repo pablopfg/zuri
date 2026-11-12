@@ -7,7 +7,7 @@ import type { AiLimits } from "../src/ai/usage.ts";
 import { AppError } from "../src/http/errors.ts";
 import { fakeAi, withAiWorld } from "./ai-fakes.ts";
 
-// Voice to text (step 9): one clip of at most 60 s, an hour a day, counted before the call.
+// Voice to text (step 9): one clip of at most 120 s, an hour a day, counted before the call.
 
 const LIMITS: AiLimits = { requestsPerDay: 100, neuronsPerDay: 9_000, maxOutputTokens: 1_024 };
 const clip = (bytes: number) => btoa("x".repeat(bytes));
@@ -20,15 +20,23 @@ describe("transcription", () => {
     expect(base64Bytes(btoa("a"))).toBe(1);
     expect(estimatedSeconds(1)).toBe(1);
     expect(estimatedSeconds(40_000)).toBe(10);
-    expect(estimatedSeconds(2 * 1024 * 1024)).toBe(60);
+    // 120 s at 32 kbit/s are 480 kB: one second short of it, the cap itself, and anything bigger.
+    expect(estimatedSeconds(476_000)).toBe(119);
+    expect(estimatedSeconds(480_000)).toBe(120);
+    expect(estimatedSeconds(484_000)).toBe(120);
+    expect(estimatedSeconds(2 * 1024 * 1024)).toBe(120);
   });
 
-  it("charges the longer of the browser's length and the size's estimate, capped at 60 s", async () => {
+  it("charges the longer of the browser's length and the size's estimate, capped at 120 s", async () => {
     await withAiWorld(async (world) => {
       const ai = new MeteredAI(new MockAIProvider(), world.meter, () => LIMITS, undefined, new MockTranscriber());
       expect(await ai.transcribe(clip(40_000), 2, { locale: "pt-BR" })).toMatchObject({ seconds: 10 });
       expect(await ai.transcribe(clip(100), 59.2, { locale: "en" })).toEqual({ text: "(Simulated transcription) 1 s of audio.", seconds: 60 });
       expect(seconds(world)?.audio_seconds).toBe(70);
+      // A full clip of two minutes, and a caller that claims more than the cap: 120 s each, never more.
+      expect(await ai.transcribe(clip(100), 119.2, { locale: "pt-BR" })).toMatchObject({ seconds: 120 });
+      expect(await ai.transcribe(clip(100), 500, { locale: "pt-BR" })).toMatchObject({ seconds: 120 });
+      expect(seconds(world)?.audio_seconds).toBe(310);
     });
   });
 
@@ -36,7 +44,7 @@ describe("transcription", () => {
     await withAiWorld(async (world) => {
       const long: Transcriber = { model: TRANSCRIPTION_MODEL, billable: true, transcribe: async () => ({ text: "…", seconds: 2_700.4 }) };
       const ai = new MeteredAI(new MockAIProvider(), world.meter, () => LIMITS, undefined, long);
-      // 2 MB at about 6 kbit/s: the size suggests 60 s at most.
+      // 1.5 MB at about 4 kbit/s: the size suggests 120 s at most.
       expect(await ai.transcribe(clip(1_500_000), 60, { locale: "pt-BR" })).toMatchObject({ seconds: 2_701 });
       expect(seconds(world)?.audio_seconds).toBe(2_701);
       expect(world.meter.report(LIMITS, "workers-ai", "@cf/zai-org/glm-4.7-flash").today.neurons).toBeCloseTo((2_701 / 60) * 46.63, 1);

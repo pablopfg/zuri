@@ -147,3 +147,38 @@ export async function rowAction(row: Locator, page: Page, name: string) {
   await row.getByRole("button", { name: /^Mais opções/ }).click();
   await page.getByRole("menu").getByRole("menuitem", { name, exact: true }).click();
 }
+
+/**
+ * Notes every sound the page asks the browser to play, by the pitch of each
+ * note (Hz), in order: the test hears with it. Call before the page loads.
+ */
+export async function listenToSounds(page: Page) {
+  await page.addInitScript(() => {
+    const heard: number[] = [];
+    (window as unknown as { zuriHeard: number[] }).zuriHeard = heard;
+    const make = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function (this: AudioContext) {
+      const oscillator = make.call(this);
+      const set = oscillator.frequency.setValueAtTime.bind(oscillator.frequency);
+      oscillator.frequency.setValueAtTime = (value: number, at: number) => {
+        heard.push(value);
+        return set(value, at);
+      };
+      return oscillator;
+    };
+  });
+}
+
+/** The pitches played since the page loaded (see listenToSounds). */
+export function soundsHeard(page: Page): Promise<number[]> {
+  return page.evaluate(() => (window as unknown as { zuriHeard: number[] }).zuriHeard);
+}
+
+/** The notes of each sound, as the prototype the owner approved has them. */
+export const SOUND_NOTES = {
+  sino: [987.77, 1975.5, 1318.5, 2637],
+  gota: [1500, 760],
+  marimba: [783.99, 3135.96, 987.77, 3951.08, 1174.66, 4698.64],
+  start: [620, 930],
+  stop: [930, 620],
+} as const;

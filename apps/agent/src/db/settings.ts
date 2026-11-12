@@ -39,6 +39,7 @@ const STORAGE_KEYS = {
   alertLearning: "alert_learning",
   alertFullText: "alert_full_text",
   agenda: "agenda",
+  sounds: "sounds",
 } as const satisfies Record<keyof Settings, string>;
 
 type Field = keyof Settings;
