@@ -2615,7 +2615,40 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .app.is-collapsed .sb-rail{border-right:0;padding-right:0;align-items:center}
 .sp-seg{display:flex;margin:var(--s3) 0 var(--s2);width:100%}
 .sp-seg button{flex:1;justify-content:center;padding:0 8px}
-.gx-frame{flex:1 1 auto;display:block;width:100%;min-height:640px;border:0;background:var(--bg)}
+/* Confirmação: no Agenda e na página do paciente. */
+.cf-box{margin-top:var(--s4);padding:var(--s4);border:1px solid var(--line);border-radius:var(--r-lg);background:var(--bg);display:grid;gap:10px}
+.cf-h{display:flex;align-items:center;gap:8px;margin:0;font-weight:600}
+.cf-st{margin:0}
+.cf-acts{display:flex;flex-wrap:wrap;gap:8px}
+.cf-acts .ic.wa{width:16px;height:16px}
+.cf-page{min-height:100dvh;display:flex;flex-direction:column;align-items:center;gap:var(--s4);padding:var(--s6) var(--s4) var(--s7);background:var(--bg)}
+.cf-proto{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;max-width:440px}
+.cf-card{width:100%;max-width:440px;display:grid;gap:var(--s4);padding:var(--s6);border:1px solid var(--line);border-radius:var(--r-xl,20px);background:var(--surface);box-shadow:0 1px 2px rgb(24 24 27 / .06),0 12px 32px -12px rgb(24 24 27 / .16);animation:pg-in var(--dur-2,240ms) var(--ease-out) both}
+.cf-brand{display:flex;align-items:center;gap:10px;font-weight:600;color:var(--ink-2)}
+.cf-logo{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent-soft-ink);font:700 13px/1 var(--f-ui)}
+.cf-t{font-size:var(--t-xl,26px);letter-spacing:-.02em;margin:0}
+.cf-sub{margin:-8px 0 0;color:var(--ink-2)}
+.cf-det{margin:0;display:grid;gap:10px;padding:var(--s4);border-radius:var(--r-lg);background:var(--sunken)}
+.cf-det>div{display:flex;align-items:center;gap:10px}
+.cf-det dd{margin:0;font-weight:500}
+.cf-det dd::first-letter{text-transform:uppercase}
+.cf-det .ic{color:var(--ink-2);flex:none}
+.cf-btns{display:grid;gap:10px}
+.cf-note{display:flex;gap:8px;align-items:flex-start;margin:0;color:var(--ink-2);font-size:var(--t-sm)}
+.cf-note .ic{flex:none;margin-top:2px}
+.cf-ok{display:flex;gap:10px;align-items:flex-start;padding:var(--s4);border-radius:var(--r-lg);background:var(--accent-soft);color:var(--accent-soft-ink)}
+.cf-ok .ic{flex:none;width:22px;height:22px}
+.cf-state{display:grid;gap:8px;justify-items:start}
+.cf-state>.ic{width:28px;height:28px;color:var(--ink-2)}
+.cf-state h1{font-size:var(--t-xl,26px);letter-spacing:-.02em;margin:0}
+.cf-state p{margin:0;color:var(--ink-2)}
+.cf-foot{margin:0;color:var(--muted);font-size:var(--t-xs,12px);text-align:center}
+.cf-card .btn .ic.wa{width:18px;height:18px}
+@media (max-width:820px){.cf-page{padding:var(--s4) var(--s4) var(--s6)}.cf-card{padding:var(--s5)}}
+.gx-slot{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+#gx-host{position:fixed;z-index:5;background:var(--bg)}
+#gx-host[hidden]{display:none}
+.gx-frame{display:block;width:100%;height:100%;border:0;background:var(--bg)}
 .gs-soon{padding:var(--s5);display:grid;gap:var(--s3);justify-items:start;max-width:640px}
 .gs-soon h2{font-size:var(--t-lg)}
 .gs-soon p{color:var(--ink-2);margin:0}
@@ -2755,7 +2788,7 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .ev-dl dd{margin:0}
 .dlg-box .form-grid .field{min-width:0}
 .dlg-box .form-grid .input{width:100%;min-width:0}
-.btn.danger{color:var(--danger,#b91c1c)}
+.btn.danger{color:var(--danger-ink,#b91c1c)}
 @media (max-width:820px){
   .ag2-hol{display:flex}
   .ag2-m .m-ev{background:var(--evc);box-shadow:none}
@@ -4163,6 +4196,7 @@ function render() {
   const rfLayer = !!app.querySelector(".wiz-wrap, .pop-wrap, .pop");
   if (st.s === "entrar") { app.className = ""; app.innerHTML = entrar(); hvStart(); afterRender(); return; }
   if (st.s === "verificacao") { app.className = ""; app.innerHTML = verificacao(); return; }
+  if (st.s === "confirmar") { app.className = ""; app.innerHTML = confirmar(); afterRender(); return; }
   app.className = "app";
   app.innerHTML = `${side()}<div class="main">${topbar()}<main id="conteudo">${st.ld ? pageLoading(st.s) : SCREEN[st.s]()}</main>${st.s === "conversa" ? "" : tabbar()}</div>${pops()}${st.s === "automacoes" && st.au ? wizard() : ""}`;
   if (rfKey !== st.rfKey) app.querySelector("#conteudo").classList.add("pg-in");
@@ -5744,6 +5778,7 @@ function toast0(msg, undo) {
 
 /* Depois de cada render, devolve o que a pessoa já mexeu */
 function afterRender() {
+  gxAfterRender();
   avSeenWatch();
   avBadge();
   document.querySelectorAll(".check").forEach((b) => {
@@ -6068,7 +6103,7 @@ const GS = [
   ["financeiro", "wallet", "Financeiro"],
   ["resultados", "chart-column", "Resultados"]
 ];
-SCREENS.push("gestao");
+SCREENS.push("gestao", "confirmar");
 st.gs = pick(params.get("gs"), GS.map((x) => x[0]));
 st.mn = pick(params.get("mn"), ["a", "b", "c", "atual"]);
 st.mclosed = new Set();
@@ -6128,10 +6163,49 @@ function side() {
     <button class="account" type="button" aria-label="Conta de Ana" aria-haspopup="dialog" data-menu="conta"><span class="avatar" aria-hidden="true">A</span><span class="acct-txt"><b>Ana</b></span>${ic("chevron-down", "ic-sm")}</button>
   </aside>`;
 }
-/* A tela vem do protótipo da Gestão, num quadro sem o menu e a barra dele: o menu é o da Zuri. */
+/* A tela vem do protótipo da Gestão, num quadro sem o menu e a barra dele: o menu é o da Zuri.
+   O quadro é um só, criado uma vez e carregado logo depois da primeira tela. Ele fica fora do #app
+   (que se redesenha a cada clique) e é posto em cima do espaço da tela. Assim, abrir a Gestão de novo
+   ou trocar de aba não carrega nada: só muda a tela dentro do quadro. Enquanto ele não está pronto,
+   aparece o mesmo esqueleto das outras telas. */
+const GX = { host: null, frame: null, ready: false, view: "", ro: null };
 function gestao() {
-  return `<iframe class="gx-frame" title="Gestão do consultório" src="prototipo-gestao.html#${st.gs}"></iframe>`;
+  return `<div class="gx-slot" data-gx-slot>${GX.ready ? "" : pageLoading("gestao")}</div>`;
 }
+function gxEnsure() {
+  if (GX.host) return;
+  GX.host = document.createElement("div");
+  GX.host.id = "gx-host";
+  GX.host.hidden = true;
+  GX.frame = document.createElement("iframe");
+  GX.frame.className = "gx-frame";
+  GX.frame.title = "Gestão do consultório";
+  GX.view = st.gs;
+  GX.frame.src = `prototipo-gestao.html#${st.gs}`;
+  GX.host.appendChild(GX.frame);
+  document.getElementById("app").after(GX.host);
+}
+function gxPlace() {
+  if (!GX.host) return;
+  const slot = st.s === "gestao" && !st.ld ? document.querySelector("[data-gx-slot]") : null;
+  const show = !!slot && GX.ready;
+  GX.host.hidden = !show;
+  if (!show) return;
+  const r = slot.getBoundingClientRect();
+  Object.assign(GX.host.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+  if (GX.view !== st.gs) {
+    GX.view = st.gs;
+    try { GX.frame.contentWindow.go(st.gs); } catch (_) { GX.frame.src = `prototipo-gestao.html#${st.gs}`; }
+  }
+}
+function gxAfterRender() {
+  const slot = document.querySelector("[data-gx-slot]");
+  if (slot) gxEnsure();
+  if (!GX.ro && "ResizeObserver" in window) GX.ro = new ResizeObserver(() => gxPlace());
+  if (GX.ro) { GX.ro.disconnect(); if (slot) GX.ro.observe(slot); }
+  gxPlace();
+}
+window.addEventListener("resize", () => gxPlace());
 /* O que o quadro muda na Gestão para ela seguir o resto da Zuri: sem menu próprio, abas e toques iguais. */
 const GX_CSS = [
   ".proto,.side,.tabbar{display:none!important}.app{grid-template-columns:minmax(0,1fr)!important}",
@@ -6139,9 +6213,24 @@ const GX_CSS = [
   "[data-theme=\"dark\"] .seg button[aria-pressed=\"true\"]{background:var(--hover);box-shadow:inset 0 0 0 1px var(--line-strong)}",
   ".btn,.chip,.seg button,.pnav button,.v-row{transition:background-color 120ms cubic-bezier(.2,.8,.2,1),color 120ms cubic-bezier(.2,.8,.2,1),border-color 120ms cubic-bezier(.2,.8,.2,1),transform 120ms cubic-bezier(.2,.8,.2,1)}",
   ".btn:active{transform:translateY(1px)}.chip:active,.seg button:active,.pnav button:active{transform:scale(.97)}",
-  "@media (max-width:860px){.page{padding-bottom:32px!important}.toast{bottom:24px!important}.seg:has(>button:nth-child(4)){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;max-width:none}.seg:has(>button:nth-child(4)) button{white-space:normal}}",
-  "@media (prefers-reduced-motion:reduce){*{transition-duration:0s!important;animation-duration:0s!important}}"
+  "@media (max-width:860px){.page{padding-bottom:32px!important}.toast{bottom:24px!important}.seg:has(>button:nth-child(4)){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;max-width:none}.seg:has(>button:nth-child(4)) button{white-space:normal;justify-content:center}}",
+  "@media (prefers-reduced-motion:reduce){*{transition-duration:0s!important;animation-duration:0s!important}}",
+  /* Mesmas medidas das outras telas: margem da página, título, abas com ícone, cartões e etiquetas. */
+  ".page{max-width:1200px!important;margin:0 auto!important;padding:56px 48px 80px!important}",
+  "h1{letter-spacing:-.02em;line-height:1.15}",
+  ".seg{padding:4px;box-shadow:inset 0 0 0 1px var(--line-soft,var(--line))}.seg button{min-height:34px;display:inline-flex;align-items:center;gap:6px}",
+  ".seg[aria-label^=\"Partes\"]{width:fit-content}.seg .ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}",
+  ".card{box-shadow:0 1px 2px rgb(24 24 27 / .08)}[data-theme=\"dark\"] .card{box-shadow:none}.pill{font-weight:600}",
+  "@media (max-width:820px){.page{padding:24px 16px 48px!important}h1{font-size:26px}.seg[aria-label^=\"Partes\"]{width:100%}}"
 ].join("");
+/* Ícones das abas da Gestão, os mesmos do menu e das abas das outras telas. */
+const GX_TAB_IC = { "at:hoje": "calendar-days", "at:indicadores": "chart-column", "fin:receber": "inbox", "fin:lancamentos": "list", "fin:importar": "upload", "fin:precos": "tags", "res:painel": "layout-dashboard", "res:relatorios": "book-open" };
+function gxIcons(d) {
+  for (const b of d.querySelectorAll(".seg button[data-set]")) {
+    const n = GX_TAB_IC[b.dataset.set];
+    if (n && !b.querySelector("svg")) b.insertAdjacentHTML("afterbegin", ic(n));
+  }
+}
 /* O quadro usa as cores da Zuri, não as próprias: copia cada variável de cor e medida do tema em uso. */
 let GX_VARS = null;
 function gxVars() {
@@ -6162,6 +6251,7 @@ function gxNav(v) {
   /* O endereço do quadro vem de fora: só vale um dos nomes conhecidos. */
   if (!GS.some((x) => x[0] === v)) return;
   st.gs = v;
+  GX.view = v;
   for (const a of document.querySelectorAll("[data-gs]")) {
     if (a.dataset.gs === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   }
@@ -6176,8 +6266,16 @@ document.addEventListener("load", (e) => {
   css.textContent = GX_CSS;
   w.document.head.appendChild(css);
   gxTheme(w);
+  gxIcons(w.document);
+  new w.MutationObserver(() => gxIcons(w.document)).observe(w.document.body, { childList: true, subtree: true });
   if (typeof w.go === "function" && !w.go.gx) { const go0 = w.go; w.go = (v) => { go0(v); gxNav(v); }; w.go.gx = true; }
   w.addEventListener("hashchange", () => gxNav(w.location.hash.slice(1)));
+  if (f === GX.frame) {
+    GX.ready = true;
+    const slot = document.querySelector("[data-gx-slot]");
+    if (slot) slot.textContent = "";
+    gxPlace();
+  }
 }, true);
 new MutationObserver(() => { const f = document.querySelector(".gx-frame"); if (f) try { gxTheme(f.contentWindow); } catch (_) { /* outra origem */ } })
   .observe(document.documentElement, { attributes: true, attributeFilter: ["data-tema"] });
@@ -6197,7 +6295,7 @@ function renderSheet() {
 document.getElementById("pm").value = st.mn;
 document.getElementById("pav").addEventListener("click", avSimulate);
 document.getElementById("pm").addEventListener("change", (e) => { st.mn = pick(e.target.value, ["a", "b", "c", "atual"]); st.area = undefined; st.space = undefined; render(); });
-document.getElementById("ps").insertAdjacentHTML("beforeend", '<option value="gestao">Gestão do consultório</option>');
+document.getElementById("ps").insertAdjacentHTML("beforeend", '<option value="gestao">Gestão do consultório</option><option value="confirmar">Confirmação do paciente (link)</option>');
 
 /* ---------- Agenda: clicar, editar, mover e mudar a situação; fins de semana e feriados marcados ---------- */
 const p2 = (n) => String(n).padStart(2, "0");
@@ -6243,6 +6341,10 @@ let EV = [
   mkEv(7, 9, 0, 1, "Murilo Esteves Paz", TIPOS[0], "agendado"), mkEv(8, 14, 0, 1, "Helena Duarte Prado", TIPOS[1], "agendado"), mkEv(9, 11, 0, 1, "Reunião da equipe", "", "agendado", { rec: true }), mkEv(10, 10, 0, 1, "Nina Torquato Reis", TIPOS[2], "confirmado"),
   mkEv(-4, 9, 0, 1, "Otávio Lins Moreira", TIPOS[0], "confirmado"), mkEv(-3, 15, 0, 1, "Clara Nóbrega Dias", TIPOS[2], "confirmado"), mkEv(15, 9, 30, 1, "Diego Fontes Arruda", TIPOS[1], "agendado"), mkEv(17, 14, 0, 1, "Paula Régis Amaral", TIPOS[1], "agendado")
 ];
+/* Celulares de exemplo para os agendamentos sem vínculo (inventados). */
+EV.forEach((e, k) => {
+  if (e.tipo && !e.pid && !e.cel) { e.ddi = "BR"; e.cel = `(41) 9${String(8100 + k * 37).slice(-4)}-${String(1000 + k * 53).slice(-4)}`; }
+});
 st.agd = new Date(AG_NOW);
 if (params.get("agd")) { const d = dOf(params.get("agd")); if (!Number.isNaN(d.getTime())) st.agd = d; }
 st.sync = "";
@@ -6271,6 +6373,8 @@ function lanes(list) {
 const AG_HR = 48;
 /* Ícones que faltavam no conjunto do protótipo (Lucide). */
 Object.assign(ICONS.lucide, {
+  video: '<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+  "calendar-x": '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m14 14-4 4"/><path d="m10 14 4 4"/>',
   "circle-x": '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
   "cloud-off": '<path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/>',
   "link-2-off": '<path d="M9 17H7A5 5 0 0 1 7 7"/><path d="M15 7h2a5 5 0 0 1 4 8"/><path d="M8 12h4"/><path d="m2 2 20 20"/>',
@@ -6469,9 +6573,75 @@ function evDlg(e, opener) {
   if (!e.ro) rows.push(["Cor no Google", `${STS[e.s][1]} (${STS[e.s][0]})`]);
   dlgShow({ t: e.t, sub: e.ro ? "Este evento vem de uma agenda só para leitura. Para mudar, abra o Google Agenda." : "Mude a situação com um toque. Ela vira a cor do evento no Google Agenda.",
     body: `${e.ro ? "" : `<div class="ev-sts" role="group" aria-label="Situação">${Object.entries(STS).map(([k, [l]]) => `<button type="button" class="st-${k}" data-ev-st="${k}" data-id="${e.id}" aria-pressed="${e.s === k}"><i aria-hidden="true"></i>${l}</button>`).join("")}</div>`}
+      ${cfBox(e)}
       <dl class="ev-dl">${rows.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join("")}</dl>
-      ${!e.ro && e.tipo && !p ? `<p class="pt-later">${ic("link", "ic-sm")}<span class="grow">Este agendamento não está ligado a um contato.</span><button class="btn btn-secondary btn-sm" type="button" data-ev-edit="${e.id}" data-ev-link>Vincular</button></p>` : ""}`,
+      ${!e.ro && e.tipo && !p ? `<p class="pt-later">${ic("link", "ic-sm")}<span class="grow">Este agendamento não está ligado a um contato.</span><button class="btn btn-secondary btn-sm" type="button" data-ev-edit="${e.id}" data-ev-link>Vincular</button></p>` : ""}
+`,
     foot: e.ro ? "" : `<button class="btn btn-quiet danger" type="button" data-ev-del="${e.id}">${ic("trash-2", "ic-sm")}Apagar</button><span class="grow"></span><button class="btn btn-primary" type="button" data-ev-edit="${e.id}">${ic("pencil", "ic-sm")}Editar</button>` }, opener);
+}
+
+/* ---------- Confirmação pelo paciente ----------
+   Cada agendamento com tipo ganha um link só dele (no sistema: 128 bits aleatórios, guardados só como hash).
+   O link abre uma página sem login que mostra o primeiro nome, o dia, a hora e o tipo. Ela tem dois botões:
+   confirmar e não vou poder ir. Mudar o dia ou o horário é com a equipe. Abrir o link não muda nada:
+   só o toque num botão muda (o WhatsApp abre o link sozinho para montar a prévia). */
+const CF_CLINIC = { n: "Consultório Exemplo", wa: "(41) 3333-0000" };
+const CF_LIMIT_H = 2;
+const cfCel = (e) => { const p = e.pid && pById(e.pid); return p ? cellOf(p) : e.ddi === "BR" || !e.ddi ? e.cel || "" : ""; };
+const cfFirst = (e) => { const p = e.pid && pById(e.pid); return (p ? p.n : e.t).replace(/^Dra?\. /, "").split(" ")[0]; };
+const cfLink = (e) => `exemplo.com.br/c/${(`k7Qx${e.id}Vt3mZ9rWp2aLs8YdN4` + e.id).slice(0, 22)}`;
+const cfStart = (e) => { const d = dOf(e.day); d.setHours(e.h, e.m, 0, 0); return d; };
+const cfNow = () => { const d = new Date(AG_NOW); const m = nowMin(); d.setHours(Math.floor(m / 60), m % 60, 0, 0); return d; };
+const cfPast = (e) => cfStart(e) <= cfNow();
+const cfLate = (e) => cfStart(e) - cfNow() < CF_LIMIT_H * 3600000;
+const cfWhen = (e) => `${dayShort(dOf(e.day))} às ${hmm(e.h * 60 + e.m)}`;
+function cfBox(e) {
+  if (e.ro || !e.tipo) return "";
+  const cf = e.cf || {};
+  const past = cfPast(e);
+  const lbl = cf.st === "confirmou" ? ["on", `Confirmou pelo link ${cf.w}`] : cf.st === "cancelou" ? ["bad", `Cancelou pelo link ${cf.w}`] : cf.st === "enviado" ? ["wait", `Link enviado ${cf.w}. Ainda sem resposta.`] : ["off", "Link ainda não enviado"];
+  const cel = cfCel(e);
+  const acts = past || e.s === "cancelado" ? "" : `<div class="cf-acts">${cel ? `<button class="btn btn-secondary btn-sm" type="button" data-cf-wa="${e.id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</button>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${e.id}">${ic("copy", "ic-sm")}Copiar link</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${e.id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
+    <p class="hint">${cel ? "Abre o WhatsApp com a mensagem e o link. Você confere e envia." : "Sem celular neste agendamento: copie o link e envie por onde preferir."} A resposta muda a situação e a cor no Google sozinha, e chega em Avisos.</p>`;
+  return `<section class="cf-box" aria-labelledby="cf-h"><p class="cf-h" id="cf-h">${ic("calendar-check", "ic-sm")}Confirmação do paciente</p>
+    <p class="cf-st"><span class="pill ${lbl[0]}"><i></i>${lbl[1]}</span></p>${past ? `<p class="hint">A consulta já passou. O link não vale mais.</p>` : ""}${acts}</section>`;
+}
+function cfMsg(e) {
+  return `Olá, ${cfFirst(e)}! Sua ${e.tipo.split(" | ")[0].toLowerCase()} no ${CF_CLINIC.n} está marcada para ${dayLong(dOf(e.day)).toLowerCase()}, às ${hmm(e.h * 60 + e.m)}. Confirme ou cancele por aqui: https://${cfLink(e)}. Para mudar o dia ou o horário, fale com a nossa equipe.`;
+}
+/* Página do paciente: fora da Zuri, sem menu e sem login. */
+function confirmar() {
+  if (!st.cfe) { const k = dkey(AG_NOW); const f = EV.filter((x) => x.tipo && x.s === "agendado" && x.day > k).sort((a, b) => (a.day < b.day ? -1 : 1))[0]; st.cfe = f ? f.id : ""; }
+  const e = evById(st.cfe);
+  const mode = st.cfv || "valido";
+  const head = `<header class="cf-brand"><span class="cf-logo" aria-hidden="true">CE</span><span>${CF_CLINIC.n}</span></header>`;
+  const team = `<a class="btn btn-secondary btn-block" href="${waLink(CF_CLINIC.wa)}" target="_blank" rel="noopener">${WA}Falar com a equipe</a>`;
+  const proto = `<div class="cf-proto proto-only"><div class="seg" role="group" aria-label="Ver o link no protótipo">${[["valido", "Link válido"], ["passou", "Consulta passou"], ["invalido", "Link inválido"]].map(([k, l]) => `<button type="button" data-cf-v="${k}" aria-pressed="${mode === k}">${l}</button>`).join("")}</div><a class="btn btn-quiet btn-sm" href="${href("agenda")}">${ic("arrow-left", "ic-sm")}Voltar para a Agenda</a></div>`;
+  let body;
+  if (!e || mode === "invalido") body = `<div class="cf-state">${ic("link-2-off")}<h1 tabindex="-1">Este link não vale mais</h1><p>Ele pode ter sido digitado errado ou a consulta pode ter mudado. Fale com a nossa equipe pelo WhatsApp.</p></div>${team}`;
+  else if (mode === "passou" || cfPast(e)) body = `<div class="cf-state">${ic("clock")}<h1 tabindex="-1">Esta consulta já passou</h1><p>Para marcar uma nova, fale com a nossa equipe pelo WhatsApp.</p></div>${team}`;
+  else {
+    const online = /Online/.test(e.tipo);
+    const card = `<dl class="cf-det"><div>${ic("calendar-days", "ic-sm")}<dt class="sr">Dia</dt><dd>${dayLong(dOf(e.day))}</dd></div><div>${ic("clock", "ic-sm")}<dt class="sr">Horário</dt><dd>${evWhen(e)}</dd></div><div>${ic(online ? "video" : "map-pin", "ic-sm")}<dt class="sr">Tipo</dt><dd>${e.tipo.replace(" | ", " · ")}</dd></div></dl>`;
+    const late = cfLate(e);
+    if (e.s === "cancelado") body = `<div class="cf-state">${ic("calendar-x")}<h1 tabindex="-1">Consulta cancelada</h1><p>Para marcar outro dia, fale com a nossa equipe pelo WhatsApp.</p></div>${card}${team}`;
+    else if (st.cfask) body = `<h1 class="cf-t" tabindex="-1">Cancelar a consulta?</h1><p class="cf-sub">${cfFirst(e)}, a consulta de ${dayLong(dOf(e.day)).toLowerCase()}, às ${hmm(e.h * 60 + e.m)}, será cancelada e o horário fica livre para outra pessoa.</p>${card}
+      <div class="cf-btns"><button class="btn btn-danger btn-block btn-lg" type="button" data-cf-do="cancelar">Sim, cancelar a consulta</button><button class="btn btn-secondary btn-block" type="button" data-cf-back>Voltar</button></div>`;
+    else {
+      const ok = e.s === "confirmado";
+      body = `${ok ? `<div class="cf-ok" role="status" tabindex="-1">${ic("circle-check")}<span><b>Presença confirmada.</b> Até lá, ${cfFirst(e)}!</span></div>` : `<h1 class="cf-t">Olá, ${cfFirst(e)}!</h1><p class="cf-sub">Você vem à sua consulta?</p>`}${card}
+        <div class="cf-btns">${ok ? "" : `<button class="btn btn-primary btn-block btn-lg" type="button" data-cf-do="confirmar">${ic("check", "ic-sm")}Confirmar presença</button>`}
+        ${late ? `<p class="cf-note">${ic("info", "ic-sm")}<span>Faltam menos de ${CF_LIMIT_H} horas. Para cancelar agora, fale com a nossa equipe.</span></p>` : `<button class="btn btn-secondary btn-block" type="button" data-cf-ask>${ic("x", "ic-sm")}Não vou poder ir</button>`}</div>
+        <p class="cf-note">${ic("calendar-clock", "ic-sm")}<span>Precisa mudar o dia ou o horário? Fale com a nossa equipe pelo WhatsApp ${CF_CLINIC.wa}.</span></p>${team}`;
+    }
+  }
+  return `<main id="conteudo" class="cf-page">${proto}<div class="cf-card">${head}${body}<p class="cf-foot">Este link é só seu. Não mostra seu telefone nem outros dados.</p></div></main>`;
+}
+function cfAnswer(e, what) {
+  const w = `hoje às ${hm(nowMin())}`;
+  if (what === "confirmar") { e.s = "confirmado"; e.cf = { st: "confirmou", w }; }
+  else { e.s = "cancelado"; e.cf = { st: "cancelou", w }; }
+  AVISOS.unshift({ id: `cf${e.id}${what}`, ic: what === "confirmar" ? "calendar-check" : "calendar-x", t: `${e.t} ${what === "confirmar" ? "confirmou" : "cancelou"} pelo link`, d: `Consulta de ${cfWhen(e)}. A situação e a cor no Google já mudaram.`, w: `Hoje, ${hm(nowMin())}`, s: "agenda", b: "Ver", unread: true, seen: false });
 }
 
 /* A faixa embaixo do nome diz se o agendamento está ligado a um contato e o que fazer. */
@@ -6703,7 +6873,7 @@ const ACT1211 = [
   [(t) => t.matches("[data-snd-pick]"), (t) => { st.snd.pick = pick(t.dataset.sndPick, Object.keys(SOUNDS)); playSnd(st.snd.pick); render(); refocus(`[data-snd-pick="${st.snd.pick}"]`); }],
   [(t) => t.matches("[data-snd-play]"), (t) => { if (t.dataset.sndPlay === "rec") { playRec("start", true); setTimeout(() => playRec("stop", true), 900); } else playSnd(pick(t.dataset.sndPlay, Object.keys(SOUNDS))); }],
   [(t) => t.matches("[data-snd-test]"), (t) => busy(t, 700, () => { if (st.snd.on) playSnd(st.snd.pick); toast(`Lembrete: ligar para a transportadora às 15:00.${st.snd.on ? "" : " O som está desligado."}`); })],
-  [(t) => t.matches("[data-gs]"), (t) => { st.gs = pick(t.dataset.gs, GS.map((x) => x[0])); if (UI.sheet) { UI.sheet = false; renderSheet(); } seen.add("gestao"); go("gestao"); refocus(`.side [data-gs="${st.gs}"]`); }],
+  [(t) => t.matches("[data-gs]"), (t) => { st.gs = pick(t.dataset.gs, GS.map((x) => x[0])); if (UI.sheet) { UI.sheet = false; renderSheet(); } go("gestao"); refocus(`.side [data-gs="${st.gs}"]`); }],
   [(t) => t.matches("[data-area]"), (t) => { st.area = Number(t.dataset.area); render(); refocus(`[data-area="${st.area}"]`); }],
   [(t) => t.matches("[data-space]"), (t) => { st.space = pick(t.dataset.space, ["pessoal", "consultorio"]); render(); refocus(`[data-space="${st.space}"]`); }],
   [(t) => t.matches("[data-area-t]"), (t) => { const k = Number(t.dataset.areaT); if (st.mclosed.has(k)) st.mclosed.delete(k); else st.mclosed.add(k); render(); refocus(`[data-area-t="${k}"]`); }],
@@ -6714,7 +6884,14 @@ const ACT1211 = [
   [(t) => t.matches("[data-ev-edit]"), (t) => { const e = evById(t.dataset.evEdit), op = DLG.opener; dlgClose(); if (e) evEdit(e, {}, op); }],
   [(t) => t.matches("[data-ev-del]"), (t) => { const e = evById(t.dataset.evDel), op = DLG.opener; dlgClose(); if (e) confirmDlg("Apagar este evento?", "Ele sai também do Google Agenda. Para guardar o histórico do cliente, prefira marcar como Cancelado.", "Apagar", () => { DLG.opener = null; evCommit(`“${e.t}” apagado daqui e do Google Agenda.`, () => { EV = EV.filter((x) => x !== e); }); }, op); }],
   [(t) => t.matches("[data-x=evento]"), (t) => evEdit(null, {}, t)],
-  [(t) => t.matches("[data-agendar]"), (t) => agFromContact(t.dataset.agendar)]
+  [(t) => t.matches("[data-agendar]"), (t) => agFromContact(t.dataset.agendar)],
+  [(t) => t.matches("[data-cf-wa]"), (t) => { const e = evById(t.dataset.cfWa); if (!e) return; e.cf = { st: "enviado", w: `hoje às ${hm(nowMin())}` }; const op = DLG.opener; evDlg(e, op); say(`WhatsApp aberto com a mensagem para ${cfFirst(e)}. Confira e envie.`); }],
+  [(t) => t.matches("[data-cf-copy]"), (t) => { const e = evById(t.dataset.cfCopy); if (!e) return; try { navigator.clipboard.writeText(cfMsg(e)); } catch (_) { /* sem permissão */ } say("Mensagem com o link copiada."); }],
+  [(t) => t.matches("[data-cf-see]"), (t) => { st.cfe = t.dataset.cfSee; st.cfv = "valido"; st.cfask = false; DLG.opener = null; dlgClose(); goTo("confirmar"); }],
+  [(t) => t.matches("[data-cf-v]"), (t) => { st.cfv = pick(t.dataset.cfV, ["valido", "passou", "invalido"]); st.cfask = false; render(); refocus(`[data-cf-v="${st.cfv}"]`); }],
+  [(t) => t.matches("[data-cf-ask]"), () => { st.cfask = true; render(); refocus(".cf-t"); }],
+  [(t) => t.matches("[data-cf-back]"), () => { st.cfask = false; render(); refocus("[data-cf-ask]"); }],
+  [(t) => t.matches("[data-cf-do]"), (t) => { const e = evById(st.cfe); if (!e) return; cfAnswer(e, t.dataset.cfDo === "confirmar" ? "confirmar" : "cancelar"); st.cfask = false; render(); refocus(".cf-ok, .cf-state h1"); }]
 ];
 ACT.unshift(...ACT1211);
 /* Clique num horário vazio abre "Novo evento" já com o dia e a hora. */
@@ -6814,6 +6991,8 @@ ACT.unshift(
 }
 
 render();
+/* A Gestão carrega em segundo plano, logo depois da primeira tela, para abrir na hora quando for pedida. */
+setTimeout(gxEnsure, 600);
 </script>
 </body>
 </html>
