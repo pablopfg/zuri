@@ -6094,6 +6094,8 @@ function gxTheme(w) {
   for (const n of gxVars()) { const v = cs.getPropertyValue(n); if (v) root.style.setProperty(n, v.trim()); }
 }
 function gxNav(v) {
+  /* O endereço do quadro vem de fora: só vale um dos nomes conhecidos. */
+  if (!GS.some((x) => x[0] === v)) return;
   st.gs = v;
   for (const a of document.querySelectorAll("[data-gs]")) {
     if (a.dataset.gs === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
