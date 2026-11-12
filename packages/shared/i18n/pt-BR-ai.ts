@@ -87,7 +87,7 @@ export const ptBRAi = {
   "web.ai.scheduledRunsPerDay": "Rotinas da Zuri por dia",
   "web.ai.scheduledRunsPerDayHint": "Quantas vezes por dia as rotinas da Zuri podem rodar sozinhas. 0 desliga. De {min} a {max}.",
   "web.ai.semantic.title": "Busca por significado",
-  "web.ai.semantic.description": "A Zuri passa a achar o que você guardou pelo sentido, não só pelas palavras: buscar “carro” também acha “automóvel”. Vale para memórias, tarefas, notas e automações, na busca, na conversa e no Telegram.",
+  "web.ai.semantic.description": "A Zuri passa a achar o que você guardou pelo sentido, não só pelas palavras: buscar “carro” também acha “automóvel”. Vale para memórias, tarefas, notas e rotinas, na busca, na conversa e no Telegram.",
   "web.ai.semantic.switch": "Buscar também pelo significado",
   "web.ai.semantic.offHint": "Desligada, tudo funciona como antes, só pelas palavras. Ligada, ela usa um pouco da cota diária de IA para preparar o que você guarda.",
   "web.ai.semantic.ready": "{ready} de {total} itens prontos",

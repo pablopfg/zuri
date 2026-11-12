@@ -28,7 +28,7 @@ test("the row menu floats over the list, keeps Apagar last and answers the keybo
     await more.click();
     const menu = page.getByRole("menu", { name: `Mais opções para “${name}”` });
     const items = menu.getByRole("menuitem");
-    await expect(items).toHaveText(["Rodar agora", "Editar", "Apagar"]);
+    await expect(items).toHaveText(["Editar", "Duplicar", "Apagar"]);
     await expect(items.first()).toBeFocused();
     // Apagar comes after a rule, in the danger color.
     await expect(menu.locator("hr")).toHaveCount(1);
@@ -67,16 +67,21 @@ test("the row menu floats over the list, keeps Apagar last and answers the keybo
     await page.keyboard.press("Tab");
     await expect(menu).toHaveCount(0);
 
-    // While "Rodar agora" runs, the button says so (a slow answer, held back here).
-    await page.route("**/api/automations/*/run", async (route) => {
+    // While "Duplicar" runs, the button says so (a slow answer, held back here).
+    await page.route("**/api/automations", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
       await new Promise((done) => setTimeout(done, 1500));
       await route.continue();
     });
     await more.click();
-    await items.first().click();
+    await menu.getByRole("menuitem", { name: "Duplicar" }).click();
     await expect(more).toHaveAttribute("aria-busy", "true");
     await expect(more).not.toHaveAttribute("aria-busy", "true", { timeout: 10_000 });
-    await page.unroute("**/api/automations/*/run");
+    await page.unroute("**/api/automations");
+    const copy = page.getByRole("listitem").filter({ hasText: `${name} (cópia)` });
+    await expect(copy.getByText("Pausada", { exact: true })).toBeVisible();
+    const all = (await (await page.request.get("/api/automations", { headers: CSRF })).json()) as { automations: { id: string; name: string }[] };
+    for (const made of all.automations.filter((a) => a.name === `${name} (cópia)`)) await page.request.delete(`/api/automations/${made.id}`, { headers: CSRF });
   } finally {
     await page.request.delete(`/api/automations/${id}`, { headers: CSRF });
   }

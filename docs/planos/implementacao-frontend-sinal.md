@@ -237,7 +237,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S10 | mesclada (#291) |
 | S11 | mesclada (#299) |
 | S12 | mesclada (#310) |
-| S13 | em revisão |
+| S13 | mesclada (#313) |
+| S14 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -367,6 +368,22 @@ Diferenças da S12 (Avaliações), para as PRs seguintes não as desfazerem:
 - **"Ajustes"** é o nome da aba, como no protótipo. O glossário reserva "Configurações" para a página do menu; a exceção está em `i18n-ignore.json` só para o nome da aba, e os outros textos dizem "em Avaliações" ou "em Como responder".
 - **Contador no menu lateral** (o "3" ao lado de Avaliações no protótipo): não entrou. Pediria uma leitura a mais em toda tela e código no pacote inicial, que está no teto. O número aparece na aba "Avaliações" da área.
 - **JS inicial:** 140.867 bytes, 8 a menos que a develop. Ícone usado por outra tela sob demanda cria pedaço comum e pesa no pacote inicial; por isso a área usa ícones só dela (`SlidersVertical`, `PlugZap`, `CirclePause`, `Timer`, `ChevronsLeft`, `SendHorizontal`, `Hourglass`, `CircleDashed`) e não usa o `ActionsMenu`.
+
+Diferenças da S14 (Rotinas) para o protótipo, para as PRs seguintes não as desfazerem:
+
+- **"Rodar agora" fica ligado numa rotina pausada.** O protótipo desliga o botão; o servidor sempre deixou rodar à mão uma rotina pausada, e a linha da S14 pede "rodar como hoje". Serve para testar antes de retomar.
+- **Editar tem quatro passos**, de "Quando" a "Revisar": o tipo de uma rotina não muda depois de criada.
+- **O modelo só traz o horário dele enquanto você não mexeu em "Quando".** No protótipo o modelo aparece no passo 3, depois do horário; trocar o horário escolhido sem avisar seria surpresa.
+- **"Só me avise quando houver algo" aparece só na Rotina da Zuri.** O servidor recusa essa opção nos outros tipos (`error.automationQuietOnlyAi`), e a S14 não muda regra de negócio.
+- **Ferramentas externas aparecem ao editar**, não ao criar: a liberação é por rotina e pede uma rotina que já existe.
+- **"Escolher os canais" não entrou no passo "Avisos".** O link sairia da tela e perderia o que foi preenchido; a opção Normal já diz onde ficam os canais.
+- **"Fluxo" no passo 1 abre CRM › Fluxos com "Novo fluxo"**, sem as sugestões do protótipo (elas dependem do servidor das automações do CRM, S18).
+- **"Duplicar" faz duas chamadas** (criar e pausar), porque o servidor não cria rotina pausada. Uma rota própria fica para quando houver PR de servidor das rotinas.
+- **Se a cópia não puder ser pausada, ela é desfeita** (SEC-S14-01): nunca fica rodando ao lado da original. Com 50 rotinas ativas o servidor recusa duplicar, porque a cópia nasce ativa por um instante.
+- **"Uma vez" com horário já passado** avisa no passo "Quando" e deixa seguir; a recusa do servidor aparece em "Revisar", com "Voltar" para corrigir.
+- **O fuso aparece como o sistema o nomeia** ("Sao Paulo (GMT-3)"), só para leitura. Ele muda em Configurações › Conta.
+- **O histórico mantém o texto que cada execução entregou** embaixo da linha; o protótipo mostra só hora, rotina e situação.
+- **Textos:** "automação" virou "rotina" na tela, na paleta, nos erros do servidor, nas ferramentas da conversa, no backup e no Telegram. "Automação" fica só para as do CRM.
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 

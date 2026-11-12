@@ -32,6 +32,8 @@
  *   one of two people with the same name, and the label filter open (need --exemplos).
  * - `integracoes-sem-etiqueta=/configuracoes/integracoes>Contatos`: the contacts just turned on, with the labels
  *   to choose and nobody copied yet (needs --exemplos; run it apart, on a database of its own: it empties the copy).
+ * - `rotinas-criar-<1 a 5>=/rotinas`: "Criar rotina" open on that step, as a "Rotina da Zuri" from the
+ *   template "Fechamento do dia".
  * - `crm-avisos=/crm`: the CRM screen scrolled to its notices' card, under the flows.
  * - `conversa-menu=/conversa`: the same, with the "Mais opções" menu of its row open (computer only).
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
@@ -259,6 +261,17 @@ for (const [device, options] of [
       if (screen.name === "conversas") {
         await page.getByRole("button", { name: "Ver conversas" }).click();
         await page.getByRole("link", { name: /Organizar a mudança/ }).waitFor();
+      }
+      if (screen.name.startsWith("rotinas-criar-")) {
+        const step = Number(screen.name.slice(14));
+        await page.getByRole("button", { name: "Criar rotina" }).click();
+        const wizard = page.getByRole("dialog", { name: "Criar rotina" });
+        await wizard.getByRole("radio", { name: "Rotina da Zuri" }).check();
+        for (let at = 1; at <= step; at++) {
+          if (at === 3) await wizard.getByRole("button", { name: "Fechamento do dia" }).click();
+          if (at < step) await wizard.getByRole("button", { name: "Continuar" }).click();
+        }
+        await wizard.getByText(`Passo ${step} de 5`).waitFor();
       }
       if (screen.name === "crm-avisos") {
         const title = page.getByText("Avisos do CRM", { exact: true });

@@ -149,7 +149,10 @@ describe("/api/google/contacts", () => {
       expect(Date.parse(status.nextSyncAt ?? "") - Date.parse(status.lastSyncAt ?? "")).toBe(minutes * 60_000);
     }
     const status = (await (await api("GET", "/google/contacts")).json()) as ContactsStatus;
-    expect(await inOwner((agent) => agent.store.contacts.nextDue())).toBe(Date.parse(status.nextSyncAt ?? ""));
+    // The alarm's time is the sooner of the read and the day's notice (08:00 in the owner's zone):
+    // in the quarter of an hour before the notice, it comes first.
+    const notice = await inOwner((agent) => agent.store.db.one<{ next_reminder: number | null }>(`SELECT next_reminder FROM zur_contact_sync`));
+    expect(await inOwner((agent) => agent.store.contacts.nextDue())).toBe(Math.min(Date.parse(status.nextSyncAt ?? ""), notice?.next_reminder ?? Number.POSITIVE_INFINITY));
     // The alarm itself is set again by the route, so a shorter interval doesn't wait for the old wake.
     const rearmed = await countRearms(() => api("PATCH", "/google/contacts/settings", { syncEveryMinutes: 5 }));
     expect(rearmed).toBe(1);

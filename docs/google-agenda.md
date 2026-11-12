@@ -142,9 +142,9 @@ Google Agenda (decisão de 03/11/2026).
   conversa.
 - `/hoje` no Telegram ganha o bloco **Agenda** com os eventos do dia. Com o
   Google fora do ar, aparece "Agenda indisponível agora."
-- Em **Automações > Nova automação > Rotina com IA**, os modelos **Briefing da
+- Em **Rotinas > Criar rotina > Rotina da Zuri**, os modelos **Briefing da
   manhã** (todo dia, 07:00) e **Fechamento do dia** (segunda a sexta, 19:00)
-  preenchem o formulário. Rotinas só leem a agenda; nunca criam nem mudam.
+  preenchem o texto e o nome. Rotinas só leem a agenda; nunca criam nem mudam.
 
 ### Desconectar
 

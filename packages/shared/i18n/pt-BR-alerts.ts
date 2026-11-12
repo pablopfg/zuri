@@ -56,7 +56,7 @@ export const ptBRAlerts = {
   "web.sounds.firstTouch": "Logo depois de abrir a Zuri, o navegador só deixa o som tocar a partir do seu primeiro clique ou toque na página.",
 
   "web.alerts.digest.title": "Resumo do dia",
-  "web.alerts.digest.description": "Uma vez por dia a Zuri junta o que está atrasado, o que vence hoje e as automações marcadas para o dia.",
+  "web.alerts.digest.description": "Uma vez por dia a Zuri junta o que está atrasado, o que vence hoje e as rotinas marcadas para o dia.",
   "web.alerts.digest.enabled": "Receber o resumo do dia",
   "web.alerts.digest.time": "Horário do resumo",
   "web.alerts.digest.timeHint": "No seu fuso horário. Tarefa atrasada também só é lembrada a partir desse horário.",
@@ -161,7 +161,7 @@ export const ptBRAlerts = {
   "web.diagnostics.empty": "Nenhuma falha registrada nos últimos 30 dias.",
   "web.diagnostics.source.api": "Servidor",
   "web.diagnostics.source.ai": "IA",
-  "web.diagnostics.source.automation": "Automações",
+  "web.diagnostics.source.automation": "Rotinas",
   "web.diagnostics.source.chat": "Conversa",
   "web.diagnostics.source.interface": "Tela",
   "web.diagnostics.counts": "{today} hoje · {total} no total",
