@@ -150,6 +150,7 @@ export { APP_VERSION } from "./version.ts";
 export * from "./mcp.ts";
 export * from "./mcp-schemas.ts";
 export * from "./google.ts";
+export { NATIONAL_HOLIDAYS, type NationalHoliday, nationalHoliday } from "./holidays.ts";
 export * from "./google-schemas.ts";
 export * from "./areas.ts";
 export * from "./contacts.ts";

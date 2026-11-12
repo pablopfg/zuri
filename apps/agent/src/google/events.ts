@@ -10,6 +10,8 @@ import { GOOGLE_LIMITS, isValidCalendarDate, zonedParts, zonedTimeToUtc } from "
 export const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 export const DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
 const DAY_MS = 86_400_000;
+/** Google's event colors are numbered 1 to 11. */
+const COLOR_ID = /^(?:[1-9]|1[01])$/;
 
 /** A refusal of a date or a field, in words the caller maps (the model reads English, the owner the catalog). */
 export class EventInputError extends Error {
@@ -159,6 +161,8 @@ export interface CalendarEvent {
   recurring: boolean;
   /** How many people were invited (never who). */
   guests: number;
+  /** Google's color of the event ("1" to "11"), the status on the Agenda screen; "" when it has none of its own. */
+  colorId: string;
   /**
    * Whether someone besides the owner sees this event: it has guests, or someone else organizes it.
    * A change by the model to such an event reaches other people, so it is never made without the owner.
@@ -198,6 +202,7 @@ export function readEvent(item: unknown, calendarId: string): CalendarEvent | nu
     etag: typeof e.etag === "string" ? e.etag.slice(0, 200) : "",
     recurring: typeof e.recurringEventId === "string",
     guests,
+    colorId: typeof e.colorId === "string" && COLOR_ID.test(e.colorId) ? e.colorId : "",
     shared: guests > 0 || !organizedHere(e.organizer, calendarId),
   };
 }

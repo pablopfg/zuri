@@ -333,6 +333,73 @@ describe("/api/google/events: the Agenda screen", () => {
     expect((await api("POST", "/google/events", { ...base, calendarId: "a/../b" })).status).toBe(400);
   });
 
+  it("reads the event's color at Google and takes it for nothing else than a color number", async () => {
+    await connect();
+    await setMode(PRIMARY, "read");
+    const colors: unknown[] = ["10", undefined, "12", "0", 7, "<b>", "7 "];
+    colors.forEach((colorId, index) => {
+      seedEvent(PRIMARY, `E${index}`, index + 1);
+      const event = google.events.get(PRIMARY)?.at(-1);
+      if (event && colorId !== undefined) (event as { colorId?: unknown }).colorId = colorId;
+    });
+    const page = (await (await api("GET", `/google/events?from=${window().from}&to=${window().to}`)).json()) as AgendaPage;
+    expect(page.events.map((e) => e.colorId)).toEqual(["10", "", "", "", "", "", ""]);
+  });
+
+  it("changes the status by the color, with the version checked, and only to one of the four colors", async () => {
+    await connect();
+    await setMode(WORK, "write");
+    const created = await api("POST", "/google/events", { calendarId: WORK, title: "Consulta", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00" });
+    const { event } = (await created.json()) as { event: AgendaEvent };
+    expect(event.colorId).toBe("");
+    const target = { calendarId: WORK, eventId: event.id };
+
+    const confirmed = await api("PATCH", "/google/events", { ...target, etag: event.etag, colorId: "10" });
+    expect(confirmed.status).toBe(200);
+    const after = ((await confirmed.json()) as { event: AgendaEvent }).event;
+    expect(after).toMatchObject({ colorId: "10", title: "Consulta", start: event.start, end: event.end });
+    const sent = google.seen.filter((r) => r.method === "PATCH").at(-1);
+    // Only the color goes: nothing else of the event is rewritten.
+    expect(JSON.parse(sent?.body ?? "{}")).toEqual({ colorId: "10" });
+    expect(sent?.headers["if-match"]).toBe(event.etag);
+    expect(new URL(sent?.url ?? "x:").searchParams.get("sendUpdates")).toBe("none");
+
+    // The version the screen read before the change: refused, the color stays.
+    const stale = await api("PATCH", "/google/events", { ...target, etag: event.etag, colorId: "11" });
+    expect(stale.status).toBe(409);
+    expect((await errorBody(stale)).code).toBe("TARGET_CHANGED");
+    expect((google.events.get(WORK)?.find((e) => e.id === event.id) as { colorId?: string }).colorId).toBe("10");
+
+    // A color outside the four, a number, a name: refused before Google hears of it.
+    const patches = google.seen.filter((r) => r.method === "PATCH").length;
+    for (const colorId of ["1", "12", "07", " 7", 7, null, "tomate", ["7"]]) {
+      expect((await api("PATCH", "/google/events", { ...target, etag: after.etag, colorId })).status).toBe(400);
+    }
+    expect(google.seen.filter((r) => r.method === "PATCH").length).toBe(patches);
+
+    // The color and the hour in one change.
+    const both = await api("PATCH", "/google/events", { ...target, etag: after.etag, colorId: "5", start: "2026-11-05T16:00" });
+    const moved = ((await both.json()) as { event: AgendaEvent }).event;
+    expect(moved).toMatchObject({ colorId: "5", start: "2026-11-05T19:00:00.000Z", end: "2026-11-05T20:00:00.000Z" });
+
+    // Empty takes the color off: the event follows its calendar's again.
+    const cleared = await api("PATCH", "/google/events", { ...target, etag: moved.etag, colorId: "" });
+    expect(((await cleared.json()) as { event: AgendaEvent }).event.colorId).toBe("");
+    expect(JSON.parse(google.seen.filter((r) => r.method === "PATCH").at(-1)?.body ?? "{}")).toEqual({ colorId: null });
+  });
+
+  it("refuses a color in a read-only calendar and in a new event", async () => {
+    await connect();
+    await setMode(READER, "read");
+    await setMode(PRIMARY, "write");
+    seedEvent(READER, "Atendimento", 1);
+    const event = google.events.get(READER)?.at(-1);
+    const res = await api("PATCH", "/google/events", { calendarId: READER, eventId: event?.id, etag: event?.etag, colorId: "10" });
+    expect(res.status).toBe(400);
+    expect((event as { colorId?: string }).colorId).toBeUndefined();
+    expect((await api("POST", "/google/events", { calendarId: PRIMARY, title: "X", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "10" })).status).toBe(400);
+  });
+
   it("cleans what Google sends: no control or bidi characters in titles", async () => {
     await connect();
     await setMode(PRIMARY, "read");

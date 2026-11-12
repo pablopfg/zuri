@@ -1,7 +1,20 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type AgendaEvent, type AgendaPage as AgendaWindow, GOOGLE_LIMITS, type GoogleCalendarInfo, type GoogleStatus, ptBRAgenda, type Settings } from "@zuri/shared";
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Pencil, Repeat, Trash2, Users } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  type AgendaEvent,
+  type AgendaPage as AgendaWindow,
+  EVENT_STATUS_COLOR,
+  EVENT_STATUSES,
+  type EventStatus,
+  GOOGLE_LIMITS,
+  type GoogleCalendarInfo,
+  type GoogleStatus,
+  type NationalHoliday,
+  nationalHoliday,
+  ptBRAgenda,
+  type Settings,
+} from "@zuri/shared";
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Flag, MapPin, Palette, Pencil, Repeat, Trash2, Users } from "lucide-react";
+import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router";
 import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
@@ -15,13 +28,16 @@ import {
   type DayBlock,
   dayEvents,
   daysOf,
+  EVENT_COLORS,
   type EventForm,
   eventDays,
+  eventLook,
   eventsOn,
   type FormProblem,
   formBody,
   formOf,
   GOOGLE_STATUS_KEY,
+  isWeekend,
   localDate,
   localTime,
   nowAt,
@@ -54,6 +70,51 @@ const PROBLEM_TEXT: Record<FormProblem, Parameters<T>[0]> = {
   date: "web.agenda.form.error.date",
   end: "web.agenda.form.error.end",
 };
+
+const STATUS_TEXT: Record<EventStatus, Parameters<T>[0]> = {
+  scheduled: "web.agenda.status.scheduled",
+  confirmed: "web.agenda.status.confirmed",
+  rescheduled: "web.agenda.status.rescheduled",
+  cancelled: "web.agenda.status.cancelled",
+};
+const HOLIDAY_TEXT: Record<NationalHoliday, Parameters<T>[0]> = {
+  newYear: "web.agenda.holiday.newYear",
+  goodFriday: "web.agenda.holiday.goodFriday",
+  tiradentes: "web.agenda.holiday.tiradentes",
+  labourDay: "web.agenda.holiday.labourDay",
+  independence: "web.agenda.holiday.independence",
+  aparecida: "web.agenda.holiday.aparecida",
+  allSouls: "web.agenda.holiday.allSouls",
+  republic: "web.agenda.holiday.republic",
+  blackAwareness: "web.agenda.holiday.blackAwareness",
+  christmas: "web.agenda.holiday.christmas",
+};
+/** Google's names for its eleven event colors, by number. */
+const COLOR_TEXT: Record<string, Parameters<T>[0]> = {
+  "1": "web.agenda.color.1",
+  "2": "web.agenda.color.2",
+  "3": "web.agenda.color.3",
+  "4": "web.agenda.color.4",
+  "5": "web.agenda.color.5",
+  "6": "web.agenda.color.6",
+  "7": "web.agenda.color.7",
+  "8": "web.agenda.color.8",
+  "9": "web.agenda.color.9",
+  "10": "web.agenda.color.10",
+  "11": "web.agenda.color.11",
+};
+
+/** The fill of a day without work: a national holiday first, then Saturday and Sunday. */
+const dayFill = (day: string) => (nationalHoliday(day) ? "bg-holiday" : isWeekend(day) ? "bg-day-off" : undefined);
+
+/** "Tiradentes" for a holiday's day, or null. The days are Brazil's, in the owner's language. */
+function useHoliday() {
+  const { t } = useI18n();
+  return (day: string): string | null => {
+    const holiday = nationalHoliday(day);
+    return holiday ? t(HOLIDAY_TEXT[holiday]) : null;
+  };
+}
 
 const hour = (value: number) => `${String(value).padStart(2, "0")}:00`;
 const eventKey = (event: AgendaEvent) => `${event.calendarId}|${event.id}`;
@@ -260,6 +321,7 @@ export function AgendaPage() {
       ) : (
         <>
           <DayStrip days={week} day={anchor} today={today} onDay={go} />
+          <HolidayBanner day={anchor} />
           <DayList day={anchor} events={dayEvents(shown, anchor, see, timeZone).events} calendars={byId} onOpen={show} />
         </>
       )}
@@ -276,6 +338,7 @@ export function AgendaPage() {
         />
       )}
       {events.isError && events.data && <ErrorNotice error={events.error} onRetry={() => void events.refetch()} />}
+      {events.data && <Key statuses={canCreate} />}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <Legend calendars={calendars} hidden={hidden} onToggle={(id) => setHidden((old) => toggle(old, id))} />
         <Link to="/configuracoes/agenda" className="ml-auto inline-flex min-h-11 items-center rounded-xl px-2 text-sm font-medium text-accent-text hover:bg-raised">
@@ -288,6 +351,7 @@ export function AgendaPage() {
         event={open}
         calendar={open ? byId.get(open.calendarId) : undefined}
         onClose={() => setOpen(null)}
+        onChange={setOpen}
         onEdit={(event) => {
           setOpen(null);
           setEditing({ mode: "edit", event });
@@ -388,6 +452,44 @@ function Dot({ color }: { color?: string | undefined }) {
   return <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent" style={color ? { backgroundColor: color } : undefined} />;
 }
 
+/** What the fills and the colors mean: the four statuses (where some calendar can be edited), the weekend and the holiday. */
+function Key({ statuses }: { statuses: boolean }) {
+  const { t } = useI18n();
+  const swatch = "h-3 w-5 shrink-0 rounded border border-border";
+  return (
+    <ul aria-label={t("web.agenda.legend")} className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted">
+      {statuses &&
+        EVENT_STATUSES.map((status) => (
+          <li key={status} className="flex items-center gap-1.5">
+            <Dot color={EVENT_COLORS[EVENT_STATUS_COLOR[status]]} />
+            {t(STATUS_TEXT[status])}
+          </li>
+        ))}
+      <li className="flex items-center gap-1.5">
+        <span aria-hidden className={cn(swatch, "bg-day-off")} />
+        {t("web.agenda.legend.weekend")}
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span aria-hidden className={cn(swatch, "bg-holiday")} />
+        {t("web.agenda.legend.holiday")}
+      </li>
+    </ul>
+  );
+}
+
+/** Over a day's list: the holiday that day is, by name. */
+function HolidayBanner({ day }: { day: string }) {
+  const { t } = useI18n();
+  const name = useHoliday()(day);
+  if (!name) return null;
+  return (
+    <p className="flex items-center gap-2 rounded-xl bg-holiday px-3 py-2 text-sm font-medium text-holiday-text">
+      <Flag className="h-4 w-4 shrink-0" aria-hidden />
+      {t("web.agenda.holiday.label", { name })}
+    </p>
+  );
+}
+
 /**
  * What the preferences leave out of the period on screen, each with its count
  * and its own "Mostrar": nothing leaves the Agenda without saying so. Shown
@@ -455,17 +557,20 @@ function EventButton({
 }: { event: AgendaEvent; calendar?: GoogleCalendarInfo | undefined; onOpen: (event: AgendaEvent) => void; block?: boolean; chip?: boolean }) {
   const { t } = useI18n();
   const when = useWhen()(event);
+  const look = eventLook(event, calendar);
   return (
     <button
       type="button"
       onClick={() => onOpen(event)}
       className={cn(
-        "block w-full min-w-0 overflow-hidden rounded-lg border-l-4 bg-accent-soft px-1.5 text-left text-xs hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:hover:brightness-125",
+        // The event's color (its status, or its calendar's) is the bar on the left and a light wash of the fill.
+        "block w-full min-w-0 overflow-hidden rounded-lg border-l-4 border-l-(--event) bg-[color-mix(in_srgb,var(--event)_14%,var(--color-surface))] px-1.5 text-left text-xs hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:hover:brightness-125",
         block ? "h-full py-0.5" : chip ? "min-h-11 py-1" : "min-h-7 py-1",
       )}
-      style={{ borderLeftColor: calendar?.color ?? "var(--color-accent)" }}
+      style={{ "--event": look.color ?? "var(--color-accent)" } as CSSProperties}
     >
-      <span className="block truncate font-semibold">{event.title || t("web.agenda.event.untitled")}</span>
+      <span className={cn("block truncate font-semibold", look.status === "cancelled" && "line-through")}>{event.title || t("web.agenda.event.untitled")}</span>
+      {look.status && <span className="sr-only">{t(STATUS_TEXT[look.status])}</span>}
       {block ? (
         <span className="block truncate text-fg-muted">
           {when}
@@ -481,12 +586,14 @@ function EventButton({
 /** The week over a day's list: seven days in a row, the chosen one filled, today marked. */
 function DayStrip({ days, day, today, onDay }: { days: string[]; day: string; today: string; onDay: (day: string) => void }) {
   const { t, locale } = useI18n();
+  const holidayOf = useHoliday();
   return (
     <nav aria-label={t("web.agenda.week")}>
       <ol className="grid grid-cols-7 gap-1">
         {days.map((each) => {
           const date = utcNoon(each);
           const full = new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(date);
+          const holiday = holidayOf(each);
           return (
             <li key={each}>
               <button
@@ -496,13 +603,16 @@ function DayStrip({ days, day, today, onDay }: { days: string[]; day: string; to
                 aria-current={each === today ? "date" : undefined}
                 className={cn(
                   "flex min-h-14 w-full flex-col items-center justify-center rounded-xl text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-                  each === day ? "bg-fg text-bg" : "hover:bg-raised",
+                  each === day ? "bg-fg text-bg" : cn(dayFill(each), "hover:bg-raised"),
                 )}
               >
                 <span className={cn("text-xs", each !== day && "text-fg-muted")}>{new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short" }).format(date).replace(".", "")}</span>
                 <span className={cn("text-base font-semibold", each === today && each !== day && "text-accent-text")}>{date.getUTCDate()}</span>
                 {/* The name starts with what is seen (WCAG 2.5.3) and then says where it goes. */}
-                <span className="sr-only">, {t("web.agenda.openDay", { date: full })}</span>
+                <span className="sr-only">
+                  , {t("web.agenda.openDay", { date: full })}
+                  {holiday ? `, ${t("web.agenda.holiday.label", { name: holiday })}` : ""}
+                </span>
               </button>
             </li>
           );
@@ -522,7 +632,8 @@ function DayList({ day, events, calendars, onOpen }: { day: string; events: Agen
         const { first, last } = eventDays(event, timeZone);
         // One day: the hour on the left and the end below. More than one: the whole period below, and the hour only on the day it starts.
         const rest = first === last ? (event.allDay ? "" : t("web.agenda.until", { time: localTime(event.end, timeZone) })) : when(event);
-        const under = [rest, event.location].filter(Boolean).join(" · ");
+        const look = eventLook(event, calendars.get(event.calendarId));
+        const under = [look.status ? t(STATUS_TEXT[look.status]) : "", rest, event.location].filter(Boolean).join(" · ");
         return (
           <li key={eventKey(event)}>
             <button
@@ -532,14 +643,14 @@ function DayList({ day, events, calendars, onOpen }: { day: string; events: Agen
             >
               {/* The title comes first for whoever listens; the hour is drawn first. */}
               <span className="col-start-3 row-start-1 min-w-0">
-                <span className="block break-words font-medium">{event.title || t("web.agenda.event.untitled")}</span>
+                <span className={cn("block break-words font-medium", look.status === "cancelled" && "line-through")}>{event.title || t("web.agenda.event.untitled")}</span>
                 {under && <span className="block break-words text-sm text-fg-muted">{under}</span>}
               </span>
               <span className="col-start-1 row-start-1 text-sm text-fg-muted tabular-nums">
                 {event.allDay ? t("web.agenda.allDay") : first === day ? localTime(event.start, timeZone) : ""}
               </span>
               <span className="col-start-2 row-start-1 self-center">
-                <Dot color={calendars.get(event.calendarId)?.color} />
+                <Dot color={look.color} />
               </span>
             </button>
           </li>
@@ -553,6 +664,7 @@ function DayHeading({ day, today, onDay }: { day: string; today: string; onDay: 
   const { t, locale } = useI18n();
   const date = utcNoon(day);
   const full = new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(date);
+  const holiday = useHoliday()(day);
   return (
     <button
       type="button"
@@ -565,7 +677,10 @@ function DayHeading({ day, today, onDay }: { day: string; today: string; onDay: 
       </span>
       <span className={cn("flex h-8 min-w-8 items-center justify-center rounded-full px-1 text-lg font-semibold", day === today && "bg-accent text-accent-fg")}>{date.getUTCDate()}</span>
       {/* The name starts with what is seen (WCAG 2.5.3) and then says where it goes. */}
-      <span className="sr-only">, {t("web.agenda.openDay", { date: full })}</span>
+      <span className="sr-only">
+        , {t("web.agenda.openDay", { date: full })}
+        {holiday ? `, ${t("web.agenda.holiday.label", { name: holiday })}` : ""}
+      </span>
     </button>
   );
 }
@@ -601,9 +716,13 @@ function WeekGrid({
   onDay: (day: string) => void;
 }) {
   const { t, timeZone } = useI18n();
+  const holidayOf = useHoliday();
   const plans = days.map((day) => planDay(events, day, hours, timeZone));
+  const holidays = days.map(holidayOf);
+  // A holiday's name sits in the all-day row, so the row shows for it even with the all-day events hidden.
+  const allDayEvents = see.allDay && plans.some((plan) => plan.allDay.length > 0);
   const rows = {
-    allDay: see.allDay && plans.some((plan) => plan.allDay.length > 0),
+    allDay: allDayEvents || holidays.some(Boolean),
     before: see.outside && plans.some((plan) => plan.before.length > 0),
     after: see.outside && plans.some((plan) => plan.after.length > 0),
   };
@@ -644,9 +763,12 @@ function WeekGrid({
           if (!plan) return null;
           const line = nowAt(now, day, hours, timeZone);
           return (
-            <li key={day} className="row-span-full grid min-w-0 grid-rows-subgrid border-l border-border">
+            <li key={day} className={cn("row-span-full grid min-w-0 grid-rows-subgrid border-l border-border", dayFill(day))}>
               <DayHeading day={day} today={today} onDay={onDay} />
-              <div className={cn(rows.allDay && CELL)}>{rows.allDay && chips(plan.allDay)}</div>
+              <div className={cn(rows.allDay && CELL)}>
+                {holidays[index] && <p className="px-1.5 pt-1.5 pb-1 text-xs leading-4 font-semibold break-words text-holiday-text">{holidays[index]}</p>}
+                {allDayEvents && chips(plan.allDay)}
+              </div>
               <div className={cn(rows.before && CELL, "bg-raised/60")}>{rows.before && chips(plan.before)}</div>
               <div className={cn(CELL, "relative")} style={lines}>
                 {plan.blocks.length > 0 && (
@@ -689,6 +811,7 @@ function MonthView({
   onDay,
 }: { anchor: string; from: string; to: string; today: string; events: AgendaEvent[]; calendars: Map<string, GoogleCalendarInfo>; onOpen: (event: AgendaEvent) => void; onDay: (day: string) => void }) {
   const { t, plural, locale, timeZone } = useI18n();
+  const holidayOf = useHoliday();
   const days = daysOf(from, to);
   const month = anchor.slice(0, 7);
   const names = days.slice(0, 7).map((day) => new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short" }).format(utcNoon(day)).replace(".", ""));
@@ -704,8 +827,9 @@ function MonthView({
           const list = eventsOn(events, day, timeZone);
           const date = utcNoon(day);
           const full = new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(date);
+          const holiday = holidayOf(day);
           return (
-            <li key={day} className={cn("min-h-20 min-w-0 space-y-1 p-1 sm:min-h-28", day.slice(0, 7) === month ? "bg-surface" : "bg-raised text-fg-muted")}>
+            <li key={day} className={cn("min-h-20 min-w-0 space-y-1 p-1 sm:min-h-28", day.slice(0, 7) === month ? (dayFill(day) ?? "bg-surface") : "bg-raised text-fg-muted")}>
               <button
                 type="button"
                 onClick={() => onDay(day)}
@@ -718,14 +842,21 @@ function MonthView({
                 {date.getUTCDate()}
                 <span className="sr-only">
                   , {t("web.agenda.openDay", { date: full })}
+                  {holiday ? `, ${t("web.agenda.holiday.label", { name: holiday })}` : ""}
                   {list.length ? `, ${plural("web.agenda.dayCount", list.length)}` : ""}
                 </span>
               </button>
+              {/* The name is already in the day's button for whoever listens; a phone has no room for it and keeps the fill. */}
+              {holiday && (
+                <p aria-hidden className="hidden truncate px-1 text-[0.6875rem] leading-4 font-semibold text-holiday-text sm:block">
+                  {holiday}
+                </p>
+              )}
               {/* Narrow screens: a dot per event (up to three); the day opens with the number. */}
               {list.length > 0 && (
                 <span aria-hidden className="flex gap-0.5 px-1 sm:hidden">
                   {list.slice(0, 3).map((event) => (
-                    <Dot key={eventKey(event)} color={calendars.get(event.calendarId)?.color} />
+                    <Dot key={eventKey(event)} color={eventLook(event, calendars.get(event.calendarId)).color} />
                   ))}
                 </span>
               )}
@@ -765,7 +896,20 @@ function Detail({ icon, label, children }: { icon: ReactNode; label: string; chi
   );
 }
 
-function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent | null; calendar?: GoogleCalendarInfo | undefined; onClose: () => void; onEdit: (event: AgendaEvent) => void }) {
+function EventDialog({
+  event,
+  calendar,
+  onClose,
+  onChange,
+  onEdit,
+}: {
+  event: AgendaEvent | null;
+  calendar?: GoogleCalendarInfo | undefined;
+  onClose: () => void;
+  /** The event as Google answered after a change of status: the dialog stays open on it, with the new version. */
+  onChange: (event: AgendaEvent) => void;
+  onEdit: (event: AgendaEvent) => void;
+}) {
   const { t, plural } = useI18n();
   const toast = useToast();
   const qc = useQueryClient();
@@ -773,7 +917,34 @@ function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent 
   const [confirming, setConfirming] = useState(false);
   const confirmId = useId();
   const [busy, setBusy] = useState(false);
-  const editable = !!calendar && calendar.mode === "write" && calendar.writable;
+  const look = event ? eventLook(event, calendar) : null;
+  const editable = !!look?.editable;
+  const statusId = useId();
+  const [marking, setMarking] = useState<EventStatus | null>(null);
+  // Said inside the dialog: with it open, the rest of the page (and a toast there) is out of reach.
+  const [note, setNote] = useState<{ text: string; failed: boolean } | null>(null);
+  /** The status is the event's color at Google: one change, sent with the version on screen. */
+  const mark = async (status: EventStatus) => {
+    if (!event || marking || look?.status === status) return;
+    setMarking(status);
+    setNote(null);
+    try {
+      const body = { calendarId: event.calendarId, eventId: event.id, etag: event.etag, colorId: EVENT_STATUS_COLOR[status] };
+      const saved = await api<{ event: AgendaEvent }>("/google/events", { method: "PATCH", body });
+      onChange(saved.event);
+      setNote({ text: t("web.agenda.status.saved"), failed: false });
+    } catch (failure) {
+      // Changed or deleted at Google meanwhile: this dialog shows an old version, so it closes and the screen shows the event as it is now.
+      if (failure instanceof ApiError && (failure.code === "TARGET_CHANGED" || failure.code === "NOT_FOUND")) {
+        toast(errorMessage(failure));
+        onClose();
+      } else setNote({ text: errorMessage(failure), failed: true });
+    } finally {
+      setMarking(null);
+      void qc.invalidateQueries({ queryKey: ["calendar", "events"] });
+    }
+  };
+  const colorName = event?.colorId ? COLOR_TEXT[event.colorId] : undefined;
   const remove = async () => {
     if (!event) return;
     setBusy(true);
@@ -793,6 +964,39 @@ function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent 
     <Dialog open={event !== null} onClose={onClose} title={event ? event.title || t("web.agenda.event.untitled") : ""}>
       {event && (
         <div className="space-y-4">
+          {editable && (
+            <div className="space-y-2">
+              <p id={statusId} className="text-sm text-fg-muted">
+                {t("web.agenda.status.hint")}
+              </p>
+              <fieldset aria-label={t("web.agenda.status.label")} aria-describedby={statusId} className="grid min-w-0 grid-cols-2 gap-2">
+                {EVENT_STATUSES.map((status) => {
+                  const on = look?.status === status;
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      aria-pressed={on}
+                      aria-busy={marking === status || undefined}
+                      onClick={() => void mark(status)}
+                      className={cn(
+                        "flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                        on ? "border-(--event) bg-[color-mix(in_srgb,var(--event)_14%,var(--color-surface))]" : "border-border-strong hover:bg-raised",
+                        marking && marking !== status && "opacity-60",
+                      )}
+                      style={{ "--event": EVENT_COLORS[EVENT_STATUS_COLOR[status]] } as CSSProperties}
+                    >
+                      <Dot color={EVENT_COLORS[EVENT_STATUS_COLOR[status]]} />
+                      {t(STATUS_TEXT[status])}
+                    </button>
+                  );
+                })}
+              </fieldset>
+              <p role="status" className={cn("text-sm", note?.failed ? "text-danger" : "text-fg-muted", !note && "sr-only")}>
+                {note?.text}
+              </p>
+            </div>
+          )}
           <div className="space-y-3">
             <Detail icon={<CalendarDays className="h-4 w-4" />} label={t("web.agenda.event.when")}>
               <span className="first-letter:uppercase">{when(event, true)}</span>
@@ -800,6 +1004,17 @@ function EventDialog({ event, calendar, onClose, onEdit }: { event: AgendaEvent 
             <Detail icon={<Dot color={calendar?.color} />} label={t("web.agenda.event.calendar")}>
               {calendar?.name ?? event.calendarId}
             </Detail>
+            {editable && (
+              <Detail icon={<Palette className="h-4 w-4" />} label={t("web.agenda.event.color")}>
+                <span className="text-fg-muted">
+                  {t("web.agenda.event.color")}
+                  {": "}
+                  {look?.status
+                    ? t("web.agenda.event.colorStatus", { color: t(colorName ?? "web.agenda.color.none"), status: t(STATUS_TEXT[look.status]) })
+                    : t(colorName ?? "web.agenda.color.none")}
+                </span>
+              </Detail>
+            )}
             {event.location && (
               <Detail icon={<MapPin className="h-4 w-4" />} label={t("web.agenda.event.location")}>
                 {event.location}

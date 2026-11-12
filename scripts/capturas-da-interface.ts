@@ -37,6 +37,8 @@
  * - `conversas=/conversa`: the list of conversations as the phone shows it (phone only).
  * - `agenda-dia=/agenda` and `agenda-mes=/agenda`: the Agenda in that view (plain `agenda=/agenda` is the
  *   week on a computer and the day on a phone, as it opens).
+ * - `agenda-evento=/agenda`: the Agenda with the details of a sample event open (its status and its color at Google;
+ *   needs --exemplos).
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
  *   page's day and its line of now come out the same at any hour the script runs).
  * - `--exemplos`: fills the empty database with the sample data of
@@ -248,6 +250,10 @@ for (const [device, options] of [
         const view = screen.name === "agenda-dia" ? "Dia" : "Mês";
         await page.getByRole("group", { name: "Ver por" }).getByText(view, { exact: true }).click();
         await page.getByRole("radio", { name: view }).and(page.locator(":checked")).waitFor({ state: "attached" });
+      }
+      if (screen.name === "agenda-evento") {
+        await page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ }).click();
+        await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("group", { name: "Situação" }).waitFor();
       }
       if (screen.name === "conversa-menu") await page.getByRole("complementary", { name: "Conversas" }).getByRole("button", { name: /^Mais opções/ }).click();
       if (screen.name === "conversas") {

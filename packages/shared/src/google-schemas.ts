@@ -2,7 +2,7 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { CALENDAR_MODES, GOOGLE_LIMITS, GOOGLE_STATE_PREFIX } from "./google.ts";
+import { CALENDAR_MODES, EVENT_STATUS_COLOR, GOOGLE_LIMITS, GOOGLE_STATE_PREFIX } from "./google.ts";
 
 /**
  * The Google Calendar routes' request bodies (step 19). Apart from google.ts,
@@ -74,6 +74,8 @@ export const googleEventUpdateSchema = /* @__PURE__ */ (() =>
       end: eventFields.end.optional(),
       location: eventFields.location.optional(),
       description: eventFields.description.optional(),
+      /** The status, as the color it is at Google; "" takes the color off. Never another color. */
+      colorId: z.enum([...Object.values(EVENT_STATUS_COLOR), ""]).optional(),
     })
     .strict())();
 export type GoogleEventUpdate = z.input<typeof googleEventUpdateSchema>;

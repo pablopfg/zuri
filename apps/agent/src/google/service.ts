@@ -1013,7 +1013,7 @@ function accessFrom(token: Record<string, unknown>, now: number): { token: strin
 /** Only the fields Zuri sets, whatever built the body: never attendees, conference data or anything that writes to others. */
 function safeBody(body: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const key of ["summary", "location", "description", "start", "end"]) if (body[key] !== undefined) out[key] = body[key];
+  for (const key of ["summary", "location", "description", "start", "end", "colorId"]) if (body[key] !== undefined) out[key] = body[key];
   return out;
 }
 

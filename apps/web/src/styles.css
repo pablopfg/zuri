@@ -42,6 +42,16 @@
   --color-chart-2: #9333ea;
   --color-chart-3: #c2410c;
   --color-chart-4: #0e7490;
+  /*
+   * The Agenda: days without work (Saturday and Sunday) and national holidays
+   * get a fill of their own, mixed into the surface so the grid's lines never
+   * show through. Basil is Google's green for an event ("Confirmado"), lighter
+   * in the dark theme to keep 3:1 against the surface.
+   */
+  --color-day-off: color-mix(in srgb, #64748b 10%, var(--color-surface));
+  --color-holiday: color-mix(in srgb, #f59e0b 16%, var(--color-surface));
+  --color-holiday-text: #92400e;
+  --color-basil: #0b8043;
   /* Figtree comes from this same address (the @font-face below); the system's font shows until it loads. */
   --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   /* The Sinal radii: 8 px for small controls, 10 for fields and buttons, 14 for cards, 20 for dialogs. */
@@ -94,6 +104,9 @@
   --color-chart-2: #c084fc;
   --color-chart-3: #fb923c;
   --color-chart-4: #22d3ee;
+  --color-day-off: color-mix(in srgb, #94a3b8 12%, var(--color-surface));
+  --color-holiday-text: #fcd34d;
+  --color-basil: #33b679;
   /* A step lighter than the page, so the tile still shows on it. */
   --color-brand-tile: #2a2a30;
   color-scheme: dark;

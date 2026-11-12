@@ -82,6 +82,23 @@ export interface AgendaEvent {
   etag: string;
   recurring: boolean;
   guests: number;
+  /** Google's color of the event ("1" to "11"), or "" when it follows its calendar's. */
+  colorId: string;
+}
+
+/**
+ * The status of an appointment is the color of its event at Google (owner's
+ * choice, 12/11/2026): changed there or here, it is the same field. Peacock 7,
+ * Basil 10, Banana 5 and Tomato 11, Google's own names and numbers.
+ */
+export const EVENT_STATUSES = ["scheduled", "confirmed", "rescheduled", "cancelled"] as const;
+export type EventStatus = (typeof EVENT_STATUSES)[number];
+export const EVENT_STATUS_COLOR: Record<EventStatus, string> = { scheduled: "7", confirmed: "10", rescheduled: "5", cancelled: "11" };
+
+/** The status a color stands for: none is "scheduled", and a color outside the four has no status. */
+export function eventStatus(colorId: string): EventStatus | null {
+  if (colorId === "") return "scheduled";
+  return EVENT_STATUSES.find((status) => EVENT_STATUS_COLOR[status] === colorId) ?? null;
 }
 
 export interface AgendaPage {
