@@ -128,7 +128,7 @@ test("the week paints each event by its status, names it for a screen reader, an
 
   const key = page.getByRole("list", { name: "Legenda" });
   for (const text of ["Agendado", "Confirmado", "Reagendado", "Cancelado", "Fim de semana", "Feriado nacional"]) await expect(key.getByText(text, { exact: true })).toBeVisible();
-  await expectFits(page);
+  await expectFits(page, "agenda-situacao-semana");
   await expectAccessible(page, "agenda-situacao-semana");
 });
 
@@ -236,7 +236,7 @@ test("the month fills weekends and holidays and names the holiday under its day"
     await expect(cell(day).getByRole("button", { name: new RegExp(`Feriado nacional: ${name}`) })).toBeVisible();
   }
   await expect(event(page, "Caio Vasques Lima")).toHaveAccessibleName(/Cancelado/);
-  await expectFits(page);
+  await expectFits(page, "agenda-situacao-mes");
   await expectAccessible(page, "agenda-situacao-mes");
 });
 
@@ -260,13 +260,13 @@ test.describe("on a phone", () => {
     await strip.getByRole("button", { name: /^\S+\s*20\s*, Ver o dia .+, Feriado nacional: Consciência Negra$/ }).click();
     await expect(page.getByText("Feriado nacional: Consciência Negra", { exact: true })).toBeVisible();
     await expect(event(page, "Plantão do feriado")).toContainText("Confirmado · até 10:00");
-    await expectFits(page);
+    await expectFits(page, "agenda-situacao-celular");
     await expectAccessible(page, "agenda-situacao-celular");
 
     // The month on a phone: the fill and the spoken name; no room for the written one.
     await page.getByRole("radio", { name: "Mês" }).check({ force: true });
     await expect(page.getByRole("button", { name: /^20 ?, Ver o dia .+, Feriado nacional: Consciência Negra, 1 evento$/ })).toBeVisible();
-    await expectFits(page);
+    await expectFits(page, "agenda-situacao-mes-celular");
   });
 });
 
