@@ -1,6 +1,6 @@
 # Plano · Sons, áudio de 2 minutos, menu por áreas e agenda que edita
 
-Situação: aprovado em 12/11/2026 (o Pablo seguiu as três recomendações; implementação nas quatro entregas da seção 11)
+Situação: concluído em 12/11/2026 (o Pablo aprovou as três recomendações; as quatro entregas da seção 11 estão na develop)
 Origem: pedido do Pablo em 12/11/2026
 Dependências: nenhuma PR aberta. A área "Consultório" do menu depende do plano da Gestão do consultório, que corre à parte.
 
@@ -159,7 +159,7 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 | 1. Áudio de 120 s e sons | mesclada (#315) |
 | 2. Situação por cor, feriados e fins de semana | mesclada (#319) |
 | 3. Arrastar, duração, desfazer e avisos de sincronização | mesclada (#321) |
-| 4. Menu por áreas | em revisão |
+| 4. Menu por áreas | mesclada (#322) |
 
 ### Diferenças da entrega 1
 
