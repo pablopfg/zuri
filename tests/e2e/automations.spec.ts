@@ -384,8 +384,8 @@ test("the AI routine templates fill the text, the name and, while untouched, the
   await expect(form).toHaveCount(0);
 });
 
-test("a routine Zuri proposes in the chat runs nothing until the owner approves it", async ({ page }) => {
-  const name = `Revisão ${tag()}`;
+/** Asks the Zuri, in the chat, to propose a routine with AI, and follows the link to Rotinas. */
+async function propose(page: Page, name: string) {
   await page.goto("/conversa");
   await signIn(page);
   await expect(page.getByRole("heading", { level: 1, name: "Conversa" })).toBeVisible();
@@ -396,35 +396,37 @@ test("a routine Zuri proposes in the chat runs nothing until the owner approves 
   await box.press("Enter");
   expect((await done).status()).toBe(200);
   await expect(page.getByRole("button", { name: "Parar" })).toHaveCount(0);
-
-  // A second suggestion, to decline.
-  const other = `Recusada ${tag()}`;
-  await box.fill(`call propose_ai_routine ${JSON.stringify({ ...routine, name: other })}`);
-  const again = page.waitForResponse((r) => r.url().endsWith("/api/chat") && r.request().method() === "POST");
-  await box.press("Enter");
-  expect((await again).status()).toBe(200);
-  await expect(page.getByRole("button", { name: "Parar" })).toHaveCount(0);
-
   await page.getByRole("link", { name: "Revisar em Rotinas" }).last().click();
   await expect(page).toHaveURL(/\/rotinas#automacao-[0-9a-f-]{36}$/);
   const pending = page.getByRole("region", { name: /^A Zuri sugeriu (uma rotina|\d+ rotinas)$/ });
-  const item = pending.getByRole("listitem").filter({ hasText: name });
+  return { pending, item: pending.getByRole("listitem").filter({ hasText: name }) };
+}
+
+test("a suggestion the owner declines is gone, and nothing was scheduled", async ({ page }) => {
+  const name = `Recusada ${tag()}`;
+  const { item } = await propose(page, name);
+  await item.getByRole("button", { name: "Recusar" }).click();
+  const sure = page.getByRole("dialog", { name: `Recusar a rotina “${name}”?` });
+  await expect(sure.getByText("A sugestão é apagada e nada é agendado.")).toBeVisible();
+  // Cancelar keeps the suggestion where it was.
+  await sure.getByRole("button", { name: "Cancelar" }).click();
+  await expect(item).toBeVisible();
+  await item.getByRole("button", { name: "Recusar" }).click();
+  await sure.getByRole("button", { name: "Recusar" }).click();
+  await expect(toast(page, "Sugestão recusada.")).toBeVisible();
+  await expect(item).toHaveCount(0);
+  await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
+});
+
+test("a routine Zuri proposes in the chat runs nothing until the owner approves it", async ({ page }) => {
+  const name = `Revisão ${tag()}`;
+  const { pending, item } = await propose(page, name);
   await expect(item.getByText("Veja minhas tarefas da semana e diga o que está atrasado.")).toBeVisible();
   await expect(item.getByRole("heading", { name: `${name} · Sexta, às 17:00` })).toBeVisible();
   await expect(item.getByText("Usa IA")).toBeVisible();
   await expect(pending.getByText("Esperando aprovação")).toBeVisible();
   await expect(item.getByText("Só avisa quando houver algo")).toBeVisible();
   await expectAccessible(page, "rotina esperando aprovação");
-
-  // Declining asks once, then the suggestion is gone and nothing was scheduled.
-  const declined = pending.getByRole("listitem").filter({ hasText: other });
-  await declined.getByRole("button", { name: "Recusar" }).click();
-  const sure = page.getByRole("dialog", { name: `Recusar a rotina “${other}”?` });
-  await expect(sure.getByText("A sugestão é apagada e nada é agendado.")).toBeVisible();
-  await sure.getByRole("button", { name: "Recusar" }).click();
-  await expect(toast(page, "Sugestão recusada.")).toBeVisible();
-  await expect(declined).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: other, exact: true })).toHaveCount(0);
 
   await item.getByRole("button", { name: "Aprovar" }).click();
   await expect(toast(page, "Rotina aprovada. A primeira execução já está marcada.")).toBeVisible();
