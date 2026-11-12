@@ -1,19 +1,19 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FLOW_LIMITS, FLOW_SETTING_RANGES, type Flow, type FlowConnection, type FlowDraft, type FlowList, type FlowRun, type FlowRunPage, type FlowSettings, type FlowSite, type MessageKey, ptBRFlows, ptBRSchedule, type Schedule } from "@zuri/shared";
-import { History, KeyRound, Pause, Pencil, Play, Plus, Trash2, Radar, Workflow, Zap } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { FLOW_LIMITS, FLOW_NODE_TYPES, FLOW_SETTING_RANGES, type Flow, type FlowConnection, type FlowDraft, type FlowList, type FlowRun, type FlowRunPage, type FlowSettings, type FlowSite, type MessageKey, ptBRFlows, ptBRSchedule, type Schedule } from "@zuri/shared";
+import { Cable, Copy, Earth, History, Info, KeyRound, Lightbulb, LockKeyhole, Pencil, Play, Power, Radar, ShieldCheck, Trash2, Workflow } from "lucide-react";
+import { useId, useState } from "react";
+import { Link } from "react-router";
 import { ActionsMenu } from "../../../components/ActionsMenu.tsx";
 import { NumbersForm } from "../../../components/NumbersForm.tsx";
 import { useToast } from "../../../components/Toaster.tsx";
-import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, Loading } from "../../../components/ui.tsx";
+import { Button, buttonClass, Card, cn, Dialog, EmptyState, ErrorNotice, Loading } from "../../../components/ui.tsx";
 import { api, errorMessage } from "../../../lib/api.ts";
-import { describeSchedule } from "../../../lib/automations.ts";
+import { copyName, describeSchedule } from "../../../lib/automations.ts";
 import { addMessages, useI18n } from "../../../lib/i18n.tsx";
 import { FlashStatus, flashClass, useFlash } from "../../../lib/lists.tsx";
-import { Badge, IconButton } from "../parts.tsx";
-import { ConnectionDialog } from "./ConnectionDialog.tsx";
-import { type Editing, FlowEditor } from "./FlowEditor.tsx";
-import { capitalizeFirst, PROBLEM_LABEL, RUN_STATUS_LABEL, RUN_TRIGGER_LABEL, SITE_LABEL } from "./labels.ts";
+import { Badge } from "../parts.tsx";
+import type { Editing } from "./FlowEditor.tsx";
+import { capitalizeFirst, NODE_LABEL, PROBLEM_LABEL, RUN_STATUS_LABEL, RUN_TRIGGER_LABEL, SITE_LABEL } from "./labels.ts";
 
 // The tab's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRFlows);
@@ -25,7 +25,7 @@ addMessages(ptBRSchedule);
 /** Everything about flows starts with this key: the live channel's "flows" area refreshes it (lib/versions.ts). */
 export const FLOWS_KEY = ["flows"] as const;
 
-function useFlows() {
+export function useFlows() {
   return useQuery({ queryKey: [...FLOWS_KEY, "list"], queryFn: ({ signal }) => api<FlowList>("/flows", { signal }) });
 }
 
@@ -70,108 +70,64 @@ function useFlowAction() {
   return { busy, act };
 }
 
-/** The palette's "Criar fluxo": an address and an event of that name (CommandPalette.tsx). */
-const NEW_FLOW = "novo-fluxo";
+/** "Chamar um serviço" in the middle of a sentence. */
+const lowerFirst = (text: string) => (text ? (text[0] as string).toLocaleLowerCase() + text.slice(1) : text);
 
 type Removing = { kind: "flow"; flow: Flow } | { kind: "connection"; connection: FlowConnection };
-type ConnectionEditing = { mode: "new" } | { mode: "edit"; connection: FlowConnection };
+export type ConnectionEditing = { mode: "new" } | { mode: "edit"; connection: FlowConnection };
 
 /**
- * The Flows tab (step 22a): flows built from a closed list of steps, the
- * services they may call, and the site monitor as the first model. Every flow
- * is born off; turning one on, or changing a connection, asks for the password
- * when it wasn't typed in the last 15 minutes (the API client asks).
+ * CRM › Fluxos (Sinal, S15): the flows built from a closed list of steps, what
+ * the chat suggested, the last runs and what holds for every flow. Every flow
+ * is born off; turning one on asks for the password when it wasn't typed in
+ * the last 15 minutes (the API client asks).
  */
-export function FlowsPanel() {
+export function FlowsPart({ data, onEdit }: { data: FlowList; onEdit: (editing: Editing) => void }) {
   const { t } = useI18n();
-  const list = useFlows();
-  const [editing, setEditing] = useState<Editing | null>(null);
-  const [connection, setConnection] = useState<ConnectionEditing | null>(null);
   const [removing, setRemoving] = useState<Removing | null>(null);
-  const data = list.data;
-  const flows = data?.flows ?? [];
-  const flash = useFlash(data?.flows, (flow) => flow.id, (flow) => `${flow.updatedAt}|${flow.enabled}|${flow.lastRunAt ?? ""}|${flow.sites.map((site) => site.state).join()}`);
-  const full = (data?.counts.flows ?? 0) >= FLOW_LIMITS.flows;
-  // "Criar fluxo" in the palette opens the editor once the list is here: by the address on arrival, by an event after.
-  const loaded = data !== undefined;
-  useEffect(() => {
-    if (!loaded) return;
-    const open = () => setEditing({ mode: "new" });
-    if (window.location.hash === `#${NEW_FLOW}`) {
-      history.replaceState(history.state, "", window.location.pathname);
-      open();
-    }
-    window.addEventListener(NEW_FLOW, open);
-    return () => window.removeEventListener(NEW_FLOW, open);
-  }, [loaded]);
-
+  const flows = data.flows;
+  const flash = useFlash(data.flows, (flow) => flow.id, (flow) => `${flow.updatedAt}|${flow.enabled}|${flow.lastRunAt ?? ""}|${flow.sites.map((site) => site.state).join()}`);
+  const full = data.counts.flows >= FLOW_LIMITS.flows;
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-prose text-sm leading-6 text-fg-muted">{t("web.flows.description")}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" disabled={!data || full} onClick={() => setEditing({ mode: "monitor" })}>
-            <Radar className="h-4 w-4" aria-hidden />
-            {t("web.flows.monitorTemplate")}
-          </Button>
-          <Button disabled={!data || full} onClick={() => setEditing({ mode: "new" })}>
-            <Plus className="h-4 w-4" aria-hidden />
-            {t("web.flows.new")}
-          </Button>
-        </div>
-      </div>
-      {list.isPending ? (
-        <Loading label={t("web.flows.loading")} />
-      ) : list.isError ? (
-        <ErrorNotice error={list.error} onRetry={() => void list.refetch()} />
+    <>
+      {flows.length === 0 ? (
+        <EmptyState icon={<Workflow className="h-6 w-6" />} title={t("web.flows.empty.title")}>
+          <p>{t("web.flows.empty.body")}</p>
+        </EmptyState>
       ) : (
-        data && (
-          <>
-            {flows.length === 0 ? (
-              <EmptyState icon={<Workflow className="h-6 w-6" />} title={t("web.flows.empty.title")}>
-                <p>{t("web.flows.empty.body")}</p>
-              </EmptyState>
-            ) : (
-              <section aria-labelledby="fluxos-lista" className="space-y-3">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 id="fluxos-lista" className="text-base font-semibold">
-                    {t("web.flows.listLabel")}
-                  </h2>
-                  <p className="text-sm text-fg-muted">
-                    {t("web.flows.count", { flows: data.counts.flows, maxFlows: FLOW_LIMITS.flows, sites: data.counts.sites, maxSites: FLOW_LIMITS.sites })}
-                  </p>
-                </div>
-                <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
-                  {flows.map((flow) => (
-                    <FlowRow
-                      key={flow.id}
-                      flow={flow}
-                      failuresToPause={data.settings.failuresToPause}
-                      glow={flashClass(flash.glowing, flow.id)}
-                      onEdit={() => setEditing({ mode: "edit", flow })}
-                      onDelete={() => setRemoving({ kind: "flow", flow })}
-                    />
-                  ))}
-                </ul>
-              </section>
-            )}
-            <FlashStatus count={flash.remote} />
-            <Drafts drafts={data.drafts} full={full} onReview={(draft) => setEditing({ mode: "draft", draft })} />
-            <Connections
-              list={data}
-              onNew={() => setConnection({ mode: "new" })}
-              onEdit={(item) => setConnection({ mode: "edit", connection: item })}
-              onDelete={(item) => setRemoving({ kind: "connection", connection: item })}
-            />
-            <FlowSettingsCard settings={data.settings} slots={data.counts.slots} slotsLimit={data.counts.slotsLimit} />
-            <RunHistory />
-          </>
-        )
+        <div className="space-y-2">
+          <ul aria-label={t("web.flows.listLabel")} className="zuri-routines">
+            {flows.map((flow) => (
+              <FlowRow
+                key={flow.id}
+                flow={flow}
+                full={full}
+                failuresToPause={data.settings.failuresToPause}
+                glow={flashClass(flash.glowing, flow.id)}
+                onEdit={() => onEdit({ mode: "edit", flow })}
+                onDelete={() => setRemoving({ kind: "flow", flow })}
+              />
+            ))}
+          </ul>
+          <p className="text-sm text-fg-muted">{t("web.flows.count", { flows: data.counts.flows, maxFlows: FLOW_LIMITS.flows, sites: data.counts.sites, maxSites: FLOW_LIMITS.sites })}</p>
+        </div>
       )}
-      {editing && data && <FlowEditor editing={editing} connections={data.connections} google={data.google} settings={data.settings} onClose={() => setEditing(null)} />}
-      {connection && data && <ConnectionDialog editing={connection} credentialsAvailable={data.credentialsAvailable} onClose={() => setConnection(null)} />}
+      <FlashStatus count={flash.remote} />
+      <Drafts drafts={data.drafts} full={full} onReview={(draft) => onEdit({ mode: "draft", draft })} />
+      <RunHistory />
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <p className="flex min-w-0 flex-1 basis-64 items-start gap-2 text-sm leading-6 text-fg-muted">
+          <Info className="mt-1 h-4 w-4 shrink-0" aria-hidden />
+          <span>{t("web.flows.note", { steps: FLOW_NODE_TYPES.map((type) => lowerFirst(t(NODE_LABEL[type]))).join(", "), request: t(NODE_LABEL.request) })}</span>
+        </p>
+        {/* A link of its own, 44 px tall: a word inside the sentence would be too small a target. */}
+        <Link to="/crm/credenciais" className={buttonClass("ghost")}>
+          {t("web.flows.noteLink")}
+        </Link>
+      </div>
+      <FlowSettingsCard settings={data.settings} slots={data.counts.slots} slotsLimit={data.counts.slotsLimit} />
       <RemoveDialog removing={removing} onClose={() => setRemoving(null)} />
-    </div>
+    </>
   );
 }
 
@@ -225,31 +181,35 @@ function FlowSettingsCard({ settings, slots, slotsLimit }: { settings: FlowSetti
 function Drafts({ drafts, full, onReview }: { drafts: FlowDraft[]; full: boolean; onReview: (draft: FlowDraft) => void }) {
   const { t, dateTime } = useI18n();
   const { busy, act } = useFlowAction();
+  const titleId = useId();
   if (drafts.length === 0) return null;
   return (
-    <section aria-labelledby="fluxos-sugestoes" className="space-y-3">
+    <section aria-labelledby={titleId} className="space-y-3">
       <div className="space-y-1">
-        <h2 id="fluxos-sugestoes" className="text-base font-semibold">
+        <h2 id={titleId} className="text-base font-semibold">
           {t("web.flows.drafts.title")}
         </h2>
         <p className="text-sm text-fg-muted">{t("web.flows.drafts.body")}</p>
       </div>
-      <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-dashed border-border bg-surface">
+      <ul className="zuri-routines">
         {drafts.map((draft) => (
-          <li key={draft.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="truncate font-medium">{draft.name}</p>
-              <p className="text-xs text-fg-muted">{t("web.flows.drafts.expires", { when: dateTime(draft.expiresAt) })}</p>
+          <li key={draft.id} className="zuri-routine">
+            <span className="zuri-routine-tile" aria-hidden>
+              <Lightbulb />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <p className="truncate font-semibold">{draft.name}</p>
+              <p className="text-sm text-fg-muted">{t("web.flows.drafts.expires", { when: dateTime(draft.expiresAt) })}</p>
             </div>
-            <div className="flex shrink-0 gap-2">
-              <Button variant="secondary" disabled={busy !== null} loading={busy === draft.id} onClick={() => void act(draft.id, async () => {
+            <div className="zuri-routine-actions">
+              <Button variant="secondary" disabled={full} onClick={() => onReview(draft)}>
+                {t("web.flows.drafts.review")}
+              </Button>
+              <Button variant="ghost" disabled={busy !== null} loading={busy === draft.id} onClick={() => void act(draft.id, async () => {
                 await api(`/flows/drafts/${draft.id}`, { method: "DELETE" });
                 return t("web.flows.drafts.dropped");
               })}>
                 {t("web.flows.drafts.drop")}
-              </Button>
-              <Button disabled={full} onClick={() => onReview(draft)}>
-                {t("web.flows.drafts.review")}
               </Button>
             </div>
           </li>
@@ -259,7 +219,7 @@ function Drafts({ drafts, full, onReview }: { drafts: FlowDraft[]; full: boolean
   );
 }
 
-function FlowRow({ flow, failuresToPause, glow, onEdit, onDelete }: { flow: Flow; failuresToPause: number; glow: string; onEdit: () => void; onDelete: () => void }) {
+function FlowRow({ flow, full, failuresToPause, glow, onEdit, onDelete }: { flow: Flow; full: boolean; failuresToPause: number; glow: string; onEdit: () => void; onDelete: () => void }) {
   const { t, plural, dateTime, timeZone } = useI18n();
   const { busy, act } = useFlowAction();
   const titleId = useId();
@@ -276,63 +236,62 @@ function FlowRow({ flow, failuresToPause, glow, onEdit, onDelete }: { flow: Flow
       await api(`/flows/${flow.id}`, { method: "PATCH", body: { enabled } });
       return t(enabled ? "web.flows.turnedOn" : "web.flows.turnedOff");
     });
+  // A flow is always born off, so the copy never runs beside the original before the owner looks at it.
+  const duplicate = () =>
+    act("copy", async () => {
+      await api("/flows", { method: "POST", body: { name: copyName(flow.name, (name) => t("web.flows.copyName", { name }), FLOW_LIMITS.name), definition: flow.definition } });
+      return t("web.flows.duplicated");
+    });
   return (
-    <li aria-labelledby={titleId} className={cn("space-y-3 p-4", glow)}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-text" aria-hidden>
-            {flow.sites.length > 0 ? <Radar className="h-5 w-5" /> : <Workflow className="h-5 w-5" />}
-          </span>
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 id={titleId} className="min-w-0 truncate font-medium">
-                {flow.name}
-              </h3>
-              <Badge tone={flow.enabled ? "accent" : tripped ? "danger" : "neutral"}>{t(flow.enabled ? "web.flows.on" : tripped ? "web.flows.pausedByFailures" : "web.flows.off")}</Badge>
-              {flow.usesAi && <Badge>{t("web.flows.usesAi")}</Badge>}
-            </div>
-            <p className="text-sm text-fg-muted">
-              {describeTrigger(flow, t, timeZone, dateTime)} · {plural("web.flows.steps", flow.definition.nodes.length)}
-            </p>
-            <p className="flex flex-wrap gap-x-3 text-xs text-fg-muted">
-              {flow.enabled && flow.nextRunAt && <span>{t("web.flows.next", { when: dateTime(flow.nextRunAt) })}</span>}
-              {flow.lastRunAt && <span>{t("web.flows.last", { when: dateTime(flow.lastRunAt) })}</span>}
-              {flow.failures > 0 && <span className="text-danger">{plural("web.flows.failures", flow.failures)}</span>}
-            </p>
-            {flow.lastRunStatus === "error" && flow.lastProblem && <p className="text-sm text-fg-muted">{capitalizeFirst(t(PROBLEM_LABEL[flow.lastProblem]))}.</p>}
-          </div>
-        </div>
-        {/* biome-ignore lint/a11y/useSemanticElements: a row of buttons, not form fields: a fieldset would add a frame and a legend. */}
-        <div role="group" aria-label={t("web.flows.actionsFor", { name: flow.name })} className="flex shrink-0 items-center pl-10 sm:pl-0">
-          {flow.enabled ? (
-            <IconButton label={t("web.flows.turnOff")} busy={busy === "toggle"} onClick={() => void toggle(false)}>
-              <Pause />
-            </IconButton>
-          ) : (
-            <IconButton label={t("web.flows.turnOn")} busy={busy === "toggle"} onClick={() => void toggle(true)}>
-              <Play />
-            </IconButton>
-          )}
-          {/* The main action stays in view; the rest waits in the menu (stage 26c). */}
-          <ActionsMenu
-            name={flow.name}
-            busy={busy === "run"}
-            actions={[
-              {
-                label: t("web.flows.runNow"),
-                icon: <Zap className="h-4 w-4" />,
-                disabled: busy !== null,
-                onSelect: () =>
-                  void act("run", async () => {
-                    const { run } = await api<{ run: FlowRun }>(`/flows/${flow.id}/run`, { method: "POST" });
-                    return runText(run);
-                  }),
-              },
-              { label: t("web.flows.edit"), icon: <Pencil className="h-4 w-4" />, onSelect: onEdit },
-              { label: t("web.flows.delete"), icon: <Trash2 className="h-4 w-4" />, onSelect: onDelete, danger: true },
-            ]}
-          />
-        </div>
+    <li aria-labelledby={titleId} className={cn("zuri-routine", glow)}>
+      <span className="zuri-routine-tile" aria-hidden>
+        {flow.sites.length > 0 ? <Radar /> : <Workflow />}
+      </span>
+      <div className="min-w-0 space-y-1">
+        <h2 id={titleId} className="truncate font-semibold">
+          {flow.name}
+        </h2>
+        <p className="text-sm text-fg-muted">
+          {describeTrigger(flow, t, timeZone, dateTime)} · {plural("web.flows.steps", flow.definition.nodes.length)}
+        </p>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
+          <Badge dot tone={flow.enabled ? "accent" : tripped ? "danger" : "neutral"}>
+            {t(flow.enabled ? "web.flows.on" : tripped ? "web.flows.pausedByFailures" : "web.flows.off")}
+          </Badge>
+          {flow.enabled && flow.nextRunAt && <span>{t("web.flows.next", { when: dateTime(flow.nextRunAt) })}</span>}
+          {flow.lastRunAt && <span>{t("web.flows.last", { when: dateTime(flow.lastRunAt) })}</span>}
+          {flow.failures > 0 && <span className="text-danger">{plural("web.flows.failures", flow.failures)}</span>}
+          {flow.usesAi && <Badge>{t("web.flows.usesAi")}</Badge>}
+        </p>
+        {flow.lastRunStatus === "error" && flow.lastProblem && <p className="text-sm text-fg-muted">{capitalizeFirst(t(PROBLEM_LABEL[flow.lastProblem]))}.</p>}
+      </div>
+      {/* biome-ignore lint/a11y/useSemanticElements: a row of buttons, not form fields: a fieldset would add a frame and a legend. */}
+      <div role="group" aria-label={t("web.flows.actionsFor", { name: flow.name })} className="zuri-routine-actions">
+        <Button
+          variant="secondary"
+          loading={busy === "run"}
+          disabled={busy !== null}
+          onClick={() =>
+            void act("run", async () => {
+              const { run } = await api<{ run: FlowRun }>(`/flows/${flow.id}/run`, { method: "POST" });
+              return runText(run);
+            })
+          }
+        >
+          {busy !== "run" && <Play className="h-4 w-4" aria-hidden />}
+          {t("web.flows.runNow")}
+        </Button>
+        {/* The row keeps its main action in view; on and off, which the prototype's row doesn't show, open the menu. */}
+        <ActionsMenu
+          name={flow.name}
+          busy={busy === "toggle" || busy === "copy"}
+          actions={[
+            { label: t(flow.enabled ? "web.flows.turnOff" : "web.flows.turnOn"), icon: <Power className="h-4 w-4" />, disabled: busy !== null, onSelect: () => void toggle(!flow.enabled) },
+            { label: t("web.flows.edit"), icon: <Pencil className="h-4 w-4" />, onSelect: onEdit },
+            { label: t("web.flows.duplicate"), icon: <Copy className="h-4 w-4" />, disabled: busy !== null || full, onSelect: () => void duplicate() },
+            { label: t("web.flows.delete"), icon: <Trash2 className="h-4 w-4" />, onSelect: onDelete, danger: true },
+          ]}
+        />
       </div>
       {flow.sites.length > 0 && <SiteList name={flow.name} sites={flow.sites} />}
     </li>
@@ -345,7 +304,7 @@ const SITE_DOT = { up: "bg-success", down: "bg-danger", unknown: "bg-border-stro
 function SiteList({ name, sites }: { name: string; sites: FlowSite[] }) {
   const { t, dateTime } = useI18n();
   return (
-    <ul aria-label={t("web.flows.sitesOf", { name })} className="grid gap-2 sm:grid-cols-2 sm:pl-13">
+    <ul aria-label={t("web.flows.sitesOf", { name })} className="col-span-full grid gap-2 sm:col-start-2 sm:grid-cols-2">
       {sites.map((site) => {
         const details = [
           site.state === "unknown" ? null : site.status === null ? t("web.flows.site.noAnswer") : t("web.flows.site.status", { status: site.status }),
@@ -369,58 +328,78 @@ function SiteList({ name, sites }: { name: string; sites: FlowSite[] }) {
   );
 }
 
-function Connections({ list, onNew, onEdit, onDelete }: { list: FlowList; onNew: () => void; onEdit: (c: FlowConnection) => void; onDelete: (c: FlowConnection) => void }) {
+/**
+ * CRM › Credenciais (Sinal, S15): the services a flow may call, each kept once
+ * with its address and its key. The key never comes back to the screen.
+ */
+export function CredentialsPart({ data, onEdit }: { data: FlowList; onEdit: (editing: ConnectionEditing) => void }) {
   const { t } = useI18n();
-  const full = list.connections.length >= FLOW_LIMITS.connections;
+  const [removing, setRemoving] = useState<Removing | null>(null);
   return (
-    <Card
-      title={t("web.flows.connections.title")}
-      description={t("web.flows.connections.description")}
-      actions={
-        <Button variant="secondary" onClick={onNew} disabled={full}>
-          <Plus className="h-4 w-4" aria-hidden />
-          {t("web.flows.connections.new")}
-        </Button>
-      }
-    >
-      {!list.credentialsAvailable && <p className="mb-3 text-sm leading-6 text-fg-muted">{t("web.flows.connections.noKey")}</p>}
-      {list.connections.length === 0 ? (
-        <div className="flex items-center gap-3 text-sm text-fg-muted">
-          <KeyRound className="h-5 w-5 shrink-0" aria-hidden />
+    <>
+      {!data.credentialsAvailable && <p className="text-sm leading-6 text-fg-muted">{t("web.flows.connections.noKey")}</p>}
+      {data.connections.length === 0 ? (
+        <EmptyState icon={<KeyRound className="h-6 w-6" />} title={t("web.flows.connections.emptyTitle")}>
           <p>{t("web.flows.connections.empty")}</p>
-        </div>
+        </EmptyState>
       ) : (
-        <ul className="divide-y divide-border">
-          {list.connections.map((item) => (
-            <li key={item.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center">
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="min-w-0 truncate font-medium">{item.name}</h3>
-                  <Badge tone={item.hasCredential ? "success" : "neutral"}>
-                    <KeyRound className="mr-1 h-3 w-3" aria-hidden />
-                    {t(item.hasCredential ? "web.flows.connections.hasCredential" : "web.flows.connections.noCredential")}
-                  </Badge>
-                </div>
-                <p className="break-all text-sm text-fg-muted">
-                  {item.origin} · {item.methods.join(", ")} · {item.paths.join(", ")}
-                </p>
-                <p className="text-xs text-fg-muted">
-                  {item.usedBy.length > 0 ? t("web.flows.connections.usedBy", { names: item.usedBy.join(", ") }) : t("web.flows.connections.unused")}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center">
-                <IconButton label={t("web.flows.connections.editOne", { name: item.name })} onClick={() => onEdit(item)}>
-                  <Pencil />
-                </IconButton>
-                <IconButton label={t("web.flows.connections.deleteOne", { name: item.name })} onClick={() => onDelete(item)} danger>
-                  <Trash2 />
-                </IconButton>
-              </div>
-            </li>
+        <ul aria-label={t("web.flows.connections.title")} className="zuri-routines">
+          {data.connections.map((item) => (
+            <ConnectionRow key={item.id} item={item} onEdit={() => onEdit({ mode: "edit", connection: item })} onDelete={() => setRemoving({ kind: "connection", connection: item })} />
           ))}
         </ul>
       )}
-    </Card>
+      <ul className="divide-y divide-border rounded-2xl border border-border bg-surface px-4 text-sm leading-6 shadow-sm sm:px-5">
+        {(
+          [
+            [LockKeyhole, "web.flows.connections.aboutKey"],
+            [Earth, "web.flows.connections.aboutAddress"],
+            [ShieldCheck, "web.flows.connections.aboutPassword"],
+          ] as const
+        ).map(([Icon, key]) => (
+          <li key={key} className="flex items-start gap-3 py-3">
+            <Icon className="mt-1 h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
+            <span>{t(key)}</span>
+          </li>
+        ))}
+      </ul>
+      <RemoveDialog removing={removing} onClose={() => setRemoving(null)} />
+    </>
+  );
+}
+
+function ConnectionRow({ item, onEdit, onDelete }: { item: FlowConnection; onEdit: () => void; onDelete: () => void }) {
+  const { t } = useI18n();
+  const titleId = useId();
+  return (
+    <li aria-labelledby={titleId} className="zuri-routine">
+      <span className="zuri-routine-tile" aria-hidden>
+        <Cable />
+      </span>
+      <div className="min-w-0 space-y-1">
+        <h2 id={titleId} className="truncate font-semibold">
+          {item.name}
+        </h2>
+        <p className="break-all text-sm text-fg-muted">
+          {item.origin} · {item.methods.join(", ")} · {item.paths.join(", ")}
+        </p>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
+          <Badge dot tone={item.hasCredential ? "accent" : "neutral"}>
+            {t(item.hasCredential ? "web.flows.connections.hasCredential" : "web.flows.connections.noCredential")}
+          </Badge>
+          <span className="min-w-0 break-words">{item.usedBy.length > 0 ? t("web.flows.connections.usedBy", { names: item.usedBy.join(", ") }) : t("web.flows.connections.unused")}</span>
+        </p>
+      </div>
+      <div className="zuri-routine-actions">
+        <ActionsMenu
+          name={item.name}
+          actions={[
+            { label: t("web.flows.edit"), icon: <Pencil className="h-4 w-4" />, onSelect: onEdit },
+            { label: t("web.flows.delete"), icon: <Trash2 className="h-4 w-4" />, onSelect: onDelete, danger: true },
+          ]}
+        />
+      </div>
+    </li>
   );
 }
 
@@ -462,57 +441,62 @@ function RemoveDialog({ removing, onClose }: { removing: Removing | null; onClos
 
 const RUN_TONE = { running: "accent", waiting: "accent", success: "success", skipped: "warning", error: "danger" } as const;
 
-/** What each run did, newest first: its status, why it stopped, and how many calls and items it took. */
+/** What each run did, newest first: when, which flow, how it ended and, below, why it stopped. */
 function RunHistory() {
   const { t, dateTime } = useI18n();
   const runs = useFlowRuns();
   const items = runs.data?.pages.flatMap((page) => page.runs) ?? [];
   const flash = useFlash(runs.data ? items : undefined, (run) => run.id, (run) => `${run.status}|${run.finishedAt ?? ""}`, String(runs.data?.pages.length ?? 0));
+  const titleId = useId();
   return (
-    <Card title={t("web.flows.history.title")} description={t("web.flows.history.description")}>
+    <section aria-labelledby={titleId} className="space-y-3">
+      <h2 id={titleId} className="text-base font-semibold">
+        {t("web.flows.history.title")}
+      </h2>
       {runs.isPending ? (
         <Loading />
       ) : runs.isError ? (
         <ErrorNotice error={runs.error} onRetry={() => void runs.refetch()} />
       ) : items.length === 0 ? (
-        <div className="flex items-center gap-3 text-sm text-fg-muted">
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 text-sm text-fg-muted">
           <History className="h-5 w-5 shrink-0" aria-hidden />
           <p>{t("web.flows.history.empty")}</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          <ol className="divide-y divide-border">
-            {items.map((run) => (
-              <li key={run.id} className={cn("space-y-1.5 py-3 first:pt-0 last:pb-0", flashClass(flash.glowing, run.id))}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{run.flowName}</span>
-                  <Badge tone={RUN_TONE[run.status]}>{t(RUN_STATUS_LABEL[run.status])}</Badge>
-                </div>
-                <p className="text-xs text-fg-muted">
-                  <time dateTime={run.startedAt}>{dateTime(run.startedAt)}</time> · {t(RUN_TRIGGER_LABEL[run.trigger])} · {t("web.flows.history.calls", { calls: run.calls, items: run.items })}
-                </p>
-                {run.problem && (
-                  <p className="text-sm leading-6 text-fg-muted">
-                    {[
-                      run.node !== null ? t("web.flows.history.step", { node: run.node }) : null,
-                      capitalizeFirst(t(PROBLEM_LABEL[run.problem])),
-                      run.httpStatus !== null ? t("web.flows.history.http", { status: run.httpStatus }) : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
+        <>
+          <ol className="zuri-routine-runs">
+            {items.map((run) => {
+              const why = [
+                run.problem && run.node !== null ? t("web.flows.history.step", { node: run.node }) : null,
+                run.problem ? capitalizeFirst(t(PROBLEM_LABEL[run.problem])) : null,
+                run.problem && run.httpStatus !== null ? t("web.flows.history.http", { status: run.httpStatus }) : null,
+                run.status === "waiting" && run.resumeAt ? t("web.flows.history.resume", { when: dateTime(run.resumeAt) }) : null,
+              ].filter(Boolean);
+              return (
+                <li key={run.id} className={flashClass(flash.glowing, run.id)}>
+                  <time dateTime={run.startedAt}>{dateTime(run.startedAt)}</time>
+                  <p className="min-w-0 break-words">
+                    <span className="font-medium">{run.flowName}</span> · {t(RUN_TRIGGER_LABEL[run.trigger])} · {t("web.flows.history.calls", { calls: run.calls, items: run.items })}
                   </p>
-                )}
-                {run.status === "waiting" && run.resumeAt && <p className="text-sm text-fg-muted">{t("web.flows.history.resume", { when: dateTime(run.resumeAt) })}</p>}
-              </li>
-            ))}
+                  <Badge tone={RUN_TONE[run.status]}>{t(RUN_STATUS_LABEL[run.status])}</Badge>
+                  {why.length > 0 && (
+                    <div>
+                      <p className="leading-6 text-fg-muted">{why.join(" · ")}</p>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ol>
           {runs.hasNextPage && (
-            <Button variant="secondary" loading={runs.isFetchingNextPage} onClick={() => void runs.fetchNextPage()}>
-              {t("web.flows.history.more")}
-            </Button>
+            <p className="flex justify-center">
+              <Button variant="ghost" loading={runs.isFetchingNextPage} onClick={() => void runs.fetchNextPage()}>
+                {t("web.flows.history.more")}
+              </Button>
+            </p>
           )}
-        </div>
+        </>
       )}
-    </Card>
+    </section>
   );
 }

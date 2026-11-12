@@ -1,8 +1,9 @@
 import { expect, test } from "./fixtures.ts";
 import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
 
-// The control of the internal CRM that outlived the Clients tab (Sinal, S10), on the CRM
-// screen against the real Worker: which notices it sends. No other system sends it anything.
+// The control of the internal CRM that outlived the Clients tab (Sinal, S10), in
+// Configurações › Avisos since the S15, against the real Worker: which notices it
+// sends. No other system sends it anything.
 
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
@@ -14,9 +15,9 @@ test.afterEach(async ({ page }) => {
 });
 
 test("the owner picks the time of the birthday notice, kept after a reload @mobile", async ({ page }) => {
-  await page.goto("/crm");
+  await page.goto("/configuracoes/avisos");
   await signIn(page);
-  const card = page.getByRole("region", { name: "Avisos do CRM" });
+  const card = page.getByRole("region", { name: "CRM", exact: true });
   const time = card.getByLabel("Hora do aviso de aniversários");
   const save = card.getByRole("button", { name: "Salvar hora" });
   await expect(time).toHaveValue("09:00");
@@ -35,8 +36,9 @@ test("the owner picks the time of the birthday notice, kept after a reload @mobi
 });
 
 test("a CRM notice turned off stays off after a reload; the card is accessible @mobile", async ({ page }) => {
-  await page.goto("/crm");
+  await page.goto("/configuracoes/avisos");
   await signIn(page);
+  const card = page.getByRole("region", { name: "CRM", exact: true });
   const notice = page.getByRole("switch", { name: "Aniversários de clientes", exact: true });
   await expect(notice).toBeVisible();
   const before = await notice.isChecked();
@@ -49,7 +51,7 @@ test("a CRM notice turned off stays off after a reload; the card is accessible @
     await expect(page.getByRole("switch", { name: "Aniversários de clientes", exact: true })).toBeChecked({ checked: !before });
     // The other kept its place, and the notice of clients from n8n is gone.
     await expect(page.getByRole("switch", { name: "Quando chegar a hora de um retorno" })).toBeVisible();
-    await expect(page.getByRole("switch")).toHaveCount(2);
+    await expect(card.getByRole("switch")).toHaveCount(2);
   } finally {
     const back = await page.request.patch("/api/crm/settings", { headers: CSRF, data: { birthdays: before } });
     expect(back.ok()).toBe(true);
@@ -57,9 +59,13 @@ test("a CRM notice turned off stays off after a reload; the card is accessible @
 });
 
 test("the CRM has no door for other systems: no events card and no address to post to", async ({ page }) => {
-  await page.goto("/crm");
+  await page.goto("/configuracoes/avisos");
   await signIn(page);
   await expect(page.getByRole("switch", { name: "Aniversários de clientes", exact: true })).toBeVisible();
+  await expect(page.getByText(/n8n/i)).toHaveCount(0);
+  await page.goto("/crm/credenciais");
+  await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
   // Zuri takes no events from n8n (owner's decision of 11/11/2026): nothing on the screen offers them.
   await expect(page.getByText(/n8n/i)).toHaveCount(0);
   await expect(page.getByRole("button", { name: /eventos|segredo/i })).toHaveCount(0);

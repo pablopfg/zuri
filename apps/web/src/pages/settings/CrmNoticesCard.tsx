@@ -7,18 +7,18 @@ import { Button, Card, ErrorNotice, Loading, TextField } from "../../components/
 import { api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 
-// The cards' pt-BR texts travel with their code, not in the first bundle (rule P11).
+// The card's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRCrm);
 
 /** Everything about the CRM starts with this key: the live channel's "crm" area refreshes it (lib/versions.ts). */
 const CRM_KEY = ["crm"] as const;
 
 /**
- * The control of the internal CRM that outlived the Clients tab (Sinal, S10):
- * which CRM notices reach the owner. It waits here, under the flows, for the
- * CRM's own screens (S15): the owner must always be able to silence a notice.
+ * Settings > Avisos, group "CRM" (Sinal, S15): which notices about the clients
+ * the internal CRM sends, by the channels set above it. The Clients tab left
+ * with the S10; the clients themselves are kept by the conversation's tools.
  */
-export function CrmCards() {
+export function CrmNoticesCard() {
   const overview = useQuery({ queryKey: [...CRM_KEY, "overview"], queryFn: ({ signal }) => api<CrmOverview>("/crm", { signal }) });
   if (overview.isPending) return <Loading rows={1} />;
   if (!overview.data) return <ErrorNotice error={overview.error} onRetry={() => void overview.refetch()} />;

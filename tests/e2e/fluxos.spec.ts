@@ -1,9 +1,9 @@
 import { expect, type Page, test } from "./fixtures.ts";
 import { CSRF, expectAccessible, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
-// The Flows tab of Automations (step 22a) against the real Worker: the site
-// monitor from its model, a connection with a credential that never comes back,
-// a flow that calls it, filters and tells the owner, the history, the palette
+// CRM › Fluxos and CRM › Credenciais (step 22a; Sinal, S15) against the real
+// Worker: the site monitor from its model, a credential whose key never comes back,
+// a flow that calls it, filters and tells the owner, the last runs, the palette
 // and the screen's states. Over loopback the Worker answers *.exemplo.com.br
 // itself (apps/agent/src/flows/dev-flows.ts). pt-BR.
 
@@ -48,20 +48,20 @@ test("the site monitor: from its model, run now, turn on and off, delete @mobile
   expect(await tooSmallControls(page), "every control of the Flows tab is a 44 px target").toEqual([]);
 
   // Run now: the shop answers; the site that is down gets its next try in a minute.
-  await rowAction(row, page, "Executar agora");
+  await row.getByRole("button", { name: "Executar", exact: true }).click();
   await expect(toast(page, /^Fluxo em andamento\. Ele continua sozinho em /)).toBeVisible();
   const shop = sites.getByRole("listitem").filter({ hasText: "loja.exemplo.com.br" });
   await expect(shop.getByText("No ar")).toBeVisible();
   await expect(shop.getByText(/código 200/)).toBeVisible();
-  const history = page.getByRole("region", { name: "Histórico dos fluxos" });
+  const history = page.getByRole("region", { name: "Últimas execuções" });
   await expect(history.getByRole("listitem").filter({ hasText: name }).first().getByText("Esperando")).toBeVisible();
 
   // On: the next run shows. Off again.
-  await row.getByRole("button", { name: "Ligar" }).click();
+  await rowAction(row, page, "Ligar");
   await expect(toast(page, "Fluxo ligado")).toBeVisible();
   await expect(row.getByText("Ligado", { exact: true })).toBeVisible();
   await expect(row.getByText(/^Próxima: /)).toBeVisible();
-  await row.getByRole("button", { name: "Desligar" }).click();
+  await rowAction(row, page, "Desligar");
   await expect(toast(page, "Fluxo desligado")).toBeVisible();
   await expect(row.getByText(/^Próxima: /)).toHaveCount(0);
 
@@ -79,37 +79,43 @@ test("the site monitor: from its model, run now, turn on and off, delete @mobile
   await expect(row).toHaveCount(0);
 });
 
-test("a connection keeps its credential on the server; a flow calls it, filters and tells the owner", async ({ page }) => {
+test("a credential keeps its key on the server; a flow calls it, filters and tells the owner", async ({ page }) => {
   const id = tag();
   const connection = `CRM ${id}`;
   const name = `Propostas ${id}`;
   const secret = `segredo-e2e-${id}`;
   await openFlows(page);
+  const parts = page.getByRole("navigation", { name: "Partes do CRM" });
 
-  await page.getByRole("button", { name: "Nova conexão" }).click();
-  const dialog = page.getByRole("dialog", { name: "Nova conexão" });
+  await parts.getByRole("link", { name: /^Credenciais/ }).click();
+  await expect(page).toHaveURL(/\/crm\/credenciais$/);
+  await page.getByRole("button", { name: "Nova credencial" }).click();
+  const dialog = page.getByRole("dialog", { name: "Nova credencial" });
   await dialog.getByLabel("Nome").fill(connection);
   await dialog.getByLabel("Endereço do serviço").fill("https://api.exemplo.com.br");
   // GET comes ticked; DELETE is not on the list at all.
   await expect(dialog.getByLabel("GET")).toBeChecked();
   await expect(dialog.getByLabel("DELETE")).toHaveCount(0);
   await dialog.getByLabel("Caminhos permitidos").fill("/v1/clientes");
-  await dialog.getByLabel("Credencial", { exact: true }).selectOption("bearer");
-  await dialog.getByLabel("Valor da credencial").fill(secret);
-  await expectAccessible(page, "nova conexão");
-  await dialog.getByRole("button", { name: "Criar conexão" }).click();
-  await expect(toast(page, "Conexão criada")).toBeVisible();
-  const connections = page.getByRole("region", { name: "Conexões" });
-  const item = connections.getByRole("listitem").filter({ hasText: connection });
-  await expect(item.getByText("Com credencial")).toBeVisible();
+  await dialog.getByLabel("Tipo de chave").selectOption("bearer");
+  await dialog.getByLabel("Chave", { exact: true }).fill(secret);
+  await expectAccessible(page, "nova credencial");
+  await dialog.getByRole("button", { name: "Criar credencial" }).click();
+  await expect(toast(page, "Credencial criada")).toBeVisible();
+  const item = page.getByRole("list", { name: "Credenciais" }).getByRole("listitem").filter({ hasText: connection });
+  await expect(item.getByText("Com chave")).toBeVisible();
   await expect(item.getByText("https://api.exemplo.com.br · GET · /v1/clientes")).toBeVisible();
+  await expect(item.getByText("Nenhum fluxo usa ainda")).toBeVisible();
+  expect(await tooSmallControls(page), "every control of Credenciais is a 44 px target").toEqual([]);
 
-  // Editing shows an empty credential field: the value never comes back to the browser.
-  await item.getByRole("button", { name: `Editar a conexão ${connection}` }).click();
-  const editing = page.getByRole("dialog", { name: "Editar conexão" });
-  await expect(editing.getByLabel("Valor da credencial")).toHaveValue("");
+  // Editing shows an empty key field: the value never comes back to the browser.
+  await rowAction(item, page, "Editar");
+  const editing = page.getByRole("dialog", { name: "Editar credencial" });
+  await expect(editing.getByLabel("Chave", { exact: true })).toHaveValue("");
   await editing.getByRole("button", { name: "Cancelar" }).click();
   expect(await page.content()).not.toContain(secret);
+  await parts.getByRole("link", { name: /^Fluxos/ }).click();
+  await expect(page).toHaveURL(/\/crm\/fluxos$/);
 
   // The flow: call the clients, keep the proposals, one notice each.
   await page.getByRole("button", { name: "Novo fluxo" }).click();
@@ -118,8 +124,8 @@ test("a connection keeps its credential on the server; a flow calls it, filters 
   await form.getByLabel("Quando roda").selectOption("manual");
   await form.getByLabel("Tipo do passo").selectOption("request");
   await form.getByRole("button", { name: "Adicionar passo" }).click();
-  await expect(form.getByLabel("Conexão")).toHaveValue(/.+/);
-  await form.getByLabel("Conexão").selectOption({ label: connection });
+  await expect(form.getByLabel("Credencial")).toHaveValue(/.+/);
+  await form.getByLabel("Credencial").selectOption({ label: connection });
   await form.getByLabel("Caminho").fill("/v1/clientes");
   await form.getByLabel("Onde está a lista na resposta").fill("data");
   await form.getByLabel("Tipo do passo").selectOption("filter");
@@ -141,25 +147,28 @@ test("a connection keeps its credential on the server; a flow calls it, filters 
 
   const row = flowRow(page, name);
   await expect(row.getByText("Só quando você executar · 3 passos")).toBeVisible();
-  await expect(item.getByText(`Usada por ${name}`)).toBeVisible();
-  await rowAction(row, page, "Executar agora");
+  await row.getByRole("button", { name: "Executar", exact: true }).click();
   await expect(toast(page, "Fluxo executado")).toBeVisible();
-  const run = page.getByRole("region", { name: "Histórico dos fluxos" }).getByRole("listitem").filter({ hasText: name }).first();
+  const run = page.getByRole("region", { name: "Últimas execuções" }).getByRole("listitem").filter({ hasText: name }).first();
   await expect(run.getByText("Concluída")).toBeVisible();
   await expect(run.getByText(/1 chamadas · 2 itens/)).toBeVisible();
 
-  // In use, the connection can't go; once the flow is gone, it can.
-  await item.getByRole("button", { name: `Apagar a conexão ${connection}` }).click();
-  await page.getByRole("dialog", { name: `Apagar a conexão ${connection}?` }).getByRole("button", { name: "Apagar" }).click();
-  await expect(toast(page, "Um fluxo usa esta conexão. Tire-a do fluxo antes.")).toBeVisible();
+  // In use, the credential can't go; once the flow is gone, it can.
+  await parts.getByRole("link", { name: /^Credenciais/ }).click();
+  await expect(item.getByText(`Usada por ${name}`)).toBeVisible();
+  await rowAction(item, page, "Apagar");
+  await page.getByRole("dialog", { name: `Apagar a credencial ${connection}?` }).getByRole("button", { name: "Apagar" }).click();
+  await expect(toast(page, "Um fluxo usa esta credencial. Tire-a do fluxo antes.")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(item).toBeVisible();
+  await parts.getByRole("link", { name: /^Fluxos/ }).click();
   await rowAction(row, page, "Apagar");
   await page.getByRole("dialog", { name: `Apagar ${name}?` }).getByRole("button", { name: "Apagar" }).click();
   await expect(row).toHaveCount(0);
-  await item.getByRole("button", { name: `Apagar a conexão ${connection}` }).click();
-  await page.getByRole("dialog", { name: `Apagar a conexão ${connection}?` }).getByRole("button", { name: "Apagar" }).click();
-  await expect(toast(page, "Conexão apagada")).toBeVisible();
+  await parts.getByRole("link", { name: /^Credenciais/ }).click();
+  await rowAction(item, page, "Apagar");
+  await page.getByRole("dialog", { name: `Apagar a credencial ${connection}?` }).getByRole("button", { name: "Apagar" }).click();
+  await expect(toast(page, "Credencial apagada")).toBeVisible();
   await expect(item).toHaveCount(0);
 });
 
@@ -324,8 +333,13 @@ test("loading, empty and error states of the tab", async ({ page }) => {
   answer = "empty";
   release();
   await expect(page.getByText("Nenhum fluxo ainda", { exact: true })).toBeVisible();
-  await expect(page.getByText("Guardar credenciais ainda não está disponível nesta instalação.", { exact: false })).toBeVisible();
   await expectAccessible(page, "fluxos vazio");
+  // The other part is empty too, and says that this installation keeps no key.
+  await page.getByRole("navigation", { name: "Partes do CRM" }).getByRole("link", { name: /^Credenciais/ }).click();
+  await expect(page.getByText("Nenhuma credencial ainda", { exact: true })).toBeVisible();
+  await expect(page.getByText("Guardar chaves ainda não está disponível nesta instalação.", { exact: false })).toBeVisible();
+  await expectAccessible(page, "credenciais vazio");
+  await page.goBack();
   answer = "error";
   await page.reload();
   await expect(page.getByRole("alert")).toBeVisible();
@@ -397,9 +411,67 @@ test("a flow the chat suggests waits on the tab; saved by the owner, it starts o
   await expect(toast(page, "Fluxo criado, ainda desligado")).toBeVisible();
   await expect(drafts).toHaveCount(0);
   const row = flowRow(page, name);
-  await expect(row.getByRole("button", { name: "Ligar" })).toBeVisible();
+  await expect(row.getByText("Desligado", { exact: true })).toBeVisible();
 
   await rowAction(row, page, "Apagar");
   await page.getByRole("dialog", { name: `Apagar ${name}?` }).getByRole("button", { name: "Apagar" }).click();
   await expect(flowRow(page, name)).toHaveCount(0);
+});
+
+test("the CRM has two parts, each at its address; the ones still without a server don't show (S15) @mobile", async ({ page }) => {
+  await page.goto("/crm");
+  await signIn(page);
+  const parts = page.getByRole("navigation", { name: "Partes do CRM" });
+  // /crm is the flows; the number beside each name is how many it holds.
+  await expect(parts.getByRole("link")).toHaveText([/^Fluxos\s*\d+$/, /^Credenciais\s*\d+$/]);
+  await expect(parts.getByRole("link", { name: /^Fluxos/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("button", { name: "Novo fluxo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Nova credencial" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Últimas execuções" })).toBeVisible();
+  // "Automações" and "Envios" wait for their server (S18, S19): no link, and their addresses go back to the CRM.
+  await expect(page.getByRole("link", { name: /Automações|Envios/ })).toHaveCount(0);
+  for (const address of ["/crm/automacoes", "/crm/envios"]) {
+    await page.goto(address);
+    await expect(page).toHaveURL(/\/crm$/);
+  }
+  // By the keyboard: the link of the other part, then back by the note under the flows' runs.
+  await parts.getByRole("link", { name: /^Credenciais/ }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/crm\/credenciais$/);
+  await expect(parts.getByRole("link", { name: /^Credenciais/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("button", { name: "Nova credencial" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Novo fluxo" })).toHaveCount(0);
+  await expect(page.getByText("A chave fica cifrada no servidor e nunca volta para a tela.")).toBeVisible();
+  // The notices about clients moved to Configurações › Avisos: no switch is left here.
+  await expect(page.getByRole("switch")).toHaveCount(0);
+  await expectAccessible(page, "crm credenciais");
+  expect(await tooSmallControls(page), "every control of Credenciais is a 44 px target").toEqual([]);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/crm$/);
+  await page.getByRole("link", { name: "Ver credenciais" }).click();
+  await expect(page).toHaveURL(/\/crm\/credenciais$/);
+});
+
+test("a duplicated flow starts off, under the original's name marked as a copy (S15)", async ({ page }) => {
+  const name = `Original ${tag()}`;
+  await openFlows(page);
+  const definition = { version: 1, trigger: { type: "schedule", schedule: { type: "daily", time: "07:30" } }, nodes: [{ type: "notify", title: "Aviso", body: "", priority: "low", each: false }] };
+  const created = await page.request.post("/api/flows", { headers: CSRF, data: { name, definition } });
+  expect(created.status()).toBe(201);
+  const ids = [((await created.json()) as { flow: { id: string } }).flow.id];
+  try {
+    await page.reload();
+    await rowAction(flowRow(page, name), page, "Duplicar");
+    await expect(toast(page, "Fluxo duplicado. Começa desligado.")).toBeVisible();
+    const copy = flowRow(page, `${name} (cópia)`);
+    await expect(copy.getByText("Desligado", { exact: true })).toBeVisible();
+    await expect(copy.getByText("Todo dia às 07:30 · 1 passo")).toBeVisible();
+    await expect(copy.getByText(/^Próxima: /)).toHaveCount(0);
+    const list = (await (await page.request.get("/api/flows", { headers: CSRF })).json()) as { flows: { id: string; name: string; enabled: boolean }[] };
+    const saved = list.flows.find((flow) => flow.name === `${name} (cópia)`);
+    expect(saved?.enabled).toBe(false);
+    if (saved) ids.push(saved.id);
+  } finally {
+    for (const id of ids) await page.request.delete(`/api/flows/${id}`, { headers: CSRF });
+  }
 });

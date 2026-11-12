@@ -331,7 +331,7 @@ test("a closed group still shows the place in view, and only it", async ({ page 
   await expect(place(page, "Notas")).toBeVisible();
   await expect(place(page, "Contatos")).toBeHidden();
   // A sub-address counts as the place.
-  await page.goto("/crm/envios");
+  await page.goto("/crm/credenciais");
   await expect(place(page, "CRM")).toBeVisible();
   await expect(place(page, "Notas")).toBeHidden();
 });
