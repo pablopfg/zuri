@@ -1,6 +1,6 @@
 import type { ReviewMetrics } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { barHeight, barLabel, countdown, mark, overview, percent, replyTime, reviewAddress } from "../src/pages/reviews/numbers.ts";
+import { barHeight, barLabel, countdown, indexMargin, indexZone, mark, overview, percent, ratingZone, replyTime, reviewAddress, stats } from "../src/pages/reviews/numbers.ts";
 
 const metrics = (over: Partial<ReviewMetrics> = {}): ReviewMetrics => ({
   period: "30d",
@@ -8,11 +8,11 @@ const metrics = (over: Partial<ReviewMetrics> = {}): ReviewMetrics => ({
   unit: "week",
   ratings: [5, 1, 0, 1, 0],
   buckets: [
-    { key: "2026-10-12", promoters: 1, neutrals: 0, detractors: 1 },
-    { key: "2026-10-19", promoters: 0, neutrals: 0, detractors: 0 },
-    { key: "2026-10-26", promoters: 2, neutrals: 1, detractors: 0 },
-    { key: "2026-11-02", promoters: 0, neutrals: 0, detractors: 0 },
-    { key: "2026-11-09", promoters: 2, neutrals: 0, detractors: 0 },
+    { key: "2026-10-12", promoters: 1, neutrals: 0, detractors: 1, stars: 7 },
+    { key: "2026-10-19", promoters: 0, neutrals: 0, detractors: 0, stars: 0 },
+    { key: "2026-10-26", promoters: 2, neutrals: 1, detractors: 0, stars: 14 },
+    { key: "2026-11-02", promoters: 0, neutrals: 0, detractors: 0, stars: 0 },
+    { key: "2026-11-09", promoters: 2, neutrals: 0, detractors: 0, stars: 10 },
   ],
   replied: 6,
   medianReplyMinutes: 240,
@@ -37,22 +37,86 @@ describe("the overview's numbers", () => {
     expect(view.delta).toBe(100);
     // An empty last week is not a fall to zero.
     const quiet = metrics();
-    quiet.buckets[4] = { key: "2026-11-09", promoters: 0, neutrals: 0, detractors: 0 };
+    quiet.buckets[4] = { key: "2026-11-09", promoters: 0, neutrals: 0, detractors: 0, stars: 0 };
     expect(overview(quiet).delta).toBe(67);
   });
 
   it("has no index, average, share nor change without reviews, and no change with a single week", () => {
     const empty = overview(metrics({ ratings: [0, 0, 0, 0, 0], buckets: [], replied: 0 }));
     expect([empty.index, empty.average, empty.repliedPercent, empty.delta]).toEqual([null, null, null, null]);
-    const single = overview(metrics({ buckets: [{ key: "2026-11-09", promoters: 1, neutrals: 0, detractors: 0 }] }));
+    const single = overview(metrics({ buckets: [{ key: "2026-11-09", promoters: 1, neutrals: 0, detractors: 0, stars: 5 }] }));
     expect(single.delta).toBeNull();
   });
 
   it("works with 5 or 6 weeks and with 12 months alike", () => {
     const six = metrics();
-    six.buckets.push({ key: "2026-11-16", promoters: 0, neutrals: 0, detractors: 3 });
+    six.buckets.push({ key: "2026-11-16", promoters: 0, neutrals: 0, detractors: 3, stars: 3 });
     expect(overview(six).bars).toHaveLength(6);
     expect(overview(six).delta).toBe(-100);
+  });
+
+  it("gives each bar its count and its average, and none to an empty one", () => {
+    const view = overview(metrics());
+    expect(view.bars.map((bar) => bar.total)).toEqual([2, 0, 3, 0, 2]);
+    expect(view.bars[0]?.average).toBe(3.5);
+    expect(view.bars[1]?.average).toBeNull();
+    expect(view.bars[2]?.average).toBeCloseTo(14 / 3);
+  });
+
+  it("names the band of an index and of an average at each edge", () => {
+    expect([100, 75, 74, 50, 49, 0, -1, -100].map(indexZone)).toEqual(["excellent", "excellent", "great", "great", "fair", "fair", "poor", "poor"]);
+    // The band is the one of the number as written, with one decimal: 4,46 reads "4,5", which is excellent.
+    expect([5, 4.5, 4.46, 4.44, 4, 3.96, 3.94, 3, 2.96, 2.94, 1].map(ratingZone)).toEqual(["excellent", "excellent", "excellent", "great", "great", "great", "fair", "fair", "fair", "poor", "poor"]);
+  });
+
+  it("works out the median, the mode, the spread, the satisfied share, the margin, the pace, the peak and the trend", () => {
+    // Seven reviews: 5, 5, 5, 5, 5, 4 and 2 stars.
+    const numbers = stats(metrics());
+    if (!numbers) throw new Error("there are reviews");
+    expect(numbers.median).toBe(5);
+    expect(numbers.modes).toEqual([5]);
+    // Mean 31/7; the squares of the distances sum to 54/7.
+    expect(numbers.deviation).toBeCloseTo(Math.sqrt(54 / 49));
+    expect(numbers.satisfied).toBe(86);
+    // Seven reviews are too few for a margin.
+    expect(numbers.margin).toBeNull();
+    expect(numbers.perBar).toBeCloseTo(7 / 5);
+    // The latest of the bars with most reviews.
+    expect(numbers.peak.key).toBe("2026-10-26");
+    // The index was 0, 67 and 100 at the bars 0, 2 and 4: a line through them gains 25 a bar.
+    expect(numbers.trend).toBeCloseTo(25);
+  });
+
+  it("takes the mean of the two middle ratings, keeps every tied mode, and has no trend with two bars nor numbers without reviews", () => {
+    // 5, 4, 2, 1: the middle is between 2 and 4.
+    const even = stats(metrics({ ratings: [1, 1, 0, 1, 1], buckets: [{ key: "2026-11-09", promoters: 1, neutrals: 1, detractors: 2, stars: 12 }] }));
+    expect(even?.median).toBe(3);
+    expect(even?.modes).toEqual([5, 4, 2, 1]);
+    expect(even?.trend).toBeNull();
+    // Everybody alike: no spread, and a margin of zero.
+    const alike = stats(metrics({ ratings: [4, 0, 0, 0, 0], buckets: [{ key: "2026-11-09", promoters: 4, neutrals: 0, detractors: 0, stars: 20 }] }));
+    expect([alike?.deviation, alike?.margin, alike?.satisfied]).toEqual([0, null, 100]);
+    expect(stats(metrics({ ratings: [0, 0, 0, 0, 0], buckets: [], replied: 0 }))).toBeNull();
+    // SEC-GRAF-03: reviews counted and no bar at all is not this server's answer; no numbers, no crash.
+    expect(stats(metrics({ buckets: [] }))).toBeNull();
+  });
+
+  it("gives the index a margin only from ten reviews on, and never a margin of zero", () => {
+    expect(indexMargin(9, 0, 9)).toBeNull();
+    // Ten that all recommend: p = 11/13, d = 1/13, 1.96 × √((p + d − (p − d)²) / 13) × 100 = 31,3.
+    expect(indexMargin(10, 0, 10)).toBe(31);
+    // 98 recommend and 13 do not, of 132: p = 99/135, d = 14/135; the spread is 0,4406 and the margin 11,2.
+    expect(indexMargin(98, 13, 132)).toBe(11);
+    // More reviews, smaller margin; it never reaches zero.
+    expect(indexMargin(5000, 0, 5000)).toBe(1);
+    const ten = stats(metrics({ ratings: [10, 0, 0, 0, 0], buckets: [{ key: "2026-11-09", promoters: 10, neutrals: 0, detractors: 0, stars: 50 }] }));
+    expect(ten?.margin).toBe(31);
+  });
+
+  it("has no average for a bar whose sum of stars did not come", () => {
+    const old = metrics();
+    old.buckets[0] = { key: "2026-10-12", promoters: 1, neutrals: 0, detractors: 1 } as (typeof old.buckets)[number];
+    expect(overview(old).bars[0]?.average).toBeNull();
   });
 
   it("gives whole percents and never divides by zero", () => {
@@ -80,6 +144,7 @@ describe("the overview's numbers", () => {
     expect(barLabel("2026-11-09", "week", "pt-BR")).toBe("09/11");
     expect(barLabel("2026-11", "month", "pt-BR")).toMatch(/^nov/);
     expect(barLabel("nope", "week", "pt-BR")).toBe("nope");
+    expect(barLabel("2026", "year", "pt-BR")).toBe("2026");
   });
 
   it("counts down without going below zero", () => {

@@ -203,17 +203,21 @@ export interface ReviewPage {
   counts: Record<ReviewTab, number>;
 }
 
-/** The overview's periods (PR S11): the last 30 days by week, the last 6 and 12 months by month. */
-export const REVIEW_METRIC_PERIODS = ["30d", "6m", "12m"] as const;
+/** The overview's periods: 30 days by week, 6 and 12 months by month, 24 months by half year, 5 years by year. */
+export const REVIEW_METRIC_PERIODS = ["30d", "6m", "12m", "24m", "5y"] as const;
 export type ReviewMetricPeriod = (typeof REVIEW_METRIC_PERIODS)[number];
 
-/** A week or a month of the period. By the stars: 5 recommends, 4 is neutral, 1 to 3 does not. */
+export type ReviewMetricUnit = "week" | "month" | "semester" | "year";
+
+/** A week, a month, a half year or a year of the period. By the stars: 5 recommends, 4 is neutral, 1 to 3 does not. */
 export interface ReviewMetricBucket {
-  /** The owner's local day the week starts on (a Monday, "2026-11-09") or the month ("2026-11"). */
+  /** The owner's local day the week starts on (a Monday, "2026-11-09"), the month ("2026-11"), the half year ("2026-S2") or the year ("2026"). */
   key: string;
   promoters: number;
   neutrals: number;
   detractors: number;
+  /** The sum of the stars of its reviews: over their count, the average rating of the bucket. */
+  stars: number;
 }
 
 /** The overview of the reviews written in a period: numbers only, never a name or a text. */
@@ -221,10 +225,10 @@ export interface ReviewMetrics {
   period: ReviewMetricPeriod;
   /** UTC ISO of the first instant counted (a midnight of the owner's). */
   from: string;
-  unit: "week" | "month";
+  unit: ReviewMetricUnit;
   /** How many reviews got 5, 4, 3, 2 and 1 stars, in this order. */
   ratings: [number, number, number, number, number];
-  /** Oldest first; a week or a month without reviews comes with zeros. The first and the last may be cut by the period. */
+  /** Oldest first; a week, month, half year or year without reviews comes with zeros. The first and the last may be cut by the period. */
   buckets: ReviewMetricBucket[];
   /** Reviews of the period with a reply on Google, whoever wrote it. */
   replied: number;

@@ -71,6 +71,27 @@ describe("the overview's period", () => {
     expect(metricWindow("6m", at("2026-03-31T15:00:00Z"), SP).buckets.map((bucket) => bucket.key)).toEqual(["2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03"]);
   });
 
+  it("24 months: this half of the year and the three before; 5 years: this year and the four before", () => {
+    const halves = metricWindow("24m", at("2026-11-11T15:00:00Z"), SP);
+    expect(halves.unit).toBe("semester");
+    expect(halves.buckets.map((bucket) => bucket.key)).toEqual(["2025-S1", "2025-S2", "2026-S1", "2026-S2"]);
+    expect(new Date(halves.from).toISOString()).toBe("2025-01-01T03:00:00.000Z");
+    expect(new Date(halves.buckets[3]?.start ?? 0).toISOString()).toBe("2026-07-01T03:00:00.000Z");
+    // June 30th is still the first half, July 1st the second; the first half goes back across the year.
+    expect(metricWindow("24m", at("2026-07-01T02:59:00Z"), SP).buckets.map((bucket) => bucket.key)).toEqual(["2024-S2", "2025-S1", "2025-S2", "2026-S1"]);
+    expect(metricWindow("24m", at("2026-07-01T03:00:00Z"), SP).buckets.at(-1)?.key).toBe("2026-S2");
+    const years = metricWindow("5y", at("2026-11-11T15:00:00Z"), SP);
+    expect(years.unit).toBe("year");
+    expect(years.buckets.map((bucket) => bucket.key)).toEqual(["2022", "2023", "2024", "2025", "2026"]);
+    expect(new Date(years.from).toISOString()).toBe("2022-01-01T03:00:00.000Z");
+    // New Year's Eve at 23:59 of the owner's is still the old year.
+    expect(metricWindow("5y", at("2027-01-01T02:59:00Z"), SP).buckets.at(-1)?.key).toBe("2026");
+    expect(metricWindow("5y", at("2027-01-01T03:00:00Z"), SP).buckets.at(-1)?.key).toBe("2027");
+    // A zone with summer time: January starts at 05:00Z and July at 04:00Z, each at its own local midnight.
+    const york = metricWindow("24m", at("2026-11-11T15:00:00Z"), "America/New_York");
+    expect(york.buckets.slice(2).map((bucket) => new Date(bucket.start).toISOString())).toEqual(["2026-01-01T05:00:00.000Z", "2026-07-01T04:00:00.000Z"]);
+  });
+
   it("follows the owner's day, not UTC's: 23:59 and 00:00 fall in different days and months", () => {
     // 30/11 23:59 in São Paulo is already December in UTC.
     expect(metricWindow("6m", at("2026-12-01T02:59:00Z"), SP).buckets.at(-1)?.key).toBe("2026-11");
@@ -101,7 +122,7 @@ describe("the overview's numbers", () => {
       from: "2026-10-13T03:00:00.000Z",
       unit: "week",
       ratings: [0, 0, 0, 0, 0],
-      buckets: window.buckets.map(({ key }) => ({ key, promoters: 0, neutrals: 0, detractors: 0 })),
+      buckets: window.buckets.map(({ key }) => ({ key, promoters: 0, neutrals: 0, detractors: 0, stars: 0 })),
       replied: 0,
       medianReplyMinutes: null,
       requests: null,
@@ -124,11 +145,11 @@ describe("the overview's numbers", () => {
     ]);
     expect(metrics.ratings).toEqual([3, 1, 1, 1, 1]);
     expect(metrics.buckets).toEqual([
-      { key: "2026-10-12", promoters: 1, neutrals: 0, detractors: 1 },
-      { key: "2026-10-19", promoters: 0, neutrals: 1, detractors: 0 },
-      { key: "2026-10-26", promoters: 0, neutrals: 0, detractors: 0 },
-      { key: "2026-11-02", promoters: 0, neutrals: 0, detractors: 0 },
-      { key: "2026-11-09", promoters: 2, neutrals: 0, detractors: 2 },
+      { key: "2026-10-12", promoters: 1, neutrals: 0, detractors: 1, stars: 8 },
+      { key: "2026-10-19", promoters: 0, neutrals: 1, detractors: 0, stars: 4 },
+      { key: "2026-10-26", promoters: 0, neutrals: 0, detractors: 0, stars: 0 },
+      { key: "2026-11-02", promoters: 0, neutrals: 0, detractors: 0, stars: 0 },
+      { key: "2026-11-09", promoters: 2, neutrals: 0, detractors: 2, stars: 13 },
     ]);
     expect(index(metrics)).toEqual([0, 0, null, null, 0]);
   });

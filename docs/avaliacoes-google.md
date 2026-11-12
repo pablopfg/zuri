@@ -66,10 +66,24 @@ cautelosa, nunca menos. Mais de 3 negativas numa leitura viram um aviso só, e
 lido, a hora da última leitura, a contagem para a próxima e dois botões:
 **Conferir agora** e **Pausar respostas**.
 
-- **Visão geral**: os números do período (30 dias ao abrir, 6 ou 12 meses):
-  índice de recomendação, nota média, respondidas e tempo até responder; o
-  índice por semana ou por mês, em barras e em tabela; quantas avaliações de
-  cada nota; e as que precisam de você, com **Revisar**.
+- **Visão geral**: os números do período (30 dias ao abrir, 6 ou 12 meses, 2
+  anos por semestre ou 5 anos por ano): índice de recomendação, nota média,
+  respondidas e tempo até responder; e as que precisam de você, com
+  **Revisar**. Os gráficos:
+  - **Índice de recomendação** por semana, mês, semestre ou ano. A cor da barra
+    é a faixa do índice: Excelente (75 a 100), Muito bom (50 a 74), Razoável
+    (0 a 49) e Crítico (abaixo de 0). A nota média usa as mesmas faixas: 4,5
+    ou mais, 4,0 a 4,4, 3,0 a 3,9 e abaixo de 3.
+  - **Avaliações recebidas** em cada período, com a parte que recomenda (5
+    estrelas), a neutra (4) e a que não recomenda (1 a 3).
+  - **Estrelas**: quantas avaliações de cada nota.
+  - Toda cor vem com o nome ou o número, e cada gráfico tem **Ver em tabela**.
+  - **Estatísticas do período**: satisfeitos (4 e 5 estrelas), margem do
+    índice (95% de confiança: com poucas avaliações ela é larga), tendência do
+    índice (a reta de mínimos quadrados pelas barras, a partir de três com
+    avaliações), mediana, nota mais comum, desvio padrão e a média de
+    avaliações por período, com o de maior movimento. As contas são da tela
+    (`apps/web/src/pages/reviews/numbers.ts`), a partir das contagens da rota.
 - **Avaliações** (`/avaliacoes/lista`): a lista de um lado e a avaliação
   aberta do outro (em janela estreita, a aberta toma o lugar da lista). Os
   filtros são **Precisa de você**, **Respondidas**, **Publicadas sozinha**
@@ -232,16 +246,15 @@ escolher).
 
 ### Números da visão geral
 
-`GET /api/reviews/metrics?period=30d|6m|12m` (PR S11 do novo frontend) devolve
-os números que a tela **Avaliações › Visão geral** vai mostrar. A tela chega
-na PR S12; até lá a rota já responde. O código está em
+`GET /api/reviews/metrics?period=30d|6m|12m|24m|5y` devolve os números que a
+tela **Avaliações › Visão geral** mostra. O código está em
 `apps/agent/src/reviews/metrics.ts`.
 
 | Campo | O que é |
 | --- | --- |
-| `period`, `from`, `unit` | O período pedido, o primeiro instante contado (uma meia-noite do dono, em UTC) e se os grupos são semanas (`week`) ou meses (`month`) |
+| `period`, `from`, `unit` | O período pedido, o primeiro instante contado (uma meia-noite do dono, em UTC) e se os grupos são semanas (`week`), meses (`month`), semestres (`semester`) ou anos (`year`) |
 | `ratings` | Quantas avaliações do período têm 5, 4, 3, 2 e 1 estrela, nessa ordem |
-| `buckets` | Um item por semana ou mês, do mais antigo ao mais novo, com `key` (a segunda-feira `2026-11-09` ou o mês `2026-11`), `promoters` (5 estrelas), `neutrals` (4) e `detractors` (1 a 3). Semana ou mês sem avaliação vem com zeros |
+| `buckets` | Um item por semana, mês, semestre ou ano, do mais antigo ao mais novo, com `key` (a segunda-feira `2026-11-09`, o mês `2026-11`, o semestre `2026-S2` ou o ano `2026`), `promoters` (5 estrelas), `neutrals` (4), `detractors` (1 a 3) e `stars` (a soma das estrelas; dividida pelo total, dá a nota média do grupo). Grupo sem avaliação vem com zeros |
 | `replied` | Avaliações do período com resposta no Google, de quem for |
 | `medianReplyMinutes` | Metade das respostas saiu em até esse tempo, em minutos. `null` quando a Zuri não sabe a hora de nenhuma |
 | `requests` | O funil dos pedidos (enviados, abertos, avaliaram). `null` enquanto a Zuri não envia pedidos de avaliação |
@@ -250,7 +263,9 @@ na PR S12; até lá a rota já responde. O código está em
 - **Períodos.** `30d` é hoje e os 29 dias antes, em semanas que começam na
   segunda-feira: são 5 semanas, ou 6 quando hoje é segunda, e a primeira e a
   última aparecem cortadas pelo período.
-  `6m` e `12m` são o mês corrente e os 5 ou 11 anteriores. O dia e o mês são os
+  `6m` e `12m` são o mês corrente e os 5 ou 11 anteriores. `24m` é o semestre
+  corrente (janeiro a junho ou julho a dezembro) e os 3 anteriores. `5y` é o
+  ano corrente e os 4 anteriores. O dia e o mês são os
   do fuso do dono, inclusive na troca de horário de verão. Sem `period`, vale
   `30d`; qualquer outro valor, parâmetro a mais ou `period` repetido dá 400
   `VALIDATION_FAILED`.
@@ -289,7 +304,7 @@ na PR S12; até lá a rota já responde. O código está em
 | Período de experiência (19d) | 10 aprovações sem edição entre as 30 últimas decisões |
 | Resposta | 40 a 600 caracteres |
 | Auditoria | 180 dias |
-| Visão geral (`GET /api/reviews/metrics`) | 30 dias, 6 ou 12 meses; até 5.000 avaliações por período, as mais novas |
+| Visão geral (`GET /api/reviews/metrics`) | 30 dias, 6 ou 12 meses, 2 anos por semestre ou 5 anos por ano; até 5.000 avaliações por período, as mais novas |
 
 Medido no teste de orçamento (`apps/agent/test/free-tier-budget.test.ts`),
 num perfil com 1.000 avaliações: uma leitura sem novidade faz 1 chamada ao
