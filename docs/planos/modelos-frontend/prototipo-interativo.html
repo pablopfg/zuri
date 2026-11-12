@@ -2758,6 +2758,45 @@ ol.pk-list{list-style:none;margin:0;padding:0}
   .ag-sync{order:4;width:100%}
   .ag2-leg .legend-r{margin-left:0}
 }
+
+/* ================= Refino de 12/11/2026, noite: movimento, seleção e coerência =================
+   Só transform e opacity (a placa de vídeo faz o trabalho), 120 a 240 ms, nada em loop.
+   "Reduzir movimento" (do aparelho ou de Configurações) desliga tudo pela regra global do começo. */
+:root{--ease-spring:cubic-bezier(.34,1.36,.64,1)}
+/* Tela nova: sobe 6 px e aparece. Só na troca de tela, nunca a cada clique. */
+#conteudo.pg-in>*{animation:pg-in var(--dur-3) var(--ease-out) both}
+@keyframes pg-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* Diálogos: o fundo escurece e a caixa cresce de 97%. No celular, a folha sobe de baixo. */
+.wiz-wrap,.pop-wrap,.overlay{animation:scrim-in var(--dur-2) var(--ease-out) both}
+.wiz-wrap>.wiz,.overlay>.palette{animation:dlg-in var(--dur-3) var(--ease-out) both}
+@keyframes scrim-in{from{opacity:0}}
+@keyframes dlg-in{from{opacity:0;transform:translateY(8px) scale(.97)}}
+@media (max-width:820px){.wiz-wrap>.wiz,.overlay-sheet>.sheet{animation:sheet-in var(--dur-3) var(--ease-out) both}}
+@keyframes sheet-in{from{transform:translateY(100%)}}
+/* Menus que saem de um botão (conta, avisos) crescem a partir do canto dele. */
+.pop{transform-origin:top right;animation:pop-in var(--dur-2) var(--ease-out) both}
+@keyframes pop-in{from{opacity:0;transform:translateY(-4px) scale(.96)}}
+/* Avisos de rodapé: sobem com um leve quique. */
+#toasts .toast{animation:toast-in var(--dur-3) var(--ease-spring) both}
+@keyframes toast-in{from{opacity:0;transform:translateY(12px) scale(.96)}}
+/* Atualizar a tela não repete a entrada do que já estava aberto. */
+.no-anim,.no-anim>.wiz,.no-anim>.palette,.no-anim>.sheet{animation:none}
+/* A tela atual tem a mesma marca verde no menu, nos dois temas. */
+.nav a[aria-current="page"]::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+/* Apertar: tudo que é clicável afunda um pouco, igual aos botões. */
+.chip,.seg button,.iconbtn,.nav a,.dlg-menu button,.qa-btn,.cb-opt,.pitem{transition-property:background-color,color,border-color,box-shadow,transform;transition-duration:var(--dur-1);transition-timing-function:var(--ease-out)}
+.chip:active,.seg button:active,.iconbtn:active,.nav a:active,.dlg-menu button:active,.qa-btn:active,.cb-opt:active,.pitem:active{transform:scale(.97)}
+/* Interruptor: a bolinha chega com um quique curto. */
+.switch::after{transition:transform var(--dur-3) var(--ease-spring)}
+/* Campo com erro: uma tremida curta, junto com a borda vermelha e o texto do erro. */
+.input.shake{animation:shake 320ms cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
+/* Ficha do contato: duas colunas só quando há espaço para as duas. */
+.person{container-type:inline-size}
+@container (max-width:760px){.person-cols{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){#conteudo.pg-in>*,.wiz-wrap,.pop-wrap,.overlay,.wiz-wrap>.wiz,.overlay>.palette,.pop,#toasts .toast,.input.shake,.sheet{animation:none}}
+/* O interruptor "Reduzir movimento" de Configurações › Conta faz o mesmo que o ajuste do aparelho. */
+[data-motion="off"] *,[data-motion="off"] *::before,[data-motion="off"] *::after{transition-duration:0s!important;animation-duration:0s!important}
 </style>
 </head>
 <body>
@@ -3375,7 +3414,7 @@ const SYNC = {
 };
 const fmtCd = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const syncLine = (k, lead) => `<div class="sync-row"><p class="sync"><span class="live-dot" aria-hidden="true"></span><span>${lead}</span></p>
-    <p class="sync-next"><span data-sync-last="${k}">${SYNC[k].busy ? "Sincronizando…" : SYNC[k].last}</span><span class="sep" aria-hidden="true">·</span><span>Próxima em <span class="num" data-cd="${k}">${fmtCd(SYNC[k].left)}</span></span></p></div>`;
+    <p class="sync-next"><span data-sync-last="${k}">${SYNC[k].busy ? "Sincronizando…" : SYNC[k].last}</span><span class="sep" aria-hidden="true">·</span><span>Próxima leitura em <span class="num" data-cd="${k}">${fmtCd(SYNC[k].left)}</span></span></p></div>`;
 function runSync(k, manual) {
   const x = SYNC[k];
   if (x.busy) return;
@@ -3466,7 +3505,7 @@ function rvOverview() {
       <section class="card p-sec chart-card" aria-labelledby="h-idx"><div class="p-sec-h"><h2 id="h-idx">Índice de recomendação por ${d.unit.toLowerCase()}</h2></div>
         <ol class="cols" aria-hidden="true" style="--n:${d.serie.length}">${cols}</ol>
         <details class="as-table"><summary>Ver em tabela</summary><table><caption class="sr">Índice de recomendação por ${d.unit.toLowerCase()}</caption><thead><tr><th scope="col">${d.unit}</th><th scope="col">Índice</th></tr></thead><tbody>${d.serie.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join("")}</tbody></table></details></section>
-      <section class="card p-sec chart-card" aria-labelledby="h-dist"><div class="p-sec-h"><h2 id="h-dist">Estrelas</h2><span class="hint num">${c.prom} recomendam · ${c.neu} neutros · ${c.det} não</span></div>
+      <section class="card p-sec chart-card" aria-labelledby="h-dist"><div class="p-sec-h"><h2 id="h-dist">Estrelas</h2><span class="hint num">${c.prom} recomendam · ${c.neu} ${c.neu === 1 ? "neutro" : "neutros"} · ${c.det} ${c.det === 1 ? "não recomenda" : "não recomendam"}</span></div>
         <ul class="hbars" aria-label="Avaliações por nota">${dist}</ul></section>
       <section class="card p-sec chart-card" aria-labelledby="h-fun"><div class="p-sec-h"><h2 id="h-fun">Pedidos de avaliação</h2><button class="linkbtn" type="button" data-rvv="pedidos">Ver pedidos${ic("chevron-right", "ic-sm")}</button></div>
         <ul class="hbars" aria-label="Do link à avaliação">${fun}</ul>
@@ -3632,7 +3671,7 @@ const PK = [
   { id: "vinculo", i: "link", n: "Ligar avaliação ao contato", d: "Descobre de quem é cada avaliação, pelo link aberto e pelo nome. Nomes iguais esperam você." },
   { id: "confirma", i: "calendar-check", n: "Confirmação de consulta", d: "Na véspera útil, das 07:00 às 07:30, pede a confirmação e marca a resposta na agenda.", uses: "chatwoot", writes: true },
   { id: "plano", i: "mail", n: "Aviso de plano liberado", d: "Quando o plano chega por e-mail, avisa a pessoa com o link.", uses: "chatwoot", writes: true },
-  { id: "resultados", i: "chart-column", n: "Resultados e relatórios", d: "Atendimentos, receita pela agenda e mensagens enviadas, com relatório mensal por e-mail." },
+  { id: "resultados", i: "chart-column", n: "Relatório das mensagens", d: "Quantas mensagens cada automação mandou e quantas tiveram resposta. Atendimentos e receita ficam em Consultório › Resultados." },
   { id: "espelho", i: "book-user", n: "Contatos iguais no Chatwoot", d: "Mantém nome, etiqueta e bloqueio do contato do Chatwoot iguais aos do Google." },
   { id: "posts", i: "square-pen", n: "Posts no Perfil do Google", d: "Até 3 por semana, escritos com IA, conferidos e publicados só com a sua aprovação." },
   { id: "aniversario", i: "cake", n: "Parabéns de aniversário", d: "No dia, das 09:00 às 09:30.", uses: "chatwoot", writes: true },
@@ -3750,7 +3789,7 @@ const memNewDlg = () => {
 };
 /* ---------- Configurações: todas as seções que já existem na develop (09/11 18:23) ---------- */
 const CFG = [["conta", "user", "Conta", "Você"], ["seg", "shield-check", "Segurança", "Você"], ["assist", "bot", "Assistente", "A Zuri"], ["ia", "gauge", "Uso da IA", "A Zuri"], ["modelos", "sparkles", "Modelos e limites", "A Zuri"], ["agenda", "calendar-days", "Agenda", "Seu dia"], ["avisos", "bell", "Avisos", "Seu dia"], ["integ", "plug", "Integrações", "Conexões"], ["dados", "database", "Dados", "Sistema"], ["diag", "activity", "Diagnóstico", "Sistema"], ["sobre", "info", "Sobre a Zuri", "Sistema"]];
-const CFG_HINT = { conta: "Nome, idioma, fuso e tema", seg: "Senha, duas etapas, passkeys, sessões e acesso pela API", assist: "Conversas, iniciativa e prioridades", ia: "Quanto a IA usou hoje e em cada período", modelos: "Modelo de IA, agentes e limites", agenda: "Horário de trabalho, visualização e lembretes", avisos: "O que chega, quando e por qual canal", integ: "Google, Telegram e outros serviços", dados: "Cópias de segurança, espaço e lixeira", diag: "Falhas recentes e como relatar", sobre: "Versão instalada e novidades" };
+const CFG_HINT = { conta: "Nome, idioma, fuso e tema", seg: "Senha, duas etapas, passkeys e acessos", assist: "Conversas, iniciativa e prioridades", ia: "Quanto a IA usou hoje e em cada período", modelos: "Modelo de IA, agentes e limites", agenda: "Horário de trabalho, visualização e lembretes", avisos: "O que chega, quando e por qual canal", integ: "Google, Telegram e outros serviços", dados: "Cópias de segurança, espaço e lixeira", diag: "Falhas recentes e como relatar", sobre: "Versão instalada e novidades" };
 const hh2 = (h) => `${String(h).padStart(2, "0")}:00`;
 const swRow = (id, t, h, on, dis) => `<div class="set-row"><div class="grow"><p class="t" id="${id}">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div><button class="switch" type="button" role="switch" aria-checked="${on}" aria-labelledby="${id}"${dis ? " disabled" : ""}></button></div>`;
 const ctlRow = (t, h, ctl) => `<div class="set-row"><div class="grow"><p class="t">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div>${ctl}</div>`;
@@ -3811,12 +3850,7 @@ function cfgSeg() {
     `<div class="form-grid form-3"><label class="field"><span>Sem uso</span><select class="input"><option>15 minutos</option><option selected>30 minutos</option><option>1 hora</option></select></label><label class="field"><span>Sem aba aberta</span><select class="input"><option selected>5 minutos</option><option>10 minutos</option><option>15 minutos</option></select></label><label class="field"><span>Duração máxima</span><select class="input"><option selected>6 horas</option><option>12 horas</option><option>24 horas</option></select></label></div>`, save())
   + sec("h-act", "Atividade de acesso", "Os acessos mais recentes: quem entrou, de onde, por qual endereço IP e o que aconteceu.",
     `<ul class="runs acc-runs">${acts.map(([k, d, l, w, s, ip]) => `<li><time class="num">${w}</time><span><b>${k}</b> · ${d} · ${l}<span class="acc-ip">IP <span class="num">${ip}</span></span></span><span class="pill ${s}"><i></i>${s === "on" ? "Certo" : "Atenção"}</span></li>`).join("")}</ul>`,
-    `<button class="btn btn-quiet" type="button" data-x="acessos" aria-haspopup="dialog">Ver todos os acessos${ic("chevron-right", "ic-sm")}</button>`)
-  + sec("h-rem", "Acesso pela API", "Chaves de API para o n8n, o Home Assistant ou um script usarem a Zuri. Cada chave tem o seu nome e só o acesso que precisa.",
-    swRow("rem-on", "Permitir acesso pela API", "Desligado, nenhuma chave funciona, nem as que já existem.", true)
-    + `<ul class="cal-list">${[["n8n do consultório", "Só enviar eventos", "vence em 08/02 · último uso hoje, 07:58"], ["Home Assistant", "Só ler", "vence em 01/01 · nunca usada"]].map(([n, s, d]) => `<li class="set-row"><span class="tile tile-sm">${ic("key-round", "ic-sm")}</span><div class="grow"><p class="t">${n} <span class="tag">${s}</span></p><p class="hint">${d}</p></div><button class="btn btn-quiet btn-sm" type="button" data-x="key-revoke" aria-label="Revogar “${n}”">Revogar</button></li>`).join("")}</ul>
-      <p class="hint">Acessos: “Só ler”, “Ler e escrever” ou “Só enviar eventos”. A chave aparece uma vez só, ao criar.</p>`,
-    `<button class="btn btn-secondary" type="button" data-x="key-new" aria-haspopup="dialog">${ic("plus", "ic-sm")}Nova chave de API</button><span class="hint">Até 20 chaves. Cada uma vale 90 dias. Criar pede a sua senha.</span>`);
+    `<button class="btn btn-quiet" type="button" data-x="acessos" aria-haspopup="dialog">Ver todos os acessos${ic("chevron-right", "ic-sm")}</button>`);
 }
 
 function cfgIa() {
@@ -3892,7 +3926,7 @@ function cfgAvisos() {
     `<div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Tipo de aviso</th><th scope="col">Aparelho</th><th scope="col">Telegram</th><th scope="col">E-mail</th></tr></thead><tbody>${cats.map(([n, v]) => `<tr><th scope="row">${n}</th>${v.map((on, k) => `<td><input type="checkbox" class="chk" aria-label="${n} por ${["Aparelho", "Telegram", "E-mail"][k]}"${on ? " checked" : ""}${n === "Segurança" ? " disabled" : ""}></td>`).join("")}</tr>`).join("")}</tbody></table></div>
      <p class="hint">Segurança sai sempre por todos os canais.</p>`, save())
   + sec("h-crmav", "CRM", "O que a Zuri avisa sobre os seus clientes, pelos canais acima.",
-    swRow("crm-ret", "Quando chegar a hora de um retorno", "", true) + swRow("crm-aniv", "Aniversários de clientes, às 9h", "", false) + swRow("crm-novo", "Cliente novo vindo do n8n", "Até 20 avisos por dia.", true))
+    swRow("crm-ret", "Quando chegar a hora de um retorno", "", true) + swRow("crm-aniv", "Aniversários de clientes, às 9h", "", false) + swRow("crm-novo", "Cliente novo em Contatos", "Até 20 avisos por dia.", true))
   + sec("h-dig", "Resumo do dia", "Uma vez por dia a Zuri junta o que está atrasado, o que vence hoje e o que chegou.",
     swRow("dig-on", "Receber o resumo do dia", "", true) + ctlRow("Horário do resumo", "", `<label class="sr" for="dig-h">Horário do resumo</label><input id="dig-h" class="input input-sm num" value="07:30" inputmode="numeric">`))
   + sec("h-hist", "Últimos envios", "Cada tentativa de mandar um aviso para fora do app nos últimos 90 dias.",
@@ -4066,10 +4100,16 @@ function render() {
   document.getElementById("ps").value = st.s;
   document.getElementById("pt").value = st.pref;
   const app = document.getElementById("app");
+  /* Refino: a entrada anima só quando a tela muda ou o carregamento termina; camadas já abertas não repetem a entrada. */
+  const rfKey = st.s + (st.ld ? ":carregando" : "") + (st.s === "gestao" ? `:${st.gs}` : "");
+  const rfLayer = !!app.querySelector(".wiz-wrap, .pop-wrap, .pop");
   if (st.s === "entrar") { app.className = ""; app.innerHTML = entrar(); hvStart(); afterRender(); return; }
   if (st.s === "verificacao") { app.className = ""; app.innerHTML = verificacao(); return; }
   app.className = "app";
   app.innerHTML = `${side()}<div class="main">${topbar()}<main id="conteudo">${st.ld ? pageLoading(st.s) : SCREEN[st.s]()}</main>${st.s === "conversa" ? "" : tabbar()}</div>${pops()}${st.s === "automacoes" && st.au ? wizard() : ""}`;
+  if (rfKey !== st.rfKey) app.querySelector("#conteudo").classList.add("pg-in");
+  if (rfLayer) for (const x of app.querySelectorAll(".wiz-wrap, .pop-wrap, .pop")) x.classList.add("no-anim");
+  st.rfKey = rfKey;
   if (st.s === "estados" && !params.get("captura")) runLoading();
   const cur = app.querySelector(".settings nav [aria-current]");
   if (cur && cur.scrollIntoView && window.innerWidth <= 820) cur.scrollIntoView({ block: "nearest", inline: "center" });
@@ -4247,7 +4287,8 @@ function dlgShow(def, opener) {
   let h = document.getElementById("dlg-host");
   if (!h) { h = document.createElement("div"); h.id = "dlg-host"; document.body.appendChild(h); }
   const foot = def.foot ? `<div class="wz-foot">${def.foot}</div>` : "";
-  h.innerHTML = `<div class="wiz-wrap dlg-wrap" data-dlg-scrim><div class="wiz dlg-box" role="dialog" aria-modal="true" aria-labelledby="dlg-h"${def.sub ? ' aria-describedby="dlg-d"' : ""}>
+  const again = !!h.querySelector(".dlg-wrap");
+  h.innerHTML = `<div class="wiz-wrap dlg-wrap${again ? " no-anim" : ""}" data-dlg-scrim><div class="wiz dlg-box" role="dialog" aria-modal="true" aria-labelledby="dlg-h"${def.sub ? ' aria-describedby="dlg-d"' : ""}>
     <div class="wz-head"><div><h2 id="dlg-h">${def.t}</h2>${def.sub ? `<p class="hint" id="dlg-d">${def.sub}</p>` : ""}</div><button class="iconbtn" type="button" data-dlg-x aria-label="Fechar">${ic("x")}</button></div>
     <div class="wz-body" tabindex="0" role="region" aria-labelledby="dlg-h">${def.body}</div>${foot}</div></div>`;
   const f = h.querySelector("[data-autofocus]") || h.querySelector(".wz-body input, .wz-body select, .wz-body textarea, .wz-body button") || h.querySelector("[data-dlg-x]");
@@ -4356,7 +4397,7 @@ function eventoDlg(opener) {
     } }, opener);
 }
 function acessosDlg(opener, filtro = "todos") {
-  const L = [["Hoje, 08:02", "Entrou", "Celular · Curitiba", "on", "203.0.113.24"], ["Hoje, 07:58", "Senha errada", "Celular · Curitiba", "off", "203.0.113.24"], ["Ontem, 22:10", "Entrou com passkey", "Computador · Curitiba", "on", "2001:db8:41a2:7c00::18"], ["Ontem, 13:44", "Chave de API usada", "n8n do consultório", "on", "192.0.2.61"], ["07/11, 03:12", "Tentativa bloqueada", "Endereço desconhecido · fora do Brasil", "off", "198.51.100.203"], ["06/11, 19:20", "Saiu", "Computador · Curitiba", "on", "203.0.113.24"]];
+  const L = [["Hoje, 08:02", "Entrou", "Celular · Curitiba", "on", "203.0.113.24"], ["Hoje, 07:58", "Senha errada", "Celular · Curitiba", "off", "203.0.113.24"], ["Ontem, 22:10", "Entrou com passkey", "Computador · Curitiba", "on", "2001:db8:41a2:7c00::18"], ["Ontem, 13:44", "Entrou", "Celular · Curitiba", "on", "192.0.2.61"], ["07/11, 03:12", "Tentativa bloqueada", "Endereço desconhecido · fora do Brasil", "off", "198.51.100.203"], ["06/11, 19:20", "Saiu", "Computador · Curitiba", "on", "203.0.113.24"]];
   const vis = L.filter((x) => filtro === "todos" || x[3] === "off");
   dlgShow({ t: "Todos os acessos", sub: "Dos últimos 90 dias: o tipo, o aparelho, a cidade aproximada e o endereço IP.", kind: "acessos",
     body: `<div class="seg" role="group" aria-label="Mostrar"><button type="button" data-ac-f="todos" aria-pressed="${filtro === "todos"}">Todos <span class="n">${L.length}</span></button><button type="button" data-ac-f="atencao" aria-pressed="${filtro !== "todos"}">Pedem atenção <span class="n">${L.filter((x) => x[3] === "off").length}</span></button></div>
@@ -4542,7 +4583,7 @@ document.addEventListener("input", (e) => {
 /* Conexões: um lugar só. A chave nunca volta para a tela; mudar o endereço pede a chave de novo. */
 const CONNS = [
   { id: "cw", kind: "chatwoot", n: "Chatwoot do consultório", url: "https://chat.exemplo.com.br", info: "Conta 1 · caixa “WhatsApp do consultório” (API) · 30 s a 1 min entre mensagens", key: "Chave terminada em 4f2a", extra: [] },
-  { id: "n8n", kind: "http", n: "n8n do consultório", url: "https://n8n.exemplo.com.br", info: "Chave de API · só envia e atualiza dados, nunca apaga", key: "Chave terminada em 91c0", extra: ["Preço da passagem · fluxo"] }
+  { id: "passagens", kind: "http", n: "Preços de passagens", url: "https://api.exemplo.com.br", info: "Chave de API · só consulta preços, nunca muda nada", key: "Chave terminada em 91c0", extra: ["Preço da passagem · fluxo"] }
 ];
 function cwDlg(opener, c) {
   const edit = !!c;
@@ -5419,7 +5460,7 @@ Se não quiser mais receber, é só responder SAIR.</textarea><span class="hint"
     ${sec("h-re3", "Quando pedir", "Quem recebe o link e quando. Só recebe quem nunca avaliou.",
       `<div class="form-grid"><label class="field"><span class="label">Dias depois da consulta</span><input class="input num" value="8" inputmode="numeric"></label>
         <label class="field"><span class="label">Horário do lembrete para você</span><input class="input num" value="09:00" inputmode="numeric"></label>
-        <label class="field"><span class="label">De onde vem a consulta</span><select class="input"><option selected>Agenda Pessoal, pelo nome</option><option>Agendamentos do CRM (n8n)</option><option>Os dois</option></select></label>
+        <label class="field"><span class="label">De onde vem a consulta</span><select class="input"><option selected>Agenda do consultório, pelo nome do evento</option><option>Atendimentos do Consultório</option></select></label>
         <label class="field"><span class="label">Quem envia</span><select class="input"><option selected>Eu, com um toque no WhatsApp</option><option>A automação “Pedido de avaliação”</option></select></label></div>
        ${swRow("ped-du", "Só em dia útil", "Sábado, domingo e feriado passam para o próximo dia útil. Os feriados nacionais já vêm marcados.", true, true)}
        ${swRow("ped-lb", "Um lembrete, 7 dias depois", "Só se a pessoa não avaliou. Depois disso, a Zuri não sugere de novo.", true)}
@@ -6026,10 +6067,31 @@ function side() {
 function gestao() {
   return `<iframe class="gx-frame" title="Gestão do consultório" src="prototipo-gestao.html#${st.gs}"></iframe>`;
 }
-const GX_CSS = ".proto,.side,.tabbar{display:none!important}.app{grid-template-columns:minmax(0,1fr)!important}@media (max-width:860px){.page{padding-bottom:32px!important}.toast{bottom:24px!important}}";
+/* O que o quadro muda na Gestão para ela seguir o resto da Zuri: sem menu próprio, abas e toques iguais. */
+const GX_CSS = [
+  ".proto,.side,.tabbar{display:none!important}.app{grid-template-columns:minmax(0,1fr)!important}",
+  ".seg button[aria-pressed=\"true\"]{font-weight:600}",
+  "[data-theme=\"dark\"] .seg button[aria-pressed=\"true\"]{background:var(--hover);box-shadow:inset 0 0 0 1px var(--line-strong)}",
+  ".btn,.chip,.seg button,.pnav button,.v-row{transition:background-color 120ms cubic-bezier(.2,.8,.2,1),color 120ms cubic-bezier(.2,.8,.2,1),border-color 120ms cubic-bezier(.2,.8,.2,1),transform 120ms cubic-bezier(.2,.8,.2,1)}",
+  ".btn:active{transform:translateY(1px)}.chip:active,.seg button:active,.pnav button:active{transform:scale(.97)}",
+  "@media (max-width:860px){.page{padding-bottom:32px!important}.toast{bottom:24px!important}.seg:has(>button:nth-child(4)){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;max-width:none}.seg:has(>button:nth-child(4)) button{white-space:normal}}",
+  "@media (prefers-reduced-motion:reduce){*{transition-duration:0s!important;animation-duration:0s!important}}"
+].join("");
+/* O quadro usa as cores da Zuri, não as próprias: copia cada variável de cor e medida do tema em uso. */
+let GX_VARS = null;
+function gxVars() {
+  if (GX_VARS) return GX_VARS;
+  const names = new Set();
+  const walk = (rules) => { for (const r of rules) { if (r.cssRules) walk(r.cssRules); if (r.style) for (const n of r.style) if (n.startsWith("--")) names.add(n); } };
+  for (const sh of document.styleSheets) { try { walk(sh.cssRules); } catch (_) { /* folha de outra origem */ } }
+  GX_VARS = [...names];
+  return GX_VARS;
+}
 function gxTheme(w) {
-  const t = effectiveTheme() === "escuro" ? "dark" : "light";
-  if (w && w.document) w.document.documentElement.dataset.theme = t;
+  if (!w || !w.document) return;
+  const root = w.document.documentElement, cs = getComputedStyle(document.documentElement);
+  root.dataset.theme = effectiveTheme() === "escuro" ? "dark" : "light";
+  for (const n of gxVars()) { const v = cs.getPropertyValue(n); if (v) root.style.setProperty(n, v.trim()); }
 }
 function gxNav(v) {
   st.gs = v;
@@ -6190,7 +6252,7 @@ function agenda2() {
   const cls = (d) => `${fimDeSemana(d) ? " off" : ""}${feriado(d) ? " hol" : ""}`;
   const hh = (h) => `${p2(h)}:00`;
   const evLabel = (e) => `${e.t}, ${tipoTxt(e.tipo)}, ${evWhen(e)}, ${e.ro ? "só leitura" : STS[e.s][0]}`;
-  const head = `<header class="pagehead ph-acts"><div><h1>Agenda</h1><p>Seus eventos do Google Agenda. Clique num evento para ver, editar ou mudar a situação; arraste para trocar o dia ou a hora. Tudo vai na hora para o Google.</p></div>
+  const head = `<header class="pagehead ph-acts"><div><h1>Agenda</h1><p>Seus eventos do Google Agenda. Abra um evento para ver, editar ou mudar a situação, ou arraste para trocar o dia e a hora. Tudo vai na hora para o Google.</p></div>
     <div class="actions"><button class="btn btn-primary btn-sm" type="button" data-x="evento" aria-label="Novo evento" title="Novo evento">${ic("calendar-plus", "ic-sm")}<span class="lbl-d">Novo evento</span></button></div></header>`;
   const title = av === "mes" ? `${AG_MESES[A.getMonth()][0].toUpperCase()}${AG_MESES[A.getMonth()].slice(1)} de ${A.getFullYear()}` : av === "dia" ? `${dayLong(A)}${feriado(A) ? ` · ${feriado(A)}` : ""}` : `${days[0].getDate()}${days[0].getMonth() === days[6].getMonth() ? "" : ` de ${AG_MESES[days[0].getMonth()]}`} a ${days[6].getDate()} de ${AG_MESES[days[6].getMonth()]}`;
   const unit = av === "mes" ? "Mês" : av === "dia" ? "Dia" : "Semana";
@@ -6439,7 +6501,7 @@ function evEdit(ev, pre, opener) {
       <p class="hint" data-ee-err role="status"></p>`,
     foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>${ev ? "Salvar" : "Agendar"}</button>`,
     ok: () => {
-      const fail = (m, s) => { const x = document.querySelector("[data-ee-err]"); x.textContent = m; x.classList.add("err"); document.querySelector(`#dlg-host ${s}`).focus(); return false; };
+      const fail = (m, s) => { const x = document.querySelector("[data-ee-err]"); x.textContent = m; x.classList.add("err"); const f = document.querySelector(`#dlg-host ${s}`); shakeField(f); f.focus(); return false; };
       const t = dlgVal("[data-pt-q]");
       if (!t) return fail(dlgRaw("[data-ee-k]") ? "Escreva o nome completo do paciente." : "Dê um título ao evento.", "[data-pt-q]");
       const day = isoDate(dlgRaw("[data-ee-d]"));
@@ -6636,6 +6698,14 @@ ACT.unshift(
     busy(t, 900, () => { st.sync = a === "pull" ? "ok" : "saved"; SYNC_LOG.unshift([hm(nowMin()), a === "pull" ? "refresh-cw" : "circle-check", a === "pull" ? "Nada mudou no Google desde 13:40." : "A mudança que faltava chegou ao Google."]); const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); syncDlg(DLG.opener); });
   }]
 );
+/* ================= Refino: as entradas animam só quando algo abre de verdade ================= */
+{
+  document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest('.switch[aria-labelledby="rm"]')) setTimeout(() => { document.documentElement.dataset.motion = UI.switches.get("rm") ? "off" : ""; }, 0); });
+  /* Campo com erro: borda, texto e uma tremida; some quando a pessoa corrige. */
+  window.shakeField = (f) => { if (!f) return; f.setAttribute("aria-invalid", "true"); f.classList.remove("shake"); void f.offsetWidth; f.classList.add("shake"); };
+  document.addEventListener("input", (e) => { const f = e.target; if (f.matches && f.matches("#dlg-host .input[aria-invalid='true']")) { f.removeAttribute("aria-invalid"); f.classList.remove("shake"); } });
+}
+
 render();
 </script>
 </body>
