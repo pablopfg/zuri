@@ -415,7 +415,8 @@ const DIAS_SEM = [["seg", 0.2], ["ter", 0.24], ["qua", 0.19], ["qui", 0.22], ["s
 
 /* agenda de hoje: nomes inventados */
 const visits = [
-  { id: "e1", h: "08:00", nome: "Helena Prates Moura", tipo: "Consulta", local: "Consultório", st: "attended", cents: 28000, forma: "Pix" },
+  { id: "e0", h: "07:30", nome: "Paula Rezende Lima", tipo: "Consulta", local: "Clínica parceira", st: "attended" },
+  { id: "e1", h: "08:00", nome: "Helena Prates Moura", tipo: "Consulta", local: "Consultório", st: "attended", paid: true, cents: 28000, forma: "Pix", at: "08:52" },
   { id: "e2", h: "09:00", nome: "Otávio Lins Barreto", tipo: "Retorno", local: "Consultório", st: "attended" },
   { id: "e3", h: "09:30", nome: "Marina Teles Couto", tipo: "Consulta", local: "Clínica parceira", st: "missed" },
   { id: "e4", h: "10:30", nome: "Caio Farias Neves", tipo: "Bioimpedância", local: "Consultório", st: "" },
@@ -430,6 +431,8 @@ const PRECO = { Consulta: { "Consultório": 28000, "Clínica parceira": 22000 },
 const ST = { attended: ["Compareceu", "ok", "var(--s-came)"], missed: ["Faltou", "bad", "var(--s-miss)"], cancelled: ["Cancelou", "warn", "var(--s-off)"], rescheduled: ["Reagendou", "info", "var(--s-resch)"] };
 const SUMK = [["attended", "Compareceram"], ["missed", "Faltaram"], ["cancelled", "Cancelaram"], ["rescheduled", "Reagendaram"]];
 const FORMAS_PG = ["Pix", "Dinheiro", "Débito", "Crédito"];
+// presença fica em Atendimentos; o dinheiro de quem compareceu é confirmado no Financeiro
+const toReceive = () => visits.filter((v) => v.st === "attended" && PRECO[v.tipo] && !v.paid);
 const entries = [
   { d: "12/11", t: "Consulta", m: "Pix · Atendimento", who: "Helena Prates Moura", c: 28000 },
   { d: "11/11", t: "Consulta", m: "Cartão de crédito · Atendimento", who: "Davi Nogueira Sales", c: 28000 },
@@ -441,7 +444,7 @@ const entries = [
 ];
 
 /* ---------- estado ---------- */
-const st = { view: "atendimentos", at: "hoje", fin: "lancamentos", res: "painel", imp: 0, per: "mes", off: 0, hide: false, cmp: true, chart: "receita", report: false, open: "e4", pick: "", err: "", last: "13:02", flash: false, prevBars: null };
+const st = { view: "atendimentos", at: "hoje", fin: "receber", res: "painel", imp: 0, per: "mes", off: 0, hide: false, cmp: true, chart: "receita", report: false, open: "e4", payOpen: "e0", pick: "", err: "", last: "13:02", flash: false, prevBars: null };
 const VIEWS = [["atendimentos", "clip", "Atendimentos"], ["financeiro", "wallet", "Financeiro"], ["resultados", "chart", "Resultados"]];
 const pend = () => visits.filter((v) => !v.st && v.h < AGORA);
 function fromHash() { const h = location.hash.slice(1); if (VIEWS.some((v) => v[0] === h)) st.view = h; }
@@ -457,7 +460,7 @@ function side() {
     <p class="nav-h">Organizar</p><ul class="nav">${off("list", "Tarefas")}${off("cal", "Agenda")}${off("note", "Notas")}</ul>
     <p class="nav-h">Relacionamento</p><ul class="nav">${off("users", "Contatos")}${off("star", "Avaliações")}${off("hand", "CRM")}</ul>
     <p class="nav-h" id="nav-g">Gestão <span class="new">novo</span></p>
-    <ul class="nav" aria-labelledby="nav-g">${VIEWS.map(([v, i, l]) => `<li><a href="#${v}" data-go="${v}"${st.view === v ? ' aria-current="page"' : ""}>${ic(i)}${l}${v === "atendimentos" && pend().length ? `<span class="count num" title="para registrar">${pend().length}</span>` : ""}</a></li>`).join("")}</ul>
+    <ul class="nav" aria-labelledby="nav-g">${VIEWS.map(([v, i, l]) => `<li><a href="#${v}" data-go="${v}"${st.view === v ? ' aria-current="page"' : ""}>${ic(i)}${l}${v === "atendimentos" && pend().length ? `<span class="count num" title="para registrar">${pend().length}</span>` : ""}${v === "financeiro" && toReceive().length ? `<span class="count num" title="a receber">${toReceive().length}</span>` : ""}</a></li>`).join("")}</ul>
   </nav>
   <p class="side-note">Os outros itens aparecem só para mostrar onde a Gestão entra. O lugar final sai da revisão do menu lateral.</p>`;
 }
@@ -515,12 +518,11 @@ function animateBars() {
 
 /* ---------- Atendimentos ---------- */
 function vRow(v, next) {
-  const open = st.open === v.id, s = ST[v.st], pays = Boolean(PRECO[v.tipo]);
-  const end = v.st ? `${v.st === "attended" && v.cents ? `<span class="num muted">${brl2(v.cents)} · ${v.forma}</span>` : ""}${v.st === "rescheduled" ? `<span class="resch-to num">${v.to ? "para " + v.to : "sem data nova"}</span>` : ""}<span class="tag ${s[1]}">${s[0]}</span>`
+  const open = st.open === v.id, s = ST[v.st];
+  const end = v.st ? `${v.st === "rescheduled" ? `<span class="resch-to num">${v.to ? "para " + v.to : "sem data nova"}</span>` : ""}<span class="tag ${s[1]}">${s[0]}</span>`
     : `${v.arrived ? `<span class="tag info">Chegou às ${v.arrived}</span>` : ""}${next ? '<span class="tag ok">em 20 min</span>' : ""}`;
   let form = "";
   if (open) {
-    const sug = pays && PRECO[v.tipo][v.local] ? (PRECO[v.tipo][v.local] / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "";
     const pick = st.pick || v.st;
     const chip = ([k, i, l]) => `<button class="chip" type="button" data-pick="${k}" aria-pressed="${pick === k}">${ic(i, "ic-sm")}${l}</button>`;
     // veio de um lado; as três formas de não vir do outro
@@ -529,8 +531,6 @@ function vRow(v, next) {
         ${chip(["attended", "check", "Compareceu"])}<span class="choice-sep" aria-hidden="true"></span>${[["missed", "x", "Faltou"], ["cancelled", "ban", "Cancelou"], ["rescheduled", "cal", "Reagendou"]].map(chip).join("")}
         ${!v.st && !v.arrived && v.h >= AGORA ? `<button class="chip" type="button" data-arrived="${v.id}">Só marcar que chegou</button>` : ""}
       </div>
-      ${pick === "attended" && pays ? `<div class="payline"><span>Recebeu</span><label class="sr" for="val">Valor recebido em reais</label><input class="input num" id="val" inputmode="decimal" placeholder="0,00" value="${v.cents ? (v.cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : sug}"><span>em</span>
-        ${FORMAS_PG.map((f) => `<button class="chip" type="button" data-pay="${f}">${f}</button>`).join("")}<button class="btn btn-quiet btn-sm" type="button" data-pay="">Sem pagamento agora</button></div>` : ""}
       ${pick === "rescheduled" ? `<div class="payline"><span>Para</span><label class="sr" for="nd">Nova data</label><input class="input num" id="nd" type="date" value="2026-11-19" style="width:170px"><label class="sr" for="nt">Novo horário</label><input class="input num" id="nt" type="time" value="${v.h}" style="width:140px">
         <button class="btn btn-primary btn-sm" type="button" data-resch="1">Registrar</button><button class="btn btn-quiet btn-sm" type="button" data-resch="">Ainda sem data</button></div>
         <p class="muted" style="font-size:var(--t-sm)">Quando o evento é movido no Google Agenda, a Zuri já marca "Reagendou" sozinha.</p>` : ""}
@@ -541,7 +541,7 @@ function vRow(v, next) {
 }
 function viewAtend() {
   const tabs = seg("Partes dos atendimentos", "at", st.at, [["hoje", "Hoje"], ["indicadores", "Indicadores"]]);
-  const head = (sub, extra) => `<header class="head"><div><h1>Atendimentos</h1><p>${sub}</p></div><div class="head-act">${extra || ""}${privBtn()}</div></header>`;
+  const head = (sub, extra) => `<header class="head"><div><h1>Atendimentos</h1><p>${sub}</p></div><div class="head-act">${extra || ""}</div></header>`;
   if (st.at === "indicadores") {
     const P = period(st.per, st.off), S = (k) => Math.round(sumRange(P.from, P.upTo, k) || 0);
     const at = S("consultas") + S("retornos"), falt = S("faltas"), all = at + falt + S("cancelados") + S("reagendados");
@@ -560,8 +560,6 @@ function viewAtend() {
   }
   const done = visits.filter((v) => v.st), p = pend(), later = visits.filter((v) => !v.st && v.h >= AGORA);
   const count = (k) => visits.filter((v) => v.st === k).length, wait = visits.length - done.length;
-  const got = visits.reduce((t, v) => t + (v.st === "attended" ? v.cents || 0 : 0), 0), byF = {};
-  visits.forEach((v) => { if (v.st === "attended" && v.cents) byF[v.forma] = (byF[v.forma] || 0) + v.cents; });
   const group = (title, list, extra) => (list.length ? `<section><h2 class="group-h">${title}${extra || ""}</h2><ul class="list">${list.map((v) => vRow(v, v === later[0])).join("")}</ul></section>` : "");
   return `<div class="page">${head("Quinta-feira, 12 de novembro", seg("Dia", "day", "hoje", [["ontem", "Ontem"], ["hoje", "Hoje"], ["amanha", "Amanhã"]]))}${tabs}
     <div class="cols">
@@ -575,26 +573,63 @@ function viewAtend() {
         <section class="card"><p class="muted" style="font-size:var(--t-sm)">Registrados</p><p class="big num">${done.length} de ${visits.length}</p>
           <div class="stack" style="margin:12px 0" role="img" aria-label="${SUMK.map(([k, l]) => `${count(k)} ${l.toLowerCase()}`).join(", ")}, ${wait} aguardando">${SUMK.map(([k]) => (count(k) ? `<i style="flex:${count(k)};background:${ST[k][2]}"></i>` : "")).join("")}${wait ? `<i style="flex:${wait}"></i>` : ""}</div>
           <div class="sum">${SUMK.map(([k, l]) => `<div><span><i style="background:${ST[k][2]}"></i>${l}</span><b class="num">${count(k)}</b></div>`).join("")}<div><span><i style="background:var(--sunken)"></i>Aguardando</span><b class="num">${wait}</b></div></div></section>
-        <section class="card"><p class="muted" style="font-size:var(--t-sm)">Recebido hoje</p><p class="big num">${brl2(got)}</p>
-          <div class="sum" style="margin-top:12px">${Object.entries(byF).map(([f, c]) => `<div><span>${f}</span><span class="num">${brl2(c)}</span></div>`).join("") || '<span class="muted">Nenhum pagamento ainda.</span>'}</div></section>
       </aside>
     </div></div>`;
 }
-function saveVisit(status, forma, to) {
-  const v = visits.find((x) => x.id === st.open), before = { st: v.st, cents: v.cents, forma: v.forma, to: v.to };
+function saveVisit(status, to) {
+  const v = visits.find((x) => x.id === st.open), before = { st: v.st, to: v.to };
+  Object.assign(v, { st: status, to: status === "rescheduled" ? to : "" });
+  const nextOpen = pend()[0];
+  Object.assign(st, { open: nextOpen ? nextOpen.id : "", pick: "", err: "" });
+  render();
+  const owe = status === "attended" && PRECO[v.tipo] && !v.paid;
+  toast(`${v.nome.split(" ")[0]}: ${ST[status][0].toLowerCase()}${to ? " para " + to : ""}.${owe ? " O pagamento fica em Financeiro › A receber." : ""}`, () => { Object.assign(v, before); st.open = v.id; render(); });
+}
+/* Financeiro › A receber: confirmar o pagamento de quem compareceu */
+function savePay(forma, free) {
+  const v = visits.find((x) => x.id === st.payOpen);
   let cents = 0;
-  if (status === "attended" && forma) {
+  if (!free) {
     cents = Math.round(Number($("#val").value.replace(/\./g, "").replace(",", ".")) * 100);
     if (!(cents > 0) || cents > 10000000) { st.err = "Valor inválido. Use até R$ 100.000,00, por exemplo 280,00."; render(); return; }
   }
-  const delta = (cents - (before.st === "attended" ? before.cents || 0 : 0)) / 100;
-  Object.assign(v, { st: status, cents, forma: cents ? forma : "", to: status === "rescheduled" ? to : "" });
-  days[days.length - 1].entradas += delta; syncMonth();
-  if (cents && !before.cents) entries.unshift({ d: "12/11", t: v.tipo, m: forma + " · Atendimento", who: v.nome, c: cents });
-  const nextOpen = pend()[0];
-  Object.assign(st, { open: nextOpen ? nextOpen.id : "", pick: "", err: "", last: AGORA });
+  Object.assign(v, { paid: true, cents, forma: free ? "Sem cobrança" : forma, at: AGORA });
+  days[days.length - 1].entradas += cents / 100; syncMonth();
+  if (cents) entries.unshift({ d: "12/11", t: v.tipo, m: forma + " · Atendimento", who: v.nome, c: cents });
+  const next = toReceive()[0];
+  Object.assign(st, { payOpen: next ? next.id : "", err: "", last: AGORA });
   render();
-  toast(`${v.nome.split(" ")[0]}: ${ST[status][0].toLowerCase()}${cents ? " · " + brl2(cents) + " em " + forma : ""}${to ? " para " + to : ""}.`, () => { days[days.length - 1].entradas -= delta; syncMonth(); Object.assign(v, before); if (cents && !before.cents) entries.shift(); st.open = v.id; render(); });
+  toast(`${v.nome.split(" ")[0]}: ${free ? "sem cobrança" : brl2(cents) + " em " + forma}.`, () => { days[days.length - 1].entradas -= cents / 100; syncMonth(); if (cents) entries.shift(); Object.assign(v, { paid: false, cents: 0, forma: "", at: "" }); st.payOpen = v.id; render(); });
+}
+function payRow(v) {
+  const open = st.payOpen === v.id;
+  const end = v.paid ? `<span class="num muted">${v.cents ? brl2(v.cents) + " · " : ""}${v.forma}</span><span class="tag ok">Recebido</span>` : '<span class="tag warn">A receber</span>';
+  let form = "";
+  if (open && !v.paid) {
+    const sug = (PRECO[v.tipo][v.local] || 0) / 100;
+    form = `<div class="v-form"><div class="payline"><span>Recebeu</span><label class="sr" for="val">Valor recebido em reais</label><input class="input num" id="val" inputmode="decimal" placeholder="0,00" value="${sug ? sug.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : ""}"><span>em</span>
+      ${FORMAS_PG.map((f) => `<button class="chip" type="button" data-pay="${f}">${f}</button>`).join("")}<button class="btn btn-quiet btn-sm" type="button" data-free>Sem cobrança</button></div>
+      ${st.err ? `<p class="err" role="alert">${st.err}</p>` : ""}</div>`;
+  }
+  return `<li class="${open && !v.paid ? "open" : ""}"><button class="v-row" type="button" data-popen="${v.id}" aria-expanded="${open && !v.paid}"><span class="hr num">${v.h}</span><span class="who"><b>${esc(v.nome)}</b><small>${v.tipo} · ${v.local} · compareceu hoje</small></span><span class="end">${end}</span></button>${form}</li>`;
+}
+function viewReceive() {
+  const owe = toReceive(), done = visits.filter((v) => v.paid), byF = {};
+  const got = done.reduce((t, v) => t + (v.cents || 0), 0);
+  done.forEach((v) => { if (v.cents) byF[v.forma] = (byF[v.forma] || 0) + v.cents; });
+  const list = (title, l, extra) => (l.length ? `<section><h2 class="group-h">${title}${extra || ""}</h2><ul class="list">${l.map(payRow).join("")}</ul></section>` : "");
+  return `<div class="cols">
+      <div class="grid" style="gap:24px">
+        ${list("Para confirmar", owe, ` <span class="tag warn">${owe.length}</span>`)}
+        ${owe.length ? "" : `<div class="note ok">${ic("check")}<div><strong>Nada a receber.</strong> Os pagamentos de quem compareceu hoje estão confirmados.</div></div>`}
+        ${list("Confirmados hoje", done)}
+        <p class="muted" style="font-size:var(--t-sm)">Aparece aqui quem foi marcado como "Compareceu" em Atendimentos numa consulta ou bioimpedância. Retorno não é cobrado.</p>
+      </div>
+      <aside class="rail" aria-label="Resumo do caixa de hoje">
+        <section class="card"><p class="muted" style="font-size:var(--t-sm)">Recebido hoje</p><p class="big num">${brl2(got)}</p>
+          <div class="sum" style="margin-top:12px">${Object.entries(byF).map(([f, c]) => `<div><span>${f}</span><span class="num">${brl2(c)}</span></div>`).join("") || '<span class="muted">Nenhum pagamento ainda.</span>'}</div></section>
+      </aside>
+    </div>`;
 }
 let toastTimer = 0;
 function toast(text, undo) {
@@ -605,9 +640,10 @@ function toast(text, undo) {
 
 /* ---------- Financeiro ---------- */
 function viewFin() {
-  const tabs = seg("Partes do financeiro", "fin", st.fin, [["lancamentos", "Lançamentos"], ["importar", "Importar planilha"], ["precos", "Preços e despesas"]]);
+  const tabs = seg("Partes do financeiro", "fin", st.fin, [["receber", "A receber"], ["lancamentos", "Lançamentos"], ["importar", "Importar planilha"], ["precos", "Preços e despesas"]]);
   let body = "";
-  if (st.fin === "lancamentos") {
+  if (st.fin === "receber") body = viewReceive();
+  else if (st.fin === "lancamentos") {
     const ds = [...new Set(entries.map((e) => e.d))];
     body = `<section class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))" aria-label="Novembro"><div class="kpi"><span class="l">Entradas em novembro</span><span class="v num">${brl(cur.entradas)}</span></div><div class="kpi"><span class="l">Saídas</span><span class="v num">${brl(cur.saidas)}</span></div><div class="kpi"><span class="l">Saldo</span><span class="v num">${brl(cur.entradas - cur.saidas)}</span></div></section>
     <div class="toolbar">${seg("Tipo", "x", "tudo", [["tudo", "Tudo"], ["in", "Entradas"], ["out", "Saídas"]])}<label class="sr" for="f-per">Período</label><select class="input" id="f-per" style="min-height:42px"><option>Este mês</option><option>Mês passado</option><option>Este ano</option></select></div>
@@ -719,7 +755,7 @@ function arrive() {
 }
 setInterval(arrive, 7000);
 document.addEventListener("click", (ev) => {
-  const t = ev.target.closest("[data-go],[data-set],[data-open],[data-pick],[data-pay],[data-arrived],[data-priv],[data-nav],[data-resch]");
+  const t = ev.target.closest("[data-go],[data-set],[data-open],[data-pick],[data-pay],[data-arrived],[data-priv],[data-nav],[data-resch],[data-popen],[data-free]");
   if (!t) return;
   const d = t.dataset;
   if (t.tagName === "A") ev.preventDefault();
@@ -727,18 +763,19 @@ document.addEventListener("click", (ev) => {
   if (d.set) { const [k, v] = d.set.split(":"); if (k in st) st[k] = k === "imp" || k === "off" ? Number(v) : k === "report" ? Boolean(v) : v; if (k === "per") st.off = 0; if (k === "fin" && v !== "importar") st.imp = 0; if (k === "res") st.report = false; st.prevBars = null; }
   if ("priv" in d) st.hide = !st.hide;
   if (d.nav) { st.off = Math.min(0, st.off + Number(d.nav)); st.prevBars = null; }
+  if (d.popen) { st.payOpen = st.payOpen === d.popen ? "" : d.popen; st.err = ""; }
+  if ("free" in d) { savePay("", true); return; }
   if (d.open) { st.open = st.open === d.open ? "" : d.open; st.pick = ""; st.err = ""; }
   if (d.arrived) { visits.find((v) => v.id === d.arrived).arrived = AGORA; st.open = ""; }
   if (d.pick) {
-    const v = visits.find((x) => x.id === st.open);
-    if ((d.pick === "attended" && PRECO[v.tipo]) || d.pick === "rescheduled") { st.pick = d.pick; st.err = ""; } else { saveVisit(d.pick, ""); return; }
+    if (d.pick === "rescheduled") { st.pick = d.pick; st.err = ""; } else { saveVisit(d.pick, ""); return; }
   }
   if ("resch" in d) {
     let to = "";
     if (d.resch) { const [, mm, dd] = ($("#nd").value || "").split("-"); to = dd ? `${dd}/${mm}${$("#nt").value ? " às " + $("#nt").value : ""}` : ""; }
-    saveVisit("rescheduled", "", to); return;
+    saveVisit("rescheduled", to); return;
   }
-  if ("pay" in d) { saveVisit("attended", d.pay); return; }
+  if ("pay" in d) { savePay(d.pay, false); return; }
   render();
 });
 document.addEventListener("change", (ev) => {

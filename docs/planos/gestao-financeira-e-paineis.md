@@ -50,8 +50,8 @@ Hoje o financeiro e os painéis do consultório vivem em quatro fluxos do n8n, c
 | CA3 | Valores viram centavos inteiros sem erro: `150`, `150,5`, `R$ 1.234,56`, `1.234` (milhar), `-150` (saída) e número do Excel | GES - 29 |
 | CA4 | Datas em `dd/mm/aaaa`, `aaaa-mm-dd` e número de série do Excel viram o dia certo; data inválida, anterior a 2000 ou futura ignora a linha e conta em "ignoradas" | GES - 29 |
 | CA5 | Nome e CPF da planilha nunca são gravados nos lançamentos, não aparecem em log e não saem do navegador em texto puro além do pedido de gravação; o lançamento guarda só o vínculo com o contato (quando o CPF acha um único contato) e uma chave sem volta | Pablo / GES - 29 |
-| CA6 | A tela Atendimentos lista os horários de hoje, uma linha por horário, em três grupos (para registrar, a seguir, registrados), destaca o próximo e deixa registrar **compareceu**, ou uma das três formas de não vir (**faltou**, **cancelou**, **reagendou**), com um toque e com "Desfazer"; valor e forma de pagamento só com "compareceu"; "reagendou" aceita a data nova (opcional); só um horário fica aberto por vez | Pablo (11/11 e 12/11) / GES - 28 |
-| CA7 | Registrar um valor cria um lançamento de entrada ligado ao evento; alterar o registro corrige o mesmo lançamento, sem criar outro | plano (novo) |
+| CA6 | A tela Atendimentos lista os horários de hoje, uma linha por horário, em três grupos (para registrar, a seguir, registrados), destaca o próximo e deixa registrar **compareceu**, ou uma das três formas de não vir (**faltou**, **cancelou**, **reagendou**), com um toque e com "Desfazer"; "reagendou" aceita a data nova (opcional); só um horário fica aberto por vez. A tela **não mostra valor em dinheiro** | Pablo (11/11 e 12/11) / GES - 28 |
+| CA7 | Quem foi marcado "compareceu" numa consulta ou bioimpedância aparece em **Financeiro › A receber**; confirmar o valor e a forma cria um lançamento de entrada ligado ao evento; alterar corrige o mesmo lançamento, sem criar outro; "Sem cobrança" tira da lista sem lançamento; desmarcar "compareceu" anula o lançamento | Pablo (12/11) / plano |
 | CA8 | Dois registros do mesmo horário ao mesmo tempo (duas abas) não se atropelam: o segundo recebe "atualizado em outra aba" e a lista nova | GES - 28 |
 | CA9 | Depois do registro, a cor do evento no Google Agenda segue a situação; falha na troca de cor não desfaz o registro e fica avisada | GES - 28 |
 | CA10 | Preços por local e despesas (fixa, percentual, pontual) têm data de vigência; mudar um valor pede a data em que a mudança começou e nunca altera um mês já fechado | GES - 30 |
@@ -102,13 +102,16 @@ A área aparece no menu como grupo **Gestão**, com três itens. No celular entr
 
 Estados: vazio (explica as colunas e oferece um modelo .csv com dados inventados), lendo, conferência, gravando, pronto, arquivo ilegível, arquivo grande demais, mais de 5.000 linhas ("Divida por ano"), limite do dia atingido.
 
-### Fluxo 2 · Lançamentos (Financeiro)
+### Fluxo 2 · Financeiro: A receber e Lançamentos
 
-1. A tela abre com o mês atual: três números (entradas, saídas, saldo) e a lista por dia, do mais novo para o mais antigo. Cada linha: valor, forma, tipo de atendimento ou descrição, local, origem (planilha, atendimento ou manual) e, quando há contato ligado, o nome dele com link para a ficha.
-2. Filtros: período, entradas ou saídas, forma de pagamento, origem. Busca pela descrição das saídas.
-3. **Novo lançamento**: entrada ou saída, data, valor, forma, e para saída a descrição ("Aluguel"); para entrada, tipo de atendimento, local e contato (opcional, escolhido na lista de contatos).
-4. Um lançamento pode ser corrigido ou **anulado** (some das contas, fica no histórico com o motivo). Nada é apagado de vez.
-5. Aba **Preços e despesas**: preço da consulta por local, com "vale desde"; despesas fixas por mês, percentuais sobre o faturamento e pontuais. Mudar um valor abre "A partir de quando?" e mostra quais meses fechados não mudam.
+Decisão de 12/11/2026 (Pablo): a tela inicial é Atendimentos, que fica só com a presença; todo valor em dinheiro mora no Financeiro.
+
+1. A aba **A receber** vem primeiro e o item Financeiro do menu mostra quantos faltam. Lista quem compareceu hoje (e dias anteriores ainda sem confirmação) numa consulta ou bioimpedância: hora, nome, tipo e local. Abrir a linha mostra o **valor** (sugerido pelo preço do local) e as formas de pagamento; tocar na forma grava, com "Desfazer". **Sem cobrança** tira da lista sem lançamento. Embaixo, **Confirmados hoje**; ao lado, **Recebido hoje** (total e por forma). Retorno não aparece, porque não é cobrado.
+2. A aba **Lançamentos** abre com o mês atual: três números (entradas, saídas, saldo) e a lista por dia, do mais novo para o mais antigo. Cada linha: valor, forma, tipo de atendimento ou descrição, local, origem (planilha, atendimento ou manual) e, quando há contato ligado, o nome dele com link para a ficha.
+3. Filtros: período, entradas ou saídas, forma de pagamento, origem. Busca pela descrição das saídas.
+4. **Novo lançamento**: entrada ou saída, data, valor, forma, e para saída a descrição ("Aluguel"); para entrada, tipo de atendimento, local e contato (opcional, escolhido na lista de contatos).
+5. Um lançamento pode ser corrigido ou **anulado** (some das contas, fica no histórico com o motivo). Nada é apagado de vez.
+6. Aba **Preços e despesas**: preço da consulta por local, com "vale desde"; despesas fixas por mês, percentuais sobre o faturamento e pontuais. Mudar um valor abre "A partir de quando?" e mostra quais meses fechados não mudam.
 
 ### Fluxo 3 · Atendimentos do dia
 
@@ -116,10 +119,10 @@ Redesenhado em 12/11/2026 a pedido do Pablo: menos informação por tela e um re
 
 1. A tela tem duas abas: **Hoje** e **Indicadores**. Hoje abre no dia atual, com **Ontem · Hoje · Amanhã** no topo (e o seletor de data para outro dia).
 2. A lista tem uma linha por horário (hora, nome, tipo e local) em três grupos, nesta ordem: **Para registrar** (o horário já passou e falta o registro), **A seguir** (o próximo vem destacado, com "em 20 min") e **Registrados** (com a situação e, se houve, o valor e a forma).
-3. Só uma linha fica aberta por vez. Aberta, ela mostra **Compareceu** separado das três formas de não vir: **Faltou**, **Cancelou** e **Reagendou**. Faltou e Cancelou gravam no toque. Reagendou pede a data e o horário novos (dá para gravar "Ainda sem data"); a linha mostra "para 19/11 às 11:30". Quando o evento é movido no Google Agenda, a Zuri marca "Reagendou" sozinha e o horário novo aparece no dia dele. Compareceu em consulta ou bioimpedância mostra o **valor** (sugerido pelo preço do local) e as formas de pagamento; tocar na forma grava. "Sem pagamento agora" grava só a presença.
+3. Só uma linha fica aberta por vez. Aberta, ela mostra **Compareceu** separado das três formas de não vir: **Faltou**, **Cancelou** e **Reagendou**. Compareceu, Faltou e Cancelou gravam no toque; Compareceu numa consulta ou bioimpedância avisa que o pagamento fica em Financeiro › A receber. Reagendou pede a data e o horário novos (dá para gravar "Ainda sem data"); a linha mostra "para 19/11 às 11:30". Quando o evento é movido no Google Agenda, a Zuri marca "Reagendou" sozinha e o horário novo aparece no dia dele.
 4. Todo registro mostra um aviso com **Desfazer** por alguns segundos, e a linha vai para Registrados. Tocar numa linha registrada reabre para corrigir. A cor do evento no Google Agenda acompanha.
 5. **Chegou** marca a hora da chegada nos horários que ainda vão acontecer, sem registrar mais nada.
-6. Ao lado (no celular, em cima) ficam dois quadros pequenos: **Registrados** ("3 de 8", com a barra por situação) e **Recebido hoje** (total e por forma de pagamento). Dia futuro só mostra a agenda.
+6. Ao lado (no celular, em cima) fica só o quadro **Registrados** ("5 de 10", com a barra por situação). Nenhum valor em dinheiro nesta tela, então ela também não tem o botão "Ocultar valores". Dia futuro só mostra a agenda.
 7. **Indicadores** reúne o que é da agenda e saiu de Resultados, com o mesmo seletor Semana | Mês | Ano: atendimentos (consultas e retornos), taxa de faltas, reagendamentos e cancelamentos, pacientes novos, agenda por situação no período e atendimentos por dia da semana.
 
 Estados: sem agenda conectada (leva a Configurações › Integrações), dia sem horários, carregando, Google fora do ar (mostra o último retrato com a hora e avisa), registro que mudou em outra aba.
@@ -241,8 +244,10 @@ Todas com sessão do dono, CSRF, `Cache-Control: no-store`, corpo até `API_BODY
 | `GET /api/finance/imports` | — | histórico |
 | `GET /api/finance/entries` | período, tipo, forma, origem, cursor | lançamentos e totais |
 | `POST /api/finance/entries`, `PATCH /api/finance/entries/:id`, `POST /api/finance/entries/:id/void` | lançamento manual, correção, anulação com motivo | lançamento |
-| `GET /api/finance/visits?day=` | dia | horários com situação, versão e valor |
-| `PUT /api/finance/visits/:eventId` | situação, valor, forma, versão | registro novo ou `conflict` |
+| `GET /api/finance/visits?day=` | dia | horários com situação e versão (sem valor) |
+| `PUT /api/finance/visits/:eventId` | situação, data nova (reagendou), versão | registro novo ou `conflict` |
+| `GET /api/finance/receivables` | — | quem compareceu e ainda não teve o pagamento confirmado |
+| `PUT /api/finance/receivables/:eventId` | valor, forma ou "sem cobrança", versão | lançamento novo ou corrigido, ou `conflict` |
 | `POST /api/finance/visits/:eventId/arrived` | — | hora da chegada |
 | `GET/PUT /api/finance/prices`, `GET/PUT /api/finance/expenses` | valor + `validFrom` | lista com vigências |
 | `GET /api/finance/results?from=&to=` | janela | séries somadas por dia e por mês, sem dado pessoal |
@@ -336,7 +341,7 @@ LGPD: os dados financeiros são do próprio dono; os de pacientes ficam reduzido
 | CA3 | tabela de valores (vírgula, milhar, `R$`, negativo, número, vazio, texto) | unitário | `finance-sheet.test.ts` |
 | CA4 | tabela de datas (formatos, 29/02, 31/04, 1999, amanhã, série do Excel) e horas | unitário | idem |
 | CA5 | varredura do banco, dos logs e do backup por nome e CPF sintéticos | segurança | `apps/agent/test/security/finance-privacy.test.ts` |
-| CA6, CA7 | registrar, alterar, valor só quando permitido, lançamento único por evento | integração + e2e | `apps/agent/test/visits.test.ts`, `tests/e2e/gestao-atendimentos.spec.ts` |
+| CA6, CA7 | registrar presença sem valor; confirmar em A receber, alterar, sem cobrança, lançamento único por evento | integração + e2e | `apps/agent/test/visits.test.ts`, `tests/e2e/gestao-atendimentos.spec.ts` |
 | CA8 | dois pedidos com a mesma versão | integração | `visits.test.ts` |
 | CA9 | cor trocada; Google falha e o registro fica | integração | idem |
 | CA10 | mesmo valor na mesma data; mudança sem data; mês fechado não muda | integração | `apps/agent/test/finance-prices.test.ts` |
@@ -396,6 +401,7 @@ Limites exatos com n−1, n e n+1: 5 MB, 5.000 linhas, 10.000 por dia, lote de 2
 | 12/11/2026 | 3. Relatórios ficam dentro da Zuri, com aviso na central e no Telegram (sem valores no aviso). Recomendo assim; o e-mail pode vir depois. | aguardando |
 | 12/11/2026 | Retorno do Pablo sobre o protótipo: muita informação na tela e encaixe desproporcional; Resultados só com o financeiro; painel de presença mais organizado; gráficos atualizados em tempo real. | Atendido na segunda versão do protótipo: seções 3 (CA6, CA11, CA17), 5 (fluxos 3, 4 e 5) e 7 (Tempo real). Aguardando a aprovação dele. |
 | 12/11/2026 | Segundo retorno do Pablo: faltava a situação "Reagendou"; botão de privacidade para ocultar valores; tirar "Ver tabela" e mostrar os gráficos por período (semana ou mês como padrão). | Atendido na terceira versão do protótipo: CA6, CA11, CA18 e fluxos 3 e 4. Mês é o padrão. Aguardando a aprovação dele. |
+| 12/11/2026 | Terceiro retorno do Pablo: Atendimentos é a tela inicial e não precisa de valores; cada dado na sua área. | Atendido na quarta versão: valores saíram de Atendimentos; confirmação de pagamento foi para a aba nova Financeiro › A receber (CA6, CA7, fluxos 2 e 3). Aguardando a aprovação dele. |
 
 ### Perguntas abertas
 
