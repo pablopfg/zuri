@@ -42,9 +42,9 @@ describe("sidebar preference", () => {
 });
 
 describe("closed groups of the menu", () => {
-  const ORGANIZE = "web.nav.groupOrganize";
+  const MY_DAY = "web.nav.groupMyDay";
   const RELATIONS = "web.nav.groupRelations";
-  const shut = (closed: string) => [ORGANIZE, RELATIONS].filter((group) => closed.includes(group));
+  const shut = (closed: string) => [MY_DAY, RELATIONS].filter((group) => closed.includes(group));
 
   it("starts with every group open", () => {
     expect(readClosedGroups(memory())).toBe("");
@@ -52,12 +52,12 @@ describe("closed groups of the menu", () => {
 
   it("closes one group, then the other, and opens each again, saving every step", () => {
     const store = memory();
-    let closed = flipGroup(readClosedGroups(store), ORGANIZE, store);
-    expect(shut(closed)).toEqual([ORGANIZE]);
-    expect(shut(readClosedGroups(store))).toEqual([ORGANIZE]);
+    let closed = flipGroup(readClosedGroups(store), MY_DAY, store);
+    expect(shut(closed)).toEqual([MY_DAY]);
+    expect(shut(readClosedGroups(store))).toEqual([MY_DAY]);
     closed = flipGroup(closed, RELATIONS, store);
-    expect(shut(readClosedGroups(store))).toEqual([ORGANIZE, RELATIONS]);
-    closed = flipGroup(closed, ORGANIZE, store);
+    expect(shut(readClosedGroups(store))).toEqual([MY_DAY, RELATIONS]);
+    closed = flipGroup(closed, MY_DAY, store);
     expect(shut(readClosedGroups(store))).toEqual([RELATIONS]);
     closed = flipGroup(closed, RELATIONS, store);
     expect(closed).toBe("");
@@ -66,7 +66,7 @@ describe("closed groups of the menu", () => {
 
   it("opens a group stored more than once with a single click", () => {
     const store = memory();
-    expect(flipGroup(ORGANIZE + RELATIONS + ORGANIZE, ORGANIZE, store)).toBe(RELATIONS);
+    expect(flipGroup(MY_DAY + RELATIONS + MY_DAY, MY_DAY, store)).toBe(RELATIONS);
   });
 
   it("keeps anything else stored there as it is: it names no group", () => {
@@ -74,13 +74,13 @@ describe("closed groups of the menu", () => {
     store.setItem("zuri.sidebar.groups", "<img src=x onerror=alert(1)>");
     const closed = readClosedGroups(store);
     expect(shut(closed)).toEqual([]);
-    expect(shut(flipGroup(closed, ORGANIZE, store))).toEqual([ORGANIZE]);
+    expect(shut(flipGroup(closed, MY_DAY, store))).toEqual([MY_DAY]);
   });
 
   it("does not touch the rail's own choice", () => {
     const store = memory();
     saveSidebarCollapsed(true, store);
-    flipGroup("", ORGANIZE, store);
+    flipGroup("", MY_DAY, store);
     expect(readSidebarCollapsed(store)).toBe(true);
     expect(store.data.get("zuri.sidebar")).toBe("collapsed");
   });
@@ -97,7 +97,7 @@ describe("closed groups of the menu", () => {
     expect(readClosedGroups(broken)).toBe("");
     expect(readClosedGroups(null)).toBe("");
     // The choice still holds until the tab closes.
-    expect(flipGroup("", ORGANIZE, broken)).toBe(ORGANIZE);
-    expect(flipGroup(ORGANIZE, ORGANIZE, null)).toBe("");
+    expect(flipGroup("", MY_DAY, broken)).toBe(MY_DAY);
+    expect(flipGroup(MY_DAY, MY_DAY, null)).toBe("");
   });
 });

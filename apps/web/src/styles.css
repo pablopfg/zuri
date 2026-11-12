@@ -1118,6 +1118,10 @@ dialog::backdrop {
     @apply shrink-0 px-5 pt-3 pr-14 pb-3 text-lg font-semibold md:pt-4;
   }
 
+  /* The title of an area in the "Mais" sheet, like the menu's on a computer. */
+  .zuri-panel[data-at="more"] h3 {
+    @apply px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-fg-muted uppercase;
+  }
   /* A line of the "Mais" sheet. */
   .zuri-more-row {
     @apply flex min-h-13 items-center gap-3.5 rounded-xl px-3 font-medium text-fg hover:bg-raised;

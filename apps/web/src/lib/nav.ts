@@ -2,7 +2,7 @@ import type { MessageKey } from "@zuri/shared";
 import { AlarmClock, BookUser, Brain, CalendarDays, Handshake, House, ListTodo, type LucideIcon, MessagesSquare, Notebook, Star } from "lucide-react";
 
 export interface NavItem {
-  id: string;
+  /** The address, also the place's key in every list. */
   to: string;
   label: MessageKey;
   icon: LucideIcon;
@@ -15,34 +15,42 @@ export interface NavGroup {
 }
 
 /**
- * The one list of places (Sinal): the sidebar draws it in three groups, the
- * phone's bottom bar takes the first four, the "Mais" sheet the rest, and the
- * command palette all of them. A place added here shows up in every menu, with
+ * The one list of places (Sinal), in areas: the sidebar draws each area as a
+ * group, the phone's bottom bar takes the first four places, the "Mais" sheet
+ * the rest under the same areas, and the command palette all of them. A place added here shows up in every menu, with
  * the same name and the same icon.
  */
 export const NAV: readonly NavGroup[] = [
   {
     items: [
-      { id: "home", to: "/", label: "web.nav.home", icon: House },
-      { id: "chat", to: "/conversa", label: "web.nav.chat", icon: MessagesSquare },
+      { to: "/", label: "web.nav.home", icon: House },
+      { to: "/conversa", label: "web.nav.chat", icon: MessagesSquare },
     ],
   },
   {
-    heading: "web.nav.groupOrganize",
+    heading: "web.nav.groupMyDay",
     items: [
-      { id: "tasks", to: "/tarefas", label: "web.nav.tasks", icon: ListTodo },
-      { id: "agenda", to: "/agenda", label: "web.nav.agenda", icon: CalendarDays },
-      { id: "notes", to: "/notas", label: "web.nav.notes", icon: Notebook },
-      { id: "memory", to: "/memoria", label: "web.nav.memory", icon: Brain },
-      { id: "routines", to: "/rotinas", label: "web.nav.routines", icon: AlarmClock },
+      { to: "/tarefas", label: "web.nav.tasks", icon: ListTodo },
+      { to: "/agenda", label: "web.nav.agenda", icon: CalendarDays },
+      { to: "/notas", label: "web.nav.notes", icon: Notebook },
     ],
   },
+  // The area "Consultório" (the practice's management) goes here, between
+  // "Meu dia" and "Relacionamento", with its first screen: an area with no
+  // screen yet is never drawn (docs/planos/sons-menu-e-agenda-editavel.md).
   {
     heading: "web.nav.groupRelations",
     items: [
-      { id: "contacts", to: "/contatos", label: "web.nav.contacts", icon: BookUser },
-      { id: "reviews", to: "/avaliacoes", label: "web.nav.reviews", icon: Star },
-      { id: "crm", to: "/crm", label: "web.nav.crm", icon: Handshake },
+      { to: "/contatos", label: "web.nav.contacts", icon: BookUser },
+      { to: "/avaliacoes", label: "web.nav.reviews", icon: Star },
+      { to: "/crm", label: "web.nav.crm", icon: Handshake },
+    ],
+  },
+  {
+    heading: "web.nav.groupAssistant",
+    items: [
+      { to: "/memoria", label: "web.nav.memory", icon: Brain },
+      { to: "/rotinas", label: "web.nav.routines", icon: AlarmClock },
     ],
   },
 ];
@@ -53,6 +61,8 @@ export const NAV_ITEMS: readonly NavItem[] = NAV.flatMap((group) => group.items)
 const TAB_COUNT = 4;
 export const TAB_ITEMS = NAV_ITEMS.slice(0, TAB_COUNT);
 export const MORE_ITEMS = NAV_ITEMS.slice(TAB_COUNT);
+/** The areas of "Mais": every area with a place left out of the bottom bar, with only those places. */
+export const MORE_GROUPS = NAV.map(({ heading, items }) => ({ heading: heading as MessageKey, items: items.filter((item) => MORE_ITEMS.includes(item)) })).filter((group) => group.items.length);
 
 /** Whether an address is inside a place: "/" only for itself, the others for their sub-addresses too. */
 export function isInside(pathname: string, to: string): boolean {

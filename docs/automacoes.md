@@ -1,6 +1,6 @@
 # Rotinas
 
-Na tela e nos textos elas se chamam **Rotinas** (menu Organizar › Rotinas, endereço `/rotinas`). "Automação" ficou para as do CRM. No código e nas rotas o nome antigo continua (`/api/automations`, `zur_automations`).
+Na tela e nos textos elas se chamam **Rotinas** (menu Assistente › Rotinas, endereço `/rotinas`). "Automação" ficou para as do CRM. No código e nas rotas o nome antigo continua (`/api/automations`, `zur_automations`).
 
 A etapa 10 trouxe três tipos, todos no fuso do dono (Configurações › Conta):
 
