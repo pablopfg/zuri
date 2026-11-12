@@ -4288,9 +4288,11 @@ function dlgShow(def, opener) {
   if (!h) { h = document.createElement("div"); h.id = "dlg-host"; document.body.appendChild(h); }
   const foot = def.foot ? `<div class="wz-foot">${def.foot}</div>` : "";
   const again = !!h.querySelector(".dlg-wrap");
-  h.innerHTML = `<div class="wiz-wrap dlg-wrap${again ? " no-anim" : ""}" data-dlg-scrim><div class="wiz dlg-box" role="dialog" aria-modal="true" aria-labelledby="dlg-h"${def.sub ? ' aria-describedby="dlg-d"' : ""}>
+  h.innerHTML = `<div class="wiz-wrap dlg-wrap" data-dlg-scrim><div class="wiz dlg-box" role="dialog" aria-modal="true" aria-labelledby="dlg-h"${def.sub ? ' aria-describedby="dlg-d"' : ""}>
     <div class="wz-head"><div><h2 id="dlg-h">${def.t}</h2>${def.sub ? `<p class="hint" id="dlg-d">${def.sub}</p>` : ""}</div><button class="iconbtn" type="button" data-dlg-x aria-label="Fechar">${ic("x")}</button></div>
     <div class="wz-body" tabindex="0" role="region" aria-labelledby="dlg-h">${def.body}</div>${foot}</div></div>`;
+  /* Refino: o diálogo que só se atualiza não repete a entrada. */
+  if (again) h.firstElementChild.classList.add("no-anim");
   const f = h.querySelector("[data-autofocus]") || h.querySelector(".wz-body input, .wz-body select, .wz-body textarea, .wz-body button") || h.querySelector("[data-dlg-x]");
   if (f) f.focus();
 }
