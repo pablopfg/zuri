@@ -2870,7 +2870,8 @@ const LOGO = (rx = 16) => `<rect class="t" width="64" height="64" rx="${rx}"/><c
 const logo = (c = "") => `<svg class="logo ${c}" viewBox="0 0 64 64" aria-hidden="true">${LOGO()}</svg>`;
 
 // Only known values reach the markup: anything else in the URL falls back to the default.
-const pick = (v, allowed) => (allowed.includes(v) ? v : allowed[0]);
+/* Devolve o item da própria lista, nunca o texto que veio de fora. */
+const pick = (v, allowed) => allowed.find((x) => x === v) ?? allowed[0];
 const SCREENS = ["inicio", "entrar", "verificacao", "conversa", "tarefas", "notas", "agenda", "contatos", "avaliacoes", "automacoes", "crm", "memoria", "configuracoes", "estados", "identidade"];
 const THEMES = ["claro", "escuro"];
 const params = new URLSearchParams(location.search);
@@ -6535,7 +6536,7 @@ const mailOf = (p) => ((p.emails || [])[0] || [""])[0];
 for (const e of EV) { if (!e.tipo) continue; const same = PEOPLE.filter((p) => p.n && fold(p.n) === fold(e.t)); if (same.length === 1) e.pid = same[0].id; }
 for (const e of EV) { e.fin = e.fin || (e.day < dkey(AG_NOW) ? "Pago" : "Não pago"); e.ddi = e.ddi || "BR"; }
 const brDate = (k) => k.split("-").reverse().join("/");
-const isoDate = (v) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v); if (!m) return ""; const k = `${m[3]}-${m[2]}-${m[1]}`; const d = dOf(k); return d.getDate() === Number(m[1]) && d.getMonth() + 1 === Number(m[2]) ? k : ""; };
+const isoDate = (v) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v); if (!m) return ""; const k = `${m[3]}-${m[2]}-${m[1]}`; const d = dOf(k); return d.getDate() === Number(m[1]) && d.getMonth() + 1 === Number(m[2]) ? dkey(d) : ""; };
 const minOf = (v) => { const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(v); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
 const durTxt = (m) => (m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)} h ${p2(m % 60)}` : `${m / 60} h`);
 /* Máscaras: só números; a barra, os dois pontos e os parênteses entram sozinhos. Horário sempre de 0:00 a 23:59, sem AM e PM. */
@@ -6755,7 +6756,7 @@ function evEdit(ev, pre, opener) {
       const cel = plain ? "" : dlgRaw("[data-ee-cel]"), mail = plain ? "" : dlgRaw("[data-ee-mail]"), ddi = pick(dlgRaw("[data-ee-ddi]"), DDIS.map((x) => x[0]));
       if (!FORM.pid && cel && (ddi === "BR" ? !/^\(\d{2}\) \d{4,5}-\d{4}$/.test(cel) : cel.replace(/\D/g, "").length < 6)) return fail("Confira o celular: DDD e número, por exemplo (41) 99999-0000.", "[data-ee-cel]");
       if (!FORM.pid && mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail("Confira o e-mail, por exemplo nome@exemplo.com.br.", "[data-ee-mail]");
-      const kRaw = dlgRaw("[data-ee-k]"), tipo = kRaw === "outro" ? esc(tipoFix(dlgRaw("[data-ee-k2]"))) : kindList(ev && ev.tipo).includes(kRaw) ? kRaw : "", s = pick(dlgRaw("[data-ee-s]"), Object.keys(STS)), fin = pick(dlgRaw("[data-ee-fin]"), FIN);
+      const kRaw = dlgRaw("[data-ee-k]"), tipo = kRaw === "outro" ? esc(tipoFix(dlgRaw("[data-ee-k2]"))) : kindList(ev && ev.tipo).find((k) => k === kRaw) || "", s = pick(dlgRaw("[data-ee-s]"), Object.keys(STS)), fin = pick(dlgRaw("[data-ee-fin]"), FIN);
       const pid = tipo ? FORM.pid : "", obs = dlgVal("[data-ee-obs]");
       const twin = !pid && tipo && PEOPLE.filter((x) => x.n && fold(x.n) === fold(t)).length;
       const apply = (extra) => {
