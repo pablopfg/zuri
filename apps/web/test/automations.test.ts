@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Schedule } from "@zuri/shared";
 import { createTranslator, type MessageKey, ptBRCore, ptBRSchedule, t } from "../../../packages/shared/i18n/index.ts";
 import { DAY_SHORT } from "../src/pages/automations/labels.ts";
-import { automationAnchor, describeSchedule, draftOf, emptyDraft, joinList, scheduleOf } from "../src/lib/automations.ts";
+import { AUTOMATION_LIMITS } from "@zuri/shared";
+import { automationAnchor, copyName, describeSchedule, draftOf, emptyDraft, joinList, scheduleOf, stepReady, suggestName, wizardSteps, zoneLabel } from "../src/lib/automations.ts";
 
 const SP = "America/Sao_Paulo";
 const pt = (key: Parameters<typeof t>[1], params?: Record<string, string | number>) => t("pt-BR", key, params);
@@ -123,5 +124,77 @@ describe("the form's schedule", () => {
 
   it("anchors an automation the way the chat links to it", () => {
     expect(automationAnchor("abc")).toBe("automacao-abc");
+  });
+});
+
+/** The first half of an emoji with its second half cut off. */
+const LONE_HALF = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/;
+
+describe("the steps of “Criar rotina”", () => {
+  const daily: Schedule = { type: "daily", time: "08:00" };
+
+  it("has five steps to create and four to edit: the kind of a routine never changes", () => {
+    expect(wizardSteps(false)).toEqual(["kind", "when", "what", "notify", "review"]);
+    expect(wizardSteps(true)).toEqual(["when", "what", "notify", "review"]);
+  });
+
+  it("lets a step go on only with what it asks for", () => {
+    const base = { kind: "reminder", name: "", message: "", schedule: daily } as const;
+    // A flow is made in its own editor: the wizard never goes past the first step with it.
+    expect(stepReady("kind", { ...base, kind: "flow" })).toBe(false);
+    expect(stepReady("kind", base)).toBe(true);
+    expect(stepReady("when", { ...base, schedule: null })).toBe(false);
+    expect(stepReady("when", base)).toBe(true);
+    // A reminder and a routine need their text; the digest's note is optional.
+    expect(stepReady("what", base)).toBe(false);
+    expect(stepReady("what", { ...base, message: "   " })).toBe(false);
+    expect(stepReady("what", { ...base, message: "Tomar o remédio" })).toBe(true);
+    expect(stepReady("what", { ...base, kind: "agent_prompt" })).toBe(false);
+    expect(stepReady("what", { ...base, kind: "task_digest" })).toBe(true);
+    expect(stepReady("notify", base)).toBe(true);
+    expect(stepReady("review", { ...base, message: "x" })).toBe(false);
+    expect(stepReady("review", { ...base, message: "x", name: " \n" })).toBe(false);
+    expect(stepReady("review", { ...base, message: "x", name: "Remédio" })).toBe(true);
+    // The last step answers for the earlier ones too: nothing is sent half filled.
+    expect(stepReady("review", { ...base, name: "Remédio" })).toBe(false);
+    expect(stepReady("review", { ...base, name: "Remédio", message: "x", schedule: null })).toBe(false);
+  });
+
+  it("suggests a name: the reminder's first line, the digest's kind, nothing for a routine", () => {
+    expect(suggestName("reminder", "  Tomar o remédio\nda pressão", "Resumo das tarefas")).toBe("Tomar o remédio");
+    expect(suggestName("task_digest", "Bom dia", "Resumo das tarefas")).toBe("Resumo das tarefas");
+    expect(suggestName("agent_prompt", "Veja minhas tarefas", "Resumo das tarefas")).toBe("");
+    const long = "a".repeat(AUTOMATION_LIMITS.name + 1);
+    expect(suggestName("reminder", long, "")).toHaveLength(AUTOMATION_LIMITS.name);
+    expect(suggestName("reminder", "a".repeat(AUTOMATION_LIMITS.name), "")).toHaveLength(AUTOMATION_LIMITS.name);
+    // An emoji (two units) across the cut is left out whole, never split into a broken half.
+    for (const before of [AUTOMATION_LIMITS.name - 2, AUTOMATION_LIMITS.name - 1, AUTOMATION_LIMITS.name]) {
+      const name = suggestName("reminder", `${"a".repeat(before)}💊b`, "");
+      expect(name).not.toMatch(LONE_HALF);
+      expect(name.length).toBeLessThanOrEqual(AUTOMATION_LIMITS.name);
+      expect(name).toBe(before === AUTOMATION_LIMITS.name - 2 ? `${"a".repeat(before)}💊` : "a".repeat(before));
+    }
+  });
+
+  it("names a copy within the limit of a name", () => {
+    expect(copyName("Remédio", (name) => `${name} (cópia)`)).toBe("Remédio (cópia)");
+    const full = "b".repeat(AUTOMATION_LIMITS.name);
+    const copy = copyName(full, (name) => `${name} (cópia)`);
+    expect(copy).toHaveLength(AUTOMATION_LIMITS.name);
+    expect(copy.endsWith(" (cópia)")).toBe(true);
+    const emoji = copyName(`${"b".repeat(AUTOMATION_LIMITS.name - 9)}💊`, (name) => `${name} (cópia)`);
+    expect(emoji).not.toMatch(LONE_HALF);
+    expect(emoji).toBe(`${"b".repeat(AUTOMATION_LIMITS.name - 9)} (cópia)`);
+  });
+
+  it("shows the owner's zone as a city and its distance from UTC", () => {
+    expect(zoneLabel(SP, new Date("2026-11-12T12:00:00Z"), "pt-BR")).toBe("Sao Paulo (GMT-3)");
+    expect(zoneLabel("America/Argentina/Buenos_Aires", new Date("2026-11-12T12:00:00Z"), "pt-BR")).toBe("Buenos Aires (GMT-3)");
+    // Daylight saving moves the distance with the date.
+    expect(zoneLabel("Europe/Lisbon", new Date("2026-07-01T12:00:00Z"), "pt-BR")).toBe("Lisbon (GMT+1)");
+    // The engine writes zero as "GMT" or "GMT+0"; either is right.
+    expect(zoneLabel("Europe/Lisbon", new Date("2026-01-01T12:00:00Z"), "pt-BR")).toMatch(/^Lisbon \(GMT(\+0)?\)$/);
+    // A zone with no city is its own name.
+    expect(zoneLabel("UTC", new Date("2026-01-01T12:00:00Z"), "en")).toMatch(/^UTC \(/);
   });
 });

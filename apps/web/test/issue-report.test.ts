@@ -68,7 +68,7 @@ describe("issueReportUrl", () => {
     expect(["api", "ai", "automation", "chat", "interface"].map((s) => where(s as DiagnosticEntry["source"]))).toEqual([
       "servidor",
       "IA",
-      "automações",
+      "rotinas",
       "conversa",
       "tela",
     ]);

@@ -97,7 +97,7 @@ describe("the automation routes", () => {
     expect([paused.automation.status, paused.automation.nextRunAt]).toEqual(["paused", null]);
 
     expect((await api("DELETE", `/automations/${automation.id}`)).status).toBe(204);
-    expect((await refusal(await api("GET", `/automations/${automation.id}`), 404)).message).toBe("Esta automação não existe mais.");
+    expect((await refusal(await api("GET", `/automations/${automation.id}`), 404)).message).toBe("Esta rotina não existe mais.");
     // The history outlives it.
     expect((await json<AutomationRunPage>(await api("GET", `/automations/runs?automation=${automation.id}`), 200)).runs).toHaveLength(1);
   });
