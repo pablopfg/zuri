@@ -38,6 +38,16 @@ describe("release notes for Sobre a Zuri (PR S16)", () => {
     expect(plainText("**negrito** _itálico_ [link](https://exemplo.com.br) `code` <script>x</script>")).toBe("negrito itálico link code x");
   });
 
+  it("keeps a code span's angle brackets and a comparison, dropping only real tags", () => {
+    expect(plainText("Rota `POST /api/crm/events/<chave>` nova")).toBe("Rota POST /api/crm/events/<chave> nova");
+    expect(plainText("5 < 10 itens e 20 > 15")).toBe("5 < 10 itens e 20 > 15");
+    expect(plainText("<b>forte</b> e <img src=x onerror=alert(1)>fim")).toBe("forte e fim");
+  });
+
+  it("lists the same line once", () => {
+    expect(releaseNotes("## [1.0.0] - 2026-01-01\n- Mesma coisa.\n- Mesma coisa.\n- Outra.")?.items).toEqual(["Mesma coisa.", "Outra."]);
+  });
+
   it("stops at the cap and cuts a long sentence at a word", () => {
     const many = `## [1.2.3] - 2026-01-01\n${Array.from({ length: 10 }, (_, i) => `- Item ${i}.`).join("\n")}`;
     expect(releaseNotes(many)?.items).toHaveLength(RELEASE_NOTES_MAX);

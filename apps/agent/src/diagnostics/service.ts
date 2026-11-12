@@ -279,7 +279,7 @@ export class DiagnosticsService {
 
 /** The interface's pages (apps/web/src/App.tsx) and the settings tabs: the only words a screen's path keeps. */
 const SCREENS = new Set(["", "entrar", "primeiro-acesso", "recuperar-senha", "conversa", "tarefas", "notas", "automacoes", "rotinas", "crm", "avaliacoes", "memoria", "acessos", "configuracoes", "agenda", "contatos"]);
-const SETTINGS_TABS = new Set(["conta", "seguranca", "ia", "modelos", "agenda", "avisos", "integracoes", "dados", "diagnostico"]);
+const SETTINGS_TABS = new Set(["conta", "seguranca", "assistente", "ia", "modelos", "agenda", "avisos", "integracoes", "dados", "diagnostico", "sobre"]);
 
 /**
  * The screen a path names, never what else it carries: the page (unknown ones

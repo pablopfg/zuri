@@ -1,3 +1,4 @@
+import type { Route } from "@playwright/test";
 import { expect, type Page, test } from "./fixtures.ts";
 import { CSRF, expectAccessible, settingsTitle, signIn, tooSmallControls } from "./ui-helpers.ts";
 
@@ -289,4 +290,42 @@ test("the usage panel follows a new answer while it is open, without a reload", 
   expect(chat.status()).toBe(200);
   await expect.poll(async () => Number((await requests.textContent())?.replace(/\D/g, "")), { timeout: 10_000 }).toBeGreaterThan(before);
   expect(await page.evaluate(() => (window as unknown as { __zuriMark?: number }).__zuriMark)).toBe(1);
+});
+
+test.describe("on a device in another time zone", () => {
+  // The device in Tokyo, the owner in São Paulo: Dia follows the owner's zone, never the device's.
+  test.use({ timezoneId: "Asia/Tokyo" });
+
+  test("Dia counts the hours in the owner's time zone, not the device's", async ({ page }) => {
+    await openAiTab(page);
+    // One answer today, so the panel has its numbers.
+    expect((await page.request.post("/api/chat", { headers: CSRF, data: { message: "Oi, Zuri" } })).status()).toBe(200);
+    await page.reload();
+    const panel = page.getByRole("region", { name: "Consumo por período" });
+    await panel.getByRole("button", { name: "Dia" }).click();
+    // In Tokyo the counters' day would start at 09:00; in São Paulo it starts at 21:00.
+    await expect(panel.getByText("No seu fuso, a contagem do dia recomeça às 21:00.")).toBeVisible();
+  });
+});
+
+test("Dia and Ano say when their numbers don't come, with a way to try again", async ({ page }) => {
+  await openAiTab(page);
+  expect((await page.request.post("/api/chat", { headers: CSRF, data: { message: "Oi, Zuri" } })).status()).toBe(200);
+  await page.reload();
+  const fail = (route: Route) =>
+    route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ code: "INTERNAL_ERROR", message: "Algo deu errado." }) });
+  await page.route("**/api/usage/hours", fail);
+  await page.route("**/api/usage/history?days=90", fail);
+  const panel = page.getByRole("region", { name: "Consumo por período" });
+  await panel.getByRole("button", { name: "Dia" }).click();
+  // The query may retry on its own first.
+  await expect(panel.getByRole("alert").filter({ hasText: "Algo deu errado." })).toBeVisible({ timeout: 15_000 });
+  await expect(panel.getByRole("button", { name: "Tentar de novo" })).toBeVisible();
+  // Ano: the months come, the models of the last 90 days don't, and the panel says so.
+  await panel.getByRole("button", { name: "Ano" }).click();
+  await expect(panel.getByRole("figure", { name: "Neurons por mês" })).toBeVisible();
+  await expect(panel.getByRole("alert").filter({ hasText: "Algo deu errado." })).toBeVisible({ timeout: 15_000 });
+  await page.unroute("**/api/usage/history?days=90");
+  await panel.getByRole("button", { name: "Tentar de novo" }).click();
+  await expect(panel.getByRole("heading", { name: "Modelos mais usados nos últimos 90 dias" })).toBeVisible();
 });

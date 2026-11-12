@@ -11,14 +11,19 @@ export const RELEASE_NOTES_MAX = 6;
 /** A longer first sentence is cut at a word, with an ellipsis. */
 const MAX_CHARS = 160;
 
-/** Links, code, bold and italics as their text only. */
+/**
+ * Links, code, bold and italics as their text only. Only real tags go (outside code spans):
+ * `/eventos/<chave>` and "5 < 10" keep their text.
+ */
 export function plainText(markdown: string): string {
   return markdown
+    .split(/(`[^`]*`)/)
+    .map((part) => (part.startsWith("`") && part.endsWith("`") && part.length > 1 ? part : part.replace(/<\/?[a-zA-Z][^<>]*>/g, "")))
+    .join("")
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/`([^`]*)`/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/(^|[\s(])[*_]([^*_]+)[*_](?=$|[\s.,;:)])/g, "$1$2")
-    .replace(/<[^>]*>/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -43,7 +48,8 @@ export function releaseNotes(changelog: string, max = RELEASE_NOTES_MAX): Releas
     if (line.startsWith("## ")) break;
     if (!line.startsWith("- ")) continue;
     const text = firstSentence(plainText(line.slice(2)));
-    if (text) items.push(text);
+    // The same line twice says nothing new (and the list keys on the text).
+    if (text && !items.includes(text)) items.push(text);
     if (items.length >= max) break;
   }
   return { version, items };

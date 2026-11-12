@@ -199,7 +199,13 @@ function YearView() {
   const usedDays = months.data.months.reduce((n, m) => n + m.days, 0);
   return (
     <Panel rows={rows} unit="month" usedDays={usedDays} empty={(history.data?.models.length ?? 0) === 0}>
-      {history.data ? <ModelTable history={history.data} title={t("web.usage.models90")} /> : history.isError ? null : <Loading />}
+      {history.data ? (
+        <ModelTable history={history.data} title={t("web.usage.models90")} />
+      ) : history.isError ? (
+        <ErrorNotice error={history.error} onRetry={() => void history.refetch()} />
+      ) : (
+        <Loading />
+      )}
     </Panel>
   );
 }

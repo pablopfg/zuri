@@ -97,10 +97,15 @@ export function settingsHasTabs(page: Page) {
   return (page.viewportSize()?.width ?? 0) >= 1024;
 }
 
-/** The page title inside a settings section: "Configurações" on every size since PR S16; the section names the browser tab. */
+/**
+ * A settings section on screen: the page title is "Configurações" on every size since PR S16, so the
+ * section is the one the content area is named after (an unknown name falls back to Conta and fails here).
+ */
 export function settingsTitle(page: Page, section: string) {
-  void section;
-  return page.getByRole("heading", { level: 1, name: "Configurações", exact: true });
+  return page
+    .getByRole("main")
+    .filter({ has: page.getByRole("heading", { level: 1, name: "Configurações", exact: true }) })
+    .locator(`section[aria-label="${section}"]`);
 }
 
 /** Opens a settings section the way the owner does: the submenu on a computer, the "Seção" list on a phone. */
