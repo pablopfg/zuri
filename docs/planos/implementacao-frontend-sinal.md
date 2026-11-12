@@ -238,7 +238,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S11 | mesclada (#299) |
 | S12 | mesclada (#310) |
 | S13 | mesclada (#313) |
-| S14 | em revisão |
+| S14 | mesclada (#317) |
+| S15 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -384,6 +385,27 @@ Diferenças da S14 (Rotinas) para o protótipo, para as PRs seguintes não as de
 - **O fuso aparece como o sistema o nomeia** ("Sao Paulo (GMT-3)"), só para leitura. Ele muda em Configurações › Conta.
 - **O histórico mantém o texto que cada execução entregou** embaixo da linha; o protótipo mostra só hora, rotina e situação.
 - **Textos:** "automação" virou "rotina" na tela, na paleta, nos erros do servidor, nas ferramentas da conversa, no backup e no Telegram. "Automação" fica só para as do CRM.
+
+Diferenças da S15 (CRM) para o protótipo e para as tabelas, para as PRs seguintes não as desfazerem:
+
+- **Duas partes, não quatro.** "Automações" e "Envios" não aparecem nem têm endereço (`/crm/automacoes` e `/crm/envios` voltam para `/crm`) até a S18 e a S19. `/crm` abre Fluxos.
+- **C4 não existe mais.** A integração com o n8n saiu em 11/11 (#298): não há cartão "n8n do consultório", endereço nem segredo de eventos em Credenciais.
+- **C3 foi para Configurações › Avisos, grupo "CRM"**, depois de "O que vai para cada canal", com os dois avisos que o servidor tem (retorno e aniversários) e a hora do aviso de aniversários. A linha "Cliente novo vindo do n8n" do protótipo saiu com o n8n.
+- **Ligar e desligar um fluxo ficam no menu "Mais opções"**, como primeiro item. A linha do protótipo só mostra "Executar" e o menu; a função já existia e não pode sumir.
+- **"Ligado" e "Desligado" na situação do fluxo**, não "Ativo": é a palavra dos botões Ligar e Desligar e dos avisos.
+- **"Executar" continua ligado num fluxo desligado**, como na S14: o servidor sempre deixou e serve para testar antes de ligar.
+- **"Duplicar" é uma chamada só**: todo fluxo nasce desligado no servidor, então a cópia nunca roda ao lado do original.
+- **"Monitorar sites" fica ao lado de "Novo fluxo"** no cabeçalho, e **"Configurações dos fluxos" fica no fim da parte Fluxos**. Os dois existiam na `develop` e não estão no protótipo.
+- **As sugestões da Zuri mostram o nome e quando somem**, com "Revisar" e "Descartar". O resumo de quando roda e dos passos, que o protótipo mostra, não vem na lista do servidor.
+- **A linha de uma execução guarda o motivo embaixo** (passo, causa e código), como o histórico das Rotinas guarda o texto.
+- **Credenciais sem "Testar", sem etiqueta de tipo e sem "Chave terminada em…"**: o teste, os tipos `http` e `chatwoot` e o final da chave são da S17. A linha mostra "Com chave" ou "Sem chave". O cartão "Fila de envio" é da S19.
+- **Os três avisos embaixo das credenciais dizem o que o servidor faz hoje**: mudar o endereço apaga a chave (não "pede a chave de novo") e só criar e editar pedem a senha; apagar não pede.
+- **"Ver credenciais" é um botão ao lado da nota dos passos**, não uma palavra dentro da frase: um link no meio do texto não chega a 44 px de altura. A lista de passos da nota sai do catálogo de passos, então passo novo aparece sozinho.
+- **O menu lateral não abre as partes do CRM embaixo do item.** O protótipo mostra; o JS inicial está a 142 B do teto e a casca entra nele. Fica para quando houver quatro partes, com a medida na mão.
+- **Aviso de retorno ou aniversário continua abrindo `/crm`** (hoje, Fluxos). Não existe tela de clientes; trocar o destino é mudança de servidor.
+- **A frase do alto de Fluxos diz "Fluxos que você monta passo a passo"**, não "Automações que você monta": pelo glossário, "Automação" fica para as do CRM, que chegam na parte vizinha (S18).
+- **"Criar fluxo" pela paleta, a partir de Credenciais, leva a Fluxos** antes de abrir o editor: o fluxo salvo aparece na lista que está na tela.
+- **Textos:** "conexão" virou "credencial" e o valor secreto virou "chave", na tela, nos erros do servidor, nos avisos de segurança e na atividade de acesso. Os nomes internos (`FlowConnection`, `/api/flows/connections`) não mudaram.
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 

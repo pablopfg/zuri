@@ -15,8 +15,8 @@ O plano técnico está em `docs/planos/etapa-22b-crm-interno.md`.
 > (o endereço antigo, `/contatos/clientes`, leva a Contatos). Até as telas
 > próprias do CRM chegarem, os clientes são vistos e mudados pela conversa
 > ("quem volta esta semana?", "anote no cadastro da Ana…"). O que esta página descreve da lista, do funil e de **Apagar cliente**
-> vale para o servidor e volta à tela com o CRM novo. O cartão **Avisos do
-> CRM** fica em **CRM**, no menu lateral, abaixo dos fluxos.
+> vale para o servidor e volta à tela com o CRM novo. Os avisos do CRM
+> ficam em **Configurações › Avisos**, no grupo **CRM**.
 
 ## Para o dono
 
@@ -39,8 +39,8 @@ O plano técnico está em `docs/planos/etapa-22b-crm-interno.md`.
 
 ### Avisos
 
-Em **Avisos do CRM**, na tela **CRM**, você escolhe o que a Zuri avisa, pelos
-canais da central de avisos:
+Em **Configurações › Avisos**, no grupo **CRM**, você escolhe o que a Zuri
+avisa, pelos canais da central de avisos:
 
 - **Retorno**: na hora marcada. Até 10 avisos de uma vez; se vencerem mais, o
   resto vem num aviso só.
@@ -84,7 +84,7 @@ salvar, e cabem 5 de cada vez.
 - Nome, telefone, e-mail, anotações e histórico dos clientes nunca vão para os
   logs, nem os de erro.
 - Os avisos de retorno levam o nome do cliente e a nota do retorno. Se eles chegam por push no celular, podem aparecer na tela
-  bloqueada: desligue esses avisos em **Avisos do CRM** se os seus clientes
+  bloqueada: desligue esses avisos em **Configurações › Avisos** se os seus clientes
   forem dados sensíveis (por exemplo, de saúde).
 - Depois que a conversa lê o CRM, nenhuma ferramenta de serviço externo (MCP)
   roda sem pedir, nem nas mensagens seguintes: um texto plantado por um
