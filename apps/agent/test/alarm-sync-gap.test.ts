@@ -5,7 +5,9 @@ import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { testEnv } from "./helpers.ts";
 
 // PR S09: the contacts' sync (every 5 minutes) and the reviews' check (every 10) never read Google in the
-// same wake of the one alarm: a check due in a wake that synced the contacts waits two and a half minutes.
+// same wake of the one alarm: a check due in a wake that synced the contacts waits two and a half minutes, or
+// half the contacts' interval. These prove the order and the number with mocks; alarm-two-reads.test.ts runs the
+// real services and the real alarm, the contacts' every minute included (there the check goes first).
 
 const owner = () => testEnv.AGENT.get(testEnv.AGENT.idFromName(AGENT_INSTANCE_NAME));
 const inOwner = <T>(fn: (agent: ZuriAgent) => T | Promise<T>) => runInDurableObject(owner(), (agent: ZuriAgent) => fn(agent));
@@ -35,7 +37,7 @@ describe("the alarm's two Google reads", () => {
     });
   });
 
-  it("with the contacts read every minute or two, the check waits half that interval: it always has a wake before the next sync", async () => {
+  it("with the contacts read every few minutes, the check waits half that interval", async () => {
     await inOwner(async (agent) => {
       const held: number[] = [];
       vi.spyOn(agent.store.contacts, "tick").mockResolvedValue(true);
