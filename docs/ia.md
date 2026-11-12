@@ -353,7 +353,7 @@ e guarda em memória.
 ## Voz
 
 `POST /api/transcribe` manda o áudio ao Whisper (`whisper-large-v3-turbo`)
-pelo medidor (`MeteredAI.transcribe`, `reserveAudio`), e só o modelo recebe o áudio. Um áudio tem até 60 s e
+pelo medidor (`MeteredAI.transcribe`, `reserveAudio`), e só o modelo recebe o áudio. Um áudio tem até 120 s e
 2 MB, um de cada vez. O dia tem 3.600 s. O tempo contado é o maior entre o que
 o navegador mediu e o que o tamanho do arquivo indica, então mentir a duração
 não ajuda. A reserva acontece antes da chamada e uma recusa da cota responde

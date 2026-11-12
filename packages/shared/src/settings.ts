@@ -7,6 +7,7 @@ import { AI_LIMIT_RANGES, AI_MODEL_IDS, DEFAULT_CHAT_MODEL, DEFAULT_FALLBACK_MOD
 
 import { ALERT_LIMITS, alertFullTextSchema, alertRoutesSchema, DEFAULT_ALERT_ROUTES, DEFAULT_DIGEST_TIME } from "./alerts.ts";
 import { AGENDA_VIEWS, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
+import { DEFAULT_SOUND_PREFS, NOTICE_SOUNDS } from "./sounds.ts";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "./time-zone.ts";
 
 export { DEFAULT_TIME_ZONE, isTimeZone };
@@ -82,6 +83,9 @@ export const agendaPrefsSchema = /* @__PURE__ */ z
   .strict()
   .refine((prefs) => prefs.from < prefs.to);
 
+/** The sounds of the open app (12/11/2026): saved whole, like the Agenda's preferences. */
+export const soundPrefsSchema = /* @__PURE__ */ z.object({ notice: z.boolean(), pick: z.enum(NOTICE_SOUNDS), recording: z.boolean() }).strict();
+
 /** The settings of steps 2 and 3. Later steps add fields here, each with its default. */
 export const settingsSchema = /* @__PURE__ */ z
   .object({
@@ -121,6 +125,8 @@ export const settingsSchema = /* @__PURE__ */ z
     alertFullText: alertFullTextSchema,
     /** Sinal S08: the Agenda's working hours and what it shows; saved whole. */
     agenda: agendaPrefsSchema,
+    /** The notice sound and the recording sounds of the open app; saved whole. */
+    sounds: soundPrefsSchema,
   })
   .strict();
 
@@ -161,4 +167,5 @@ export const DEFAULT_SETTINGS: Settings = /* @__PURE__ */ Object.freeze({
   alertLearning: true,
   alertFullText: [],
   agenda: DEFAULT_AGENDA_PREFS,
+  sounds: DEFAULT_SOUND_PREFS,
 });
