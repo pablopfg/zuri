@@ -2609,6 +2609,7 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .app.is-collapsed .sb-rail{border-right:0;padding-right:0;align-items:center}
 .sp-seg{display:flex;margin:var(--s3) 0 var(--s2);width:100%}
 .sp-seg button{flex:1;justify-content:center;padding:0 8px}
+.gx-frame{flex:1 1 auto;display:block;width:100%;min-height:640px;border:0;background:var(--bg)}
 .gs-soon{padding:var(--s5);display:grid;gap:var(--s3);justify-items:start;max-width:640px}
 .gs-soon h2{font-size:var(--t-lg)}
 .gs-soon p{color:var(--ink-2);margin:0}
@@ -5955,11 +5956,11 @@ function micStart(btn) {
 function micStop() { const was = recBox; micStop0(); if (was) playRec("stop"); }
 
 /* ---------- Menu lateral por áreas (três propostas, trocadas no seletor "Menu" do protótipo) ---------- */
+/* Gestão do consultório: as três telas do protótipo da Gestão (prototipo-gestao.html), na área Consultório. */
 const GS = [
-  ["painel", "layout-dashboard", "Painel", "O resumo do consultório num lugar só.", ["Receita, despesas e saldo do mês", "Consultas, retornos e avaliações físicas feitas", "Quem faltou, remarcou ou cancelou"]],
-  ["agendamentos", "calendar-check", "Agendamentos", "O registro de cada atendimento, tirado da agenda.", ["Situação de cada horário: agendado, confirmado, reagendado ou cancelado", "Comparecimento e faltas por cliente", "Recebimento confirmado de cada atendimento"]],
-  ["financeiro", "wallet", "Financeiro", "Entradas e saídas do consultório.", ["Histórico importado de uma planilha", "Lançamentos por categoria e forma de pagamento", "O que está para receber e o que está para pagar"]],
-  ["relatorios", "chart-column", "Relatórios", "Os relatórios do período, prontos para ler.", ["Semanal, mensal e anual", "Comparação com o período anterior", "Para baixar ou receber por aviso"]]
+  ["atendimentos", "calendar-check", "Atendimentos"],
+  ["financeiro", "wallet", "Financeiro"],
+  ["resultados", "chart-column", "Resultados"]
 ];
 SCREENS.push("gestao");
 st.gs = pick(params.get("gs"), GS.map((x) => x[0]));
@@ -6021,13 +6022,36 @@ function side() {
     <button class="account" type="button" aria-label="Conta de Ana" aria-haspopup="dialog" data-menu="conta"><span class="avatar" aria-hidden="true">A</span><span class="acct-txt"><b>Ana</b></span>${ic("chevron-down", "ic-sm")}</button>
   </aside>`;
 }
+/* A tela vem do protótipo da Gestão, num quadro sem o menu e a barra dele: o menu é o da Zuri. */
 function gestao() {
-  const [, i, l, lead, items] = GS.find((x) => x[0] === st.gs);
-  return `<div class="page"><header class="pagehead"><div><h1>${l}</h1><p>${lead}</p></div></header>
-    <section class="card gs-soon" aria-labelledby="gs-h"><span class="tile">${ic(i)}</span><h2 id="gs-h">Em planejamento</h2>
-      <p>Esta tela faz parte da Gestão do consultório, que ainda está sendo planejada. Ela aparece aqui só para você avaliar o lugar dela no menu.</p>
-      <ul>${items.map((x) => `<li>${ic("check", "ic-sm")}${x}</li>`).join("")}</ul></section></div>`;
+  return `<iframe class="gx-frame" title="Gestão do consultório" src="prototipo-gestao.html#${st.gs}"></iframe>`;
 }
+const GX_CSS = ".proto,.side,.tabbar{display:none!important}.app{grid-template-columns:minmax(0,1fr)!important}@media (max-width:860px){.page{padding-bottom:32px!important}.toast{bottom:24px!important}}";
+function gxTheme(w) {
+  const t = effectiveTheme() === "escuro" ? "dark" : "light";
+  if (w && w.document) w.document.documentElement.dataset.theme = t;
+}
+function gxNav(v) {
+  st.gs = v;
+  for (const a of document.querySelectorAll("[data-gs]")) {
+    if (a.dataset.gs === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  }
+}
+/* Mesma origem (artefato publicado ou servidor local): esconde o menu do quadro, segue o tema e acompanha a troca de tela. */
+document.addEventListener("load", (e) => {
+  const f = e.target;
+  if (!(f instanceof HTMLIFrameElement) || !f.classList.contains("gx-frame")) return;
+  let w;
+  try { w = f.contentWindow; if (!w.document.head) return; } catch (_) { return; }
+  const css = w.document.createElement("style");
+  css.textContent = GX_CSS;
+  w.document.head.appendChild(css);
+  gxTheme(w);
+  if (typeof w.go === "function" && !w.go.gx) { const go0 = w.go; w.go = (v) => { go0(v); gxNav(v); }; w.go.gx = true; }
+  w.addEventListener("hashchange", () => gxNav(w.location.hash.slice(1)));
+}, true);
+new MutationObserver(() => { const f = document.querySelector(".gx-frame"); if (f) try { gxTheme(f.contentWindow); } catch (_) { /* outra origem */ } })
+  .observe(document.documentElement, { attributes: true, attributeFilter: ["data-tema"] });
 SCREEN.gestao = gestao;
 /* No celular, "Mais" segue as mesmas áreas do menu. */
 function renderSheet() {
@@ -6043,7 +6067,7 @@ function renderSheet() {
 }
 document.getElementById("pm").value = st.mn;
 document.getElementById("pm").addEventListener("change", (e) => { st.mn = pick(e.target.value, ["a", "b", "c", "atual"]); st.area = undefined; st.space = undefined; render(); });
-document.getElementById("ps").insertAdjacentHTML("beforeend", '<option value="gestao">Gestão (em planejamento)</option>');
+document.getElementById("ps").insertAdjacentHTML("beforeend", '<option value="gestao">Gestão do consultório</option>');
 
 /* ---------- Agenda: clicar, editar, mover e mudar a situação; fins de semana e feriados marcados ---------- */
 const p2 = (n) => String(n).padStart(2, "0");

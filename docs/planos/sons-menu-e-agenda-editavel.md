@@ -257,6 +257,8 @@ O Pablo viu a entrega 3 e pediu cinco ajustes, com um print do formulário do ou
 - **Financeiro:** "Não pago", "Pago" e "Gratuito".
 - **Tipo do evento numa lista só**, que junta o tipo e o atendimento: "Consulta | Consultório", "Consulta | Online", "Retorno | Consultório", "Retorno | Online", "Avaliação física | Consultório", os tipos que já aparecem na agenda, "Outro, digitar" e "Sem tipo (compromisso comum)". O tipo digitado segue "Tipo | Lugar"; sem o lugar, fica "| Consultório". Depois de usado, ele entra na lista. O campo "Atendimento" sai.
 
+**Gestão dentro do protótipo (12/11/2026, 17:48 UTC).** A pedido do Pablo, a área Consultório do menu abre as três telas do protótipo da Gestão (Atendimentos, Financeiro e Resultados), no lugar das telas "Em planejamento". O protótipo principal mostra `prototipo-gestao.html` num quadro, sem o menu e a barra dele, no mesmo tema; o desenho e o plano da Gestão continuam em [gestao-financeira-e-paineis.md](gestao-financeira-e-paineis.md) e na PR #311. Enquanto a #311 não estiver na `develop`, o quadro só abre no protótipo publicado.
+
 **O que não muda:** arrastar, Alt com as setas, "Desfazer", "mover marca Reagendado", a cor de cada situação e a agenda só de leitura. O primeiro carregamento também não, porque o formulário está no pedaço da Agenda, que carrega sob demanda; a busca usa a lista de Contatos que a tela já lê, sem chamada nova ao Google.
 
 **Perguntas ao Pablo** (seção 14).
