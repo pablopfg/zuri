@@ -6597,14 +6597,16 @@ const cfLate = (e) => cfStart(e) - cfNow() < CF_LIMIT_H * 3600000;
 const cfWhen = (e) => `${dayShort(dOf(e.day))} às ${hmm(e.h * 60 + e.m)}`;
 function cfBox(e) {
   if (e.ro || !e.tipo) return "";
+  /* Tudo que vai para o HTML sai escapado, mesmo o que a própria Zuri gerou. */
+  const id = escH(e.id);
   const cf = e.cf || {};
   const past = cfPast(e);
   const lbl = cf.st === "confirmou" ? ["on", `Confirmou pelo link ${cf.w}`] : cf.st === "cancelou" ? ["bad", `Cancelou pelo link ${cf.w}`] : cf.st === "enviado" ? ["wait", `Link enviado ${cf.w}. Ainda sem resposta.`] : ["off", "Link ainda não enviado"];
   const cel = cfCel(e);
-  const acts = past || e.s === "cancelado" ? "" : `<div class="cf-acts">${cel ? `<button class="btn btn-secondary btn-sm" type="button" data-cf-wa="${e.id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</button>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${e.id}">${ic("copy", "ic-sm")}Copiar link</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${e.id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
+  const acts = past || e.s === "cancelado" ? "" : `<div class="cf-acts">${cel ? `<button class="btn btn-secondary btn-sm" type="button" data-cf-wa="${id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</button>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${id}">${ic("copy", "ic-sm")}Copiar link</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
     <p class="hint">${cel ? "Abre o WhatsApp com a mensagem e o link. Você confere e envia." : "Sem celular neste agendamento: copie o link e envie por onde preferir."} A resposta muda a situação e a cor no Google sozinha, e chega em Avisos.</p>`;
   return `<section class="cf-box" aria-labelledby="cf-h"><p class="cf-h" id="cf-h">${ic("calendar-check", "ic-sm")}Confirmação do paciente</p>
-    <p class="cf-st"><span class="pill ${lbl[0]}"><i></i>${lbl[1]}</span></p>${past ? `<p class="hint">A consulta já passou. O link não vale mais.</p>` : ""}${acts}</section>`;
+    <p class="cf-st"><span class="pill ${lbl[0]}"><i></i>${escH(lbl[1])}</span></p>${past ? `<p class="hint">A consulta já passou. O link não vale mais.</p>` : ""}${acts}</section>`;
 }
 function cfMsg(e) {
   return `Olá, ${cfFirst(e)}! Sua ${e.tipo.split(" | ")[0].toLowerCase()} no ${CF_CLINIC.n} está marcada para ${dayLong(dOf(e.day)).toLowerCase()}, às ${hmm(e.h * 60 + e.m)}. Confirme ou cancele por aqui: https://${cfLink(e)}. Para mudar o dia ou o horário, fale com a nossa equipe.`;
