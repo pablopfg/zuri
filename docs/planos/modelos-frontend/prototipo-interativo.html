@@ -2622,7 +2622,12 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .cf-acts{display:flex;flex-wrap:wrap;gap:8px}
 .cf-acts .ic.wa{width:16px;height:16px}
 .cf-page{min-height:100dvh;display:flex;flex-direction:column;align-items:center;gap:var(--s4);padding:var(--s6) var(--s4) var(--s7);background:var(--bg)}
-.cf-proto{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;max-width:440px}
+.cf-proto{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;width:100%;max-width:440px;min-width:0}
+.cf-proto .seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;max-width:100%}
+.cf-proto .seg button{white-space:normal;min-width:0}
+.cf-page *{min-width:0}
+.cf-card{box-sizing:border-box}
+.cf-card .btn{max-width:100%;white-space:normal;text-align:center}
 .cf-card{width:100%;max-width:440px;display:grid;gap:var(--s4);padding:var(--s6);border:1px solid var(--line);border-radius:var(--r-xl,20px);background:var(--surface);box-shadow:0 1px 2px rgb(24 24 27 / .06),0 12px 32px -12px rgb(24 24 27 / .16);animation:pg-in var(--dur-2,240ms) var(--ease-out) both}
 .cf-brand{display:flex;align-items:center;gap:10px;font-weight:600;color:var(--ink-2)}
 .cf-logo{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent-soft-ink);font:700 13px/1 var(--f-ui)}
@@ -2645,6 +2650,25 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .cf-foot{margin:0;color:var(--muted);font-size:var(--t-xs,12px);text-align:center}
 .cf-card .btn .ic.wa{width:18px;height:18px}
 @media (max-width:820px){.cf-page{padding:var(--s4) var(--s4) var(--s6)}.cf-card{padding:var(--s5)}}
+.cf-after{margin-top:calc(var(--s2) * -1);padding-top:var(--s4);border-top:1px solid var(--line-soft)}
+.cf-cancel{color:var(--danger-ink);min-height:44px}
+.cf-dead{justify-content:center;font-size:var(--t-xs,12px);color:var(--muted)}
+.cf-city{display:block;color:var(--ink-2);font-weight:400}
+.dlg-sm{max-width:440px}
+@media (max-width:520px){.dlg-sm .wz-foot{flex-direction:column-reverse;align-items:stretch}.dlg-sm .wz-foot .grow{display:none}.dlg-sm .wz-foot .btn{width:100%;justify-content:center}}
+.ct-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:var(--s5);align-items:start}
+.ct-edit{display:grid;gap:8px}
+.ct-ta{min-height:220px;resize:vertical;font:400 var(--t-sm)/1.5 var(--f-ui)}
+.ct-meta{display:flex;gap:12px;justify-content:space-between;margin:0}
+.ct-meta .err{color:var(--danger-ink)}
+.ct-vars{display:flex;flex-wrap:wrap;gap:6px}
+.ct-vars .chip{font:500 13px/1 var(--f-mono,ui-monospace,monospace);min-height:32px}
+.ct-prev{display:grid;gap:8px;padding:var(--s4);border-radius:var(--r-lg);background:var(--sunken)}
+.wa-bubble{justify-self:start;max-width:100%;padding:10px 12px;border-radius:12px 12px 12px 4px;background:#d9fdd3;color:#111b21;font-size:var(--t-sm);line-height:1.5;overflow-wrap:anywhere;box-shadow:0 1px 1px rgb(0 0 0 / .08)}
+[data-tema="escuro"] .wa-bubble{background:#144d37;color:#e9edef}
+.set-row .t .ic.wa{width:16px;height:16px;vertical-align:-3px;margin-right:6px}
+@container (max-width:640px){.ct-grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:820px){.ct-grid{grid-template-columns:minmax(0,1fr)}}
 .gx-slot{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
 #gx-host{position:fixed;z-index:5;background:var(--bg)}
 #gx-host[hidden]{display:none}
@@ -3614,7 +3638,7 @@ function avaliacoes() {
   const waiting = REVIEWS.filter((r) => r.st === "wait" || r.st === "low").length;
   const tabs = rvTabs(v, waiting);
   const pl = st.rvPaused ? "Retomar respostas" : "Pausar respostas";
-  const head = `<header class="pagehead ph-acts ph-ic"><div><h1>Avaliações</h1><p>O que dizem do consultório no Google, as respostas que a Zuri prepara e os pedidos de avaliação.</p>${syncLine("avaliacoes", `Consultório Exemplo · Curitiba${st.rvPaused ? ' · <span class="pill wait"><i></i>Respostas pausadas</span>' : ""}`)}</div>
+  const head = `<header class="pagehead ph-acts ph-ic"><div><h1>Avaliações</h1><p>O que dizem do consultório no Google, as respostas que a Zuri prepara e os pedidos de avaliação.</p>${syncLine("avaliacoes", `${escH(CF_CLINIC.n)} · ${escH(CF_CLINIC.city.split(",")[0])}${st.rvPaused ? ' · <span class="pill wait"><i></i>Respostas pausadas</span>' : ""}`)}</div>
       <div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-sync="avaliacoes" aria-label="Conferir agora" title="Conferir agora">${ic("refresh-cw", "ic-sm")}<span class="lbl-d">Conferir agora</span></button><button class="btn btn-secondary btn-sm" type="button" data-rv-pause aria-label="${pl}" title="${pl}">${ic(st.rvPaused ? "play" : "pause", "ic-sm")}<span class="lbl-d">${pl}</span></button></div></header>`;
   if (v === "visao") return `<div class="page page-wide rv-page">${head}<div class="tabs-row tabs-row-x">${tabs}${rvPeriod()}</div>${rvOverview()}</div>`;
   if (v === "responder" || v === "agente" || v === "conexao" || v === "envio") return `<div class="page page-wide rv-page">${head}<div class="tabs-row">${tabs}</div>${rvAjustes()}</div>`;
@@ -3761,7 +3785,7 @@ const CF = [["modulos", "zap", "Automações"], ["fluxos", "workflow", "Fluxos"]
 const PK = [
   { id: "avaliacao", i: "star", n: "Pedido de avaliação", d: "8 dias depois da consulta, em dia útil, pela caixa do WhatsApp no Chatwoot.", uses: "chatwoot", writes: true },
   { id: "vinculo", i: "link", n: "Ligar avaliação ao contato", d: "Descobre de quem é cada avaliação, pelo link aberto e pelo nome. Nomes iguais esperam você." },
-  { id: "confirma", i: "calendar-check", n: "Confirmação de consulta", d: "Na véspera útil, das 07:00 às 07:30, pede a confirmação e marca a resposta na agenda.", uses: "chatwoot", writes: true },
+  { id: "confirma", i: "calendar-check", n: "Confirmação de consulta", d: "Na véspera útil, envia pelo Chatwoot a mensagem modelo com o link de confirmação. A resposta pelo link muda a situação na agenda. Mensagem e horário em Configurações › Consultório.", uses: "chatwoot", writes: true },
   { id: "plano", i: "mail", n: "Aviso de plano liberado", d: "Quando o plano chega por e-mail, avisa a pessoa com o link.", uses: "chatwoot", writes: true },
   { id: "resultados", i: "chart-column", n: "Relatório das mensagens", d: "Quantas mensagens cada automação mandou e quantas tiveram resposta. Atendimentos e receita ficam em Consultório › Resultados." },
   { id: "espelho", i: "book-user", n: "Contatos iguais no Chatwoot", d: "Mantém nome, etiqueta e bloqueio do contato do Chatwoot iguais aos do Google." },
@@ -3880,8 +3904,8 @@ const memNewDlg = () => {
     </form></div></div>` : "";
 };
 /* ---------- Configurações: todas as seções que já existem na develop (09/11 18:23) ---------- */
-const CFG = [["conta", "user", "Conta", "Você"], ["seg", "shield-check", "Segurança", "Você"], ["assist", "bot", "Assistente", "A Zuri"], ["ia", "gauge", "Uso da IA", "A Zuri"], ["modelos", "sparkles", "Modelos e limites", "A Zuri"], ["agenda", "calendar-days", "Agenda", "Seu dia"], ["avisos", "bell", "Avisos", "Seu dia"], ["integ", "plug", "Integrações", "Conexões"], ["dados", "database", "Dados", "Sistema"], ["diag", "activity", "Diagnóstico", "Sistema"], ["sobre", "info", "Sobre a Zuri", "Sistema"]];
-const CFG_HINT = { conta: "Nome, idioma, fuso e tema", seg: "Senha, duas etapas, passkeys e acessos", assist: "Conversas, iniciativa e prioridades", ia: "Quanto a IA usou hoje e em cada período", modelos: "Modelo de IA, agentes e limites", agenda: "Horário de trabalho, visualização e lembretes", avisos: "O que chega, quando e por qual canal", integ: "Google, Telegram e outros serviços", dados: "Cópias de segurança, espaço e lixeira", diag: "Falhas recentes e como relatar", sobre: "Versão instalada e novidades" };
+const CFG = [["conta", "user", "Conta", "Você"], ["seg", "shield-check", "Segurança", "Você"], ["assist", "bot", "Assistente", "A Zuri"], ["ia", "gauge", "Uso da IA", "A Zuri"], ["modelos", "sparkles", "Modelos e limites", "A Zuri"], ["agenda", "calendar-days", "Agenda", "Seu dia"], ["avisos", "bell", "Avisos", "Seu dia"], ["consultorio", "building-2", "Consultório", "Consultório"], ["integ", "plug", "Integrações", "Conexões"], ["dados", "database", "Dados", "Sistema"], ["diag", "activity", "Diagnóstico", "Sistema"], ["sobre", "info", "Sobre a Zuri", "Sistema"]];
+const CFG_HINT = { conta: "Nome, idioma, fuso e tema", seg: "Senha, duas etapas, passkeys e acessos", assist: "Conversas, iniciativa e prioridades", ia: "Quanto a IA usou hoje e em cada período", modelos: "Modelo de IA, agentes e limites", agenda: "Horário de trabalho, visualização e lembretes", avisos: "O que chega, quando e por qual canal", consultorio: "Endereço, WhatsApp e mensagem aos pacientes", integ: "Google, Telegram e outros serviços", dados: "Cópias de segurança, espaço e lixeira", diag: "Falhas recentes e como relatar", sobre: "Versão instalada e novidades" };
 const hh2 = (h) => `${String(h).padStart(2, "0")}:00`;
 const swRow = (id, t, h, on, dis) => `<div class="set-row"><div class="grow"><p class="t" id="${id}">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div><button class="switch" type="button" role="switch" aria-checked="${on}" aria-labelledby="${id}"${dis ? " disabled" : ""}></button></div>`;
 const ctlRow = (t, h, ctl) => `<div class="set-row"><div class="grow"><p class="t">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div>${ctl}</div>`;
@@ -4029,7 +4053,7 @@ function cfgInteg() {
   return sec("h-g", "Google", "Uma conexão só para a Agenda, os Contatos e as Avaliações. Você escolhe o que cada agenda permite.",
     `<div class="set-row"><div class="grow"><p class="t">${ic("circle-check", "ic-sm")} Conectado como ana@exemplo.com.br</p><p class="hint">Agenda, contatos e avaliações usam a mesma conexão.</p></div><div class="row-actions"><button class="btn btn-quiet btn-sm" type="button" data-x="refresh" data-done="Lista de agendas atualizada. Nada novo.">Atualizar lista</button><button class="btn btn-quiet btn-sm" type="button" data-x="disconnect" data-what="o Google">Desconectar</button></div></div>
      <div class="set-row"><div class="grow"><p class="t">Agendas da conta</p><p class="hint">Pessoal: ler e editar · Curso e esporte: só ler · Feriados no Brasil: só ler</p></div><button class="btn btn-quiet btn-sm" type="button" data-cfg="agenda">Mudar${ic("chevron-right", "ic-sm")}</button></div>
-     <div class="set-row"><div class="grow"><p class="t">Avaliações do Perfil da Empresa</p><p class="hint">Consultório Exemplo · Curitiba. Respostas, pedidos e link ficam em Avaliações › Ajustes.</p></div><button class="btn btn-quiet btn-sm" type="button" data-rv-cfg="conexao">Abrir ajustes${ic("chevron-right", "ic-sm")}</button></div>`)
+     <div class="set-row"><div class="grow"><p class="t">Avaliações do Perfil da Empresa</p><p class="hint">${escH(CF_CLINIC.n)} · ${escH(CF_CLINIC.city.split(",")[0])}. Respostas, pedidos e link ficam em Avaliações › Ajustes.</p></div><button class="btn btn-quiet btn-sm" type="button" data-rv-cfg="conexao">Abrir ajustes${ic("chevron-right", "ic-sm")}</button></div>`)
   + sec("h-gc", "Contatos", "A Zuri copia, só para ler, os contatos das etiquetas que você escolher.",
     `${syncLine("contatos", `A cada 5 min · <span class="num">${inSync().length}</span> contatos`)}
      <div class="set-row"><div class="grow"><p class="t">Etiquetas sincronizadas</p><p class="hint">${[...synced()].join(", ") || "Nenhuma"}</p></div><button class="btn btn-quiet btn-sm" type="button" data-x="ct-labels" aria-haspopup="dialog">Mudar${ic("chevron-right", "ic-sm")}</button></div>
@@ -4072,7 +4096,7 @@ function cfgDiag() {
     `<p class="hint">Relatar abre o formulário do GitHub já preenchido com os dados da falha. Você confere antes de enviar.</p>`);
 }
 
-const CFG_VIEW = { conta: cfgConta, agenda: cfgAgenda, seg: cfgSeg, ia: cfgIa, modelos: cfgModelos, avisos: cfgAvisos, integ: cfgInteg, dados: cfgDados, diag: cfgDiag, sobre: (...a) => cfgSobre(...a) };
+const CFG_VIEW = { conta: cfgConta, agenda: cfgAgenda, consultorio: () => cfgConsultorio(), seg: cfgSeg, ia: cfgIa, modelos: cfgModelos, avisos: cfgAvisos, integ: cfgInteg, dados: cfgDados, diag: cfgDiag, sobre: (...a) => cfgSobre(...a) };
 function configuracoes() {
   const cur = CFG.find((x) => x[0] === st.cfg);
   const items = CFG.map(([k, i, l, g], n) => `${n === 0 || CFG[n - 1][3] !== g ? `<li class="cfg-g">${g}</li>` : ""}<li><a href="${href("configuracoes")}" data-cfg="${k}"${k === st.cfg ? ' aria-current="page"' : ""}>${ic(i, "ic-sm")}<span class="cfg-l"><span>${l}</span><span class="cfg-h">${CFG_HINT[k]}</span></span></a></li>`).join("");
@@ -5273,7 +5297,7 @@ const ACT23 = [
   [(t) => t.matches("[data-ag-outset]"), (t) => { const v = t.dataset.agOutset; st.agOut = v === "0"; render(); refocus(`[data-ag-outset="${v}"]`); }],
   [(t) => t.matches("[data-rv-cfg]"), (t) => { st.rvv = t.dataset.rvCfg; st.p = ""; goTo("avaliacoes"); }],
   [(t) => t.matches("[data-rv-url-get]"), (t) => busy(t, 800, () => say("Link conferido no perfil. Nada mudou."))],
-  [(t) => t.matches("[data-rv-url-test]"), () => say("Abriu a página de avaliação do Consultório Exemplo no Google.")],
+  [(t) => t.matches("[data-rv-url-test]"), () => say(`Abriu a página de avaliação do ${CF_CLINIC.n} no Google.`)],
   [(t) => t.matches("[data-ag-ad]"), () => { st.agAD = !st.agAD; render(); refocus("[data-ag-ad]"); }],
   [(t) => t.matches("[data-ag-out]"), () => { st.agOut = !st.agOut; render(); refocus("[data-ag-out]"); }]
 ];
@@ -5340,7 +5364,7 @@ function linkDlg(opener) {
         <div class="lk-wa" role="img" aria-label="Mensagem do WhatsApp com o link pessoal"><p>Oi, Thiago! Obrigada pela consulta de terça. Se puder, conta para a gente como foi, leva menos de 1 minuto:</p><p class="lk-url num">zuri.exemplo.com.br/a/k7Q2mX9p</p><p>Equipe Exemplo</p><span class="lk-time num">10:02 ✓✓</span></div>
         <p class="hint">O final do link (k7Q2mX9p) é um código sorteado só para este pedido. Ele não tem nome, telefone nem nada que diga quem é.</p></div></li>
       <li><p class="lk-n">2</p><div><p class="t">Ao tocar, a Zuri anota e leva ao Google</p>
-        <p class="lk-flow num"><span>zuri.exemplo.com.br/a/k7Q2mX9p</span>${ic("arrow-right", "ic-sm")}<span>Avaliar o Consultório Exemplo no Google</span></p>
+        <p class="lk-flow num"><span>zuri.exemplo.com.br/a/k7Q2mX9p</span>${ic("arrow-right", "ic-sm")}<span>Avaliar o ${escH(CF_CLINIC.n)} no Google</span></p>
         <ul class="ro-list lk-rules"><li>${ic("shield-check", "ic-sm")}<span>O link só leva à página de avaliação do seu perfil no Google. Não dá para mandar para outro lugar.</span></li>
           <li>${ic("eye-off", "ic-sm")}<span>A prévia que o WhatsApp monta sozinho não conta como aberto.</span></li>
           <li>${ic("timer", "ic-sm")}<span>Vale por 30 dias. Depois, leva ao Google sem anotar nada.</span></li></ul></div></li>
@@ -5498,7 +5522,7 @@ function rvConexao() {
   const ok = st.gbp === "ok";
   const test = st.gbpTest === "..." ? `<p class="hint" role="status">${ic("loader-circle", "ic-sm spin")}Conferindo com o Google…</p>`
     : st.gbpTest === "done" ? (ok
-      ? `<div class="gbp-test" role="status"><p class="label">${ic("circle-check", "ic-sm")}Tudo certo agora, às 09:14</p><ul class="rv-checks"><li>${ic("circle-check", "ic-sm")}Conta do perfil encontrada</li><li>${ic("circle-check", "ic-sm")}Perfil “Consultório Exemplo” verificado</li><li>${ic("circle-check", "ic-sm")}<span class="num">23</span> avaliações lidas</li><li>${ic("circle-check", "ic-sm")}Permissão para responder</li></ul></div>`
+      ? `<div class="gbp-test" role="status"><p class="label">${ic("circle-check", "ic-sm")}Tudo certo agora, às 09:14</p><ul class="rv-checks"><li>${ic("circle-check", "ic-sm")}Conta do perfil encontrada</li><li>${ic("circle-check", "ic-sm")}Perfil “${escH(CF_CLINIC.n)}” verificado</li><li>${ic("circle-check", "ic-sm")}<span class="num">23</span> avaliações lidas</li><li>${ic("circle-check", "ic-sm")}Permissão para responder</li></ul></div>`
       : `<div class="gbp-test gbp-test-no" role="status"><p class="label">${ic("circle-alert", "ic-sm")}O Google ainda não liberou o acesso</p><p class="hint">A conta e a permissão estão certas. Falta o Google aprovar o pedido de acesso: veja o passo a passo abaixo. A Zuri confere de novo sozinha a cada 6 horas.</p></div>`)
     : "";
   const conexao = sec("h-gbp1", "Conexão com o Perfil da Empresa", "A Zuri lê e responde as avaliações com a sua conta do Google. Não há chave para colar: a permissão é dada no próprio Google.",
@@ -5507,7 +5531,7 @@ function rvConexao() {
       ${gbpRow("ok", "Permissão para gerenciar o perfil", "Dada em 02/11. Serve para ler as avaliações e publicar as respostas.", `<button class="btn btn-quiet btn-sm" type="button" data-x="gbp-perm">Pedir de novo</button>`)}
       ${ok ? gbpRow("ok", "Acesso liberado pelo Google", "Liberado. Até 300 consultas por minuto, muito acima do que a Zuri usa.")
         : gbpRow("wait", "Acesso liberado pelo Google", "Pedido feito, esperando o Google. Enquanto isso, nada é lido nem publicado.", `<a class="btn btn-secondary btn-sm" href="#gbp-como">Ver como pedir</a>`)}
-      ${gbpRow(ok ? "ok" : "wait", "Perfil", ok ? "Consultório Exemplo · Curitiba · verificado. Dá para escolher até 3." : "Aparece depois que o Google liberar o acesso.", ok ? `<button class="btn btn-quiet btn-sm" type="button" data-x="gbp-perfil">Trocar</button>` : "")}
+      ${gbpRow(ok ? "ok" : "wait", "Perfil", ok ? `${CF_CLINIC.n} · ${CF_CLINIC.city.split(",")[0]} · verificado. Dá para escolher até 3.` : "Aparece depois que o Google liberar o acesso.", ok ? `<button class="btn btn-quiet btn-sm" type="button" data-x="gbp-perfil">Trocar</button>` : "")}
     </ul>${test}`,
     `<button class="btn btn-secondary" type="button" data-gbp-test>${ic("plug-zap", "ic-sm")}Testar conexão</button><span class="hint">Lê a conta, o perfil e uma página de avaliações. Não publica nada.</span>`);
 
@@ -5548,7 +5572,7 @@ function rvConexao() {
 function rvEnvio() {
   return `<div class="rv-cfg">
     ${sec("h-re1", "Link de avaliação", "Para onde o pedido leva. A Zuri busca o link no seu Perfil da Empresa; cole um só se o Google não entregar.",
-      `<label class="field"><span class="label">Link de avaliação do perfil no Google</span><input class="input num" id="rv-url" value="https://g.page/r/EXEMPLO/review" inputmode="url" autocomplete="off" maxlength="300"><span class="hint">Puxado do perfil “Consultório Exemplo” em 09/11. Só vale endereço do Google, com https.</span></label>
+      `<label class="field"><span class="label">Link de avaliação do perfil no Google</span><input class="input num" id="rv-url" value="https://g.page/r/EXEMPLO/review" inputmode="url" autocomplete="off" maxlength="300"><span class="hint">Puxado do perfil “${escH(CF_CLINIC.n)}” em 09/11. Só vale endereço do Google, com https.</span></label>
        <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-rv-url-get>${ic("refresh-cw", "ic-sm")}Buscar no perfil</button><button class="btn btn-quiet btn-sm" type="button" data-rv-url-test>${ic("external-link", "ic-sm")}Abrir para conferir</button></div>
        <div class="set-row"><div class="grow"><p class="t">Endereço curto de cada pedido</p><p class="hint">O começo é o endereço da sua Zuri. O final é um código sorteado para cada pedido, sem nome nem telefone. Vale 30 dias.</p><p class="lk-url num">zuri.exemplo.com.br/a/k7Q2mX9p</p></div></div>
        <p class="hint"><button class="linkbtn" type="button" data-x="link-ex" aria-haspopup="dialog">Como funciona o link</button></p>`, save("Salvar link"))}
@@ -5575,7 +5599,7 @@ function rvResponder() {
   const sw = (id, on, attr, t, d) => `<div class="set-row"><div class="grow"><p class="t" id="${id}">${t}</p><p class="hint">${d}</p></div><button class="switch" type="button" role="switch" aria-checked="${on}" aria-labelledby="${id}" ${attr}></button></div>`;
   return `<div class="rv-cfg">
     <section class="card set-sec" aria-labelledby="h-rc1"><h2 id="h-rc1">Sobre o consultório</h2><p>O que a Zuri pode dizer com segurança. Entra no rascunho como informação, nunca como ordem.</p>
-      <div class="form-grid"><label class="field"><span class="label">Nome que aparece</span><input class="input" value="Consultório Exemplo" maxlength="60"><span class="hint">Vem do seu Perfil da Empresa no Google. Mude só se quiser outro nome nas respostas.</span></label>
+      <div class="form-grid"><label class="field"><span class="label">Nome que aparece</span><input class="input" value="${escH(CF_CLINIC.n)}" maxlength="60"><span class="hint">Vem do seu Perfil da Empresa no Google. Mude só se quiser outro nome nas respostas.</span></label>
         <label class="field"><span class="label">Como chamar quem é atendido</span><select class="input"><option>Paciente</option><option>Cliente</option><option selected>Pelo primeiro nome, sem rótulo</option></select></label></div>
       <label class="field"><span class="label">Fatos que a Zuri pode citar</span><textarea class="input" rows="3" maxlength="600">Atendimento com hora marcada, de segunda a sexta. Ambiente tranquilo, com estacionamento ao lado.</textarea><span class="hint">Até 600 caracteres. A Zuri não inventa nada além disso. Sem telefone, endereço, preço ou link: a conferência barra.</span></label>
       <label class="field"><span class="label">Canal oficial</span><input class="input" value="pelo WhatsApp do consultório" maxlength="80"><span class="hint">Para onde a resposta convida a pessoa a conversar. Sem número: o Google já mostra o botão de contato no perfil.</span></label>
@@ -6374,6 +6398,7 @@ function lanes(list) {
 const AG_HR = 48;
 /* Ícones que faltavam no conjunto do protótipo (Lucide). */
 Object.assign(ICONS.lucide, {
+  stethoscope: '<path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>',
   video: '<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
   "calendar-x": '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m14 14-4 4"/><path d="m10 14 4 4"/>',
   "circle-x": '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
@@ -6586,64 +6611,159 @@ function evDlg(e, opener) {
    O link abre uma página sem login que mostra o primeiro nome, o dia, a hora e o tipo. Ela tem dois botões:
    confirmar e não vou poder ir. Mudar o dia ou o horário é com a equipe. Abrir o link não muda nada:
    só o toque num botão muda (o WhatsApp abre o link sozinho para montar a prévia). */
-const CF_CLINIC = { n: "Consultório Exemplo", wa: "(41) 3333-0000" };
-const CF_LIMIT_H = 2;
+/* Dados do consultório: um lugar só (Configurações › Consultório). A página do link, as mensagens
+   aos pacientes e as Avaliações leem daqui, então mudar aqui muda em todo o sistema. */
+const CF_CLINIC = { n: "Consultório Exemplo", addr: "Rua das Flores, 120, sala 304 · Centro", city: "Curitiba, PR", wa: "(41) 3333-0000" };
+/* Cancelar pelo link: até 12 horas antes e nunca no próprio dia da consulta (regra do Pablo, 12/11).
+   O prazo é o que vier primeiro: 12 horas antes ou o fim do dia anterior. */
+const CF_LIMIT_H = 12;
+/* Mensagem modelo da confirmação. A mesma vai pelo Chatwoot (automático) e pelo botão do WhatsApp. */
+const CF_TPL_DEFAULT = "Olá, {nome}! Sua *{tipo}* no *{consultorio}* está marcada para *{dia}, às {hora}*.\n{local}\n\nConfirme sua presença por este link:\n{link}\n\nSe não puder vir, cancele pelo mesmo link até {prazo}. Para mudar o dia ou o horário, fale com a nossa equipe: {whatsapp}.";
+const CF_VARS = [["nome", "Primeiro nome do paciente"], ["tipo", "Tipo do agendamento, como consulta ou retorno"], ["dia", "Dia da semana e data"], ["hora", "Hora do início"], ["local", "Endereço, ou “Atendimento online”"], ["link", "Link de confirmação (obrigatório)"], ["prazo", "Até quando dá para cancelar pelo link"], ["consultorio", "Nome do consultório"], ["whatsapp", "WhatsApp da equipe"]];
+const CF_TPL_MAX = 1000;
+const CFM = { tpl: CF_TPL_DEFAULT, hour: 7, get auto() { return UI.switches.get("cf-auto-t") === true; } };
 const cfCel = (e) => { const p = e.pid && pById(e.pid); return p ? cellOf(p) : e.ddi === "BR" || !e.ddi ? e.cel || "" : ""; };
 const cfFirst = (e) => { const p = e.pid && pById(e.pid); return (p ? p.n : e.t).replace(/^Dra?\. /, "").split(" ")[0]; };
 const cfLink = (e) => `exemplo.com.br/c/${(`k7Qx${e.id}Vt3mZ9rWp2aLs8YdN4` + e.id).slice(0, 22)}`;
 const cfStart = (e) => { const d = dOf(e.day); d.setHours(e.h, e.m, 0, 0); return d; };
 const cfNow = () => { const d = new Date(AG_NOW); const m = nowMin(); d.setHours(Math.floor(m / 60), m % 60, 0, 0); return d; };
 const cfPast = (e) => cfStart(e) <= cfNow();
-const cfLate = (e) => cfStart(e) - cfNow() < CF_LIMIT_H * 3600000;
+const cfDeadline = (e) => { const a = new Date(cfStart(e) - CF_LIMIT_H * 3600000), b = dOf(e.day); b.setMinutes(-1); return a < b ? a : b; };
+const cfLate = (e) => cfNow() > cfDeadline(e);
 const cfWhen = (e) => `${dayShort(dOf(e.day))} às ${hmm(e.h * 60 + e.m)}`;
+const cfDeadTxt = (e) => { const d = cfDeadline(e); return `${dayLong(d).toLowerCase()}, às ${hmm(d.getHours() * 60 + d.getMinutes())}`; };
+/* Véspera útil: o último dia útil antes da consulta, sem fim de semana nem feriado. */
+const cfSendDay = (e) => { let d = addD(dOf(e.day), -1); while (fimDeSemana(d) || feriado(d)) d = addD(d, -1); return d; };
+function cfVars(e) {
+  const online = /Online/.test(e.tipo);
+  return { nome: cfFirst(e), tipo: e.tipo.split(" | ")[0].toLowerCase(), dia: dayLong(dOf(e.day)).toLowerCase(), hora: hmm(e.h * 60 + e.m), local: online ? "Atendimento online: a equipe envia o link da chamada." : `Endereço: ${CF_CLINIC.addr}, ${CF_CLINIC.city}.`, link: `https://${cfLink(e)}`, prazo: cfDeadTxt(e), consultorio: CF_CLINIC.n, whatsapp: CF_CLINIC.wa };
+}
+const cfFill = (tpl, v) => tpl.replace(/\{([a-z]+)\}/g, (m, k) => (k in v ? v[k] : m));
+const cfMsg = (e) => cfFill(CFM.tpl, cfVars(e));
+const cfWaHref = (e) => `https://wa.me/55${cfCel(e).replace(/\D/g, "")}?text=${encodeURIComponent(cfMsg(e))}`;
+/* Prévia como no WhatsApp: escapa tudo e só depois troca *texto* por negrito. */
+const cfWaHtml = (txt) => escH(txt).replace(/\*([^*\n]+)\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+function cfTplCheck(tpl) {
+  const bad = [...tpl.matchAll(/\{([^}]*)\}/g)].map((m) => m[1]).filter((k) => !CF_VARS.some((v) => v[0] === k));
+  if (!tpl.trim()) return "Escreva a mensagem.";
+  if (tpl.length > CF_TPL_MAX) return `A mensagem passou de ${CF_TPL_MAX} caracteres.`;
+  if (!tpl.includes("{link}")) return "A mensagem precisa ter {link}, senão o paciente não tem como confirmar.";
+  if (bad.length) return `Não conheço ${bad.map((k) => `{${k}}`).join(", ")}. Use só as variáveis da lista.`;
+  return "";
+}
 function cfBox(e) {
   if (e.ro || !e.tipo) return "";
   /* Tudo que vai para o HTML sai escapado, mesmo o que a própria Zuri gerou. */
   const id = escH(e.id);
   const cf = e.cf || {};
   const past = cfPast(e);
-  const lbl = cf.st === "confirmou" ? ["on", `Confirmou pelo link ${cf.w}`] : cf.st === "cancelou" ? ["bad", `Cancelou pelo link ${cf.w}`] : cf.st === "enviado" ? ["wait", `Link enviado ${cf.w}. Ainda sem resposta.`] : ["off", "Link ainda não enviado"];
+  const via = cf.via === "chatwoot" ? "pelo Chatwoot" : "pelo WhatsApp";
+  const lbl = cf.st === "confirmou" ? ["on", `Confirmou pelo link ${cf.w}`] : cf.st === "cancelou" ? ["bad", `Cancelou pelo link ${cf.w}`] : cf.st === "enviado" ? ["wait", `Enviado ${via} ${cf.w}. Ainda sem resposta.`] : ["off", "Ainda não enviado"];
   const cel = cfCel(e);
-  const acts = past || e.s === "cancelado" ? "" : `<div class="cf-acts">${cel ? `<button class="btn btn-secondary btn-sm" type="button" data-cf-wa="${id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</button>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${id}">${ic("copy", "ic-sm")}Copiar link</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
-    <p class="hint">${cel ? "Abre o WhatsApp com a mensagem e o link. Você confere e envia." : "Sem celular neste agendamento: copie o link e envie por onde preferir."} A resposta muda a situação e a cor no Google sozinha, e chega em Avisos.</p>`;
+  const auto = CFM.auto && !cf.st && !past && e.s !== "cancelado" && cel ? `<p class="hint">${ic("send-horizontal", "ic-sm")}Sai sozinho pelo Chatwoot em ${escH(dayShort(cfSendDay(e)))}, às ${hh2(CFM.hour)}. Se você enviar antes pelo WhatsApp, o automático não repete.</p>` : "";
+  const acts = past || e.s === "cancelado" ? "" : `<div class="cf-acts">${cel ? `<a class="btn btn-secondary btn-sm" href="${escH(cfWaHref(e))}" target="_blank" rel="noopener" data-cf-wa="${id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</a>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${id}">${ic("copy", "ic-sm")}Copiar mensagem</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
+    <p class="hint">${cel ? "Abre o WhatsApp Web com a mensagem modelo já preenchida. Você confere e envia." : "Sem celular neste agendamento: copie a mensagem e envie por onde preferir."} <button class="linkbtn" type="button" data-cfg-go-to="consultorio">Editar a mensagem modelo</button></p>`;
   return `<section class="cf-box" aria-labelledby="cf-h"><p class="cf-h" id="cf-h">${ic("calendar-check", "ic-sm")}Confirmação do paciente</p>
-    <p class="cf-st"><span class="pill ${lbl[0]}"><i></i>${escH(lbl[1])}</span></p>${past ? `<p class="hint">A consulta já passou. O link não vale mais.</p>` : ""}${acts}</section>`;
+    <p class="cf-st"><span class="pill ${lbl[0]}"><i></i>${escH(lbl[1])}</span></p>${past ? `<p class="hint">A consulta já passou. O link não vale mais.</p>` : ""}${auto}${acts}</section>`;
 }
-function cfMsg(e) {
-  return `Olá, ${cfFirst(e)}! Sua ${e.tipo.split(" | ")[0].toLowerCase()} no ${CF_CLINIC.n} está marcada para ${dayLong(dOf(e.day)).toLowerCase()}, às ${hmm(e.h * 60 + e.m)}. Confirme ou cancele por aqui: https://${cfLink(e)}. Para mudar o dia ou o horário, fale com a nossa equipe.`;
+/* Configurações › Consultório: os dados que o sistema inteiro usa, a mensagem modelo e como ela sai. */
+function cfExample() { const k = dkey(AG_NOW); return EV.filter((x) => x.tipo && x.s === "agendado" && x.day > k).sort((a, b) => (a.day < b.day ? -1 : 1))[0] || EV.find((x) => x.tipo); }
+function cfNextRun() {
+  let d = new Date(AG_NOW);
+  if (fimDeSemana(d) || feriado(d) || nowMin() >= CFM.hour * 60) d = addD(d, 1);
+  while (fimDeSemana(d) || feriado(d)) d = addD(d, 1);
+  const k = dkey(d), n = EV.filter((e) => e.tipo && !e.ro && (e.s === "agendado" || e.s === "reagendado") && cfCel(e) && !cfPast(e) && dkey(cfSendDay(e)) === k).length;
+  return { d, n };
+}
+function cfgConsultorio() {
+  const c = CF_CLINIC, ex = cfExample(), nx = cfNextRun();
+  const fld = (id, l, v, extra = "") => `<label class="field"><span class="label">${l}</span><input class="input" data-cc="${id}" value="${escH(v)}" ${extra}></label>`;
+  const hours = Array.from({ length: 14 }, (_, k) => k + 7).map((h) => `<option value="${h}"${h === CFM.hour ? " selected" : ""}>${hh2(h)}</option>`).join("");
+  return sec("h-cc", "Dados do consultório", "Um lugar só. A página de confirmação, as mensagens aos pacientes e as Avaliações usam o que estiver aqui: mudou aqui, muda em todo o sistema.",
+    `<div class="form-grid">${fld("n", "Nome do consultório", c.n, 'maxlength="80" autocomplete="organization"')}${fld("wa", "WhatsApp da equipe", c.wa, 'inputmode="tel" data-mask="cel" maxlength="16" placeholder="(41) 3333-0000"')}
+      ${fld("addr", "Endereço", c.addr, 'maxlength="160" autocomplete="street-address" placeholder="Rua, número, sala · Bairro"')}${fld("city", "Cidade e estado", c.city, 'maxlength="60" placeholder="Curitiba, PR"')}</div>
+      <p class="hint">Aparece em: página de confirmação do paciente, mensagem de confirmação (Chatwoot e WhatsApp), pedido de avaliação e perfil em Avaliações.</p><p class="hint" data-cc-err role="status"></p>`,
+    `<button class="btn btn-primary" type="button" data-cc-save>Salvar os dados</button>`)
+  + sec("h-ct", "Mensagem de confirmação", "O modelo que vai para o paciente, pelo Chatwoot e pelo botão do WhatsApp. Toque numa variável para pôr no texto; ela vira o dado de cada agendamento. *Texto entre asteriscos* sai em negrito no WhatsApp.",
+    `<div class="ct-grid"><div class="ct-edit"><label class="label" for="cf-tpl">Mensagem</label><textarea id="cf-tpl" class="input ct-ta" rows="9" maxlength="${CF_TPL_MAX}" data-cf-tpl aria-describedby="cf-tpl-n cf-tpl-err">${escH(CFM.tpl)}</textarea>
+        <p class="ct-meta"><span class="hint num" id="cf-tpl-n" data-cf-tpl-n>${CFM.tpl.length} de ${CF_TPL_MAX}</span><span class="hint err" id="cf-tpl-err" data-cf-tpl-err role="status"></span></p>
+        <div class="ct-vars" role="group" aria-label="Variáveis">${CF_VARS.map(([k, d]) => `<button type="button" class="chip" data-cf-var="${k}" title="${d}">{${k}}</button>`).join("")}</div></div>
+      <div class="ct-prev"><p class="label">Como chega${ex ? ` para ${escH(cfFirst(ex))}` : ""}</p><div class="wa-bubble" data-cf-prev>${ex ? cfWaHtml(cfMsg(ex)) : ""}</div><p class="hint">Exemplo com o próximo agendamento da agenda.</p></div></div>`,
+    `<button class="btn btn-quiet" type="button" data-cf-tpl-reset>Voltar ao modelo padrão</button><span class="grow"></span><button class="btn btn-primary" type="button" data-cf-tpl-save>Salvar a mensagem</button>`)
+  + sec("h-cs", "Como a confirmação sai", "Dois jeitos, com a mesma mensagem e o mesmo link. A resposta pelo link muda a situação e a cor na agenda e chega em Avisos.",
+    `<div class="set-row"><div class="grow"><p class="t">${WA}Pelo WhatsApp, por você</p><p class="hint">Nos detalhes de cada agendamento, “Enviar pelo WhatsApp” abre o WhatsApp Web com a mensagem pronta para o paciente. Você confere e envia.</p></div><span class="pill on"><i></i>Sempre disponível</span></div>
+      ${swRow("cf-auto-t", "Automático, pelo Chatwoot", `Na véspera útil, a Zuri envia a mensagem pela caixa do WhatsApp no Chatwoot para quem tem consulta ou retorno Agendado ou Reagendado e tem celular. Quem já recebeu pelo WhatsApp, cancelou ou já passou fica de fora. Uma mensagem por vez, no intervalo da credencial.`, CFM.auto)}
+      ${ctlRow("Horário do envio automático", `Próximo envio: ${dayShort(nx.d)}, às ${hh2(CFM.hour)}, para ${nx.n} ${nx.n === 1 ? "paciente" : "pacientes"}. Sábado, domingo e feriado não têm envio: a consulta de segunda recebe na sexta.`, `<label class="sr" for="cf-hour">Horário do envio automático</label><select id="cf-hour" class="input input-sm" data-cf-hour>${hours}</select>`)}
+      ${ctlRow("Credencial", "A chave do Chatwoot fica no servidor e nunca aparece aqui.", `<button class="btn btn-secondary btn-sm" type="button" data-cf-cred>${ic("key-round", "ic-sm")}Chatwoot · caixa do WhatsApp</button>`)}`);
 }
 /* Página do paciente: fora da Zuri, sem menu e sem login. */
 function confirmar() {
   if (!st.cfe) { const k = dkey(AG_NOW); const f = EV.filter((x) => x.tipo && x.s === "agendado" && x.day > k).sort((a, b) => (a.day < b.day ? -1 : 1))[0]; st.cfe = f ? f.id : ""; }
   const e = evById(st.cfe);
   const mode = st.cfv || "valido";
-  const head = `<header class="cf-brand"><span class="cf-logo" aria-hidden="true">CE</span><span>${CF_CLINIC.n}</span></header>`;
+  const ini = CF_CLINIC.n.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  const head = `<header class="cf-brand"><span class="cf-logo" aria-hidden="true">${escH(ini)}</span><span>${escH(CF_CLINIC.n)}</span></header>`;
   const team = `<a class="btn btn-secondary btn-block" href="${waLink(CF_CLINIC.wa)}" target="_blank" rel="noopener">${WA}Falar com a equipe</a>`;
-  const proto = `<div class="cf-proto proto-only"><div class="seg" role="group" aria-label="Ver o link no protótipo">${[["valido", "Link válido"], ["passou", "Consulta passou"], ["invalido", "Link inválido"]].map(([k, l]) => `<button type="button" data-cf-v="${k}" aria-pressed="${mode === k}">${l}</button>`).join("")}</div><a class="btn btn-quiet btn-sm" href="${href("agenda")}">${ic("arrow-left", "ic-sm")}Voltar para a Agenda</a></div>`;
+  const proto = `<div class="cf-proto proto-only"><div class="seg" role="group" aria-label="Ver o link no protótipo">${[["valido", "Link válido"], ["prazo", "Fora do prazo"], ["passou", "Consulta passou"], ["invalido", "Link inválido"]].map(([k, l]) => `<button type="button" data-cf-v="${k}" aria-pressed="${mode === k}">${l}</button>`).join("")}</div><a class="btn btn-quiet btn-sm" href="${href("agenda")}">${ic("arrow-left", "ic-sm")}Voltar para a Agenda</a></div>`;
   let body;
   if (!e || mode === "invalido") body = `<div class="cf-state">${ic("link-2-off")}<h1 tabindex="-1">Este link não vale mais</h1><p>Ele pode ter sido digitado errado ou a consulta pode ter mudado. Fale com a nossa equipe pelo WhatsApp.</p></div>${team}`;
   else if (mode === "passou" || cfPast(e)) body = `<div class="cf-state">${ic("clock")}<h1 tabindex="-1">Esta consulta já passou</h1><p>Para marcar uma nova, fale com a nossa equipe pelo WhatsApp.</p></div>${team}`;
   else {
     const online = /Online/.test(e.tipo);
-    const card = `<dl class="cf-det"><div>${ic("calendar-days", "ic-sm")}<dt class="sr">Dia</dt><dd>${dayLong(dOf(e.day))}</dd></div><div>${ic("clock", "ic-sm")}<dt class="sr">Horário</dt><dd>${evWhen(e)}</dd></div><div>${ic(online ? "video" : "map-pin", "ic-sm")}<dt class="sr">Tipo</dt><dd>${e.tipo.replace(" | ", " · ")}</dd></div></dl>`;
-    const late = cfLate(e);
+    const card = `<dl class="cf-det"><div>${ic("calendar-days", "ic-sm")}<dt class="sr">Dia</dt><dd>${dayLong(dOf(e.day))}</dd></div><div>${ic("clock", "ic-sm")}<dt class="sr">Horário</dt><dd>${evWhen(e)}</dd></div><div>${ic(online ? "video" : "stethoscope", "ic-sm")}<dt class="sr">Tipo</dt><dd>${escH(e.tipo.replace(" | ", " · "))}</dd></div><div>${ic(online ? "monitor" : "map-pin", "ic-sm")}<dt class="sr">Onde</dt><dd>${online ? "Online: a equipe envia o link da chamada" : `${escH(CF_CLINIC.addr)}<span class="cf-city">${escH(CF_CLINIC.city)}</span>`}</dd></div></dl>`;
+    const late = mode === "prazo" || cfLate(e);
+    const lateNote = `<p class="cf-note">${ic("info", "ic-sm")}<span>O prazo para cancelar por aqui acabou: vai até 12 horas antes e só até o dia anterior. Se não puder vir, fale com a nossa equipe pelo WhatsApp.</span></p>`;
+    const cancelBtn = (l) => `<button class="btn btn-quiet btn-block cf-cancel" type="button" data-cf-ask>${ic("calendar-x", "ic-sm")}${l}</button><p class="cf-note cf-dead">Dá para cancelar por aqui até ${cfDeadTxt(e)}.</p>`;
     if (e.s === "cancelado") body = `<div class="cf-state">${ic("calendar-x")}<h1 tabindex="-1">Consulta cancelada</h1><p>Para marcar outro dia, fale com a nossa equipe pelo WhatsApp.</p></div>${card}${team}`;
-    else if (st.cfask) body = `<h1 class="cf-t" tabindex="-1">Cancelar a consulta?</h1><p class="cf-sub">${cfFirst(e)}, a consulta de ${dayLong(dOf(e.day)).toLowerCase()}, às ${hmm(e.h * 60 + e.m)}, será cancelada e o horário fica livre para outra pessoa.</p>${card}
-      <div class="cf-btns"><button class="btn btn-danger btn-block btn-lg" type="button" data-cf-do="cancelar">Sim, cancelar a consulta</button><button class="btn btn-secondary btn-block" type="button" data-cf-back>Voltar</button></div>`;
-    else {
-      const ok = e.s === "confirmado";
-      body = `${ok ? `<div class="cf-ok" role="status" tabindex="-1">${ic("circle-check")}<span><b>Presença confirmada.</b> Até lá, ${cfFirst(e)}!</span></div>` : `<h1 class="cf-t">Olá, ${cfFirst(e)}!</h1><p class="cf-sub">Você vem à sua consulta?</p>`}${card}
-        <div class="cf-btns">${ok ? "" : `<button class="btn btn-primary btn-block btn-lg" type="button" data-cf-do="confirmar">${ic("check", "ic-sm")}Confirmar presença</button>`}
-        ${late ? `<p class="cf-note">${ic("info", "ic-sm")}<span>Faltam menos de ${CF_LIMIT_H} horas. Para cancelar agora, fale com a nossa equipe.</span></p>` : `<button class="btn btn-secondary btn-block" type="button" data-cf-ask>${ic("x", "ic-sm")}Não vou poder ir</button>`}</div>
-        <p class="cf-note">${ic("calendar-clock", "ic-sm")}<span>Precisa mudar o dia ou o horário? Fale com a nossa equipe pelo WhatsApp ${CF_CLINIC.wa}.</span></p>${team}`;
-    }
+    else if (e.s === "confirmado") body = `<div class="cf-ok" role="status" tabindex="-1">${ic("circle-check")}<span><b>Presença confirmada.</b> Até lá, ${escH(cfFirst(e))}!</span></div>${card}
+        <p class="cf-note">${ic("calendar-clock", "ic-sm")}<span>Precisa mudar o dia ou o horário? Fale com a nossa equipe pelo WhatsApp ${escH(CF_CLINIC.wa)}.</span></p>${team}
+        <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Não vou mais poder ir: cancelar a consulta")}</div>`;
+    else body = `<h1 class="cf-t" tabindex="-1">Olá, ${escH(cfFirst(e))}!</h1><p class="cf-sub">Confirme sua presença na consulta.</p>${card}
+        <div class="cf-btns"><button class="btn btn-primary btn-block btn-lg" type="button" data-cf-do="confirmar">${ic("check", "ic-sm")}Confirmar presença</button></div>
+        <p class="cf-note">${ic("calendar-clock", "ic-sm")}<span>Precisa mudar o dia ou o horário? Fale com a nossa equipe pelo WhatsApp ${escH(CF_CLINIC.wa)}.</span></p>${team}
+        <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Não vou poder ir: cancelar a consulta")}</div>`;
   }
   return `<main id="conteudo" class="cf-page">${proto}<div class="cf-card">${head}${body}<p class="cf-foot">Este link é só seu. Não mostra seu telefone nem outros dados.</p></div></main>`;
 }
+/* Cancelar pede uma segunda confirmação numa janela, com o foco em "manter": dois toques sem querer não cancelam. */
+function cfAsk(opener) {
+  const e = evById(st.cfe);
+  if (!e) return;
+  dlgShow({ t: "Cancelar a consulta?", sub: `${escH(cfFirst(e))}, a consulta de ${dayLong(dOf(e.day)).toLowerCase()}, às ${hmm(e.h * 60 + e.m)}, será cancelada e o horário fica livre para outra pessoa. Para marcar de novo, você vai precisar falar com a equipe.`,
+    body: "", foot: `<button class="btn btn-danger" type="button" data-dlg-ok>Sim, cancelar a consulta</button><span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Não, manter a consulta</button>`,
+    ok: () => { if (cfLate(e) || st.cfv === "prazo") { say("O prazo para cancelar por aqui acabou."); return; } DLG.opener = null; cfAnswer(e, "cancelar"); render(); refocus(".cf-state h1"); } }, opener);
+  const box = document.querySelector("#dlg-host .dlg-box");
+  if (box) { box.setAttribute("role", "alertdialog"); box.classList.add("dlg-sm"); }
+}
+const dlgRawIn = (sel) => { const e = document.querySelector(sel); return e ? e.value.trim() : ""; };
+/* Prévia ao vivo: o texto vai por escape antes de virar HTML, e só *negrito* e quebras de linha são trocados. */
+function cfTplLive() {
+  const ta = document.querySelector("[data-cf-tpl]");
+  if (!ta) return;
+  const ex = cfExample(), m = cfTplCheck(ta.value);
+  const n = document.querySelector("[data-cf-tpl-n]"), er = document.querySelector("[data-cf-tpl-err]"), pv = document.querySelector("[data-cf-prev]");
+  if (n) n.textContent = `${ta.value.length} de ${CF_TPL_MAX}`;
+  if (er) er.textContent = m;
+  ta.setAttribute("aria-invalid", String(!!m));
+  if (pv && ex) cfWaNodes(pv, cfFill(ta.value, cfVars(ex)));
+}
+/* A mesma prévia montada com nós de texto: o que a pessoa digita nunca vira HTML. */
+function cfWaNodes(box, txt) {
+  box.replaceChildren();
+  txt.split("\n").forEach((line, i) => {
+    if (i) box.appendChild(document.createElement("br"));
+    line.split(/(\*[^*\n]+\*)/).forEach((part) => {
+      if (/^\*[^*\n]+\*$/.test(part)) { const b = document.createElement("b"); b.textContent = part.slice(1, -1); box.appendChild(b); }
+      else if (part) box.appendChild(document.createTextNode(part));
+    });
+  });
+}
+document.addEventListener("input", (ev) => { if (ev.target.matches && ev.target.matches("[data-cf-tpl]")) cfTplLive(); if (ev.target.matches && ev.target.matches('[data-cc="wa"]') && !(ev.inputType || "").startsWith("delete")) ev.target.value = MASK.cel(ev.target.value, "BR"); });
+document.addEventListener("change", (ev) => { if (ev.target.matches && ev.target.matches("[data-cf-hour]")) { CFM.hour = Number(pick(ev.target.value, Array.from({ length: 14 }, (_, k) => String(k + 7)))); render(); refocus("[data-cf-hour]"); } });
 function cfAnswer(e, what) {
   const w = `hoje às ${hm(nowMin())}`;
-  if (what === "confirmar") { e.s = "confirmado"; e.cf = { st: "confirmou", w }; }
-  else { e.s = "cancelado"; e.cf = { st: "cancelou", w }; }
+  if (what === "confirmar") { e.s = "confirmado"; e.cf = { ...e.cf, st: "confirmou", w }; }
+  else { e.s = "cancelado"; e.cf = { ...e.cf, st: "cancelou", w }; }
   AVISOS.unshift({ id: `cf${e.id}${what}`, ic: what === "confirmar" ? "calendar-check" : "calendar-x", t: `${e.t} ${what === "confirmar" ? "confirmou" : "cancelou"} pelo link`, d: `Consulta de ${cfWhen(e)}. A situação e a cor no Google já mudaram.`, w: `Hoje, ${hm(nowMin())}`, s: "agenda", b: "Ver", unread: true, seen: false });
 }
 
@@ -6888,13 +7008,39 @@ const ACT1211 = [
   [(t) => t.matches("[data-ev-del]"), (t) => { const e = evById(t.dataset.evDel), op = DLG.opener; dlgClose(); if (e) confirmDlg("Apagar este evento?", "Ele sai também do Google Agenda. Para guardar o histórico do cliente, prefira marcar como Cancelado.", "Apagar", () => { DLG.opener = null; evCommit(`“${e.t}” apagado daqui e do Google Agenda.`, () => { EV = EV.filter((x) => x !== e); }); }, op); }],
   [(t) => t.matches("[data-x=evento]"), (t) => evEdit(null, {}, t)],
   [(t) => t.matches("[data-agendar]"), (t) => agFromContact(t.dataset.agendar)],
-  [(t) => t.matches("[data-cf-wa]"), (t) => { const e = evById(t.dataset.cfWa); if (!e) return; e.cf = { st: "enviado", w: `hoje às ${hm(nowMin())}` }; const op = DLG.opener; evDlg(e, op); say(`WhatsApp aberto com a mensagem para ${cfFirst(e)}. Confira e envie.`); }],
+  [(t) => t.matches("[data-cf-wa]"), (t) => { const e = evById(t.dataset.cfWa); if (!e) return; e.cf = { st: "enviado", via: "whatsapp", w: `hoje às ${hm(nowMin())}` }; const op = DLG.opener; evDlg(e, op); refocus("[data-cf-wa]"); say(`WhatsApp aberto com a mensagem para ${cfFirst(e)}. Confira e envie.`); }],
   [(t) => t.matches("[data-cf-copy]"), (t) => { const e = evById(t.dataset.cfCopy); if (!e) return; try { navigator.clipboard.writeText(cfMsg(e)); } catch (_) { /* sem permissão */ } say("Mensagem com o link copiada."); }],
-  [(t) => t.matches("[data-cf-see]"), (t) => { st.cfe = t.dataset.cfSee; st.cfv = "valido"; st.cfask = false; DLG.opener = null; dlgClose(); goTo("confirmar"); }],
-  [(t) => t.matches("[data-cf-v]"), (t) => { st.cfv = pick(t.dataset.cfV, ["valido", "passou", "invalido"]); st.cfask = false; render(); refocus(`[data-cf-v="${st.cfv}"]`); }],
-  [(t) => t.matches("[data-cf-ask]"), () => { st.cfask = true; render(); refocus(".cf-t"); }],
-  [(t) => t.matches("[data-cf-back]"), () => { st.cfask = false; render(); refocus("[data-cf-ask]"); }],
-  [(t) => t.matches("[data-cf-do]"), (t) => { const e = evById(st.cfe); if (!e) return; cfAnswer(e, t.dataset.cfDo === "confirmar" ? "confirmar" : "cancelar"); st.cfask = false; render(); refocus(".cf-ok, .cf-state h1"); }]
+  [(t) => t.matches("[data-cf-see]"), (t) => { st.cfe = t.dataset.cfSee; st.cfv = "valido"; DLG.opener = null; dlgClose(); goTo("confirmar"); }],
+  [(t) => t.matches("[data-cf-v]"), (t) => { st.cfv = pick(t.dataset.cfV, ["valido", "prazo", "passou", "invalido"]); render(); refocus(`[data-cf-v="${st.cfv}"]`); }],
+  [(t) => t.matches("[data-cf-ask]"), (t) => cfAsk(t)],
+  [(t) => t.matches("[data-cf-do]"), () => { const e = evById(st.cfe); if (!e) return; cfAnswer(e, "confirmar"); render(); refocus(".cf-ok"); }],
+  [(t) => t.matches("[data-cc-save]"), () => {
+    const v = (k) => dlgRawIn(`[data-cc="${k}"]`);
+    const err = document.querySelector("[data-cc-err]");
+    const fail = (m, k) => { err.textContent = m; err.classList.add("err"); const x = document.querySelector(`[data-cc="${k}"]`); shakeField(x); x.focus(); };
+    if (!v("n")) return fail("Escreva o nome do consultório.", "n");
+    if (!/^\(\d{2}\) \d{4,5}-\d{4}$/.test(v("wa"))) return fail("Confira o WhatsApp da equipe: DDD e número, por exemplo (41) 3333-0000.", "wa");
+    if (!v("addr")) return fail("Escreva o endereço. Ele aparece na página do paciente e na mensagem.", "addr");
+    Object.assign(CF_CLINIC, { n: v("n"), wa: v("wa"), addr: v("addr"), city: v("city") });
+    err.textContent = ""; err.classList.remove("err");
+    render(); refocus("[data-cc-save]"); say("Dados salvos. A página do link, as mensagens e as Avaliações já usam os novos.");
+  }],
+  [(t) => t.matches("[data-cf-var]"), (t) => {
+    const ta = document.querySelector("[data-cf-tpl]");
+    const k = CF_VARS.find((x) => x[0] === t.dataset.cfVar);
+    if (!ta || !k) return;
+    const a = ta.selectionStart ?? ta.value.length, b = ta.selectionEnd ?? a;
+    ta.setRangeText(`{${k[0]}}`, a, b, "end"); ta.focus(); cfTplLive();
+  }],
+  [(t) => t.matches("[data-cf-tpl-reset]"), () => { const ta = document.querySelector("[data-cf-tpl]"); if (ta) { ta.value = CF_TPL_DEFAULT; cfTplLive(); ta.focus(); } say("Modelo padrão de volta no texto. Salve para valer."); }],
+  [(t) => t.matches("[data-cf-tpl-save]"), () => {
+    const ta = document.querySelector("[data-cf-tpl]");
+    const m = cfTplCheck(ta.value);
+    if (m) { cfTplLive(); shakeField(ta); ta.focus(); return; }
+    CFM.tpl = ta.value; say("Mensagem salva. Vale para o Chatwoot e para o botão do WhatsApp.");
+  }],
+  [(t) => t.matches("[data-cf-cred]"), () => { st.af = "conexoes"; goTo("crm"); }],
+  [(t) => t.matches("[data-cfg-go-to]"), () => { DLG.opener = null; dlgClose(); st.cfg = "consultorio"; goTo("configuracoes"); }],
 ];
 ACT.unshift(...ACT1211);
 /* Clique num horário vazio abre "Novo evento" já com o dia e a hora. */
