@@ -1,6 +1,6 @@
 # Plano · Sons, áudio de 2 minutos, menu por áreas e agenda que edita
 
-Situação: aprovado em 12/11/2026 (o Pablo seguiu as três recomendações; implementação nas quatro entregas da seção 11)
+Situação: concluído em 12/11/2026 (o Pablo aprovou as três recomendações; as quatro entregas da seção 11 estão na develop). Ajuste 3b (formulário do agendamento e sinais da sincronização) em protótipo, esperando aprovação.
 Origem: pedido do Pablo em 12/11/2026
 Dependências: nenhuma PR aberta. A área "Consultório" do menu depende do plano da Gestão do consultório, que corre à parte.
 
