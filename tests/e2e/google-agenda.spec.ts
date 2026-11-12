@@ -104,7 +104,9 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   await expect(form.getByText("Dê um título ao evento.")).toBeVisible();
   await form.getByRole("textbox", { name: "Título" }).fill("Consulta de teste");
   // The same day at both ends, whatever hour the test runs at.
-  const day = await form.getByLabel("Começa em").inputValue();
+  const day = await form.getByLabel("Dia", { exact: true }).inputValue();
+  // Another length than the list's: the end has its own day and hour.
+  await form.getByLabel("Dura").selectOption("other");
   await form.getByLabel("Termina em").fill(day);
   await form.getByLabel("Hora de início").fill("20:00");
   await form.getByLabel("Hora de fim").fill("19:00");
@@ -148,8 +150,8 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   await expect(edit.getByRole("textbox", { name: "Título" })).toHaveValue("Consulta de teste");
   await edit.getByRole("textbox", { name: "Título" }).fill("Consulta remarcada");
   await edit.getByRole("button", { name: "Salvar" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Evento salvo" })).toBeVisible();
-  await closeToast(page, "Evento salvo");
+  await expect(page.getByRole("status").filter({ hasText: "“Consulta remarcada” atualizado." })).toBeVisible();
+  await closeToast(page, "“Consulta remarcada” atualizado.");
   const renamed = page.getByRole("button", { name: /^Consulta remarcada/ });
   await expect(renamed).toBeVisible();
 

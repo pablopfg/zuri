@@ -49,8 +49,20 @@ describe("toast store", () => {
     paint();
     expect(first).not.toBe(second);
     expect(s.snapshot()).toEqual([
-      { id: first, message: "Salvo", closeLabel: "Fechar", persistent: false },
-      { id: second, message: "2 conflitos", closeLabel: "Close", persistent: true },
+      { id: first, message: "Salvo", closeLabel: "Fechar", persistent: false, failed: false },
+      { id: second, message: "2 conflitos", closeLabel: "Close", persistent: true, failed: false },
+    ]);
+  });
+
+  it("carries what there is to do about it, its own time on screen and whether it is a failure", () => {
+    const { s, paint } = store();
+    const run = () => {};
+    s.show("Evento movido", "Fechar", { action: { label: "Desfazer", run }, ms: 8000 });
+    s.show("Não deu para salvar", "Fechar", { failed: true, persistent: true });
+    paint();
+    expect(s.snapshot()).toEqual([
+      { id: 1, message: "Evento movido", closeLabel: "Fechar", persistent: false, failed: false, action: { label: "Desfazer", run }, ms: 8000 },
+      { id: 2, message: "Não deu para salvar", closeLabel: "Fechar", persistent: true, failed: true },
     ]);
   });
 

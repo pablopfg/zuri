@@ -245,7 +245,12 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     const draft: EventDraft = { title: input.title, allDay: input.allDay, start: input.start, end: input.end };
     if (input.location) draft.location = input.location;
     if (input.description) draft.description = input.description;
-    const event = await owner(async () => google.createEvent(input.calendarId, eventBody(draft, deps().timeZone()), new GoogleMeter(ACTION_BUDGET)));
+    const event = await owner(async () => {
+      const body = eventBody(draft, deps().timeZone());
+      // The status the form picked, as the event's color at Google; none is "Agendado".
+      if (input.colorId) body.colorId = input.colorId;
+      return google.createEvent(input.calendarId, body, new GoogleMeter(ACTION_BUDGET));
+    });
     return Response.json({ event }, { status: 201 });
   });
 

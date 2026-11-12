@@ -41,6 +41,8 @@
  *   week on a computer and the day on a phone, as it opens).
  * - `agenda-evento=/agenda`: the Agenda with the details of a sample event open (its status and its color at Google;
  *   needs --exemplos).
+ * - `agenda-editar=/agenda`: the form of that event ("Dura", "Tipo", "Situação"); `agenda-movido=/agenda`: the
+ *   Agenda right after the event moved, with the notice that offers "Desfazer" (both need --exemplos).
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
  *   page's day and its line of now come out the same at any hour the script runs).
  * - `--exemplos`: fills the empty database with the sample data of
@@ -256,6 +258,29 @@ for (const [device, options] of [
       if (screen.name === "agenda-evento") {
         await page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ }).click();
         await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("group", { name: "Situação" }).waitFor();
+      }
+      if (screen.name === "agenda-editar") {
+        await page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ }).click();
+        await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("button", { name: "Editar" }).click();
+        await page.getByRole("dialog", { name: "Editar evento" }).getByLabel("Dura").waitFor();
+      }
+      if (screen.name === "agenda-movido") {
+        const event = page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ });
+        if (device === "computador") {
+          // The keyboard's way of dragging: a quarter of an hour later, sent when Alt is let go.
+          await event.focus();
+          await page.keyboard.down("Alt");
+          await page.keyboard.press("ArrowDown");
+          await page.keyboard.up("Alt");
+        } else {
+          // A phone has no dragging: the same change by "Editar".
+          await event.click();
+          await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("button", { name: "Editar" }).click();
+          const form = page.getByRole("dialog", { name: "Editar evento" });
+          await form.getByLabel("Dura").selectOption("90");
+          await form.getByRole("button", { name: "Salvar" }).click();
+        }
+        await page.getByRole("button", { name: "Desfazer" }).waitFor();
       }
       if (screen.name === "conversa-menu") await page.getByRole("complementary", { name: "Conversas" }).getByRole("button", { name: /^Mais opções/ }).click();
       if (screen.name === "conversas") {

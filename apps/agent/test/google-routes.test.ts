@@ -346,6 +346,48 @@ describe("/api/google/events: the Agenda screen", () => {
     expect(page.events.map((e) => e.colorId)).toEqual(["10", "", "", "", "", "", ""]);
   });
 
+  it("creates an event already with a status, and with nothing else than one of the four colors (delivery 3)", async () => {
+    await connect();
+    await setMode(WORK, "write");
+    const base = { calendarId: WORK, title: "Consulta", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00" };
+    const created = await api("POST", "/google/events", { ...base, colorId: "10" });
+    expect(created.status).toBe(201);
+    expect(((await created.json()) as { event: AgendaEvent }).event.colorId).toBe("10");
+    expect(JSON.parse(google.seen.filter((r) => r.method === "POST" && r.url.includes("/events?")).at(-1)?.body ?? "{}").colorId).toBe("10");
+    // Without one the event is born without a color, which counts as "Agendado".
+    const plain = await api("POST", "/google/events", base);
+    expect(((await plain.json()) as { event: AgendaEvent }).event.colorId).toBe("");
+    expect(JSON.parse(google.seen.filter((r) => r.method === "POST" && r.url.includes("/events?")).at(-1)?.body ?? "{}")).not.toHaveProperty("colorId");
+    const before = google.events.get(WORK)?.length;
+    for (const colorId of ["", "1", "12", "07", 7, null, "tomate", ["7"]]) {
+      expect((await api("POST", "/google/events", { ...base, colorId })).status).toBe(400);
+    }
+    expect(google.events.get(WORK)?.length).toBe(before);
+  });
+
+  it("CA13: a move that marks Reagendado is undone by the opposite change with the new version, never with the old one", async () => {
+    await connect();
+    await setMode(WORK, "write");
+    const created = await api("POST", "/google/events", { calendarId: WORK, title: "Consulta", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "10" });
+    const { event } = (await created.json()) as { event: AgendaEvent };
+    const target = { calendarId: WORK, eventId: event.id };
+    const move = await api("PATCH", "/google/events", { ...target, etag: event.etag, start: "2026-11-06T09:15", end: "2026-11-06T10:00", colorId: "5" });
+    expect(move.status).toBe(200);
+    const moved = ((await move.json()) as { event: AgendaEvent }).event;
+    expect(moved).toMatchObject({ start: "2026-11-06T12:15:00.000Z", end: "2026-11-06T13:00:00.000Z", colorId: "5" });
+    expect(moved.etag).not.toBe(event.etag);
+
+    const back = { allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "10" };
+    // The version the screen had before the move: Google already has another.
+    const stale = await api("PATCH", "/google/events", { ...target, etag: event.etag, ...back });
+    expect(((await stale.json()) as { code: string }).code).toBe("TARGET_CHANGED");
+    expect(google.events.get(WORK)?.find((e) => e.id === event.id)?.colorId).toBe("5");
+
+    const undo = await api("PATCH", "/google/events", { ...target, etag: moved.etag, ...back });
+    expect(undo.status).toBe(200);
+    expect(((await undo.json()) as { event: AgendaEvent }).event).toMatchObject({ start: event.start, end: event.end, colorId: "10", title: "Consulta" });
+  });
+
   it("changes the status by the color, with the version checked, and only to one of the four colors", async () => {
     await connect();
     await setMode(WORK, "write");
@@ -398,7 +440,7 @@ describe("/api/google/events: the Agenda screen", () => {
     expect(JSON.parse(google.seen.filter((r) => r.method === "PATCH").at(-1)?.body ?? "{}")).toEqual({ colorId: null });
   });
 
-  it("refuses a color in a read-only calendar and in a new event", async () => {
+  it("refuses a color in a read-only calendar, changed or new", async () => {
     await connect();
     await setMode(READER, "read");
     await setMode(PRIMARY, "write");
@@ -412,7 +454,10 @@ describe("/api/google/events: the Agenda screen", () => {
     expect(google.seen.filter((r) => r.method === "PATCH")).toHaveLength(0);
     expect(google.events.get(READER)?.at(-1)).toEqual(event);
     expect(event.colorId).toBeUndefined();
-    expect((await api("POST", "/google/events", { calendarId: PRIMARY, title: "X", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "10" })).status).toBe(400);
+    // A new event takes a status since delivery 3, in a calendar open for editing only, and never a color outside the four.
+    expect((await api("POST", "/google/events", { calendarId: READER, title: "X", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "10" })).status).toBe(400);
+    expect((await api("POST", "/google/events", { calendarId: PRIMARY, title: "X", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "3" })).status).toBe(400);
+    expect(google.events.get(PRIMARY) ?? []).toHaveLength(0);
   });
 
   it("cleans what Google sends: no control or bidi characters in titles", async () => {

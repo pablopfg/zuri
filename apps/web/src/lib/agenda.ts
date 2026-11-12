@@ -116,31 +116,95 @@ export function eventsOn(events: readonly AgendaEvent[], day: string, timeZone: 
     .sort((a, b) => (a.allDay === b.allDay ? (a.start < b.start ? -1 : a.start > b.start ? 1 : 0) : a.allDay ? -1 : 1));
 }
 
+const plain = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+const KNOWN_TYPE = /^(?:primeira consulta|consulta|retorno|avaliacao|atendimento)(?:\s|$)/;
+
+/**
+ * The line of a description that is the appointment's type, by the rule the
+ * server reads appointments with (apps/agent/src/google/appointments.ts): a
+ * line shaped "Type | Place" whose type has a letter, is at most 80 characters
+ * and is no address or tag. One that says "Consulta" or "Retorno" wins over any
+ * other line that happens to hold a "|"; without a shaped line, the first that
+ * begins with "Consulta" or "Retorno". "" when the event has no type.
+ */
+export function typeLine(description: string): string {
+  const lines = description.split("\n").map((line) => line.trim());
+  const shaped = lines.filter((line) => {
+    const type = /^([^|<>]{1,80})\|\s*[^|<>\s][^|<>]{0,119}$/.exec(line)?.[1] ?? "";
+    return /\p{L}/u.test(type) && !line.includes("://");
+  });
+  return shaped.find((line) => KNOWN_TYPE.test(plain(line))) ?? lines.find((line) => /^(?:primeira consulta|consulta|retorno)(?:\s|$)/.test(plain(line)) && !/[|<>]/.test(line)) ?? shaped[0] ?? "";
+}
+
+/** "Consulta" of "Consulta | Consultório". */
+export function typeName(line: string): string {
+  return (line.split("|")[0] ?? "").trim();
+}
+
+/** A description without its type line, and one with `type` as its first line. */
+export function withoutType(description: string): string {
+  const type = typeLine(description);
+  if (!type) return description;
+  const lines = description.split("\n");
+  lines.splice(
+    lines.findIndex((line) => line.trim() === type),
+    1,
+  );
+  return lines.join("\n").trim();
+}
+export function withType(rest: string, type: string): string {
+  return [type.trim(), rest].filter(Boolean).join("\n");
+}
+
+/** The lengths the form offers, in minutes; any other is "Outra" and shows the end's own fields. */
+export const DURATIONS = [15, 30, 45, 60, 90, 120, 180] as const;
+export const OTHER_DURATION = "other";
+
+/** A date and an hour, `minutes` later. */
+export function later(date: string, time: string, minutes: number): { date: string; time: string } {
+  const total = (Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))) + minutes;
+  return { date: addDays(date, Math.floor(total / 1440)), time: `${pad(Math.floor((total % 1440) / 60))}:${pad(total % 60)}` };
+}
+
 export interface EventForm {
   calendarId: string;
   title: string;
   allDay: boolean;
   startDate: string;
   startTime: string;
+  /** How long an event with hours lasts: one of DURATIONS (as text) or "other", and then the end's own fields count. */
+  duration: string;
   endDate: string;
   endTime: string;
+  /** The appointment's type, the first line of the description at Google ("Consulta | Consultório"); "" for none. */
+  type: string;
+  /** The status, which is the color at Google; null for an event whose color is none of the four. */
+  status: EventStatus | null;
   location: string;
+  /** The description without its type line. */
   description: string;
 }
 
-/** A new event: the next whole hour of the day chosen (today: from now), one hour long. */
-export function blankForm(day: string, calendarId: string, timeZone: string, now = Date.now()): EventForm {
+/**
+ * A new event: one hour long, at `time` when the owner clicked an hour of the
+ * week, else at the next whole hour of the day chosen (today: from now).
+ */
+export function blankForm(day: string, calendarId: string, timeZone: string, now = Date.now(), time?: string): EventForm {
   const today = localDate(now, timeZone);
   const hour = day === today ? Math.min(zonedParts(new Date(now), timeZone).hour + 1, 23) : 9;
-  const end = hour + 1;
+  const startTime = time ?? `${pad(hour)}:00`;
+  const end = later(day, startTime, 60);
   return {
     calendarId,
     title: "",
     allDay: false,
     startDate: day,
-    startTime: `${pad(hour)}:00`,
-    endDate: end === 24 ? addDays(day, 1) : day,
-    endTime: `${pad(end % 24)}:00`,
+    startTime,
+    duration: "60",
+    endDate: end.date,
+    endTime: end.time,
+    type: "",
+    status: "scheduled",
     location: "",
     description: "",
   };
@@ -148,16 +212,25 @@ export function blankForm(day: string, calendarId: string, timeZone: string, now
 
 /** An event as the form shows it: the owner's dates and hours, an all-day end inclusive. */
 export function formOf(event: AgendaEvent, timeZone: string): EventForm {
-  const base = { calendarId: event.calendarId, title: event.title, location: event.location, description: event.description };
+  const base = {
+    calendarId: event.calendarId,
+    title: event.title,
+    location: event.location,
+    type: typeLine(event.description),
+    description: withoutType(event.description),
+    status: eventStatus(event.colorId ?? ""),
+  };
   if (event.allDay) {
     const { first, last } = eventDays(event, timeZone);
-    return { ...base, allDay: true, startDate: first, startTime: "09:00", endDate: last, endTime: "10:00" };
+    return { ...base, allDay: true, startDate: first, startTime: "09:00", duration: "60", endDate: last, endTime: "10:00" };
   }
+  const minutes = (Date.parse(event.end) - Date.parse(event.start)) / 60_000;
   return {
     ...base,
     allDay: false,
     startDate: localDate(event.start, timeZone),
     startTime: localTime(event.start, timeZone),
+    duration: (DURATIONS as readonly number[]).includes(minutes) ? String(minutes) : OTHER_DURATION,
     endDate: localDate(event.end, timeZone),
     endTime: localTime(event.end, timeZone),
   };
@@ -169,16 +242,25 @@ export type FormProblem = "title" | "date" | "end";
 export function formBody(form: EventForm): { title: string; allDay: boolean; start: string; end: string; location: string; description: string } | FormProblem {
   const title = form.title.trim();
   if (!title) return "title";
-  if (!isDate(form.startDate) || !isDate(form.endDate)) return "date";
+  const text = { location: form.location.trim(), description: withType(form.description, form.type) };
+  if (!isDate(form.startDate)) return "date";
   if (form.allDay) {
+    if (!isDate(form.endDate)) return "date";
     if (form.endDate < form.startDate) return "end";
-    return { title, allDay: true, start: form.startDate, end: form.endDate, location: form.location.trim(), description: form.description };
+    return { title, allDay: true, start: form.startDate, end: form.endDate, ...text };
   }
-  if (!isTime(form.startTime) || !isTime(form.endTime)) return "date";
+  if (!isTime(form.startTime)) return "date";
   const start = `${form.startDate}T${form.startTime}`;
+  if (form.duration !== OTHER_DURATION) {
+    const minutes = Number(form.duration);
+    if (!(minutes > 0)) return "date";
+    const end = later(form.startDate, form.startTime, minutes);
+    return { title, allDay: false, start, end: `${end.date}T${end.time}`, ...text };
+  }
+  if (!isDate(form.endDate) || !isTime(form.endTime)) return "date";
   const end = `${form.endDate}T${form.endTime}`;
   if (end <= start) return "end";
-  return { title, allDay: false, start, end, location: form.location.trim(), description: form.description };
+  return { title, allDay: false, start, end, ...text };
 }
 
 /** Only what changed, for a PATCH: the server keeps the rest as it is at Google. */
