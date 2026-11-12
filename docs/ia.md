@@ -360,15 +360,29 @@ não ajuda. A reserva acontece antes da chamada e uma recusa da cota responde
 `429 AI_LIMIT_REACHED` com `details.limit: "audio"`. Na IA simulada a
 transcrição devolve um texto fixo do catálogo.
 
-## Modelo de dados (migrations 7 e 10)
+## Modelo de dados (migrations 7, 10, 29 e 37)
 
 | Tabela | Linha | Para quê |
 | --- | --- | --- |
 | `zur_usage_daily` | uma por dia UTC | Pedidos, falhas, interrompidas, segundos de áudio, Neurons (reservados + gastos) e US$ estimados |
 | `zur_model_usage_daily` | uma por dia, modelo, tipo e cobrável | Chamadas, tokens informados e estimados, segundos de áudio, Neurons e US$ |
 
+| `zur_usage_hourly` (migration 37) | uma por hora UTC, 24 no máximo | O dia de hoje por hora: pedidos, falhas, interrompidas, vezes da reserva, Neurons gastos, US$ pagos e segundos de áudio |
+| `zur_usage_monthly` (migration 37) | uma por mês, 12 no máximo | Os mesmos números somados por mês, com quantos dias tiveram uso e o último dia já somado |
+
 - Guardam só contadores: nenhum texto do dono, prompt ou resposta.
-- O histórico guarda 90 dias. A primeira chamada de um dia novo apaga o resto.
+- O histórico por dia guarda 90 dias. A primeira chamada de um dia novo apaga o resto.
+- As 24 linhas das horas se reaproveitam: cada uma diz de que dia são os números dela, e a primeira
+  chamada daquela hora num dia novo troca a linha. Nada é apagado à meia-noite (UTC); a leitura só
+  devolve as linhas de hoje. A chamada entra na hora em que foi contada, com o que gastou de fato,
+  e uma reserva devolvida não aparece. Uma chamada que termina depois da meia-noite fica no dia em
+  que começou e não entra nas horas do dia novo.
+- O resumo por mês é o que sobra depois dos 90 dias. A primeira chamada de cada dia soma os dias
+  fechados nos meses deles, antes de apagar os que passaram do prazo, e remove o mês que saiu dos
+  12. Ontem fica mais um dia fora da soma, porque uma chamada que começou antes da meia-noite ainda
+  pode ser acertada nele; a leitura do ano junta os meses já somados com os dias ainda abertos, então
+  o número nunca fica atrás. Quem atualiza de uma versão anterior ganha os meses dos 90 dias que
+  ainda tem, na primeira chamada depois da atualização.
 - Não entram no backup (são medidas, não dados do dono).
 - A migration 29 acrescenta `paid_usd` (gasto dos modelos pagos no dia) e
   `ai_fallbacks` (vezes que a reserva assumiu) em `zur_usage_daily`, e
@@ -393,12 +407,25 @@ dito. O painel é recarregado pela área `usage` do canal em tempo real; o núme
 dessa área fica na memória do medidor (sobe a cada escrita dos contadores), sem
 linha lida nem escrita a mais.
 
+`GET /api/usage/hours` (sessão + CSRF): o dia de hoje por hora, só as horas com uso
+(`usageHoursSchema`). `day` e `hour` são UTC, como os contadores (a cota da Cloudflare recomeça
+às 00:00 UTC); a tela converte para o fuso do dono.
+
+`GET /api/usage/months` (sessão + CSRF): os 12 meses que terminam no mês atual, só os meses com
+uso, com `days` (dias com uso no mês) para a média (`usageMonthsSchema`). Não aceita período:
+`days=365` em `/api/usage/history` continua recusado, e o ano nunca lê 365 linhas de dia. As duas
+rotas não têm parâmetro e não gravam nada.
+
 `POST /memories/:id/local-only` e `POST /notes/:id/local-only`
 (`{ "localOnly": true | false }`): liga ou desliga "Nunca enviar para fora", sem
 mudar a data da última edição.
 
 ## Custo no plano Free
 
-- Cada chamada lê as três configurações e a linha do dia e grava de 2 a 3
-  linhas (reserva e acerto). `GET /api/usage` lê cerca de 10 linhas.
+- Cada chamada lê as três configurações e a linha do dia e grava de 3 a 4
+  linhas (reserva, acerto e a linha da hora). `GET /api/usage` lê cerca de 10 linhas.
+- `GET /api/usage/hours` lê até 25 linhas (a sessão e as 24 horas) e `GET /api/usage/months` até
+  16 (a sessão, 12 meses e os dias abertos). Nenhuma grava.
+- A primeira chamada de um dia lê mais 8 linhas e grava mais 1 (o mês do dia que fechou). Só a
+  primeira depois da atualização lê os 90 dias de uma vez (181 linhas medidas) para montar os meses.
 - Medido em `apps/agent/test/free-tier-budget.test.ts`.

@@ -118,6 +118,7 @@ describe("the migration list", () => {
       34: "ead4c0e3131aa24742f95906ead330a3e3ff9374127373d88b46a9c54741e620",
       35: "3998d5ed76fae99d51060677c3bf8136d5d4aeddbd7948ceb40678ba91b53a35",
       36: "64fd3437ebdb5d557cfa14e43bd3fba622c72473dcfaea78e40aea871363b8fb",
+      37: "425d8964f18925e8fc347052ae63ac50795b314a3e5f667d78c1bd94662ceba5",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -133,7 +134,7 @@ describe("migrate", () => {
       expect(zurObjects(db)).toEqual([]);
 
       expect(migrate(db)).toBe(LATEST_SCHEMA_VERSION);
-      expect(schemaVersion(db)).toBe(36);
+      expect(schemaVersion(db)).toBe(37);
       // FTS5 keeps shadow tables of its own (zur_notes_fts_data and others): only ours are listed.
       expect(zurObjects(db).filter((name) => !/^table:zur_(notes|memories)_fts_/.test(name))).toEqual([
         "table:zur_activity",
@@ -428,6 +429,8 @@ describe("migrate", () => {
         "index:zur_trash_deleted",
         "index:zur_trash_expires",
         "table:zur_usage_daily",
+        "table:zur_usage_hourly",
+        "table:zur_usage_monthly",
       ]);
     });
   });
@@ -1295,11 +1298,34 @@ describe("migrate", () => {
     });
   });
 
+  it("upgrades a database at version 36 to 37: the usage of before is kept, and the hours and months start empty", async () => {
+    await withEmptyDatabase("from-36", (db) => {
+      expect(migrate(db, MIGRATIONS.slice(0, 36))).toBe(36);
+      db.run(`INSERT INTO zur_usage_daily (day, ai_requests, neurons) VALUES ('2026-11-10', 7, 70.5)`);
+      db.run(`INSERT INTO zur_model_usage_daily (day, model, kind, billable, calls) VALUES ('2026-11-10', 'm', 'chat', 1, 7)`);
+      expect(migrate(db)).toBe(37);
+      expect(db.one(`SELECT day, ai_requests, neurons FROM zur_usage_daily`)).toEqual({ day: "2026-11-10", ai_requests: 7, neurons: 70.5 });
+      expect(db.one(`SELECT calls FROM zur_model_usage_daily`)).toEqual({ calls: 7 });
+      expect(db.all(`SELECT * FROM zur_usage_hourly`)).toEqual([]);
+      expect(db.all(`SELECT * FROM zur_usage_monthly`)).toEqual([]);
+      db.run(`INSERT INTO zur_usage_hourly (hour, day) VALUES (23, '2026-11-12')`);
+      expect(db.one(`SELECT * FROM zur_usage_hourly`)).toEqual({ hour: 23, day: "2026-11-12", requests: 0, errors: 0, aborted: 0, fallbacks: 0, neurons: 0, paid_usd: 0, audio_seconds: 0 });
+      db.run(`INSERT INTO zur_usage_monthly (month, last_day) VALUES ('2026-11', '2026-11-10')`);
+      expect(db.one(`SELECT * FROM zur_usage_monthly`)).toEqual({ month: "2026-11", last_day: "2026-11-10", days: 0, requests: 0, errors: 0, aborted: 0, fallbacks: 0, neurons: 0, paid_usd: 0, audio_seconds: 0 });
+      // One row per hour of the day and per month, never two.
+      expect(() => db.run(`INSERT INTO zur_usage_hourly (hour, day) VALUES (23, '2026-11-13')`)).toThrow();
+      expect(() => db.run(`INSERT INTO zur_usage_monthly (month, last_day) VALUES ('2026-11', '2026-11-11')`)).toThrow();
+      // Running it again changes nothing.
+      expect(migrate(db)).toBe(37);
+      expect(db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_usage_hourly`)?.n).toBe(1);
+    });
+  });
+
   it("upgrades a database at version 35 to 36: an open session keeps its row, with no browser recorded, and a new row takes the binding", async () => {
     await withEmptyDatabase("from-35", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 35))).toBe(35);
       db.run(`INSERT INTO zur_sessions (id, created_at, last_seen_at, last_presence_at, expires_at, confirmed_at, user_agent, network) VALUES ('s1', 1, 2, 3, 4, 5, 'ua', '203.0.113.7')`);
-      expect(migrate(db)).toBe(36);
+      expect(migrate(db)).toBe(37);
       expect(db.one(`SELECT * FROM zur_sessions`)).toEqual({
         id: "s1",
         created_at: 1,
@@ -1319,7 +1345,7 @@ describe("migrate", () => {
       );
       expect(db.one(`SELECT device, country, networks, confirmed_network FROM zur_sessions WHERE id = 's2'`)).toEqual({ device: "d", country: "BR", networks: "n", confirmed_network: "n" });
       // Running it again changes nothing.
-      expect(migrate(db)).toBe(36);
+      expect(migrate(db)).toBe(37);
     });
   });
 

@@ -1596,6 +1596,40 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE zur_sessions ADD COLUMN confirmed_network TEXT`,
     ],
   },
+  {
+    version: 37,
+    name: "usage_hourly_monthly",
+    statements: [
+      // The usage panel by day and by year (PR S13). Today by the hour: 24 rows that are reused, one per
+      // UTC hour, each saying which day its numbers are of, so a new day needs no write to clear them.
+      `CREATE TABLE IF NOT EXISTS zur_usage_hourly (
+        hour INTEGER PRIMARY KEY CHECK (hour BETWEEN 0 AND 23),
+        day TEXT NOT NULL,
+        requests INTEGER NOT NULL DEFAULT 0,
+        errors INTEGER NOT NULL DEFAULT 0,
+        aborted INTEGER NOT NULL DEFAULT 0,
+        fallbacks INTEGER NOT NULL DEFAULT 0,
+        neurons REAL NOT NULL DEFAULT 0,
+        paid_usd REAL NOT NULL DEFAULT 0,
+        audio_seconds INTEGER NOT NULL DEFAULT 0
+      )`,
+      // The year by the month: the days of zur_usage_daily summed as they close (`last_day` is the last
+      // one already in the sum), because the days themselves are removed after 90. Twelve rows at most.
+      // Numbers only, like the other usage tables, and out of the backup like them.
+      `CREATE TABLE IF NOT EXISTS zur_usage_monthly (
+        month TEXT PRIMARY KEY CHECK (month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'),
+        last_day TEXT NOT NULL,
+        days INTEGER NOT NULL DEFAULT 0,
+        requests INTEGER NOT NULL DEFAULT 0,
+        errors INTEGER NOT NULL DEFAULT 0,
+        aborted INTEGER NOT NULL DEFAULT 0,
+        fallbacks INTEGER NOT NULL DEFAULT 0,
+        neurons REAL NOT NULL DEFAULT 0,
+        paid_usd REAL NOT NULL DEFAULT 0,
+        audio_seconds INTEGER NOT NULL DEFAULT 0
+      ) WITHOUT ROWID`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

@@ -14,6 +14,9 @@ import {
   type AiModel,
   type UsageHistory,
   type UsageHistoryDays,
+  type UsageHours,
+  type UsageMonths,
+  USAGE_MONTHS,
   TRANSCRIPTION_NEURONS_PER_MINUTE,
   USAGE_RETENTION_DAYS,
   type UsageKind,
@@ -38,6 +41,8 @@ export interface AiLimits {
 /** A call counted before it runs. Settled once with what it used, or released if it never started. */
 export interface Reservation {
   readonly day: string;
+  /** The UTC hour it was counted in: where the call shows in today's hours, whenever it ends. */
+  readonly hour: number;
   readonly kind: UsageKind;
   readonly model: string;
   readonly billable: boolean;
@@ -103,6 +108,51 @@ const recordModelSql = `INSERT INTO zur_model_usage_daily
     neurons = neurons + excluded.neurons,
     cost_usd = cost_usd + excluded.cost_usd`;
 
+/** What one settled call, failure or stop adds to its hour. */
+interface HourUse {
+  requests?: number;
+  errors?: number;
+  aborted?: number;
+  fallbacks?: number;
+  neurons?: number;
+  paidUsd?: number;
+  audioSeconds?: number;
+}
+
+/**
+ * Today by the hour (PR S13): 24 rows that are reused. A row that still holds another day's numbers is
+ * replaced by the first write of the same hour today, so midnight clears nothing. Every right-hand
+ * `day` below is the row's value of before the write.
+ */
+const HOUR_COLUMNS = ["requests", "errors", "aborted", "fallbacks", "neurons", "paid_usd", "audio_seconds"] as const;
+const recordHourSql = `INSERT INTO zur_usage_hourly (hour, day, ${HOUR_COLUMNS.join(", ")}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT (hour) DO UPDATE SET
+    ${HOUR_COLUMNS.map((c) => `${c} = excluded.${c} + CASE WHEN day = excluded.day THEN ${c} ELSE 0 END`).join(",\n    ")},
+    day = excluded.day`;
+
+/** The columns of a day that a month adds up, and the two reads of them: closed days into months, open days as they are. */
+const MONTH_SUMS = `COUNT(*) AS days, SUM(ai_requests) AS requests, SUM(ai_errors) AS errors, SUM(ai_aborted) AS aborted, SUM(ai_fallbacks) AS fallbacks,
+  SUM(neurons) AS neurons, SUM(paid_usd) AS paid_usd, SUM(audio_seconds) AS audio_seconds`;
+const MONTH_COLUMNS = ["days", ...HOUR_COLUMNS] as const;
+
+interface MonthRow {
+  month: string;
+  days: number;
+  requests: number;
+  errors: number;
+  aborted: number;
+  fallbacks: number;
+  neurons: number;
+  paid_usd: number;
+  audio_seconds: number;
+}
+
+/** `months` before (negative) or after the month of "YYYY-MM…". */
+function shiftMonth(day: string, months: number): string {
+  const total = Number(day.slice(0, 4)) * 12 + Number(day.slice(5, 7)) - 1 + months;
+  return `${String(Math.floor(total / 12)).padStart(4, "0")}-${String((total % 12) + 1).padStart(2, "0")}`;
+}
+
 interface DayRow {
   paid_usd: number;
   ai_fallbacks: number;
@@ -158,6 +208,10 @@ export class UsageMeter {
     return UsageMeter.day(this.clock());
   }
 
+  private hour(): number {
+    return new Date(this.clock()).getUTCHours();
+  }
+
   /** The next 00:00 UTC, when the counters start over. */
   resetsAt(): string {
     return new Date((Math.floor(this.clock() / DAY_MS) + 1) * DAY_MS).toISOString();
@@ -207,7 +261,7 @@ export class UsageMeter {
       usd,
       call.fallback ? 1 : 0,
     );
-    return { day, kind: "chat", model: call.model, billable: call.billable, neurons: estimate, audioSeconds: 0, usd, fallback: call.fallback === true, done: false };
+    return { day, hour: this.hour(), kind: "chat", model: call.model, billable: call.billable, neurons: estimate, audioSeconds: 0, usd, fallback: call.fallback === true, done: false };
   }
 
   /** Counts `seconds` of audio to transcribe against the hour a day and the Neuron cap. */
@@ -228,7 +282,7 @@ export class UsageMeter {
       seconds,
       estimate,
     );
-    return { day, kind: "transcription", model: call.model, billable, neurons: estimate, audioSeconds: seconds, usd: 0, done: false };
+    return { day, hour: this.hour(), kind: "transcription", model: call.model, billable, neurons: estimate, audioSeconds: seconds, usd: 0, done: false };
   }
 
   /**
@@ -250,7 +304,7 @@ export class UsageMeter {
       day,
       estimate,
     );
-    return { day, kind: "embedding", model: call.model, billable: call.billable, neurons: estimate, audioSeconds: 0, usd: 0, done: false };
+    return { day, hour: this.hour(), kind: "embedding", model: call.model, billable: call.billable, neurons: estimate, audioSeconds: 0, usd: 0, done: false };
   }
 
   /** Settles an embedding call that reached the model: `tokens` sent, estimated (the model reports none). */
@@ -262,6 +316,7 @@ export class UsageMeter {
     this.db.transaction(() => {
       this.adjust(reservation.day, neurons - reservation.neurons, cost);
       this.write(recordModelSql, reservation.day, reservation.model, reservation.kind, reservation.billable ? 1 : 0, 0, tokens, 0, 0, 0, neurons, cost);
+      this.recordHour(reservation.day, reservation.hour, { neurons });
     });
   }
 
@@ -289,6 +344,7 @@ export class UsageMeter {
         neurons,
         cost,
       );
+      this.recordHour(reservation.day, reservation.hour, { requests: 1, fallbacks: reservation.fallback ? 1 : 0, neurons, paidUsd: usd });
     });
   }
 
@@ -308,6 +364,7 @@ export class UsageMeter {
       );
       this.adjust(reservation.day, neurons - reservation.neurons, cost);
       this.write(recordModelSql, reservation.day, reservation.model, reservation.kind, reservation.billable ? 1 : 0, 0, 0, 0, 0, used, neurons, cost);
+      this.recordHour(reservation.day, reservation.hour, { audioSeconds: used, neurons });
     });
   }
 
@@ -349,6 +406,7 @@ export class UsageMeter {
         : `INSERT INTO zur_usage_daily (day, ai_errors) VALUES (?, 1) ON CONFLICT (day) DO UPDATE SET ai_errors = ai_errors + 1`,
       day,
     );
+    this.recordHour(day, this.hour(), aborted ? { aborted: 1 } : { errors: 1 });
   }
 
   /** Today against the limits, and the last 7 days: about 7 + one row per model used today. */
@@ -485,6 +543,102 @@ export class UsageMeter {
     };
   }
 
+  /** Today by the hour (PR S13): the hours that had any use, out of 24 rows at most. Writes nothing. */
+  hours(): UsageHours {
+    const day = this.today();
+    const rows = this.db.all<{ hour: number; requests: number; errors: number; aborted: number; fallbacks: number; neurons: number; paid_usd: number; audio_seconds: number }>(
+      `SELECT hour, ${HOUR_COLUMNS.join(", ")} FROM zur_usage_hourly WHERE day = ? ORDER BY hour`,
+      day,
+    );
+    return {
+      day,
+      hours: rows.map((r) => ({
+        hour: r.hour,
+        requests: r.requests,
+        errors: r.errors,
+        aborted: r.aborted,
+        fallbacks: r.fallbacks,
+        neurons: r.neurons,
+        paidUsd: r.paid_usd,
+        audioSeconds: r.audio_seconds,
+      })),
+    };
+  }
+
+  /**
+   * The year by the month (PR S13): the 12 months that end in the current one. Reads the months already
+   * summed (12 rows at most) and the days not yet in them: today, yesterday, and whatever a long time
+   * without use left open. Writes nothing.
+   */
+  months(): UsageMonths {
+    const today = this.today();
+    const to = today.slice(0, 7);
+    const from = shiftMonth(to, 1 - USAGE_MONTHS);
+    const summed = this.db.all<MonthRow & { last_day: string }>(
+      `SELECT month, last_day, ${MONTH_COLUMNS.join(", ")} FROM zur_usage_monthly WHERE month >= ? AND month <= ? ORDER BY month`,
+      from,
+      to,
+    );
+    // The newest month holds the last day summed. With none in the year, every day summed is older than it.
+    const last = summed.at(-1)?.last_day ?? "";
+    const open = this.db.all<MonthRow>(
+      `SELECT substr(day, 1, 7) AS month, ${MONTH_SUMS} FROM zur_usage_daily WHERE day > ? AND day >= ? AND day <= ? GROUP BY substr(day, 1, 7) ORDER BY month`,
+      last,
+      `${from}-01`,
+      today,
+    );
+    const months = new Map<string, MonthRow>();
+    for (const row of [...summed, ...open]) {
+      const month = months.get(row.month);
+      if (!month) months.set(row.month, { ...row });
+      else for (const column of MONTH_COLUMNS) month[column] += row[column];
+    }
+    return {
+      from,
+      to,
+      months: [...months.values()]
+        .sort((a, b) => (a.month < b.month ? -1 : 1))
+        .map((r) => ({
+          month: r.month,
+          days: r.days,
+          requests: r.requests,
+          errors: r.errors,
+          aborted: r.aborted,
+          fallbacks: r.fallbacks,
+          neurons: r.neurons,
+          paidUsd: r.paid_usd,
+          audioSeconds: r.audio_seconds,
+        })),
+    };
+  }
+
+  /** A call of another day (it ended after midnight) stays out: the hours are only today's. */
+  private recordHour(day: string, hour: number, use: HourUse): void {
+    if (day !== this.today()) return;
+    this.write(recordHourSql, hour, day, use.requests ?? 0, use.errors ?? 0, use.aborted ?? 0, use.fallbacks ?? 0, use.neurons ?? 0, use.paidUsd ?? 0, use.audioSeconds ?? 0);
+  }
+
+  /**
+   * Sums the closed days into their months, before the 90 days remove them. Yesterday stays open one
+   * more day: a call that started before midnight may still be settled on it, and a sum taken now
+   * would miss that. `months()` reads the open days themselves, so the year is never behind.
+   */
+  private closeMonths(day: string): void {
+    const through = UsageMeter.day(Date.parse(`${day}T00:00:00Z`) - 2 * DAY_MS);
+    const last = this.db.one<{ last_day: string }>(`SELECT last_day FROM zur_usage_monthly ORDER BY month DESC LIMIT 1`)?.last_day ?? "";
+    if (through > last) {
+      this.write(
+        `INSERT INTO zur_usage_monthly (month, last_day, ${MONTH_COLUMNS.join(", ")})
+         SELECT substr(day, 1, 7), MAX(day), ${MONTH_SUMS} FROM zur_usage_daily WHERE day > ? AND day <= ? GROUP BY substr(day, 1, 7)
+         ON CONFLICT (month) DO UPDATE SET last_day = excluded.last_day, ${MONTH_COLUMNS.map((c) => `${c} = ${c} + excluded.${c}`).join(", ")}`,
+        last,
+        through,
+      );
+    }
+    // A month out of the year the panel shows is of no use to anyone (rule P13).
+    this.write(`DELETE FROM zur_usage_monthly WHERE month < ?`, shiftMonth(day, 1 - USAGE_MONTHS));
+  }
+
   private row(day: string): DayRow | null {
     return this.db.one<DayRow>(
       `SELECT ai_requests, ai_errors, ai_aborted, ai_fallbacks, audio_seconds, neurons, cost_usd, paid_usd FROM zur_usage_daily WHERE day = ?`,
@@ -492,9 +646,10 @@ export class UsageMeter {
     );
   }
 
-  /** A day's first call also removes the history past the retention: 90 days, today included (rule P13). */
+  /** A day's first call also sums the closed days into their months and removes the history past the retention: 90 days, today included (rule P13). */
   private startDay(day: string): void {
     const cutoff = UsageMeter.day(Date.parse(`${day}T00:00:00Z`) - USAGE_RETENTION_DAYS * DAY_MS);
+    this.closeMonths(day);
     this.write(`DELETE FROM zur_usage_daily WHERE day <= ?`, cutoff);
     this.write(`DELETE FROM zur_model_usage_daily WHERE day <= ?`, cutoff);
   }
