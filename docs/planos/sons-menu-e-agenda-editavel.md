@@ -157,8 +157,8 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 | Entrega | Situação |
 | --- | --- |
 | 1. Áudio de 120 s e sons | mesclada (#315) |
-| 2. Situação por cor, feriados e fins de semana | em revisão |
-| 3. Arrastar, duração, desfazer e avisos de sincronização | a fazer |
+| 2. Situação por cor, feriados e fins de semana | mesclada (#319) |
+| 3. Arrastar, duração, desfazer e avisos de sincronização | em revisão |
 | 4. Menu por áreas | a fazer |
 
 ### Diferenças da entrega 1
@@ -188,6 +188,24 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 - **No dia do celular, o sábado ou domingo escolhido fica com a marca de escolhido** (fundo escuro), que vence o cinza do fim de semana; os outros dias da faixa mantêm o fundo.
 - **Feriado de outro mês na borda da grade do mês** (1/1 na grade de dezembro) não ganha fundo nem nome escrito, como todo dia fora do mês; o leitor de tela diz o nome.
 - **A lista fixa de campos que vai ao Google só aceita a cor se for uma das quatro ou vazio**, venha o pedido de onde vier (auditoria, item informativo).
+
+### Diferenças da entrega 3
+
+- **O que entrou:** arrastar e a borda da duração na semana, Alt com as setas, a linha "Salvando no Google…", "Salvo no Google agora" e "Em dia com o Google", o aviso com "Desfazer" (8 segundos), a volta do evento quando o Google recusa ou a conexão cai, "mover marca Reagendado", os campos Dura, Tipo e Situação no formulário, o tipo no rótulo do evento e o clique num horário vazio. Sem migration e sem rota nova: `POST /api/google/events` passou a aceitar `colorId` (uma das quatro cores), para o evento já nascer com a situação escolhida.
+- **Evento que se repete muda só naquele dia, sem pergunta.** O plano previa um diálogo com "só este dia" e "todos". Mudar a série inteira mexe na regra de repetição no Google (mover uma série de quarta para quinta, por exemplo), e errar ali muda todos os atendimentos de uma vez. Nesta entrega a mudança vale só para o dia, e o aviso diz "Só este dia mudou". "Todos" e "este e os próximos" ficam juntos para a segunda entrega já prevista na seção 6.
+- **"Mover marca Reagendado" vale para atendimento**, isto é, evento com tipo na descrição ("Consulta | Consultório"), como no protótipo. Uma reunião sem tipo mantém a situação. No "Editar", a situação escolhida à mão vence a regra.
+- **O Tipo vem dos eventos da tela.** O protótipo tem três tipos fixos; no sistema a lista traz os tipos que já aparecem nos eventos lidos (e o do próprio evento), mais "Sem tipo". Sem nenhum tipo na tela, o campo não aparece e o tipo pode ser escrito na primeira linha da descrição.
+- **"Dura" tem "Outra".** Evento com duração fora da lista (50 minutos, ou que atravessa a noite) abre com "Outra" e os campos de fim, que o formulário já tinha. "Dia inteiro" continua existindo.
+- **Pelo teclado a mudança sai quando o Alt é solto**, e não a cada seta: várias setas viram uma mudança só, com um "Desfazer". Alt com Shift muda a duração (o protótipo só movia). Para os lados, só entre os dias que estão na tela. Ctrl + Z (ou ⌘ + Z) desfaz enquanto o aviso oferece.
+- **Uma mudança por vez.** Enquanto uma está sendo salva, a seguinte espera, para cada envio levar a versão que o Google acabou de responder: a grade não arrasta, o "Salvar" do formulário fica em espera e o "Tentar de novo" continua na tela. Nenhuma mudança some em silêncio.
+- **Mudar só o dia não mexe na hora.** Arrastar para o lado (ou Alt com a seta para o lado) mantém a hora exata, mesmo de um evento fora dos 15 minutos ou que passa do horário da tela. A hora só vai para o quarto de hora quando é ela que muda.
+- **Sem "Desfazer" quando a cor de antes não era uma das quatro.** A Zuri só grava as quatro cores de situação, então não teria como devolver uma cor como Uva. Nesse caso o aviso sai sem o botão.
+- **O tipo segue a regra do servidor** (a mesma da ficha do contato): linha no formato "Tipo | Lugar", com letra, até 80 caracteres, sem endereço nem marcação; "Consulta" ou "Retorno" vencem outra linha que tenha "|".
+- **Arrastar é só na grade da semana.** O dia é uma lista (no computador também) e o mês não tem horas: ali a mudança é pelo "Editar". O protótipo desenha o dia como lista do mesmo jeito.
+- **Apagar e trocar a situação nos detalhes não ganharam "Desfazer".** Apagar já pede confirmação, e desfazer exigiria criar outro evento (perderia os convidados). A situação se desfaz com outro toque.
+- **A confirmação de "Editar" aparece na página**, porque o formulário fecha antes do envio: o aviso com "Desfazer" fica ao alcance. Se o Google recusar, o aviso diz o motivo e o evento continua como estava.
+- **O aviso de falha tem marca própria** (triângulo vermelho, e não o visto verde), e o de conexão fica até ser fechado.
+- **Horário em conflito:** o aviso acrescenta "Atenção: há outro evento neste horário", como no protótipo. Não impede a mudança.
 
 ## 12. Riscos
 
