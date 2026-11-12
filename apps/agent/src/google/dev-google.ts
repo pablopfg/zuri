@@ -34,6 +34,7 @@ export interface DevEvent {
   attendees?: unknown[];
   organizer?: { email?: string; self?: boolean };
   recurringEventId?: string;
+  colorId?: string;
 }
 
 /** A person as the People API sends it (step 19b); `version` orders the changes for the sync tokens. */
@@ -414,6 +415,7 @@ export function devGoogle(options: { clientId?: string | undefined; clientSecret
       const updated: DevEvent = { ...event, ...patch, id: event.id, etag: nextEtag() };
       if (patch.start !== undefined) updated.start = merge(event.start, patch.start);
       if (patch.end !== undefined) updated.end = merge(event.end, patch.end);
+      if (patch.colorId === null) delete updated.colorId;
       if ([updated.start, updated.end].some((time) => time?.date !== undefined && time.dateTime !== undefined)) return json({ error: { code: 400 } }, 400);
       events[index] = updated;
       return json(updated);
@@ -524,10 +526,11 @@ function seedEvents(google: DevGoogle, now: number): void {
     google.events.set(calendarId, events);
   };
   add("dono@exemplo.com.br", "Café com a Ana", { dateTime: at(0, 9) }, { dateTime: at(0, 10) }, { location: "Padaria Central" });
-  add("dono@exemplo.com.br", "Dentista", { dateTime: at(1, 15) }, { dateTime: at(1, 16) });
+  // Colors as the owner would set them at Google: on the Agenda screen they are the status (Basil, Banana, Tomato).
+  add("dono@exemplo.com.br", "Dentista", { dateTime: at(1, 15) }, { dateTime: at(1, 16) }, { colorId: "10" });
   add("dono@exemplo.com.br", "Aniversário da Bia", { date: day(3) }, { date: day(4) });
-  add("trabalho@exemplo.com.br", "Reunião de planejamento", { dateTime: at(0, 14) }, { dateTime: at(0, 15, 30) }, { attendees: [{}, {}, {}] });
-  add("trabalho@exemplo.com.br", "Revisão do projeto", { dateTime: at(2, 10) }, { dateTime: at(2, 11) });
+  add("trabalho@exemplo.com.br", "Reunião de planejamento", { dateTime: at(0, 14) }, { dateTime: at(0, 15, 30) }, { attendees: [{}, {}, {}], colorId: "5" });
+  add("trabalho@exemplo.com.br", "Revisão do projeto", { dateTime: at(2, 10) }, { dateTime: at(2, 11) }, { colorId: "11" });
   add("consultorio@exemplo.com.br", "Atendimento", { dateTime: at(0, 16) }, { dateTime: at(0, 17) });
   add("consultorio@exemplo.com.br", "Atendimento", { dateTime: at(1, 8) }, { dateTime: at(1, 9) });
   // The scheduling system's events: the person's full name as the title, the type in the description.

@@ -156,8 +156,8 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 
 | Entrega | Situação |
 | --- | --- |
-| 1. Áudio de 120 s e sons | em revisão |
-| 2. Situação por cor, feriados e fins de semana | a fazer |
+| 1. Áudio de 120 s e sons | mesclada (#315) |
+| 2. Situação por cor, feriados e fins de semana | em revisão |
 | 3. Arrastar, duração, desfazer e avisos de sincronização | a fazer |
 | 4. Menu por áreas | a fazer |
 
@@ -171,6 +171,23 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 - **Teto do JS inicial em 141 kB**, o topo do que o Pablo aprovou em 10/11/2026: o som acrescenta 33 bytes ao primeiro carregamento (dois nomes na lista de arquivos) e deixaria 9 bytes de folga no teto de 140,9 kB.
 - **"Testar um aviso agora"** toca o som escolhido e mostra uma confirmação, sem criar um aviso de verdade.
 - **Suposição ainda aberta:** falta o Pablo gravar um áudio real de 2 minutos depois do primeiro deploy para conferir a transcrição (seção 13). Em desenvolvimento a transcrição é simulada.
+
+### Diferenças da entrega 2
+
+- **O que entrou:** situação pela cor nos eventos e nos detalhes (os quatro botões e a linha "Cor no Google"), feriados nacionais e fundo dos sábados, domingos e feriados. `GET /api/google/events` devolve `colorId` e o `PATCH` aceita "5", "7", "10", "11" ou vazio.
+- **"Mover marca Reagendado" fica para a entrega 3.** A regra vem junto com o arrastar e com o aviso que diz "Ficou como Reagendado". Até lá, mudar o dia ou a hora pelo "Editar" não troca a situação.
+- **O formulário "Editar" não mudou.** Os campos "Tipo", "Dura" e "Situação" do protótipo ficam para a entrega 3, que mexe nesse diálogo. Evento novo nasce sem cor, então conta como Agendado.
+- **Agenda só de leitura mantém a cor da agenda.** No protótipo esses eventos são cinza; no sistema há mais de uma agenda e a cor de cada uma já aparece nos botões de baixo, então ela continua valendo para o que não tem situação.
+- **A confirmação aparece dentro dos detalhes** ("Situação salva"), não num aviso flutuante: com o diálogo aberto, o resto da página fica fora de alcance do teclado e do leitor de tela.
+- **20/11 só é feriado de 2024 em diante**, que é quando a lei passou a valer. Quando a Sexta-feira Santa cai em 21/4, o dia aparece como Sexta-feira Santa.
+- **No mês do celular o feriado fica só com o fundo** (o nome é falado pelo leitor de tela e aparece ao abrir o dia). O protótipo põe um ponto; o fundo já diz o mesmo.
+- **Fim de semana é sempre sábado e domingo**, mesmo que os dias de trabalho das Configurações sejam outros.
+- **O rótulo do evento não traz o tipo** ("Consulta", "Retorno"). Ele continua na descrição, dentro dos detalhes; separar o tipo vem com o campo "Tipo" do formulário, na entrega 3.
+- **A legenda** (quatro situações, fim de semana e feriado) fica embaixo da Agenda.
+- **A situação aparece escrita, não só pela cor:** depois da hora no bloco da semana e na linha do dia. No mês, onde não cabe, ela é falada pelo leitor de tela e está na legenda.
+- **No dia do celular, o sábado ou domingo escolhido fica com a marca de escolhido** (fundo escuro), que vence o cinza do fim de semana; os outros dias da faixa mantêm o fundo.
+- **Feriado de outro mês na borda da grade do mês** (1/1 na grade de dezembro) não ganha fundo nem nome escrito, como todo dia fora do mês; o leitor de tela diz o nome.
+- **A lista fixa de campos que vai ao Google só aceita a cor se for uma das quatro ou vazio**, venha o pedido de onde vier (auditoria, item informativo).
 
 ## 12. Riscos
 

@@ -262,6 +262,8 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
       if (input.allDay !== undefined) draft.allDay = input.allDay;
       const base = current.allDay ? { start: { date: current.start }, end: { date: current.end } } : { start: { dateTime: current.start }, end: { dateTime: current.end } };
       const patch = eventBody(draft, deps().timeZone(), base);
+      // The status is the event's color at Google; a null there takes the color off.
+      if (input.colorId !== undefined && input.colorId !== current.colorId) patch.colorId = input.colorId || null;
       if (Object.keys(patch).length === 0) return current;
       return google.updateEvent(input.calendarId, input.eventId, patch, input.etag, meter);
     });

@@ -1,6 +1,6 @@
 import type { AgendaEvent } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, BLOCK_MIN, blankForm, changedFields, dayEvents, daysOf, eventDays, eventsOn, formBody, formOf, isDate, isTime, nowAt, outsideHours, planDay, shownDays, step, viewRange } from "../src/lib/agenda.ts";
+import { addDays, addMonths, BLOCK_MIN, blankForm, changedFields, dayEvents, daysOf, EVENT_COLORS, eventDays, eventLook, eventsOn, formBody, formOf, isDate, isTime, isWeekend, nowAt, outsideHours, planDay, shownDays, step, viewRange } from "../src/lib/agenda.ts";
 
 const SP = "America/Sao_Paulo";
 const NY = "America/New_York";
@@ -17,6 +17,7 @@ const event = (over: Partial<AgendaEvent>): AgendaEvent => ({
   etag: '"1"',
   recurring: false,
   guests: 0,
+  colorId: "",
   ...over,
 });
 
@@ -267,5 +268,39 @@ describe("the Agenda under the owner's preferences (Sinal S08)", () => {
     expect((short?.top ?? 0) + (short?.height ?? 0)).toBeCloseTo(210 / 1440);
     // Either day still ends at its own midnight: nothing of the next day is counted in it.
     expect(dayEvents([back, forward], "2026-11-02", { ...HOURS, allDay: true, outside: true }, NY).events).toEqual([]);
+  });
+});
+
+describe("the status of an event is its color at Google", () => {
+  const open = { mode: "write", writable: true, color: "#4f7cff" } as const;
+
+  it("reads the four colors as the four statuses in a calendar open for editing", () => {
+    expect(eventLook({ colorId: "7" }, open)).toEqual({ editable: true, status: "scheduled", color: "#039be5" });
+    expect(eventLook({ colorId: "10" }, open)).toEqual({ editable: true, status: "confirmed", color: "var(--color-basil)" });
+    expect(eventLook({ colorId: "5" }, open)).toEqual({ editable: true, status: "rescheduled", color: "#f6bf26" });
+    expect(eventLook({ colorId: "11" }, open)).toEqual({ editable: true, status: "cancelled", color: "#d50000" });
+  });
+
+  it("counts an event without a color as scheduled, in Peacock", () => {
+    expect(eventLook({ colorId: "" }, open)).toEqual({ editable: true, status: "scheduled", color: EVENT_COLORS["7"] });
+    expect(eventLook({} as { colorId: string }, open).status).toBe("scheduled");
+  });
+
+  it("shows any other color as it is, without a status", () => {
+    for (const colorId of ["1", "2", "3", "4", "6", "8", "9"]) expect(eventLook({ colorId }, open)).toEqual({ editable: true, status: null, color: EVENT_COLORS[colorId] });
+    expect(Object.keys(EVENT_COLORS)).toHaveLength(11);
+  });
+
+  it("keeps the calendar's color and gives no status where the event cannot change", () => {
+    const cases = [{ mode: "read", writable: true, color: "#f59e0b" }, { mode: "write", writable: false, color: "#f59e0b" }] as const;
+    for (const calendar of cases) expect(eventLook({ colorId: "11" }, calendar)).toEqual({ editable: false, status: null, color: "#f59e0b" });
+    expect(eventLook({ colorId: "11" }, undefined)).toEqual({ editable: false, status: null, color: undefined });
+  });
+});
+
+describe("the weekend", () => {
+  it("is Saturday and Sunday, and no other day", () => {
+    // 9/11/2026 is a Monday.
+    expect(["2026-11-09", "2026-11-10", "2026-11-11", "2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15"].map(isWeekend)).toEqual([false, false, false, false, false, true, true]);
   });
 });
