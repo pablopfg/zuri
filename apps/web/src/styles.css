@@ -687,6 +687,122 @@ dialog::backdrop {
   .zuri-review-pill[data-tone="warning"] {
     @apply bg-warning-soft text-fg;
   }
+  /*
+   * Rotinas (Sinal, S14). One card with a row per routine: the mark, what it is and, on the right, its
+   * controls. On a phone the controls go under the text.
+   */
+  .zuri-routines {
+    @apply divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-sm;
+  }
+  .zuri-routine {
+    @apply grid scroll-mt-24 grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 p-4 sm:grid-cols-[2.5rem_minmax(0,1fr)_auto] sm:items-center sm:gap-4 sm:px-5;
+  }
+  .zuri-routine-tile {
+    @apply flex h-8 w-8 items-center justify-center rounded-xl bg-raised text-fg-muted sm:h-10 sm:w-10;
+  }
+  .zuri-routine-tile > svg {
+    @apply h-[18px] w-[18px] sm:h-5 sm:w-5;
+  }
+  .zuri-routine-actions {
+    @apply col-start-2 flex flex-wrap items-center gap-1 sm:col-start-3 sm:flex-nowrap sm:gap-2;
+  }
+  .zuri-routine-pending {
+    @apply space-y-2 rounded-2xl border border-l-4 border-border border-l-warning bg-surface p-4 shadow-sm sm:px-5;
+  }
+  /* What each run delivered: when, which routine, how it ended; the result takes the line below. */
+  .zuri-routine-runs {
+    @apply divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface text-sm shadow-sm;
+  }
+  .zuri-routine-runs > li {
+    @apply grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[9.5rem_minmax(0,1fr)_auto] sm:px-5;
+  }
+  .zuri-routine-runs time {
+    @apply col-span-2 text-fg-muted tabular-nums sm:col-span-1;
+  }
+  .zuri-routine-runs > li > div {
+    @apply col-span-2 sm:col-start-2;
+  }
+  /*
+   * "Criar rotina": a sheet that fills a phone and a 40rem box on a computer. The head and the foot
+   * stay; the step scrolls between them.
+   */
+  .zuri-wizard {
+    @apply m-0 h-dvh max-h-none w-full max-w-none border-0 bg-surface p-0 text-fg;
+  }
+  .zuri-wizard > form {
+    @apply flex h-full flex-col;
+  }
+  /* On a computer the box is as tall as the step, never shorter than 30rem: the buttons barely move from one step to the next. */
+  @media (min-width: 40rem) {
+    .zuri-wizard {
+      @apply m-auto h-fit w-[calc(100%-2rem)] max-w-[40rem] rounded-3xl border border-border shadow-xl;
+    }
+    .zuri-wizard > form {
+      @apply h-auto max-h-[calc(100dvh-2.5rem)] min-h-[min(30rem,calc(100dvh-2.5rem))];
+    }
+  }
+  .zuri-wizard header {
+    @apply flex items-start justify-between gap-3 px-5 pt-4 pb-3 sm:px-6 sm:pt-5;
+  }
+  .zuri-wizard-bar {
+    @apply mx-5 grid auto-cols-fr grid-flow-col gap-1 sm:mx-6;
+  }
+  .zuri-wizard-bar > li {
+    @apply h-1 rounded-full bg-raised;
+  }
+  .zuri-wizard-bar > li[data-state="done"] {
+    @apply bg-fg-muted;
+  }
+  .zuri-wizard-bar > li[data-state="on"] {
+    @apply bg-accent;
+  }
+  .zuri-wizard-body {
+    @apply min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:px-6;
+  }
+  .zuri-wizard footer {
+    @apply flex items-center gap-2 border-t border-border bg-bg px-5 py-3 sm:rounded-b-3xl sm:px-6;
+  }
+  /* A card that is a radio: the whole card answers the click, and the ring shows where the keyboard is. */
+  .zuri-wizard-choice {
+    @apply relative flex min-h-16 items-start gap-3 rounded-2xl border border-border bg-surface px-4 py-3 text-fg-muted hover:bg-raised has-checked:border-accent has-checked:bg-accent-soft has-checked:text-accent-text has-checked:ring-1 has-checked:ring-accent has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent;
+  }
+  .zuri-wizard-choice > input {
+    @apply absolute inset-0 cursor-pointer appearance-none rounded-2xl focus-visible:outline-none;
+  }
+  .zuri-wizard-choice > svg {
+    @apply mt-0.5 h-5 w-5 shrink-0 text-fg;
+  }
+  .zuri-wizard-choice > span > span:first-child {
+    @apply text-fg;
+  }
+  .zuri-wizard-choice:has(:checked) > svg,
+  .zuri-wizard-choice:has(:checked) > span > span:first-child {
+    @apply text-accent-text;
+  }
+  .zuri-wizard-seg {
+    @apply flex flex-wrap gap-1 rounded-2xl border border-border bg-raised p-1;
+  }
+  .zuri-wizard-seg > label {
+    @apply relative inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-transparent px-3 text-sm font-medium whitespace-nowrap text-fg-muted hover:text-fg has-checked:border-border has-checked:bg-surface has-checked:font-semibold has-checked:text-fg has-checked:shadow-sm has-focus-visible:outline-2 has-focus-visible:outline-accent;
+  }
+  .zuri-wizard-seg input {
+    @apply absolute inset-0 cursor-pointer appearance-none rounded-xl focus-visible:outline-none;
+  }
+  .zuri-wizard-note {
+    @apply flex items-start gap-2 rounded-xl bg-raised p-3 text-sm leading-6 text-fg-muted;
+  }
+  .zuri-wizard-note > svg {
+    @apply mt-1 h-4 w-4 shrink-0;
+  }
+  .zuri-wizard-summary {
+    @apply divide-y divide-border rounded-xl border border-border text-sm;
+  }
+  .zuri-wizard-summary > div {
+    @apply grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 px-3 py-2.5;
+  }
+  .zuri-wizard-summary dt {
+    @apply text-fg-muted;
+  }
   /* The mark of a step of the connection: done, waiting for Google, or still to do. */
   .zuri-review-step {
     @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-raised text-fg-muted;

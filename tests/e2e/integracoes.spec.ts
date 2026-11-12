@@ -194,15 +194,19 @@ test("raises a tool that writes up to routines, with the warning, and sets the o
     await page.goto("/rotinas");
     const row = page.getByRole("listitem").filter({ hasText: routineName });
     await rowAction(row, page, "Editar");
-    const edit = page.getByRole("dialog", { name: "Editar automação" });
+    const edit = page.getByRole("dialog", { name: "Editar rotina" });
+    // The tools sit with the instruction, at the step "O que".
+    await edit.getByRole("button", { name: "Continuar" }).click();
     const group = edit.getByRole("group", { name: "Ferramentas externas" });
-    const locked = group.getByRole("checkbox", { name: `Criar chamado · ${name}` });
+    const locked = group.getByRole("switch", { name: `Criar chamado · ${name}` });
     await expect(locked).toBeChecked();
     await expect(locked).toBeDisabled();
-    const free = group.getByRole("checkbox", { name: `Buscar documentos · ${name}` });
+    const free = group.getByRole("switch", { name: `Buscar documentos · ${name}` });
     await expect(free).not.toBeChecked();
     await free.check();
     await expectAccessible(page, "automacoes-ferramentas");
+    await edit.getByRole("button", { name: "Continuar" }).click();
+    await edit.getByRole("button", { name: "Continuar" }).click();
     await edit.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Alterações salvas" }).first()).toBeVisible();
     const saved = (await (await page.request.get(`/api/mcp/routines/${routineId}/tools`, { headers: CSRF })).json()) as { tools: { label: string; allowed: boolean }[] };
