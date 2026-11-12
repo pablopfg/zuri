@@ -336,7 +336,7 @@ describe("reading", () => {
       });
       const indexing = embedder.calls.length;
       const out = await command("/buscar carro");
-      expect(out).toBe("Resultados para “carro”\n\nMemórias\n• Meu automóvel é azul\n\nAutomações\n• Seguro do automóvel");
+      expect(out).toBe("Resultados para “carro”\n\nMemórias\n• Meu automóvel é azul\n\nRotinas\n• Seguro do automóvel");
       expect(embedder.calls.slice(indexing)).toEqual([["carro"]]);
       // /uso has the search by meaning's line while it is on (and none while off, above in "/uso, /status…").
       expect(await command("/uso")).toMatch(/\nBusca por significado: 1 de 500 perguntas e \d+ de 2\.000 itens preparados$/);

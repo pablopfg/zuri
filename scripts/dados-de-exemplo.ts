@@ -87,6 +87,13 @@ export async function seed(page: Page, base: string): Promise<{ conversationId: 
   const digest = await post("/api/automations", { name: "Resumo da manhã", kind: "task_digest", schedule: { type: "weekly", days: [1, 2, 3, 4, 5], time: "07:30" } });
   await post(`/api/automations/${digest.automation?.id}/run`, {});
   await post(`/api/automations/${reminder.automation?.id}/run`, {});
+  // A routine with AI (Sinal, S14): the row says "Usa IA".
+  await post("/api/automations", {
+    name: "Fechamento do dia",
+    kind: "agent_prompt",
+    message: "Faça o fechamento do meu dia: as tarefas que ficaram pendentes e os eventos de amanhã.",
+    schedule: { type: "weekly", days: [1, 2, 3, 4, 5], time: "18:30" },
+  });
   const rent = await post("/api/automations", { name: "Pagar o aluguel", kind: "reminder", message: "O aluguel vence amanhã.", schedule: { type: "monthly", day: 31, time: "09:00" } });
   const paused = await page.request.patch(`${base}/api/automations/${rent.automation?.id}`, { headers: CSRF, data: { paused: true } });
   if (!paused.ok()) throw new Error(`pause: ${paused.status()}`);

@@ -16,7 +16,7 @@ export const ptBRPalette = {
   "web.palette.failed": "A busca não respondeu. Os atalhos continuam aqui.",
   "web.palette.keys": "↑ ↓ para escolher · Enter para abrir · Esc para fechar",
   "web.palette.done": "Concluída",
-  "web.palette.newAutomation": "Criar automação",
+  "web.palette.newAutomation": "Criar rotina",
   "web.palette.newFlow": "Criar fluxo",
   "web.palette.newChat": "Nova conversa",
   "web.palette.ask": "Perguntar à Zuri: “{query}”",

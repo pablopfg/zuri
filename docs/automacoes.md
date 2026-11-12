@@ -1,6 +1,8 @@
-# Automações
+# Rotinas
 
-A etapa 10 trouxe três tipos de automação, todos no fuso do dono (Configurações › Conta):
+Na tela e nos textos elas se chamam **Rotinas** (menu Organizar › Rotinas, endereço `/rotinas`). "Automação" ficou para as do CRM. No código e nas rotas o nome antigo continua (`/api/automations`, `zur_automations`).
+
+A etapa 10 trouxe três tipos, todos no fuso do dono (Configurações › Conta):
 
 | Tipo | O que faz | Usa IA? |
 | --- | --- | --- |
@@ -11,6 +13,22 @@ A etapa 10 trouxe três tipos de automação, todos no fuso do dono (Configuraç
 Os horários possíveis são: uma vez, todo dia, dias da semana, um dia do mês e a cada N horas (de 1 a 744).
 
 Cada automação tem também a prioridade dos seus avisos (`priority`: baixa, normal ou alta; padrão normal, desde a etapa 11d). Baixa fica só no sino; alta insiste. As ferramentas do chat criam sempre com normal, e a prioridade que aprende pode mover a de uma rotina (veja [Avisos](avisos.md#prioridade-que-aprende)).
+
+## A tela
+
+Uma tela só, sem abas. No alto, quantas rotinas estão ativas (de 50). Depois vêm as rotinas que a Zuri sugeriu na conversa e esperam aprovação, a lista e as últimas execuções.
+
+Cada linha tem **Rodar agora**, a chave que pausa e retoma e o menu com **Editar**, **Duplicar** (a cópia começa pausada) e **Apagar**.
+
+**Criar rotina** pergunta uma coisa por vez, em cinco passos:
+
+1. **Tipo:** Lembrete, Resumo das tarefas ou Rotina da Zuri. "Fluxo" leva ao editor de fluxos, em CRM › Fluxos.
+2. **Quando:** a repetição, o horário e as três próximas execuções.
+3. **O que:** o texto do lembrete, o recado do resumo ou o que a Zuri deve fazer (com os modelos prontos).
+4. **Avisos:** a prioridade.
+5. **Revisar:** o nome e o resumo do que foi escolhido. Nada é gravado antes daqui.
+
+Editar usa os passos 2 a 5: o tipo de uma rotina não muda. Enter avança, Esc fecha sem gravar.
 
 ## Onde fica o código
 
@@ -38,7 +56,7 @@ Cada automação tem também a prioridade dos seus avisos (`priority`: baixa, no
 
 | Limite | Valor |
 | --- | --- |
-| Automações no total | 500 |
+| Rotinas no total | 500 |
 | Ativas ao mesmo tempo | 50 |
 | Rotinas esperando aprovação | 10 |
 | Repetição mínima | 1 hora |

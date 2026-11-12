@@ -23,7 +23,7 @@ export const ISSUE_TEMPLATE = "erro.yml";
 const SOURCE_NAME: Record<DiagnosticSource, string> = {
   api: "servidor",
   ai: "IA",
-  automation: "automações",
+  automation: "rotinas",
   chat: "conversa",
   interface: "tela",
 };

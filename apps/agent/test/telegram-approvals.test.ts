@@ -299,7 +299,7 @@ describe("the proposal's card", () => {
       ["replace_note_content", { id: ids.note, content: "Mala e passaporte" }, ["Proposta da Zuri: trocar o texto da nota", "Item: Viagem", "Texto atual:", "│ Mala", "Texto novo:", "│ Mala e passaporte"]],
       ["delete_note", { id: ids.gone }, ["Proposta da Zuri: apagar a nota", "Item: Rascunho"]],
       ["forget_memory", { id: ids.memory }, ["Proposta da Zuri: esquecer a memória", "Item: Prefere café sem açúcar"]],
-      ["cancel_automation", { automation: ids.automation }, ["Proposta da Zuri: cancelar a automação", "Item: Remédio"]],
+      ["cancel_automation", { automation: ids.automation }, ["Proposta da Zuri: cancelar a rotina", "Item: Remédio"]],
     ];
     for (const [tool, args, expected] of calls) {
       botCalls.length = 0;

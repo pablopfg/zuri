@@ -1,4 +1,4 @@
-import { AUTOMATION_LIMITS, type MessageKey, nextRun, type Schedule, type ScheduleType, zonedParts } from "@zuri/shared";
+import { AUTOMATION_LIMITS, type AutomationKind, type MessageKey, nextRun, type Schedule, type ScheduleType, zonedParts } from "@zuri/shared";
 
 /**
  * The Automations screen's rules, without React: how a schedule reads to the
@@ -131,3 +131,64 @@ export function scheduleOf(draft: ScheduleDraft): Schedule | null {
 
 /** The anchor the chat links to, so "Revisar em Automações" lands on that automation. */
 export const automationAnchor = (id: string) => `automacao-${id}`;
+
+/** The steps of "Criar rotina", in order. */
+export const WIZARD_STEPS = ["kind", "when", "what", "notify", "review"] as const;
+export type WizardStep = (typeof WIZARD_STEPS)[number];
+
+/** Editing skips the first step: the kind of a routine never changes. */
+export const wizardSteps = (editing: boolean): readonly WizardStep[] => (editing ? WIZARD_STEPS.slice(1) : WIZARD_STEPS);
+
+/** What the steps look at. "flow" is the fourth card of the first step: it leaves for the flows' editor. */
+export interface WizardFields {
+  kind: AutomationKind | "flow";
+  name: string;
+  message: string;
+  schedule: Schedule | null;
+}
+
+/** Whether a step has what it asks for. The last one answers for all: nothing is sent half filled (the server checks again). */
+export function stepReady(step: WizardStep, fields: WizardFields): boolean {
+  switch (step) {
+    case "kind":
+      return fields.kind !== "flow";
+    case "when":
+      return fields.schedule !== null;
+    case "what":
+      return fields.kind === "task_digest" || fields.message.trim() !== "";
+    case "notify":
+      return true;
+    case "review":
+      return fields.name.trim() !== "" && stepReady("kind", fields) && stepReady("when", fields) && stepReady("what", fields);
+  }
+}
+
+/** `text` in at most `max` UTF-16 units (what the server counts), never ending in half an emoji. */
+function cut(text: string, max: number): string {
+  let out = "";
+  for (const char of text) {
+    if (out.length + char.length > max) break;
+    out += char;
+  }
+  return out;
+}
+
+/** A name to start from at the last step: a reminder is its own first line; the digest, its kind. */
+export function suggestName(kind: AutomationKind, message: string, digest: string): string {
+  if (kind === "task_digest") return digest;
+  if (kind !== "reminder") return "";
+  return cut((message.trim().split("\n")[0] ?? "").trim(), AUTOMATION_LIMITS.name);
+}
+
+/** The name of a copy, cut on the original's side so the mark of the copy always shows. */
+export function copyName(name: string, mark: (name: string) => string): string {
+  const extra = mark("").length;
+  return mark(cut(name, AUTOMATION_LIMITS.name - extra).trimEnd());
+}
+
+/** "Sao Paulo (GMT-3)": the owner's zone at the wizard's "Quando", where the hours are read. */
+export function zoneLabel(timeZone: string, now: Date, locale: string): string {
+  const city = (timeZone.split("/").at(-1) ?? timeZone).replaceAll("_", " ");
+  const offset = new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: "shortOffset" }).formatToParts(now).find((part) => part.type === "timeZoneName")?.value ?? "";
+  return offset ? `${city} (${offset})` : city;
+}
