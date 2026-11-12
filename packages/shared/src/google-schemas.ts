@@ -50,6 +50,9 @@ const eventFields = /* @__PURE__ */ (() => ({
   description: z.string().max(GOOGLE_LIMITS.descriptionMax),
 }))();
 
+/** A status, as the color it is at Google: one of the four, never another color. */
+const statusColor = /* @__PURE__ */ (() => z.enum(Object.values(EVENT_STATUS_COLOR)))();
+
 export const googleEventCreateSchema = /* @__PURE__ */ (() =>
   z
     .object({
@@ -57,6 +60,8 @@ export const googleEventCreateSchema = /* @__PURE__ */ (() =>
       ...eventFields,
       location: eventFields.location.optional(),
       description: eventFields.description.optional(),
+      /** Born with a status other than "Agendado": the color it is at Google. */
+      colorId: statusColor.optional(),
     })
     .strict())();
 export type GoogleEventCreate = z.input<typeof googleEventCreateSchema>;

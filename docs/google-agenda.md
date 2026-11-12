@@ -88,6 +88,50 @@ dele. São os nomes e os números de cor do próprio Google Agenda:
 - Se o evento mudou no Google enquanto os detalhes estavam abertos, a Zuri não
   grava por cima: avisa, fecha os detalhes e mostra o evento como ficou.
 
+#### Mudar um evento na própria Agenda
+
+Nas agendas abertas para edição, cada mudança vai para o Google na hora. A
+linha ao lado dos botões diz como está: "Salvando no Google…", "Salvo no Google
+agora" ou "Em dia com o Google".
+
+- **Arrastar** um evento na semana troca o dia e a hora, de 15 em 15 minutos.
+  A **borda de baixo** muda a duração (no mínimo 15 minutos). O evento fica
+  dentro do horário que está na tela e não passa da meia-noite.
+- **Pelo teclado**, com o evento em foco: Alt com as setas muda a hora (para
+  cima e para baixo) e o dia (para os lados, entre os dias que estão na tela);
+  Alt com Shift e a seta para cima ou para baixo muda a duração. A mudança é
+  enviada quando você solta o Alt, e Esc desiste antes disso.
+- **No celular** (e na lista do dia) não há arrastar: a mudança é pelo "Editar".
+- **Clicar num horário vazio** da semana abre "Novo evento" com o dia e a meia
+  hora clicada.
+- **Editar** tem os campos Dia, Hora de início, Dura (15 min a 3 horas, ou
+  "Outra", que mostra o dia e a hora do fim), Tipo e Situação. O Tipo é a
+  primeira linha da descrição do evento no Google ("Consulta | Consultório") e
+  a lista traz os tipos que já aparecem nos eventos da tela. O tipo também
+  aparece no bloco do evento, depois da hora.
+- **Mover marca Reagendado:** mudar o dia ou a hora de um atendimento (evento
+  com tipo) que estava Agendado ou Confirmado troca a situação para Reagendado,
+  e o aviso diz isso. Mudar só a duração não troca. No "Editar", uma situação
+  que você escolher vale mais que essa regra.
+- **Desfazer:** depois de cada mudança, o aviso mostra o que mudou e oferece
+  "Desfazer" por 8 segundos (Ctrl + Z ou ⌘ + Z faz o mesmo). Desfazer manda a
+  mudança contrária para o Google, com a situação de antes.
+- **Se não der certo**, o evento volta para onde estava e o aviso diz o motivo.
+  Sem conexão, o aviso fica na tela com "Tentar de novo"; nada fica numa fila
+  escondida. Se o evento mudou no Google nesse meio tempo, a Zuri não grava por
+  cima e lê a semana de novo.
+- **Uma mudança por vez:** enquanto uma está sendo salva, a seguinte espera
+  (o "Salvar" do formulário aguarda a resposta).
+- Mudar só o dia mantém a hora exata do evento. "Desfazer" não aparece quando
+  a cor de antes não era uma das quatro situações, porque a Zuri não grava
+  outras cores.
+- **Evento que se repete:** a mudança vale só para aquele dia, e o aviso diz
+  "Só este dia mudou". Mudar a série inteira continua sendo no Google Agenda.
+- O aviso também alerta quando o novo horário bate com outro evento.
+- Evento de agenda "Só ler" não arrasta, não tem "Editar" e a Zuri avisa que a
+  agenda é só para leitura. Evento de dia inteiro ou de mais de um dia não
+  arrasta: use o "Editar".
+
 #### Fins de semana e feriados
 
 Sábados e domingos têm um fundo cinza, e os **feriados nacionais** um fundo
@@ -207,6 +251,7 @@ passo a passo está em [avaliacoes-google.md](avaliacoes-google.md#para-quem-ins
 | Ferramentas do agente | `apps/agent/src/tools/calendar.ts` |
 | Google simulado (desenvolvimento, e2e e testes) | `apps/agent/src/google/dev-google.ts` |
 | Tela Agenda e cartão em Integrações | `apps/web/src/pages/agenda/AgendaPage.tsx`, `apps/web/src/pages/settings/GoogleCard.tsx` |
+| Regras de arrastar, duração, "mover marca Reagendado" e desfazer; envio de uma mudança com o aviso | `apps/web/src/lib/agenda-edit.ts`, `apps/web/src/pages/agenda/changes.ts` |
 | Banco (migration 22) | `zur_google_account`, `zur_google_calendars` |
 
 - Os tokens ficam cifrados com AES-256-GCM, numa chave derivada do
@@ -216,6 +261,8 @@ passo a passo está em [avaliacoes-google.md](avaliacoes-google.md#para-quem-ins
 - `GET /api/google/events` devolve o `colorId` de cada evento (de "1" a "11",
   ou vazio). `PATCH /api/google/events` aceita `colorId` só com "5", "7", "10",
   "11" ou vazio (tira a cor), sempre com o `etag` que a tela leu.
+  `POST /api/google/events` aceita `colorId` com uma das quatro cores, para o
+  evento nascer com a situação escolhida no formulário.
 - Cada chamada ao Google vai para um endereço fixo, com 10 s de prazo, sem
   seguir redirecionamento e até 1 MB de resposta (uma resposta que não é
   JSON conta como falha). Um turno da conversa faz no máximo 8 chamadas (6

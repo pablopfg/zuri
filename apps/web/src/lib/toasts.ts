@@ -7,6 +7,12 @@
 export interface ToastOptions {
   /** Something left to do ("2 conflicts wait for review"): it stays until closed. */
   persistent?: boolean;
+  /** One thing to do about it ("Desfazer", "Tentar de novo"); doing it closes the toast. */
+  action?: { label: string; run: () => void };
+  /** How long it shows when it is not the usual time (an undo's window). */
+  ms?: number;
+  /** Something did not work: the mark is not the check of a confirmation. */
+  failed?: boolean;
 }
 
 export interface Toast {
@@ -14,6 +20,9 @@ export interface Toast {
   message: string;
   closeLabel: string;
   persistent: boolean;
+  action?: { label: string; run: () => void };
+  ms?: number;
+  failed: boolean;
 }
 
 /** Two frames: a screen reader announces what changes in a live region, not the region's birth. */
@@ -43,7 +52,9 @@ export function createToastStore({ max = 3, firstPaint = twoFrames }: { max?: nu
     /** The same array until something changes (what useSyncExternalStore needs). */
     snapshot: () => toasts,
     show(message: string, closeLabel: string, options: ToastOptions = {}): number {
-      const toast = { id: nextId++, message, closeLabel, persistent: options.persistent === true };
+      const toast: Toast = { id: nextId++, message, closeLabel, persistent: options.persistent === true, failed: options.failed === true };
+      if (options.action) toast.action = options.action;
+      if (options.ms !== undefined) toast.ms = options.ms;
       if (painted) {
         publish([...toasts, toast]);
       } else if (waiting) {

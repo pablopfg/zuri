@@ -1,6 +1,6 @@
 import type { AgendaEvent } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, BLOCK_MIN, blankForm, changedFields, dayEvents, daysOf, EVENT_COLORS, eventDays, eventLook, eventsOn, formBody, formOf, isDate, isTime, isWeekend, nowAt, outsideHours, planDay, shownDays, step, viewRange } from "../src/lib/agenda.ts";
+import { addDays, addMonths, BLOCK_MIN, blankForm, changedFields, DURATIONS, dayEvents, daysOf, EVENT_COLORS, eventDays, eventLook, eventsOn, formBody, formOf, isDate, isTime, isWeekend, later, nowAt, OTHER_DURATION, outsideHours, planDay, shownDays, step, typeLine, typeName, viewRange, withoutType, withType } from "../src/lib/agenda.ts";
 
 const SP = "America/Sao_Paulo";
 const NY = "America/New_York";
@@ -116,7 +116,12 @@ describe("the event form", () => {
     expect(formBody({ ...base, title: "   " })).toBe("title");
     expect(formBody({ ...base, title: "x", startDate: "2026-02-30" })).toBe("date");
     expect(formBody({ ...base, title: "x", startTime: "25:00" })).toBe("date");
-    expect(formBody({ ...base, title: "x", endTime: "09:00" })).toBe("end");
+    // The end's own fields count only with "Outra" as the length.
+    expect(formBody({ ...base, title: "x", endTime: "09:00" })).toMatchObject({ end: "2026-11-05T10:00" });
+    expect(formBody({ ...base, title: "x", duration: "other", endTime: "09:00" })).toBe("end");
+    expect(formBody({ ...base, title: "x", duration: "other", endTime: "9h" })).toBe("date");
+    expect(formBody({ ...base, title: "x", duration: "0" })).toBe("date");
+    expect(formBody({ ...base, title: "x", duration: "abc" })).toBe("date");
     expect(formBody({ ...base, title: "x", allDay: true, endDate: "2026-11-04" })).toBe("end");
     // All day on a single day is fine: the end is inclusive.
     expect(formBody({ ...base, title: "x", allDay: true })).toMatchObject({ start: "2026-11-05", end: "2026-11-05" });
@@ -127,12 +132,91 @@ describe("the event form", () => {
     const renamed = formBody({ ...before, title: "Dentista (remarcado)" });
     if (typeof renamed === "string") throw new Error(renamed);
     expect(changedFields(before, renamed)).toEqual({ title: "Dentista (remarcado)" });
-    const moved = formBody({ ...before, startTime: "15:00", endTime: "16:00" });
+    const moved = formBody({ ...before, startTime: "15:00" });
     if (typeof moved === "string") throw new Error(moved);
     expect(changedFields(before, moved)).toEqual({ allDay: false, start: "2026-11-03T15:00", end: "2026-11-03T16:00" });
     const same = formBody(before);
     if (typeof same === "string") throw new Error(same);
     expect(changedFields(before, same)).toEqual({});
+  });
+});
+
+describe("the form's length, type and status (sons, menu e agenda, delivery 3)", () => {
+  it("the length is one of the list or, for any other, the end's own fields", () => {
+    expect(formOf(event({}), SP).duration).toBe("60");
+    expect(formOf(event({ end: "2026-11-03T13:15:00.000Z" }), SP).duration).toBe("15");
+    expect(formOf(event({ end: "2026-11-03T16:00:00.000Z" }), SP).duration).toBe("180");
+    // 50 minutes and an event that crosses the night are not in the list.
+    expect(formOf(event({ end: "2026-11-03T13:50:00.000Z" }), SP)).toMatchObject({ duration: OTHER_DURATION, endDate: "2026-11-03", endTime: "10:50" });
+    expect(formOf(event({ end: "2026-11-04T13:00:00.000Z" }), SP)).toMatchObject({ duration: OTHER_DURATION, endDate: "2026-11-04" });
+    expect([...DURATIONS]).toEqual([15, 30, 45, 60, 90, 120, 180]);
+  });
+
+  it("the end follows the start by the length, into the next day when it passes midnight", () => {
+    const base = { ...blankForm("2026-11-05", "c", SP, Date.parse("2026-11-03T13:00:00Z")), title: "x" };
+    expect(formBody({ ...base, startTime: "14:15", duration: "45" })).toMatchObject({ start: "2026-11-05T14:15", end: "2026-11-05T15:00" });
+    expect(formBody({ ...base, startTime: "23:00", duration: "60" })).toMatchObject({ end: "2026-11-06T00:00" });
+    expect(formBody({ ...base, startTime: "23:30", duration: "180" })).toMatchObject({ end: "2026-11-06T02:30" });
+    expect(later("2026-12-31", "23:45", 15)).toEqual({ date: "2027-01-01", time: "00:00" });
+    expect(later("2026-11-05", "09:00", 0)).toEqual({ date: "2026-11-05", time: "09:00" });
+  });
+
+  it("a new event starts at the hour clicked on the week", () => {
+    expect(blankForm("2026-11-05", "c", SP, Date.parse("2026-11-03T13:00:00Z"), "14:30")).toMatchObject({ startTime: "14:30", endDate: "2026-11-05", endTime: "15:30", duration: "60", status: "scheduled", type: "" });
+  });
+
+  it("the type is the description's line shaped \"Type | Place\", or one that begins with Consulta or Retorno", () => {
+    expect(typeLine("Consulta | Consultório")).toBe("Consulta | Consultório");
+    expect(typeLine("CPF 000\n  Retorno | Consultório  \nobs")).toBe("Retorno | Consultório");
+    expect(typeLine("Retorno em 30 dias")).toBe("Retorno em 30 dias");
+    expect(typeLine("consulta")).toBe("consulta");
+    expect(typeLine("Consultoria de vendas")).toBe("");
+    expect(typeLine("Levar exames")).toBe("");
+    // "Primeira consulta" and a type with an accent count; so does "Avaliação", only as "Type | Place".
+    expect(typeLine("Primeira consulta")).toBe("Primeira consulta");
+    expect(typeLine("Avaliação física | Consultório")).toBe("Avaliação física | Consultório");
+    // QA-E3-05: an address, a tag or a line without letters before the "|" is no type.
+    expect(typeLine("https://exemplo.com.br/a|b")).toBe("");
+    expect(typeLine("<p>Consulta | Consultório</p>")).toBe("");
+    expect(typeLine("123 | 456")).toBe("");
+    expect(typeLine(`${"x".repeat(81)}| Sala`)).toBe("");
+    expect(typeLine(`${"x".repeat(80)}| Sala`)).toBe(`${"x".repeat(80)}| Sala`);
+    // A line that says "Consulta" or "Retorno" wins over another that happens to hold a "|".
+    expect(typeLine("Obs: ligar | urgente\nRetorno | Consultório")).toBe("Retorno | Consultório");
+    expect(typeLine("Obs: ligar | urgente\nRetorno")).toBe("Retorno");
+    // Without one, the first shaped line is the type, as the server reads it.
+    expect(typeLine("Sala 2 | 3º andar")).toBe("Sala 2 | 3º andar");
+    expect(typeLine("| sem tipo")).toBe("");
+    expect(typeLine("Tipo |")).toBe("");
+    expect(typeLine("")).toBe("");
+    expect(typeName("Avaliação física | Consultório")).toBe("Avaliação física");
+    expect(typeName("Retorno em 30 dias")).toBe("Retorno em 30 dias");
+    expect(typeName("")).toBe("");
+  });
+
+  it("the form splits the type from the rest of the description and joins them back", () => {
+    const form = formOf(event({ description: "Consulta | Consultório\nLevar exames", colorId: "10" }), SP);
+    expect(form).toMatchObject({ type: "Consulta | Consultório", description: "Levar exames", status: "confirmed" });
+    expect(formBody(form)).toMatchObject({ description: "Consulta | Consultório\nLevar exames" });
+    expect(formBody({ ...form, type: "" })).toMatchObject({ description: "Levar exames" });
+    expect(formBody({ ...form, type: "Retorno | Consultório", description: "" })).toMatchObject({ description: "Retorno | Consultório" });
+    expect(withoutType("Levar exames")).toBe("Levar exames");
+    expect(withType("", "")).toBe("");
+    // A type in the second line comes first on the way back; opening and saving without a change sends nothing.
+    const second = formOf(event({ description: "Levar exames\nRetorno | Consultório" }), SP);
+    const body = formBody(second);
+    if (typeof body === "string") throw new Error(body);
+    expect(changedFields(second, body)).toEqual({});
+    // Changing only the type sends only the description.
+    const typed = formBody({ ...form, type: "Retorno | Consultório" });
+    if (typeof typed === "string") throw new Error(typed);
+    expect(changedFields(form, typed)).toEqual({ description: "Retorno | Consultório\nLevar exames" });
+  });
+
+  it("the status is the color: none is Agendado, and a color outside the four has none", () => {
+    expect(formOf(event({}), SP).status).toBe("scheduled");
+    expect(formOf(event({ colorId: "5" }), SP).status).toBe("rescheduled");
+    expect(formOf(event({ colorId: "3" }), SP).status).toBeNull();
   });
 });
 

@@ -13,8 +13,21 @@ import {
   ptBRAgenda,
   type Settings,
 } from "@zuri/shared";
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Flag, MapPin, Palette, Pencil, Repeat, Trash2, Users } from "lucide-react";
-import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, CircleCheck, Flag, LoaderCircle, MapPin, Palette, Pencil, RefreshCw, Repeat, Tag, Trash2, Users } from "lucide-react";
+import {
+  type CSSProperties,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Link } from "react-router";
 import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
@@ -26,6 +39,7 @@ import {
   blankForm,
   changedFields,
   type DayBlock,
+  DURATIONS,
   dayEvents,
   daysOf,
   EVENT_COLORS,
@@ -41,13 +55,19 @@ import {
   localDate,
   localTime,
   nowAt,
+  OTHER_DURATION,
   planDay,
   shownDays,
   step,
+  typeLine,
+  typeName,
   viewRange,
+  withoutType,
 } from "../../lib/agenda.ts";
+import { applyChanges, clashes, type EventChanges, moveSlot, reschedules, resizeSlot, type Slot, STEP_MIN, slotChanges, slotOf, slotTimes } from "../../lib/agenda-edit.ts";
 import { ApiError, api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
+import { EVENTS_KEY, useEventChanges } from "./changes.ts";
 
 // This screen's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRAgenda);
@@ -62,6 +82,12 @@ const TICK_MS = 30_000;
 const WIDE = "(min-width: 64rem)";
 /** The height of one hour in the week's grid: 56 px, so the shortest block (BLOCK_MIN) is a 44 px target. */
 const HOUR_REM = 3.5;
+/** A press turns into a drag after this many pixels: a click that slips never moves an event. */
+const DRAG_PX = 5;
+/** How long the toolbar says "Salvo no Google agora" after a change went through. */
+const SAVED_MS = 60_000;
+/** An empty hour of the week opens "Novo evento" at the half hour clicked. */
+const NEW_STEP_MIN = 30;
 
 type T = ReturnType<typeof useI18n>["t"];
 const VIEW_TEXT: Record<AgendaView, Parameters<T>[0]> = { day: "web.agenda.view.day", week: "web.agenda.view.week", month: "web.agenda.view.month" };
@@ -71,6 +97,7 @@ const PROBLEM_TEXT: Record<FormProblem, Parameters<T>[0]> = {
   end: "web.agenda.form.error.end",
 };
 
+const SYNC_TEXT: Record<Sync, Parameters<T>[0]> = { idle: "web.agenda.sync.idle", saving: "web.agenda.sync.saving", saved: "web.agenda.sync.saved" };
 const STATUS_TEXT: Record<EventStatus, Parameters<T>[0]> = {
   scheduled: "web.agenda.status.scheduled",
   confirmed: "web.agenda.status.confirmed",
@@ -145,9 +172,13 @@ function useNow(): number {
   return now;
 }
 
-const eventsKey = (from: string, to: string) => ["calendar", "events", from, to] as const;
+const eventsKey = (from: string, to: string) => [...EVENTS_KEY, from, to] as const;
 
-type Editing = { mode: "new"; day: string } | { mode: "edit"; event: AgendaEvent };
+type Editing = { mode: "new"; day: string; time?: string } | { mode: "edit"; event: AgendaEvent };
+/** What a change did, for the words of its notice. */
+type Changed = { kind: "moved" | "resized" | "updated"; rescheduled: boolean };
+type Change = (event: AgendaEvent, changes: EventChanges, changed: Changed) => void;
+type Sync = "idle" | "saving" | "saved";
 /** What the preferences hide and the owner asked to see in this visit. */
 type Reveal = { allDay: boolean; outside: boolean; daysOff: boolean };
 
@@ -163,7 +194,7 @@ type Reveal = { allDay: boolean; outside: boolean; daysOff: boolean };
  * from Configurações › Agenda; whatever is hidden is counted beside "Mostrar".
  */
 export function AgendaPage() {
-  const { t, timeZone } = useI18n();
+  const { t, locale, timeZone } = useI18n();
   const status = useQuery({ queryKey: GOOGLE_STATUS_KEY, queryFn: ({ signal }) => api<GoogleStatus>("/google", { signal }) });
   // The session already read the settings: this is its answer, not a request of this screen.
   const settings = useQuery({ queryKey: SETTINGS_KEY, queryFn: () => api<Settings>("/settings"), staleTime: 5 * 60_000 });
@@ -203,6 +234,44 @@ export function AgendaPage() {
   const byId = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const writable = calendars.filter((c) => c.mode === "write" && c.writable);
   const shown = (events.data?.events ?? []).filter((event) => !hidden.has(event.calendarId));
+  // The types the calendar already uses ("Consulta | Consultório"): the form offers them.
+  const types = useMemo(() => [...new Set((events.data?.events ?? []).map((event) => typeLine(event.description)).filter(Boolean))].sort(), [events.data]);
+
+  const { send, undo, forget, saving, savedAt } = useEventChanges();
+  // Read when Google answers: what else is at that hour by then.
+  const onScreen = useRef(shown);
+  onScreen.current = shown;
+  /** Sends one change and, once Google takes it, says what happened to the event. */
+  const change: Change = (event, changes, changed) =>
+    void send(event, changes, (saved) => {
+      const title = saved.title || t("web.agenda.event.untitled");
+      const day = new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short", day: "2-digit", month: "2-digit" }).format(utcNoon(localDate(saved.start, timeZone))).replace(".", "");
+      const said = [
+        changed.kind === "moved"
+          ? t("web.agenda.change.moved", { title, day, time: localTime(saved.start, timeZone) })
+          : changed.kind === "resized"
+            ? t("web.agenda.change.resized", { title, time: localTime(saved.end, timeZone) })
+            : t("web.agenda.change.updated", { title }),
+      ];
+      if (changed.rescheduled) said.push(t("web.agenda.change.rescheduled"));
+      if (saved.recurring) said.push(t("web.agenda.change.onlyThisDay"));
+      if (clashes(saved, onScreen.current)) said.push(t("web.agenda.change.clash"));
+      return said.join(" ");
+    });
+  const moveTo = (event: AgendaEvent, slot: Slot) => {
+    const result = slotChanges(event, slot, eventLook(event, byId.get(event.calendarId)).status, timeZone);
+    if (result) change(event, result.changes, { kind: result.moved ? "moved" : "resized", rescheduled: result.rescheduled });
+  };
+  // Ctrl or ⌘ + Z takes the last change back while its notice offers "Desfazer"; never over a field or an open dialog.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "z" || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+      if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable], dialog")) return;
+      if (undo()) e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo]);
 
   // "Novo evento" in the command palette: by the address on arrival, by an event when the page is open.
   const canCreate = writable.length > 0;
@@ -307,6 +376,7 @@ export function AgendaPage() {
         onStep={(direction) => go(step(view, anchor, direction))}
         onToday={() => setPicked(null)}
         loading={events.isFetching}
+        sync={saving ? "saving" : savedAt !== null && now - savedAt < SAVED_MS ? "saved" : "idle"}
       />
       {!canCreate && <Notice>{t("web.agenda.noWritable")}</Notice>}
       {events.data?.more && <Notice tone="warning">{t("web.agenda.more")}</Notice>}
@@ -317,7 +387,20 @@ export function AgendaPage() {
       ) : view === "month" ? (
         <MonthView anchor={anchor} from={from} to={to} today={today} events={shown} calendars={byId} onOpen={show} onDay={openDay} />
       ) : grid ? (
-        <WeekGrid days={columns} today={today} now={now} hours={prefs} see={see} events={shown} calendars={byId} onOpen={show} onDay={openDay} />
+        <WeekGrid
+          days={columns}
+          today={today}
+          now={now}
+          hours={prefs}
+          see={see}
+          events={shown}
+          calendars={byId}
+          onOpen={show}
+          onDay={openDay}
+          movable={!saving}
+          onMove={moveTo}
+          onNew={canCreate ? (day, time) => setEditing({ mode: "new", day, time }) : undefined}
+        />
       ) : (
         <>
           <DayStrip days={week} day={anchor} today={today} onDay={go} />
@@ -351,6 +434,7 @@ export function AgendaPage() {
         event={open}
         calendar={open ? byId.get(open.calendarId) : undefined}
         onClose={() => setOpen(null)}
+        onSend={forget}
         // Only while the details still show that event: closed, or on another one, the answer changes nothing here.
         onChange={(saved) => setOpen((old) => (old && eventKey(old) === eventKey(saved) ? saved : old))}
         onEdit={(event) => {
@@ -358,7 +442,7 @@ export function AgendaPage() {
           setEditing({ mode: "edit", event });
         }}
       />
-      {editing && <EventFormDialog editing={editing} calendars={writable} onClose={() => setEditing(null)} />}
+      {editing && <EventFormDialog editing={editing} calendars={writable} types={types} busy={saving} onChange={change} onClose={() => setEditing(null)} />}
     </div>
   );
 }
@@ -378,7 +462,8 @@ function Toolbar({
   onStep,
   onToday,
   loading,
-}: { view: AgendaView; onView: (view: AgendaView) => void; from: string; to: string; onStep: (direction: 1 | -1) => void; onToday: () => void; loading: boolean }) {
+  sync,
+}: { view: AgendaView; onView: (view: AgendaView) => void; from: string; to: string; onStep: (direction: 1 | -1) => void; onToday: () => void; loading: boolean; sync: Sync }) {
   const { t, locale } = useI18n();
   const label = rangeLabel(view, from, to, locale);
   return (
@@ -399,7 +484,7 @@ function Toolbar({
           <ChevronRight className="h-4 w-4" aria-hidden />
         </Button>
       </div>
-      <fieldset className="flex rounded-xl border border-border bg-raised p-1">
+      <fieldset className="flex rounded-xl border border-border bg-raised p-1 lg:order-2">
         <legend className="sr-only">{t("web.agenda.view.label")}</legend>
         {AGENDA_VIEWS.map((option) => (
           <label
@@ -414,6 +499,17 @@ function Toolbar({
           </label>
         ))}
       </fieldset>
+      {/* Every change goes to Google as it is made: this line says where that stands. Under the bar on a phone, before the views on a computer. */}
+      <p role="status" data-sync={sync} className="flex basis-full items-center gap-1.5 text-xs text-fg-muted lg:order-1 lg:basis-auto">
+        {sync === "saving" ? (
+          <LoaderCircle className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden />
+        ) : sync === "saved" ? (
+          <CircleCheck className="h-3.5 w-3.5 text-success" aria-hidden />
+        ) : (
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+        )}
+        {t(SYNC_TEXT[sync])}
+      </p>
     </div>
   );
 }
@@ -548,25 +644,44 @@ function useWhen() {
   };
 }
 
+/** What a block of the week's grid adds to an event's button: it drags, and Alt + arrows move it. */
+interface BlockHandlers {
+  /** Names the keyboard's way of moving it, for a screen reader; only on an event that can move. */
+  hint?: string | undefined;
+  dragging: boolean;
+  onGrab: (e: ReactPointerEvent, resize: boolean) => void;
+  onKey: (e: ReactKeyboardEvent) => void;
+  /** A click that ends a drag opens nothing. */
+  skipClick: () => boolean;
+}
+
 /** An event as a small line of the month, as a chip of the week's rows around the hours (a 44 px target) or as a block of the week's grid. */
 function EventButton({
   event,
   calendar,
   onOpen,
-  block = false,
+  block,
   chip = false,
-}: { event: AgendaEvent; calendar?: GoogleCalendarInfo | undefined; onOpen: (event: AgendaEvent) => void; block?: boolean; chip?: boolean }) {
+}: { event: AgendaEvent; calendar?: GoogleCalendarInfo | undefined; onOpen: (event: AgendaEvent) => void; block?: BlockHandlers | undefined; chip?: boolean }) {
   const { t } = useI18n();
   const when = useWhen()(event);
   const look = eventLook(event, calendar);
+  const type = typeName(typeLine(event.description));
   return (
     <button
       type="button"
-      onClick={() => onOpen(event)}
+      data-event={eventKey(event)}
+      aria-describedby={block?.hint}
+      onClick={() => {
+        if (!block?.skipClick()) onOpen(event);
+      }}
+      onPointerDown={block ? (e) => block.onGrab(e, false) : undefined}
+      onKeyDown={block?.onKey}
       className={cn(
         // The event's color (its status, or its calendar's) is the bar on the left and a light wash of the fill.
         "block w-full min-w-0 overflow-hidden rounded-lg border-l-4 border-l-(--event) bg-[color-mix(in_srgb,var(--event)_14%,var(--color-surface))] px-1.5 text-left text-xs hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:hover:brightness-125",
         block ? "h-full py-0.5" : chip ? "min-h-11 py-1" : "min-h-7 py-1",
+        block?.dragging && "cursor-grabbing shadow-lg ring-2 ring-accent",
       )}
       style={{ "--event": look.color ?? "var(--color-accent)" } as CSSProperties}
     >
@@ -576,6 +691,7 @@ function EventButton({
       {block ? (
         <span className="block truncate text-fg-muted">
           {when}
+          {type ? ` · ${type}` : ""}
           {look.status ? ` · ${t(STATUS_TEXT[look.status])}` : ""}
           {event.location ? ` · ${event.location}` : ""}
         </span>
@@ -636,7 +752,7 @@ function DayList({ day, events, calendars, onOpen }: { day: string; events: Agen
         // One day: the hour on the left and the end below. More than one: the whole period below, and the hour only on the day it starts.
         const rest = first === last ? (event.allDay ? "" : t("web.agenda.until", { time: localTime(event.end, timeZone) })) : when(event);
         const look = eventLook(event, calendars.get(event.calendarId));
-        const under = [look.status ? t(STATUS_TEXT[look.status]) : "", rest, event.location].filter(Boolean).join(" · ");
+        const under = [typeName(typeLine(event.description)), look.status ? t(STATUS_TEXT[look.status]) : "", rest, event.location].filter(Boolean).join(" · ");
         return (
           <li key={eventKey(event)}>
             <button
@@ -707,6 +823,9 @@ function WeekGrid({
   calendars,
   onOpen,
   onDay,
+  movable,
+  onMove,
+  onNew,
 }: {
   days: string[];
   today: string;
@@ -717,10 +836,152 @@ function WeekGrid({
   calendars: Map<string, GoogleCalendarInfo>;
   onOpen: (event: AgendaEvent) => void;
   onDay: (day: string) => void;
+  /** False while a change is on its way to Google: the next one waits for its answer. */
+  movable: boolean;
+  onMove: (event: AgendaEvent, slot: Slot) => void;
+  /** An empty hour was clicked; absent when no calendar can be edited. */
+  onNew?: ((day: string, time: string) => void) | undefined;
 }) {
-  const { t, timeZone } = useI18n();
+  const { t, locale, timeZone } = useI18n();
+  const toast = useToast();
   const holidayOf = useHoliday();
-  const plans = days.map((day) => planDay(events, day, hours, timeZone));
+  const hintId = useId();
+  const list = useRef<HTMLOListElement>(null);
+  /** Where the event being dragged, or moved by Alt + arrows, would land: drawn there, sent only when let go. */
+  const [preview, setPreview] = useState<{ key: string; slot: Slot; keyboard: boolean } | null>(null);
+  const skipClick = useRef(false);
+  /** The event the keyboard moved: it keeps the focus when its block is drawn again in another day. */
+  const keep = useRef<string | null>(null);
+  const count = hours.to - hours.from;
+  const original = (key: string) => events.find((event) => eventKey(event) === key);
+  const editable = (event: AgendaEvent) => eventLook(event, calendars.get(event.calendarId)).editable;
+  const readOnly = () => void toast(t("web.agenda.change.readOnly"));
+  const block = (key: string) => list.current?.querySelector<HTMLElement>(`[data-event="${CSS.escape(key)}"]`);
+
+  useLayoutEffect(() => {
+    if (keep.current && document.activeElement === document.body) block(keep.current)?.focus();
+  });
+
+  /** The day and the minute under a point of the screen, and how many pixels a minute takes. */
+  const at = (x: number, y: number) => {
+    const columns = list.current?.getBoundingClientRect();
+    const rows = list.current?.querySelector("[data-hours]")?.getBoundingClientRect();
+    if (!columns || !rows || rows.height === 0) return null;
+    const index = Math.min(Math.max(Math.floor(((x - columns.left) / columns.width) * days.length), 0), days.length - 1);
+    const perMinute = rows.height / (count * 60);
+    return { day: days[index] as string, minute: hours.from * 60 + (y - rows.top) / perMinute, perMinute };
+  };
+
+  /** A press on a block: past a few pixels it is a drag, of the whole event or of its end. A finger scrolls instead (the change is in "Editar"). */
+  const grab = (e: ReactPointerEvent, key: string, resize: boolean) => {
+    const event = original(key);
+    if (e.button !== 0 || e.pointerType === "touch" || !event) return;
+    const slot = slotOf(event, timeZone);
+    const from = { x: e.clientX, y: e.clientY };
+    let state: "pressed" | "dragging" | "refused" = "pressed";
+    let latest: Slot | null = null;
+    const move = (m: PointerEvent) => {
+      if (state === "refused") return;
+      if (state === "pressed") {
+        if (Math.hypot(m.clientX - from.x, m.clientY - from.y) < DRAG_PX) return;
+        if (!editable(event)) readOnly();
+        state = slot && movable && editable(event) ? "dragging" : "refused";
+        if (state === "refused") return;
+      }
+      const where = at(m.clientX, m.clientY);
+      if (!where || !slot) return;
+      latest = resize ? resizeSlot(slot, where.minute, hours) : moveSlot(slot, where.day, (m.clientY - from.y) / where.perMinute, hours);
+      setPreview({ key, slot: latest, keyboard: false });
+    };
+    const finish = (drop: boolean, released = true) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("blur", cancel);
+      window.removeEventListener("keydown", onEscape);
+      if (state === "pressed") return;
+      // The click that follows the release belongs to the drag, also when Escape gave it up with the button still down.
+      skipClick.current = true;
+      const clear = () =>
+        window.setTimeout(() => {
+          skipClick.current = false;
+        }, 0);
+      if (released) clear();
+      else window.addEventListener("pointerup", clear, { once: true });
+      setPreview(null);
+      if (drop && latest) onMove(event, latest);
+    };
+    const up = () => finish(true);
+    const cancel = () => finish(false);
+    const onEscape = (k: KeyboardEvent) => {
+      if (k.key === "Escape") finish(false, false);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("blur", cancel);
+    window.addEventListener("keydown", onEscape);
+  };
+
+  /** Alt + arrows move the event a quarter of an hour or a day; with Shift, up and down change its length. Letting Alt go sends it. */
+  const key = (e: ReactKeyboardEvent, id: string) => {
+    if (e.key === "Escape" && preview?.keyboard) {
+      e.preventDefault();
+      setPreview(null);
+      return;
+    }
+    const event = original(id);
+    if (!e.altKey || !event || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+    e.preventDefault();
+    if (!editable(event)) return readOnly();
+    const base = preview?.key === id ? preview.slot : slotOf(event, timeZone);
+    if (!base || !movable) return;
+    const down = e.key === "ArrowDown" ? STEP_MIN : e.key === "ArrowUp" ? -STEP_MIN : 0;
+    let next = base;
+    if (e.shiftKey) next = down ? resizeSlot(base, base.end + down, hours) : base;
+    else if (down) next = moveSlot(base, base.day, down, hours);
+    else {
+      // Only to a day on screen: the event never leaves the owner's sight.
+      const day = days[days.indexOf(base.day) + (e.key === "ArrowRight" ? 1 : -1)];
+      if (day) next = moveSlot(base, day, 0, hours);
+    }
+    keep.current = id;
+    setPreview({ key: id, slot: next, keyboard: true });
+  };
+
+  const drawn = preview ? events.map((event) => (eventKey(event) === preview.key ? applyChanges(event, slotTimes(preview.slot), timeZone) : event)) : events;
+  const moving =
+    preview?.keyboard === true
+      ? t("web.agenda.change.preview", {
+          day: new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(utcNoon(preview.slot.day)),
+          from: slotTimes(preview.slot).start.slice(11),
+          to: preview.slot.end === 24 * 60 ? "24:00" : slotTimes(preview.slot).end.slice(11),
+        })
+      : "";
+  // Alt + Tab with the event half moved: Alt is let go somewhere else, so nothing is sent.
+  const byKeyboard = preview?.keyboard === true;
+  const release = useRef(() => {});
+  release.current = () => {
+    if (!preview?.keyboard) return;
+    const event = original(preview.key);
+    setPreview(null);
+    if (event) onMove(event, preview.slot);
+  };
+  // Alt let go sends the move, wherever the focus is by then.
+  useEffect(() => {
+    if (!byKeyboard) return;
+    const drop = () => setPreview(null);
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "Alt") release.current();
+    };
+    window.addEventListener("blur", drop);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("blur", drop);
+      window.removeEventListener("keyup", up);
+    };
+  }, [byKeyboard]);
+  const plans = days.map((day) => planDay(drawn, day, hours, timeZone));
   const holidays = days.map(holidayOf);
   // A holiday's name sits in the all-day row, so the row shows for it even with the all-day events hidden.
   const allDayEvents = see.allDay && plans.some((plan) => plan.allDay.length > 0);
@@ -729,7 +990,6 @@ function WeekGrid({
     before: see.outside && plans.some((plan) => plan.before.length > 0),
     after: see.outside && plans.some((plan) => plan.after.length > 0),
   };
-  const count = hours.to - hours.from;
   const height = `${count * HOUR_REM}rem`;
   // One line at the top of every hour, drawn once per column.
   const lines = { height, backgroundImage: `repeating-linear-gradient(to bottom, var(--color-border) 0 1px, transparent 1px ${HOUR_REM}rem)` };
@@ -760,7 +1020,14 @@ function WeekGrid({
         </div>
         <div className={cn(rows.after && CELL, rows.after && side, "bg-raised/60")}>{rows.after && t("web.agenda.row.after")}</div>
       </div>
-      <ol className="row-span-full grid grid-rows-subgrid" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
+      <ol
+        ref={list}
+        onFocus={(e) => {
+          if ((e.target as HTMLElement).dataset.event !== keep.current) keep.current = null;
+        }}
+        className="row-span-full grid grid-rows-subgrid select-none"
+        style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+      >
         {days.map((day, index) => {
           const plan = plans[index];
           if (!plan) return null;
@@ -773,14 +1040,54 @@ function WeekGrid({
                 {allDayEvents && chips(plan.allDay)}
               </div>
               <div className={cn(rows.before && CELL, "bg-raised/60")}>{rows.before && chips(plan.before)}</div>
-              <div className={cn(CELL, "relative")} style={lines}>
+              {/* biome-ignore lint/a11y/noStaticElementInteractions: a shortcut for the mouse; "Novo evento", at the top, does the same for everyone. */}
+              {/* biome-ignore lint/a11y/useKeyWithClickEvents: same. */}
+              <div
+                data-hours
+                className={cn(CELL, "relative")}
+                style={lines}
+                onClick={
+                  onNew &&
+                  ((e) => {
+                    // Only the empty hour itself: an event has its own click.
+                    if (e.target !== e.currentTarget || skipClick.current) return;
+                    const where = at(e.clientX, e.clientY);
+                    if (!where) return;
+                    const minute = Math.min(Math.max(Math.floor(where.minute / NEW_STEP_MIN) * NEW_STEP_MIN, hours.from * 60), hours.to * 60 - NEW_STEP_MIN);
+                    onNew(day, slotTimes({ day, start: minute, end: minute }).start.slice(11));
+                  })
+                }
+              >
                 {plan.blocks.length > 0 && (
                   <ul>
-                    {plan.blocks.map((block) => (
-                      <li key={eventKey(block.event)} className="absolute p-px" style={place(block)}>
-                        <EventButton event={block.event} calendar={calendars.get(block.event.calendarId)} onOpen={onOpen} block />
-                      </li>
-                    ))}
+                    {plan.blocks.map((each) => {
+                      const id = eventKey(each.event);
+                      const dragging = preview?.key === id;
+                      // What does not drag (more than one day) has no edge to pull and names no keys.
+                      const moves = editable(each.event) && slotOf(each.event, timeZone) !== null;
+                      return (
+                        <li key={id} className={cn("absolute p-px", dragging && "z-20")} style={place(each)}>
+                          <EventButton
+                            event={each.event}
+                            calendar={calendars.get(each.event.calendarId)}
+                            onOpen={onOpen}
+                            block={{ hint: moves ? hintId : undefined, dragging, onGrab: (e, resize) => grab(e, id, resize), onKey: (e) => key(e, id), skipClick: () => skipClick.current }}
+                          />
+                          {/* The lower edge pulls the end. Clicked without moving, it opens the event like the rest of the block. */}
+                          {moves && (
+                            <span
+                              aria-hidden
+                              data-resize
+                              className="absolute inset-x-1 bottom-0 h-1.5 cursor-ns-resize rounded-b-lg hover:bg-(--color-border-strong)"
+                              onPointerDown={(e) => grab(e, id, true)}
+                              onClick={() => {
+                                if (!skipClick.current) onOpen(each.event);
+                              }}
+                            />
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
                 {line !== null && (
@@ -794,6 +1101,13 @@ function WeekGrid({
           );
         })}
       </ol>
+      <p id={hintId} hidden>
+        {t("web.agenda.change.keys")}
+      </p>
+      {/* Where Alt + arrows have the event now, said as it moves. */}
+      <p aria-live="assertive" className="sr-only">
+        {moving}
+      </p>
     </div>
   );
 }
@@ -904,12 +1218,15 @@ function EventDialog({
   event,
   calendar,
   onClose,
+  onSend,
   onChange,
   onEdit,
 }: {
   event: AgendaEvent | null;
   calendar?: GoogleCalendarInfo | undefined;
   onClose: () => void;
+  /** The details are about to change or delete the event: an undo on offer names a version that is about to be old. */
+  onSend: () => void;
   /** The event as Google answered after a change of status: the dialog stays open on it, with the new version. */
   onChange: (event: AgendaEvent) => void;
   onEdit: (event: AgendaEvent) => void;
@@ -932,6 +1249,7 @@ function EventDialog({
     if (!event || marking || look?.status === status) return;
     setMarking(status);
     setNote(null);
+    onSend();
     try {
       const body = { calendarId: event.calendarId, eventId: event.id, etag: event.etag, colorId: EVENT_STATUS_COLOR[status] };
       const saved = await api<{ event: AgendaEvent }>("/google/events", { method: "PATCH", body });
@@ -949,9 +1267,13 @@ function EventDialog({
     }
   };
   const colorName = event?.colorId ? COLOR_TEXT[event.colorId] : undefined;
+  // The appointment's type has its own line; the description shows without it.
+  const type = event ? typeLine(event.description) : "";
+  const rest = event ? withoutType(event.description) : "";
   const remove = async () => {
     if (!event) return;
     setBusy(true);
+    onSend();
     try {
       await api("/google/events", { method: "DELETE", body: { calendarId: event.calendarId, eventId: event.id, etag: event.etag } });
       toast(t("web.agenda.deleted"));
@@ -1024,9 +1346,14 @@ function EventDialog({
                 {event.location}
               </Detail>
             )}
-            {event.description && (
+            {type && (
+              <Detail icon={<Tag className="h-4 w-4" />} label={t("web.agenda.form.type")}>
+                {type}
+              </Detail>
+            )}
+            {rest && (
               <Detail icon={<span className="block h-4 w-4" />} label={t("web.agenda.event.description")}>
-                <p className="whitespace-pre-line text-fg-muted">{event.description}</p>
+                <p className="whitespace-pre-line text-fg-muted">{rest}</p>
               </Detail>
             )}
             {event.recurring && (
@@ -1076,12 +1403,39 @@ function EventDialog({
   );
 }
 
-function EventFormDialog({ editing, calendars, onClose }: { editing: Editing; calendars: GoogleCalendarInfo[]; onClose: () => void }) {
+/** "30 min", "1 hora", "1 h 30". */
+function useDuration() {
+  const { t, plural } = useI18n();
+  return (minutes: number): string => {
+    const [h, m] = [Math.floor(minutes / 60), minutes % 60];
+    return h === 0 ? t("web.agenda.form.minutes", { count: m }) : m === 0 ? plural("web.agenda.form.hours", h) : t("web.agenda.form.hoursMinutes", { hours: h, minutes: m });
+  };
+}
+
+function EventFormDialog({
+  editing,
+  calendars,
+  types,
+  busy,
+  onChange,
+  onClose,
+}: {
+  editing: Editing;
+  /** Another change is on its way to Google: this one waits for its answer. */
+  busy: boolean;
+  calendars: GoogleCalendarInfo[];
+  /** The types the calendar already uses, for the "Tipo" field. */
+  types: string[];
+  /** A change of an existing event: sent after the form closes, with its notice and "Desfazer". */
+  onChange: Change;
+  onClose: () => void;
+}) {
   const { t, timeZone } = useI18n();
+  const duration = useDuration();
   const toast = useToast();
   const qc = useQueryClient();
   const initial = useMemo(
-    () => (editing.mode === "edit" ? formOf(editing.event, timeZone) : blankForm(editing.day, (calendars.find((c) => c.primary) ?? calendars[0])?.id ?? "", timeZone)),
+    () => (editing.mode === "edit" ? formOf(editing.event, timeZone) : blankForm(editing.day, (calendars.find((c) => c.primary) ?? calendars[0])?.id ?? "", timeZone, Date.now(), editing.time)),
     [editing, calendars, timeZone],
   );
   const [form, setForm] = useState<EventForm>(initial);
@@ -1099,29 +1453,33 @@ function EventFormDialog({ editing, calendars, onClose }: { editing: Editing; ca
       setProblem(body);
       return;
     }
+    if (editing.mode === "edit") {
+      const changes: EventChanges = changedFields(initial, body);
+      const before = formBody(initial);
+      // A new day or hour marks the appointment "Reagendado", unless the owner picked a status here.
+      const rescheduled = typeof before !== "string" && before.start !== body.start && form.status === initial.status && reschedules(body, form.status);
+      const status = rescheduled ? "rescheduled" : form.status;
+      if (status && status !== initial.status) changes.colorId = EVENT_STATUS_COLOR[status];
+      // The form closes first: the notice, with "Desfazer", is on the page, out of reach behind an open dialog.
+      onClose();
+      if (Object.keys(changes).length > 0) onChange(editing.event, changes, { kind: "updated", rescheduled });
+      return;
+    }
     setSaving(true);
     try {
-      if (editing.mode === "new") {
-        await api("/google/events", { method: "POST", body: { calendarId: form.calendarId, ...body } });
-        toast(t("web.agenda.created"));
-      } else {
-        const changes = changedFields(initial, body);
-        if (Object.keys(changes).length > 0) {
-          await api("/google/events", { method: "PATCH", body: { calendarId: editing.event.calendarId, eventId: editing.event.id, etag: editing.event.etag, ...changes } });
-        }
-        toast(t("web.agenda.saved"));
-      }
+      // Without a color the event counts as "Agendado": only another status is sent.
+      const colorId = form.status && form.status !== "scheduled" ? { colorId: EVENT_STATUS_COLOR[form.status] } : {};
+      await api("/google/events", { method: "POST", body: { calendarId: form.calendarId, ...body, ...colorId } });
+      toast(t("web.agenda.created"));
       onClose();
     } catch (failure) {
-      toast(errorMessage(failure));
-      // Changed or deleted at Google meanwhile: this form holds an old version, so it closes and the
-      // screen shows the event as it is now, to open again.
-      if (editing.mode === "edit" && failure instanceof ApiError && (failure.code === "TARGET_CHANGED" || failure.code === "NOT_FOUND")) onClose();
+      toast(errorMessage(failure), { failed: true });
     } finally {
       setSaving(false);
-      void qc.invalidateQueries({ queryKey: ["calendar", "events"] });
+      void qc.invalidateQueries({ queryKey: EVENTS_KEY });
     }
   };
+  const typeOptions = form.type && !types.includes(form.type) ? [form.type, ...types] : types;
 
   const error = problem ? t(PROBLEM_TEXT[problem]) : null;
   return (
@@ -1146,17 +1504,65 @@ function EventFormDialog({ editing, calendars, onClose }: { editing: Editing; ca
           </SelectField>
         )}
         <Switch label={t("web.agenda.form.allDay")} checked={form.allDay} onChange={(on) => set("allDay", on)} />
-        <div className="grid grid-cols-2 gap-3">
-          <TextField type="date" label={t("web.agenda.form.startDate")} value={form.startDate} required onChange={(e) => set("startDate", e.target.value)} />
-          {!form.allDay && <TextField type="time" label={t("web.agenda.form.startTime")} value={form.startTime} required onChange={(e) => set("startTime", e.target.value)} />}
-          <TextField type="date" label={t("web.agenda.form.endDate")} value={form.endDate} required onChange={(e) => set("endDate", e.target.value)} />
-          {!form.allDay && <TextField type="time" label={t("web.agenda.form.endTime")} value={form.endTime} required onChange={(e) => set("endTime", e.target.value)} />}
-        </div>
+        {form.allDay ? (
+          <div className="grid grid-cols-2 gap-3">
+            <TextField type="date" label={t("web.agenda.form.startDate")} value={form.startDate} required onChange={(e) => set("startDate", e.target.value)} />
+            <TextField type="date" label={t("web.agenda.form.endDate")} value={form.endDate} required onChange={(e) => set("endDate", e.target.value)} />
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <TextField type="date" label={t("web.agenda.form.day")} value={form.startDate} required className="col-span-2 sm:col-span-1" onChange={(e) => set("startDate", e.target.value)} />
+              <TextField type="time" label={t("web.agenda.form.startTime")} value={form.startTime} step={STEP_MIN * 60} required onChange={(e) => set("startTime", e.target.value)} />
+              <SelectField label={t("web.agenda.form.duration")} value={form.duration} onChange={(e) => set("duration", e.target.value)}>
+                {DURATIONS.map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {duration(minutes)}
+                  </option>
+                ))}
+                <option value={OTHER_DURATION}>{t("web.agenda.form.durationOther")}</option>
+              </SelectField>
+            </div>
+            {/* Any other length: the end has its own day and hour, as an event that crosses the night needs. */}
+            {form.duration === OTHER_DURATION && (
+              <div className="grid grid-cols-2 gap-3">
+                <TextField type="date" label={t("web.agenda.form.endDate")} value={form.endDate} required onChange={(e) => set("endDate", e.target.value)} />
+                <TextField type="time" label={t("web.agenda.form.endTime")} value={form.endTime} required onChange={(e) => set("endTime", e.target.value)} />
+              </div>
+            )}
+          </>
+        )}
         {problem && problem !== "title" && (
           <p role="alert" className="text-sm text-danger">
             {error}
           </p>
         )}
+        <div className="grid grid-cols-2 gap-3">
+          {typeOptions.length > 0 && (
+            <SelectField label={t("web.agenda.form.type")} value={form.type} onChange={(e) => set("type", e.target.value)}>
+              <option value="">{t("web.agenda.form.typeNone")}</option>
+              {typeOptions.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </SelectField>
+          )}
+          <SelectField
+            label={t("web.agenda.status.label")}
+            value={form.status ?? ""}
+            className={typeOptions.length > 0 ? undefined : "col-span-2"}
+            onChange={(e) => set("status", (EVENT_STATUSES.find((status) => status === e.target.value) ?? null) as EventForm["status"])}
+          >
+            {/* A color of the event's own at Google, outside the four: it stays until a status is picked. */}
+            {initial.status === null && <option value="">{t("web.agenda.form.statusNone")}</option>}
+            {EVENT_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {t(STATUS_TEXT[status])}
+              </option>
+            ))}
+          </SelectField>
+        </div>
         <TextField label={t("web.agenda.form.location")} value={form.location} maxLength={GOOGLE_LIMITS.locationMax} onChange={(e) => set("location", e.target.value)} />
         <TextAreaField label={t("web.agenda.form.description")} value={form.description} maxLength={GOOGLE_LIMITS.descriptionMax} rows={3} onChange={(e) => set("description", e.target.value)} />
         <p className="text-xs leading-5 text-fg-muted">{t("web.agenda.form.noGuests")}</p>
@@ -1164,7 +1570,7 @@ function EventFormDialog({ editing, calendars, onClose }: { editing: Editing; ca
           <Button variant="secondary" onClick={onClose}>
             {t("web.cancel")}
           </Button>
-          <Button type="submit" loading={saving}>
+          <Button type="submit" loading={saving || (busy && editing.mode === "edit")}>
             {editing.mode === "new" ? t("web.agenda.form.create") : t("web.save")}
           </Button>
         </div>
