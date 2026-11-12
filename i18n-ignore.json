@@ -71,6 +71,11 @@
       "key": "web.reviews.part.settings",
       "rule": "glossario",
       "reason": "Aba de Avaliações no protótipo aprovado pelo Pablo (10/11/2026): \"Ajustes\" é a parte da área, e \"Configurações\" continua sendo só a página do menu."
+    },
+    {
+      "key": "web.agenda.change.updated",
+      "rule": "ponto-final",
+      "reason": "Abre um aviso que pode seguir com outras frases (\"Ficou como Reagendado.\", \"Só este dia mudou.\"), como os avisos de mover e de mudar a duração."
     }
   ]
 }

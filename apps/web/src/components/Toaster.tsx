@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { Check, TriangleAlert, X } from "lucide-react";
 import { type FocusEvent, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { useI18n } from "../lib/i18n.tsx";
@@ -18,20 +18,25 @@ const store = createToastStore();
 let mounted = false;
 
 /** Shows a confirmation. A screen reader reads its text once (a polite status). */
-export function showToast(message: string, closeLabel: string, options?: ToastOptions) {
+export function showToast(message: string, closeLabel: string, options?: ToastOptions): number {
   if (!mounted) {
     mounted = true;
     const host = document.createElement("div");
     document.body.append(host);
     createRoot(host).render(<Toaster />);
   }
-  store.show(message, closeLabel, options);
+  return store.show(message, closeLabel, options);
+}
+
+/** Takes a toast off before its time: what it offered ("Desfazer") no longer applies. */
+export function dismissToast(id: number) {
+  store.dismiss(id);
 }
 
 /** The toast function of a screen: it knows the close button's label in the current language. */
 export function useToast() {
   const { t } = useI18n();
-  return useCallback((message: string, options?: ToastOptions) => showToast(message, t("web.close"), options), [t]);
+  return useCallback((message: string, options?: ToastOptions): number => showToast(message, t("web.close"), options), [t]);
 }
 
 function Toaster() {
@@ -61,9 +66,9 @@ function ToastItem({ toast }: { toast: Toast }) {
   const cameFrom = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (toast.persistent || hovered || focused) return;
-    const timer = setTimeout(() => store.dismiss(toast.id), SHOW_MS);
+    const timer = setTimeout(() => store.dismiss(toast.id), toast.ms ?? SHOW_MS);
     return () => clearTimeout(timer);
-  }, [toast.persistent, hovered, focused, toast.id]);
+  }, [toast.persistent, toast.ms, hovered, focused, toast.id]);
 
   function focusIn(event: FocusEvent) {
     if (!focused && event.relatedTarget instanceof HTMLElement) cameFrom.current = event.relatedTarget;
@@ -87,10 +92,23 @@ function ToastItem({ toast }: { toast: Toast }) {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
       }}
     >
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success-soft text-success" aria-hidden>
-        <Check className="h-3.5 w-3.5" />
+      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${toast.failed ? "bg-danger-soft text-danger" : "bg-success-soft text-success"}`} aria-hidden>
+        {toast.failed ? <TriangleAlert className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
       </span>
       <p className="min-w-0 flex-1 py-1.5 leading-5">{toast.message}</p>
+      {toast.action && (
+        <button
+          type="button"
+          className="min-h-11 shrink-0 rounded-lg px-2 font-semibold text-accent-text hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          onClick={() => {
+            const { run } = toast.action ?? {};
+            close();
+            run?.();
+          }}
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         type="button"
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-raised hover:text-fg"
