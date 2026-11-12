@@ -21,8 +21,18 @@ const CRM_KEY = ["crm"] as const;
 export function CrmNoticesCard() {
   const overview = useQuery({ queryKey: [...CRM_KEY, "overview"], queryFn: ({ signal }) => api<CrmOverview>("/crm", { signal }) });
   if (overview.isPending) return <Loading rows={1} />;
-  if (!overview.data) return <ErrorNotice error={overview.error} onRetry={() => void overview.refetch()} />;
+  // The failure keeps the group's name over it: alone in the middle of the tab, it wouldn't say what failed.
+  if (!overview.data) return <ErrorCard error={overview.error} onRetry={() => void overview.refetch()} />;
   return <SettingsCard settings={overview.data.settings} />;
+}
+
+function ErrorCard({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  const { t } = useI18n();
+  return (
+    <Card title={t("web.crm.settings.title")}>
+      <ErrorNotice error={error} onRetry={onRetry} />
+    </Card>
+  );
 }
 
 /** Saves through the API and refreshes the cards; the error (if any) comes back to the caller. */

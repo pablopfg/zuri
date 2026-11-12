@@ -107,6 +107,7 @@ test("a credential keeps its key on the server; a flow calls it, filters and tel
   await expect(item.getByText("https://api.exemplo.com.br · GET · /v1/clientes")).toBeVisible();
   await expect(item.getByText("Nenhum fluxo usa ainda")).toBeVisible();
   expect(await tooSmallControls(page), "every control of Credenciais is a 44 px target").toEqual([]);
+  await expectAccessible(page, "credenciais com linha");
 
   // Editing shows an empty key field: the value never comes back to the browser.
   await rowAction(item, page, "Editar");
@@ -181,8 +182,8 @@ test("the flows have their own address in the CRM, and the palette opens a new f
   await expect(page).toHaveURL(/\/crm$/);
   await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
 
-  // From another place and from the flows themselves.
-  for (const from of ["/rotinas", "/crm/fluxos"]) {
+  // From another place, from the flows themselves and from the other part of the CRM, which it leaves for the flows.
+  for (const from of ["/rotinas", "/crm/fluxos", "/crm/credenciais"]) {
     await page.goto(from);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.keyboard.press("Control+k");
@@ -423,7 +424,10 @@ test("the CRM has two parts, each at its address; the ones still without a serve
   await signIn(page);
   const parts = page.getByRole("navigation", { name: "Partes do CRM" });
   // /crm is the flows; the number beside each name is how many it holds.
-  await expect(parts.getByRole("link")).toHaveText([/^Fluxos\s*\d+$/, /^Credenciais\s*\d+$/]);
+  await expect(parts.getByRole("link")).toHaveCount(2);
+  await expect(parts.getByRole("link").first()).toHaveAccessibleName(/^Fluxos \d+$/);
+  await expect(parts.getByRole("link").last()).toHaveAccessibleName(/^Credenciais \d+$/);
+  await expect(page.getByText("Fluxos que você monta passo a passo, com hora para rodar e limites.")).toBeVisible();
   await expect(parts.getByRole("link", { name: /^Fluxos/ })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("button", { name: "Novo fluxo" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Nova credencial" })).toHaveCount(0);
@@ -453,7 +457,10 @@ test("the CRM has two parts, each at its address; the ones still without a serve
 });
 
 test("a duplicated flow starts off, under the original's name marked as a copy (S15)", async ({ page }) => {
-  const name = `Original ${tag()}`;
+  // A name of exactly the 80 characters a flow takes: the copy is cut on the original's side to fit.
+  const name = `Original ${tag()} `.padEnd(80, "x");
+  expect(name).toHaveLength(80);
+  const copyName = `${name.slice(0, 72)} (cópia)`;
   await openFlows(page);
   const definition = { version: 1, trigger: { type: "schedule", schedule: { type: "daily", time: "07:30" } }, nodes: [{ type: "notify", title: "Aviso", body: "", priority: "low", each: false }] };
   const created = await page.request.post("/api/flows", { headers: CSRF, data: { name, definition } });
@@ -463,15 +470,78 @@ test("a duplicated flow starts off, under the original's name marked as a copy (
     await page.reload();
     await rowAction(flowRow(page, name), page, "Duplicar");
     await expect(toast(page, "Fluxo duplicado. Começa desligado.")).toBeVisible();
-    const copy = flowRow(page, `${name} (cópia)`);
+    const copy = flowRow(page, copyName);
     await expect(copy.getByText("Desligado", { exact: true })).toBeVisible();
     await expect(copy.getByText("Todo dia às 07:30 · 1 passo")).toBeVisible();
     await expect(copy.getByText(/^Próxima: /)).toHaveCount(0);
     const list = (await (await page.request.get("/api/flows", { headers: CSRF })).json()) as { flows: { id: string; name: string; enabled: boolean }[] };
-    const saved = list.flows.find((flow) => flow.name === `${name} (cópia)`);
+    const saved = list.flows.find((flow) => flow.name === copyName);
     expect(saved?.enabled).toBe(false);
     if (saved) ids.push(saved.id);
   } finally {
     for (const id of ids) await page.request.delete(`/api/flows/${id}`, { headers: CSRF });
   }
+});
+
+test("the last runs say why one stopped, load older ones, and have their empty and error states (S15, C6)", async ({ page }) => {
+  const run = (id: string, more: Record<string, unknown>) => ({
+    id,
+    flowId: "f1",
+    flowName: `Fluxo ${id}`,
+    trigger: "schedule",
+    status: "success",
+    problem: null,
+    node: null,
+    httpStatus: null,
+    calls: 2,
+    items: 5,
+    startedAt: "2026-11-10T12:00:00.000Z",
+    finishedAt: "2026-11-10T12:00:01.000Z",
+    resumeAt: null,
+    ...more,
+  });
+  let answer: "pages" | "empty" | "error" = "pages";
+  await page.route("**/api/flows/runs*", (route) => {
+    if (answer === "error") return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ code: "INTERNAL", message: "Algo deu errado." }) });
+    if (answer === "empty") return route.fulfill({ contentType: "application/json", body: JSON.stringify({ runs: [], nextCursor: null }) });
+    const older = new URL(route.request().url()).searchParams.get("before") === "cursor-1";
+    const runs = older
+      ? [run("antigo", {})]
+      : [run("falhou", { status: "error", problem: "http_error", node: 2, httpStatus: 503 }), run("esperando", { status: "waiting", resumeAt: "2026-11-10T18:00:00.000Z" })];
+    return route.fulfill({ contentType: "application/json", body: JSON.stringify({ runs, nextCursor: older ? null : "cursor-1" }) });
+  });
+  await openFlows(page);
+  const history = page.getByRole("region", { name: "Últimas execuções" });
+  // Under the list of flows (or its empty state), never above it.
+  const above = page.getByRole("list", { name: "Seus fluxos" }).or(page.getByText("Nenhum fluxo ainda", { exact: true }));
+  await expect(above).toBeVisible();
+  const order = await above.evaluate((list) => {
+    const runs = document.querySelector("ol.zuri-routine-runs");
+    return runs ? !!(list.compareDocumentPosition(runs) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
+  });
+  expect(order).toBe(true);
+  const failed = history.getByRole("listitem").filter({ hasText: "Fluxo falhou" });
+  await expect(failed.getByText("Com erro", { exact: true })).toBeVisible();
+  await expect(failed.getByText(/^Passo 2 · .+ · código 503$/)).toBeVisible();
+  const waiting = history.getByRole("listitem").filter({ hasText: "Fluxo esperando" });
+  await expect(waiting.getByText(/^Continua em /)).toBeVisible();
+  await expect(waiting.getByText("2 chamadas · 5 itens", { exact: false })).toBeVisible();
+  await expectAccessible(page, "ultimas execucoes");
+  // Older ones come at the owner's request, after the ones in view.
+  await expect(history.getByRole("listitem")).toHaveCount(2);
+  await history.getByRole("button", { name: "Carregar mais" }).click();
+  await expect(history.getByRole("listitem")).toHaveText([/Fluxo falhou/, /Fluxo esperando/, /Fluxo antigo/]);
+  await expect(history.getByRole("button", { name: "Carregar mais" })).toHaveCount(0);
+
+  answer = "empty";
+  await page.reload();
+  await expect(history.getByText("Nenhuma execução ainda.")).toBeVisible();
+  answer = "error";
+  await page.reload();
+  await expect(history.getByRole("alert")).toBeVisible();
+  // The flows above it still load: only the runs failed, and trying again brings them.
+  await expect(page.getByRole("button", { name: "Novo fluxo" })).toBeEnabled();
+  answer = "empty";
+  await history.getByRole("button", { name: "Tentar de novo" }).click();
+  await expect(history.getByText("Nenhuma execução ainda.")).toBeVisible();
 });

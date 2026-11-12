@@ -110,7 +110,7 @@ O código do formato está em `packages/shared/src/backup-file.ts`.
 
 Nunca vão: senha, segredo do 2FA, códigos de recuperação, passkeys, sessões,
 aparelhos, vínculo e estado do Telegram, servidores MCP
-e suas credenciais, conexão Google e credenciais dos fluxos, fluxos e conexões,
+e suas credenciais, conexão Google, fluxos e as credenciais deles,
 contatos e avaliações do Google, fila de eventos do CRM, avisos, uso da IA,
 atividade, diagnóstico, chaves dos modelos pagos nem os valores internos que o
 servidor guarda para si. A lista do que vai é fechada no código

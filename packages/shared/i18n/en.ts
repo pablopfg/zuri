@@ -2479,7 +2479,7 @@ export const en: Messages = {
   "web.contacts.emptyAtGoogle": "Empty at Google",
   "web.contacts.readOnly": "Read only, from Google Contacts.",
   "web.contacts.openGoogle": "Open in Google Contacts",
-  "web.flows.description": "Automations you build step by step, with a time to run and limits.",
+  "web.flows.description": "Flows you build step by step, with a time to run and limits.",
   "web.flows.loading": "Loading flows…",
   "web.flows.new": "New flow",
   "web.flows.monitorTemplate": "Monitor sites",

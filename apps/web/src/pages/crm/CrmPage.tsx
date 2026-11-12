@@ -31,10 +31,11 @@ export function CrmPage() {
   const [connection, setConnection] = useState<ConnectionEditing | null>(null);
   const data = list.data;
   const flowsFull = (data?.counts.flows ?? 0) >= FLOW_LIMITS.flows;
-  // "Criar fluxo" in the palette opens the editor once the list is here: by the address on arrival, by an event after.
+  // "Criar fluxo" in the palette opens the editor once the list is here: by the address on arrival (also
+  // from Credenciais, which it leaves for the flows), by an event when the flows are already open.
   const loaded = data !== undefined;
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || part !== "fluxos") return;
     const open = () => setEditing({ mode: "new" });
     if (window.location.hash === `#${NEW_FLOW}`) {
       history.replaceState(history.state, "", window.location.pathname);
@@ -42,7 +43,7 @@ export function CrmPage() {
     }
     window.addEventListener(NEW_FLOW, open);
     return () => window.removeEventListener(NEW_FLOW, open);
-  }, [loaded]);
+  }, [loaded, part]);
 
   return (
     <>
@@ -98,5 +99,6 @@ export function CrmPage() {
 
 /** How many a part holds, beside its name; a number alone reads fine after the name. */
 function Count({ n }: { n: number }) {
-  return <span className="tabular-nums font-normal text-fg-muted">{n}</span>;
+  // The space is for the link's name ("Fluxos 2"); the row's gap already sets them apart on the screen.
+  return <span className="tabular-nums font-normal text-fg-muted"> {n}</span>;
 }

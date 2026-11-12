@@ -77,3 +77,25 @@ test("the CRM has no door for other systems: no events card and no address to po
   const clients = (await (await page.request.get("/api/crm/clients", { headers: CSRF })).json()) as { clients: unknown[] };
   expect(clients.clients).toEqual([]);
 });
+
+test("the CRM group comes after the channels it speaks of, and keeps its name when it fails to load (S15)", async ({ page }) => {
+  await page.goto("/configuracoes/avisos");
+  await signIn(page);
+  const card = page.getByRole("region", { name: "CRM", exact: true });
+  await expect(card.getByText("pelos canais acima", { exact: false })).toBeVisible();
+  // "Acima" holds: the card of what goes to each channel comes before it, the daily summary after.
+  const titles = await page.getByRole("heading", { level: 2 }).allTextContents();
+  const at = titles.indexOf("CRM");
+  expect(at).toBeGreaterThan(0);
+  expect(titles[at - 1]).toBe("O que vai para cada canal");
+  expect(titles[at + 1]).toBe("Resumo do dia");
+
+  let fail = true;
+  await page.route("**/api/crm", (route) => (fail ? route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ code: "INTERNAL", message: "Algo deu errado." }) }) : route.continue()));
+  await page.reload();
+  await expect(card.getByRole("alert")).toBeVisible();
+  await expect(card.getByRole("switch")).toHaveCount(0);
+  fail = false;
+  await card.getByRole("button", { name: "Tentar de novo" }).click();
+  await expect(card.getByRole("switch")).toHaveCount(2);
+});

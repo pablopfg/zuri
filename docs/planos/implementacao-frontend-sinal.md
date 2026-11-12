@@ -403,6 +403,8 @@ Diferenças da S15 (CRM) para o protótipo e para as tabelas, para as PRs seguin
 - **"Ver credenciais" é um botão ao lado da nota dos passos**, não uma palavra dentro da frase: um link no meio do texto não chega a 44 px de altura. A lista de passos da nota sai do catálogo de passos, então passo novo aparece sozinho.
 - **O menu lateral não abre as partes do CRM embaixo do item.** O protótipo mostra; o JS inicial está a 142 B do teto e a casca entra nele. Fica para quando houver quatro partes, com a medida na mão.
 - **Aviso de retorno ou aniversário continua abrindo `/crm`** (hoje, Fluxos). Não existe tela de clientes; trocar o destino é mudança de servidor.
+- **A frase do alto de Fluxos diz "Fluxos que você monta passo a passo"**, não "Automações que você monta": pelo glossário, "Automação" fica para as do CRM, que chegam na parte vizinha (S18).
+- **"Criar fluxo" pela paleta, a partir de Credenciais, leva a Fluxos** antes de abrir o editor: o fluxo salvo aparece na lista que está na tela.
 - **Textos:** "conexão" virou "credencial" e o valor secreto virou "chave", na tela, nos erros do servidor, nos avisos de segurança e na atividade de acesso. Os nomes internos (`FlowConnection`, `/api/flows/connections`) não mudaram.
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:

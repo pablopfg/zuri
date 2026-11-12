@@ -1,7 +1,7 @@
 // The pt-BR texts of the Flows tab in Automations (step 22a): the flows, their
 // connections and the site monitor. They come with the tab, on demand (rule P11).
 export const ptBRFlows = {
-  "web.flows.description": "Automações que você monta passo a passo, com hora para rodar e limites.",
+  "web.flows.description": "Fluxos que você monta passo a passo, com hora para rodar e limites.",
   "web.flows.loading": "Carregando fluxos…",
   "web.flows.new": "Novo fluxo",
   "web.flows.monitorTemplate": "Monitorar sites",
