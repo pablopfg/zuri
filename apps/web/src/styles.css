@@ -788,6 +788,17 @@ dialog::backdrop {
   .zuri-wizard-seg input {
     @apply absolute inset-0 cursor-pointer appearance-none rounded-xl focus-visible:outline-none;
   }
+  /* High contrast drops backgrounds and rings: the chosen card and option keep a thick border of their own. */
+  @media (forced-colors: active) {
+    .zuri-wizard-choice:has(:checked),
+    .zuri-wizard-seg > label:has(:checked) {
+      outline: 3px solid Highlight;
+      outline-offset: -3px;
+    }
+    .zuri-toggle {
+      appearance: auto;
+    }
+  }
   .zuri-wizard-note {
     @apply flex items-start gap-2 rounded-xl bg-raised p-3 text-sm leading-6 text-fg-muted;
   }

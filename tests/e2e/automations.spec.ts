@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test";
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, openPlace, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, openPlace, rowAction, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // Rotinas against the real Worker (step 10; one screen and "Criar rotina" in five
 // steps since the Sinal, S14): create with the preview, run now, pause, edit,
@@ -85,10 +85,15 @@ test("a reminder: create in five steps, run now, pause, edit, duplicate and dele
   const summary = form.getByRole("definition");
   await expect(summary).toHaveText([/^Lembrete$/, /^Segunda, às 08:15\. Próxima: /, "Tomar o remédio da pressão", "Alta", "Nenhum: não usa IA"]);
   await expect(form.getByText(/Começa ativa\..*Ativas agora: \d+ de 50\./)).toBeVisible();
-  // Going back keeps what was typed.
+  // Going back keeps what was typed, and a name nobody typed follows the text.
   await form.getByRole("button", { name: "Voltar" }).click();
   await expect(form.getByRole("radio", { name: "Alta" })).toBeChecked();
+  await form.getByRole("button", { name: "Voltar" }).click();
+  await form.getByLabel("Texto do lembrete").fill("Tomar o remédio da pressão\ncom água");
   await next(form).click();
+  await next(form).click();
+  await expect(form.getByLabel("Nome")).toHaveValue("Tomar o remédio da pressão");
+  await expect(summary.nth(2)).toHaveText("Tomar o remédio da pressão\ncom água");
   const create = form.getByRole("button", { name: "Criar rotina" });
   await form.getByLabel("Nome").fill("");
   await expect(create).toBeDisabled();
@@ -127,9 +132,16 @@ test("a reminder: create in five steps, run now, pause, edit, duplicate and dele
   await expect(toast(page, "Rotina pausada.")).toBeVisible();
   await expect(row.getByText("Pausada", { exact: true })).toBeVisible();
   await expect(row.getByText(/^Próxima: /)).toHaveCount(0);
+  // Paused, it still runs by hand: the way to try a routine before turning it back on.
+  await row.getByRole("button", { name: "Rodar agora" }).click();
+  await expect(toast(page, "Pronto. O resultado está em Últimas execuções.").last()).toBeVisible();
+  await expect(history.getByRole("listitem").filter({ hasText: name })).toHaveCount(2);
+  await expect(row.getByText("Pausada", { exact: true })).toBeVisible();
   await active.click();
   await expect(active).toBeChecked();
+  await expect(toast(page, "Rotina retomada.")).toBeVisible();
   await expect(row.getByText("Ativa", { exact: true })).toBeVisible();
+  await expect(row.getByText(/^Próxima: /)).toBeVisible();
 
   // Edit: four steps, starting at "Quando", with what is stored.
   await rowAction(row, page, "Editar");
@@ -140,7 +152,7 @@ test("a reminder: create in five steps, run now, pause, edit, duplicate and dele
   await edit.getByLabel("Dia do mês").fill("31");
   await expect(edit.getByText("Nos meses mais curtos, roda no último dia.")).toBeVisible();
   await next(edit).click();
-  await expect(edit.getByLabel("Texto do lembrete")).toHaveValue("Tomar o remédio da pressão");
+  await expect(edit.getByLabel("Texto do lembrete")).toHaveValue("Tomar o remédio da pressão\ncom água");
   await next(edit).click();
   await expect(edit.getByRole("radio", { name: "Alta" })).toBeChecked();
   await next(edit).click();
@@ -169,6 +181,100 @@ test("a reminder: create in five steps, run now, pause, edit, duplicate and dele
   await expect(toast(page, "Rotina apagada")).toBeVisible();
   await expect(row).toHaveCount(0);
   await expect(run).toBeVisible();
+});
+
+test("SEC-S14-01: a copy that can't be paused is undone, never left running beside the original", async ({ page }) => {
+  const name = `Cópia ${tag()}`;
+  await openAutomations(page);
+  const created = await page.request.post("/api/automations", { headers: CSRF, data: { name, kind: "reminder", message: "Uma vez só", schedule: { type: "daily", time: "06:00" } } });
+  expect(created.status()).toBe(201);
+  const id = ((await created.json()) as { automation: { id: string } }).automation.id;
+  const mine = async () => ((await (await page.request.get("/api/automations", { headers: CSRF })).json()) as { automations: { id: string; name: string; status: string }[] }).automations.filter((a) => a.name.startsWith(name));
+  try {
+    await page.reload();
+    const row = page.getByRole("list", { name: "Suas rotinas" }).getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
+    // The pause of the copy fails; the original's own id is left alone.
+    await page.route("**/api/automations/*", (route) => (route.request().method() === "PATCH" ? route.fulfill({ status: 500, json: { code: "INTERNAL", message: "x" } }) : route.continue()));
+    await rowAction(row, page, "Duplicar");
+    await expect(toast(page, "Não deu para duplicar. Tente de novo.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: `${name} (cópia)`, exact: true })).toHaveCount(0);
+    expect((await mine()).map((a) => [a.name, a.status])).toEqual([[name, "active"]]);
+
+    // If the copy can't be undone either, the owner is told it is running.
+    await page.route("**/api/automations/*", (route) => (route.request().method() === "DELETE" ? route.fulfill({ status: 500, json: { code: "INTERNAL", message: "x" } }) : route.fallback()));
+    await rowAction(row, page, "Duplicar");
+    await expect(toast(page, "A cópia foi criada, mas ficou ativa. Pause a cópia na lista.")).toBeVisible();
+    const copy = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: `${name} (cópia)`, exact: true }) });
+    await expect(copy.getByText("Ativa", { exact: true })).toBeVisible();
+  } finally {
+    await page.unrouteAll({ behavior: "wait" });
+    for (const made of await mine()) await page.request.delete(`/api/automations/${made.id}`, { headers: CSRF });
+    await page.request.delete(`/api/automations/${id}`, { headers: CSRF });
+  }
+});
+
+test("a switch the server refuses goes back to where it was, with the reason", async ({ page }) => {
+  const name = `Chave ${tag()}`;
+  await openAutomations(page);
+  const created = await page.request.post("/api/automations", { headers: CSRF, data: { name, kind: "reminder", message: "Recusa", schedule: { type: "daily", time: "06:00" } } });
+  expect(created.status()).toBe(201);
+  const id = ((await created.json()) as { automation: { id: string } }).automation.id;
+  try {
+    await page.reload();
+    const row = page.getByRole("list", { name: "Suas rotinas" }).getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
+    const active = row.getByRole("switch", { name: `“${name}” ativa` });
+    await expect(active).toBeChecked();
+    await page.route("**/api/automations/*", (route) =>
+      route.request().method() === "PATCH" ? route.fulfill({ status: 409, json: { code: "CONFLICT", message: "Você já tem 50 rotinas ativas. Pause ou apague uma antes de ligar outra." } }) : route.continue(),
+    );
+    await active.click();
+    await expect(toast(page, "Você já tem 50 rotinas ativas.")).toBeVisible();
+    await expect(active).toBeChecked();
+    await expect(row.getByText("Ativa", { exact: true })).toBeVisible();
+    await expect(row.getByText("Pausada", { exact: true })).toHaveCount(0);
+  } finally {
+    await page.unrouteAll({ behavior: "wait" });
+    await page.request.delete(`/api/automations/${id}`, { headers: CSRF });
+  }
+});
+
+test("“Criar rotina” from the palette over an open edit starts clean", async ({ page }) => {
+  const name = `Aberta ${tag()}`;
+  await openAutomations(page);
+  const created = await page.request.post("/api/automations", { headers: CSRF, data: { name, kind: "reminder", message: "Texto da antiga", schedule: { type: "daily", time: "06:00" } } });
+  expect(created.status()).toBe(201);
+  const id = ((await created.json()) as { automation: { id: string } }).automation.id;
+  try {
+    await page.reload();
+    const row = page.getByRole("list", { name: "Suas rotinas" }).getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
+    await rowAction(row, page, "Editar");
+    await expect(page.getByRole("dialog", { name: "Editar rotina" })).toBeVisible();
+    // The palette's request arrives as this event when the page is already open.
+    await page.evaluate(() => window.dispatchEvent(new Event("nova-automacao")));
+    const form = page.getByRole("dialog", { name: "Criar rotina" });
+    await expect(form.getByText("Passo 1 de 5 · Tipo")).toBeVisible();
+    await next(form).click();
+    await next(form).click();
+    await expect(form.getByLabel("Texto do lembrete")).toHaveValue("");
+    await form.getByRole("button", { name: "Fechar" }).click();
+  } finally {
+    await page.request.delete(`/api/automations/${id}`, { headers: CSRF });
+  }
+});
+
+test.describe("on a device in another time zone", () => {
+  test.use({ timezoneId: "Asia/Tokyo" });
+
+  test("the hours are the owner's: the zone shown and the next runs follow the settings, not the device", async ({ page }) => {
+    await openAutomations(page);
+    const form = await openWizard(page);
+    await next(form).click();
+    await expect(form.getByText(/^Sao Paulo \(/)).toBeVisible();
+    await form.getByLabel("Horário").fill("09:00");
+    // 09:00 in São Paulo is 21:00 in Tokyo: the device's hour never shows.
+    await expect(form.getByRole("listitem")).toHaveText([/ às 09:00$/, / às 09:00$/, / às 09:00$/]);
+    await form.getByRole("button", { name: "Fechar" }).click();
+  });
 });
 
 test("the steps answer the keyboard: arrows pick, Enter goes on, Esc closes and the focus goes back", async ({ page }) => {
@@ -291,6 +397,14 @@ test("a routine Zuri proposes in the chat runs nothing until the owner approves 
   expect((await done).status()).toBe(200);
   await expect(page.getByRole("button", { name: "Parar" })).toHaveCount(0);
 
+  // A second suggestion, to decline.
+  const other = `Recusada ${tag()}`;
+  await box.fill(`call propose_ai_routine ${JSON.stringify({ ...routine, name: other })}`);
+  const again = page.waitForResponse((r) => r.url().endsWith("/api/chat") && r.request().method() === "POST");
+  await box.press("Enter");
+  expect((await again).status()).toBe(200);
+  await expect(page.getByRole("button", { name: "Parar" })).toHaveCount(0);
+
   await page.getByRole("link", { name: "Revisar em Rotinas" }).last().click();
   await expect(page).toHaveURL(/\/rotinas#automacao-[0-9a-f-]{36}$/);
   const pending = page.getByRole("region", { name: /^A Zuri sugeriu (uma rotina|\d+ rotinas)$/ });
@@ -301,6 +415,16 @@ test("a routine Zuri proposes in the chat runs nothing until the owner approves 
   await expect(pending.getByText("Esperando aprovação")).toBeVisible();
   await expect(item.getByText("Só avisa quando houver algo")).toBeVisible();
   await expectAccessible(page, "rotina esperando aprovação");
+
+  // Declining asks once, then the suggestion is gone and nothing was scheduled.
+  const declined = pending.getByRole("listitem").filter({ hasText: other });
+  await declined.getByRole("button", { name: "Recusar" }).click();
+  const sure = page.getByRole("dialog", { name: `Recusar a rotina “${other}”?` });
+  await expect(sure.getByText("A sugestão é apagada e nada é agendado.")).toBeVisible();
+  await sure.getByRole("button", { name: "Recusar" }).click();
+  await expect(toast(page, "Sugestão recusada.")).toBeVisible();
+  await expect(declined).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: other, exact: true })).toHaveCount(0);
 
   await item.getByRole("button", { name: "Aprovar" }).click();
   await expect(toast(page, "Rotina aprovada. A primeira execução já está marcada.")).toBeVisible();

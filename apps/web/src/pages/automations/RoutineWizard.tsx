@@ -98,6 +98,8 @@ export function RoutineWizard({ editing, active, onClose }: { editing: Editing; 
   const last = index === steps.length - 1;
   const [kind, setKind] = useState<AutomationKind | "flow">(current?.kind ?? "reminder");
   const [name, setName] = useState(current?.name ?? "");
+  // Until the owner types a name (or a template brings one), the last step suggests it again from the text.
+  const [nameChosen, setNameChosen] = useState(current !== null);
   const [message, setMessage] = useState(current?.message ?? "");
   const [sentinel, setSentinel] = useState(current?.sentinel ?? false);
   const [priority, setPriority] = useState<AutomationPriority>(current?.priority ?? "normal");
@@ -144,7 +146,7 @@ export function RoutineWizard({ editing, active, onClose }: { editing: Editing; 
   function go(to: number) {
     const target = steps[to];
     // Arriving at the last step with no name yet: start from what the routine says.
-    if (target === "review" && name.trim() === "" && kind !== "flow") setName(suggestName(kind, message, t(KIND_LABEL.task_digest)));
+    if (target === "review" && !nameChosen && kind !== "flow") setName(suggestName(kind, message, t(KIND_LABEL.task_digest)));
     setError(null);
     setIndex(to);
   }
@@ -287,6 +289,7 @@ export function RoutineWizard({ editing, active, onClose }: { editing: Editing; 
                         className={cn("inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-medium transition-colors", on ? "border-accent bg-accent-soft text-accent-text" : "border-border-strong bg-surface hover:bg-raised")}
                         onClick={() => {
                           setName(t(template.name));
+                          setNameChosen(true);
                           setMessage(t(template.message));
                           if (!whenTouched) setDraft((d) => ({ ...d, ...template.schedule }));
                         }}
@@ -349,7 +352,13 @@ export function RoutineWizard({ editing, active, onClose }: { editing: Editing; 
         return (
           <>
             {question(t("web.automations.wizard.review.question"))}
-            <TextField data-first label={t("web.automations.form.name")} placeholder={t(NAME_PLACEHOLDER[routine])} value={name} maxLength={AUTOMATION_LIMITS.name} required onChange={(e) => setName(e.target.value)} />
+            <TextField data-first label={t("web.automations.form.name")} placeholder={t(NAME_PLACEHOLDER[routine])} value={name} maxLength={AUTOMATION_LIMITS.name}
+              required
+              onChange={(e) => {
+                setNameChosen(true);
+                setName(e.target.value);
+              }}
+            />
             <dl className="zuri-wizard-summary">
               {rows.map(([term, value]) => (
                 <div key={term}>

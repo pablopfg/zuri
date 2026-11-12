@@ -2239,6 +2239,8 @@ export const en: Messages = {
   "web.automations.activeSwitch": "“{name}” active",
   "web.automations.duplicate": "Duplicate",
   "web.automations.duplicated": "Routine duplicated. The copy starts paused.",
+  "web.automations.duplicateUndone": "Couldn't duplicate it. Try again.",
+  "web.automations.duplicateActive": "The copy was created, but it is active. Pause the copy in the list.",
   "web.automations.copyName": "{name} (copy)",
   "web.automations.wizard.progress": "Step {step} of {total} · {name}",
   "web.automations.wizard.step.kind": "Type",

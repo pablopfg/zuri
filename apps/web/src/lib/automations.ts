@@ -163,17 +163,27 @@ export function stepReady(step: WizardStep, fields: WizardFields): boolean {
   }
 }
 
+/** `text` in at most `max` UTF-16 units (what the server counts), never ending in half an emoji. */
+function cut(text: string, max: number): string {
+  let out = "";
+  for (const char of text) {
+    if (out.length + char.length > max) break;
+    out += char;
+  }
+  return out;
+}
+
 /** A name to start from at the last step: a reminder is its own first line; the digest, its kind. */
 export function suggestName(kind: AutomationKind, message: string, digest: string): string {
   if (kind === "task_digest") return digest;
   if (kind !== "reminder") return "";
-  return (message.trim().split("\n")[0] ?? "").trim().slice(0, AUTOMATION_LIMITS.name);
+  return cut((message.trim().split("\n")[0] ?? "").trim(), AUTOMATION_LIMITS.name);
 }
 
 /** The name of a copy, cut on the original's side so the mark of the copy always shows. */
 export function copyName(name: string, mark: (name: string) => string): string {
   const extra = mark("").length;
-  return mark(name.slice(0, AUTOMATION_LIMITS.name - extra).trimEnd());
+  return mark(cut(name, AUTOMATION_LIMITS.name - extra).trimEnd());
 }
 
 /** "Sao Paulo (GMT-3)": the owner's zone at the wizard's "Quando", where the hours are read. */

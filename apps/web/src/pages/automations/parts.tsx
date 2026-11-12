@@ -83,7 +83,7 @@ export function Toggle({ label, hint, checked, onChange, disabled, busy, bare }:
           onChange={(e) => {
             if (!busy) onChange(e.target.checked);
           }}
-          className="peer absolute inset-0 h-11 w-14 cursor-pointer appearance-none rounded-full focus-visible:outline-none disabled:cursor-not-allowed"
+          className="zuri-toggle peer absolute inset-0 h-11 w-14 cursor-pointer appearance-none rounded-full focus-visible:outline-none disabled:cursor-not-allowed"
         />
         <span
           aria-hidden

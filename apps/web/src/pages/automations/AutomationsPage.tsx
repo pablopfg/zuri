@@ -102,7 +102,8 @@ export function AutomationsPage() {
           <RunHistory />
         </>
       )}
-      {editing && <RoutineWizard editing={editing} active={counts?.active ?? null} onClose={() => setEditing(null)} />}
+      {/* A key per routine: "Criar rotina" from the palette over an open edit starts clean, never a new routine with the edited one's fields. */}
+      {editing && <RoutineWizard key={editing.mode === "edit" ? editing.automation.id : "new"} editing={editing} active={counts?.active ?? null} onClose={() => setEditing(null)} />}
       <RemoveDialog automation={removing} onClose={() => setRemoving(null)} />
     </>
   );
@@ -177,7 +178,17 @@ function AutomationRow({ automation, glow, onEdit, onDelete }: { automation: Aut
           ...(automation.kind === "agent_prompt" ? { sentinel: automation.sentinel } : {}),
         },
       });
-      await api(`/automations/${copy.id}`, { method: "PATCH", body: { paused: true } });
+      try {
+        await api(`/automations/${copy.id}`, { method: "PATCH", body: { paused: true } });
+      } catch {
+        // SEC-S14-01: a copy that couldn't be paused must not stay running beside the original: undo it.
+        // If even that fails, the owner hears that the copy is active (the list shows it once it loads).
+        const undone = await api(`/automations/${copy.id}`, { method: "DELETE" }).then(
+          () => true,
+          () => false,
+        );
+        return t(undone ? "web.automations.duplicateUndone" : "web.automations.duplicateActive");
+      }
       return t("web.automations.duplicated");
     });
   return (

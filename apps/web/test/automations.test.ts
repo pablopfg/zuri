@@ -127,6 +127,9 @@ describe("the form's schedule", () => {
   });
 });
 
+/** The first half of an emoji with its second half cut off. */
+const LONE_HALF = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/;
+
 describe("the steps of “Criar rotina”", () => {
   const daily: Schedule = { type: "daily", time: "08:00" };
 
@@ -164,6 +167,13 @@ describe("the steps of “Criar rotina”", () => {
     const long = "a".repeat(AUTOMATION_LIMITS.name + 1);
     expect(suggestName("reminder", long, "")).toHaveLength(AUTOMATION_LIMITS.name);
     expect(suggestName("reminder", "a".repeat(AUTOMATION_LIMITS.name), "")).toHaveLength(AUTOMATION_LIMITS.name);
+    // An emoji (two units) across the cut is left out whole, never split into a broken half.
+    for (const before of [AUTOMATION_LIMITS.name - 2, AUTOMATION_LIMITS.name - 1, AUTOMATION_LIMITS.name]) {
+      const name = suggestName("reminder", `${"a".repeat(before)}💊b`, "");
+      expect(name).not.toMatch(LONE_HALF);
+      expect(name.length).toBeLessThanOrEqual(AUTOMATION_LIMITS.name);
+      expect(name).toBe(before === AUTOMATION_LIMITS.name - 2 ? `${"a".repeat(before)}💊` : "a".repeat(before));
+    }
   });
 
   it("names a copy within the limit of a name", () => {
@@ -172,6 +182,9 @@ describe("the steps of “Criar rotina”", () => {
     const copy = copyName(full, (name) => `${name} (cópia)`);
     expect(copy).toHaveLength(AUTOMATION_LIMITS.name);
     expect(copy.endsWith(" (cópia)")).toBe(true);
+    const emoji = copyName(`${"b".repeat(AUTOMATION_LIMITS.name - 9)}💊`, (name) => `${name} (cópia)`);
+    expect(emoji).not.toMatch(LONE_HALF);
+    expect(emoji).toBe(`${"b".repeat(AUTOMATION_LIMITS.name - 9)} (cópia)`);
   });
 
   it("shows the owner's zone as a city and its distance from UTC", () => {
@@ -179,7 +192,8 @@ describe("the steps of “Criar rotina”", () => {
     expect(zoneLabel("America/Argentina/Buenos_Aires", new Date("2026-11-12T12:00:00Z"), "pt-BR")).toBe("Buenos Aires (GMT-3)");
     // Daylight saving moves the distance with the date.
     expect(zoneLabel("Europe/Lisbon", new Date("2026-07-01T12:00:00Z"), "pt-BR")).toBe("Lisbon (GMT+1)");
-    expect(zoneLabel("Europe/Lisbon", new Date("2026-01-01T12:00:00Z"), "pt-BR")).not.toContain("+1");
+    // The engine writes zero as "GMT" or "GMT+0"; either is right.
+    expect(zoneLabel("Europe/Lisbon", new Date("2026-01-01T12:00:00Z"), "pt-BR")).toMatch(/^Lisbon \(GMT(\+0)?\)$/);
     // A zone with no city is its own name.
     expect(zoneLabel("UTC", new Date("2026-01-01T12:00:00Z"), "en")).toMatch(/^UTC \(/);
   });

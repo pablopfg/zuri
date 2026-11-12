@@ -121,6 +121,8 @@ export const ptBRAutomations = {
   "web.automations.activeSwitch": "“{name}” ativa",
   "web.automations.duplicate": "Duplicar",
   "web.automations.duplicated": "Rotina duplicada. A cópia começa pausada.",
+  "web.automations.duplicateUndone": "Não deu para duplicar. Tente de novo.",
+  "web.automations.duplicateActive": "A cópia foi criada, mas ficou ativa. Pause a cópia na lista.",
   "web.automations.copyName": "{name} (cópia)",
   "web.automations.wizard.progress": "Passo {step} de {total} · {name}",
   "web.automations.wizard.step.kind": "Tipo",
