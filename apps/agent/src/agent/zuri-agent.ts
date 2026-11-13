@@ -1260,7 +1260,10 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         state,
         timeZone: () => settings.field("timeZone"),
         review: () => reviews.firstWaiting(),
+        // Local development answers with the stand-in model, which can't order anything: no call, and the
+        // day's request count (the usage card) stays what the owner did.
         ai: () =>
+          !this.development() &&
           homeOrderAllowed({
             lockdown: auth.lockdown.active(),
             paidModel: isPaidModel(this.chosenModel("aiModel")) || isPaidModel(this.chosenModel("aiFallbackModel")),

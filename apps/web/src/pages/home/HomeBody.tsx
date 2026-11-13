@@ -12,7 +12,7 @@ import { api } from "../../lib/api.ts";
 import { dueInputs } from "../../lib/due.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { dayOffset } from "../../lib/recents.ts";
-import { DayCard, useDayWindow } from "./DayCard.tsx";
+import { DayCard, type DaySummary, useDayWindow } from "./DayCard.tsx";
 
 // Loaded on demand by the home page, with its pt-BR texts (rule P11).
 addMessages(ptBRHome);
@@ -36,18 +36,33 @@ export function HomeBody({ greetingSlot }: { greetingSlot: ReactNode }) {
   // At midnight "Amanhã" is another day: the lists under this one are drawn again.
   const [, turn] = useState(0);
   const newDay = useCallback(() => turn((count) => count + 1), []);
+  const [day, setDay] = useState<DaySummary | null>(null);
   return (
     <>
-      <Greeting placeholder={greetingSlot} />
+      <Greeting placeholder={greetingSlot} summary={useSummaryLine(day)} />
       <Ask />
       <Block title={t("web.home.day.title")} note={window} link={<More to="/agenda" label={t("web.home.day.agenda")} />}>
-        <DayCard automations={list} onNewDay={newDay} />
+        <DayCard automations={list} onNewDay={newDay} onSummary={setDay} />
       </Block>
       <Block title={t("web.home.next.title")} link={<More to="/tarefas" label={t("web.home.next.link")} />}>
         <NextDays automations={list} />
       </Block>
     </>
   );
+}
+
+/** "4 tarefas hoje, 1 delas atrasada. Próximo compromisso: Vistoria, às 09:00." Null on a day with nothing: the agent's line stays. */
+function useSummaryLine(day: DaySummary | null): string | null {
+  const { t, plural, timeZone } = useI18n();
+  if (!day) return null;
+  const parts: string[] = [];
+  if (day.tasks > 0) {
+    if (day.late === 0) parts.push(plural("web.home.summary.tasks", day.tasks));
+    else if (day.late === day.tasks) parts.push(plural("web.home.summary.lateAll", day.late));
+    else parts.push(plural("web.home.summary.lateSome", day.late, { total: day.tasks }));
+  }
+  if (day.next) parts.push(t("web.home.summary.event", { title: day.next.title, time: dueInputs(new Date(day.next.at).toISOString(), timeZone).time }));
+  return parts.length ? parts.join(" ") : null;
 }
 
 /** The text of each kind of suggestion: always the interface's own, with the server's blanks. */

@@ -490,12 +490,13 @@ Diferenças da S22 (sugestões do Início) para o plano e o protótipo, para as 
 
 - **Sem migration.** O contador por tipo e a ordem do dia são duas linhas de `zur_settings` (`home_suggestion_uses`, `home_suggestion_order`), fora do backup. O plano antigo pedia a tabela `zur_suggestion_stats`; com sete tipos, uma linha basta.
 - **A IA ordena na primeira abertura do Início do dia**, não dentro do resumo da manhã: o resumo não chama IA, e assim um dia sem o Início aberto não gasta Neurons. A marca do dia é gravada antes da chamada, então falha ou demora não tentam de novo no mesmo dia (P7); a ordem nova vale a partir da abertura seguinte.
-- **A IA recebe só contagens e ids** (dia da semana, tarefas atrasadas e de hoje até 20, toques por tipo), nunca título, nome ou texto. Não roda em bloqueio, com modelo pago escolhido ou sem folga no teto do dia.
+- **A IA recebe só contagens e ids** (dia da semana, tarefas atrasadas e de hoje até 20, toques por tipo), nunca título, nome ou texto. Não roda em bloqueio, com modelo pago escolhido, sem folga no teto do dia nem no desenvolvimento local (a IA simulada não ordena). A chamada do dia conta como um pedido no uso de hoje.
 - **O agente aparece em Configurações › Assistente** como "Sugestões do Início", com as regras só para ler, como as conferências.
 - **Tipos do protótipo:** `late`, `bill`, `review`, `week`, `today`, `rest` e `tomorrow`. "Ideias de presente" e "Resumo da semana" do plano antigo ficaram fora. "Organizar a semana" segue a regra do plano (segunda, ou domingo a partir das 18:00), não toda manhã como no protótipo.
 - **Sem a chave "Sugestões no Início" nem "Esquecer o que aprendi"**: não estão no protótipo.
 - **Tocar só preenche o campo e põe o foco nele** (antes, a ideia abria a conversa e enviava). O que já estava escrito fica, com a sugestão depois, como na voz. A avaliação sem nome vira "Responder a avaliação nova"; a com nome diz "de {nome}" (o protótipo dizia "do Pedro").
 - **Conta:** tarefa que começa com "Pagar" (ou "Pay"), prazo hoje e lembrete meia hora antes ainda à frente.
+- **Resumo do dia sob o cumprimento** (o "Quatro tarefas hoje, uma delas atrasada" do protótipo): sai das mesmas listas do "Seu dia", sem leitura a mais, com números em algarismos e o próximo compromisso de hoje. Dia sem tarefa nem compromisso mostra a frase da Zuri (opção recomendada ao Pablo em 13/11; se ele escolher outra, muda aqui).
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 

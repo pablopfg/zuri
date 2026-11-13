@@ -94,6 +94,23 @@ test("a review without a name reads as the new review", async ({ page }) => {
   await expect(page.getByRole("list", { name: "Sugestões a partir do seu dia" }).getByRole("button")).toHaveText(["Responder a avaliação nova"]);
 });
 
+test("the line under the greeting sums up the day, and keeps Zuri's line on a day with nothing", async ({ page }) => {
+  // Frozen at 10:00 in São Paulo, so "today" and "late" are the same for the page and for this test.
+  const now = new Date("2026-11-13T13:00:00Z");
+  await page.clock.setFixedTime(now);
+  const task = (id: string, dueAt: string) => ({ id, title: `Tarefa ${id}`, description: "", status: "todo", priority: "medium", dueAt, projectId: null, createdAt: dueAt, updatedAt: dueAt, completedAt: null });
+  let tasks = [task("a", "2026-11-12T15:00:00.000Z"), task("b", "2026-11-13T20:00:00.000Z"), task("c", "2026-11-13T21:00:00.000Z")];
+  await page.route(/\/api\/tasks\?(.*&)?view=today/, (route) => route.fulfill({ json: { tasks } }));
+  await openHome(page);
+  const lede = page.locator("header p.text-lg");
+  await expect(lede).toHaveText("3 tarefas hoje, uma delas atrasada.");
+  tasks = [];
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Seu dia" })).toBeVisible();
+  await expect(lede).not.toHaveText(/tarefas? hoje|atrasada/);
+  await expect(lede).not.toBeEmpty();
+});
+
 test("the home page shows no suggestions when the server has none or fails", async ({ page }) => {
   await page.route("**/api/home/suggestions", (route) => route.fulfill({ status: 500, json: { code: "INTERNAL_ERROR", message: "x" } }));
   await openHome(page);
