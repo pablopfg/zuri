@@ -10,7 +10,7 @@ import { CSRF, expectAccessible, expectFits, navIsPhone, openSettingsSection, si
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
 const SP = "America/Sao_Paulo";
-const DEFAULTS = { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: { from: 720, to: 840 }, openHolidays: [], closed: [] };
+const DEFAULTS = { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: { from: 720, to: 840 }, closed: [] };
 
 // Every test that reads "today" installs the page's clock on an hour of that same day (`at(0, …)`),
 // so the day the screen marks is the one the samples were made for, even when the run crosses midnight.

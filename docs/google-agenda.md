@@ -155,7 +155,7 @@ compromissos sem tipo ficam livres a qualquer hora.
 | Minutos | De 5 em 5 (14:30, 14:35) |
 | Duração | De 15 minutos a 4 horas |
 | Quando | De agora até um ano à frente |
-| Dia | Dia de atendimento, sem feriado nacional fechado e sem dia sem expediente |
+| Dia | Dia de atendimento, sem feriado nacional e sem dia sem expediente; nunca um dia que já fechou |
 | Hora | Dentro do horário de atendimento e fora do almoço, nem um minuto a mais |
 | Outra consulta | Não pode sobrepor; encostar (10:00 depois de uma que acaba às 10:00) pode |
 
@@ -191,9 +191,32 @@ compromissos sem tipo ficam livres a qualquer hora.
 | **Ao abrir, mostrar** | Dia, semana ou mês, no computador. |
 | **A semana começa** | Domingo ou segunda. |
 | **Dias de atendimento** e **Mostrar os dias sem atendimento** | Desligado, a semana mostra só os dias de atendimento. |
-| **Feriados nacionais** | Os próximos 12 que caem num dia de atendimento. Fecham a agenda sozinhos; **Atendo** abre o feriado. |
-| **Dias sem expediente** | Recesso, férias ou feriado da cidade, digitados como dd/mm/aaaa, com motivo opcional (até 100 dias). O dia fecha na agenda e nos agendamentos novos. |
+| **Feriados nacionais** | Os próximos 12 que caem num dia de atendimento, só para consulta. Todo feriado nacional fecha a agenda sozinho. |
+| **Dias sem expediente** | Um dia ou um período (férias, recesso, viagem, feriado da cidade), com **De**, **Até** (vazio para um dia só) em dd/mm/aaaa e motivo opcional. Cada período vai até 90 dias e até um ano à frente, sem encostar em outro; a lista guarda até 100 períodos. Cada dia fecha na agenda e nos agendamentos novos. |
+| **Registro do dia** | Só mostra quando foi o último fechamento e com quantos eventos (veja abaixo). |
 | **Eventos fora do horário** | Mostrar ou esconder no dia e na semana. Eventos de dia inteiro aparecem sempre. |
+
+#### Registro do dia
+
+Todo dia, à 0h do seu fuso, a Zuri lê no Google o dia que terminou, nas agendas
+em **Ler e editar**, e guarda uma cópia dos eventos. Daí em diante esse dia
+fica congelado:
+
+- Nada daquele dia muda pela Zuri: criar, editar, mudar a situação, arrastar ou
+  apagar é recusado na tela, na conversa e nos fluxos, e o servidor confere de
+  novo antes de chamar o Google. Até a meia-noite, o dia de hoje ainda aceita
+  marcar quem veio ou faltou.
+- A ficha do evento mostra **Congelado** com a situação final, sem os botões de
+  situação, **Editar** e **Apagar**. Arrastar toca o som de recusa e avisa.
+- A Agenda mostra a cópia. Se alguém mudar, apagar ou criar um evento daquele
+  dia direto no Google Agenda, a cópia fica como estava, o bloco ganha a marca
+  "Mudou no Google depois do fechamento" e chega um aviso por dia, uma vez para
+  cada conjunto de mudanças. O aviso diz o dia, nunca o título.
+- Se o Google não responder inteiro, o dia não fecha e a Zuri tenta de novo em
+  15 minutos. Um dia perdido (o servidor parado) fecha depois, até 7 dias para
+  trás, um por vez. O que veio antes desta versão não é copiado.
+- A cópia nunca é apagada e entra na cópia de segurança. Ao importar, um dia já
+  fechado aqui fica como está.
 
 Uma consulta já marcada que fica fora do novo horário (ou num dia que fechou)
 não some nem muda no Google: o cartão lista as consultas afetadas com **Abrir a

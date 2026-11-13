@@ -1,8 +1,9 @@
+import type { RecordedEvent } from "../google/record.ts";
 import { AGENDA_RULES, type AppointmentProblemCode, DEFAULT_AGENDA_PREFS, GOOGLE_LIMITS, type GoogleCalendarInfo } from "@zuri/shared";
 import { z } from "zod";
 import { instantToLocal } from "../chat/local-due.ts";
 import { type CalendarEvent, cleanText, DATE, type EventDraft, eventBody, EventInputError, localInstant, localToday, nextDay } from "../google/events.ts";
-import { type BookingShape, checkBooking, shapeOf } from "../google/booking.ts";
+import { type BookingShape, checkBooking, checkOpenDay, shapeOf } from "../google/booking.ts";
 import { toAppError } from "../google/errors.ts";
 import { AppError } from "../http/errors.ts";
 import { type GoogleCalendar, GoogleError, GoogleMeter } from "../google/service.ts";
@@ -124,7 +125,7 @@ export function eventWhen(event: Pick<CalendarEvent, "start" | "end" | "allDay">
   return end.slice(0, 10) === start.slice(0, 10) ? `${start} – ${end.slice(11)}` : `${start} – ${end}`;
 }
 
-function forList(event: CalendarEvent, calendars: Map<string, string>, timeZone: string) {
+function forList(event: RecordedEvent, calendars: Map<string, string>, timeZone: string) {
   return {
     calendar: calendars.get(event.calendarId) ?? "",
     event_id: event.id,
@@ -135,6 +136,8 @@ function forList(event: CalendarEvent, calendars: Map<string, string>, timeZone:
     ...(event.description ? { description: cleanText(event.description, 300) } : {}),
     ...(event.guests ? { guests: event.guests } : {}),
     ...(event.recurring ? { repeats: true } : {}),
+    // A closed day shows the copy the Zuri kept; this says what Google has differently now.
+    ...(event.changedAtGoogle ? { changed_in_google_after_the_day_closed: event.changedAtGoogle } : {}),
   };
 }
 
@@ -155,7 +158,7 @@ function notShared(calendar: GoogleCalendarInfo): GoogleCalendarInfo {
 }
 
 /** The Agenda's refusals (issue #328), in words the model can pass on to the owner. */
-const RULE: Record<AppointmentProblemCode, string> = {
+const RULE: Record<AppointmentProblemCode | "frozen", string> = {
   step: `An appointment starts and ends on a multiple of ${AGENDA_RULES.step} minutes.`,
   short: `An appointment lasts at least ${AGENDA_RULES.minMinutes} minutes.`,
   long: `An appointment lasts at most ${AGENDA_RULES.maxMinutes / 60} hours.`,
@@ -167,6 +170,7 @@ const RULE: Record<AppointmentProblemCode, string> = {
   hours: "That time is outside the owner's opening hours.",
   lunch: "That time is in the owner's lunch break.",
   clash: "Another appointment is already booked at that time.",
+  frozen: "That day has already closed: at midnight the day's record freezes and its events can't be created, changed or deleted any more.",
 };
 
 /**
@@ -180,7 +184,8 @@ async function keepsAgenda(ctx: ToolContext, calendar: GoogleCalendar, after: Bo
     await checkBooking({ after, before, google: calendar, hours: ctx.agendaHours?.() ?? DEFAULT_AGENDA_PREFS, timeZone: ctx.timeZone, meter: meter(ctx), now: calendar.now() });
   } catch (error) {
     if (!(error instanceof AppError)) forModel(error);
-    const problem = error.details?.problem as AppointmentProblemCode | undefined;
+    const problem = error.details?.problem as AppointmentProblemCode | "frozen" | undefined;
+    if (problem === "frozen") throw new ToolError(`${RULE.frozen} Nothing was ${done}: tell the owner.`);
     if (problem && problem in RULE) throw new ToolError(`${RULE[problem]} Nothing was ${done}: tell the owner and offer a time inside the Agenda's hours.`);
     // The turn's calls ran out in the reading: trying again in this turn can't help.
     if (error.code === "SERVICE_UNAVAILABLE" && !meter(ctx).room(1)) throw new ToolError(`This request already made all the Google Calendar calls it may, so the day couldn't be checked and nothing was ${done}. Tell the owner to ask again in a new message or use the Agenda screen.`);
@@ -190,6 +195,16 @@ async function keepsAgenda(ctx: ToolContext, calendar: GoogleCalendar, after: Bo
 }
 
 const NEW_EVENT: BookingShape = { allDay: false, start: "", end: "", description: "", colorId: "" };
+
+/** Whether an event's day has closed (the record of the day): never proposed for deletion. */
+function frozen(event: CalendarEvent, timeZone: string, now: Date): boolean {
+  try {
+    checkOpenDay({ before: event, timeZone, now });
+    return false;
+  } catch {
+    return true;
+  }
+}
 
 const readable = (ctx: ToolContext) => !!ctx.calendar?.usable() && ctx.calendar.readable().length > 0;
 const writable = (ctx: ToolContext) => ctx.mode === "chat" && !!ctx.calendar?.usable() && ctx.calendar.writable().length > 0;
@@ -294,7 +309,13 @@ export const calendarTools = [
       const open = calendar.readable();
       const chosen = input.calendar ? [pick(input.calendar, open, "read")] : open;
       const names = new Map(open.map((item) => [item.id, item.name]));
-      const { events, more, skipped } = await google(() => calendar.events(chosen, from, to, meter(ctx), { timeZone: tz, ...(input.query ? { query: input.query } : {}) }));
+      const read = await google(() => calendar.events(chosen, from, to, meter(ctx), { timeZone: tz, ...(input.query ? { query: input.query } : {}) }));
+      const { more, skipped } = read;
+      // A search is Google's own: the record of the closed days shows only in a plain listing.
+      const events: RecordedEvent[] =
+        ctx.agendaRecord && !input.query
+          ? ctx.agendaRecord.apply(read.events, localToday(tz, from), localToday(tz, new Date(to.getTime() - 1)), chosen.map((item) => item.id), !more && skipped.length === 0, { from, to })
+          : read.events;
       return {
         window: `${instantToLocal(from.toISOString(), tz)} – ${instantToLocal(to.toISOString(), tz)}`,
         count: events.length,
@@ -378,6 +399,7 @@ export const calendarTools = [
       const chosen = pick(input.calendar, calendar.writable(), "write");
       const event = await google(() => calendar.event(chosen.id, input.event_id, meter(ctx)));
       if (!event.etag) throw new ToolError("Google didn't give this event's version, so it can't be proposed safely. Tell the owner to do it on the Agenda screen.");
+      if (frozen(event, ctx.timeZone, calendar.now())) throw new ToolError(`${RULE.frozen} Nothing was proposed: tell the owner.`);
       return {
         id: target(chosen.id, event.id),
         // Google's calendar, time and title, cleaned; never the model's words.
@@ -393,7 +415,12 @@ export const calendarTools = [
       const { calendarId, id: event } = parseTarget(id);
       if (!payload?.text) throw new TargetGone(false);
       try {
-        await service(ctx).deleteEvent(calendarId, event, payload?.text ?? "", meter(ctx));
+        // Approved after midnight, the event's day may have closed: read it again (its version pins the day too).
+        const calendar = service(ctx);
+        const current = await calendar.event(calendarId, event, meter(ctx));
+        if (current.etag !== payload.text) throw new TargetGone(false);
+        checkOpenDay({ before: current, timeZone: ctx.timeZone, now: calendar.now() });
+        await calendar.deleteEvent(calendarId, event, payload.text, meter(ctx));
       } catch (error) {
         approvedFailure(error);
       }

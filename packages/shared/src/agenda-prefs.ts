@@ -28,10 +28,13 @@ export interface AgendaPrefs {
    * No appointment goes into it (13/11/2026): see agenda-rules.ts.
    */
   lunch: { from: number; to: number } | null;
-  /** National holidays the owner works on ("YYYY-MM-DD"): any other closes the day by itself. */
-  openHolidays: string[];
-  /** Days off (a break, a holiday of the city), each with an optional reason. */
-  closed: { date: string; reason: string }[];
+  /**
+   * Days off: periods from `from` to `to` ("YYYY-MM-DD", both included; one day
+   * has from = to), such as a vacation, a break, a trip or a holiday of the
+   * city, each with an optional reason. A national holiday always closes the
+   * day by itself (13/11/2026: the owner never works on one).
+   */
+  closed: { from: string; to: string; reason: string }[];
 }
 
 export const DEFAULT_AGENDA_PREFS: AgendaPrefs = /* @__PURE__ */ Object.freeze({
@@ -43,6 +46,5 @@ export const DEFAULT_AGENDA_PREFS: AgendaPrefs = /* @__PURE__ */ Object.freeze({
   daysOff: true,
   outside: true,
   lunch: { from: 720, to: 840 },
-  openHolidays: [],
   closed: [],
 });

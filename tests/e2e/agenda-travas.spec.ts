@@ -15,9 +15,9 @@ const NOW = new Date("2026-11-18T10:20:00-03:00");
 const iso = (local: string) => new Date(`${local}:00-03:00`).toISOString();
 /** One hour of the week's grid, in pixels (3.5 rem). */
 const HOUR_PX = 56;
-const DEFAULTS = { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: { from: 720, to: 840 }, openHolidays: [], closed: [] };
+const DEFAULTS = { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: { from: 720, to: 840 }, closed: [] };
 
-type Sample = { title: string; day: string; from: string; to: string; description?: string };
+type Sample = { title: string; day: string; from: string; to: string; description?: string; colorId?: string; changedAtGoogle?: "changed" | "deleted" | "added" };
 
 // Invented names: the title is the person's full name and the description brings the type.
 const WEEK: Sample[] = [
@@ -38,7 +38,8 @@ const wire = (sample: Sample, index: number) => ({
   etag: `"v1-${index}"`,
   recurring: false,
   guests: 0,
-  colorId: "",
+  colorId: sample.colorId ?? "",
+  ...(sample.changedAtGoogle ? { changedAtGoogle: sample.changedAtGoogle } : {}),
 });
 
 type Body = Record<string, unknown>;
@@ -250,7 +251,7 @@ test("the form refuses a consultation at lunch and points at the start; without 
   expect(sent.patches[0]).toMatchObject({ eventId: "e0", start: "2026-11-19T12:30", end: "2026-11-19T13:30", description: "" });
 });
 
-test("Configurações › Agenda keeps the lunch, the holidays worked and the days off, and lists what was left outside @mobile", async ({ page }) => {
+test("Configurações › Agenda keeps the lunch and the periods off, lists the holidays and what was left outside @mobile", async ({ page }) => {
   await routeAgenda(page, WEEK);
   await page.clock.setFixedTime(NOW);
   await page.goto("/configuracoes/agenda");
@@ -262,36 +263,58 @@ test("Configurações › Agenda keeps the lunch, the holidays worked and the da
   await card.getByLabel("até", { exact: true }).selectOption("810");
   await expect(card.getByRole("img", { name: "Das 08:00 às 18:00, 10 horas. Almoço das 12:00 às 13:30" })).toBeVisible();
 
-  // The next national holidays on an office day; Friday 20 opened.
-  const holiday = card.getByRole("button", { name: "Atendo em Consciência Negra" });
-  await expect(holiday).toHaveAttribute("aria-pressed", "false");
-  await holiday.click();
-  await expect(holiday).toHaveAttribute("aria-pressed", "true");
-  // The list starts at the next one: Proclamação da República of this year (Sunday 15) is gone by.
-  await expect(card.getByRole("listitem").first()).toContainText("20/11");
+  // The next national holidays on an office day, only to read: every one closes the day (13/11/2026).
+  const holidays = card.getByRole("list", { name: "Feriados nacionais" });
+  await expect(holidays.getByRole("listitem").first()).toContainText("20/11Consciência Negra");
+  await expect(holidays.getByRole("button")).toHaveCount(0);
+  await expect(card.getByText("A agenda fecha sozinha em todo feriado nacional.", { exact: false })).toBeVisible();
+  // The record of the day: only said here, nothing to set.
+  await expect(card.getByText("Registro do dia", { exact: true })).toBeVisible();
 
-  // A day off: the date is read as dd/mm/aaaa and checked.
-  await card.getByRole("button", { name: "Adicionar dia" }).click();
+  // A period off: the dates are read as dd/mm/aaaa and checked, the end may stay empty for one day.
+  const periods = card.getByRole("list", { name: "Dias sem expediente" });
+  await expect(periods).toHaveText("Nenhum dia marcado.");
+  await card.getByRole("button", { name: "Adicionar dia ou período" }).click();
   const add = page.getByRole("dialog", { name: "Dia sem expediente" });
-  const date = add.getByLabel("Dia", { exact: true });
-  await expect(date).toBeFocused();
-  await date.fill("30/02/2026");
-  await add.getByRole("button", { name: "Adicionar dia" }).click();
-  await expect(add.getByText("Confira a data: use dd/mm/aaaa.")).toBeVisible();
-  await date.fill("10/11/2026");
+  const from = add.getByLabel("De", { exact: true });
+  const to = add.getByLabel("Até (vazio para um dia só)");
+  const confirm = add.getByRole("button", { name: "Adicionar", exact: true });
+  await expect(from).toBeFocused();
+  await from.fill("30/02/2026");
+  await confirm.click();
+  await expect(add.getByText("Escreva a data como dd/mm/aaaa.")).toBeVisible();
+  await from.fill("10/11/2026");
   await page.keyboard.press("Enter");
   await expect(add.getByText("Esse dia já passou.")).toBeVisible();
-  await date.fill("24/12/2026");
+  await from.fill("10/01/2028");
+  await confirm.click();
+  await expect(add.getByText("A data passa de um ano a partir de hoje. Confira o ano.")).toBeVisible();
+  await from.fill("24/12/2026");
+  await to.fill("23/12/2026");
+  await confirm.click();
+  await expect(add.getByText("A data final vem antes da primeira. Confira as duas.")).toBeVisible();
+  // 24/12 to 23/03 is 90 days; one more is refused.
+  await to.fill("24/03/2027");
+  await confirm.click();
+  await expect(add.getByText("Um período vai até 90 dias. Para mais, marque em partes.")).toBeVisible();
+  await to.fill("03/01/2027");
   await add.getByLabel("Motivo (opcional)").fill("Recesso");
   await expectAccessible(page, "configuracoes-agenda-dia-sem-expediente");
-  await add.getByRole("button", { name: "Adicionar dia" }).click();
+  await confirm.click();
   await expect(add).toHaveCount(0);
-  await expect(card.getByText("24/12/2026")).toBeVisible();
-  await card.getByRole("button", { name: "Adicionar dia" }).click();
-  await date.fill("24/12/2026");
-  await add.getByRole("button", { name: "Adicionar dia" }).click();
-  await expect(add.getByText("Esse dia já está na lista.")).toBeVisible();
+  await expect(periods.getByRole("listitem")).toHaveText(["24/12/2026 a 03/01/2027 · Recesso · 11 dias"]);
+  await card.getByRole("button", { name: "Adicionar dia ou período" }).click();
+  await from.fill("02/01/2027");
+  await confirm.click();
+  await expect(add.getByText("Esse período encosta em 24/12/2026 a 03/01/2027, que já está na lista.")).toBeVisible();
   await add.getByRole("button", { name: "Cancelar" }).click();
+  // A day with appointments already booked says how many need a new time.
+  await card.getByRole("button", { name: "Adicionar dia ou período" }).click();
+  await from.fill("19/11/2026");
+  await confirm.click();
+  await expect(page.getByRole("status").filter({ hasText: "19/11/2026: 1 dia sem expediente. 2 consultas marcadas nesse período precisam de outro horário." })).toBeVisible();
+  await card.getByRole("button", { name: "Tirar 19/11/2026" }).click();
+  await expect(periods.getByRole("listitem")).toHaveText(["24/12/2026 a 03/01/2027 · Recesso · 11 dias"]);
   await expectAccessible(page, "configuracoes-agenda-travas");
   expect(await tooSmallControls(page), "every control of the screen is a 44 px target").toEqual([]);
 
@@ -300,27 +323,30 @@ test("Configurações › Agenda keeps the lunch, the holidays worked and the da
   await save.click();
   await expect(page.getByRole("status").filter({ hasText: "Agenda salva" })).toBeVisible();
   const stored = (await (await page.request.get("/api/settings", { headers: CSRF })).json()) as { agenda: object };
-  expect(stored.agenda).toEqual({ ...DEFAULTS, to: 14, lunch: { from: 720, to: 810 }, openHolidays: ["2026-11-20"], closed: [{ date: "2026-12-24", reason: "Recesso" }] });
+  expect(stored.agenda).toEqual({ ...DEFAULTS, to: 14, lunch: { from: 720, to: 810 }, closed: [{ from: "2026-12-24", to: "2027-01-03", reason: "Recesso" }] });
   const outside = page.getByRole("status").filter({ hasText: "1 consulta já marcada ficou fora do horário de atendimento." });
   await expect(outside).toContainText("Renato Sampaio Cruz, qui, 19/11 14:00 Fora do horário.");
   await expect(outside.getByRole("link", { name: "Abrir a Agenda" })).toBeVisible();
 
-  // A day off is taken out by its X; the holiday opened is free in the Agenda.
-  await card.getByRole("button", { name: "Tirar 24/12/2026" }).click();
-  await expect(card.getByText("24/12/2026")).toHaveCount(0);
+  // A period is taken out by its X.
+  await card.getByRole("button", { name: "Tirar 24/12/2026 a 03/01/2027" }).click();
+  await expect(periods).toHaveText("Nenhum dia marcado.");
   await expect(save).toBeEnabled();
   await outside.getByRole("link", { name: "Abrir a Agenda" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Agenda" })).toBeVisible();
 });
 
-test("a holiday marked “Atendo” opens like any day, and a day off closes like a holiday", async ({ page }) => {
+test("every day of a period off closes like a holiday, and an old setting that opened a holiday opens nothing", async ({ page }) => {
   await routeAgenda(page, WEEK);
   await openAgenda(page);
-  expect((await page.request.patch("/api/settings", { headers: CSRF, data: { agenda: { ...DEFAULTS, openHolidays: ["2026-11-20"], closed: [{ date: "2026-11-19", reason: "Congresso" }] } } })).status()).toBe(200);
+  // A setting saved before 13/11/2026 with the holiday worked: the field is read and dropped.
+  expect((await page.request.patch("/api/settings", { headers: CSRF, data: { agenda: { ...DEFAULTS, openHolidays: ["2026-11-20"], closed: [{ from: "2026-11-19", to: "2026-11-27", reason: "Congresso" }] } } })).status()).toBe(200);
+  const stored = (await (await page.request.get("/api/settings", { headers: CSRF })).json()) as { agenda: Record<string, unknown> };
+  expect(stored.agenda).not.toHaveProperty("openHolidays");
   await page.reload();
   await clickHour(page, "20", 1.5);
-  await expect(page.getByRole("dialog", { name: "Novo evento" })).toBeVisible();
-  await page.getByRole("dialog").getByRole("button", { name: "Fechar" }).click();
+  await expect(page.getByRole("dialog", { name: "Consulta não entra neste horário" }).getByRole("alert")).toContainText("é feriado (Consciência Negra)");
+  await page.keyboard.press("Escape");
   // Thursday is off: its name says why, the click says it too, and Isadora stays where she was, marked.
   await expect(column(page, "19").getByText("Congresso")).toBeVisible();
   await clickHour(page, "19", 4.5);
@@ -328,6 +354,40 @@ test("a holiday marked “Atendo” opens like any day, and a day off closes lik
   await page.keyboard.press("Escape");
   await expect(page.getByRole("main").getByRole("button", { name: /^Fora do horário de atendimento: Isadora Pires Falcão/ })).toBeVisible();
   await expectAccessible(page, "agenda-travas-dia-sem-expediente");
+});
+
+test("an event of a day that closed at midnight is frozen: no status, edit or delete, and a drag is refused; a change at Google is marked", async ({ page }) => {
+  const sent = await routeAgenda(page, [
+    ...WEEK,
+    { title: "Helena Duarte Prado", day: "17", from: "09:00", to: "10:00", colorId: "10", description: "Consulta | Consultório" },
+    { title: "Marina Teles Barreto", day: "16", from: "14:00", to: "15:00", description: "Retorno | Consultório", changedAtGoogle: "changed" },
+  ]);
+  await openAgenda(page);
+  await event(page, "Helena Duarte Prado").click();
+  const details = page.getByRole("dialog", { name: "Helena Duarte Prado" });
+  await expect(details.getByRole("note")).toContainText("Congelado. Situação final: Confirmado.");
+  await expect(details.getByRole("button", { name: "Editar" })).toHaveCount(0);
+  await expect(details.getByRole("button", { name: "Apagar" })).toHaveCount(0);
+  await expect(details.getByRole("group", { name: "Situação" })).toHaveCount(0);
+  await expectAccessible(page, "agenda-evento-congelado");
+  await page.keyboard.press("Escape");
+
+  const from = await center(page, "Helena Duarte Prado");
+  await dragBy(page, from, { x: from.x, y: from.y + HOUR_PX });
+  await page.mouse.up();
+  await expect(notice(page, "Esse dia já fechou à meia-noite. Os eventos dele ficam como estavam.")).toBeVisible();
+  // Alt + arrows say the same.
+  await event(page, "Helena Duarte Prado").focus();
+  await page.keyboard.down("Alt");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.up("Alt");
+  expect(sent.patches).toEqual([]);
+
+  // Changed at Google after the day closed: the copy, marked.
+  const marina = page.getByRole("main").getByRole("button", { name: /^Mudou no Google depois do fechamento: Marina Teles Barreto/ });
+  await expect(marina).toBeVisible();
+  await marina.click();
+  await expect(page.getByRole("dialog", { name: "Marina Teles Barreto" }).getByText("Mudou no Google depois do fechamento. A Zuri mostra o registro como estava à meia-noite.")).toBeVisible();
 });
 
 test.describe("in the dark theme", () => {
@@ -342,7 +402,7 @@ test.describe("in the dark theme", () => {
     await expectAccessible(page, "agenda-travas-horario-fechado-escuro");
     await page.keyboard.press("Escape");
     await page.goto("/configuracoes/agenda");
-    await expect(page.getByRole("button", { name: "Atendo em Consciência Negra" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Feriados nacionais" })).toBeVisible();
     await expectAccessible(page, "configuracoes-agenda-travas-escuro");
   });
 });

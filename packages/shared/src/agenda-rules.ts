@@ -51,13 +51,13 @@ export const AGENDA_RULES = /* @__PURE__ */ Object.freeze({
   lunchStep: 30,
   lunchMax: 180,
   lunchMargin: 30,
-  /** How many days off and open holidays the settings keep. */
+  /** How many periods off the settings keep, how long one may be, in days, and its reason. */
   closedMax: 100,
-  openHolidaysMax: 40,
+  closedDaysMax: 90,
   closedReasonMax: 40,
 });
 
-/** Why a day takes no appointment: not a working day, a national holiday the owner did not open, or a day off. */
+/** Why a day takes no appointment: not a working day, a national holiday, or a day off. */
 export type DayClosure = { kind: "weekday" } | { kind: "holiday"; holiday: NationalHoliday } | { kind: "closed"; reason: string };
 
 /** What stops an appointment, in the order the owner fixes it. */
@@ -77,7 +77,7 @@ export type AppointmentProblem =
 export type AppointmentProblemCode = AppointmentProblem["code"];
 
 /** The part of the Agenda's settings the rule reads. */
-export type OpeningHours = Pick<AgendaPrefs, "from" | "to" | "workDays" | "lunch" | "openHolidays" | "closed">;
+export type OpeningHours = Pick<AgendaPrefs, "from" | "to" | "workDays" | "lunch" | "closed">;
 
 /** Another appointment of the same day, in minutes: only these clash (a meeting only warns, on the screen). */
 export interface BookedSlot {
@@ -102,13 +102,32 @@ export function dayPlus(day: string, days: number): string {
   return new Date(noon(day) + days * DAY_MS).toISOString().slice(0, 10);
 }
 
+/** The period off that holds `day`, if any. */
+export function closedPeriod<T extends { from: string; to: string }>(day: string, closed: readonly T[]): T | undefined {
+  return closed.find((each) => each.from <= day && day <= each.to);
+}
+
+/** How many days a period off holds, both ends included. */
+export function periodDays(period: { from: string; to: string }): number {
+  return Math.round((noon(period.to) - noon(period.from)) / DAY_MS) + 1;
+}
+
 /** Why a day is closed, or null when it takes appointments. */
-export function dayClosure(day: string, hours: Pick<OpeningHours, "workDays" | "openHolidays" | "closed">): DayClosure | null {
+export function dayClosure(day: string, hours: Pick<OpeningHours, "workDays" | "closed">): DayClosure | null {
   if (!hours.workDays.includes(weekdayOf(day))) return { kind: "weekday" };
   const holiday = nationalHoliday(day);
-  if (holiday && !hours.openHolidays.includes(day)) return { kind: "holiday", holiday };
-  const off = hours.closed.find((each) => each.date === day);
+  if (holiday) return { kind: "holiday", holiday };
+  const off = closedPeriod(day, hours.closed);
   return off ? { kind: "closed", reason: off.reason } : null;
+}
+
+/**
+ * The record of the day (13/11/2026, 10:37 UTC): at 0:00 of the owner's clock
+ * the events of the day that ended freeze. Nothing on a day before `today`
+ * is created, changed or deleted any more, by the screen, the chat or a flow.
+ */
+export function frozenDay(day: string, today: string): boolean {
+  return day < today;
 }
 
 /** Whether [start, end) leaves the opening hours or touches the lunch break, on an open day. */

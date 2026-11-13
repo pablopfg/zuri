@@ -4,6 +4,8 @@ import {
   type AgendaPage as AgendaWindow,
   type AgendaPrefs,
   type AppointmentProblem,
+  type AgendaChange,
+  closedPeriod,
   dayClosure,
   outsideHours,
   EVENT_STATUS_COLOR,
@@ -12,6 +14,7 @@ import {
   GOOGLE_LIMITS,
   type GoogleCalendarInfo,
   type GoogleStatus,
+  type MessageKey,
   type NationalHoliday,
   nationalHoliday,
   ptBRAgenda,
@@ -56,6 +59,7 @@ import {
   formBody,
   formOf,
   GOOGLE_STATUS_KEY,
+  isFrozen,
   isWeekend,
   localDate,
   localTime,
@@ -155,14 +159,14 @@ const COLOR_TEXT: Record<string, Parameters<T>[0]> = {
 /** The fill of a day without work: a national holiday first, then Saturday and Sunday. */
 /** Configurações › Agenda, for every part of the screen: which days are closed and why (13/11/2026). */
 // Never read outside the provider: the screen draws nothing before the settings arrive. The empty lists close no day.
-const HoursContext = createContext<AgendaPrefs>({ from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: null, openHolidays: [], closed: [] });
+const HoursContext = createContext<AgendaPrefs>({ from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: null, closed: [] });
 
 /** A closed holiday in its color, any other closed day (and the weekend) in the day-off one. */
 function useDayFill() {
   const hours = useContext(HoursContext);
   return (day: string): string | undefined => {
     // A holiday on a Sunday is a holiday first, even though the weekday alone already closes it.
-    if (nationalHoliday(day) && !hours.openHolidays.includes(day)) return "bg-holiday";
+    if (nationalHoliday(day)) return "bg-holiday";
     return dayClosure(day, hours) || isWeekend(day) ? "bg-day-off" : undefined;
   };
 }
@@ -172,7 +176,7 @@ function useClosedLabel() {
   const { t } = useI18n();
   const hours = useContext(HoursContext);
   return (day: string): string | null => {
-    const off = hours.closed.find((each) => each.date === day);
+    const off = closedPeriod(day, hours.closed);
     return off ? off.reason || t("web.agenda.closedDay") : null;
   };
 }
@@ -181,7 +185,7 @@ function useClosedLabel() {
  * An appointment from today on that a change of the settings (or a booking made
  * at Google) left outside the office hours: it stays, marked (13/11/2026, 00:44).
  */
-function outsideAppointment(event: AgendaEvent, hours: Pick<AgendaPrefs, "from" | "to" | "lunch" | "workDays" | "openHolidays" | "closed">, today: string, timeZone: string): boolean {
+function outsideAppointment(event: AgendaEvent, hours: Pick<AgendaPrefs, "from" | "to" | "lunch" | "workDays" | "closed">, today: string, timeZone: string): boolean {
   if (!isAppointment(event)) return false;
   const slot = slotOf(event, timeZone);
   if (!slot || slot.day < today) return false;
@@ -304,6 +308,7 @@ type Reveal = { outside: boolean; daysOff: boolean };
  */
 export function AgendaPage() {
   const { t, locale, timeZone } = useI18n();
+  const toast = useToast();
   const status = useQuery({ queryKey: GOOGLE_STATUS_KEY, queryFn: ({ signal }) => api<GoogleStatus>("/google", { signal }) });
   // The session already read the settings: this is its answer, not a request of this screen.
   const settings = useQuery({ queryKey: SETTINGS_KEY, queryFn: () => api<Settings>("/settings"), staleTime: 5 * 60_000 });
@@ -550,6 +555,10 @@ export function AgendaPage() {
           onOpen={show}
           onDay={openDay}
           movable={!saving}
+          onFrozen={() => {
+            if (settings.data?.sounds.notice !== false) play(REFUSAL_NOTES);
+            toast(t("web.agenda.frozen.refused"));
+          }}
           onMove={moveTo}
           onNew={canCreate ? newAt : undefined}
           check={slotCheck}
@@ -586,6 +595,7 @@ export function AgendaPage() {
         key={opening}
         event={open}
         calendar={open ? byId.get(open.calendarId) : undefined}
+        frozen={open ? isFrozen(open, today, timeZone) : false}
         onClose={() => setOpen(null)}
         onSend={forget}
         // Only while the details still show that event: closed, or on another one, the answer changes nothing here.
@@ -926,7 +936,13 @@ function EventButton({
       )}
       style={{ "--event": look.color ?? "var(--color-accent)" } as CSSProperties}
     >
-      <span className={cn("flex min-w-0 items-center gap-1 font-semibold", look.status === "cancelled" && "line-through")}>
+      <span className={cn("flex min-w-0 items-center gap-1 font-semibold", (look.status === "cancelled" || event.changedAtGoogle === "deleted") && "line-through")}>
+        {event.changedAtGoogle && (
+          <>
+            <RefreshCw className="h-3.5 w-3.5 shrink-0 text-warning" aria-hidden />
+            <span className="sr-only">{t("web.agenda.record.mark")}: </span>
+          </>
+        )}
         {outside && (
           <>
             <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning" aria-hidden />
@@ -1013,7 +1029,15 @@ function DayList({ day, events, calendars, onOpen }: { day: string; events: Agen
             >
               {/* The title comes first for whoever listens; the hour is drawn first. */}
               <span className="col-start-3 row-start-1 min-w-0">
-                <span className={cn("block break-words font-medium", look.status === "cancelled" && "line-through")}>{event.title || t("web.agenda.event.untitled")}</span>
+                <span className={cn("block break-words font-medium", (look.status === "cancelled" || event.changedAtGoogle === "deleted") && "line-through")}>
+                  {event.changedAtGoogle && (
+                    <>
+                      <RefreshCw className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-warning" aria-hidden />
+                      <span className="sr-only">{t("web.agenda.record.mark")}: </span>
+                    </>
+                  )}
+                  {event.title || t("web.agenda.event.untitled")}
+                </span>
                 {under && <span className="block break-words text-sm text-fg-muted">{under}</span>}
               </span>
               <span className="col-start-1 row-start-1 text-sm text-fg-muted tabular-nums">
@@ -1084,6 +1108,7 @@ function WeekGrid({
   onOpen,
   onDay,
   movable,
+  onFrozen,
   onMove,
   onNew,
   check,
@@ -1092,7 +1117,7 @@ function WeekGrid({
   days: string[];
   today: string;
   now: number;
-  hours: Pick<AgendaPrefs, "from" | "to" | "lunch" | "workDays" | "openHolidays" | "closed">;
+  hours: Pick<AgendaPrefs, "from" | "to" | "lunch" | "workDays" | "closed">;
   see: { outside: boolean };
   events: AgendaEvent[];
   calendars: Map<string, GoogleCalendarInfo>;
@@ -1100,6 +1125,8 @@ function WeekGrid({
   onDay: (day: string) => void;
   /** False while a change is on its way to Google: the next one waits for its answer. */
   movable: boolean;
+  /** A drag of an event whose day already closed: refused with the sound and its notice. */
+  onFrozen: () => void;
   onMove: (event: AgendaEvent, slot: Slot) => void;
   /** An empty hour was clicked; absent when no calendar can be edited. */
   onNew?: ((day: string, time: string) => void) | undefined;
@@ -1119,8 +1146,10 @@ function WeekGrid({
   const keep = useRef<string | null>(null);
   const count = hours.to - hours.from;
   const original = (key: string) => events.find((event) => eventKey(event) === key);
-  const editable = (event: AgendaEvent) => eventLook(event, calendars.get(event.calendarId)).editable;
-  const readOnly = () => void toast(t("web.agenda.change.readOnly"));
+  const writable = (event: AgendaEvent) => eventLook(event, calendars.get(event.calendarId)).editable;
+  // A day that closed at midnight keeps its events where they were: dragging one says why, with the refusal's sound.
+  const editable = (event: AgendaEvent) => writable(event) && !isFrozen(event, today, timeZone);
+  const readOnly = (event: AgendaEvent) => (writable(event) ? onFrozen() : void toast(t("web.agenda.change.readOnly")));
   const block = (key: string) => list.current?.querySelector<HTMLElement>(`[data-event="${CSS.escape(key)}"]`);
 
   useLayoutEffect(() => {
@@ -1149,7 +1178,7 @@ function WeekGrid({
       if (state === "refused") return;
       if (state === "pressed") {
         if (Math.hypot(m.clientX - from.x, m.clientY - from.y) < DRAG_PX) return;
-        if (!editable(event)) readOnly();
+        if (!editable(event)) readOnly(event);
         state = slot && movable && editable(event) ? "dragging" : "refused";
         if (state === "refused") return;
       }
@@ -1198,7 +1227,7 @@ function WeekGrid({
     const event = original(id);
     if (!e.altKey || !event || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
     e.preventDefault();
-    if (!editable(event)) return readOnly();
+    if (!editable(event)) return readOnly(event);
     const base = preview?.key === id ? preview.slot : slotOf(event, timeZone);
     if (!base || !movable) return;
     const down = e.key === "ArrowDown" ? STEP_MIN : e.key === "ArrowUp" ? -STEP_MIN : 0;
@@ -1503,6 +1532,7 @@ function Detail({ icon, label, children }: { icon: ReactNode; label?: string; ch
 function EventDialog({
   event,
   calendar,
+  frozen,
   onClose,
   onSend,
   onChange,
@@ -1510,6 +1540,8 @@ function EventDialog({
 }: {
   event: AgendaEvent | null;
   calendar?: GoogleCalendarInfo | undefined;
+  /** Its day closed at midnight (the record of the day): nothing in it changes any more. */
+  frozen: boolean;
   onClose: () => void;
   /** The details are about to change or delete the event: an undo on offer names a version that is about to be old. */
   onSend: () => void;
@@ -1525,7 +1557,7 @@ function EventDialog({
   const confirmId = useId();
   const [busy, setBusy] = useState(false);
   const look = event ? eventLook(event, calendar) : null;
-  const editable = !!look?.editable;
+  const editable = !!look?.editable && !frozen;
   const statusId = useId();
   const [marking, setMarking] = useState<EventStatus | null>(null);
   // Said inside the dialog: with it open, the rest of the page (and a toast there) is out of reach.
@@ -1616,7 +1648,7 @@ function EventDialog({
             <Detail icon={<Dot color={calendar?.color} />} label={t("web.agenda.event.calendar")}>
               {calendar?.name ?? event.calendarId}
             </Detail>
-            {editable && (
+            {look?.editable && (
               <Detail icon={<Palette className="h-4 w-4" />}>
                 <span className="text-fg-muted">
                   {t("web.agenda.event.colorLine", {
@@ -1653,7 +1685,17 @@ function EventDialog({
               </Detail>
             )}
           </div>
-          {!editable && <Notice>{t("web.agenda.event.readOnly")}</Notice>}
+          {frozen && look?.editable && (
+            <p role="note" className="flex gap-2 rounded-xl border border-border px-3 py-2.5 text-sm text-fg-muted">
+              {/* The closed day's icon, not a lock: an icon of its own would be one more file to fetch on the first load (P11). */}
+              <CalendarOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>
+                <b className="text-fg">{t("web.agenda.frozen.title")}</b> {t("web.agenda.frozen.body", { status: look.status ? t(STATUS_TEXT[look.status]) : t("web.agenda.frozen.noStatus") })}
+              </span>
+            </p>
+          )}
+          {event.changedAtGoogle && <Notice>{t(RECORD_TEXT[event.changedAtGoogle])}</Notice>}
+          {!look?.editable && <Notice>{t("web.agenda.event.readOnly")}</Notice>}
           {confirming ? (
             <div className="space-y-3 rounded-xl border border-danger/40 bg-danger-soft p-3">
               <p id={confirmId} className="text-sm">
@@ -1688,6 +1730,13 @@ function EventDialog({
     </Dialog>
   );
 }
+
+/** What changed at Google after the day closed, in the details of the copy. */
+const RECORD_TEXT = {
+  changed: "web.agenda.record.changed",
+  deleted: "web.agenda.record.deleted",
+  added: "web.agenda.record.added",
+} as const satisfies Record<AgendaChange, MessageKey>;
 
 /** "30 min", "1 hora", "1 h 30". */
 function useDuration() {

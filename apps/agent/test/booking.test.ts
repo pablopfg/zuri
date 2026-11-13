@@ -1,6 +1,6 @@
 import { type AgendaPrefs, bindsBooking, DEFAULT_AGENDA_PREFS } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { type BookingShape, bound, checkBooking, minuteOf } from "../src/google/booking.ts";
+import { type BookingShape, bound, checkBooking, checkOpenDay, eventDay, minuteOf, onClosedDay } from "../src/google/booking.ts";
 import type { CalendarEvent } from "../src/google/events.ts";
 import { type GoogleCalendar, GoogleMeter } from "../src/google/service.ts";
 
@@ -162,5 +162,28 @@ describe("bound: the same test as the Agenda's", () => {
   it("leaves out an all-day or cancelled event", () => {
     expect(bound({ allDay: true, description: "Consulta | Sala", colorId: "" })).toBe(false);
     expect(bound({ allDay: false, description: "Consulta | Sala", colorId: "11" })).toBe(false);
+  });
+});
+
+describe("eventDay and the frozen days (E5b)", () => {
+  const zone = "America/Sao_Paulo";
+  const now = new Date("2026-11-13T12:00:00Z");
+  it("reads the owner's day of an event and refuses a time it can't read, never guessing a day", () => {
+    expect(eventDay({ allDay: true, start: "2026-11-12" }, zone)).toBe("2026-11-12");
+    // 01:30 UTC on the 13th is still the 12th in São Paulo.
+    expect(eventDay({ allDay: false, start: "2026-11-13T01:30:00Z" }, zone)).toBe("2026-11-12");
+    for (const bad of [{ allDay: true, start: "12/11/2026" }, { allDay: false, start: "amanhã" }]) {
+      expect(() => eventDay(bad, zone)).toThrow(expect.objectContaining({ code: "VALIDATION_FAILED", messageKey: "error.googleEventDate" }));
+    }
+  });
+
+  it("freezes every day before today and never today, before or after the change", () => {
+    expect(onClosedDay({ allDay: true, start: "2026-11-12" }, zone, now)).toBe(true);
+    expect(onClosedDay({ allDay: false, start: "2026-11-13T03:00:00Z" }, zone, now)).toBe(false);
+    expect(() => checkOpenDay({ before: { allDay: true, start: "2026-11-12" }, after: { allDay: true, start: "2026-11-20" }, timeZone: zone, now })).toThrow(
+      expect.objectContaining({ code: "VALIDATION_FAILED", messageKey: "error.agendaRule.frozen", details: { problem: "frozen" } }),
+    );
+    expect(() => checkOpenDay({ after: { allDay: true, start: "2026-11-12" }, timeZone: zone, now })).toThrow(expect.objectContaining({ details: { problem: "frozen" } }));
+    expect(() => checkOpenDay({ before: { allDay: true, start: "2026-11-13" }, after: { allDay: true, start: "2026-11-14" }, timeZone: zone, now })).not.toThrow();
   });
 });

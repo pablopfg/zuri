@@ -2,6 +2,7 @@ import {
   AGENDA_LIMITS,
   type AgendaPrefs,
   type AgendaPage,
+  type AgendaRecordLast,
   calendarModeSchema,
   CONTACT_LIMITS,
   contactLabelsSchema,
@@ -18,8 +19,9 @@ import type { ClientInfo } from "../auth/client.ts";
 import type { AuthService } from "../auth/service.ts";
 import { CHANNEL_ID, GOOGLE_CHANNEL_HEADER, GOOGLE_PUSH_PATH, GOOGLE_STATE_HEADER, GOOGLE_TOKEN_HEADER, isGooglePushToken } from "../gates/google-push.ts";
 import { contactAppointments } from "../google/appointments.ts";
-import { checkBooking, shapeOf } from "../google/booking.ts";
+import { checkBooking, checkOpenDay, shapeOf } from "../google/booking.ts";
 import type { GoogleContacts } from "../google/contacts.ts";
+import type { AgendaRecord } from "../google/record.ts";
 import type { ReviewMatches } from "../reviews/matches.ts";
 import type { ReviewRequests } from "../reviews/requests.ts";
 import type { ReviewService } from "../reviews/service.ts";
@@ -36,6 +38,8 @@ export interface GoogleRouteDeps {
   contacts: GoogleContacts;
   /** The Google reviews (step 19c). */
   reviews: ReviewService;
+  /** The record of the day (13/11/2026): closed days show their copy. */
+  record: AgendaRecord;
   /** Review requests and the link (PR S20). */
   reviewRequests: ReviewRequests;
   /** Which contact left a review (PR S20). */
@@ -246,8 +250,13 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     const { events, more, skipped } = await owner(() =>
       google.events(calendars, from, to, new GoogleMeter(ACTION_BUDGET), { timeZone: zone, perCalendar: AGENDA_LIMITS.perCalendar, max: AGENDA_LIMITS.total }),
     );
-    return Response.json({ ...page, events, more: more || skipped.length > 0 } satisfies AgendaPage);
+    const partial = more || skipped.length > 0;
+    const shown = deps().record.apply(events, query.data.from, query.data.to, calendars.map((calendar) => calendar.id), !partial);
+    return Response.json({ ...page, events: shown, more: partial } satisfies AgendaPage);
   });
+
+  /** The last day the record closed, for Configurações › Agenda. */
+  app.get("/google/record", () => Response.json({ last: deps().record.last() satisfies AgendaRecordLast | null }));
 
   app.post("/google/events", async (c) => {
     const input = await readJson(c.req.raw, googleEventCreateSchema, 16 * 1024);
@@ -292,7 +301,14 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
   app.delete("/google/events", async (c) => {
     const input = await readJson(c.req.raw, googleEventDeleteSchema, 4 * 1024);
     const { google } = deps();
-    await owner(() => google.deleteEvent(input.calendarId, input.eventId, input.etag, new GoogleMeter(ACTION_BUDGET)));
+    const meter = new GoogleMeter(ACTION_BUDGET);
+    await owner(async () => {
+      // The day comes from Google, never from the request: an event of a closed day is never deleted (the record of the day).
+      const current = await google.event(input.calendarId, input.eventId, meter);
+      if (current.etag !== input.etag) throw new GoogleError("changed");
+      checkOpenDay({ before: current, timeZone: deps().timeZone() });
+      await google.deleteEvent(input.calendarId, input.eventId, input.etag, meter);
+    });
     return Response.json({ deleted: true });
   });
 }

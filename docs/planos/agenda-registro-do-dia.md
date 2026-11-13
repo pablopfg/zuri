@@ -46,7 +46,7 @@ E5c e os sinais da sincronização na E5d.
 
 ## 4. Escopo
 
-**Entra:** schema e regra em `packages/shared`, trava nas escritas, tabela da cópia (migration 41), fechamento no alarme, leitura com a cópia na rota e na ferramenta de listar, Configurações › Agenda, marcas na Agenda, avisos, i18n, testes, docs.
+**Entra:** schema e regra em `packages/shared`, trava nas escritas, tabela da cópia (migration 42), fechamento no alarme, leitura com a cópia na rota e na ferramenta de listar, Configurações › Agenda, marcas na Agenda, avisos, i18n, testes, docs.
 
 **Fica fora (e onde vai parar):**
 
@@ -113,7 +113,7 @@ Chaves novas em `pt-BR-settings.ts`, `pt-BR-agenda.ts` (ou o arquivo da Agenda a
 
 ### Banco
 
-Migration 41 (conferir a numeração na `develop` na hora), só acréscimo:
+Migration 42 (a 41 ficou com a S20, `review_requests`), só acréscimo:
 
 - `zur_agenda_record(day TEXT, calendar_id TEXT, event_id TEXT, etag TEXT, data TEXT NOT NULL, seen_etag TEXT, PRIMARY KEY (day, calendar_id, event_id))`: `data` é o `CalendarEvent` em JSON; `seen_etag` guarda a última versão do Google já avisada.
 - `zur_agenda_closed_days(day TEXT PRIMARY KEY, closed_at TEXT NOT NULL, events INTEGER NOT NULL)`.

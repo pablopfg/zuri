@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AGENDA_RULES, appointmentProblem, DEFAULT_AGENDA_PREFS, dayClosure, dayPlus, nextFreeSlot, outsideHours, weekdayOf } from "../src/index.ts";
+import { AGENDA_RULES, appointmentProblem, closedPeriod, DEFAULT_AGENDA_PREFS, dayClosure, dayPlus, frozenDay, nextFreeSlot, outsideHours, periodDays, weekdayOf } from "../src/index.ts";
 
 // Friday 13/11/2026, 10:00 on the owner's clock; the office as a new installation has it.
 const hours = { ...DEFAULT_AGENDA_PREFS };
@@ -33,12 +33,13 @@ describe("appointmentProblem", () => {
     expect(appointmentProblem({ day: "2027-11-15", start: 540, end: 600, ...now, hours })?.field).toBe("date");
   });
 
-  it("closes the days without office hours, the holidays not opened and the days off", () => {
+  it("closes the days without office hours, every national holiday and the days off", () => {
     expect(at("2026-11-14", 9 * 60)).toBe("weekday");
     expect(at("2026-11-20", 9 * 60)).toBe("holiday");
     expect(appointmentProblem({ day: "2026-11-20", start: 540, end: 600, ...now, hours })).toMatchObject({ code: "holiday", holiday: "blackAwareness", field: "date" });
-    expect(at("2026-11-20", 9 * 60, undefined, { openHolidays: ["2026-11-20"] })).toBeNull();
-    expect(appointmentProblem({ day: "2026-12-24", start: 540, end: 600, ...now, hours: { ...hours, closed: [{ date: "2026-12-24", reason: "Recesso" }] } })).toMatchObject({ code: "closed", reason: "Recesso" });
+    // The owner never works on a holiday (13/11/2026): even a working Friday on the holiday stays closed.
+    expect(at("2026-11-20", 9 * 60, undefined, { workDays: [0, 1, 2, 3, 4, 5, 6] })).toBe("holiday");
+    expect(appointmentProblem({ day: "2026-12-24", start: 540, end: 600, ...now, hours: { ...hours, closed: [{ from: "2026-12-24", to: "2026-12-24", reason: "Recesso" }] } })).toMatchObject({ code: "closed", reason: "Recesso" });
     // Saturday opened as a working day.
     expect(at("2026-11-14", 9 * 60, undefined, { workDays: [1, 2, 3, 4, 5, 6] })).toBeNull();
   });
@@ -67,7 +68,7 @@ describe("appointmentProblem", () => {
     // Saturday more than a year away: the year is what to fix first.
     expect(at("2027-11-20", 9 * 60)).toBe("far");
     // A day off at 7:00: the day comes before the hour.
-    expect(at("2026-12-24", 7 * 60, undefined, { closed: [{ date: "2026-12-24", reason: "Recesso" }] })).toBe("closed");
+    expect(at("2026-12-24", 7 * 60, undefined, { closed: [{ from: "2026-12-24", to: "2026-12-24", reason: "Recesso" }] })).toBe("closed");
   });
 
   it("fixes an appointment once it began: pulling its end is the past too (Pablo, 13/11/2026)", () => {
@@ -89,7 +90,29 @@ describe("dayClosure and outsideHours", () => {
     expect(dayClosure("2026-11-16", hours)).toBeNull();
     expect(dayClosure("2026-11-15", hours)).toEqual({ kind: "weekday" });
     expect(dayClosure("2026-12-25", hours)).toEqual({ kind: "holiday", holiday: "christmas" });
-    expect(dayClosure("2026-12-31", { ...hours, closed: [{ date: "2026-12-31", reason: "" }] })).toEqual({ kind: "closed", reason: "" });
+    expect(dayClosure("2026-12-31", { ...hours, closed: [{ from: "2026-12-31", to: "2026-12-31", reason: "" }] })).toEqual({ kind: "closed", reason: "" });
+  });
+
+  it("closes every day of a period off, both ends included, and none outside it", () => {
+    const closed = [{ from: "2027-01-18", to: "2027-01-29", reason: "Férias" }];
+    expect(dayClosure("2027-01-17", { ...hours, workDays: [0, 1, 2, 3, 4, 5, 6], closed })).toBeNull();
+    expect(dayClosure("2027-01-18", { ...hours, closed })).toEqual({ kind: "closed", reason: "Férias" });
+    expect(dayClosure("2027-01-22", { ...hours, closed })).toEqual({ kind: "closed", reason: "Férias" });
+    expect(dayClosure("2027-01-29", { ...hours, closed })).toEqual({ kind: "closed", reason: "Férias" });
+    expect(dayClosure("2027-02-01", { ...hours, closed })).toBeNull();
+    expect(closedPeriod("2027-01-30", closed)).toBeUndefined();
+    expect(periodDays(closed[0] as { from: string; to: string })).toBe(12);
+    expect(periodDays({ from: "2027-01-18", to: "2027-01-18" })).toBe(1);
+    // Across the turn of the year and a month of 28 days.
+    expect(periodDays({ from: "2026-12-24", to: "2027-01-03" })).toBe(11);
+    expect(periodDays({ from: "2027-02-27", to: "2027-03-01" })).toBe(3);
+  });
+
+  it("freezes every day before today, never today (the record of the day, 13/11/2026)", () => {
+    expect(frozenDay("2026-11-12", "2026-11-13")).toBe(true);
+    expect(frozenDay("2025-12-31", "2026-01-01")).toBe(true);
+    expect(frozenDay("2026-11-13", "2026-11-13")).toBe(false);
+    expect(frozenDay("2026-11-14", "2026-11-13")).toBe(false);
   });
 
   it("tells the hours from the lunch", () => {
