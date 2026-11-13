@@ -160,7 +160,24 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 | 2. Situação por cor, feriados e fins de semana | mesclada (#319) |
 | 3. Arrastar, duração, desfazer e avisos de sincronização | mesclada (#321) |
 | 4. Menu por áreas | mesclada (#322) |
-| 3b. Formulário do agendamento, paciente vinculado e sinais da sincronização | protótipo, esperando o Pablo aprovar |
+| 3b. Formulário do agendamento, paciente vinculado e sinais da sincronização | protótipo aprovado em 13/11, 01:44 UTC; código no cronograma abaixo (E5) |
+
+### Cronograma depois da aprovação (13/11/2026, 01:44 UTC)
+
+O Pablo aprovou o protótipo inteiro (v51) e pediu o código de tudo, testado. As melhorias viram oito entregas, uma PR e uma thread cada, na ordem abaixo: cada uma depende só das anteriores. Toda entrega passa por `planejar` (detalhe técnico), `verificar`, `revisao-qa` e `auditoria-seguranca`, traz changelog, README e capturas lado a lado com o protótipo, e confere o teto do JS inicial (141.000 B, 11 B de folga: telas novas entram lazy).
+
+| Entrega | O que entra (seções deste plano) | Migration | Situação |
+| --- | --- | --- | --- |
+| E5. Agenda: agendamento e travas | Formulário 24 h com término, tipo e local (Meet via `conferenceData`), vínculo a Contatos e homônimos, financeiro no evento; horário de atendimento, almoço, feriados com "Atendo" e dias sem expediente só em Configurações › Agenda; regra única `agErro` em `packages/shared` também no servidor; avisos ao tocar ou arrastar para horário fechado; consultas que ficaram fora; sem "Dia todo"; sinais da sincronização (12/11 à tarde, 00:15 itens 2–5, 00:44, 01:04 itens 5–6) | não (ajustes em `zur_settings`, dados do evento em `extendedProperties.private`) | a fazer |
+| E6. Consultório e integrações seguras | Configurações › Consultório (nome, endereço, cidade, WhatsApp); cofre de credenciais (AES-256-GCM, chave por integração, só escrita, senha para mudar, um host https por credencial); credencial fzap; e-mail aos pacientes por Gmail (`gmail.send`) ou SMTP 465/587 (00:37) | a conferir no plano da entrega | a fazer |
+| E7. Link de confirmação do paciente | Página pública `/c/<token>`: confirmar, cancelar com prazo, remarcar em 4 passos (8 dias, só dias livres, de 1 em 1 hora, colado a consulta ou 2 sorteados), WhatsApp com mensagem pronta, sons e transições; envio pelo Chatwoot, pelo botão do WhatsApp e por e-mail; mensagem modelo; token de 128 bits com hash, link único por agendamento, proteção contra enumeração (12/11 noite, 00:15 itens 6–8, 01:04 itens 3–4, 01:32 item 1) | sim (tokens do link) | a fazer |
+| E8. Gestão: Atendimentos e Financeiro | Telas nativas Atendimentos, Financeiro (A receber, Extrato com exportar em planilha, Serviços e despesas), "Enviar Pix" pela fzap, livro-caixa em centavos sem nome nem CPF | sim (livro-caixa, serviços, despesas) | a fazer |
+| E9. Gestão: importar planilha | Modelo, conferência linha a linha, duplicados, linhas com problema em planilha, desfazer importação (01:04 item 1) | usa a da E8 (lote por importação) | a fazer |
+| E10. Gestão: Resultados | Nominal ou real (IPCA, série 433 do Banco Central) e Projeções (Focus), em painel (00:15) | cache do IPCA, se preciso | a fazer |
+| E11. Contatos: família e ficha | Família e responsável que recebe as mensagens, ficha sem campos vazios com "Agendar", sem aviso de aniversário (00:15) | sim (`zur_contact_family`, no backup) | a fazer |
+| E12. Segurança e avisos | País nos acessos (`request.cf.country`), "Todos os acessos" por dia com filtros; sino com número de não vistos (`seen_at`) (01:32 item 3, v38) | sim (`seen_at`) | a fazer |
+
+As migrations seguem a numeração livre da `develop` na hora de cada PR (hoje a próxima é a 38). As três perguntas da Gestão (não guardar nome nem CPF nos lançamentos, só o Pablo registra presença e pagamento, relatórios dentro da Zuri) seguem o que o protótipo aprovado mostra, que é a recomendação de cada uma. A pergunta 4 (e-mail) fica com as duas formas, como no protótipo, com o Gmail recomendado.
 
 ### Diferenças da entrega 1
 
@@ -595,9 +612,9 @@ O Pablo respondeu "siga as recomendações":
 
 Sobre os ajustes de 12/11 à tarde, com a recomendação entre parênteses:
 
-1. **O protótipo está aprovado?** Formulário, vínculo com o paciente e sinais da sincronização. (Sim, para começar a PR 3b.) Em 12/11, 17:32 UTC, o Pablo pediu para ver antes a segunda rodada de ajustes.
+1. ~~O protótipo está aprovado?~~ Aprovado em 13/11, 01:44 UTC (v51), com tudo o que entrou até ali. Código no cronograma da seção 11.
 2. ~~Até quando o paciente cancela pelo link?~~ Respondida em 12/11, 21:37 UTC: até 12 horas antes e só até o dia anterior.
 3. ~~Quem envia o link?~~ Respondida em 12/11, 21:37 UTC: as duas formas, sozinha pelo Chatwoot e pelo botão do WhatsApp com a mensagem modelo.
-4. **Por onde sai o e-mail de confirmação?** Pablo pediu Gmail ou SMTP (13/11, 00:37). Recomendação: Gmail com `gmail.send` pela conexão do Google que já existe (sem senha guardada, revogável no Google); SMTP com senha de app fica como alternativa. Falta ele escolher.
+4. ~~Por onde sai o e-mail de confirmação?~~ As duas formas, como no protótipo aprovado: Gmail com `gmail.send` (recomendado) ou SMTP com senha de app.
 
 Respondidas em 12/11/2026, 17:32 UTC: o Financeiro fica com "Não pago", "Pago" e "Gratuito", guardado no evento; o atendimento online grava "Consulta | Online", e o tipo vira uma lista com "Retorno | Consultório" e a opção de digitar.
