@@ -2975,6 +2975,27 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 @media (prefers-reduced-motion:reduce){#conteudo.pg-in>*,.wiz-wrap,.pop-wrap,.overlay,.wiz-wrap>.wiz,.overlay>.palette,.pop,#toasts .toast,.input.shake,.sheet{animation:none}}
 /* O interruptor "Reduzir movimento" de Configurações › Conta faz o mesmo que o ajuste do aparelho. */
 [data-motion="off"] *,[data-motion="off"] *::before,[data-motion="off"] *::after{transition-duration:0s!important;animation-duration:0s!important}
+/* 13/11: almoço na agenda e no horário de atendimento */
+.ag2 .col .ag-lunch{position:absolute;left:0;right:0;display:grid;place-items:center;pointer-events:none;background:repeating-linear-gradient(135deg,var(--line-soft) 0 6px,transparent 6px 12px);border-block:1px dashed var(--line)}
+.ag2 .col .ag-lunch span{font-size:var(--t-xs);color:var(--muted);background:var(--surface);padding:0 6px;border-radius:999px}
+.ag2-leg i.sw.lunch{background:repeating-linear-gradient(135deg,var(--line-strong) 0 3px,transparent 3px 6px)}
+.hours-bar .lunch{position:absolute;top:4px;bottom:4px;border-radius:4px;background:repeating-linear-gradient(135deg,var(--surface) 0 4px,var(--line-strong) 4px 6px)}
+.hr-pair label{display:grid;gap:4px}
+.hr-days .chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-soft-ink);border-color:transparent}
+.hours-bar .lunch{z-index:1}
+.hours-bar .on b{position:relative;z-index:2;padding:0 6px;border-radius:4px;background:var(--accent-soft)}
+.ee-4 .ee-kind{grid-column:auto}
+.dlg-ee.is-plain .ee-loc,.dlg-ee.is-plain .ee-locbox{display:none}
+.ee-locbox{display:flex;gap:8px;align-items:flex-start;margin:0;padding:10px 12px;border-radius:var(--r-md);background:var(--sunken);font-size:var(--t-sm);color:var(--ink-2,var(--muted))}
+.ee-locbox[hidden]{display:none}
+.fam-list{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.fam-list li{display:flex;align-items:center;gap:10px;min-width:0}
+.fam-list .grow{display:grid;justify-items:start;min-width:0}
+.fam-chk{display:flex;gap:8px;align-items:flex-start;font-size:var(--t-sm);margin-top:8px}
+.fam-resp{display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:var(--t-sm)}
+.pj-ctls{display:flex;flex-wrap:wrap;gap:var(--s4)}
+.pj-ctl{display:grid;gap:6px}.pj-ctl .t{font-size:var(--t-sm);font-weight:600}
+.cx-tabs-row{flex-wrap:wrap;gap:8px}
 </style>
 </head>
 <body>
@@ -3856,7 +3877,7 @@ function person(p) {
         <section class="card p-sec" aria-labelledby="h-next"><h3 id="h-next">${p.n ? `Próximos com ${first}` : "Próximos"}</h3>${next}</section>
         <section class="card p-sec" aria-labelledby="h-sabe"><h3 id="h-sabe">O que a Zuri sabe</h3>${facts}</section>
         ${seen}</div>
-        <div class="pc-side"><section class="card p-sec" aria-labelledby="h-dados"><h3 id="h-dados">Dados</h3>${dados}</section></div>
+        <div class="pc-side">${famCard(p)}<section class="card p-sec" aria-labelledby="h-dados"><h3 id="h-dados">Dados</h3>${dados}</section></div>
       </div></article>`;
 }
 function review(r) {
@@ -3905,7 +3926,7 @@ const PK = [
   { id: "resultados", i: "chart-column", n: "Relatório das mensagens", d: "Quantas mensagens cada automação mandou e quantas tiveram resposta. Atendimentos e receita ficam em Consultório › Resultados." },
   { id: "espelho", i: "book-user", n: "Contatos iguais no Chatwoot", d: "Mantém nome, etiqueta e bloqueio do contato do Chatwoot iguais aos do Google." },
   { id: "posts", i: "square-pen", n: "Posts no Perfil do Google", d: "Até 3 por semana, escritos com IA, conferidos e publicados só com a sua aprovação." },
-  { id: "aniversario", i: "cake", n: "Parabéns de aniversário", d: "No dia, das 09:00 às 09:30.", uses: "chatwoot", writes: true },
+  { id: "aniversario", i: "cake", n: "Parabéns de aniversário", d: "No dia, das 09:00 às 09:30, pelo WhatsApp e por e-mail. Você não recebe aviso de aniversário.", uses: "chatwoot", writes: true },
   { id: "recaptacao", i: "repeat", n: "Convite para voltar", d: "Para quem não volta há 30 ou 60 dias, das 10:00 às 10:30.", uses: "chatwoot", writes: true },
   { id: "acompanha", i: "heart-pulse", n: "Acompanhamento do plano", d: "15 dias depois do plano, pergunta como está indo.", uses: "chatwoot", writes: true }
 ];
@@ -4020,7 +4041,7 @@ const memNewDlg = () => {
 };
 /* ---------- Configurações: todas as seções que já existem na develop (09/11 18:23) ---------- */
 const CFG = [["conta", "user", "Conta", "Você"], ["seg", "shield-check", "Segurança", "Você"], ["assist", "bot", "Assistente", "A Zuri"], ["ia", "gauge", "Uso da IA", "A Zuri"], ["modelos", "sparkles", "Modelos e limites", "A Zuri"], ["agenda", "calendar-days", "Agenda", "Seu dia"], ["avisos", "bell", "Avisos", "Seu dia"], ["consultorio", "building-2", "Consultório", "Consultório"], ["integ", "plug", "Integrações", "Conexões"], ["dados", "database", "Dados", "Sistema"], ["diag", "activity", "Diagnóstico", "Sistema"], ["sobre", "info", "Sobre a Zuri", "Sistema"]];
-const CFG_HINT = { conta: "Nome, idioma, fuso e tema", seg: "Senha, duas etapas, passkeys e acessos", assist: "Conversas, iniciativa e prioridades", ia: "Quanto a IA usou hoje e em cada período", modelos: "Modelo de IA, agentes e limites", agenda: "Horário de trabalho, visualização e lembretes", avisos: "O que chega, quando e por qual canal", consultorio: "Endereço, WhatsApp e mensagem aos pacientes", integ: "Google, Telegram e outros serviços", dados: "Cópias de segurança, espaço e lixeira", diag: "Falhas recentes e como relatar", sobre: "Versão instalada e novidades" };
+const CFG_HINT = { conta: "Nome, idioma, fuso e tema", seg: "Senha, duas etapas, passkeys e acessos", assist: "Conversas, iniciativa e prioridades", ia: "Quanto a IA usou hoje e em cada período", modelos: "Modelo de IA, agentes e limites", agenda: "Horário de atendimento, visualização e lembretes", avisos: "O que chega, quando e por qual canal", consultorio: "Endereço, WhatsApp e mensagem aos pacientes", integ: "Google, Telegram e outros serviços", dados: "Cópias de segurança, espaço e lixeira", diag: "Falhas recentes e como relatar", sobre: "Versão instalada e novidades" };
 const hh2 = (h) => `${String(h).padStart(2, "0")}:00`;
 const swRow = (id, t, h, on, dis) => `<div class="set-row"><div class="grow"><p class="t" id="${id}">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div><button class="switch" type="button" role="switch" aria-checked="${on}" aria-labelledby="${id}"${dis ? " disabled" : ""}></button></div>`;
 const ctlRow = (t, h, ctl) => `<div class="set-row"><div class="grow"><p class="t">${t}</p>${h ? `<p class="hint">${h}</p>` : ""}</div>${ctl}</div>`;
@@ -4042,23 +4063,12 @@ function cfgConta() {
 }
 
 function cfgAgenda() {
-  const { de, ate } = st.agDef;
-  const opts = (from, to, sel) => Array.from({ length: to - from + 1 }, (_, k) => from + k).map((h) => `<option value="${h}"${h === sel ? " selected" : ""}>${hh2(h)}</option>`).join("");
-  const pct = (h) => `${(h / 24) * 100}%`;
-  const isDefault = de === 8 && ate === 18;
   const cal = [["var(--cal-a)", "Pessoal", "principal", 2], ["var(--cal-b)", "Curso e esporte", "O Google só deixa ler esta agenda.", 1], ["var(--control)", "Feriados no Brasil", "Também usada para pular feriados nos pedidos de avaliação.", 1], ["var(--line-strong)", "Trabalho antigo", "", 0]];
-  return sec("h-ag", "Agenda", "Como a agenda aparece quando você abre.",
-    `<div class="set-row set-col"><div class="grow"><p class="t" id="cfg-h">Horário de trabalho</p><p class="hint">É o horário que a semana e o dia mostram. Os eventos fora dele aparecem nas linhas “Antes” e “Depois”, ou somem com a opção abaixo.</p></div>
-        <div class="ctl-pair" role="group" aria-labelledby="cfg-h">
-          <label for="cfg-de">Começa às<select id="cfg-de" class="input input-sm">${opts(0, ate - 1, de)}</select></label>
-          <label for="cfg-ate">Termina às<select id="cfg-ate" class="input input-sm">${opts(de + 1, 24, ate)}</select></label>
-          ${isDefault ? "" : `<button class="btn btn-quiet btn-sm" type="button" data-ag-default>Voltar para 08:00 até 18:00</button>`}</div>
-        <div class="hours-bar" role="img" aria-label="Das ${hh2(de)} às ${hh2(ate)}, ${ate - de} horas"><span class="on" style="left:${pct(de)};width:${pct(ate - de)}"><b class="num">${hh2(de)} até ${hh2(ate)}</b></span></div>
-        <div class="hours-scale num" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
+  return sec("h-ag", "Agenda e horário de atendimento", "Quando o consultório atende e como a agenda aparece quando você abre.",
+    `${hrBlock()}
       ${ctlRow("Ao abrir, mostrar", "No celular, a agenda abre sempre no dia.", segc("Ao abrir, mostrar", ["Dia", "Semana", "Mês"], 1))}
       ${ctlRow("A semana começa", "", segc("A semana começa", ["Domingo", "Segunda"], 1))}
-      ${ctlRow("Dias de trabalho", "", `<div class="seg seg-xs seg-days" role="group" aria-label="Dias de trabalho">${["seg", "ter", "qua", "qui", "sex", "sáb", "dom"].map((x, k) => `<button type="button" aria-pressed="${k < 5}">${x}</button>`).join("")}</div>`)}
-      ${swRow("cfg-fds", "Mostrar sábado e domingo", "", true)}
+      ${swRow("cfg-fds", "Mostrar os dias sem atendimento", "Escondidos, a semana mostra só os dias de atendimento.", true)}
       ${ctlRow("Eventos de dia inteiro", "Feriados, aniversários e lembretes do dia todo. Escondidos, ficam numa linha que abre com um toque.", `<div class="seg" role="group" aria-label="Eventos de dia inteiro"><button type="button" data-ag-adset="1" aria-pressed="${st.agAD}">Mostrar</button><button type="button" data-ag-adset="0" aria-pressed="${!st.agAD}">Esconder</button></div>`)}
       ${ctlRow("Eventos fora do horário", "Escondidos, a Zuri mostra só quantos são, para nada sumir sem você saber.", `<div class="seg" role="group" aria-label="Eventos fora do horário"><button type="button" data-ag-outset="1" aria-pressed="${!st.agOut}">Mostrar</button><button type="button" data-ag-outset="0" aria-pressed="${st.agOut}">Esconder</button></div>`)}
       ${ctlRow("Lembrete dos eventos novos", "Vale para o que você ou a Zuri criar daqui para frente.", `<label class="sr" for="cfg-lb">Lembrete dos eventos novos</label><select id="cfg-lb" class="input input-sm"><option>Sem lembrete</option><option>5 min antes</option><option selected>15 min antes</option><option>1 hora antes</option><option>1 dia antes</option></select>`)}`, save())
@@ -4157,7 +4167,7 @@ function cfgAvisos() {
     `<div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Tipo de aviso</th><th scope="col">Aparelho</th><th scope="col">Telegram</th><th scope="col">E-mail</th></tr></thead><tbody>${cats.map(([n, v]) => `<tr><th scope="row">${n}</th>${v.map((on, k) => `<td><input type="checkbox" class="chk" aria-label="${n} por ${["Aparelho", "Telegram", "E-mail"][k]}"${on ? " checked" : ""}${n === "Segurança" ? " disabled" : ""}></td>`).join("")}</tr>`).join("")}</tbody></table></div>
      <p class="hint">Segurança sai sempre por todos os canais.</p>`, save())
   + sec("h-crmav", "CRM", "O que a Zuri avisa sobre os seus clientes, pelos canais acima.",
-    swRow("crm-ret", "Quando chegar a hora de um retorno", "", true) + swRow("crm-aniv", "Aniversários de clientes, às 9h", "", false) + swRow("crm-novo", "Cliente novo em Contatos", "Até 20 avisos por dia.", true))
+    swRow("crm-ret", "Quando chegar a hora de um retorno", "", true) + swRow("crm-novo", "Cliente novo em Contatos", "Até 20 avisos por dia.", true))
   + sec("h-dig", "Resumo do dia", "Uma vez por dia a Zuri junta o que está atrasado, o que vence hoje e o que chegou.",
     swRow("dig-on", "Receber o resumo do dia", "", true) + ctlRow("Horário do resumo", "", `<label class="sr" for="dig-h">Horário do resumo</label><input id="dig-h" class="input input-sm num" value="07:30" inputmode="numeric">`))
   + sec("h-hist", "Últimos envios", "Cada tentativa de mandar um aviso para fora do app nos últimos 90 dias.",
@@ -4172,7 +4182,6 @@ function cfgInteg() {
   + sec("h-gc", "Contatos", "A Zuri copia, só para ler, os contatos das etiquetas que você escolher.",
     `${syncLine("contatos", `A cada 5 min · <span class="num">${inSync().length}</span> contatos`)}
      <div class="set-row"><div class="grow"><p class="t">Etiquetas sincronizadas</p><p class="hint">${[...synced()].join(", ") || "Nenhuma"}</p></div><button class="btn btn-quiet btn-sm" type="button" data-x="ct-labels" aria-haspopup="dialog">Mudar${ic("chevron-right", "ic-sm")}</button></div>
-     ${swRow("gc-bd", "Aniversários do dia", "Avisa às 08:00.", true)}
      ${ctlRow("Quando alguém entrar numa etiqueta", "", `<label class="sr" for="gc-add">Quando alguém entrar numa etiqueta</label><select id="gc-add" class="input input-sm"><option>Não fazer nada</option><option selected>Me avisar</option><option>Me avisar e criar uma tarefa</option></select>`)}`,
     `<button class="btn btn-secondary" type="button" data-sync="contatos">${ic("refresh-cw", "ic-sm")}Sincronizar agora</button>`)
   + sec("h-tg", "Telegram", "Fale com a Zuri e receba avisos pelo Telegram.",
@@ -6375,10 +6384,10 @@ let EV = [
   mkEv(0, 8, 0, 1, "Helena Duarte Prado", TIPOS[0], "confirmado"), mkEv(0, 9, 30, 0.5, "Otávio Lins Moreira", TIPOS[1], "confirmado"), mkEv(0, 14, 0, 1, "Marina Teles Barreto", TIPOS[0], "agendado"), mkEv(0, 16, 0, 1, "Caio Vasques Lima", TIPOS[2], "cancelado"),
   mkEv(1, 9, 0, 1, "Lívia Antunes Rocha", TIPOS[0], "confirmado"), mkEv(1, 10, 30, 0.5, "Renato Sampaio Cruz", TIPOS[1], "reagendado"), mkEv(1, 15, 0, 1, "Isadora Pires Falcão", TIPOS[0], "agendado"),
   mkEv(2, 8, 30, 1, "Bruno Macedo Teixeira", TIPOS[2], "confirmado"), mkEv(2, 11, 0, 1, "Reunião da equipe", "", "agendado", { rec: true }), mkEv(2, 14, 30, 1, "Clara Nóbrega Dias", TIPOS[0], "agendado"),
-  mkEv(3, 9, 0, 1, "Diego Fontes Arruda", TIPOS[0], "confirmado"), mkEv(3, 10, 30, 1, "Paula Régis Amaral", TIPOS[0], "agendado"), mkEv(3, 13, 30, 0.5, "Tiago Bessa Leal", TIPOS[1], "agendado"), mkEv(3, 16, 0, 1.5, "Aula de fotografia", "", "agendado", { ro: true }),
+  mkEv(3, 9, 0, 1, "Diego Fontes Arruda", TIPOS[0], "confirmado"), mkEv(3, 10, 30, 1, "Paula Régis Amaral", "Consulta | Online", "agendado"), mkEv(3, 13, 30, 0.5, "Tiago Bessa Leal", TIPOS[1], "agendado"), mkEv(3, 16, 0, 1.5, "Aula de fotografia", "", "agendado", { ro: true }),
   mkEv(4, 8, 0, 1, "Sofia Quintela Maia", TIPOS[0], "reagendado"), mkEv(4, 10, 0, 0.5, "Vítor Aguiar Pena", TIPOS[1], "confirmado"), mkEv(4, 15, 30, 1, "Laís Coutinho Braga", TIPOS[2], "cancelado"),
   mkEv(5, 9, 0, 1, "Érica Valadão Sena", TIPOS[0], "agendado"),
-  mkEv(7, 9, 0, 1, "Murilo Esteves Paz", TIPOS[0], "agendado"), mkEv(8, 14, 0, 1, "Helena Duarte Prado", TIPOS[1], "agendado"), mkEv(9, 11, 0, 1, "Reunião da equipe", "", "agendado", { rec: true }), mkEv(10, 10, 0, 1, "Nina Torquato Reis", TIPOS[2], "confirmado"),
+  mkEv(7, 9, 0, 1, "Murilo Esteves Paz", TIPOS[0], "agendado"), mkEv(8, 14, 0, 1, "Helena Duarte Prado", TIPOS[1], "agendado"), mkEv(9, 11, 0, 1, "Reunião da equipe", "", "agendado", { rec: true }), mkEv(10, 10, 0, 1, "Nina Torquato Reis", TIPOS[2], "confirmado"), mkEv(9, 15, 0, 1, "Lucas Duarte Prado", TIPOS[0], "agendado"),
   mkEv(-4, 9, 0, 1, "Otávio Lins Moreira", TIPOS[0], "confirmado"), mkEv(-3, 15, 0, 1, "Clara Nóbrega Dias", TIPOS[2], "confirmado"), mkEv(15, 9, 30, 1, "Diego Fontes Arruda", TIPOS[1], "agendado"), mkEv(17, 14, 0, 1, "Paula Régis Amaral", TIPOS[1], "agendado")
 ];
 /* Celulares de exemplo para os agendamentos sem vínculo (inventados). */
@@ -6426,19 +6435,21 @@ Object.assign(ICONS.lucide, {
 /* Sincronização com o Google: cada situação tem um sinal (ícone e cor), um nome curto e o que fazer.
    [ícone, tom, nome, o que houve, ação (texto e alvo) ou nada]. O tom vale a cor: ok verde, info azul, warn âmbar, danger vermelho. */
 const SYNCS = {
-  ok: ["circle-check", "ok", "Sincronizado", "Tudo igual ao Google Agenda. Conferido às 14:10."],
+  ok: ["circle-check", "ok", "Sincronizado", () => `Tudo igual ao Google Agenda. Conferido às ${st.syncAt}.`],
   saving: ["loader-circle", "info", "Salvando…", "A mudança está indo para o Google Agenda."],
   saved: ["circle-check", "ok", "Salvo no Google", "A última mudança chegou ao Google Agenda agora."],
   pulling: ["refresh-cw", "info", "Atualizando…", "A Zuri está trazendo o que mudou no Google Agenda."],
-  offline: ["wifi-off", "warn", "Sem internet", "1 mudança não foi enviada. Ela continua na tela, marcada, até você tentar de novo.", ["Tentar de novo", "retry"]],
-  failed: ["circle-x", "danger", "Falha ao salvar", "O Google recusou a mudança de “Paula Régis Amaral”. O evento voltou ao que era.", ["Tentar de novo", "retry"]],
+  offline: ["wifi-off", "warn", "Sem internet", () => `${st.syncPend === 1 ? "1 mudança espera" : `${st.syncPend} mudanças esperam`} a internet. Continua${st.syncPend === 1 ? "" : "m"} na tela, marcada${st.syncPend === 1 ? "" : "s"}, e vai${st.syncPend === 1 ? "" : "m"} sozinha${st.syncPend === 1 ? "" : "s"}, na ordem, quando a conexão voltar.`, ["Tentar agora", "retry"]],
+  failed: ["circle-x", "danger", "Falha ao salvar", "O Google recusou a mudança de “Paula Régis Amaral”: sem permissão para editar nesta agenda. O evento voltou ao que era, porque tentar de novo daria o mesmo erro.", ["Ver o evento", "show-failed"]],
   changed: ["refresh-ccw", "warn", "Mudou no Google", "“Diego Fontes Arruda” foi mudado no Google enquanto você mexia aqui. A Zuri mostra a versão de lá e não gravou a sua.", ["Ver o evento", "show"]],
-  paused: ["hourglass", "warn", "Em pausa", "O Google pediu um intervalo depois de muitas mudanças seguidas. A Zuri tenta de novo sozinha em 1 min.", null],
+  paused: ["hourglass", "warn", "Em pausa", "O Google pediu um intervalo depois de muitas mudanças seguidas. As mudanças feitas agora esperam na fila e a Zuri tenta de novo sozinha em 1 min.", null],
   stale: ["cloud-off", "warn", "Desatualizada", "Sem notícias do Google desde 13:40. Algum evento pode estar diferente lá.", ["Atualizar agora", "pull"]],
   expired: ["link-2-off", "danger", "Conexão expirou", "A Zuri perdeu o acesso ao Google Agenda. Nada é lido nem gravado até você conectar de novo.", ["Conectar de novo", "cfg"]]
 };
 const SYNC_RO = ["lock", "muted", "Só leitura", "Eventos de outra agenda, só para leitura. Mude no Google Agenda."];
 st.sync = pick(params.get("sync"), Object.keys(SYNCS));
+st.syncAt = "14:10"; st.syncPend = st.sync === "offline" ? 1 : 0; st.pullAt = 0;
+const syncD = (d) => (typeof d === "function" ? d() : d);
 const SYNC_LOG = [["14:02", "circle-check", "“Lívia Antunes Rocha” ficou como Confirmado."], ["13:58", "circle-check", "“Tiago Bessa Leal” agora vai até 14:00."], ["13:40", "refresh-cw", "2 eventos novos vieram do Google."]];
 const syncTxt = () => {
   const [i, tone, l] = SYNCS[st.sync || "ok"];
@@ -6448,9 +6459,9 @@ const syncTxt = () => {
 function syncDlg(opener) {
   const k = st.sync || "ok";
   const [i, tone, l, d, act] = SYNCS[k];
-  const row = ([ri, rt, rl, rd], key) => `<li class="sync-leg${key === k ? " is-now" : ""}"><span class="sync-ic t-${rt}">${ic(ri, "ic-sm")}</span><span class="grow"><b>${rl}</b><span class="hint">${rd}</span></span>${key ? `<button type="button" class="btn btn-quiet btn-sm proto-only" data-sync-sim="${key}" aria-label="Simular ${rl} no protótipo">Simular</button>` : ""}</li>`;
+  const row = ([ri, rt, rl, rd], key) => `<li class="sync-leg${key === k ? " is-now" : ""}"><span class="sync-ic t-${rt}">${ic(ri, "ic-sm")}</span><span class="grow"><b>${rl}</b><span class="hint">${syncD(rd)}</span></span>${key ? `<button type="button" class="btn btn-quiet btn-sm proto-only" data-sync-sim="${key}" aria-label="Simular ${rl} no protótipo">Simular</button>` : ""}</li>`;
   dlgShow({ t: "Sincronização com o Google", sub: "Tudo o que você muda na Agenda vai na hora para o Google Agenda, e o que muda lá aparece aqui.",
-    body: `<div class="sync-now t-${tone}" role="status"><span class="sync-ic t-${tone}">${ic(i, `ic-sm${i === "loader-circle" ? " spin" : ""}`)}</span><span class="grow"><b>${l}</b><span>${d}</span></span>${act ? `<button type="button" class="btn ${tone === "danger" ? "btn-primary" : "btn-secondary"} btn-sm" data-sync-act="${act[1]}">${act[0]}</button>` : ""}</div>
+    body: `<div class="sync-now t-${tone}" role="status"><span class="sync-ic t-${tone}">${ic(i, `ic-sm${i === "loader-circle" ? " spin" : ""}`)}</span><span class="grow"><b>${l}</b><span>${syncD(d)}</span></span>${act ? `<button type="button" class="btn ${tone === "danger" ? "btn-primary" : "btn-secondary"} btn-sm" data-sync-act="${act[1]}">${act[0]}</button>` : k === "ok" || k === "saved" ? `<button type="button" class="btn btn-quiet btn-sm" data-sync-act="pull">${ic("refresh-cw", "ic-sm")}Atualizar agora</button>` : ""}</div>
       <h3 class="sync-h">Últimas mudanças</h3>
       <ul class="sync-log">${SYNC_LOG.slice(0, 5).map(([h, li, t]) => `<li><span class="num">${h}</span>${ic(li, "ic-sm")}<span>${t}</span></li>`).join("")}</ul>
       <details class="sync-all"><summary>O que cada sinal quer dizer</summary><ul class="sync-legs">${Object.entries(SYNCS).filter(([key]) => key !== "saved").map(([key, v]) => row(v, key)).join("")}${row(SYNC_RO, "")}</ul></details>` }, opener);
@@ -6462,7 +6473,7 @@ function agenda2() {
   const A = st.agd;
   const days = Array.from({ length: 7 }, (_, i) => addD(monOf(A), i));
   const today = dkey(AG_NOW);
-  const cls = (d) => `${fimDeSemana(d) ? " off" : ""}${feriado(d) ? " hol" : ""}`;
+  const cls = (d) => `${CF_HRS.dias.includes(d.getDay()) ? "" : " off"}${feriado(d) ? " hol" : ""}`;
   const hh = (h) => `${p2(h)}:00`;
   const evLabel = (e) => `${e.t}, ${tipoTxt(e.tipo)}, ${evWhen(e)}, ${e.ro ? "só leitura" : STS[e.s][0]}`;
   const head = `<header class="pagehead ph-acts"><div><h1>Agenda</h1><p>Seus eventos do Google Agenda. Abra um evento para ver, editar ou mudar a situação, ou arraste para trocar o dia e a hora. Tudo vai na hora para o Google.</p></div>
@@ -6478,7 +6489,8 @@ function agenda2() {
   const col = (d) => {
     const k = dkey(d);
     const list = lanes(evOn(k).filter((e) => evEnd(e) > de * 60 && e.h * 60 + e.m < ate * 60));
-    return `<div class="col${cls(d)}" role="cell" data-col="${k}" style="height:${n * AG_HR}px">${list.map(({ e, s, f, lane, n: w }) => {
+    const [a0, a1] = CF_HRS.alm, lunch = CF_HRS.dias.includes(d.getDay()) && !feriado(d) && a1 > de * 60 && a0 < ate * 60 ? `<div class="ag-lunch" style="top:${Math.max(y(a0), 0)}px;height:${Math.min(y(a1), n * AG_HR) - Math.max(y(a0), 0)}px" aria-hidden="true"><span>Almoço</span></div>` : "";
+    return `<div class="col${cls(d)}" role="cell" data-col="${k}" style="height:${n * AG_HR}px">${lunch}${list.map(({ e, s, f, lane, n: w }) => {
       const top = Math.max(y(s), 0), bottom = Math.min(y(f), n * AG_HR);
       return `<button type="button" class="ev st-${e.s}${e.ro ? " ro" : ""}${bottom - top < 40 ? " ev-s" : ""}" data-ev="${e.id}" aria-label="${evLabel(e)}" style="top:${top + 2}px;height:${bottom - top - 4}px;left:calc(${(lane / w) * 100}% + 3px);width:calc(${100 / w}% - 6px)"><b>${e.t}</b><span class="num">${hmm(s)} · ${tipoTxt(e.tipo)}</span>${e.rec ? ic("repeat", "ic-sm ev-i") : e.ro ? ic("lock", "ic-sm ev-i") : ""}${e.ro ? "" : '<i class="ev-rz" data-rz aria-hidden="true"></i>'}</button>`;
     }).join("")}${k === today ? `<div class="nowline" data-de="${de}" data-ate="${ate}" data-hr="${AG_HR}" style="top:${y(nowMin())}px"${nowMin() < de * 60 || nowMin() >= ate * 60 ? " hidden" : ""} aria-hidden="true"><span class="num">${hm(nowMin())}</span></div>` : ""}</div>`;
@@ -6488,7 +6500,7 @@ function agenda2() {
     <div class="allday" role="row"><span class="lbl" role="rowheader">Dia todo</span>${days.map((d) => `<div role="cell" class="ad-c${cls(d)}">${feriado(d) ? `<div class="ev ad hol-chip" title="Feriado nacional: ${feriado(d)}"><b><span class="sr">Feriado nacional: </span>${feriado(d)}</b></div>` : ""}</div>`).join("")}</div>
     <div role="row" style="display:contents"><div class="hours" role="rowheader" aria-hidden="true" style="grid-template-rows:repeat(${n},${AG_HR}px)">${hours}</div>${days.map(col).join("")}</div>
   </div>`;
-  const legend = `<ul class="ag2-leg" aria-label="Legenda">${Object.entries(STS).map(([k, [l]]) => `<li><i class="st-${k}"></i>${l}</li>`).join("")}<li><i class="leg-ro"></i>Outra agenda, só leitura</li><li><i class="sw off"></i>Fim de semana</li><li><i class="sw hol"></i>Feriado nacional</li><li class="legend-r"><a href="${href("configuracoes")}" data-cfg-open>${ic("settings", "ic-sm")}Configurações</a></li></ul>`;
+  const legend = `<ul class="ag2-leg" aria-label="Legenda">${Object.entries(STS).map(([k, [l]]) => `<li><i class="st-${k}"></i>${l}</li>`).join("")}<li><i class="leg-ro"></i>Outra agenda, só leitura</li><li><i class="sw off"></i>Sem atendimento</li><li><i class="sw lunch"></i>Almoço</li><li><i class="sw hol"></i>Feriado nacional</li><li class="legend-r"><a href="${href("configuracoes")}" data-cfg-open>${ic("settings", "ic-sm")}Configurações</a></li></ul>`;
   const strip = `<div class="daystrip ag2-strip" role="group" aria-label="Dia">${days.map((d) => `<button type="button" data-agd="${dkey(d)}" aria-pressed="${dkey(d) === dkey(A)}" class="${dkey(d) === today ? "is-today" : ""}${cls(d)}"${dkey(d) === today ? ' aria-current="date"' : ""}${feriado(d) ? ` title="${feriado(d)}"` : ""}><span>${WD[d.getDay()]}</span><b>${d.getDate()}</b></button>`).join("")}</div>
     ${feriado(A) ? `<p class="ag2-hol">${ic("flag", "ic-sm")}Feriado nacional: ${feriado(A)}</p>` : ""}
     <ul class="card daylist ag2-list">${evOn(dkey(A)).map((e) => `<li><button type="button" class="ag2-row st-${e.s}${e.ro ? " ro" : ""}" data-ev="${e.id}" aria-label="${evLabel(e)}"><i class="bar" aria-hidden="true"></i><span class="num when">${hmm(e.h * 60 + e.m)}<small>até ${hmm(evEnd(e))}</small></span><span class="grow"><b>${e.t}</b><span class="hint">${tipoTxt(e.tipo)}</span></span><span class="st-pill">${e.ro ? `${ic("lock", "ic-sm")}Só leitura` : STS[e.s][0]}</span></button></li>`).join("") || `<li class="empty-li">${ic("calendar-days", "ic-sm")}Nada marcado neste dia.</li>`}</ul>`;
@@ -6513,15 +6525,23 @@ SCREEN.agenda = agenda2;
 
 /* Toda mudança passa por aqui: muda, mostra "Salvando no Google…" e oferece desfazer. */
 function evCommit(msg, change, focusId) {
+  /* Conexão expirada: nada muda na tela, porque nada chegaria ao Google. */
+  if (st.sync === "expired") { render(); say("A conexão com o Google expirou. Conecte de novo para mudar a agenda."); return; }
   const before = JSON.stringify(EV);
   change();
   evCommit.last = msg || evCommit.msg || "";
   const sync = () => {
+    /* Sem internet ou em pausa: a mudança fica na fila, na ordem, e o sinal conta quantas esperam. */
+    if (st.sync === "offline" || st.sync === "paused") { st.syncPend++; render(); if (focusId) refocus(`.ag2 [data-ev="${focusId}"], .ag2-list [data-ev="${focusId}"]`); return; }
     st.sync = "saving";
     render();
     if (focusId) refocus(`.ag2 [data-ev="${focusId}"], .ag2-list [data-ev="${focusId}"]`);
     clearTimeout(evCommit.t);
-    evCommit.t = setTimeout(() => { st.sync = "saved"; SYNC_LOG.unshift([hm(nowMin()), "circle-check", evCommit.last]); const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); }, CAP ? 0 : 800);
+    evCommit.t = setTimeout(() => {
+      st.sync = "saved"; SYNC_LOG.unshift([hm(nowMin()), "circle-check", evCommit.last]); syncPaint();
+      /* "Salvo no Google" fica 4 s e volta a "Sincronizado", com a hora da conferência. */
+      evCommit.t = setTimeout(() => { if (st.sync === "saved") { st.sync = "ok"; st.syncAt = hm(nowMin()); syncPaint(); } }, CAP ? 0 : 4000);
+    }, CAP ? 0 : 800);
   };
   sync();
   toast(msg, () => { EV = JSON.parse(before); sync(); });
@@ -6536,6 +6556,8 @@ const evClash = (e) => (e.s !== "cancelado" && EV.some((o) => o !== e && o.day =
 function evMove(e, day, mins, dur, opener) {
   const moved = day !== e.day || mins !== e.h * 60 + e.m;
   if (!moved && dur === e.dur) { render(); refocus(`.ag2 [data-ev="${e.id}"]`); return; }
+  const fora = e.tipo ? foraDoHorario(day, mins, dur) : "";
+  if (fora) { render(); refocus(`.ag2 [data-ev="${e.id}"]`); say(`${fora} A consulta ficou onde estava.`); return; }
   evScope(e, (extra) => evCommit("", () => {
     e.day = day; e.h = Math.floor(mins / 60); e.m = mins % 60; e.dur = dur;
     const re = moved && e.tipo && (e.s === "agendado" || e.s === "confirmado");
@@ -6553,11 +6575,12 @@ PEOPLE.push(
   { id: "helena-p", n: "Helena Duarte Prado", i: "HD", c: 2, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0121")], emails: [["helena.prado@exemplo.com.br", "Pessoal"]], updated: "05/11, 10:00" },
   { id: "paula", n: "Paula Régis Amaral", i: "PR", c: 1, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0122")], updated: "03/11, 09:30" },
   { id: "diego", n: "Diego Fontes Arruda", i: "DF", c: 4, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0123")], emails: [["diego@exemplo.com.br", "Pessoal"]], updated: "01/11, 18:00" },
-  { id: "carla2", n: "Carla Mendes", i: "CM", c: 2, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0124")], emails: [["carla.m@exemplo.com.br", "Pessoal"]], updated: "09/11, 11:20" }
+  { id: "carla2", n: "Carla Mendes", i: "CM", c: 2, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0124")], emails: [["carla.m@exemplo.com.br", "Pessoal"]], updated: "09/11, 11:20" },
+  { id: "lucas-p", n: "Lucas Duarte Prado", i: "LD", c: 3, sub: "Cliente do consultório", tags: ["Consultório"], phones: [ph("(41) 99999-0121")], updated: "10/11, 16:40" }
 );
 /* DDI de todos os países (código do país e código de discagem), com o nome em português pelo próprio navegador. Brasil primeiro e padrão. */
 /* Data de nascimento, como vem de Contatos: é o que separa dois pacientes com o mesmo nome. */
-const NASC = { carla: "14/03/1988", carla2: "02/09/1995", "helena-p": "21/06/1979", paula: "30/01/1990", diego: "08/11/1984", marina: "17/05/1992", pedro: "25/12/1987", luciana: "11/04/1983" };
+const NASC = { carla: "14/03/1988", carla2: "02/09/1995", "helena-p": "21/06/1979", "lucas-p": "03/04/2016", paula: "30/01/1990", diego: "08/11/1984", marina: "17/05/1992", pedro: "25/12/1987", luciana: "11/04/1983" };
 for (const p of PEOPLE) if (NASC[p.id]) p.nasc = NASC[p.id];
 const nascTxt = (p) => (p.nasc ? `nasc. ${p.nasc}` : "sem data de nascimento");
 const DDI_RAW = "AF93 ZA27 AL355 DE49 AD376 AO244 AI1264 AG1268 SA966 DZ213 AR54 AM374 AW297 AU61 AT43 AZ994 BS1242 BH973 BD880 BB1246 BE32 BZ501 BJ229 BM1441 BY375 BO591 BA387 BW267 BR55 BN673 BG359 BF226 BI257 BT975 CV238 CM237 KH855 CA1 QA974 KZ7 TD235 CL56 CN86 CY357 CO57 KM269 CG242 CD243 KP850 KR82 CI225 CR506 HR385 CU53 CW599 DK45 DJ253 DM1767 EG20 SV503 AE971 EC593 ER291 SK421 SI386 ES34 US1 EE372 SZ268 ET251 FJ679 PH63 FI358 FR33 GA241 GM220 GH233 GE995 GI350 GD1473 GR30 GL299 GP590 GU1671 GT502 GY592 GF594 GN224 GQ240 GW245 HT509 HN504 HK852 HU36 YE967 KY1345 CK682 FO298 FK500 MH692 SB677 IN91 ID62 IR98 IQ964 IE353 IS354 IL972 IT39 JM1876 JP81 JO962 KW965 LA856 LS266 LV371 LB961 LR231 LY218 LI423 LT370 LU352 MO853 MK389 MG261 MY60 MW265 MV960 ML223 MT356 MA212 MQ596 MU230 MR222 MX52 MM95 FM691 MZ258 MD373 MC377 MN976 ME382 MS1664 NA264 NR674 NP977 NI505 NE227 NG234 NO47 NC687 NZ64 OM968 NL31 PW680 PS970 PA507 PG675 PK92 PY595 PE51 PF689 PL48 PR1787 PT351 KE254 KG996 GB44 CF236 CZ420 DO1809 RE262 RO40 RW250 RU7 WS685 SM378 LC1758 KN1869 ST239 VC1784 SC248 SN221 SL232 RS381 SG65 SX1721 SY963 SO252 LK94 SD249 SS211 SE46 CH41 SR597 TH66 TW886 TJ992 TZ255 TL670 TG228 TO676 TT1868 TN216 TM993 TR90 TV688 UA380 UG256 UY598 UZ998 VU678 VA379 VE58 VN84 ZM260 ZW263";
@@ -6565,10 +6588,18 @@ const regionName = (() => { try { const n = new Intl.DisplayNames(["pt-BR"], { t
 const DDIS = DDI_RAW.split(" ").map((x) => [x.slice(0, 2), `+${x.slice(2)}`, regionName(x.slice(0, 2))]).sort((a, b) => (a[0] === "BR" ? -1 : b[0] === "BR" ? 1 : a[2].localeCompare(b[2], "pt-BR")));
 const ddiOf = (iso) => (DDIS.find((d) => d[0] === iso) || DDIS[0])[1];
 const FIN = ["Não pago", "Pago", "Gratuito"];
-/* Tipos do evento: os do consultório, os que já aparecem na agenda e "Outro", para digitar. "Tipo | Lugar", como a ficha do contato lê. */
-const KINDS = ["Consulta | Consultório", "Consulta | Online", "Retorno | Consultório", "Retorno | Online", "Avaliação física | Consultório"];
-const kindList = (cur) => [...new Set([...KINDS, ...EV.map((e) => e.tipo).filter(Boolean), ...(cur ? [cur] : [])])];
-const tipoFix = (v) => { const t = v.replace(/\s+/g, " ").trim(); if (!t) return ""; const [a, b] = t.split("|").map((x) => x.trim()); return `${a} | ${b || "Consultório"}`; };
+/* Tipo e local são dois campos. Na observação do Google a Zuri escreve sempre a primeira linha "Tipo | Local"
+   (por exemplo "Consulta | Online"), como hoje: é por ela que a ficha do contato e as automações leem. */
+const KINDS = ["Consulta", "Retorno", "Avaliação física"];
+const LOCS = ["Consultório", "Online"];
+const LOC_TXT = { Consultório: "Presencial", Online: "Online" };
+const kindOf = (t) => (t || "").split(" | ")[0];
+const locOf = (t) => (/\| Online$/.test(t || "") ? "Online" : "Consultório");
+const kindList = (cur) => [...new Set([...KINDS, ...EV.map((e) => kindOf(e.tipo)).filter(Boolean), ...(cur ? [kindOf(cur)] : [])])];
+const tipoFix = (v) => v.replace(/\|/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+/* No sistema o link vem do Google (conferenceData com hangoutsMeet). Aqui, um código com a mesma cara. */
+const meetOf = (id) => { let h = 2166136261, s = ""; for (let i = 0; i < 10; i++) { for (const ch of `${id}:m${i}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; s += "abcdefghijkmnopqrstuvwxyz"[h % 25]; } return `meet.google.com/${s.slice(0, 3)}-${s.slice(3, 7)}-${s.slice(7)}`; };
+for (const e of EV) if (e.tipo && locOf(e.tipo) === "Online" && !e.meet) e.meet = meetOf(e.id);
 const pById = (id) => PEOPLE.find((p) => p.id === id);
 const cellOf = (p) => ((p.phones || []).find((x) => isCell(x.n)) || (p.phones || [])[0] || { n: "" }).n;
 const mailOf = (p) => ((p.emails || [])[0] || [""])[0];
@@ -6606,10 +6637,14 @@ const FORM = { pid: "", dur: 60, own: false, opt: -1, list: [], note: "" };
 function evDlg(e, opener) {
   const d = dOf(e.day);
   const p = e.pid && pById(e.pid);
-  const rows = [["Quando", `${dayLong(d)}, ${evWhen(e)}`], ["Tipo", e.tipo || "Sem tipo"], ["Agenda", e.ro ? "Curso e esporte, só leitura" : "Consultório, no Google Agenda"]];
-  if (e.tipo) rows.push(["Paciente", p ? `${ic("user-round-check", "ic-sm")}Vinculado a ${p.n}, ${nascTxt(p)} · <a href="${href("contatos")}">Abrir em Contatos</a>` : `Sem vínculo com Contatos${e.cel ? ` · ${ddiOf(e.ddi)} ${e.cel}` : ""}`]);
+  const rows = [["Quando", `${dayLong(d)}, ${evWhen(e)}`], ["Tipo", e.tipo ? kindOf(e.tipo) : "Sem tipo"]];
+  if (e.tipo) rows.push(["Local", locOf(e.tipo) === "Online" ? (e.meet ? `${ic("video", "ic-sm")}Google Meet · <a href="https://${escH(e.meet)}" target="_blank" rel="noopener">${escH(e.meet)}</a> <button class="linkbtn" type="button" data-copy="https://${escH(e.meet)}">Copiar</button>` : `${ic("loader-circle", "ic-sm spin")}O Google está criando o link da chamada…`) : `${ic("map-pin", "ic-sm")}${escH(CF_CLINIC.addr)}, ${escH(CF_CLINIC.city)}`]);
+  rows.push(["Agenda", e.ro ? "Curso e esporte, só leitura" : "Consultório, no Google Agenda"]);
+  const twins = e.tipo ? PEOPLE.filter((x) => x.n && fold(x.n) === fold(e.t)).length : 0, via = p && RESP[p.id] && pById(RESP[p.id]);
+  if (e.tipo) rows.push(["Paciente", p ? `${ic("user-round-check", "ic-sm")}Vinculado a ${p.n}, ${nascTxt(p)}${twins > 1 ? ` <span class="tag">Homônimo</span>` : ""} · <a href="${href("contatos")}">Abrir em Contatos</a>${via ? `<br><span class="hint">As mensagens vão para ${escH(via.n)} (${escH(famRole(p.id, via.id))}).</span>` : ""}` : `Sem vínculo com Contatos${e.cel ? ` · ${ddiOf(e.ddi)} ${e.cel}` : ""}${twins > 1 ? `<br><span class="hint">Pessoa nova, com o mesmo nome de ${twins} contatos. O celular separa uma da outra.</span>` : ""}`]);
   if (e.tipo) rows.push(["Financeiro", e.fin]);
-  if (e.obs) rows.push(["Observação", e.obs]);
+  if (e.tipo) rows.push(["Observação no Google", `<span class="num">${escH(e.tipo)}</span>${e.obs ? `<br>${e.obs}` : ""}`]);
+  else if (e.obs) rows.push(["Observação", e.obs]);
   if (e.rec) rows.push(["Repete", "Toda semana"]);
   if (!e.ro) rows.push(["Cor no Google", `${STS[e.s][1]} (${STS[e.s][0]})`]);
   dlgShow({ t: e.t, sub: e.ro ? "Este evento vem de uma agenda só para leitura. Para mudar, abra o Google Agenda." : "Mude a situação com um toque. Ela vira a cor do evento no Google Agenda.",
@@ -6636,10 +6671,11 @@ const CF_LIMIT_H = 12;
 const CF_EXPIRE_H = 1;
 /* Mensagem modelo da confirmação. A mesma vai pelo Chatwoot (automático) e pelo botão do WhatsApp. */
 const CF_TPL_DEFAULT = "Olá, {nome}! Sua *{tipo}* no *{consultorio}* está marcada para *{dia}, às {hora}*.\n{local}\n\nConfirme sua presença por este link:\n{link}\n\nSe não puder vir, cancele pelo mesmo link até {prazo}. Para mudar o dia ou o horário, fale com a nossa equipe: {whatsapp}.";
-const CF_VARS = [["nome", "Primeiro nome do paciente"], ["tipo", "Tipo do agendamento, como consulta ou retorno"], ["dia", "Dia da semana e data"], ["hora", "Hora do início"], ["local", "Endereço, ou “Atendimento online”"], ["link", "Link de confirmação (obrigatório)"], ["prazo", "Até quando dá para cancelar pelo link"], ["consultorio", "Nome do consultório"], ["whatsapp", "WhatsApp da equipe"]];
+const CF_VARS = [["nome", "Primeiro nome do paciente"], ["tipo", "Tipo do agendamento, como consulta ou retorno"], ["dia", "Dia da semana e data"], ["hora", "Hora do início"], ["local", "Endereço do consultório, ou o link do Google Meet quando é online"], ["link", "Link de confirmação (obrigatório)"], ["prazo", "Até quando dá para cancelar pelo link"], ["consultorio", "Nome do consultório"], ["whatsapp", "WhatsApp da equipe"]];
 const CF_TPL_MAX = 1000;
-const CFM = { tpl: CF_TPL_DEFAULT, hour: 7, get auto() { return UI.switches.get("cf-auto-t") === true; } };
-const cfCel = (e) => { const p = e.pid && pById(e.pid); return p ? cellOf(p) : e.ddi === "BR" || !e.ddi ? e.cel || "" : ""; };
+const CFM = { tpl: CF_TPL_DEFAULT, hour: 7, get auto() { return UI.switches.get("cf-auto-t") === true; }, get mail() { return UI.switches.has("cf-mail-t") ? UI.switches.get("cf-mail-t") : true; } };
+const cfCel = (e) => { const p = e.pid && pById(e.pid); const via = p && RESP[p.id] && pById(RESP[p.id]); return p ? cellOf(via || p) : e.ddi === "BR" || !e.ddi ? e.cel || "" : ""; };
+const cfMail = (e) => { const p = e.pid && pById(e.pid); const via = p && RESP[p.id] && pById(RESP[p.id]); return p ? mailOf(via || p) : e.mail || ""; };
 const cfFirst = (e) => { const p = e.pid && pById(e.pid); return (p ? p.n : e.t).replace(/^Dra?\. /, "").split(" ")[0]; };
 /* No sistema o token é aleatório (128 bits) e não sai do id. Aqui, só um texto com cara de token, sem o id dentro. */
 const CF_B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
@@ -6655,7 +6691,7 @@ const cfDeadTxt = (e) => { const d = cfDeadline(e); return `${dayLong(d).toLower
 const cfSendDay = (e) => { let d = addD(dOf(e.day), -1); while (fimDeSemana(d) || feriado(d)) d = addD(d, -1); return d; };
 function cfVars(e) {
   const online = /Online/.test(e.tipo);
-  return { nome: cfFirst(e), tipo: e.tipo.split(" | ")[0].toLowerCase(), dia: dayLong(dOf(e.day)).toLowerCase(), hora: hmm(e.h * 60 + e.m), local: online ? "Atendimento online: a equipe envia o link da chamada." : `Endereço: ${CF_CLINIC.addr}, ${CF_CLINIC.city}.`, link: `https://${cfLink(e)}`, prazo: cfDeadTxt(e), consultorio: CF_CLINIC.n, whatsapp: CF_CLINIC.wa };
+  return { nome: cfFirst(e), tipo: e.tipo.split(" | ")[0].toLowerCase(), dia: dayLong(dOf(e.day)).toLowerCase(), hora: hmm(e.h * 60 + e.m), local: online ? (e.meet ? `Link da chamada (Google Meet): https://${e.meet}` : "Atendimento online: o link da chamada chega antes da consulta.") : `Endereço: ${CF_CLINIC.addr}, ${CF_CLINIC.city}.`, link: `https://${cfLink(e)}`, prazo: cfDeadTxt(e), consultorio: CF_CLINIC.n, whatsapp: CF_CLINIC.wa };
 }
 const cfFill = (tpl, v) => tpl.replace(/\{([a-z]+)\}/g, (m, k) => (k in v ? v[k] : m));
 const cfMsg = (e) => cfFill(CFM.tpl, cfVars(e));
@@ -6677,11 +6713,12 @@ function cfBox(e) {
   const cf = e.cf || {};
   const past = cfExpired(e);
   const done = cf.st === "confirmou";
-  const via = cf.via === "chatwoot" ? "pelo Chatwoot" : "pelo WhatsApp";
+  const via = `${cf.via === "chatwoot" ? "pelo Chatwoot" : cf.via === "email" ? "por e-mail" : "pelo WhatsApp"}${cf.mail && cf.via !== "email" ? " e por e-mail" : ""}`;
+  const mail = cfMail(e);
   const lbl = cf.st === "remarcou" ? ["wait", `Remarcou pelo link ${cf.w}. Antes: ${cf.from}.`] : cf.st === "confirmou" ? ["on", `Confirmou pelo link ${cf.w}`] : cf.st === "cancelou" ? ["bad", `Cancelou pelo link ${cf.w}`] : cf.st === "enviado" ? ["wait", `Enviado ${via} ${cf.w}. Ainda sem resposta.`] : ["off", "Ainda não enviado"];
   const cel = cfCel(e);
-  const auto = CFM.auto && !cf.st && !past && cel ? `<p class="hint">${ic("send-horizontal", "ic-sm")}Sai sozinho pelo Chatwoot em ${escH(dayShort(cfSendDay(e)))}, às ${hh2(CFM.hour)}. Se você enviar antes pelo WhatsApp, o automático não repete.</p>` : CFM.auto && cf.st && !past && !done ? `<p class="hint">${ic("send-horizontal", "ic-sm")}${cf.via === "chatwoot" ? "O Chatwoot já enviou e não repete." : "Já foi pelo WhatsApp: o Chatwoot não envia de novo."}</p>` : "";
-  const acts = past ? "" : done ? `<p class="hint">Já confirmou pelo link: não precisa enviar de novo, nem pelo WhatsApp nem pelo Chatwoot.</p>` : `<div class="cf-acts">${cel ? `<a class="btn btn-secondary btn-sm" href="${escH(cfWaHref(e))}" target="_blank" rel="noopener" data-cf-wa="${id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</a>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${id}">${ic("copy", "ic-sm")}Copiar mensagem</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
+  const auto = CFM.auto && !cf.st && !past && cel ? `<p class="hint">${ic("send-horizontal", "ic-sm")}Sai sozinho pelo Chatwoot${CFM.mail && mail ? ", no WhatsApp e no e-mail," : ""} em ${escH(dayShort(cfSendDay(e)))}, às ${hh2(CFM.hour)}. Se você enviar antes pelo WhatsApp, o automático não repete.</p>` : CFM.auto && cf.st && !past && !done ? `<p class="hint">${ic("send-horizontal", "ic-sm")}${cf.via === "chatwoot" ? "O Chatwoot já enviou e não repete." : "Já foi pelo WhatsApp: o Chatwoot não envia de novo."}</p>` : "";
+  const acts = past ? "" : done ? `<p class="hint">Já confirmou pelo link: não precisa enviar de novo, nem pelo WhatsApp nem pelo Chatwoot.</p>` : `<div class="cf-acts">${cel ? `<a class="btn btn-secondary btn-sm" href="${escH(cfWaHref(e))}" target="_blank" rel="noopener" data-cf-wa="${id}">${WA}${cf.st ? "Enviar de novo" : "Enviar pelo WhatsApp"}</a>` : ""}${mail && !cf.mail ? `<button class="btn btn-quiet btn-sm" type="button" data-cf-mail="${id}">${ic("mail", "ic-sm")}Enviar por e-mail</button>` : ""}<button class="btn btn-quiet btn-sm" type="button" data-cf-copy="${id}">${ic("copy", "ic-sm")}Copiar mensagem</button><button class="btn btn-quiet btn-sm" type="button" data-cf-see="${id}">${ic("eye", "ic-sm")}Ver como o paciente</button></div>
     <p class="hint">${cel ? "Abre o WhatsApp Web com a mensagem modelo já preenchida. Você confere e envia." : "Sem celular neste agendamento: copie a mensagem e envie por onde preferir."} <button class="linkbtn" type="button" data-cfg-go-to="consultorio">Editar a mensagem modelo</button></p>`;
   return `<section class="cf-box" aria-labelledby="cf-h"><p class="cf-h" id="cf-h">${ic("calendar-check", "ic-sm")}Confirmação do paciente</p>
     <p class="cf-st"><span class="pill ${lbl[0]}"><i></i>${escH(lbl[1])}</span></p>${past ? `<p class="hint">${e.s === "cancelado" ? "Consulta cancelada: o link deixou de valer." : "O link expirou 1 hora antes da consulta."}</p>` : ""}${auto}${acts}</section>`;
@@ -6704,10 +6741,9 @@ function cfgConsultorio() {
       ${fld("addr", "Endereço", c.addr, 'maxlength="160" autocomplete="street-address" placeholder="Rua, número, sala · Bairro"')}${fld("city", "Cidade e estado", c.city, 'maxlength="60" placeholder="Curitiba, PR"')}</div>
       <p class="hint">Aparece em: página de confirmação do paciente, mensagem de confirmação (Chatwoot e WhatsApp), pedido de avaliação e perfil em Avaliações.</p><p class="hint" data-cc-err role="status"></p>`,
     `<button class="btn btn-primary" type="button" data-cc-save>Salvar os dados</button>`)
-  + sec("h-hr", "Horário de atendimento", "Quando o consultório atende. A remarcação pelo link só oferece horários dentro dele, sem feriados e sem nada que já esteja na Agenda.",
-    `<div class="set-row set-col"><div class="grow"><p class="t" id="hr-d">Dias</p></div><div class="hr-days" role="group" aria-labelledby="hr-d">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<button type="button" class="chip" data-hr-day="${d}" aria-pressed="${CF_HRS.dias.includes(d)}">${WDL[d]}</button>`).join("")}</div></div>
-      ${ctlRow("Horário", `Pausa das ${hh2(CF_HRS.pausa[0])} às ${hh2(CF_HRS.pausa[1])}: separa a manhã da tarde na remarcação.`, `<div class="ctl-pair"><label for="hr-de">De<select id="hr-de" class="input input-sm" data-hr="de">${Array.from({ length: 12 }, (_, k) => k + 6).map((h) => `<option value="${h}"${h === CF_HRS.de ? " selected" : ""}>${hh2(h)}</option>`).join("")}</select></label><label for="hr-ate">até<select id="hr-ate" class="input input-sm" data-hr="ate">${Array.from({ length: 12 }, (_, k) => k + 12).map((h) => `<option value="${h}"${h === CF_HRS.ate ? " selected" : ""}>${hh2(h)}</option>`).join("")}</select></label><label for="hr-p">Pausa<select id="hr-p" class="input input-sm" data-hr="pausa">${[11, 12, 13].map((h) => `<option value="${h}"${h === CF_HRS.pausa[0] ? " selected" : ""}>${hh2(h)} às ${hh2(h + 1)}</option>`).join("")}</select></label></div>`)}
-      ${ctlRow("Remarcar pelo link", `O paciente escolhe outro dia em até ${CF_RM_DAYS} dias, o turno e o horário, até ${CF_RM_MAX} vezes por consulta e dentro do prazo de cancelamento. Mais longe que isso, a página manda falar com a equipe.`, `<span class="pill on"><i></i>Ligado</span>`)}`)
+  + sec("h-hr", "Remarcar pelo link", "Regras internas: o paciente não vê nenhuma delas, só os dias e horários que pode escolher.",
+    `${ctlRow("Horário de atendimento", `${hrResumo()}. Ele fica num lugar só, em Configurações › Agenda.`, `<button class="btn btn-quiet btn-sm" type="button" data-cfg="agenda">Mudar${ic("chevron-right", "ic-sm")}</button>`)}
+      ${ctlRow("Remarcar pelo link", `Dias livres nos próximos ${CF_RM_DAYS} dias, dentro do horário de atendimento e fora do almoço, até ${CF_RM_MAX} vezes por consulta e dentro do prazo de cancelamento. Depois do turno, oferece primeiro os horários colados antes ou depois de uma consulta; num turno sem consulta, duas opções sorteadas. Mais longe que ${CF_RM_DAYS} dias, a página manda falar com a equipe.`, `<span class="pill on"><i></i>Ligado</span>`)}`)
   + sec("h-ct", "Mensagem de confirmação", "O modelo que vai para o paciente, pelo Chatwoot e pelo botão do WhatsApp. Toque numa variável para pôr no texto; ela vira o dado de cada agendamento. *Texto entre asteriscos* sai em negrito no WhatsApp.",
     `<div class="ct-grid"><div class="ct-edit"><label class="label" for="cf-tpl">Mensagem</label><textarea id="cf-tpl" class="input ct-ta" rows="9" maxlength="${CF_TPL_MAX}" data-cf-tpl aria-describedby="cf-tpl-n cf-tpl-err">${escH(CFM.tpl)}</textarea>
         <p class="ct-meta"><span class="hint num" id="cf-tpl-n" data-cf-tpl-n>${CFM.tpl.length} de ${CF_TPL_MAX}</span><span class="hint err" id="cf-tpl-err" data-cf-tpl-err role="status"></span></p>
@@ -6717,6 +6753,7 @@ function cfgConsultorio() {
   + sec("h-cs", "Como a confirmação sai", "Dois jeitos, com a mesma mensagem e o mesmo link. A resposta pelo link muda a situação e a cor na agenda e chega em Avisos.",
     `<div class="set-row"><div class="grow"><p class="t">${WA}Pelo WhatsApp, por você</p><p class="hint">Nos detalhes de cada agendamento, “Enviar pelo WhatsApp” abre o WhatsApp Web com a mensagem pronta para o paciente. Você confere e envia.</p></div><span class="pill on"><i></i>Sempre disponível</span></div>
       ${swRow("cf-auto-t", "Automático, pelo Chatwoot", `Na véspera útil, a Zuri envia a mensagem pela caixa do WhatsApp no Chatwoot para quem tem consulta ou retorno Agendado ou Reagendado e tem celular. Quem já confirmou pelo link, já recebeu pelo WhatsApp ou pelo Chatwoot, cancelou ou tem o link expirado fica de fora: ninguém recebe duas vezes. Uma mensagem por vez, com a espera em segundos da credencial do Chatwoot.`, CFM.auto)}
+      ${swRow("cf-mail-t", "Também por e-mail, na mesma hora", "Para quem tem e-mail no contato ou no agendamento. Sai pela caixa de e-mail do Chatwoot, com o mesmo texto e o mesmo link, e o link vira um botão. O que o paciente fizer primeiro vale: nenhum dos dois canais manda de novo. Assunto: “Confirme sua consulta de {dia}”.", CFM.mail)}
       ${ctlRow("Horário do envio automático", `Próximo envio: ${dayShort(nx.d)}, às ${hh2(CFM.hour)}, para ${nx.n} ${nx.n === 1 ? "paciente" : "pacientes"}. Sábado, domingo e feriado não têm envio: a consulta de segunda recebe na sexta.`, `<label class="sr" for="cf-hour">Horário do envio automático</label><select id="cf-hour" class="input input-sm" data-cf-hour>${hours}</select>`)}
       ${ctlRow("Credencial", "A chave do Chatwoot fica no servidor e nunca aparece aqui.", `<button class="btn btn-secondary btn-sm" type="button" data-cf-cred>${ic("key-round", "ic-sm")}Chatwoot · caixa do WhatsApp</button>`)}`);
 }
@@ -6735,12 +6772,12 @@ function confirmar() {
   else if (mode === "expirou" || cfExpired(e)) body = `<div class="cf-state">${ic("clock")}<h1 tabindex="-1">Este link expirou</h1><p>O link vale até 1 hora antes da consulta e deixa de valer se ela for cancelada. Fale com a nossa equipe pelo WhatsApp.</p></div>${team}`;
   else {
     const online = /Online/.test(e.tipo);
-    const card = `<dl class="cf-det"><div>${ic("calendar-days", "ic-sm")}<dt class="sr">Dia</dt><dd>${dayLong(dOf(e.day))}</dd></div><div>${ic("clock", "ic-sm")}<dt class="sr">Horário</dt><dd>${evWhen(e)}</dd></div><div>${ic(online ? "video" : "stethoscope", "ic-sm")}<dt class="sr">Tipo</dt><dd>${escH(e.tipo.replace(" | ", " · "))}</dd></div><div>${ic(online ? "monitor" : "map-pin", "ic-sm")}<dt class="sr">Onde</dt><dd>${online ? "Online: a equipe envia o link da chamada" : `${escH(CF_CLINIC.addr)}<span class="cf-city">${escH(CF_CLINIC.city)}</span>`}</dd></div></dl>`;
+    const card = `<dl class="cf-det"><div>${ic("calendar-days", "ic-sm")}<dt class="sr">Dia</dt><dd>${dayLong(dOf(e.day))}</dd></div><div>${ic("clock", "ic-sm")}<dt class="sr">Horário</dt><dd>${evWhen(e)}</dd></div><div>${ic(online ? "video" : "stethoscope", "ic-sm")}<dt class="sr">Tipo</dt><dd>${escH(e.tipo.replace(" | ", " · "))}</dd></div><div>${ic(online ? "monitor" : "map-pin", "ic-sm")}<dt class="sr">Onde</dt><dd>${online ? "Online, pelo Google Meet. O link da chamada vai na mensagem de confirmação." : `${escH(CF_CLINIC.addr)}<span class="cf-city">${escH(CF_CLINIC.city)}</span>`}</dd></div></dl>`;
     const late = mode === "prazo" || cfLate(e);
     const lateNote = `<p class="cf-note">${ic("info", "ic-sm")}<span>O prazo para cancelar por aqui acabou: vai até 12 horas antes e só até o dia anterior. Se não puder vir, fale com a nossa equipe pelo WhatsApp.</span></p>`;
     const canRm = !late && (e.rmN || 0) < CF_RM_MAX;
     const remBtn = canRm ? `<button class="btn btn-secondary btn-block" type="button" data-cf-rem>${ic("calendar-clock", "ic-sm")}Preciso remarcar</button>` : "";
-    const remNote = canRm ? `<p class="cf-note">${ic("info", "ic-sm")}<span>Em “Preciso remarcar” você escolhe outro dia nos próximos ${CF_RM_DAYS} dias, o turno e o horário. Para datas mais longe, fale com a nossa equipe pelo WhatsApp ${escH(CF_CLINIC.wa)}.</span></p>` : `<p class="cf-note">${ic("calendar-clock", "ic-sm")}<span>Para mudar o dia ou o horário, fale com a nossa equipe pelo WhatsApp ${escH(CF_CLINIC.wa)}.</span></p>`;
+    const remNote = canRm ? "" : `<p class="cf-note">${ic("calendar-clock", "ic-sm")}<span>Para mudar o dia ou o horário, fale com a nossa equipe pelo WhatsApp ${escH(CF_CLINIC.wa)}.</span></p>`;
     const cancelBtn = (l) => `<button class="btn btn-quiet btn-block cf-cancel" type="button" data-cf-ask>${ic("calendar-x", "ic-sm")}${l}</button><p class="cf-note cf-dead">Dá para cancelar por aqui até ${cfDeadTxt(e)}.</p>`;
     if (st.rm && st.rm.e === e.id) body = cfRmBody(e);
     else if (e.cf && e.cf.st === "remarcou") body = `<div class="cf-ok cf-wait" role="status" tabindex="-1">${ic("calendar-clock")}<span><b>Consulta remarcada.</b> Até lá, ${escH(cfFirst(e))}! O novo dia e horário estão abaixo.</span></div>${card}${remBtn}${team}
@@ -6760,7 +6797,7 @@ function cfAsk(opener) {
   const e = evById(st.cfe);
   if (!e) return;
   dlgShow({ t: "Cancelar a consulta?", sub: `${escH(cfFirst(e))}, a consulta de ${dayLong(dOf(e.day)).toLowerCase()}, às ${hmm(e.h * 60 + e.m)}, será cancelada e o horário fica livre para outra pessoa. Para marcar de novo, você vai precisar falar com a equipe.`,
-    body: !cfLate(e) && (e.rmN || 0) < CF_RM_MAX ? `<p class="cf-rm-offer">${ic("calendar-clock", "ic-sm")}<span>Se for só o dia ou o horário que não dá, você pode remarcar agora, em até ${CF_RM_DAYS} dias. <button class="linkbtn" type="button" data-cf-rm-from-cancel>Prefiro remarcar</button></span></p>` : "", foot: `<button class="btn btn-danger" type="button" data-dlg-ok>Sim, cancelar a consulta</button><span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Não, manter a consulta</button>`,
+    body: !cfLate(e) && (e.rmN || 0) < CF_RM_MAX ? `<p class="cf-rm-offer">${ic("calendar-clock", "ic-sm")}<span>Se for só o dia ou o horário que não dá, você pode remarcar agora. <button class="linkbtn" type="button" data-cf-rm-from-cancel>Prefiro remarcar</button></span></p>` : "", foot: `<button class="btn btn-danger" type="button" data-dlg-ok>Sim, cancelar a consulta</button><span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Não, manter a consulta</button>`,
     ok: () => { if (cfLate(e) || st.cfv === "prazo") { say("O prazo para cancelar por aqui acabou."); return; } DLG.opener = null; cfAnswer(e, "cancelar"); st.cfJust = e.id; render(); refocus(".cf-state h1"); } }, opener);
   const box = document.querySelector("#dlg-host .dlg-box");
   if (box) { box.setAttribute("role", "alertdialog"); box.classList.add("dlg-sm"); }
@@ -6809,7 +6846,8 @@ function ptLinkBase() {
   if (!q) return `<span class="hint">Digite o nome para buscar em Contatos. Quem ainda não está lá pode ser agendado só com o nome.</span>`;
   const same = PEOPLE.filter((x) => x.n && fold(x.n) === fold(q));
   if (same.length === 1) return `<span class="pt-chip">${ic("link", "ic-sm")}Sem vínculo</span><span class="hint">“${esc(same[0].n)}” está em Contatos: ${esc(cellOf(same[0]))}, ${nascTxt(same[0])}.</span><button type="button" class="btn btn-secondary btn-sm" data-pt-pick="${same[0].id}">Vincular</button>`;
-  if (same.length > 1) return `<span class="pt-chip warn">${ic("users", "ic-sm")}${same.length} contatos com este nome</span><span class="hint">Escolha o certo na lista, pelo telefone e pela data de nascimento, ou siga sem vínculo.</span><button type="button" class="btn btn-secondary btn-sm" data-pt-open>Ver os ${same.length}</button>`;
+  if (same.length > 1 && FORM.other) return `<span class="pt-chip warn">${ic("user-plus", "ic-sm")}Pessoa nova, com o mesmo nome de ${same.length} contatos</span><span class="hint">O celular passa a ser obrigatório: é ele que separa esta pessoa dos contatos nas automações.</span><button type="button" class="btn btn-quiet btn-sm" data-pt-other="0">Desfazer</button>`;
+  if (same.length > 1) return `<span class="pt-chip warn">${ic("users", "ic-sm")}${same.length} contatos com este nome</span><span class="hint">Escolha o certo na lista, pelo telefone e pela data de nascimento. Sem escolher, não dá para agendar.</span><button type="button" class="btn btn-secondary btn-sm" data-pt-open>Ver os ${same.length}</button><button type="button" class="btn btn-quiet btn-sm" data-pt-other="1">É outra pessoa</button>`;
   return `<span class="pt-chip">${ic("link", "ic-sm")}Sem vínculo</span><span class="hint">Fica só com o nome e o que você digitar abaixo. Dá para vincular depois.</span>`;
 }
 function ptRender(open) {
@@ -6864,7 +6902,7 @@ function eeTimes(from) {
 function evEdit(ev, pre, opener) {
   const e = ev || { day: /^\d{4}-\d{2}-\d{2}$/.test(pre.day || "") ? pre.day : dkey(st.agd), h: Number(pre.h ?? 11), m: Number(pre.m ?? 0), dur: 1, t: esc(pre.t || ""), pid: pre.pid || "", cel: esc(pre.cel || ""), mail: esc(pre.mail || ""), tipo: TIPOS[0], s: "agendado", fin: "Não pago", ddi: "BR" };
   const p = e.pid && pById(e.pid);
-  Object.assign(FORM, { note: "", pid: p ? p.id : "", dur: Math.round(e.dur * 60), own: Math.round(e.dur * 60) !== 60, opt: -1, list: [] });
+  Object.assign(FORM, { other: !!e.other, note: "", pid: p ? p.id : "", dur: Math.round(e.dur * 60), own: Math.round(e.dur * 60) !== 60, opt: -1, list: [] });
   const s0 = e.h * 60 + e.m;
   const sel = (attr, label, opts, v) => `<label class="field"><span class="label">${label}</span><select class="input" ${attr}>${opts.map(([ov, ol]) => `<option value="${ov}"${ov === v ? " selected" : ""}>${ol}</option>`).join("")}</select></label>`;
   dlgShow({ t: ev ? "Editar agendamento" : "Novo agendamento", sub: pre.sub ? esc(pre.sub) : "O que você salvar vai na hora para o Google Agenda.",
@@ -6883,12 +6921,14 @@ function evEdit(ev, pre, opener) {
       <datalist id="ee-hs">${Array.from({ length: 96 }, (_, k) => `<option value="${hmm(k * 15)}"></option>`).join("")}</datalist><datalist id="ee-fs"></datalist>
       <p class="hint ee-dur" data-ee-dur aria-live="polite"></p>
       <div class="form-grid ee-grid ee-4">
-        <div class="field ee-kind">${sel("data-ee-k", "Tipo do evento", [...kindList(e.tipo).map((k) => [k, k]), ["outro", "Outro, digitar"], ["", "Sem tipo (compromisso comum)"]], e.tipo || "")}
-          <label class="field" data-ee-k2-box hidden><span class="label">Escreva o tipo</span><input class="input" data-ee-k2 maxlength="80" placeholder="Por exemplo, Bioimpedância | Consultório"><span class="hint">Tipo e lugar separados por “|”. Sem o lugar, fica “| Consultório”.</span></label></div>
+        <div class="field ee-kind">${sel("data-ee-k", "Tipo do evento", [...kindList(e.tipo).map((k) => [k, k]), ["outro", "Outro, digitar"], ["", "Sem tipo (compromisso comum)"]], e.tipo ? kindOf(e.tipo) : "")}
+          <label class="field" data-ee-k2-box hidden><span class="label">Escreva o tipo</span><input class="input" data-ee-k2 maxlength="60" placeholder="Por exemplo, Bioimpedância"><span class="hint">Só o nome. O local fica no campo ao lado.</span></label></div>
+        <label class="field ee-loc"><span class="label">Local</span><select class="input" data-ee-loc>${LOCS.map((x) => `<option value="${x}"${x === (e.tipo ? locOf(e.tipo) : "Consultório") ? " selected" : ""}>${LOC_TXT[x]}</option>`).join("")}</select></label>
         ${sel("data-ee-s", "Situação", Object.entries(STS).map(([k, [l]]) => [k, l]), e.s)}
         ${sel("data-ee-fin", "Financeiro", FIN.map((x) => [x, x]), e.fin || "Não pago")}
       </div>
-      <label class="field ee-obs"><span class="label">Observação (opcional)</span><textarea class="input" rows="2" data-ee-obs maxlength="500">${e.obs || ""}</textarea></label>
+      <p class="ee-locbox" data-ee-locbox aria-live="polite"></p>
+      <label class="field ee-obs"><span class="label">Observação (opcional)</span><textarea class="input" rows="2" data-ee-obs maxlength="500" aria-describedby="ee-obs-h">${e.obs || ""}</textarea><span class="hint" id="ee-obs-h" data-ee-obs-h></span></label>
       <p class="hint" data-ee-err role="status"></p>`,
     foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>${ev ? "Salvar" : "Agendar"}</button>`,
     ok: () => {
@@ -6902,21 +6942,27 @@ function evEdit(ev, pre, opener) {
       if (end === null) return fail("Escreva a hora do término de 00:00 a 23:59.", "[data-ee-f]");
       if (end <= mins) return fail("O término precisa ser depois do início, no mesmo dia.", "[data-ee-f]");
       const plain = !dlgRaw("[data-ee-k]");
-      if (dlgRaw("[data-ee-k]") === "outro" && !tipoFix(dlgRaw("[data-ee-k2]"))) return fail("Escreva o tipo do evento, por exemplo Bioimpedância | Consultório.", "[data-ee-k2]");
+      if (dlgRaw("[data-ee-k]") === "outro" && !tipoFix(dlgRaw("[data-ee-k2]"))) return fail("Escreva o tipo do evento, por exemplo Bioimpedância.", "[data-ee-k2]");
       const cel = plain ? "" : dlgRaw("[data-ee-cel]"), mail = plain ? "" : dlgRaw("[data-ee-mail]"), ddi = pick(dlgRaw("[data-ee-ddi]"), DDIS.map((x) => x[0]));
       if (!FORM.pid && cel && (ddi === "BR" ? !/^\(\d{2}\) \d{4,5}-\d{4}$/.test(cel) : cel.replace(/\D/g, "").length < 6)) return fail("Confira o celular: DDD e número, por exemplo (41) 99999-0000.", "[data-ee-cel]");
       if (!FORM.pid && mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail("Confira o e-mail, por exemplo nome@exemplo.com.br.", "[data-ee-mail]");
-      const kRaw = dlgRaw("[data-ee-k]"), tipo = kRaw === "outro" ? esc(tipoFix(dlgRaw("[data-ee-k2]"))) : kindList(ev && ev.tipo).find((k) => k === kRaw) || "", s = pick(dlgRaw("[data-ee-s]"), Object.keys(STS)), fin = pick(dlgRaw("[data-ee-fin]"), FIN);
+      const kRaw = dlgRaw("[data-ee-k]"), kind = kRaw === "outro" ? esc(tipoFix(dlgRaw("[data-ee-k2]"))) : kindList(ev && ev.tipo).find((k) => k === kRaw) || "", loc = pick(dlgRaw("[data-ee-loc]"), LOCS), tipo = kind ? `${kind} | ${loc}` : "", s = pick(dlgRaw("[data-ee-s]"), Object.keys(STS)), fin = pick(dlgRaw("[data-ee-fin]"), FIN);
       const pid = tipo ? FORM.pid : "", obs = dlgVal("[data-ee-obs]");
-      const twin = !pid && tipo && PEOPLE.filter((x) => x.n && fold(x.n) === fold(t)).length;
+      const mudou = !ev || ev.day !== day || ev.h * 60 + ev.m !== mins || evEnd(ev) !== end;
+      const fora = tipo && mudou ? foraDoHorario(day, mins, (end - mins) / 60) : "";
+      if (fora) return fail(fora, "[data-ee-h]");
+      const twins = tipo && !pid ? PEOPLE.filter((x) => x.n && fold(x.n) === fold(t)).length : 0, twin = twins > 1;
+      if (twin && !FORM.other) return fail(`Há ${twins} contatos chamados “${t}”. Escolha o certo na lista, pelo telefone e pela data de nascimento, ou toque em “É outra pessoa”.`, "[data-pt-q]");
+      if (twin && !cel) return fail("Pessoa nova com o mesmo nome de um contato: o celular é obrigatório, para as automações não confundirem as duas.", "[data-ee-cel]");
       const apply = (extra) => {
         const target = ev || { id: `e${++evSeq}` };
         evCommit("", () => {
           DLG.back = "";
-          Object.assign(target, { day, h: Math.floor(mins / 60), m: mins % 60, dur: (end - mins) / 60, t, tipo, s, fin, pid, obs, ddi: pid ? "BR" : ddi, cel: pid ? "" : esc(cel), mail: pid ? "" : esc(mail) });
+          const meetNew = loc === "Online" && kind && !target.meet;
+          Object.assign(target, { day, h: Math.floor(mins / 60), m: mins % 60, dur: (end - mins) / 60, t, tipo, s, fin, pid, obs, ddi: pid ? "BR" : ddi, cel: pid ? "" : esc(cel), mail: pid ? "" : esc(mail), other: twin, meet: loc === "Online" && kind ? target.meet || meetOf(target.id) : "" });
           if (!ev) EV.push(target);
           st.agd = dOf(day);
-          evCommit.msg = `${ev ? `“${t}” atualizado.` : `“${t}” ${tipo ? "agendado para" : "criado em"} ${dayShort(dOf(day))} às ${hmm(mins)}.`}${pid || !tipo ? "" : twin ? " Ficou sem vínculo: há mais de um contato com esse nome." : " Ficou sem vínculo com Contatos."}${extra}${evClash(target)}`;
+          evCommit.msg = `${ev ? `“${t}” atualizado.` : `“${t}” ${tipo ? "agendado para" : "criado em"} ${dayShort(dOf(day))} às ${hmm(mins)}.`}${pid || !tipo ? "" : twin ? " Ficou como pessoa nova, separada pelo celular dos contatos com o mesmo nome." : " Ficou sem vínculo com Contatos."}${meetNew ? " O Google Meet criou o link da chamada." : ""}${extra}${evClash(target)}`;
         }, target.id);
       };
       if (ev && ev.rec) { const op = DLG.opener; dlgClose(); evScope(ev, apply, op); return false; }
@@ -6939,9 +6985,9 @@ function agSlot() {
   const busy = (k, m) => EV.some((o) => o.day === k && o.s !== "cancelado" && o.h * 60 + o.m < m + 60 && evEnd(o) > m);
   for (let i = 0; i < 60; i++) {
     const d = addD(AG_NOW, i), k = dkey(d);
-    if (fimDeSemana(d) || feriado(d)) continue;
-    const from = i ? st.ag.de * 60 : Math.max(st.ag.de * 60, Math.ceil((nowMin() + 1) / 30) * 30);
-    for (let m = from; m + 60 <= st.ag.ate * 60; m += 30) if (!busy(k, m)) return { day: k, h: Math.floor(m / 60), m: m % 60 };
+    if (!cfOpen(d)) continue;
+    const from = i ? CF_HRS.de * 60 : Math.max(CF_HRS.de * 60, Math.ceil((nowMin() + 1) / 30) * 30);
+    for (let m = from; m + 60 <= CF_HRS.ate * 60; m += 30) if (!busy(k, m) && !foraDoHorario(k, m, 1)) return { day: k, h: Math.floor(m / 60), m: m % 60 };
   }
   return { day: dkey(addD(AG_NOW, 1)), h: st.ag.de, m: 0 };
 }
@@ -6978,10 +7024,27 @@ function eePlain() {
   const ok = box.querySelector("[data-dlg-ok]");
   if (ok && !/^Editar/.test(h.textContent)) ok.textContent = plain ? "Criar evento" : "Agendar";
   if (plain && FORM.pid) ptUnlink("");
+  eeLoc();
+}
+/* Local: presencial traz o endereço do consultório; online pede o link ao Google Meet quando salvar. */
+function eeLoc() {
+  const box = document.querySelector("#dlg-host [data-ee-locbox]"), h = document.querySelector("#dlg-host [data-ee-obs-h]");
+  if (!box || !h) return;
+  const kRaw = dlgRaw("[data-ee-k]"), loc = pick(dlgRaw("[data-ee-loc]"), LOCS);
+  const kind = kRaw === "outro" ? tipoFix(dlgRaw("[data-ee-k2]")) || "Outro" : kRaw;
+  box.hidden = !kRaw; h.hidden = !kRaw;
+  box.replaceChildren();
+  if (!kRaw) return;
+  const tx = document.createElement("span");
+  tx.textContent = loc === "Online" ? "Google Meet: o Google cria o link da chamada ao salvar. Ele aparece nos detalhes do agendamento e vai na mensagem de confirmação." : `Endereço do consultório: ${CF_CLINIC.addr}, ${CF_CLINIC.city}. Vai no campo Local do Google e vem de Configurações › Consultório.`;
+  box.insertAdjacentHTML("afterbegin", ic(loc === "Online" ? "video" : "map-pin", "ic-sm"));
+  box.append(tx);
+  h.textContent = `No Google, a observação começa sempre com “${kind} | ${loc}”, para as automações. O que você escrever aqui vai na linha de baixo.`;
 }
 document.addEventListener("change", (ev) => {
   const t = ev.target;
   if (!t.matches) return;
+  if (t.matches("#dlg-host [data-ee-loc]")) eeLoc();
   if (t.matches("#dlg-host [data-ee-k]")) { eePlain(); const box = document.querySelector("#dlg-host [data-ee-k2-box]"); box.hidden = t.value !== "outro"; if (!box.hidden) box.querySelector("input").focus(); }
   /* Trocar o país reformata o número já digitado. */
   if (t.matches("#dlg-host [data-ee-ddi]")) { const c = document.querySelector("#dlg-host [data-ee-cel]"); c.value = MASK.cel(c.value, t.value); c.placeholder = t.value === "BR" ? "(41) 99999-0000" : "Número com código de área"; }
@@ -6991,10 +7054,11 @@ document.addEventListener("input", (ev) => {
   const t = ev.target;
   if (!t.closest || !t.closest("#dlg-host")) return;
   if (t.dataset.mask && !(ev.inputType || "").startsWith("delete")) t.value = MASK[t.dataset.mask](t.value, dlgRaw("[data-ee-ddi]"));
+  if (t.matches("[data-ee-k2]")) eeLoc();
   if (t.matches("[data-pt-q]")) {
     if (FORM.pid) { const p = pById(FORM.pid); if (p && fold(t.value.trim()) !== fold(p.n)) ptUnlink("O nome mudou, então o vínculo saiu, junto com o celular e o e-mail do contato."); }
     else FORM.note = "";
-    FORM.opt = -1;
+    FORM.opt = -1; FORM.other = false;
     ptRender(true);
   }
   if (t.matches("[data-ee-h]") && minOf(t.value) !== null) eeTimes("h");
@@ -7039,6 +7103,7 @@ const ACT1211 = [
   [(t) => t.matches("[data-x=evento]"), (t) => evEdit(null, {}, t)],
   [(t) => t.matches("[data-agendar]"), (t) => agFromContact(t.dataset.agendar)],
   [(t) => t.matches("[data-cf-wa]"), (t) => { const e = evById(t.dataset.cfWa); if (!e) return; e.cf = { st: "enviado", via: "whatsapp", w: `hoje às ${hm(nowMin())}` }; const op = DLG.opener; evDlg(e, op); refocus("[data-cf-wa]"); say(`WhatsApp aberto com a mensagem para ${cfFirst(e)}. Confira e envie.`); }],
+  [(t) => t.matches("[data-cf-mail]"), (t) => { const e = evById(t.dataset.cfMail); if (!e || !cfMail(e)) return; e.cf = { ...(e.cf || {}), st: (e.cf && e.cf.st) || "enviado", via: (e.cf && e.cf.via) || "email", mail: true, w: (e.cf && e.cf.w) || `hoje às ${hm(nowMin())}` }; const op = DLG.opener; evDlg(e, op); refocus("[data-cf-copy]"); say(`E-mail com o link enviado para ${cfFirst(e)}. Se ele confirmar por lá, o WhatsApp não repete.`); }],
   [(t) => t.matches("[data-cf-copy]"), (t) => { const e = evById(t.dataset.cfCopy); if (!e) return; try { navigator.clipboard.writeText(cfMsg(e)); } catch (_) { /* sem permissão */ } say("Mensagem com o link copiada."); }],
   [(t) => t.matches("[data-cf-see]"), (t) => { st.cfe = t.dataset.cfSee; st.cfv = "valido"; st.cfJust = ""; st.rm = null; DLG.opener = null; dlgClose(); goTo("confirmar"); }],
   [(t) => t.matches("[data-cf-v]"), (t) => { st.cfv = pick(t.dataset.cfV, ["valido", "prazo", "expirou", "invalido"]); st.cfJust = ""; render(); refocus(`[data-cf-v="${st.cfv}"]`); }],
@@ -7149,16 +7214,20 @@ document.addEventListener("keydown", (e) => {
 ACT.unshift(
   [(t) => t.matches("[data-pt-pick]"), (t) => { ptPick(t.dataset.ptPick); document.querySelector("#dlg-host [data-ee-d]")?.focus(); }],
   [(t) => t.matches("[data-pt-unlink]"), () => { ptUnlink("Vínculo removido. O celular e o e-mail do contato saíram deste agendamento."); document.querySelector("#dlg-host [data-pt-q]")?.focus(); }],
+  [(t) => t.matches("[data-pt-other]"), (t) => { FORM.other = t.dataset.ptOther === "1"; ptRender(false); document.querySelector(FORM.other ? "#dlg-host [data-ee-cel]" : "#dlg-host [data-pt-q]")?.focus(); }],
   [(t) => t.matches("[data-pt-open]"), () => { const q = document.querySelector("#dlg-host [data-pt-q]"); q.focus(); FORM.opt = 0; ptRender(true); }],
   [(t) => t.matches("[data-ee-dur1]"), () => { FORM.dur = 60; FORM.own = false; eeTimes("h"); document.querySelector("#dlg-host [data-ee-f]")?.focus(); }],
   [(t) => t.matches("[data-ev-link]"), (t) => { const e = evById(t.dataset.evEdit), op = DLG.opener; dlgClose(); if (!e) return; evEdit(e, {}, op); const q = document.querySelector("#dlg-host [data-pt-q]"); q.focus(); q.select(); ptRender(true); }],
   [(t) => t.matches("[data-sync-open]"), (t) => syncDlg(t)],
-  [(t) => t.matches("[data-sync-sim]"), (t) => { st.sync = pick(t.dataset.syncSim, Object.keys(SYNCS)); const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); syncDlg(DLG.opener); }],
+  [(t) => t.matches("[data-sync-sim]"), (t) => { st.sync = pick(t.dataset.syncSim, Object.keys(SYNCS)); st.syncPend = st.sync === "offline" ? Math.max(1, st.syncPend) : 0; const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); syncDlg(DLG.opener); }],
   [(t) => t.matches("[data-sync-act]"), (t) => {
     const a = t.dataset.syncAct;
     if (a === "cfg") { dlgClose(); go("configuracoes"); return; }
+    if (a === "show-failed") { const e = EV.find((x) => x.t === "Paula Régis Amaral"); dlgClose(); st.sync = "ok"; if (e) { st.agd = dOf(e.day); render(); evDlg(e, document.querySelector(`[data-ev="${e.id}"]`)); } return; }
+    if (a === "pull" && Date.now() - st.pullAt < 10000) { say("A agenda acabou de ser conferida. Espere alguns segundos."); return; }
+    if (a === "pull") st.pullAt = Date.now();
     if (a === "show") { const e = EV.find((x) => x.t === "Diego Fontes Arruda"); dlgClose(); st.sync = "ok"; if (e) { st.agd = dOf(e.day); render(); evDlg(e, document.querySelector(`[data-ev="${e.id}"]`)); } return; }
-    busy(t, 900, () => { st.sync = a === "pull" ? "ok" : "saved"; SYNC_LOG.unshift([hm(nowMin()), a === "pull" ? "refresh-cw" : "circle-check", a === "pull" ? "Nada mudou no Google desde 13:40." : "A mudança que faltava chegou ao Google."]); const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); syncDlg(DLG.opener); });
+    busy(t, 900, () => { const n = st.syncPend; st.sync = a === "pull" ? "ok" : "saved"; st.syncPend = 0; st.syncAt = hm(nowMin()); SYNC_LOG.unshift([hm(nowMin()), a === "pull" ? "refresh-cw" : "circle-check", a === "pull" ? "Nada mudou no Google desde a última conferência." : `${n === 1 ? "A mudança que esperava chegou" : `As ${n} mudanças que esperavam chegaram`} ao Google, na ordem.`]); const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); syncDlg(DLG.opener); });
   }]
 );
 /* ================= Refino: as entradas animam só quando algo abre de verdade ================= */
@@ -7353,6 +7422,7 @@ function cxExtrato() {
     if (st.extOff > 0) continue;
     rows.push({ day, t: d.n, c: -d.c, m: `${d.cat} · Todo mês, dia ${d.dia}${future ? " · previsto" : " · lançado sozinho"}`, i: "repeat", prev: future });
   }
+  cxExtrato.last = { ym, rows };
   const shown = rows.filter((r) => (st.extF === "in" ? r.c > 0 : st.extF === "out" ? r.c < 0 : true)).sort((a, b) => (a.day < b.day ? 1 : -1));
   const real = rows.filter((r) => !r.prev), inn = real.filter((r) => r.c > 0).reduce((s, r) => s + r.c, 0), out = -real.filter((r) => r.c < 0).reduce((s, r) => s + r.c, 0), prev = -rows.filter((r) => r.prev).reduce((s, r) => s + r.c, 0);
   const days = [...new Set(shown.map((r) => r.day))];
@@ -7381,7 +7451,7 @@ function cxImportar() {
 function financeiro() {
   const n = EV.filter((e) => e.tipo && cxOwes(e)).length;
   const tabs = cxTabs("Partes do Financeiro", "fin", st.finv, [["receber", "inbox", "A receber", n], ["extrato", "list", "Extrato"], ["servicos", "tags", "Serviços e despesas"], ["importar", "upload", "Importar planilha"]]);
-  const acts = `${cxHideBtn()}${st.finv === "extrato" ? `<button class="btn btn-primary btn-sm" type="button" data-cx-lanc aria-label="Novo lançamento" title="Novo lançamento">${ic("plus", "ic-sm")}<span class="lbl-d">Novo lançamento</span></button>` : ""}`;
+  const acts = `${cxHideBtn()}${st.finv === "extrato" ? `<button class="btn btn-secondary btn-sm" type="button" data-cx-exp aria-label="Exportar planilha do extrato" title="Exportar planilha do extrato">${ic("download", "ic-sm")}<span class="lbl-d">Exportar planilha</span></button>` : ""}${st.finv === "extrato" ? `<button class="btn btn-primary btn-sm" type="button" data-cx-lanc aria-label="Novo lançamento" title="Novo lançamento">${ic("plus", "ic-sm")}<span class="lbl-d">Novo lançamento</span></button>` : ""}`;
   const body = st.finv === "extrato" ? cxExtrato() : st.finv === "servicos" ? cxServicos() : st.finv === "importar" ? cxImportar() : cxReceber();
   return `<div class="page page-wide cx-page">${cxHead("Financeiro", "O que entra e o que sai do consultório, ligado aos atendimentos da Agenda.", acts)}<div class="tabs-row">${tabs}</div>${body}</div>`;
 }
@@ -7390,27 +7460,30 @@ function financeiro() {
 const CX_RES = [[1082000, 512000], [1146000, 498000], [1210000, 531000], [1188000, 506000], [1294000, 519000], [702000, 456000]];
 const CX_FORMA = [["Pix", 56], ["Crédito", 21], ["Débito", 12], ["Dinheiro", 11]];
 function resultados() {
-  const tabs = cxTabs("Partes de Resultados", "res", st.resv, [["painel", "layout-dashboard", "Painel"], ["relatorios", "book-open", "Relatórios"]]);
+  const tabs = cxTabs("Partes de Resultados", "res", st.resv, [["painel", "layout-dashboard", "Painel"], ["projecoes", "trending-up", "Projeções"], ["relatorios", "book-open", "Relatórios"]]);
   const head = cxHead("Resultados", "O financeiro do consultório num painel: quanto entrou, quanto saiu e quanto sobrou.", cxHideBtn());
+  if (st.resv === "projecoes") return `<div class="page page-wide cx-page">${head}<div class="tabs-row">${tabs}</div>${cxProjecoes()}</div>`;
   if (st.resv === "relatorios") return `<div class="page page-wide cx-page">${head}<div class="tabs-row">${tabs}</div><section class="card p-sec cx-narrow"><div class="p-sec-h"><h2>Fechamentos</h2><span class="hint">saem sozinhos no dia 1º</span></div><ul class="cx-ext">${CX_MESES.slice(0, 5).reverse().map((m, i) => `<li><span class="tile tile-sm">${ic("file-text", "ic-sm")}</span><span class="cx-who"><span class="t">${m.replace(/^./, (c) => c.toUpperCase())} de ${AG_NOW.getFullYear()}</span><span class="d">Mensal</span></span>${i ? "" : '<span class="pill on"><i></i>Novo</span>'}<button class="iconbtn" type="button" aria-label="Abrir">${ic("chevron-right", "ic-sm")}</button></li>`).join("")}</ul></section></div>`;
   /* O mês corrente é comparado com os mesmos dias do mês anterior, não com o mês inteiro. */
   const fr = Math.min(1, AG_NOW.getDate() / 30), [inn, out] = CX_RES[CX_RES.length - 1], pin = Math.round(CX_RES[CX_RES.length - 2][0] * fr), pout = Math.round(CX_RES[CX_RES.length - 2][1] * fr);
   const res = inn - out, pres = pin - pout;
   const dif = (a, b, good = 1) => { const r = (a - b) / Math.abs(b || 1), up = r >= 0; return `<span class="cx-delta ${up === good > 0 ? "up" : "down"}">${ic(up ? "trending-up" : "trending-down", "ic-sm")}${Math.round(Math.abs(r) * 100)}%</span> que até ${AG_NOW.getDate()} de ${CX_MESES[CX_MESES.length - 2]}`; };
   const owe = EV.filter((e) => e.tipo && cxOwes(e)).reduce((s, e) => s + servOf(e).c, 0);
-  const mx = Math.max(...CX_RES.flat());
-  const bars = CX_RES.map(([a, b], i) => `<li class="cx-g${i === CX_RES.length - 1 ? " last" : ""}"><span class="cx-gb in" style="--v:${(a / mx) * 100}"></span><span class="cx-gb out" style="--v:${(b / mx) * 100}"></span><span class="x">${CX_MESES[i]}</span></li>`).join("");
+  const RES = st.cxReal ? CX_RES.map(([a, b], i) => [Math.round(a * ipcaF(i)), Math.round(b * ipcaF(i))]) : CX_RES;
+  const mx = Math.max(...RES.flat());
+  const bars = RES.map(([a, b], i) => `<li class="cx-g${i === CX_RES.length - 1 ? " last" : ""}"><span class="cx-gb in" style="--v:${(a / mx) * 100}"></span><span class="cx-gb out" style="--v:${(b / mx) * 100}"></span><span class="x">${CX_MESES[i]}</span></li>`).join("");
   const fixas = DESP.filter((d) => d.rep === "mes").reduce((s, d) => s + d.c, 0), ticket = 26000, eq = Math.ceil(fixas / ticket), feitos = CX_PRES[CX_PRES.length - 1][0];
   const SV = [["Consulta", 61], ["Consulta online", 24], ["Avaliação física", 15]];
   const hb = (L, unit = "%") => `<ul class="hbars">${L.map(([k, n]) => `<li><span class="k">${k}</span><span class="track"><span class="fill" style="width:${n}%"></span></span><span class="v num">${n}${unit}</span></li>`).join("")}</ul>`;
-  return `<div class="page page-wide cx-page">${head}<div class="tabs-row cx-tabs-row">${tabs}<div class="seg" role="group" aria-label="Período">${[["semana", "Semana"], ["mes", "Mês"], ["ano", "Ano"]].map(([k, l]) => `<button type="button" data-cx-per="${k}" aria-pressed="${st.cxPer === k}">${l}</button>`).join("")}</div></div>
+  return `<div class="page page-wide cx-page">${head}<div class="tabs-row cx-tabs-row">${tabs}<div class="seg" role="group" aria-label="Período">${[["semana", "Semana"], ["mes", "Mês"], ["ano", "Ano"]].map(([k, l]) => `<button type="button" data-cx-per="${k}" aria-pressed="${st.cxPer === k}">${l}</button>`).join("")}</div><div class="seg" role="group" aria-label="Valores">${[["0", "Nominal"], ["1", "Real (IPCA)"]].map(([k, l]) => `<button type="button" data-cx-real="${k}" aria-pressed="${String(!!st.cxReal) === String(k === "1")}">${l}</button>`).join("")}</div></div>
     ${cxLive(`Ao vivo · ${AG_MESES[AG_NOW.getMonth()]} até hoje. Cada pagamento registrado entra na hora.`)}
     <ul class="kpis" aria-label="Este mês">${cxKpi("Recebido", cxBrl0(inn), dif(inn, pin), "arrow-down-left")}${cxKpi("Despesas", cxBrl0(out), dif(out, pout, -1), "arrow-up-right")}${cxKpi("Resultado", cxBrl0(res), dif(res, pres), "scale", res >= 0 ? "" : "bad")}${cxKpi("A receber", cxBrl0(owe), "atendimentos sem pagamento", "wallet", owe ? "warn" : "")}</ul>
-    <div class="rv-grid"><section class="card p-sec chart-card" aria-labelledby="cx-h-r"><div class="p-sec-h"><h2 id="cx-h-r">Entradas e saídas por mês</h2><p class="cx-leg"><span><i class="in"></i>Entradas</span><span><i class="out"></i>Saídas</span></p></div>
+    <div class="rv-grid"><section class="card p-sec chart-card" aria-labelledby="cx-h-r"><div class="p-sec-h"><h2 id="cx-h-r">Entradas e saídas por mês${st.cxReal ? " <span class=\"hint\">em reais de hoje</span>" : ""}</h2><p class="cx-leg"><span><i class="in"></i>Entradas</span><span><i class="out"></i>Saídas</span></p></div>
         <ol class="cx-gbars" aria-hidden="true" style="--n:${CX_RES.length}">${bars}</ol>
-        <details class="as-table"><summary>Ver em tabela</summary><table><thead><tr><th scope="col">Mês</th><th scope="col">Entradas</th><th scope="col">Saídas</th><th scope="col">Resultado</th></tr></thead><tbody>${CX_RES.map(([a, b], i) => `<tr><td>${CX_MESES[i]}</td><td class="num">${cxBrl0(a)}</td><td class="num">${cxBrl0(b)}</td><td class="num">${cxBrl0(a - b)}</td></tr>`).join("")}</tbody></table></details></section>
+        <details class="as-table"><summary>Ver em tabela</summary><table><thead><tr><th scope="col">Mês</th><th scope="col">Entradas</th><th scope="col">Saídas</th><th scope="col">Resultado</th></tr></thead><tbody>${RES.map(([a, b], i) => `<tr><td>${CX_MESES[i]}</td><td class="num">${cxBrl0(a)}</td><td class="num">${cxBrl0(b)}</td><td class="num">${cxBrl0(a - b)}</td></tr>`).join("")}</tbody></table></details></section>
       <section class="card p-sec" aria-labelledby="cx-h-eq"><div class="p-sec-h"><h2 id="cx-h-eq">Ponto de equilíbrio</h2></div><p class="cx-big num">${Math.min(feitos, eq)} de ${eq}</p><p class="hint">atendimentos para cobrir as despesas fixas do mês (${cxBrl0(fixas)}, com ticket médio de ${cxBrl0(ticket)}).</p>
         <p class="cx-meter" role="img" aria-label="${feitos >= eq ? "Despesas fixas já cobertas" : `${feitos} de ${eq}`}"><i style="width:${Math.min(100, (feitos / eq) * 100)}%"></i></p><p class="hint">${feitos >= eq ? `Coberto no dia ${Math.max(1, Math.ceil((eq / feitos) * AG_NOW.getDate()))}. O que entra agora é resultado.` : `Faltam ${eq - feitos} atendimentos.`}</p></section></div>
+    ${cxRealCard()}
     <div class="cx-grid-3"><section class="card p-sec" aria-labelledby="cx-h-sv2"><div class="p-sec-h"><h2 id="cx-h-sv2">Por serviço</h2></div>${hb(SV)}</section>
       <section class="card p-sec" aria-labelledby="cx-h-fm"><div class="p-sec-h"><h2 id="cx-h-fm">Por forma de pagamento</h2></div>${hb(CX_FORMA)}</section>
       <section class="card p-sec" aria-labelledby="cx-h-ds"><div class="p-sec-h"><h2 id="cx-h-ds">Maiores despesas</h2></div><ul class="hbars">${DESP.filter((d) => d.rep === "mes").sort((a, b) => b.c - a.c).map((d) => `<li><span class="k">${escH(d.n)}</span><span class="track"><span class="fill" style="width:${(d.c / DESP[0].c) * 100}%"></span></span><span class="v num">${cxBrl0(d.c)}</span></li>`).join("")}</ul></section></div></div>`;
@@ -7480,7 +7553,7 @@ function cxPaySave(id, forma, free) {
   toast(`${cfFirst(e)}: ${free ? "sem cobrança" : `${cxBrl(c, true)} em ${e.pay.forma}`}. Gravado no extrato e no agendamento.`, () => { Object.assign(e, before); st.payOpen = e.id; render(); });
 }
 ACT.unshift(
-  [(t) => t.matches("[data-cx-tab]"), (t) => { const [k, v] = t.dataset.cxTab.split(":"); if (k === "at") st.atv = pick(v, ["hoje", "indicadores"]); else if (k === "fin") { st.finv = pick(v, ["receber", "extrato", "servicos", "importar"]); if (st.s !== "gestao" || st.gs !== "financeiro") { st.gs = "financeiro"; go("gestao"); return; } } else st.resv = pick(v, ["painel", "relatorios"]); render(); refocus(`[data-cx-tab="${t.dataset.cxTab}"]`); }],
+  [(t) => t.matches("[data-cx-tab]"), (t) => { const [k, v] = t.dataset.cxTab.split(":"); if (k === "at") st.atv = pick(v, ["hoje", "indicadores"]); else if (k === "fin") { st.finv = pick(v, ["receber", "extrato", "servicos", "importar"]); if (st.s !== "gestao" || st.gs !== "financeiro") { st.gs = "financeiro"; go("gestao"); return; } } else st.resv = pick(v, ["painel", "projecoes", "relatorios"]); render(); refocus(`[data-cx-tab="${t.dataset.cxTab}"]`); }],
   [(t) => t.matches("[data-cx-day]"), (t) => { const n = Number(pick(t.dataset.cxDay, ["-1", "0", "1"])); st.atd = n ? addD(st.atd, n) : new Date(AG_NOW); render(); refocus(`[data-cx-day="${n || 1}"]`); }],
   [(t) => t.matches("[data-cx-goday]"), (t) => { const d = dOf(t.dataset.cxGoday); if (!Number.isNaN(d.getTime())) st.atd = d; render(); refocus(".cx-day-t"); }],
   [(t) => t.matches("[data-cx-agenda]"), (t) => { const d = dOf(t.dataset.cxAgenda); if (!Number.isNaN(d.getTime())) st.agd = d; if (st.av === "mes") st.av = "dia"; goTo("agenda"); }],
@@ -7503,13 +7576,45 @@ ACT.unshift(
 /* ---------- Remarcar pelo link: o paciente escolhe dia (até 15 dias), turno e horário ----------
    A busca só oferece horários livres dentro do horário de atendimento do consultório e prefere
    encostar em consultas que já existem, para a agenda não ficar cheia de buracos. */
-const CF_HRS = { dias: [1, 2, 3, 4, 5], de: 8, ate: 18, pausa: [12, 13] };
-const CF_RM_DAYS = 15;
+/* Horário de atendimento: um lugar só (Configurações › Agenda). A Agenda, o Seu dia, o novo agendamento
+   e a remarcação pelo link leem daqui. Início e fim em horas cheias (os mesmos de st.agDef); almoço em minutos. */
+const CF_HRS = { dias: [1, 2, 3, 4, 5], get de() { return st.agDef.de; }, get ate() { return st.agDef.ate; }, alm: [720, 780] };
+const CF_RM_DAYS = 8;
 const CF_RM_MAX = 2;
 const CF_GRID = 30;
 const cfOpen = (d) => CF_HRS.dias.includes(d.getDay()) && !feriado(d);
 /* Janelas do turno, em minutos: manhã do início até a pausa, tarde da pausa até o fim. */
-const cfTurno = (t) => (t === "manha" ? [CF_HRS.de * 60, CF_HRS.pausa[0] * 60] : [CF_HRS.pausa[1] * 60, CF_HRS.ate * 60]);
+const cfTurno = (t) => (t === "manha" ? [CF_HRS.de * 60, CF_HRS.alm[0]] : [CF_HRS.alm[1], CF_HRS.ate * 60]);
+/* Por que um horário não aceita consulta: dia sem atendimento, fora do horário ou no almoço. Vazio quando pode. */
+function foraDoHorario(day, mins, dur) {
+  const d = dOf(day), end = mins + Math.round(dur * 60), [a0, a1] = CF_HRS.alm;
+  if (!CF_HRS.dias.includes(d.getDay())) return `${WDL[d.getDay()]} não é dia de atendimento.`;
+  if (mins < CF_HRS.de * 60 || end > CF_HRS.ate * 60) return `Fora do horário de atendimento, das ${hh2(CF_HRS.de)} às ${hh2(CF_HRS.ate)}.`;
+  if (mins < a1 && end > a0) return `No almoço, das ${hmm(a0)} às ${hmm(a1)}, não entra consulta.`;
+  return "";
+}
+/* Sempre a mesma escrita: "Segunda a sexta" quando os dias são seguidos. */
+function hrDias() {
+  const L = [1, 2, 3, 4, 5, 6, 0].filter((d) => CF_HRS.dias.includes(d)), ord = (d) => (d + 6) % 7;
+  const seguidos = L.every((d, i) => !i || ord(d) === ord(L[i - 1]) + 1);
+  return L.length > 2 && seguidos ? `${WDL[L[0]]} a ${WDL[L[L.length - 1]].toLowerCase()}` : L.map((d, i) => (i ? WDL[d].toLowerCase() : WDL[d])).join(", ");
+}
+const hrResumo = () => `${hrDias()}, das ${hh2(CF_HRS.de)} às ${hh2(CF_HRS.ate)}, almoço das ${hmm(CF_HRS.alm[0])} às ${hmm(CF_HRS.alm[1])}`;
+function hrBlock() {
+  const [a0, a1] = CF_HRS.alm, de = CF_HRS.de, ate = CF_HRS.ate, pct = (m) => `${(m / 1440) * 100}%`;
+  const hO = (from, to, v) => Array.from({ length: to - from + 1 }, (_, k) => from + k).map((h) => `<option value="${h}"${h === v ? " selected" : ""}>${hh2(h)}</option>`).join("");
+  const mO = (from, to, v) => { const o = []; for (let m = from; m <= to; m += 30) o.push(`<option value="${m}"${m === v ? " selected" : ""}>${hmm(m)}</option>`); return o.join(""); };
+  return `<div class="set-row set-col"><div class="grow"><p class="t" id="hr-d">Dias de atendimento</p><p class="hint">Um lugar só para dias, horário e almoço. A Agenda, o Seu dia, os novos agendamentos e a remarcação pelo link usam o que estiver aqui.</p></div>
+      <div class="hr-days" role="group" aria-labelledby="hr-d">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<button type="button" class="chip" data-hr-day="${d}" aria-pressed="${CF_HRS.dias.includes(d)}">${WDL[d]}</button>`).join("")}</div></div>
+    <div class="set-row set-col"><div class="grow"><p class="t" id="hr-h">Horário de atendimento</p><p class="hint">Consulta só entra dentro do horário e fora do almoço. Compromissos sem tipo, como reuniões, podem ficar em qualquer hora.</p></div>
+      <div class="ctl-pair hr-pair" role="group" aria-labelledby="hr-h">
+        <label for="hr-de">Começa às<select id="hr-de" class="input input-sm" data-hr="de">${hO(5, ate - 2, de)}</select></label>
+        <label for="hr-ate">Termina às<select id="hr-ate" class="input input-sm" data-hr="ate">${hO(de + 2, 23, ate)}</select></label>
+        <label for="hr-a0">Almoço das<select id="hr-a0" class="input input-sm" data-hr="a0">${mO(de * 60 + 30, ate * 60 - 60, a0)}</select></label>
+        <label for="hr-a1">até<select id="hr-a1" class="input input-sm" data-hr="a1">${mO(a0 + 30, Math.min(a0 + 180, ate * 60 - 30), a1)}</select></label></div>
+      <div class="hours-bar" role="img" aria-label="${hrResumo()}"><span class="on" style="left:${pct(de * 60)};width:${pct((ate - de) * 60)}"><b class="num">${hh2(de)} até ${hh2(ate)}</b></span><span class="lunch" style="left:${pct(a0)};width:${pct(a1 - a0)}" title="Almoço"></span></div>
+      <div class="hours-scale num" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>`;
+}
 function cfFree(e, k, t) {
   const [a, b] = cfTurno(t), dur = Math.round(e.dur * 60), busy = EV.filter((o) => o !== e && o.day === k && o.s !== "cancelado");
   const out = [];
@@ -7527,6 +7632,26 @@ function cfRank(e, k, t, pref) {
     return { m, touch, score };
   }).sort((x, y) => x.score - y.score || x.m - y.m);
 }
+/* O que a página oferece depois do turno (regra interna, o paciente não vê):
+   1. Turno com consulta: os horários livres colados antes ou depois de uma consulta, os mais perto do horário escolhido primeiro (até 3).
+   2. Turno com consulta, mas sem horário colado livre: os 2 mais perto de uma consulta.
+   3. Turno sem consulta: 2 horários sorteados. No sistema, o sorteio usa crypto e fica guardado por link, dia e turno,
+      para recarregar a página não trocar as opções. */
+function cfOffer(e, k, t, pref) {
+  const { out, busy } = cfFree(e, k, t), dur = Math.round(e.dur * 60), [a, b] = cfTurno(t);
+  const cons = busy.filter((o) => o.tipo && o.h * 60 + o.m < b && evEnd(o) > a);
+  const near = (m) => (pref == null ? 0 : Math.abs(m - pref));
+  if (cons.length) {
+    const pts = cons.flatMap((o) => [o.h * 60 + o.m, evEnd(o)]);
+    const adj = out.filter((m) => pts.includes(m) || pts.includes(m + dur)).sort((x, y) => near(x) - near(y) || x - y);
+    return adj.length ? adj.slice(0, 3) : cfRank(e, k, t, pref).slice(0, 2).map((x) => x.m).sort((x, y) => x - y);
+  }
+  let h = 2166136261;
+  for (const ch of `${e.id}|${k}|${t}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  const pool = [...out], got = [];
+  while (pool.length && got.length < 2) { got.push(pool.splice(h % pool.length, 1)[0]); h = Math.imul(h ^ 40503, 16777619) >>> 0; }
+  return got.sort((x, y) => x - y);
+}
 function cfRmDays(e) {
   const out = [];
   for (let i = 1; i <= CF_RM_DAYS; i++) {
@@ -7540,31 +7665,29 @@ function cfRmDays(e) {
 st.rm = null;
 const rmStep = (n, t, body, back = true) => `<div class="rm-head"><p class="rm-step num">Passo ${n} de 4</p>${back ? `<button class="btn btn-quiet btn-sm" type="button" data-rm-back>${ic("arrow-left", "ic-sm")}Voltar</button>` : ""}</div><h1 class="cf-t" tabindex="-1">${t}</h1>${body}`;
 function cfRmBody(e) {
-  const r = st.rm, first = escH(cfFirst(e)), team = `<p class="cf-note">${ic("info", "ic-sm")}<span>Precisa de uma data depois de ${dayShort(addD(AG_NOW, CF_RM_DAYS))}? <a href="${waLink(CF_CLINIC.wa)}" target="_blank" rel="noopener">Fale com a nossa equipe pelo WhatsApp</a>.</span></p>`;
+  const r = st.rm, first = escH(cfFirst(e)), team = `<p class="cf-note">${ic("info", "ic-sm")}<span>Não achou um dia bom? <a href="${waLink(CF_CLINIC.wa)}" target="_blank" rel="noopener">Fale com a nossa equipe pelo WhatsApp</a>.</span></p>`;
   const cur = `<p class="rm-cur">${ic("calendar-days", "ic-sm")}<span>Hoje marcada: <b>${dayShort(dOf(e.day))}, às ${hmm(e.h * 60 + e.m)}</b></span></p>`;
   if (r.step === 1) {
     const days = cfRmDays(e);
-    return rmStep(1, `Para quando, ${first}?`, `${cur}<p class="cf-sub">Escolha um dia nos próximos ${CF_RM_DAYS} dias. Os marcados com ${ic("sparkles", "ic-sm")} têm horários colados a outras consultas.</p>
-      <ul class="rm-days" aria-label="Dias">${days.map((x) => `<li><button type="button" class="rm-day${x.busy && x.n ? " is-sug" : ""}" data-rm-day="${x.k}"${x.n ? "" : " disabled"} aria-pressed="${r.day === x.k}"><span class="w">${WD[x.d.getDay()]}</span><span class="n num">${p2(x.d.getDate())}/${p2(x.d.getMonth() + 1)}</span><span class="c">${x.n ? `${x.n} ${x.n === 1 ? "horário" : "horários"}` : x.why}</span>${x.busy && x.n ? `<span class="sr">, sugerido</span>${ic("sparkles", "ic-sm rm-sug")}` : ""}</button></li>`).join("")}</ul>${team}`, true);
+    return rmStep(1, `Para quando, ${first}?`, `${cur}<p class="cf-sub">Escolha o novo dia.</p>
+      <ul class="rm-days" aria-label="Dias">${days.map((x) => `<li><button type="button" class="rm-day" data-rm-day="${x.k}"${x.n ? "" : " disabled"} aria-pressed="${r.day === x.k}"><span class="w">${WD[x.d.getDay()]}</span><span class="n num">${p2(x.d.getDate())}/${p2(x.d.getMonth() + 1)}</span><span class="c">${x.n ? "" : x.why}</span></button></li>`).join("")}</ul>${team}`, true);
   }
   const k = r.day, d = dOf(k);
   if (r.step === 2) {
     const nm = cfFree(e, k, "manha").out.length, nt = cfFree(e, k, "tarde").out.length;
-    const b = (t, l, n, h) => `<button type="button" class="rm-opt" data-rm-turno="${t}"${n ? "" : " disabled"}>${ic(t === "manha" ? "sunrise" : "sun", "ic-sm")}<span class="t">${l}</span><span class="d num">${h} · ${n ? `${n} ${n === 1 ? "horário livre" : "horários livres"}` : "sem horário"}</span></button>`;
-    return rmStep(2, "Manhã ou tarde?", `<p class="cf-sub">${dayLong(d)}.</p><div class="rm-opts">${b("manha", "Manhã", nm, `${hh2(CF_HRS.de)} às ${hh2(CF_HRS.pausa[0])}`)}${b("tarde", "Tarde", nt, `${hh2(CF_HRS.pausa[1])} às ${hh2(CF_HRS.ate)}`)}</div>`);
+    const b = (t, l, n) => `<button type="button" class="rm-opt" data-rm-turno="${t}"${n ? "" : " disabled"}>${ic(t === "manha" ? "sunrise" : "sun", "ic-sm")}<span class="t">${l}</span>${n ? "" : `<span class="d">sem horário</span>`}</button>`;
+    return rmStep(2, "Manhã ou tarde?", `<p class="cf-sub">${dayLong(d)}.</p><div class="rm-opts">${b("manha", "Manhã", nm)}${b("tarde", "Tarde", nt)}</div>`);
   }
   if (r.step === 3) {
     const [a, b] = cfTurno(r.turno), hs = [];
     for (let m = a; m < b; m += 60) hs.push(m);
-    return rmStep(3, "Tem um horário de preferência?", `<p class="cf-sub">${dayLong(d)}, ${r.turno === "manha" ? "de manhã" : "à tarde"}. Se tiver, a Zuri procura o mais perto dele.</p>
-      <div class="rm-hours" role="group" aria-label="Horário de preferência">${hs.map((m) => `<button type="button" class="chip" data-rm-pref="${m}">${hmm(m)}</button>`).join("")}</div>
-      <button class="btn btn-secondary btn-block" type="button" data-rm-pref="x">Tanto faz</button>`);
+    return rmStep(3, "Que horário fica melhor?", `<p class="cf-sub">${dayLong(d)}, ${r.turno === "manha" ? "de manhã" : "à tarde"}.</p>
+      <div class="rm-hours" role="group" aria-label="Horário de preferência">${hs.map((m) => `<button type="button" class="chip" data-rm-pref="${m}">${hmm(m)}</button>`).join("")}</div>`);
   }
-  const all = cfRank(e, k, r.turno, r.pref), list = r.more ? all : all.slice(0, 3);
-  if (!all.length) return rmStep(4, "Esse turno lotou", `<p class="cf-sub">Os horários acabaram de ser ocupados. Escolha outro dia ou turno.</p><button class="btn btn-secondary btn-block" type="button" data-rm-restart>Escolher outro dia</button>`);
-  return rmStep(4, "Horários livres para você", `<p class="cf-sub">${dayLong(d)}${r.pref == null ? "" : `, perto das ${hmm(r.pref)}`}. Toque para escolher.</p>
-    <ul class="rm-slots">${list.map((x, i) => `<li><button type="button" class="rm-slot" data-rm-pick="${x.m}"><span class="t num">${hmm(x.m)} até ${hmm(x.m + Math.round(e.dur * 60))}</span>${i === 0 && !r.more ? `<span class="pill on"><i></i>Melhor opção</span>` : ""}${ic("chevron-right", "ic-sm")}</button></li>`).join("")}</ul>
-    ${!r.more && all.length > 3 ? `<button class="btn btn-quiet btn-block" type="button" data-rm-more>Ver os ${all.length} horários deste turno</button>` : ""}
+  const list = cfOffer(e, k, r.turno, r.pref);
+  if (!list.length) return rmStep(4, "Esse turno lotou", `<p class="cf-sub">Os horários acabaram de ser ocupados. Escolha outro dia ou turno.</p><button class="btn btn-secondary btn-block" type="button" data-rm-restart>Escolher outro dia</button>`);
+  return rmStep(4, "Horários para você", `<p class="cf-sub">${dayLong(d)}. Toque para escolher.</p>
+    <ul class="rm-slots">${list.map((m) => `<li><button type="button" class="rm-slot" data-rm-pick="${m}"><span class="t num">${hmm(m)} até ${hmm(m + Math.round(e.dur * 60))}</span>${ic("chevron-right", "ic-sm")}</button></li>`).join("")}</ul>
     <button class="btn btn-quiet btn-block" type="button" data-rm-restart>Escolher outro dia</button>`);
 }
 function cfRmStart(e, opener) {
@@ -7595,8 +7718,7 @@ function cfRmPick(e, m, opener) {
 ACT.unshift(
   [(t) => t.matches("[data-rm-day]"), (t) => { const e = evById(st.cfe); const x = e && cfRmDays(e).find((y) => y.k === t.dataset.rmDay && y.n); if (!x) return; st.rm = { ...st.rm, day: x.k, step: 2 }; render(); refocus(".cf-t"); }],
   [(t) => t.matches("[data-rm-turno]"), (t) => { st.rm = { ...st.rm, turno: pick(t.dataset.rmTurno, ["manha", "tarde"]), step: 3 }; render(); refocus(".cf-t"); }],
-  [(t) => t.matches("[data-rm-pref]"), (t) => { const [a, b] = cfTurno(st.rm.turno); const v = Number(t.dataset.rmPref); st.rm = { ...st.rm, pref: Number.isFinite(v) && v >= a && v < b ? v : null, step: 4, more: false }; render(); refocus(".cf-t"); }],
-  [(t) => t.matches("[data-rm-more]"), () => { st.rm = { ...st.rm, more: true }; render(); refocus(".rm-slot"); }],
+  [(t) => t.matches("[data-rm-pref]"), (t) => { const [a, b] = cfTurno(st.rm.turno); const v = Number(t.dataset.rmPref); if (!(Number.isFinite(v) && v >= a && v < b)) return; st.rm = { ...st.rm, pref: v, step: 4 }; render(); refocus(".cf-t"); }],
   [(t) => t.matches("[data-rm-restart]"), () => { st.rm = { ...st.rm, step: 1, day: "", turno: "", pref: null, more: false }; render(); refocus(".cf-t"); }],
   [(t) => t.matches("[data-rm-back]"), () => { if (st.rm.step <= 1) st.rm = null; else st.rm = { ...st.rm, step: st.rm.step - 1, more: false }; render(); refocus(st.rm ? ".cf-t" : "[data-cf-rem]"); }],
   [(t) => t.matches("[data-rm-pick]"), (t) => { const e = evById(st.cfe); const m = Number(t.dataset.rmPick); if (e && Number.isFinite(m)) cfRmPick(e, m, t); }],
@@ -7607,13 +7729,126 @@ ACT.unshift([(t) => t.matches("[data-hr-day]"), (t) => { const d = Number(pick(t
 document.addEventListener("change", (ev) => {
   const t = ev.target;
   if (!t.matches || !t.matches("[data-hr]")) return;
-  const k = pick(t.dataset.hr, ["de", "ate", "pausa"]), v = Number(t.value);
-  if (k === "de" && v < CF_HRS.ate - 1) CF_HRS.de = v;
-  else if (k === "ate" && v > CF_HRS.de + 1) CF_HRS.ate = v;
-  else if (k === "pausa" && v > CF_HRS.de && v + 1 < CF_HRS.ate) CF_HRS.pausa = [v, v + 1];
-  else say("Esse horário não fecha com os outros. Confira o começo, o fim e a pausa.");
+  const k = pick(t.dataset.hr, ["de", "ate", "a0", "a1"]), v = Number(t.value), [a0, a1] = CF_HRS.alm;
+  const setH = (de, ate) => { st.agDef = { de, ate }; st.ag = { de, ate }; };
+  if (!Number.isInteger(v)) return;
+  if (k === "de" && v >= 5 && v <= CF_HRS.ate - 2 && v * 60 + 30 <= a0) setH(v, CF_HRS.ate);
+  else if (k === "ate" && v <= 23 && v >= CF_HRS.de + 2 && v * 60 - 30 >= a1) setH(CF_HRS.de, v);
+  else if (k === "a0" && v % 30 === 0 && v >= CF_HRS.de * 60 + 30 && v + 30 <= CF_HRS.ate * 60 - 30) CF_HRS.alm = [v, Math.min(v + (a1 - a0), CF_HRS.ate * 60 - 30)];
+  else if (k === "a1" && v % 30 === 0 && v > a0 && v - a0 <= 180 && v <= CF_HRS.ate * 60 - 30) CF_HRS.alm = [a0, v];
+  else say("Esse horário não fecha com os outros: o almoço precisa ficar dentro do atendimento, com pelo menos 30 min de cada lado.");
   render(); refocus(`[data-hr="${k}"]`);
 });
+/* ================= 13/11/2026 · pedidos das 21:15: família nos Contatos, extrato em planilha, IPCA e projeções ================= */
+/* Família: ligações que só a Zuri guarda (o Google Contatos fica só para leitura). Cada ligação diz o papel dos dois lados:
+   "a é la de b" e "b é lb de a". Quem tem responsável recebe as mensagens do consultório pelo celular e pelo e-mail dele. */
+const FAM_REL = [["Mãe", "Filha", "Filho"], ["Pai", "Filha", "Filho"], ["Filha", "Mãe", "Pai"], ["Filho", "Mãe", "Pai"], ["Irmã", "Irmã", "Irmão"], ["Irmão", "Irmã", "Irmão"], ["Avó", "Neta", "Neto"], ["Avô", "Neta", "Neto"], ["Neta", "Avó", "Avô"], ["Neto", "Avó", "Avô"], ["Tia", "Sobrinha", "Sobrinho"], ["Tio", "Sobrinha", "Sobrinho"], ["Sobrinha", "Tia", "Tio"], ["Sobrinho", "Tia", "Tio"], ["Prima", "Prima", "Primo"], ["Primo", "Prima", "Primo"], ["Cônjuge", "Cônjuge"], ["Responsável legal", "Dependente"]];
+const FAM_RESP = ["Mãe", "Pai", "Avó", "Avô", "Tia", "Tio", "Irmã", "Irmão", "Responsável legal"];
+const FAM = [{ a: "helena-p", b: "lucas-p", la: "Mãe", lb: "Filho" }, { a: "diego", b: "helena-p", la: "Irmão", lb: "Irmã" }];
+const RESP = { "lucas-p": "helena-p" };
+const famOf = (id) => FAM.map((r, i) => (r.a === id ? { o: r.b, role: r.lb, i } : r.b === id ? { o: r.a, role: r.la, i } : null)).filter(Boolean);
+const famRole = (id, other) => (famOf(id).find((x) => x.o === other) || { role: "família" }).role.toLowerCase();
+/* O grupo é tudo que se liga, mesmo sem ligação direta: a irmã da filha também aparece. */
+function famGroup(id) {
+  const seen = new Set([id]), q = [id];
+  while (q.length) for (const x of famOf(q.shift())) if (!seen.has(x.o)) { seen.add(x.o); q.push(x.o); }
+  return [...seen];
+}
+function famCard(p) {
+  if (!p.n) return "";
+  const L = famOf(p.id), g = famGroup(p.id).filter((x) => x !== p.id && !L.some((y) => y.o === x)), via = RESP[p.id] && pById(RESP[p.id]);
+  const who = (id) => { const o = pById(id); return o ? `${pav(o)}<span class="grow"><button class="linkbtn" type="button" data-goto-p="${escH(o.id)}">${escH(o.n)}</button>` : ""; };
+  const list = L.length ? `<ul class="fam-list">${L.map((x) => `<li>${who(x.o)}<span class="hint">${escH(x.role)}${PEOPLE.filter((y) => y.n && fold(y.n) === fold(pById(x.o)?.n || "")).length > 1 ? ` · ${nascTxt(pById(x.o))}` : ""}${RESP[p.id] === x.o ? " · recebe as mensagens" : ""}</span></span><button class="iconbtn" type="button" data-fam-del="${x.i}" aria-label="Tirar a ligação com ${escH(pById(x.o)?.n || "")}">${ic("x", "ic-sm")}</button></li>`).join("")}</ul>` : `<p class="p-empty">Nenhum parente ligado. Ligue pais e filhos, irmãos, avós e tios para a Zuri saber que são da mesma família.</p>`;
+  const more = g.length ? `<p class="hint">Também no grupo familiar: ${g.map((x) => escH(pById(x)?.n || "")).join(", ")}.</p>` : "";
+  const resp = via ? `<p class="fam-resp">${ic("send-horizontal", "ic-sm")}<span>As mensagens do consultório para ${escH(p.n.split(" ")[0])} vão para ${escH(via.n)}.</span></p>` : "";
+  return `<section class="card p-sec" aria-labelledby="h-fam"><div class="p-sec-h"><h3 id="h-fam">Família</h3><button class="btn btn-quiet btn-sm" type="button" data-fam-add="${escH(p.id)}">${ic("plus", "ic-sm")}Ligar parente</button></div>${list}${more}${resp}</section>`;
+}
+function famDlg(p, opener) {
+  const first = escH(p.n.split(" ")[0]);
+  const linked = new Set([p.id, ...famOf(p.id).map((x) => x.o)]);
+  const cand = PEOPLE.filter((x) => x.n && !linked.has(x.id) && (x.phones?.length || x.emails?.length)).sort((a, b) => a.n.localeCompare(b.n, "pt-BR"));
+  const inv = (la) => (FAM_REL.find((r) => r[0] === la) || FAM_REL[0]).slice(1);
+  dlgShow({ t: `Ligar um parente de ${first}`, sub: "A ligação fica só na Zuri. O Google Contatos não muda. Nomes iguais são pessoas diferentes: escolha pelo telefone e pela data de nascimento.",
+    body: `<label class="field"><span class="label">Parente</span><select class="input" data-fam-o>${cand.map((x) => `<option value="${escH(x.id)}">${escH(x.n)} · ${escH(cellOf(x) || mailOf(x))} · ${nascTxt(x)}</option>`).join("")}</select></label>
+      <div class="grid-2"><label class="field"><span class="label">Essa pessoa é</span><select class="input" data-fam-la>${FAM_REL.map((r) => `<option>${r[0]}</option>`).join("")}</select></label>
+      <label class="field"><span class="label">E ${first} é</span><select class="input" data-fam-lb>${inv(FAM_REL[0][0]).map((x) => `<option>${x}</option>`).join("")}</select></label></div>
+      <label class="fam-chk"><input type="checkbox" data-fam-resp><span>As mensagens do consultório para ${first} vão para essa pessoa (criança ou quem não usa o celular)</span></label>
+      <p class="hint err" data-fam-err role="status"></p>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Ligar</button>`,
+    ok: () => {
+      const o = cand.find((x) => x.id === dlgRawIn("[data-fam-o]")), la = pick(dlgRawIn("[data-fam-la]"), FAM_REL.map((r) => r[0])), lb = pick(dlgRawIn("[data-fam-lb]"), inv(la));
+      if (!o) { document.querySelector("[data-fam-err]").textContent = "Escolha o parente na lista."; return false; }
+      FAM.push({ a: o.id, b: p.id, la, lb });
+      if (document.querySelector("#dlg-host [data-fam-resp]")?.checked && FAM_RESP.includes(la)) RESP[p.id] = o.id;
+      render(); refocus("[data-fam-add]"); say(`${o.n} ligada como ${la.toLowerCase()} de ${p.n}.${RESP[p.id] === o.id ? " As mensagens do consultório vão para ela." : ""}`);
+    } }, opener);
+}
+document.addEventListener("change", (ev) => {
+  const t = ev.target;
+  if (!t.matches || !t.matches("#dlg-host [data-fam-la]")) return;
+  const r = FAM_REL.find((x) => x[0] === t.value) || FAM_REL[0], lb = document.querySelector("#dlg-host [data-fam-lb]"), resp = document.querySelector("#dlg-host [data-fam-resp]");
+  lb.replaceChildren(...r.slice(1).map((x) => { const o = document.createElement("option"); o.textContent = x; return o; }));
+  if (resp) { resp.disabled = !FAM_RESP.includes(r[0]); if (resp.disabled) resp.checked = false; }
+});
+ACT.unshift(
+  [(t) => t.matches("[data-fam-add]"), (t) => { const p = pById(t.dataset.famAdd); if (p) famDlg(p, t); }],
+  [(t) => t.matches("[data-fam-del]"), (t) => { const i = Number(t.dataset.famDel), r = FAM[i]; if (!r) return; FAM.splice(i, 1); for (const k of [r.a, r.b]) if (RESP[k] && !famOf(k).some((x) => x.o === RESP[k])) delete RESP[k]; render(); refocus("[data-fam-add]"); say("Ligação tirada. Os dois contatos continuam como estavam."); }]
+);
+
+/* Extrato em planilha: CSV com ";" e vírgula decimal, que o Excel e o Google Planilhas abrem direto em português.
+   Célula que começa com = + - @ ganha um apóstrofo: texto vindo de planilha importada nunca vira fórmula. */
+function cxExport() {
+  const x = cxExtrato.last;
+  if (!x || !x.rows.length) { say("Nada lançado neste mês para exportar."); return; }
+  const cell = (v) => { let s = String(v); if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const brl = (c) => (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const L = [["Data", "Descrição", "Origem", "Entrada", "Saída", "Situação"]].concat([...x.rows].sort((a, b) => (a.day < b.day ? -1 : 1)).map((r) => [brDate(r.day), r.t, r.m, r.c > 0 ? brl(r.c) : "", r.c < 0 ? brl(-r.c) : "", r.prev ? "Previsto" : "Lançado"]));
+  baixar(`extrato-${x.ym}.csv`, "text/csv;charset=utf-8", `﻿${L.map((r) => r.map(cell).join(";")).join("\r\n")}`, `Extrato de ${brDate(`${x.ym}-01`).slice(3)} baixado em planilha.`);
+}
+ACT.unshift([(t) => t.matches("[data-cx-exp]"), () => cxExport()]);
+
+/* IPCA (IBGE), lido pelo servidor uma vez por mês da série 433 do Banco Central (endereço fixo, sem chave).
+   Valores de exemplo. O mês corrente ainda não tem IPCA: entra o último conhecido, marcado como prévia. */
+const CX_IPCA = [0.44, 0.38, 0.29, 0.16, 0.22];
+/* Fator para trazer o valor do mês i para o dinheiro de hoje: a inflação dos meses seguintes, acumulada. */
+const ipcaF = (i) => CX_IPCA.slice(i + 1).reduce((f, v) => f * (1 + v / 100), 1);
+const pct1 = (v) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+function cxRealCard() {
+  const acc = (ipcaF(-1) - 1) * 100, f = 0, l = CX_IPCA.length - 1;
+  const [i0, o0] = CX_RES[f], [i1, o1] = CX_RES[l];
+  const nom = (i1 / i0 - 1) * 100, real = ((i1 * ipcaF(l)) / (i0 * ipcaF(f)) - 1) * 100;
+  const liq = i1 - o1, liq0 = i0 - o0, liqR = ((liq * ipcaF(l)) / (liq0 * ipcaF(f)) - 1) * 100;
+  return `<section class="card p-sec" aria-labelledby="cx-h-real"><div class="p-sec-h"><h2 id="cx-h-real">Desempenho real</h2><span class="hint">descontada a inflação (IPCA)</span></div>
+    <ul class="kpis kpis-3 cx-real">${cxKpi("Inflação no período", pct1(acc), `IPCA de ${CX_MESES[f]} a ${CX_MESES[l]}`, "activity")}${cxKpi("Receita", pct1(real), `real · ${pct1(nom)} sem descontar a inflação`, real >= 0 ? "trending-up" : "trending-down", real >= 0 ? "" : "bad")}${cxKpi("Resultado líquido", pct1(liqR), `real · ${cxBrl0(liq)} em ${CX_MESES[l]}, margem de ${Math.round((liq / i1) * 100)}%`, "scale", liqR >= 0 ? "" : "bad")}</ul>
+    <p class="hint">${CX_MESES[f]} comparado com ${CX_MESES[l]}, os dois em reais de hoje. Resultado líquido é o que entrou menos as despesas. O IPCA vem do IBGE pelo Banco Central, todo mês; o último é de ${CX_MESES[l]} (${CX_IPCA[l].toLocaleString("pt-BR")}%).</p></section>`;
+}
+/* Projeções: os meses fechados em reais de hoje, a tendência deles, o que já está marcado na agenda e os dois botões de "e se". */
+st.pjR = 0; st.pjA = 0;
+function cxProjecoes() {
+  const full = CX_RES.slice(0, CX_IPCA.length), rin = full.map(([a], i) => a * ipcaF(i)), n = rin.length;
+  const mx = (n - 1) / 2, my = rin.reduce((s, v) => s + v, 0) / n, slope = rin.reduce((s, v, i) => s + (i - mx) * (v - my), 0) / rin.reduce((s, _, i) => s + (i - mx) ** 2, 0);
+  const base = rin.slice(-3).reduce((s, v) => s + v, 0) / 3, infl = 0.0035, ticket = 26000, fixas = DESP.filter((d) => d.rep === "mes").reduce((s, d) => s + d.c, 0);
+  const nxt = new Date(AG_NOW.getFullYear(), AG_NOW.getMonth() + 1, 1), ymN = ymOf(nxt);
+  const booked = EV.filter((e) => e.tipo && e.s !== "cancelado" && e.day.startsWith(ymN) && servOf(e)), bookedC = booked.reduce((s, e) => s + servOf(e).c, 0);
+  const rows = [1, 2, 3].map((h) => {
+    const d = new Date(AG_NOW.getFullYear(), AG_NOW.getMonth() + h, 1);
+    const rec = Math.max(0, (base + slope * h) * (1 + st.pjR / 100) + st.pjA * 4.3 * ticket) * (1 + infl) ** h, desp = (fixas + 90000) * (1 + infl) ** h;
+    return { m: AG_MESES[d.getMonth()], rec, lo: rec * 0.9, hi: rec * 1.1, desp, res: rec - desp };
+  });
+  const seg = (lbl, key, L, v) => `<div class="pj-ctl"><p class="t" id="pj-${key}">${lbl}</p><div class="seg" role="group" aria-labelledby="pj-${key}">${L.map(([k, l]) => `<button type="button" data-pj="${key}:${k}" aria-pressed="${v === k}">${l}</button>`).join("")}</div></div>`;
+  return `${cxLive("Atualiza sozinha a cada pagamento, despesa ou agendamento novo. O IPCA esperado vem do boletim Focus do Banco Central.")}
+    <section class="card p-sec" aria-labelledby="cx-h-pj"><div class="p-sec-h"><h2 id="cx-h-pj">E se…</h2></div><div class="pj-ctls">
+      ${seg("Reajuste dos serviços", "r", [[0, "Sem reajuste"], [5, "+5%"], [10, "+10%"]], st.pjR)}${seg("Atendimentos por semana", "a", [[-2, "−2"], [0, "Como hoje"], [2, "+2"], [4, "+4"]], st.pjA)}</div></section>
+    <ul class="kpis" aria-label="Próximos três meses">${rows.map((r, i) => cxKpi(r.m.replace(/^./, (c) => c.toUpperCase()), cxBrl0(r.res), `resultado previsto · receita de ${cxBrl0(r.lo)} a ${cxBrl0(r.hi)}`, i ? "calendar-days" : "calendar-check", r.res >= 0 ? "" : "bad")).join("")}${cxKpi("Já marcado", cxBrl0(bookedC), `${booked.length} ${booked.length === 1 ? "atendimento" : "atendimentos"} com valor em ${AG_MESES[nxt.getMonth()]}`, "calendar-plus")}</ul>
+    <section class="card p-sec" aria-labelledby="cx-h-pjt"><div class="p-sec-h"><h2 id="cx-h-pjt">Mês a mês</h2></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Mês</th><th scope="col">Receita prevista</th><th scope="col">Despesas previstas</th><th scope="col">Resultado</th></tr></thead><tbody>${rows.map((r) => `<tr><th scope="row">${r.m}</th><td class="num">${cxBrl0(r.rec)}</td><td class="num">${cxBrl0(r.desp)}</td><td class="num">${cxBrl0(r.res)}</td></tr>`).join("")}</tbody></table></div>
+      <details class="as-table"><summary>Como a Zuri calcula</summary><p class="hint">Média dos três últimos meses fechados, em reais de hoje, mais a tendência dos últimos ${n} meses. Por cima entram o reajuste e os atendimentos a mais ou a menos que você escolher (ticket médio de ${cxBrl0(ticket)}). Despesas: as fixas do mês e a média das variáveis, corrigidas pelo IPCA esperado (${(infl * 100).toLocaleString("pt-BR")}% ao mês). A faixa da receita vai de 10% abaixo a 10% acima. É uma estimativa: quanto mais meses no Financeiro, melhor ela fica.</p></details></section>`;
+}
+ACT.unshift(
+  [(t) => t.matches("[data-cx-real]"), (t) => { st.cxReal = t.dataset.cxReal === "1"; render(); refocus(`[data-cx-real="${st.cxReal ? 1 : 0}"]`); }],
+  [(t) => t.matches("[data-pj]"), (t) => { const [k, v] = t.dataset.pj.split(":"); const n = Number(v); if (k === "r" && [0, 5, 10].includes(n)) st.pjR = n; else if (k === "a" && [-2, 0, 2, 4].includes(n)) st.pjA = n; else return; render(); refocus(`[data-pj="${k}:${n}"]`); }]
+);
+const syncPaint = () => { const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); };
 /* Primeiro desenho só depois de todos os blocos acima existirem. */
 render();
 </script>

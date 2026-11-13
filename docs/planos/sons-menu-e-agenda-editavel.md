@@ -394,6 +394,101 @@ O Pablo viu a entrega 3 e pediu cinco ajustes, com um print do formulário do ou
 
 **Perguntas ao Pablo** (seção 14).
 
+### Ajustes de 13/11/2026 (00:15 UTC)
+
+O Pablo pediu onze ajustes. Todos entraram no protótipo, no bloco "13/11/2026" no fim do script e nas funções que já existiam.
+
+**1. Um lugar só para dias, horário e almoço.** Havia duas coisas parecidas: "Dias de trabalho" e "Horário de trabalho" em Configurações › Agenda, e "Horário de atendimento" em Configurações › Consultório. Agora existe um bloco só, "Agenda e horário de atendimento", em Configurações › Agenda. Ele tem os dias de atendimento, o começo, o fim e o almoço (de 30 em 30 min, no máximo 3 h, com pelo menos 30 min de atendimento antes e depois). A Agenda, o Seu dia, o novo agendamento, "Agendar" pela ficha do contato e a remarcação pelo link leem daqui. Configurações › Consultório só mostra o resumo ("Segunda a sexta, das 08:00 às 18:00, almoço das 12:00 às 13:00") com o botão "Mudar", que leva ao bloco. "Mostrar sábado e domingo" virou "Mostrar os dias sem atendimento", porque é só visual.
+- Na Agenda, o almoço aparece como faixa listrada em cada dia de atendimento, e os dias sem atendimento ficam com o fundo de fora do expediente (antes era só sábado e domingo).
+- **Consulta não entra fora do horário nem no almoço.** Vale para o formulário (a mensagem diz o motivo e o foco vai para a hora) e para arrastar ou esticar (a consulta volta para onde estava e o aviso explica). Compromissos sem tipo, como reuniões, podem ficar em qualquer hora. Editar uma consulta antiga sem mudar dia nem hora não é bloqueado.
+- No sistema: um registro `clinic_hours` em `zur_settings` (dias, início, fim, almoço), validado por Zod no servidor com as mesmas regras. Sem migration.
+- **Regra nova contra duplicidade:** `.claude/rules/uma-fonte-por-ajuste.md`. Cada ajuste tem um lugar só para editar; as outras telas mostram o valor e levam até ele.
+
+**2. Remarcar pelo link, revisado.**
+- Até **8 dias** (antes 15).
+- O paciente não vê nenhuma regra interna. Saíram: "nos próximos 15 dias", "os marcados têm horários colados a outras consultas", o número de horários livres no dia e no turno, "Melhor opção" e "Ver os N horários". Na página ficam só os dias, o turno e os horários. O aviso de cancelar diz só "você pode remarcar agora".
+- Passo 2 (manhã ou tarde): turno sem vaga fica desativado com "sem horário". Manhã vai do início ao almoço; tarde, do fim do almoço ao fim.
+- Passo 3: só as horas do turno, sem "Tanto faz".
+- Passo 4 (regra interna, em Configurações › Consultório): turno com consulta mostra os horários livres colados antes ou depois de uma consulta, até 3, os mais perto da hora escolhida primeiro. Turno com consulta, mas sem horário colado livre: os 2 mais perto de uma consulta. Turno sem consulta: 2 horários sorteados. No sistema o sorteio usa `crypto.getRandomValues` e fica guardado por link, dia e turno, para recarregar a página não trocar as opções.
+- Tudo respeita a agenda e o horário de atendimento: só dia de atendimento, sem feriado, sem almoço, sem conflito, e o servidor confere de novo na hora de gravar.
+
+**3. Tipo e local separados.** O formulário ganhou o campo "Local" (Presencial ou Online). "Tipo do evento" passa a ser só o nome: Consulta, Retorno, Avaliação física, os que já existem na agenda e "Outro" para digitar.
+- Presencial: o endereço vem de Configurações › Consultório e vai no campo Local do evento no Google.
+- Online: ao salvar, a Zuri pede ao Google uma chamada do Meet (`conferenceData.createRequest` com `conferenceSolutionKey.type = "hangoutsMeet"` e `conferenceDataVersion=1`). **É viável sem permissão nova**: o escopo `calendar.events` já cobre. O link volta em `hangoutLink` e aparece nos detalhes do agendamento ("Google Meet · meet.google.com/…", com Copiar), na variável `{local}` da mensagem de confirmação e no e-mail. Se o Google ainda estiver criando (`status: pending`), os detalhes mostram "O Google está criando o link da chamada…" e a Zuri lê de novo. Contas do Google Workspace com o Meet desligado pelo administrador não recebem o link; a tela avisa e o agendamento continua salvo.
+- Observação no Google: a Zuri escreve sempre a primeira linha "Tipo | Local" (por exemplo "Consulta | Online"), como hoje; o que o Pablo escrever vai na linha de baixo. O formulário mostra isso embaixo do campo. Os detalhes mostram "Observação no Google" com as duas partes. Assim as automações, a ficha do contato e os Serviços e valores continuam lendo o mesmo texto.
+
+**4. Homônimos no agendamento.**
+- Nome igual ao de dois ou mais contatos: não dá para agendar sem escolher o contato certo na lista (telefone, data de nascimento e última consulta) ou tocar em "É outra pessoa".
+- "É outra pessoa" deixa o celular obrigatório, porque é ele que separa as duas pessoas nas automações.
+- Os detalhes mostram a etiqueta "Homônimo" ao lado do contato vinculado, ou "Pessoa nova, com o mesmo nome de N contatos".
+- As automações (confirmação, aniversário, avaliação, Financeiro) nunca usam o nome: usam o contato vinculado, guardado em `extendedProperties.private` do evento. Sem vínculo, usam o celular.
+- Corrigido junto: o aviso dizia "há mais de um contato com esse nome" mesmo quando havia só um.
+
+**5. Botão de sincronização com o Google, revisado.** Achados e correções no protótipo, que valem para o código:
+
+| Situação | Antes | Agora |
+| --- | --- | --- |
+| Salvo no Google | Ficava para sempre | Fica 4 s e volta para "Sincronizado", com a hora da conferência |
+| Sincronizado | Hora fixa ("14:10") | Hora da última conferência de verdade |
+| Falha ao salvar | "Tentar de novo", mas o evento já tinha voltado ao que era: repetir daria o mesmo erro | Recusa do Google (permissão, dado inválido) volta o evento e oferece "Ver o evento". Erro de rede ou do Google (5xx) não é falha: vira fila |
+| Sem internet | "1 mudança" fixo; mudanças novas viravam "Salvando…" | Conta as mudanças na fila; as novas entram na fila e saem na ordem quando a conexão volta, ou em "Tentar agora" |
+| Em pausa (429) | Mudanças novas ignoravam a pausa | Esperam na fila; a Zuri tenta sozinha |
+| Conexão expirou | Ainda deixava mudar na tela | Nada muda na tela até conectar de novo |
+| Atualizar agora | Só em "Desatualizada" | Também em "Sincronizado", com intervalo mínimo de 10 s |
+
+- Prioridade quando duas situações valem ao mesmo tempo: Conexão expirou > Falha ao salvar > Sem internet > Mudou no Google > Em pausa > Salvando > Atualizando > Desatualizada > Salvo no Google > Sincronizado.
+- No código, para não ter erro em produção:
+  - fila guardada no navegador (IndexedDB), uma mudança por vez com `etag`;
+  - nova tentativa com espera crescente (2, 4, 8 s… até 1 min);
+  - 412 vira "Mudou no Google";
+  - aviso ao fechar a aba com mudança na fila;
+  - "Desatualizada" depois de 15 min sem notícia do canal `events.watch`, e então a Zuri lê sozinha;
+  - ao voltar para a aba, lê de novo;
+  - o mesmo sinal na Agenda e no Seu dia.
+
+**6. Confirmação também por e-mail.**
+- Configurações › Consultório ganhou "Também por e-mail, na mesma hora", ligado.
+- Na véspera útil, quem tem e-mail no contato ou no agendamento recebe o mesmo texto e o mesmo link por e-mail, junto com o WhatsApp. O assunto é "Confirme sua consulta de {dia}" e o link vira um botão.
+- O que o paciente fizer primeiro vale. Nenhum canal manda de novo, porque o link é um só.
+- Nos detalhes há também "Enviar por e-mail".
+- **Canal:** o `SEND_EMAIL` da Cloudflare só envia ao e-mail verificado do dono, então não serve para pacientes. A recomendação é a caixa de e-mail do próprio Chatwoot, que já é a integração das mensagens a pacientes: o mesmo registro de envio, sem serviço novo e sem custo. A alternativa é a API do Gmail com `gmail.send`, que pede uma permissão nova do Google (seção 14).
+
+**7. Aniversários sem aviso.** Saíram "Aniversários do dia" (Integrações › Contatos) e "Aniversários de clientes, às 9h" (Avisos › CRM). O módulo "Parabéns de aniversário" diz que envia pelo WhatsApp e por e-mail.
+
+**8. Extrato em planilha.**
+- Financeiro › Extrato ganhou "Exportar planilha", que baixa o mês aberto.
+- No protótipo é CSV com ";" e vírgula decimal, que o Excel e o Google Planilhas abrem direto em português. No código, sai .xlsx com a mesma biblioteca da importação.
+- Toda célula que começa com `=`, `+`, `-` ou `@` ganha um apóstrofo, para texto vindo de planilha importada nunca virar fórmula (CSV injection).
+
+**9. IPCA e projeções em Resultados.**
+- **Nominal | Real (IPCA):** o gráfico de entradas e saídas passa para reais de hoje.
+- **Desempenho real:** a inflação do período, a receita real e o resultado líquido real (o que entrou menos as despesas) do primeiro ao último mês fechado, com a margem.
+- **Aba Projeções:**
+  - os próximos 3 meses com resultado previsto e uma faixa de receita (±10%);
+  - "Já marcado", o que a agenda do mês que vem já garante;
+  - dois botões de "E se…": reajuste dos serviços (0, 5 ou 10%) e atendimentos por semana (−2 a +4);
+  - "Como a Zuri calcula": média dos 3 últimos meses fechados em reais de hoje, mais a tendência, com as despesas corrigidas pelo IPCA esperado.
+- **Fonte:**
+  - IPCA: série 433 do Banco Central (`api.bcb.gov.br`, pública, sem chave);
+  - IPCA esperado: boletim Focus (`olinda.bcb.gov.br`);
+  - o servidor lê uma vez por mês, depois do dia 10, num endereço fixo (não é HTTP livre do agente), e guarda.
+- Uma subrequisição por mês, sem custo. O mês corrente usa o último IPCA conhecido, marcado como prévia.
+
+**10. Família nos Contatos.**
+- A ficha do contato ganhou o cartão "Família" com "Ligar parente". A pessoa escolhe:
+  - o parente, pelo nome, telefone e data de nascimento, porque homônimos são pessoas diferentes;
+  - o papel dele, que pode ser mãe, pai, filha, filho, irmã, irmão, avó, avô, neta, neto, tia, tio, sobrinha, sobrinho, prima, primo, cônjuge, responsável legal ou dependente;
+  - o papel do outro lado, com as opções certas para o papel escolhido.
+- O grupo familiar junta quem se liga mesmo sem ligação direta ("Também no grupo familiar: …").
+- **Responsável:** com pai, mãe, avó, avô, tia, tio, irmã, irmão ou responsável legal, dá para marcar "As mensagens do consultório para Lucas vão para Helena". A confirmação, o e-mail e o WhatsApp usam então o celular e o e-mail do responsável, e os detalhes do agendamento dizem isso. É o caso de criança ou de quem não usa celular.
+- No sistema:
+  - as ligações ficam só na Zuri, na tabela nova `zur_contact_family` (contato A, contato B, papel de cada lado, quem recebe as mensagens), pela `resourceName` do Google;
+  - migration de acréscimo, a próxima livre na develop;
+  - o Google Contatos fica só de leitura e não muda;
+  - entra no backup, porque é dado do Pablo e não cópia do Google.
+
+**Perguntas ao Pablo** (seção 14): o canal do e-mail.
+
 ## 12. Riscos
 
 - **Som bloqueado pelo navegador** antes do primeiro clique: o aviso chega sem som. Mitigação: o cartão explica e o "Testar" destrava.
@@ -424,5 +519,6 @@ Sobre os ajustes de 12/11 à tarde, com a recomendação entre parênteses:
 1. **O protótipo está aprovado?** Formulário, vínculo com o paciente e sinais da sincronização. (Sim, para começar a PR 3b.) Em 12/11, 17:32 UTC, o Pablo pediu para ver antes a segunda rodada de ajustes.
 2. ~~Até quando o paciente cancela pelo link?~~ Respondida em 12/11, 21:37 UTC: até 12 horas antes e só até o dia anterior.
 3. ~~Quem envia o link?~~ Respondida em 12/11, 21:37 UTC: as duas formas, sozinha pelo Chatwoot e pelo botão do WhatsApp com a mensagem modelo.
+4. **Por onde sai o e-mail de confirmação?** Caixa de e-mail do Chatwoot (recomendado: mesma integração, sem permissão nova) ou API do Gmail (`gmail.send`, permissão nova do Google).
 
 Respondidas em 12/11/2026, 17:32 UTC: o Financeiro fica com "Não pago", "Pago" e "Gratuito", guardado no evento; o atendimento online grava "Consulta | Online", e o tipo vira uma lista com "Retorno | Consultório" e a opção de digitar.
