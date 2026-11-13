@@ -199,6 +199,8 @@ test("CA7: the lower edge changes the length a quarter of an hour at a time and 
   const low = { x: short.x, y: short.box.y + short.box.height - 2 };
   await drag(page, low, { x: low.x, y: low.y - 6 * HOUR_PX });
   await expect(helena).toContainText("09:00 – 09:15");
+  // The notice of this change arms the undo: Ctrl + Z before Google answers would have nothing to undo yet.
+  await expect(notice(page, "“Helena Duarte Prado” agora vai até 09:15.")).toBeVisible();
   expect(sent.patches[1]).toMatchObject({ etag: '"v2-0"', start: "2026-11-16T09:00", end: "2026-11-16T09:15" });
 
   // Ctrl + Z, while the notice offers "Desfazer", is the same as the button.
