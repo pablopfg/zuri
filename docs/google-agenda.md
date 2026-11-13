@@ -178,8 +178,10 @@ compromissos sem tipo ficam livres a qualquer hora.
 - Clicar na última meia hora antes do almoço ou do fim do dia abre o
   formulário com 30 minutos.
 - A Zuri confere tudo de novo no servidor antes de chamar o Google, então outra
-  aba aberta ou outro aparelho também não marca consulta no almoço. As
-  ferramentas da conversa e os fluxos ainda não aplicam essas regras (issue #328).
+  aba aberta ou outro aparelho também não marca consulta no almoço. A conversa
+  e os fluxos seguem as mesmas regras: a Zuri não marca nem move consulta fora
+  delas e diz o motivo, e propor mudança num evento que outras pessoas veem
+  também passa por elas. Reunião sem tipo fica livre, como na tela.
 
 #### Configurações › Agenda
 

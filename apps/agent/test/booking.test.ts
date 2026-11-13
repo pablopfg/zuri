@@ -111,6 +111,19 @@ describe("checkBooking", () => {
     expect(await refusal(checkBooking({ ...base, google: fakeGoogle({ events: [{ ...there, colorId: "11" }] }).google, after: shape("2026-11-17T13:30:00Z", "2026-11-17T14:30:00Z") }))).toBeNull();
   });
 
+  it("a new event with an id of its own (a flow's key) never clashes with itself; eleven open calendars refuse unread (issue #328)", async () => {
+    const base = { hours: DEFAULT_AGENDA_PREFS, timeZone: SP, meter: meter(), now };
+    const mine = other("2026-11-17T13:00:00Z", "2026-11-17T14:00:00Z", { id: "chave", calendarId: "trabalho@exemplo.com.br" });
+    const after = shape("2026-11-17T13:00:00Z", "2026-11-17T14:00:00Z");
+    expect(await refusal(checkBooking({ ...base, google: fakeGoogle({ events: [mine] }).google, after }))).toMatchObject({ problem: "clash" });
+    expect(await refusal(checkBooking({ ...base, self: { id: "chave", calendarId: "trabalho@exemplo.com.br" }, google: fakeGoogle({ events: [mine] }).google, after }))).toBeNull();
+    // A listing reads ten calendars: with an eleventh, the day can't be read whole, so nothing is written.
+    const many = fakeGoogle();
+    (many.google as unknown as { readable: () => { id: string }[] }).readable = () => Array.from({ length: 11 }, (_, i) => ({ id: `agenda${i}@exemplo.com.br` }));
+    expect(await refusal(checkBooking({ ...base, google: many.google, after }))).toEqual({ code: "SERVICE_UNAVAILABLE" });
+    expect(many.calls).toHaveLength(0);
+  });
+
   it("fixes the day and the hours of an appointment once it began, and still lets the rest change (Pablo, 13/11/2026)", async () => {
     // Today 10:00 to 11:00; at 10:40 the end can't go to 11:30.
     const late = new Date("2026-11-16T13:40:00Z");

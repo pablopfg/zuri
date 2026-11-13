@@ -47,7 +47,7 @@ formulário completo (E5b) e os sinais de sincronização (E5c) vêm depois.
 
 **Fica fora (e onde vai parar):**
 
-- Ferramentas da conversa e fluxos (`create_calendar_event`, `update_calendar_event`, passo `calendar_create`) → issue #328; o agente ainda marca em qualquer hora.
+- Ferramentas da conversa e fluxos (`create_calendar_event`, `update_calendar_event`, passo `calendar_create`) → issue #328, resolvida depois: as três e a proposta `change_shared_calendar_event` passam pela mesma `checkBooking`; o fluxo confere as regras fixas de todos os itens antes do primeiro evento e para com o problema `agenda_rule`.
 - Duas gravações ao mesmo tempo no mesmo horário (duas abas) ainda passam as duas. Com um dono só é raro; antes do link do paciente (E7) a reserva fica serializada no objeto do agente.
 - Formulário com máscara de 24 h, Meet, contato, homônimos e financeiro → E5b.
 - Botão e painel de sincronização → E5c.
