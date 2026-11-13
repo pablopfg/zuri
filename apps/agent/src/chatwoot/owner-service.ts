@@ -129,15 +129,8 @@ const randomHex = (bytes: number) => [...crypto.getRandomValues(new Uint8Array(b
 
 /** A code of 8 characters without 0/O/1/I, drawn without bias. */
 export function linkCode(): string {
-  const alphabet = L.codeAlphabet;
-  let out = "";
-  while (out.length < L.codeLength) {
-    for (const byte of crypto.getRandomValues(new Uint8Array(16))) {
-      // 256 is 8 times 32: every character is equally likely.
-      if (out.length < L.codeLength) out += alphabet[byte % alphabet.length];
-    }
-  }
-  return out;
+  // 32 characters: the low 5 bits of a byte pick one, each equally likely (as the Telegram code).
+  return [...crypto.getRandomValues(new Uint8Array(L.codeLength))].map((byte) => L.codeAlphabet[byte & 31]).join("");
 }
 
 /** What someone typed, as a code: letters and digits only, upper case. Null when it can't be one. */

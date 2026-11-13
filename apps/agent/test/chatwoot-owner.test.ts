@@ -31,6 +31,8 @@ const path = (request: Request) => new URL(request.url).pathname;
 
 describe("the link code and the signature", () => {
   it("draws 8 characters of the alphabet without 0, O, 1 or I, and reads what was typed as a code", () => {
+    // The draw takes the low 5 bits of a byte: the alphabet must stay exactly 32 characters.
+    expect(new Set(CHATWOOT_OWNER_LIMITS.codeAlphabet).size).toBe(32);
     const codes = new Set(Array.from({ length: 200 }, linkCode));
     expect(codes.size).toBeGreaterThan(195);
     for (const code of codes) expect(code).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
