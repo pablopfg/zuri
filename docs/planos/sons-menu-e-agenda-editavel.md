@@ -533,6 +533,35 @@ Pedido: evitar consulta em horário não permitido (almoço, feriado, fora do ho
 - Compromissos sem tipo (reunião, pessoal) continuam livres.
 - Sem exceção manual por enquanto: se o Pablo quiser atender fora do horário de vez em quando, entra um "Agendar mesmo assim" com confirmação.
 
+### Ajustes de 13/11/2026 (01:04 UTC): planilha, remarcar, avisos da agenda e link
+
+1. **Importar planilha (Financeiro).** Modelo para baixar com as colunas Data, Tipo, Descrição, Valor (obrigatórias), Categoria, Forma de pagamento, Paciente e Observação, e 3 linhas de exemplo que a importação reconhece e pula. No sistema, o modelo também sai em .xlsx com listas nas colunas Tipo e Forma e uma aba de instruções. Nada é gravado antes da conferência. O servidor confere tudo de novo e grava cada importação numa transação só. A importação inteira pode ser desfeita.
+
+| Situação | O que acontece |
+| --- | --- |
+| .xls antigo, outro formato, arquivo vazio, mais de 5 MB, planilha com senha | Recusa com o motivo |
+| Arquivo fora do UTF-8 (Excel do Windows) | Converte os acentos e avisa |
+| Título acima do cabeçalho; nomes de coluna diferentes (Histórico, Valor (R$), Forma) | Pula o título e reconhece os nomes |
+| Coluna obrigatória faltando ou repetida | Para e indica o modelo |
+| Colunas a mais | Ignora e lista |
+| Mais de 5.000 linhas; aspas sem fechar; linha com colunas a mais | Recusa o arquivo ou a linha |
+| Data inexistente, no formato mês/dia, no futuro ou antes de 2000 | Erro na linha; aceita dd/mm/aaaa, d/m/aa, aaaa-mm-dd e o número do Excel |
+| Valor em texto, zero, acima de R$ 1 milhão, entrada negativa | Erro na linha; aceita R$, ponto de milhar, vírgula ou ponto, parênteses |
+| Mais de 2 casas decimais | Arredonda e avisa |
+| Tipo diferente de Entrada ou Saída (aceita Receita, Despesa, E, S) | Erro na linha |
+| Categoria, serviço ou forma de pagamento que não existe | Entra em Outros (ou Não informada) e avisa |
+| Linha repetida na planilha, lançamento já no extrato, atendimento pago no mesmo dia e valor, mesmo arquivo de novo | Duplicada: fica de fora, a não ser que a pessoa marque "Importar mesmo assim" |
+| Texto que começa com =, +, - ou @ | Entra só como texto |
+| CPF no texto | Sai antes de gravar |
+| Nome do paciente | Só liga ao contato (um contato com esse nome); homônimo ou ausente fica sem vínculo; o nome não é guardado |
+| Linhas com problema | Saem numa planilha com a coluna Problema, no mesmo formato, para corrigir e importar de novo |
+
+2. **Configurações › Integrações › E-mail:** os campos ficam alinhados mesmo quando um deles tem dica embaixo (`.field` alinhado ao topo, vale para todos os formulários).
+3. **Remarcar pelo link:** só aparecem dias e turnos com horário livre. Os horários são de 1 em 1 hora, a partir do início do turno, e a consulta dura o tempo do serviço (1 h no padrão). Sem nenhum dia livre, a página oferece "Combinar pelo WhatsApp". Os passos entram com uma transição curta (sem animação para quem pede menos movimento) e tocam os sons do sistema: Sino ao confirmar ou remarcar, Gota ao cancelar, dois tons graves quando o horário acabou de ser ocupado.
+4. **WhatsApp com mensagem pronta:** "Olá! Sou {nome}, tenho consulta marcada para {dia} às {hora} e não achei um bom horário para remarcar pelo link. Vocês podem me ajudar?" (ou "tenho uma dúvida"). O link inválido abre sem nome. Botões do link com três pesos: Confirmar (principal), Preciso remarcar (contorno), Falar com a equipe (texto), e Cancelar a consulta em vermelho, numa linha só.
+5. **Agenda, horário fechado:** tocar num horário que não aceita consulta abre um aviso com o motivo (`agErro`), o próximo horário livre ("Usar o próximo livre") e "Criar compromisso pessoal". Ao arrastar, a consulta fica com borda vermelha e o motivo curto (Almoço, Feriado, Já passou, Ocupado…); soltar ali não muda nada, toca um som discreto e explica. Vale também para a borda de duração e para Alt + setas.
+6. **Sem a linha "Dia todo"** na agenda e sem o ajuste "Eventos de dia inteiro". O feriado aparece embaixo do dia, no cabeçalho, e o dia sem expediente também.
+
 ## 12. Riscos
 
 - **Som bloqueado pelo navegador** antes do primeiro clique: o aviso chega sem som. Mitigação: o cartão explica e o "Testar" destrava.

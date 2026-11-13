@@ -89,7 +89,7 @@ kbd{font:500 12px/1 var(--f-ui);padding:3px 6px;border-radius:5px;border:1px sol
 .iconbtn{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:var(--r-md);border:0;background:transparent;color:var(--muted);cursor:pointer;position:relative;flex:none}
 .iconbtn:hover{background:var(--hover);color:var(--ink)}
 .badge{position:absolute;top:5px;right:4px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:var(--accent);color:var(--on-accent);font:700 11px/17px var(--f-ui);text-align:center;font-variant-numeric:tabular-nums}
-.field{display:grid;gap:6px}
+.field{display:grid;gap:6px;align-content:start}
 .field>span:first-child,.label{font-size:var(--t-sm);font-weight:600;color:var(--ink)}
 .hint{font-size:var(--t-sm);color:var(--muted)}
 .input{width:100%;min-height:44px;padding:0 14px;border-radius:var(--r-md);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
@@ -2010,7 +2010,7 @@ details.adv>.form-grid,details.adv>.hint{padding:0 var(--s4) var(--s4)}
 .rv-cfg .set-sec>*+*{margin-top:var(--s4)}
 .rv-cfg .set-sec>h2+p{margin-top:var(--s1)}
 .rv-cfg .set-sec>.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--s4)}
-.rv-cfg .field{display:grid;gap:6px}
+.rv-cfg .field{display:grid;gap:6px;align-content:start}
 /* Settings sections on phones: a list that opens, so no section hides off-screen */
 .cfg-m{display:none}
 @media (max-width: 820px){
@@ -2721,6 +2721,18 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .rm-day .w{font-size:var(--t-xs);color:var(--muted);text-transform:capitalize}.rm-day .n{font-weight:600}.rm-day .c{font-size:var(--t-xs);color:var(--ink-2)}
 .rm-day:hover:not(:disabled){border-color:var(--line-strong);background:var(--hover)}
 .rm-day:disabled{cursor:not-allowed;background:var(--sunken);color:var(--muted)}.rm-day:disabled .c,.rm-day:disabled .n{color:var(--muted);font-weight:500}
+.rm-day[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-soft-ink)}.rm-day[aria-pressed="true"] .w{color:var(--accent-soft-ink)}
+.cf-team{color:var(--ink-2);min-height:44px}.cf-team:hover{color:var(--ink)}
+.rm-empty{display:grid;gap:8px;justify-items:start;padding:var(--s4);border-radius:var(--r-lg);background:var(--sunken)}.rm-empty p{margin:0;color:var(--ink-2)}
+@media (prefers-reduced-motion:no-preference){
+  .rm-anim{animation:rmIn .24s cubic-bezier(.2,.8,.2,1)}.rm-anim.back{animation-name:rmBack}
+  .cf-ok,.cf-state{animation:cfPop .3s cubic-bezier(.2,.8,.2,1)}
+  .rm-day,.rm-opt,.rm-slot,.cf-card .btn{transition:background-color .15s,border-color .15s,color .15s,transform .1s}
+  .rm-day:active:not(:disabled),.rm-opt:active:not(:disabled),.rm-slot:active,.cf-card .btn:active{transform:scale(.98)}
+}
+@keyframes rmIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+@keyframes rmBack{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+@keyframes cfPop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
 .rm-day.is-sug{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .rm-day .rm-sug{position:absolute;top:8px;right:8px;color:var(--accent-soft-ink)}
 .rm-opts{display:grid;gap:8px}
@@ -2997,6 +3009,29 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .pj-ctl{display:grid;gap:6px}.pj-ctl .t{font-size:var(--t-sm);font-weight:600}
 .cx-tabs-row{flex-wrap:wrap;gap:8px}
 .cx-btns{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.ag2 .dh .dh-hol{display:block;margin-top:2px;font-size:10px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--hol-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag2 .ev.ev-no{outline:2px dashed var(--danger,#c0362c);outline-offset:-2px;background:var(--danger-soft,#fde8e6);color:var(--danger-ink,#8f1d14);cursor:not-allowed}
+.ag2 .ev.ev-no b,.ag2 .ev.ev-no .num{color:var(--danger-ink,#8f1d14)}
+.imp-acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.cx-drop.on{outline:2px dashed var(--accent);outline-offset:-6px;background:var(--accent-soft)}
+.imp-h3{margin:var(--s5) 0 var(--s2);font-size:var(--t-md)}
+.imp-tw{overflow-x:auto}.imp-cols{width:100%;border-collapse:collapse;font-size:var(--t-sm)}.imp-cols th,.imp-cols td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}.imp-cols thead th{font-size:var(--t-xs);color:var(--muted);font-weight:600}
+.imp-chk{margin:8px 0 0;padding-left:18px;display:grid;gap:6px;font-size:var(--t-sm);color:var(--ink-2)}
+.imp-head{display:flex;gap:var(--s3);align-items:flex-start}.imp-head .grow{flex:1;min-width:0}.imp-head h2{margin:0;font-size:var(--t-lg);overflow-wrap:anywhere}.imp-head .hint{margin:4px 0 0}
+.imp-file,.imp-ms{list-style:none;margin:var(--s3) 0 0;padding:0;display:grid;gap:6px}
+.imp-m{display:flex;gap:8px;align-items:flex-start;font-size:var(--t-sm);color:var(--ink-2)}.imp-m .ic{flex:none;margin-top:2px}
+.imp-file .imp-m{padding:10px 12px;border-radius:var(--r-md);background:var(--sunken)}.imp-file .imp-m.err{background:var(--danger-soft,#fde8e6);color:var(--danger-ink,#8f1d14)}.imp-file .imp-m.warn{background:var(--warn-soft);color:var(--warn-ink)}
+.imp-m.err .ic{color:var(--danger-ink,#8f1d14)}.imp-m.warn .ic{color:var(--warn-ink)}.imp-m.dup .ic{color:var(--ink-2)}
+.imp-f{margin:var(--s4) 0 var(--s3);display:flex;flex-wrap:wrap}.imp-f button{white-space:nowrap}
+.imp-rows{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.imp-r{padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);border-left-width:3px}
+.imp-r.ok{border-left-color:var(--accent)}.imp-r.warn{border-left-color:var(--warn-line,#d9a400)}.imp-r.dup{border-left-color:var(--line-strong)}.imp-r.err{border-left-color:var(--danger,#c0362c)}.imp-r.skip{opacity:.7}
+.imp-r1{display:flex;justify-content:space-between;gap:8px;font-size:var(--t-xs);color:var(--muted)}.imp-st{display:inline-flex;gap:4px;align-items:center;font-weight:600}
+.imp-r.err .imp-st{color:var(--danger-ink,#8f1d14)}.imp-r.warn .imp-st{color:var(--warn-ink)}.imp-r.ok .imp-st{color:var(--accent-soft-ink)}
+.imp-r2{display:flex;gap:10px;align-items:baseline;margin-top:4px;flex-wrap:wrap}.imp-r2 .imp-d{flex:1 1 160px;min-width:0;overflow-wrap:anywhere}
+.imp-ms{margin-top:6px}
+.imp-inc{display:inline-flex;gap:8px;align-items:center;margin-top:8px;font-size:var(--t-sm);min-height:32px}
+.imp-foot{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:var(--s3);align-items:center;justify-content:space-between;margin-top:var(--s4);padding:var(--s3) 0 0;border-top:1px solid var(--line);background:var(--surface)}.imp-foot p{margin:0;font-size:var(--t-sm)}
 .hol-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}.hol-list li{display:flex;gap:10px;align-items:center;font-size:var(--t-sm)}.hol-list .num{min-width:44px;color:var(--ink-2)}.off-list{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.tag-x{border:0;background:none;padding:0 0 0 4px;color:inherit;cursor:pointer;display:inline-flex;vertical-align:middle}.hr-fora-l{margin:6px 0 0;padding-left:18px}.hr-fora p{margin:0}.ev .ev-fora{color:var(--warn,currentColor)}
 .cx-warn{display:flex;gap:8px;align-items:flex-start;margin:8px 0 0;padding:10px 12px;border-radius:var(--r-md);background:var(--warn-soft,var(--sunken));font-size:var(--t-sm)}
 .pix-card{display:grid;gap:6px;max-width:340px;margin:4px 0 8px;padding:12px 14px;border-radius:12px;background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line)}
@@ -3582,7 +3617,6 @@ function agenda() {
   };
   const week = `<div class="ld-bar wk-ld" aria-hidden="true"><i></i></div><div class="week" role="table" aria-label="Semana de ${days[0][1]} a ${days[6][1]}, das ${hh(de)} até ${hh(ate)}">
     <div role="row" style="display:contents"><div class="corner" role="columnheader"><span class="sr">Hora</span></div>${days.map(([d, nn], i) => `<div class="dh${i === AG_TI ? " today" : ""}" role="columnheader"${i === AG_TI ? ' aria-current="date"' : ""}>${d}<b>${i === AG_TI ? `<span>${nn}</span>` : nn}</b></div>`).join("")}</div>
-    ${st.agAD ? `<div class="allday" role="row"><span class="lbl" role="rowheader">Dia todo</span>${days.map((_, i) => `<div role="cell">${i === 5 ? '<div class="ev ad"><b>Mudança</b></div>' : ""}</div>`).join("")}</div>` : `<div class="allday allday-min" role="row"><span class="lbl" role="rowheader">Dia todo</span><div role="cell" class="out-min"><button class="linkbtn" type="button" data-ag-ad>1 evento de dia inteiro escondido · Mostrar</button></div></div>`}
     ${outRow("antes")}
     <div role="row" style="display:contents"><div class="hours" role="rowheader" aria-hidden="true" style="grid-template-rows:repeat(${n},${HR}px)">${hours}</div>${days.map((_, i) => col(i)).join("")}</div>
     ${outRow("depois")}
@@ -4078,7 +4112,6 @@ function cfgAgenda() {
       ${ctlRow("Ao abrir, mostrar", "No celular, a agenda abre sempre no dia.", segc("Ao abrir, mostrar", ["Dia", "Semana", "Mês"], 1))}
       ${ctlRow("A semana começa", "", segc("A semana começa", ["Domingo", "Segunda"], 1))}
       ${swRow("cfg-fds", "Mostrar os dias sem atendimento", "Escondidos, a semana mostra só os dias de atendimento.", true)}
-      ${ctlRow("Eventos de dia inteiro", "Feriados, aniversários e lembretes do dia todo. Escondidos, ficam numa linha que abre com um toque.", `<div class="seg" role="group" aria-label="Eventos de dia inteiro"><button type="button" data-ag-adset="1" aria-pressed="${st.agAD}">Mostrar</button><button type="button" data-ag-adset="0" aria-pressed="${!st.agAD}">Esconder</button></div>`)}
       ${ctlRow("Eventos fora do horário", "Escondidos, a Zuri mostra só quantos são, para nada sumir sem você saber.", `<div class="seg" role="group" aria-label="Eventos fora do horário"><button type="button" data-ag-outset="1" aria-pressed="${!st.agOut}">Mostrar</button><button type="button" data-ag-outset="0" aria-pressed="${st.agOut}">Esconder</button></div>`)}
       ${ctlRow("Lembrete dos eventos novos", "Vale para o que você ou a Zuri criar daqui para frente.", `<label class="sr" for="cfg-lb">Lembrete dos eventos novos</label><select id="cfg-lb" class="input input-sm"><option>Sem lembrete</option><option>5 min antes</option><option selected>15 min antes</option><option>1 hora antes</option><option>1 dia antes</option></select>`)}`, save())
   + sec("h-cals", "Agendas da conta", "O que a Zuri pode fazer em cada agenda do Google. É a mesma escolha de Integrações › Google.",
@@ -6507,8 +6540,7 @@ function agenda2() {
     }).join("")}${k === today ? `<div class="nowline" data-de="${de}" data-ate="${ate}" data-hr="${AG_HR}" style="top:${y(nowMin())}px"${nowMin() < de * 60 || nowMin() >= ate * 60 ? " hidden" : ""} aria-hidden="true"><span class="num">${hm(nowMin())}</span></div>` : ""}</div>`;
   };
   const week = `<div class="week ag2" role="table" aria-label="Semana de ${title}, das ${hh(de)} até ${hh(ate)}" data-de="${de}" data-ate="${ate}">
-    <div role="row" style="display:contents"><div class="corner" role="columnheader"><span class="sr">Hora</span></div>${days.map((d) => `<div class="dh${dkey(d) === today ? " today" : ""}${cls(d)}" role="columnheader"${dkey(d) === today ? ' aria-current="date"' : ""}>${WD[d.getDay()]}<b>${dkey(d) === today ? `<span>${d.getDate()}</span>` : d.getDate()}</b></div>`).join("")}</div>
-    <div class="allday" role="row"><span class="lbl" role="rowheader">Dia todo</span>${days.map((d) => `<div role="cell" class="ad-c${cls(d)}">${feriado(d) ? `<div class="ev ad hol-chip" title="Feriado nacional: ${feriado(d)}"><b><span class="sr">Feriado nacional: </span>${feriado(d)}</b></div>` : ""}</div>`).join("")}</div>
+    <div role="row" style="display:contents"><div class="corner" role="columnheader"><span class="sr">Hora</span></div>${days.map((d) => `<div class="dh${dkey(d) === today ? " today" : ""}${cls(d)}" role="columnheader"${dkey(d) === today ? ' aria-current="date"' : ""}>${WD[d.getDay()]}<b>${dkey(d) === today ? `<span>${d.getDate()}</span>` : d.getDate()}</b>${feriado(d) ? `<small class="dh-hol" title="Feriado nacional: ${feriado(d)}"><span class="sr">Feriado nacional: </span>${feriado(d)}</small>` : diaOff(d) ? `<small class="dh-hol">Sem expediente</small>` : ""}</div>`).join("")}</div>
     <div role="row" style="display:contents"><div class="hours" role="rowheader" aria-hidden="true" style="grid-template-rows:repeat(${n},${AG_HR}px)">${hours}</div>${days.map(col).join("")}</div>
   </div>`;
   const legend = `<ul class="ag2-leg" aria-label="Legenda">${Object.entries(STS).map(([k, [l]]) => `<li><i class="st-${k}"></i>${l}</li>`).join("")}<li><i class="leg-ro"></i>Outra agenda, só leitura</li><li><i class="sw off"></i>Sem atendimento</li><li><i class="sw lunch"></i>Almoço</li><li><i class="sw hol"></i>Feriado nacional</li><li class="legend-r"><a href="${href("configuracoes")}" data-cfg-open>${ic("settings", "ic-sm")}Configurações</a></li></ul>`;
@@ -6568,7 +6600,7 @@ function evMove(e, day, mins, dur, opener) {
   const moved = day !== e.day || mins !== e.h * 60 + e.m;
   if (!moved && dur === e.dur) { render(); refocus(`.ag2 [data-ev="${e.id}"]`); return; }
   const fora = e.tipo && e.s !== "cancelado" ? agErro(e, day, mins, mins + Math.round(dur * 60)) : "";
-  if (fora) { render(); refocus(`.ag2 [data-ev="${e.id}"]`); say(`${fora} A consulta ficou onde estava.`); return; }
+  if (fora) { render(); refocus(`.ag2 [data-ev="${e.id}"]`); agSomErro(); say(`${fora} A consulta ficou onde estava.`); return; }
   evScope(e, (extra) => evCommit("", () => {
     e.day = day; e.h = Math.floor(mins / 60); e.m = mins % 60; e.dur = dur;
     const re = moved && e.tipo && (e.s === "agendado" || e.s === "confirmado");
@@ -6776,7 +6808,7 @@ function confirmar() {
   const mode = st.cfv || "valido";
   const ini = CF_CLINIC.n.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
   const head = `<header class="cf-brand"><span class="cf-logo" aria-hidden="true">${escH(ini)}</span><span>${escH(CF_CLINIC.n)}</span></header>`;
-  const team = `<a class="btn btn-secondary btn-block" href="${waLink(CF_CLINIC.wa)}" target="_blank" rel="noopener">${WA}Falar com a equipe</a>`;
+  const team = `<a class="btn btn-quiet btn-block cf-team" href="${cfTeamHref(e && mode !== "invalido" ? e : null, "duvida")}" target="_blank" rel="noopener">${WA}Falar com a equipe pelo WhatsApp</a>`;
   const proto = `<div class="cf-proto proto-only"><div class="seg" role="group" aria-label="Ver o link no protótipo">${[["valido", "Link válido"], ["prazo", "Fora do prazo"], ["expirou", "Link expirado"], ["invalido", "Link inválido"]].map(([k, l]) => `<button type="button" data-cf-v="${k}" aria-pressed="${mode === k}">${l}</button>`).join("")}</div><a class="btn btn-quiet btn-sm" href="${href("agenda")}">${ic("arrow-left", "ic-sm")}Voltar para a Agenda</a></div>`;
   let body;
   if (!e || mode === "invalido") body = `<div class="cf-state">${ic("link-2-off")}<h1 tabindex="-1">Este link não vale mais</h1><p>Ele pode ter sido digitado errado ou a consulta pode ter mudado. Fale com a nossa equipe pelo WhatsApp.</p></div>${team}`;
@@ -6793,14 +6825,14 @@ function confirmar() {
     const cancelBtn = (l) => `<button class="btn btn-quiet btn-block cf-cancel" type="button" data-cf-ask>${ic("calendar-x", "ic-sm")}${l}</button><p class="cf-note cf-dead">Dá para cancelar por aqui até ${cfDeadTxt(e)}.</p>`;
     if (st.rm && st.rm.e === e.id) body = cfRmBody(e);
     else if (e.cf && e.cf.st === "remarcou") body = `<div class="cf-ok cf-wait" role="status" tabindex="-1">${ic("calendar-clock")}<span><b>Consulta remarcada.</b> Até lá, ${escH(cfFirst(e))}! O novo dia e horário estão abaixo.</span></div>${card}${remBtn}${team}
-        <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Não vou poder ir: cancelar a consulta")}</div>`;
+        <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Cancelar a consulta")}</div>`;
     else if (e.s === "confirmado") body = `<div class="cf-ok" role="status" tabindex="-1">${ic("circle-check")}<span><b>Presença confirmada.</b> Até lá, ${escH(cfFirst(e))}!</span></div>${card}
         ${remBtn}${remNote}${team}
-        <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Não vou mais poder ir: cancelar a consulta")}</div>`;
+        <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Cancelar a consulta")}</div>`;
     else body = `<h1 class="cf-t" tabindex="-1">Olá, ${escH(cfFirst(e))}!</h1><p class="cf-sub">Confirme sua presença na consulta.</p>${card}
         <div class="cf-btns"><button class="btn btn-primary btn-block btn-lg" type="button" data-cf-do="confirmar">${ic("check", "ic-sm")}Confirmar presença</button></div>
         ${remBtn}${remNote}${team}
-        <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Não vou poder ir: cancelar a consulta")}</div>`;
+        <div class="cf-btns cf-after">${late ? lateNote : cancelBtn("Cancelar a consulta")}</div>`;
   }
   return `<main id="conteudo" class="cf-page">${proto}<div class="cf-card">${head}${body}<p class="cf-foot">Este link é só deste agendamento. Não mostra seu telefone nem outros dados.</p></div></main>`;
 }
@@ -6841,6 +6873,7 @@ document.addEventListener("input", (ev) => { if (ev.target.matches && ev.target.
 document.addEventListener("change", (ev) => { if (ev.target.matches && ev.target.matches("[data-cf-hour]")) { CFM.hour = Number(pick(ev.target.value, Array.from({ length: 14 }, (_, k) => String(k + 7)))); render(); refocus("[data-cf-hour]"); } });
 function cfAnswer(e, what) {
   const w = `hoje às ${hm(nowMin())}`;
+  cfSom(what === "confirmar" ? "ok" : "saiu");
   if (what === "confirmar") { e.s = "confirmado"; e.cf = { ...e.cf, st: "confirmou", w }; }
   else { e.s = "cancelado"; e.cf = { ...e.cf, st: "cancelou", w }; }
   AVISOS.unshift({ id: `cf${e.id}${what}`, ic: what === "confirmar" ? "calendar-check" : "calendar-x", t: `${e.t} ${what === "confirmar" ? "confirmou" : "cancelou"} pelo link`, d: `Consulta de ${cfWhen(e)}. A situação e a cor no Google já mudaram.`, w: `Hoje, ${hm(nowMin())}`, s: "agenda", b: "Ver", unread: true, seen: false });
@@ -6912,7 +6945,7 @@ function eeTimes(from) {
 }
 
 function evEdit(ev, pre, opener) {
-  const e = ev || { day: /^\d{4}-\d{2}-\d{2}$/.test(pre.day || "") ? pre.day : dkey(st.agd), h: Number(pre.h ?? 11), m: Number(pre.m ?? 0), dur: 1, t: esc(pre.t || ""), pid: pre.pid || "", cel: esc(pre.cel || ""), mail: esc(pre.mail || ""), tipo: TIPOS[0], s: "agendado", fin: "Não pago", ddi: "BR" };
+  const e = ev || { day: /^\d{4}-\d{2}-\d{2}$/.test(pre.day || "") ? pre.day : dkey(st.agd), h: Number(pre.h ?? 11), m: Number(pre.m ?? 0), dur: 1, t: esc(pre.t || ""), pid: pre.pid || "", cel: esc(pre.cel || ""), mail: esc(pre.mail || ""), tipo: pre.plain ? "" : TIPOS[0], s: "agendado", fin: "Não pago", ddi: "BR" };
   const p = e.pid && pById(e.pid);
   Object.assign(FORM, { other: !!e.other, note: "", pid: p ? p.id : "", dur: Math.round(e.dur * 60), own: Math.round(e.dur * 60) !== 60, opt: -1, list: [] });
   const s0 = e.h * 60 + e.m;
@@ -7156,7 +7189,7 @@ document.addEventListener("click", (e) => {
   const c = e.target;
   if (!c.matches || !c.matches(".ag2 .col") || agNoClick) return;
   const mins = st.ag.de * 60 + Math.floor(((e.clientY - c.getBoundingClientRect().top) / AG_HR) * 2) * 30;
-  evEdit(null, { day: c.dataset.col, h: Math.floor(mins / 60), m: mins % 60 }, document.querySelector("[data-x=evento]"));
+  agClick(c.dataset.col, mins);
 });
 /* Arrastar muda o dia e a hora, de 15 em 15 minutos; a borda de baixo muda a duração. No toque, use Editar. */
 let DRAG = null;
@@ -7193,8 +7226,11 @@ document.addEventListener("pointermove", (e) => {
     D.b.style.top = `${((mins - de * 60) / 60) * AG_HR + 2}px`;
     D.b.style.left = "3px"; D.b.style.width = "calc(100% - 6px)";
   }
+  /* Enquanto arrasta, a consulta mostra se o lugar aceita: borda vermelha e o motivo curto. Soltar ali não muda nada. */
+  const no = D.ev.tipo && D.ev.s !== "cancelado" ? agErro(D.ev, day, mins, mins + Math.round(dur * 60)) : "";
+  D.b.classList.toggle("ev-no", !!no);
   const lbl = D.b.querySelector(".num");
-  if (lbl) lbl.textContent = `${hmm(mins)} até ${hmm(mins + Math.round(dur * 60))}`;
+  if (lbl) lbl.textContent = `${hmm(mins)} até ${hmm(mins + Math.round(dur * 60))}${no ? ` · ${agMotivo(no)}` : ""}`;
   D.res = { day, mins, dur };
 });
 document.addEventListener("pointerup", () => {
@@ -7457,6 +7493,9 @@ function cxServicos() {
     <p class="hint">Mudar um valor vale do próximo lançamento em diante. O que já está no extrato não muda sozinho.</p>`;
 }
 function cxImportar() {
+  return impView();
+}
+function cxImportarAntigo() {
   return `<section class="card p-sec cx-narrow" aria-labelledby="cx-h-imp"><div class="p-sec-h"><h2 id="cx-h-imp">Importar planilha</h2></div>
     <div class="cx-drop">${ic("upload")}<p class="t">Arraste a planilha para cá</p><p class="hint">.xlsx ou .csv, até 5 MB e 5.000 linhas. A leitura acontece no seu navegador e você confere tudo antes de gravar.</p><button class="btn btn-primary btn-sm" type="button" data-cx-imp>Escolher arquivo</button></div>
     <details class="as-table"><summary>Quais colunas a planilha precisa ter</summary><p class="hint">Data, Nome, Tipo de movimentação e Valor são obrigatórias. Hora, Forma de pagamento e Observação entram quando existem. Nome e CPF não são gravados.</p></details></section>`;
@@ -7594,7 +7633,8 @@ ACT.unshift(
 const CF_HRS = { dias: [1, 2, 3, 4, 5], get de() { return st.agDef.de; }, get ate() { return st.agDef.ate; }, alm: [720, 780] };
 const CF_RM_DAYS = 8;
 const CF_RM_MAX = 2;
-const CF_GRID = 30;
+/* Horários do link de remarcar em horas cheias a partir do início do turno: o padrão de 1 h da agenda e dos serviços. */
+const CF_GRID = 60;
 /* Feriados e dias sem expediente: um lugar só (Configurações › Agenda). Feriado nacional fecha sozinho, menos os
    que você marcar como "Atendo"; dias sem expediente (recesso, férias, feriado da cidade) fecham o dia inteiro. */
 const DIAS_OFF = [{ k: "2026-12-24", m: "Recesso" }, { k: "2026-12-31", m: "Recesso" }];
@@ -7731,24 +7771,27 @@ function cfRmDays(e) {
   return out;
 }
 st.rm = null;
-const rmStep = (n, t, body, back = true) => `<div class="rm-head"><p class="rm-step num">Passo ${n} de 4</p>${back ? `<button class="btn btn-quiet btn-sm" type="button" data-rm-back>${ic("arrow-left", "ic-sm")}Voltar</button>` : ""}</div><h1 class="cf-t" tabindex="-1">${t}</h1>${body}`;
+const rmStep = (n, t, body, back = true) => `<div class="rm-anim${st.rmBack ? " back" : ""}"><div class="rm-head"><p class="rm-step num">Passo ${n} de 4</p>${back ? `<button class="btn btn-quiet btn-sm" type="button" data-rm-back>${ic("arrow-left", "ic-sm")}Voltar</button>` : ""}</div><h1 class="cf-t" tabindex="-1">${t}</h1>${body}`;
 function cfRmBody(e) {
-  const r = st.rm, first = escH(cfFirst(e)), team = `<p class="cf-note">${ic("info", "ic-sm")}<span>Não achou um dia bom? <a href="${waLink(CF_CLINIC.wa)}" target="_blank" rel="noopener">Fale com a nossa equipe pelo WhatsApp</a>.</span></p>`;
+  const r = st.rm, first = escH(cfFirst(e)), team = `<p class="cf-note">${ic("info", "ic-sm")}<span>Não achou um dia bom? <a href="${cfTeamHref(e, "remarcar")}" target="_blank" rel="noopener">Fale com a nossa equipe pelo WhatsApp</a>.</span></p>`;
   const cur = `<p class="rm-cur">${ic("calendar-days", "ic-sm")}<span>Hoje marcada: <b>${dayShort(dOf(e.day))}, às ${hmm(e.h * 60 + e.m)}</b></span></p>`;
   if (r.step === 1) {
-    const days = cfRmDays(e);
+    /* Só os dias com horário livre: dia fechado, feriado ou lotado nem aparece. */
+    const days = cfRmDays(e).filter((x) => x.n);
+    if (!days.length) return rmStep(1, `Para quando, ${first}?`, `${cur}<div class="rm-empty"><p>Não há horário livre nos próximos ${CF_RM_DAYS} dias.</p><a class="btn btn-secondary" href="${cfTeamHref(e, "remarcar")}" target="_blank" rel="noopener">${WA}Combinar pelo WhatsApp</a></div>`, true);
     return rmStep(1, `Para quando, ${first}?`, `${cur}<p class="cf-sub">Escolha o novo dia.</p>
-      <ul class="rm-days" aria-label="Dias">${days.map((x) => `<li><button type="button" class="rm-day" data-rm-day="${x.k}"${x.n ? "" : " disabled"} aria-pressed="${r.day === x.k}"><span class="w">${WD[x.d.getDay()]}</span><span class="n num">${p2(x.d.getDate())}/${p2(x.d.getMonth() + 1)}</span><span class="c">${x.n ? "" : x.why}</span></button></li>`).join("")}</ul>${team}`, true);
+      <ul class="rm-days" aria-label="Dias com horário livre">${days.map((x) => `<li><button type="button" class="rm-day" data-rm-day="${x.k}" aria-pressed="${r.day === x.k}"><span class="w">${WD[x.d.getDay()]}</span><span class="n num">${p2(x.d.getDate())}/${p2(x.d.getMonth() + 1)}</span></button></li>`).join("")}</ul>${team}`, true);
   }
   const k = r.day, d = dOf(k);
   if (r.step === 2) {
     const nm = cfFree(e, k, "manha").out.length, nt = cfFree(e, k, "tarde").out.length;
-    const b = (t, l, n) => `<button type="button" class="rm-opt" data-rm-turno="${t}"${n ? "" : " disabled"}>${ic(t === "manha" ? "sunrise" : "sun", "ic-sm")}<span class="t">${l}</span>${n ? "" : `<span class="d">sem horário</span>`}</button>`;
-    return rmStep(2, "Manhã ou tarde?", `<p class="cf-sub">${dayLong(d)}.</p><div class="rm-opts">${b("manha", "Manhã", nm)}${b("tarde", "Tarde", nt)}</div>`);
+    /* Turno sem horário livre não aparece. */
+    const b = (t, l, n) => (n ? `<button type="button" class="rm-opt" data-rm-turno="${t}">${ic(t === "manha" ? "sunrise" : "sun", "ic-sm")}<span class="t">${l}</span><span class="d">das ${hmm(cfTurno(t)[0])} às ${hmm(cfTurno(t)[1])}</span></button>` : "");
+    return rmStep(2, nm && nt ? "Manhã ou tarde?" : "Este turno tem horário", `<p class="cf-sub">${dayLong(d)}.</p><div class="rm-opts">${b("manha", "Manhã", nm)}${b("tarde", "Tarde", nt)}</div>`);
   }
   if (r.step === 3) {
-    const [a, b] = cfTurno(r.turno), hs = [];
-    for (let m = a; m < b; m += 60) hs.push(m);
+    const [a, b] = cfTurno(r.turno), hs = [], dur = Math.round(e.dur * 60);
+    for (let m = a; m + dur <= b; m += CF_GRID) hs.push(m);
     return rmStep(3, "Que horário fica melhor?", `<p class="cf-sub">${dayLong(d)}, ${r.turno === "manha" ? "de manhã" : "à tarde"}.</p>
       <div class="rm-hours" role="group" aria-label="Horário de preferência">${hs.map((m) => `<button type="button" class="chip" data-rm-pref="${m}">${hmm(m)}</button>`).join("")}</div>`);
   }
@@ -7773,12 +7816,12 @@ function cfRmPick(e, m, opener) {
     body: "", foot: `<button class="btn btn-primary" type="button" data-dlg-ok>Sim, remarcar</button><span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x data-autofocus>Voltar</button>`,
     ok: () => {
       /* Confere de novo na hora de gravar: outra pessoa pode ter pegado o horário enquanto este paciente escolhia. */
-      if (cfExpired(e) || cfLate(e) || !cfFree(e, k, st.rm.turno).out.includes(m) || agErro(e, k, m, end)) { DLG.opener = null; st.rm = { ...st.rm, step: 4, more: false }; render(); say("Esse horário acabou de ser ocupado. Escolha outro."); return; }
+      if (cfExpired(e) || cfLate(e) || !cfFree(e, k, st.rm.turno).out.includes(m) || agErro(e, k, m, end)) { DLG.opener = null; st.rm = { ...st.rm, step: 4, more: false }; render(); cfSom("erro"); say("Esse horário acabou de ser ocupado. Escolha outro."); return; }
       const from = `${dayShort(dOf(e.day))} às ${hmm(e.h * 60 + e.m)}`;
       Object.assign(e, { day: k, h: Math.floor(m / 60), m: m % 60, s: "reagendado", rmN: (e.rmN || 0) + 1 });
       e.cf = { ...e.cf, st: "remarcou", w: `hoje às ${hm(nowMin())}`, from };
       AVISOS.unshift({ id: `cfrm${e.id}${e.rmN}`, ic: "calendar-clock", t: `${e.t} remarcou pelo link`, d: `De ${from} para ${cfWhen(e)}. Ficou amarela (Reagendado) na agenda.`, w: `Hoje, ${hm(nowMin())}`, s: "agenda", b: "Ver", unread: true, seen: false });
-      DLG.opener = null; st.rm = null; render(); refocus(".cf-ok");
+      DLG.opener = null; st.rm = null; render(); refocus(".cf-ok"); cfSom("ok");
     } }, opener);
   const box = document.querySelector("#dlg-host .dlg-box");
   if (box) { box.setAttribute("role", "alertdialog"); box.classList.add("dlg-sm"); }
@@ -7788,7 +7831,7 @@ ACT.unshift(
   [(t) => t.matches("[data-rm-turno]"), (t) => { st.rm = { ...st.rm, turno: pick(t.dataset.rmTurno, ["manha", "tarde"]), step: 3 }; render(); refocus(".cf-t"); }],
   [(t) => t.matches("[data-rm-pref]"), (t) => { const [a, b] = cfTurno(st.rm.turno); const v = Number(t.dataset.rmPref); if (!(Number.isFinite(v) && v >= a && v < b)) return; st.rm = { ...st.rm, pref: v, step: 4 }; render(); refocus(".cf-t"); }],
   [(t) => t.matches("[data-rm-restart]"), () => { st.rm = { ...st.rm, step: 1, day: "", turno: "", pref: null, more: false }; render(); refocus(".cf-t"); }],
-  [(t) => t.matches("[data-rm-back]"), () => { if (st.rm.step <= 1) st.rm = null; else st.rm = { ...st.rm, step: st.rm.step - 1, more: false }; render(); refocus(st.rm ? ".cf-t" : "[data-cf-rem]"); }],
+  [(t) => t.matches("[data-rm-back]"), () => { if (st.rm.step <= 1) st.rm = null; else st.rm = { ...st.rm, step: st.rm.step - 1, more: false }; st.rmBack = true; render(); st.rmBack = false; refocus(st.rm ? ".cf-t" : "[data-cf-rem]"); }],
   [(t) => t.matches("[data-rm-pick]"), (t) => { const e = evById(st.cfe); const m = Number(t.dataset.rmPick); if (e && Number.isFinite(m)) cfRmPick(e, m, t); }],
   [(t) => t.matches("[data-cf-rem], [data-cf-rm-from-cancel]"), (t) => { if (t.matches("[data-cf-rm-from-cancel]")) dlgClose(); cfRmStart(evById(st.cfe), t); }]
 );
@@ -8059,6 +8102,342 @@ ACT.unshift(
   [(t) => t.matches("[data-smtp-save]"), (t) => smtpSave(t)]
 );
 const syncPaint = () => { const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); };
+/* ===== 13/11/2026, 22:04 · Financeiro › Importar planilha: modelo, conferência linha a linha e duplicados =====
+   Tudo é lido no navegador e nada é gravado antes de a pessoa conferir. No sistema, o servidor confere tudo de novo,
+   em lotes, e grava numa transação só por importação (ou entra tudo o que foi escolhido, ou nada). */
+const IMP_MAX_BYTES = 5 * 1024 * 1024, IMP_MAX_ROWS = 5000, IMP_MAX_C = 100000000;
+/* [chave, nome no modelo, obrigatória, nomes aceitos no cabeçalho (sem acento, minúsculas), como escrever, exemplo] */
+const IMP_COLS = [
+  ["data", "Data", true, ["data", "dia", "data do lancamento", "data de pagamento"], "dd/mm/aaaa", "05/11/2026"],
+  ["tipo", "Tipo", true, ["tipo", "tipo de movimentacao", "movimentacao", "natureza", "entrada ou saida"], "Entrada ou Saída", "Entrada"],
+  ["desc", "Descrição", true, ["descricao", "historico", "lancamento", "servico", "item"], "Até 120 letras", "Consulta"],
+  ["valor", "Valor", true, ["valor", "valor (r$)", "valor r$", "quantia", "total"], "Sem sinal, com vírgula", "280,00"],
+  ["cat", "Categoria", false, ["categoria", "grupo", "classificacao"], "Um serviço ou uma categoria de despesa", "Material"],
+  ["forma", "Forma de pagamento", false, ["forma de pagamento", "forma", "pagamento", "meio de pagamento", "meio"], "Pix, Dinheiro, Débito, Crédito, Transferência ou Boleto", "Pix"],
+  ["pac", "Paciente", false, ["paciente", "cliente", "nome"], "Só para ligar ao contato; o nome não é guardado", "Maria Exemplo"],
+  ["obs", "Observação", false, ["observacao", "observacoes", "obs", "nota"], "Até 300 letras", ""]
+];
+const IMP_FORMAS = [["Pix", ["pix"]], ["Dinheiro", ["dinheiro", "especie"]], ["Débito", ["debito", "cartao de debito"]], ["Crédito", ["credito", "cartao de credito", "cartao"]], ["Transferência", ["transferencia", "ted", "doc"]], ["Boleto", ["boleto"]]];
+const IMP_IN = ["entrada", "receita", "credito", "recebimento", "e"], IMP_OUT = ["saida", "despesa", "debito", "pagamento", "s"];
+const IMP_MODELO = [["05/11/2026", "Entrada", "Consulta", "280,00", "Consulta", "Pix", "Maria Exemplo", ""], ["06/11/2026", "Saída", "Material de escritório", "184,90", "Material", "Débito", "", "Papel e canetas"], ["07/11/2026", "Entrada", "Avaliação física", "90,00", "", "Dinheiro", "", ""]];
+const IMP_HIST = [];
+st.imp = null;
+const impKey = (s) => fold(String(s)).replace(/\s+/g, " ").trim();
+const impCell = (v) => { let s = String(v); if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+function impModelo() {
+  const L = [IMP_COLS.map((c) => c[1])].concat(IMP_MODELO);
+  baixar("modelo-financeiro-zuri.csv", "text/csv;charset=utf-8", `﻿${L.map((r) => r.map(impCell).join(";")).join("\r\n")}`, "Modelo baixado. Apague as 3 linhas de exemplo e escreva os seus lançamentos, um por linha.");
+}
+/* CSV com aspas, ponto e vírgula, vírgula ou tabulação (o separador sai da linha do cabeçalho). */
+function impCsv(txt) {
+  const first = txt.split(/\r?\n/, 1)[0] || "";
+  const sep = [";", ",", "\t"].map((c) => [c, first.split(c).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = [];
+  let row = [], cell = "", q = false;
+  for (let i = 0; i < txt.length; i++) {
+    const ch = txt[i];
+    if (q) { if (ch !== '"') cell += ch; else if (txt[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+    else if (ch === '"' && cell === "") q = true;
+    else if (ch === sep) { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && txt[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += ch;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  return { sep, rows, open: q };
+}
+/* Valor: 1.234,56 · 1234,56 · 1234.56 · R$ 1.234,56 · (50,00) · -50. Devolve centavos. */
+function impValor(v) {
+  let s = String(v).replace(/[\s ]/g, "").replace(/R\$/gi, ""), neg = false;
+  if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+  if (s[0] === "-") { neg = true; s = s.slice(1); } else if (s[0] === "+") s = s.slice(1);
+  if (!/^[\d.,]+$/.test(s) || !/\d/.test(s)) return null;
+  const lc = s.lastIndexOf(","), ld = s.lastIndexOf(".");
+  let int = s, dec = "";
+  if (lc > -1 && ld > -1) { const d = Math.max(lc, ld); int = s.slice(0, d).replace(/[.,]/g, ""); dec = s.slice(d + 1); }
+  else if (lc > -1) { if (s.split(",").length > 2) return null; [int, dec] = s.split(","); }
+  else if (ld > -1) { if (/^\d{1,3}(\.\d{3})+$/.test(s)) int = s.replace(/\./g, ""); else { if (s.split(".").length > 2) return null; [int, dec] = s.split("."); } }
+  if (/[.,]/.test(dec)) return null;
+  const c = Math.round(Number(`${int || 0}.${dec || 0}`) * 100);
+  return { c: neg ? -c : c, round: dec.length > 2 };
+}
+/* Data: dd/mm/aaaa, d/m/aa, aaaa-mm-dd e o número de série do Excel. */
+function impData(v) {
+  const s = String(v).trim();
+  const r = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(s), iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  let y, m, d;
+  if (r) { d = +r[1]; m = +r[2]; y = r[3].length === 2 ? 2000 + +r[3] : +r[3]; }
+  else if (iso) { y = +iso[1]; m = +iso[2]; d = +iso[3]; }
+  else if (/^\d{5}$/.test(s)) { const t = new Date(Date.UTC(1899, 11, 30) + Number(s) * 864e5); y = t.getUTCFullYear(); m = t.getUTCMonth() + 1; d = t.getUTCDate(); }
+  else return { err: s ? `“${escH(s.slice(0, 30))}” não é uma data. Escreva como dd/mm/aaaa.` : "Data vazia." };
+  const t = new Date(y, m - 1, d);
+  if (t.getFullYear() !== y || t.getMonth() !== m - 1 || t.getDate() !== d) return { err: m > 12 && d <= 12 ? `${escH(s)} parece estar como mês/dia. Escreva dia/mês/ano.` : `${escH(s)} não existe no calendário.` };
+  return { k: dkey(t) };
+}
+function impTexto(v, max, msgs, nome) {
+  let s = [...String(v ?? "")].map((ch) => (ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127 ? " " : ch)).join("").replace(/\s+/g, " ").trim();
+  if (/^[=+\-@]/.test(s)) { s = s.replace(/^[=+\-@]+/, "").trim(); msgs.push(["warn", `${nome} começava com sinal de fórmula; entra só como texto.`]); }
+  if (/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/.test(s)) { s = s.replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, "").replace(/\s+/g, " ").trim(); msgs.push(["warn", "CPF tirado do texto: a Zuri não guarda CPF nos lançamentos."]); }
+  if (s.length > max) { s = s.slice(0, max); msgs.push(["warn", `${nome} passou de ${max} letras e foi cortada.`]); }
+  return s;
+}
+const impHash = (t) => { let h = 2166136261; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 16777619) >>> 0; return h.toString(16); };
+/* Lê o texto e devolve a conferência: problemas do arquivo e o resultado de cada linha. */
+function impLer(name, txt, extra) {
+  const F = { name, msgs: [...(extra || [])], rows: [], hash: impHash(txt), skipped: 0 };
+  const bad = (m) => { F.msgs.push(["err", m]); return F; };
+  txt = txt.replace(/^﻿/, "");
+  if (!txt.trim()) return bad("O arquivo está vazio.");
+  const { rows, open } = impCsv(txt);
+  if (open) return bad("Há aspas abertas sem fechar perto do fim do arquivo. Abra no Excel e salve de novo como CSV.");
+  const blank = (r) => r.every((c) => !String(c).trim());
+  /* O cabeçalho é a primeira linha (das 5 primeiras) com pelo menos duas colunas conhecidas: um título em cima é pulado. */
+  let hi = -1, map = {};
+  for (let i = 0; i < Math.min(rows.length, 5) && hi < 0; i++) {
+    const m = {};
+    rows[i].forEach((h, j) => { const c = IMP_COLS.find((x) => x[3].includes(impKey(h))); if (c) { if (!m[c[0]]) m[c[0]] = []; m[c[0]].push(j); } });
+    if (Object.keys(m).length >= 2) { hi = i; map = m; }
+  }
+  if (hi < 0) return bad("Não achei o cabeçalho. A primeira linha precisa ter os nomes das colunas, como no modelo.");
+  if (rows.slice(0, hi).some((r) => !blank(r))) F.msgs.push(["warn", `${hi === 1 ? "A primeira linha era um título e foi pulada." : `As ${hi} primeiras linhas eram título e foram puladas.`}`]);
+  const twice = IMP_COLS.filter((c) => (map[c[0]] || []).length > 1).map((c) => c[1]);
+  if (twice.length) return bad(`A coluna ${twice.join(", ")} aparece duas vezes. Deixe uma só.`);
+  const miss = IMP_COLS.filter((c) => c[2] && !map[c[0]]).map((c) => c[1]);
+  if (miss.length) return bad(`Faltam as colunas obrigatórias: ${miss.join(", ")}. Baixe o modelo e copie os seus dados para ele.`);
+  const head = rows[hi], known = new Set(Object.values(map).flat());
+  const extraCols = head.map((h, j) => (known.has(j) || !String(h).trim() ? "" : String(h).trim())).filter(Boolean);
+  if (extraCols.length) F.msgs.push(["warn", `Colunas que a Zuri não usa e vai ignorar: ${extraCols.slice(0, 5).map((x) => `“${escH(x.slice(0, 40))}”`).join(", ")}${extraCols.length > 5 ? "…" : ""}.`]);
+  const body = rows.slice(hi + 1);
+  if (body.filter((r) => !blank(r)).length > IMP_MAX_ROWS) return bad(`A planilha tem mais de ${IMP_MAX_ROWS.toLocaleString("pt-BR")} lançamentos. Divida em arquivos menores, por ano, por exemplo.`);
+  if (IMP_HIST.some((h) => h.hash === F.hash)) F.msgs.push(["warn", `Este mesmo arquivo já foi importado (${IMP_HIST.find((h) => h.hash === F.hash).at}). As linhas que já entraram aparecem como duplicadas.`]);
+  /* Um apóstrofo antes de =, +, - ou @ é a proteção contra fórmula de quem exportou: sai antes de ler. */
+  const get = (r, k) => { const v = map[k] ? String(r[map[k][0]] ?? "") : ""; return /^'[=+\-@]/.test(v) ? v.slice(1) : v; };
+  const today = dkey(AG_NOW), seen = new Map(), modelo = new Set(IMP_MODELO.map((r) => impKey([...r.slice(0, 4), r[6]].join("|"))));
+  const atend = EV.filter((e) => e.fin === "Pago" && e.pay && e.pay.c);
+  body.forEach((r, i) => {
+    const line = hi + i + 2;
+    if (blank(r)) { F.skipped++; return; }
+    const msgs = [], err = (m) => msgs.push(["err", m]), warn = (m) => msgs.push(["warn", m]);
+    if (r.length > head.length && r.slice(head.length).some((c) => String(c).trim())) err("Tem mais colunas que o cabeçalho. Talvez um ponto e vírgula dentro do texto, sem aspas.");
+    const dt = impData(get(r, "data"));
+    if (dt.err) err(dt.err);
+    else if (dt.k > today) err(`${brDate(dt.k)} ainda não chegou. O extrato só recebe o que já aconteceu; despesa que vai se repetir fica em Serviços e despesas.`);
+    else if (dt.k < "2000-01-01") err(`${brDate(dt.k)} é antiga demais. Confira o ano.`);
+    const tp = impKey(get(r, "tipo")), tipo = IMP_IN.includes(tp) ? 1 : IMP_OUT.includes(tp) ? -1 : 0;
+    if (!tipo) err(tp ? `Tipo “${escH(String(get(r, "tipo")).trim().slice(0, 30))}” não vale. Escreva Entrada ou Saída.` : "Tipo vazio. Escreva Entrada ou Saída.");
+    const vRaw = String(get(r, "valor")).trim(), v = impValor(vRaw);
+    let c = 0;
+    if (!vRaw) err("Valor vazio.");
+    else if (!v) err(`“${escH(vRaw.slice(0, 30))}” não é um valor. Escreva como 280,00.`);
+    else {
+      if (v.c < 0 && tipo === 1) err("Entrada com valor negativo. Tire o sinal ou mude o tipo para Saída.");
+      c = Math.abs(v.c);
+      if (!c) err("Valor zero não entra no extrato.");
+      else if (c > IMP_MAX_C) err("Valor acima de R$ 1.000.000,00. Confira os zeros e a vírgula.");
+      if (v.round && c) warn(`O valor tinha mais de 2 casas depois da vírgula e ficou ${cxBrl(c)}.`);
+    }
+    const desc = impTexto(get(r, "desc"), 120, msgs, "A descrição");
+    if (!desc) err("Descrição vazia. Escreva o que foi, por exemplo Consulta ou Aluguel.");
+    const fRaw = impKey(get(r, "forma")), forma = fRaw ? (IMP_FORMAS.find(([, a]) => a.includes(fRaw)) || [""])[0] : "";
+    if (fRaw && !forma) warn(`Forma de pagamento “${escH(String(get(r, "forma")).trim().slice(0, 30))}” não existe; entra como Não informada.`);
+    const cRaw = String(get(r, "cat")).trim();
+    let cat = "";
+    if (tipo === -1) { cat = DESP_CAT.find((x) => impKey(x) === impKey(cRaw)) || "Outros"; if (cRaw && cat === "Outros" && impKey(cRaw) !== "outros") warn(`Categoria “${escH(cRaw.slice(0, 30))}” não existe; entra em Outros.`); }
+    if (tipo === 1) { const s = SERV.find((x) => impKey(x.n) === impKey(cRaw || desc)); cat = s ? s.n : "Outras entradas"; if (cRaw && !s) warn(`Serviço “${escH(cRaw.slice(0, 30))}” não existe em Serviços e valores; entra em Outras entradas.`); }
+    const pac = impTexto(get(r, "pac"), 120, msgs, "O paciente");
+    let pid = "";
+    if (pac) { const L = PEOPLE.filter((p) => p.n && impKey(p.n) === impKey(pac)); if (L.length === 1) pid = L[0].id; else warn(L.length ? `Há ${L.length} contatos chamados “${escH(pac)}”: entra sem vínculo, para não ligar à pessoa errada.` : "O paciente não está em Contatos: entra sem vínculo."); }
+    const obs = impTexto(get(r, "obs"), 300, msgs, "A observação");
+    const row = { line, orig: IMP_COLS.map((x) => (x[0] === "pac" ? "" : get(r, x[0]))), k: dt.k || "", tipo, c, desc, cat, forma: forma || "Não informada", pid, obs, msgs, inc: false };
+    if (modelo.has(impKey([get(r, "data"), get(r, "tipo"), get(r, "desc"), vRaw, get(r, "pac")].join("|")))) { row.st = "skip"; row.msgs = [["info", "Linha de exemplo do modelo: ignorada."]]; F.rows.push(row); return; }
+    if (msgs.some((m) => m[0] === "err")) row.st = "err";
+    else {
+      const key = `${row.k}|${tipo * c}|${impKey(desc)}`;
+      const ext = CX_ENT.find((x) => x.day === row.k && x.c === tipo * c && impKey(x.t) === impKey(desc));
+      const pago = tipo === 1 && atend.find((e) => e.day === row.k && e.pay.c === c);
+      if (seen.has(key)) { row.st = "dup"; msgs.unshift(["dup", `Igual à linha ${seen.get(key)} desta planilha.`]); }
+      else if (ext) { row.st = "dup"; msgs.unshift(["dup", `Já está no extrato${ext.imp ? ", de uma importação anterior" : ""}.`]); }
+      else if (pago) { row.st = "dup"; msgs.unshift(["dup", `Talvez já esteja no extrato: atendimento pago de ${pago.t} neste dia, com o mesmo valor.`]); }
+      else row.st = msgs.length ? "warn" : "ok";
+      seen.set(key, seen.get(key) || line);
+    }
+    F.rows.push(row);
+  });
+  if (!F.rows.some((r) => r.st !== "skip")) F.msgs.push(["err", "Nenhum lançamento abaixo do cabeçalho."]);
+  return F;
+}
+async function impArquivo(file) {
+  const ext = (file.name.match(/\.([a-z0-9]+)$/i) || ["", ""])[1].toLowerCase(), name = file.name.slice(0, 80);
+  const fail = (m) => { st.imp = { name, msgs: [["err", m]], rows: [], skipped: 0 }; render(); refocus(".imp-head h2"); agSomErro(); };
+  if (ext === "xls") return fail("Este é o formato antigo do Excel (.xls). Abra e salve como .xlsx ou .csv.");
+  if (ext === "xlsx") return fail("No protótipo, só .csv. No sistema, .xlsx também: a Zuri lê a primeira aba (ou pergunta qual, se houver mais de uma) e recusa planilha com senha.");
+  if (ext !== "csv" && ext !== "txt") return fail("Use uma planilha .csv ou .xlsx. Para não errar, baixe o modelo.");
+  if (!file.size) return fail("O arquivo está vazio.");
+  if (file.size > IMP_MAX_BYTES) return fail("O arquivo passa de 5 MB. Divida em arquivos menores.");
+  const buf = await file.arrayBuffer();
+  let txt, extra = [];
+  try { txt = new TextDecoder("utf-8", { fatal: true }).decode(buf); }
+  catch { txt = new TextDecoder("windows-1252").decode(buf); extra = [["warn", "O arquivo não estava em UTF-8 (o Excel no Windows salva assim). A Zuri converteu os acentos: confira os nomes."]]; }
+  st.imp = { ...impLer(name, txt, extra), f: "todas", more: 0 };
+  render(); refocus(".imp-head h2");
+}
+function impDemo() {
+  const d = (n) => brDate(dkey(addD(AG_NOW, -n))), x = CX_ENT[0];
+  const L = [["Movimento do consultório"], ["Data", "Tipo de movimentação", "Histórico", "Valor (R$)", "Categoria", "Forma", "Paciente", "Obs", "Conta"],
+    [d(4), "Entrada", "Consulta", "280,00", "", "Pix", "Carla Mendes", "", "Itaú"], [d(4), "Entrada", "Consulta", "280,00", "", "Pix", "Carla Mendes", "", "Itaú"],
+    ["31/02/2026", "Saída", "Aluguel da sala", "1.800,00", "Estrutura", "Transferência", "", "", ""], [d(3), "Saída", "Material de escritório", "R$ 184,90", "Papelaria", "Débito", "", "", ""],
+    [d(2), "Entrada", "Avaliação física", "-90,00", "", "Dinheiro", "", "", ""], [d(2), "Receita", '=HIPERLINK("site")', "150", "", "Pix", "", "", ""],
+    [d(2), "Entrada", "Retorno", "duzentos", "", "Pix", "", "", ""], ["", "", "", "", "", "", "", "", ""], ["10/25/2026", "Saída", "Internet", "159,90", "Estrutura", "Boleto", "", "", ""],
+    [d(1), "Saída", "Contabilidade", "420", "Serviços", "Cheque", "", "", ""], [brDate(x.day), "Entrada", x.t, cxBrl(x.c).replace(/R\$\s?/, ""), "", "Pix", "", "", ""],
+    [d(1), "Entrada", "Consulta paciente 123.456.789-09", "280,00", "", "Crédito", "", "", ""], [brDate(dkey(addD(AG_NOW, 20))), "Saída", "Aluguel", "1.800,00", "Estrutura", "Pix", "", "", ""],
+    [d(5), "Saída", "Café", "12,345", "Outros", "Dinheiro", "", "", ""], [d(5), "Saída", "Estacionamento", "25,00", "Outros", "Pix", "", "", ""], [d(6), "S", "Impressão", "18,50", "Material", "Dinheiro", "", "", ""]];
+  st.imp = { ...impLer("movimento-exemplo.csv", L.map((r) => r.map(impCell).join(";")).join("\r\n")), f: "todas", more: 0 };
+  render(); refocus(".imp-head h2");
+}
+const impVai = (r) => r.st === "ok" || r.st === "warn" || (r.st === "dup" && r.inc);
+const IMP_ST = { ok: ["Pronta", "circle-check"], warn: ["Com aviso", "triangle-alert"], dup: ["Duplicada", "copy"], err: ["Com erro", "circle-x"], skip: ["Ignorada", "minus"] };
+function impView() {
+  const I = st.imp;
+  if (!I) {
+    return `<section class="card p-sec cx-narrow imp" aria-labelledby="cx-h-imp"><div class="p-sec-h"><h2 id="cx-h-imp">Importar planilha</h2></div>
+      <div class="cx-drop" data-imp-drop>${ic("upload")}<p class="t">Arraste a planilha para cá</p><p class="hint">Use o modelo para não ter erro. .csv ou .xlsx, até 5 MB e 5.000 lançamentos. A leitura acontece no seu navegador e nada é gravado antes de você conferir.</p>
+        <div class="imp-acts"><button class="btn btn-primary btn-sm" type="button" data-imp-pick>${ic("upload", "ic-sm")}Escolher arquivo</button><button class="btn btn-secondary btn-sm" type="button" data-imp-modelo>${ic("download", "ic-sm")}Baixar o modelo</button></div>
+        <input type="file" accept=".csv,.xlsx,.xls,text/csv" data-imp-file hidden><button class="linkbtn proto-only" type="button" data-imp-demo>Testar com uma planilha cheia de erros</button></div>
+      <h3 class="imp-h3">Colunas do modelo</h3>
+      <div class="imp-tw"><table class="imp-cols"><thead><tr><th scope="col">Coluna</th><th scope="col">Precisa?</th><th scope="col">Como escrever</th></tr></thead><tbody>${IMP_COLS.map((c) => `<tr><th scope="row">${c[1]}</th><td>${c[2] ? "Sim" : "Não"}</td><td>${c[4]}${c[5] ? ` <span class="hint">(${c[5]})</span>` : ""}</td></tr>`).join("")}</tbody></table></div>
+      <details class="as-table"><summary>O que a Zuri confere antes de gravar</summary><ul class="imp-chk">
+        <li>Cabeçalho com outros nomes (Histórico, Valor (R$), Forma) é reconhecido; título em cima é pulado; coluna repetida ou faltando para tudo.</li>
+        <li>Datas em dd/mm/aaaa, d/m/aa, aaaa-mm-dd e o número do Excel; data que não existe, no formato mês/dia, no futuro ou antes de 2000 é recusada.</li>
+        <li>Valores com R$, ponto de milhar, vírgula ou ponto; zero, texto, negativo numa entrada e acima de R$ 1 milhão são recusados.</li>
+        <li>Duplicados: linha repetida na planilha, lançamento que já está no extrato, atendimento pago no mesmo dia e valor, e o mesmo arquivo importado de novo. Ficam de fora, a menos que você marque.</li>
+        <li>Segurança: texto que começa com =, +, - ou @ entra só como texto; CPF é tirado; o nome do paciente só serve para ligar ao contato e não é guardado.</li>
+        <li>Arquivo em UTF-8 ou no formato do Excel do Windows; .xls antigo, planilha com senha, mais de 5 MB ou 5.000 linhas são recusados com o motivo.</li></ul></details>
+      ${IMP_HIST.length ? `<h3 class="imp-h3">Importações</h3><ul class="cx-ext imp-hist">${IMP_HIST.map((h) => `<li><span class="tile tile-sm">${ic("file-spreadsheet", "ic-sm")}</span><span class="cx-who"><span class="t">${escH(h.name)}</span><span class="d">${h.at} · ${h.n === 1 ? "1 lançamento" : `${h.n} lançamentos`}</span></span><button class="btn btn-quiet btn-sm" type="button" data-imp-undo="${h.id}">${ic("undo-2", "ic-sm")}Desfazer</button></li>`).join("")}</ul>` : ""}</section>`;
+  }
+  const cnt = (s) => I.rows.filter((r) => r.st === s).length, go = I.rows.filter(impVai), fileErr = I.msgs.some((m) => m[0] === "err");
+  const inn = go.filter((r) => r.tipo === 1).reduce((s, r) => s + r.c, 0), out = go.filter((r) => r.tipo === -1).reduce((s, r) => s + r.c, 0);
+  const days = go.map((r) => r.k).sort(), F = [["todas", "Todas", I.rows.length], ["ok", "Prontas", cnt("ok")], ["warn", "Com aviso", cnt("warn")], ["dup", "Duplicadas", cnt("dup")], ["err", "Com erro", cnt("err")]];
+  const shown = I.rows.filter((r) => I.f === "todas" || r.st === I.f), lim = 50 + I.more;
+  const msg = ([k, m]) => `<li class="imp-m ${k}">${ic(k === "err" ? "circle-x" : k === "dup" ? "copy" : k === "info" ? "info" : "triangle-alert", "ic-sm")}<span>${m}</span></li>`;
+  return `<section class="card p-sec imp" aria-labelledby="imp-h"><div class="imp-head"><div class="grow"><h2 id="imp-h" tabindex="-1">${escH(I.name)}</h2><p class="hint">${I.rows.length ? `${I.rows.length === 1 ? "1 linha lida" : `${I.rows.length} linhas lidas`}${I.skipped ? `, ${I.skipped === 1 ? "1 vazia ignorada" : `${I.skipped} vazias ignoradas`}` : ""}${days.length ? ` · de ${brDate(days[0])} a ${brDate(days[days.length - 1])}` : ""}` : "Nada foi lido."}</p></div><button class="btn btn-quiet btn-sm" type="button" data-imp-x>${ic("x", "ic-sm")}Trocar arquivo</button></div>
+    ${I.msgs.length ? `<ul class="imp-file">${I.msgs.map(msg).join("")}</ul>` : ""}
+    ${I.rows.length && !fileErr ? `<div class="seg imp-f" role="group" aria-label="Mostrar">${F.map(([k, l, n]) => `<button type="button" data-imp-f="${k}" aria-pressed="${I.f === k}">${l} <span class="num">${n}</span></button>`).join("")}</div>
+    <ul class="imp-rows">${shown.slice(0, lim).map((r) => `<li class="imp-r ${r.st}"><div class="imp-r1"><span class="imp-ln num">Linha ${r.line}</span><span class="imp-st">${ic(IMP_ST[r.st][1], "ic-sm")}${IMP_ST[r.st][0]}</span></div>
+      <div class="imp-r2"><span class="num">${r.k ? brDate(r.k) : "—"}</span><span class="imp-d">${r.desc ? escH(r.desc) : "<i>sem descrição</i>"}${r.st === "ok" || r.st === "warn" || r.st === "dup" ? ` <span class="hint">· ${escH(r.cat)} · ${escH(r.forma)}${r.pid ? " · ligado ao contato" : ""}</span>` : ""}</span><span class="cx-amt num ${r.tipo === -1 ? "out" : ""}">${r.c ? `${r.tipo === -1 ? "−" : ""}${cxBrl(r.c)}` : "—"}</span></div>
+      ${r.msgs.length ? `<ul class="imp-ms">${r.msgs.map(msg).join("")}</ul>` : ""}
+      ${r.st === "dup" ? `<label class="imp-inc"><input type="checkbox" data-imp-inc="${r.line}"${r.inc ? " checked" : ""}> Importar mesmo assim</label>` : ""}</li>`).join("")}</ul>
+    ${shown.length > lim ? `<button class="btn btn-quiet btn-block" type="button" data-imp-more>Mostrar mais ${Math.min(50, shown.length - lim)}</button>` : ""}` : ""}
+    <div class="imp-foot"><p class="num">${go.length ? `<b>${go.length === 1 ? "1 lançamento" : `${go.length} lançamentos`}</b> · entradas ${cxBrl(inn)} · saídas ${cxBrl(out)}` : "Nenhum lançamento pronto para entrar."}</p>
+      <div class="imp-acts">${cnt("err") || cnt("dup") ? `<button class="btn btn-secondary btn-sm" type="button" data-imp-dl>${ic("download", "ic-sm")}Baixar linhas com problema</button>` : ""}<button class="btn btn-primary btn-sm" type="button" data-imp-go${go.length && !fileErr ? "" : " disabled"}>Importar ${go.length || ""} ${go.length === 1 ? "lançamento" : "lançamentos"}</button></div></div></section>`;
+}
+/* As linhas com erro (e as duplicadas) voltam numa planilha com a coluna Problema: corrige ali e importa só elas. */
+function impBaixarErros() {
+  const I = st.imp, L = I.rows.filter((r) => r.st === "err" || (r.st === "dup" && !r.inc));
+  const plain = (m) => m.replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+  /* Volta o que estava escrito (sem o nome do paciente), para a pessoa corrigir no mesmo formato. */
+  const T = [[...IMP_COLS.map((c) => c[1]), "Linha original", "Problema"]].concat(L.map((r) => [...r.orig, r.line, r.msgs.map((m) => plain(m[1])).join(" ")]));
+  baixar(`problemas-${I.name.replace(/\.[a-z]+$/i, "").replace(/[^\w-]+/g, "-").slice(0, 40)}.csv`, "text/csv;charset=utf-8", `﻿${T.map((r) => r.map(impCell).join(";")).join("\r\n")}`, `${L.length === 1 ? "1 linha com problema baixada" : `${L.length} linhas com problema baixadas`}, com a coluna Problema.`);
+}
+function impGravar(opener) {
+  const I = st.imp, go = I.rows.filter(impVai);
+  if (!go.length) return;
+  const id = `imp${IMP_HIST.length + 1}`, inn = go.filter((r) => r.tipo === 1).reduce((s, r) => s + r.c, 0), out = go.filter((r) => r.tipo === -1).reduce((s, r) => s + r.c, 0);
+  dlgShow({ t: `Importar ${go.length === 1 ? "1 lançamento" : `${go.length} lançamentos`}?`, sub: `Entradas ${cxBrl(inn)} e saídas ${cxBrl(out)}. Ficam no extrato marcados como “Planilha” e dá para desfazer a importação inteira depois.`,
+    body: I.rows.some((r) => r.st === "err") ? `<p class="hint">${I.rows.filter((r) => r.st === "err").length} linhas com erro ficam de fora.</p>` : "",
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Voltar</button><button class="btn btn-primary" type="button" data-dlg-ok>Importar</button>`,
+    ok: () => {
+      for (const r of go) CX_ENT.push({ day: r.k, t: r.desc, c: r.tipo * r.c, m: `${r.forma} · Planilha`, imp: id });
+      IMP_HIST.unshift({ id, name: I.name, at: `hoje, ${hm(nowMin())}`, n: go.length, hash: I.hash });
+      st.imp = null; DLG.opener = null; render(); refocus("[data-imp-pick]");
+      toast(`${go.length === 1 ? "1 lançamento importado" : `${go.length} lançamentos importados`} de ${escH(I.name)}.`, () => impDesfazer(id));
+    } }, opener);
+}
+function impDesfazer(id) {
+  const h = IMP_HIST.find((x) => x.id === id);
+  if (!h) return;
+  for (let i = CX_ENT.length - 1; i >= 0; i--) if (CX_ENT[i].imp === id) CX_ENT.splice(i, 1);
+  IMP_HIST.splice(IMP_HIST.indexOf(h), 1);
+  render(); say(`Importação de ${escH(h.name)} desfeita: ${h.n === 1 ? "1 lançamento saiu" : `${h.n} lançamentos saíram`} do extrato.`);
+}
+ACT.unshift(
+  [(t) => t.matches("[data-imp-pick]"), () => document.querySelector("[data-imp-file]")?.click()],
+  [(t) => t.matches("[data-imp-modelo]"), () => impModelo()],
+  [(t) => t.matches("[data-imp-demo]"), () => impDemo()],
+  [(t) => t.matches("[data-imp-x]"), () => { st.imp = null; render(); refocus("[data-imp-pick]"); }],
+  [(t) => t.matches("[data-imp-f]"), (t) => { st.imp.f = pick(t.dataset.impF, ["todas", "ok", "warn", "dup", "err"]); st.imp.more = 0; render(); refocus(`[data-imp-f="${st.imp.f}"]`); }],
+  [(t) => t.matches("[data-imp-more]"), () => { st.imp.more += 50; render(); }],
+  [(t) => t.matches("[data-imp-dl]"), () => impBaixarErros()],
+  [(t) => t.matches("[data-imp-go]"), (t) => impGravar(t)],
+  [(t) => t.matches("[data-imp-undo]"), (t) => { const h = IMP_HIST.find((x) => x.id === t.dataset.impUndo); if (h) confirmDlg("Desfazer esta importação?", `Os ${h.n} lançamentos de ${escH(h.name)} saem do extrato. O que você lançou à mão não muda.`, "Desfazer", () => impDesfazer(h.id), t); }]
+);
+document.addEventListener("change", (ev) => {
+  const t = ev.target;
+  if (t.matches && t.matches("[data-imp-file]") && t.files && t.files[0]) impArquivo(t.files[0]);
+  if (t.matches && t.matches("[data-imp-inc]") && st.imp) { const r = st.imp.rows.find((x) => x.line === Number(t.dataset.impInc)); if (r) { r.inc = t.checked; render(); refocus(`[data-imp-inc="${r.line}"]`); } }
+});
+document.addEventListener("dragover", (ev) => { const z = ev.target.closest && ev.target.closest("[data-imp-drop]"); if (z) { ev.preventDefault(); z.classList.add("on"); } });
+document.addEventListener("dragleave", (ev) => { const z = ev.target.closest && ev.target.closest("[data-imp-drop]"); if (z) z.classList.remove("on"); });
+document.addEventListener("drop", (ev) => { const z = ev.target.closest && ev.target.closest("[data-imp-drop]"); if (!z) return; ev.preventDefault(); z.classList.remove("on"); const f = ev.dataTransfer && ev.dataTransfer.files[0]; if (f) impArquivo(f); });
+/* ===== 13/11/2026, 22:04 · agenda: avisos ao tocar ou arrastar para um horário fechado ===== */
+/* Nome curto do motivo, para caber no evento enquanto ele é arrastado. */
+function agMotivo(m) {
+  const R = [[/já passou/, "Já passou"], [/feriado/, "Feriado"], [/sem expediente/, "Sem expediente"], [/não é dia/, "Sem atendimento"], [/almoço/, "Almoço"], [/Fora do horário/, "Fora do horário"], [/Já há consulta/, "Ocupado"], [/15 minutos/, "Curta demais"], [/4 horas/, "Longa demais"], [/5 em 5/, "Minutos"], [/um ano/, "Data distante"]];
+  return (R.find(([r]) => r.test(m)) || [0, "Não pode"])[1];
+}
+const agSomErro = () => { if (!st.snd.on) return; const a = sndCtx(); if (a) { tone(a, 330, 0, 0.14, { type: "triangle", g: 0.08 }); tone(a, 247, 0.12, 0.2, { type: "triangle", g: 0.08 }); } };
+/* O próximo horário de 1 h que aceita consulta, a partir do que a pessoa tocou. */
+function agNext(day, mins) {
+  const busy = (k, m) => EV.some((o) => o.day === k && o.s !== "cancelado" && o.h * 60 + o.m < m + 60 && evEnd(o) > m);
+  const start = day < dkey(AG_NOW) ? dkey(AG_NOW) : day;
+  for (let i = 0; i < 60; i++) {
+    const k = dkey(addD(dOf(start), i));
+    const from = i ? CF_HRS.de * 60 : Math.max(CF_HRS.de * 60, Math.ceil(mins / 30) * 30);
+    for (let m = from; m + 60 <= CF_HRS.ate * 60; m += 30) if (!busy(k, m) && !agErro(null, k, m, m + 60)) return { day: k, m };
+  }
+  return null;
+}
+/* Tocar num horário livre abre o novo agendamento. Num horário fechado, a Zuri explica o porquê e oferece o próximo livre
+   ou um compromisso pessoal (reunião, banco), que pode ficar em qualquer hora. */
+function agClick(day, mins) {
+  const opener = document.querySelector("[data-x=evento]");
+  const busyHere = EV.some((o) => o.day === day && o.tipo && o.s !== "cancelado" && o.h * 60 + o.m <= mins && evEnd(o) > mins);
+  const why = busyHere ? "" : agErro(null, day, mins, mins + 60);
+  if (!why || busyHere) { evEdit(null, { day, h: Math.floor(mins / 60), m: mins % 60 }, opener); return; }
+  agSomErro();
+  const nx = agNext(day, mins);
+  dlgShow({ t: "Consulta não entra neste horário", sub: `${dayShort(dOf(day))}, às ${hmm(mins)}. ${why}`,
+    body: `${nx ? `<p class="hint">Próximo horário livre: <b>${dayShort(dOf(nx.day))}, às ${hmm(nx.m)}</b>.</p>` : ""}<p class="hint">Compromisso pessoal, como reunião ou banco, pode ficar em qualquer hora. Dias e horário de atendimento ficam em Configurações › Agenda.</p>`,
+    foot: `<button class="btn btn-quiet" type="button" data-ag-plain="${day}|${mins}">Criar compromisso pessoal</button><span class="grow"></span>${nx ? `<button class="btn btn-primary" type="button" data-ag-next="${nx.day}|${nx.m}" data-autofocus>Usar o próximo livre</button>` : `<button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Entendi</button>`}` }, opener);
+  const box = document.querySelector("#dlg-host .dlg-box");
+  if (box) { box.setAttribute("role", "alertdialog"); box.classList.add("dlg-sm"); }
+}
+ACT.unshift(
+  [(t) => t.matches("[data-ag-next], [data-ag-plain]"), (t) => {
+    const [k, m0] = (t.dataset.agNext || t.dataset.agPlain).split("|"), m = Number(m0);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Number.isInteger(m) || m < 0 || m > 1439) return;
+    DLG.opener = null; dlgClose();
+    if (t.dataset.agNext) st.agd = dOf(k);
+    evEdit(null, { day: k, h: Math.floor(m / 60), m: m % 60, plain: !!t.dataset.agPlain }, document.querySelector("[data-x=evento]"));
+  }]
+);
+/* ===== 13/11/2026, 22:04 · link do paciente: WhatsApp com mensagem pronta e sons das respostas ===== */
+/* A mensagem já diz quem é e do que se trata. Ela só sai do aparelho do paciente se ele tocar em enviar no WhatsApp. */
+function cfTeamHref(e, motivo) {
+  const quando = e ? `${dayShort(dOf(e.day))} às ${hmm(e.h * 60 + e.m)}` : "";
+  const txt = !e ? "Olá! Recebi um link de confirmação de consulta que não abriu. Vocês podem me ajudar?"
+    : motivo === "remarcar" ? `Olá! Sou ${cfFirst(e)}, tenho consulta marcada para ${quando} e não achei um bom horário para remarcar pelo link. Vocês podem me ajudar?`
+    : `Olá! Sou ${cfFirst(e)}, tenho consulta marcada para ${quando} e tenho uma dúvida.`;
+  return `${waLink(CF_CLINIC.wa)}?text=${encodeURIComponent(txt)}`;
+}
+/* Sons do link, os mesmos do sistema: Sino quando dá certo, Gota quando cancela, dois tons graves quando o horário foi ocupado.
+   Só tocam depois de um toque do paciente (o navegador exige) e bem baixo. */
+function cfSom(k) {
+  const a = sndCtx();
+  if (!a) return;
+  if (k === "ok") SOUNDS.sino[2](a);
+  else if (k === "saiu") SOUNDS.gota[2](a);
+  else { tone(a, 330, 0, 0.18, { type: "triangle", g: 0.12 }); tone(a, 247, 0.16, 0.26, { type: "triangle", g: 0.12 }); }
+  SND_LOG.push(`link:${k}`);
+}
 /* ===== 13/11/2026, 21:44 · travas da agenda: feriado, dia sem expediente, passado, duração, consulta no mesmo horário ===== */
 const evFora = (e) => !!(e.tipo && !e.ro && e.s !== "cancelado" && foraDoHorario(e.day, e.h * 60 + e.m, e.dur));
 ACT.unshift(
