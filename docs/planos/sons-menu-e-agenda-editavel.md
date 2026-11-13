@@ -489,6 +489,50 @@ O Pablo pediu onze ajustes. Todos entraram no protótipo, no bloco "13/11/2026" 
 
 **Perguntas ao Pablo** (seção 14): o canal do e-mail.
 
+### Ajustes de 13/11/2026 (00:37 UTC): e-mail, Pix pela fzap e segurança das integrações
+
+1. **E-mail para pacientes** (Configurações › Integrações): dois modos, um ativo por vez.
+   - **Gmail (recomendado):** permissão `gmail.send` na conexão do Google que já existe. Só envia, não lê a caixa. Nenhuma senha fica na Zuri e o acesso sai pelo Google a qualquer hora.
+   - **SMTP:** host, porta 465 (TLS direto) ou 587 (STARTTLS obrigatório), usuário e senha de app. Pelo `connect()` dos Workers; a porta 25 é bloqueada. Host sem IP nem endereço interno. Trocar host ou usuário pede a senha de novo.
+   - O `SEND_EMAIL` da Cloudflare continua só para avisos ao dono (ele não envia a terceiros).
+2. **Pix pelo WhatsApp (fzap):** credencial em CRM › Credenciais (URL https da instância e token, só escrita). Chave Pix, tipo, nome do recebedor e instruções em Configurações › Consultório (um lugar só). Botão "Enviar Pix" em Financeiro › A receber e no detalhe do atendimento não pago.
+   - Chamada: `POST /chat/send/pix` com `phone` (dígitos), `keyType` (PHONE, EMAIL, CPF, CNPJ, EVP), `key`, `name`, `amount` (decimal) e `description`. Só no modo WhatsApp Web; no Cloud API a fzap responde 501 e a Zuri explica.
+   - Só sai com toque do dono, valor de R$ 1 a R$ 100.000, prévia em texto puro e aviso de reenvio em menos de 10 min. O pagamento não se confirma sozinho: continua "Registrar pagamento".
+   - A chave é validada antes de salvar (dígitos do CPF e do CNPJ, e-mail, celular +55, chave aleatória).
+3. **Segurança das integrações** (vale para fzap, SMTP, Chatwoot e as que vierem):
+
+| Ameaça | Proteção |
+| --- | --- |
+| Vazamento do banco ou do backup | Segredo cifrado com AES-256-GCM, chave derivada por integração (HKDF) e o endereço como dado associado; o backup e a exportação não levam segredos |
+| Ver o segredo pela tela | Campo só de escrita; a tela mostra só os últimos caracteres |
+| Sessão roubada mudando a credencial | Criar, editar ou trocar o endereço pede a senha de novo e registra em Atividade |
+| Mandar o token para outro servidor (SSRF) | Cada credencial fala só com o próprio host https, sem redirecionamento, sem IP e sem rede interna; mudar o endereço pede o token de novo |
+| IA lendo ou usando o segredo | Nenhuma ferramenta do agente lê credenciais; o envio de Pix não é ferramenta da IA |
+| Segredo em log | Logs sem cabeçalhos nem corpo das chamadas externas |
+
+### Ajustes de 13/11/2026 (00:44 UTC): travas da agenda
+
+Pedido: evitar consulta em horário não permitido (almoço, feriado, fora do horário e outros casos). Uma função só, `agErro`, confere tudo na ordem em que a pessoa corrige, e o formulário, o arrastar, a volta de uma consulta cancelada, a ficha do contato e a remarcação pelo link passam por ela. No sistema, a mesma regra fica em `packages/shared` e o servidor confere de novo antes de gravar no Google.
+
+| Caso | O que acontece |
+| --- | --- |
+| Horário que já passou | Bloqueia ("Esse horário já passou") |
+| Data a mais de um ano | Bloqueia (erro de digitação no ano) |
+| Minutos fora do passo de 5 | Bloqueia |
+| Menos de 15 min ou mais de 4 h | Bloqueia, com foco no término |
+| Dia sem atendimento | Bloqueia |
+| Feriado nacional | Bloqueia, a não ser que o feriado esteja marcado "Atendo" |
+| Dia sem expediente (recesso, férias, feriado da cidade) | Bloqueia |
+| Fora do horário ou no almoço | Bloqueia |
+| Outra consulta no mesmo horário | Bloqueia, dizendo de quem é |
+| Compromisso pessoal no mesmo horário | Só avisa |
+| Paciente escolhe horário que acabou de ser ocupado ou fechado | Confere de novo na hora de gravar e pede outro |
+
+- **Feriados e dias sem expediente** ficam num lugar só, Configurações › Agenda: os feriados nacionais dos próximos 12 meses com "Atendo", e a lista de dias sem expediente. CRM › Pedidos de avaliação só mostra o resumo com "Mudar".
+- **Consultas que já estavam marcadas** e ficam fora depois de uma mudança nos ajustes (ou que foram criadas direto no Google) não somem: Configurações › Agenda lista até 5, com o motivo, e a agenda marca o evento com um alerta.
+- Compromissos sem tipo (reunião, pessoal) continuam livres.
+- Sem exceção manual por enquanto: se o Pablo quiser atender fora do horário de vez em quando, entra um "Agendar mesmo assim" com confirmação.
+
 ## 12. Riscos
 
 - **Som bloqueado pelo navegador** antes do primeiro clique: o aviso chega sem som. Mitigação: o cartão explica e o "Testar" destrava.
@@ -519,6 +563,6 @@ Sobre os ajustes de 12/11 à tarde, com a recomendação entre parênteses:
 1. **O protótipo está aprovado?** Formulário, vínculo com o paciente e sinais da sincronização. (Sim, para começar a PR 3b.) Em 12/11, 17:32 UTC, o Pablo pediu para ver antes a segunda rodada de ajustes.
 2. ~~Até quando o paciente cancela pelo link?~~ Respondida em 12/11, 21:37 UTC: até 12 horas antes e só até o dia anterior.
 3. ~~Quem envia o link?~~ Respondida em 12/11, 21:37 UTC: as duas formas, sozinha pelo Chatwoot e pelo botão do WhatsApp com a mensagem modelo.
-4. **Por onde sai o e-mail de confirmação?** Caixa de e-mail do Chatwoot (recomendado: mesma integração, sem permissão nova) ou API do Gmail (`gmail.send`, permissão nova do Google).
+4. **Por onde sai o e-mail de confirmação?** Pablo pediu Gmail ou SMTP (13/11, 00:37). Recomendação: Gmail com `gmail.send` pela conexão do Google que já existe (sem senha guardada, revogável no Google); SMTP com senha de app fica como alternativa. Falta ele escolher.
 
 Respondidas em 12/11/2026, 17:32 UTC: o Financeiro fica com "Não pago", "Pago" e "Gratuito", guardado no evento; o atendimento online grava "Consulta | Online", e o tipo vira uma lista com "Retorno | Consultório" e a opção de digitar.

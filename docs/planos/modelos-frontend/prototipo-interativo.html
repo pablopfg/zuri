@@ -2981,7 +2981,7 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .ag2-leg i.sw.lunch{background:repeating-linear-gradient(135deg,var(--line-strong) 0 3px,transparent 3px 6px)}
 .hours-bar .lunch{position:absolute;top:4px;bottom:4px;border-radius:4px;background:repeating-linear-gradient(135deg,var(--surface) 0 4px,var(--line-strong) 4px 6px)}
 .hr-pair label{display:grid;gap:4px}
-.hr-days .chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-soft-ink);border-color:transparent}
+.hr-days .chip[aria-pressed="true"],.hol-list .chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-soft-ink);border-color:transparent}
 .hours-bar .lunch{z-index:1}
 .hours-bar .on b{position:relative;z-index:2;padding:0 6px;border-radius:4px;background:var(--accent-soft)}
 .ee-4 .ee-kind{grid-column:auto}
@@ -2996,6 +2996,14 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .pj-ctls{display:flex;flex-wrap:wrap;gap:var(--s4)}
 .pj-ctl{display:grid;gap:6px}.pj-ctl .t{font-size:var(--t-sm);font-weight:600}
 .cx-tabs-row{flex-wrap:wrap;gap:8px}
+.cx-btns{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.hol-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}.hol-list li{display:flex;gap:10px;align-items:center;font-size:var(--t-sm)}.hol-list .num{min-width:44px;color:var(--ink-2)}.off-list{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.tag-x{border:0;background:none;padding:0 0 0 4px;color:inherit;cursor:pointer;display:inline-flex;vertical-align:middle}.hr-fora-l{margin:6px 0 0;padding-left:18px}.hr-fora p{margin:0}.ev .ev-fora{color:var(--warn,currentColor)}
+.cx-warn{display:flex;gap:8px;align-items:flex-start;margin:8px 0 0;padding:10px 12px;border-radius:var(--r-md);background:var(--warn-soft,var(--sunken));font-size:var(--t-sm)}
+.pix-card{display:grid;gap:6px;max-width:340px;margin:4px 0 8px;padding:12px 14px;border-radius:12px;background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line)}
+.pix-card p{margin:0}.pix-h{display:flex;gap:6px;align-items:center;font-weight:600;font-size:var(--t-sm)}
+.pix-v{font-size:22px;font-weight:700}
+.pix-l{display:flex;justify-content:space-between;gap:12px;font-size:var(--t-sm)}.pix-l span{color:var(--muted)}.pix-l b{text-align:right;overflow-wrap:anywhere}
+.pix-card .pix-copy{margin-top:4px;padding:8px;border-radius:8px;text-align:center;font-weight:600;font-size:var(--t-sm);background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
 </style>
 </head>
 <body>
@@ -4000,12 +4008,13 @@ function automacoes() {
       ${open && !lock ? pkPanel(x) : ""}</li>`; }).join("")}</ol>
     <p class="ro">${ic("info", "ic-sm")}<span>Cada automação só é liberada depois de passar no ensaio ao lado do n8n, e chega desligada, com caminhos e limites fixos no código. Não roda código de fora nem importa arquivo do n8n.</span></p>`;
   const conexoes = `${cwQueue()}<ul class="card conn-list" aria-label="Credenciais">${CONNS.map((c) => { const u = connUsers(c);
-      return `<li class="auto"><span class="tile">${ic(c.kind === "chatwoot" ? "message-circle" : "cable")}</span><div><p class="t">${c.n} <span class="tag">${c.kind === "chatwoot" ? "Chatwoot" : "Serviço"}</span></p><p class="meta"><span>${c.url}</span><span>${c.info}</span></p><p class="meta"><span class="pill on"><i></i>Pronta</span><span>${c.key}</span><span>${u.length ? `Usada por ${u.length}: ${u.join(", ")}` : "Nenhuma automação usa ainda"}</span></p>${c.id === "n8n" ? `<p class="meta"><span class="pill ${st.evk ? "on" : "off"}"><i></i>${st.evk ? "Eventos ligados" : "Eventos desligados"}</span><span>${st.evk ? "Clientes, mensagens e agendamentos que o n8n manda à Zuri · último hoje, 07:58 · 14 hoje" : "O n8n não manda eventos à Zuri"}</span></p>` : ""}</div>
+      return `<li class="auto"><span class="tile">${ic(c.kind === "chatwoot" ? "message-circle" : c.kind === "fzap" ? "qr-code" : "cable")}</span><div><p class="t">${c.n} <span class="tag">${c.kind === "chatwoot" ? "Chatwoot" : c.kind === "fzap" ? "fzap" : "Serviço"}</span></p><p class="meta"><span>${c.url}</span><span>${c.info}</span></p><p class="meta"><span class="pill on"><i></i>Pronta</span><span>${c.key}</span><span>${u.length ? `Usada por ${u.length}: ${u.join(", ")}` : "Nenhuma automação usa ainda"}</span></p>${c.id === "n8n" ? `<p class="meta"><span class="pill ${st.evk ? "on" : "off"}"><i></i>${st.evk ? "Eventos ligados" : "Eventos desligados"}</span><span>${st.evk ? "Clientes, mensagens e agendamentos que o n8n manda à Zuri · último hoje, 07:58 · 14 hoje" : "O n8n não manda eventos à Zuri"}</span></p>` : ""}</div>
       <div class="ctl"><button class="btn btn-secondary btn-sm" type="button" data-conn-test="${c.id}" aria-label="Testar “${c.n}”">${ic("plug-zap", "ic-sm")}Testar</button><button class="iconbtn" type="button" data-x="conn-menu" data-id="${c.id}" aria-label="Mais opções de “${c.n}”">${ic("ellipsis")}</button></div></li>`; }).join("")}</ul>
     <ul class="card ro-list">
       <li>${ic("lock", "ic-sm")}<span>A chave fica cifrada no servidor e nunca volta para a tela: aparece só o final.</span></li>
       <li>${ic("globe", "ic-sm")}<span>Cada credencial fala só com o endereço dela, por https. Mudar o endereço pede a chave de novo, para ela nunca seguir para outro lugar.</span></li>
-      <li>${ic("shield-check", "ic-sm")}<span>Criar, editar ou remover pede a sua senha. Uma credencial em uso não sai antes de você trocar a credencial nas automações.</span></li></ul>`;
+      <li>${ic("shield-check", "ic-sm")}<span>Criar, editar ou remover pede a sua senha. Uma credencial em uso não sai antes de você trocar a credencial nas automações.</span></li></ul>
+    ${intSecCard()}`;
   const body = st.af === "envios" ? envios() : { rotinas, fluxos, modulos, conexoes }[st.af];
   const newBtn = st.af === "conexoes" ? `<button class="btn btn-primary btn-sm" type="button" data-x="conn-add" aria-haspopup="dialog">${ic("plus", "ic-sm")}Nova credencial</button>` : st.af === "modulos" || st.af === "envios" ? "" : st.af === "fluxos" ? `<button class="btn btn-primary btn-sm" type="button" data-x="flow-new" aria-haspopup="dialog">${ic("plus", "ic-sm")}Novo fluxo</button>` : `<button class="btn btn-primary btn-sm" type="button" data-au-open aria-haspopup="dialog">${ic("plus", "ic-sm")}Criar rotina</button>`;
   const lede = { rotinas: `Lembretes, resumos e rotinas que a Zuri roda para você, no seu fuso. <span class="num">${ROTS.filter((r) => r[4] === "on").length} de 50</span> ativas.`, fluxos: "Automações que você monta passo a passo, com hora para rodar e limites.", modulos: "As automações do consultório saem do n8n e passam a rodar na Zuri, uma de cada vez, nesta ordem. Cada uma chega desligada: você liga, escolhe a credencial e acompanha o ensaio.", conexoes: "Endereços e chaves dos serviços de fora, guardados uma vez e usados por todas as automações e fluxos.", envios: "Tudo o que a Zuri escreve a contatos sai por aqui, uma mensagem por vez. Você vê o que está na fila, o que já saiu e o que falhou." }[st.af];
@@ -4184,6 +4193,7 @@ function cfgInteg() {
      <div class="set-row"><div class="grow"><p class="t">Etiquetas sincronizadas</p><p class="hint">${[...synced()].join(", ") || "Nenhuma"}</p></div><button class="btn btn-quiet btn-sm" type="button" data-x="ct-labels" aria-haspopup="dialog">Mudar${ic("chevron-right", "ic-sm")}</button></div>
      ${ctlRow("Quando alguém entrar numa etiqueta", "", `<label class="sr" for="gc-add">Quando alguém entrar numa etiqueta</label><select id="gc-add" class="input input-sm"><option>Não fazer nada</option><option selected>Me avisar</option><option>Me avisar e criar uma tarefa</option></select>`)}`,
     `<button class="btn btn-secondary" type="button" data-sync="contatos">${ic("refresh-cw", "ic-sm")}Sincronizar agora</button>`)
+  + mailSec()
   + sec("h-tg", "Telegram", "Fale com a Zuri e receba avisos pelo Telegram.",
     swRow("tg-conv", "Conversar com a Zuri por aqui", "Escreva ou mande um áudio para o bot.", true)
     + ctlRow("Conta conectada desde 28/10", "", `<div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-x="tg-test">Enviar teste</button><button class="btn btn-quiet btn-sm" type="button" data-x="disconnect" data-what="o Telegram">Desconectar</button></div>`)
@@ -4829,6 +4839,7 @@ document.addEventListener("input", (e) => {
 /* Conexões: um lugar só. A chave nunca volta para a tela; mudar o endereço pede a chave de novo. */
 const CONNS = [
   { id: "cw", kind: "chatwoot", n: "Chatwoot do consultório", url: "https://chat.exemplo.com.br", info: "Conta 1 · caixa “WhatsApp do consultório” (API) · envios em massa: 30 a 60 s entre um e outro", key: "Chave terminada em 4f2a", extra: [] },
+  { id: "fz", kind: "fzap", n: "fzap do consultório", url: "https://fzap.exemplo.com.br", info: "Instância conectada · modo WhatsApp Web · Pix disponível · só envia Pix, nada mais", key: "Token terminado em 8c3d", extra: ["Enviar Pix · Financeiro"] },
   { id: "passagens", kind: "http", n: "Preços de passagens", url: "https://api.exemplo.com.br", info: "Chave de API · só consulta preços, nunca muda nada", key: "Chave terminada em 91c0", extra: ["Preço da passagem · fluxo"] }
 ];
 function cwDlg(opener, c) {
@@ -4886,11 +4897,11 @@ const ACT6 = [
   [(t) => t.matches("[data-x=ct-labels]"), (t) => labelsDlg(t)],
   [(t) => t.matches("[data-go-ped]"), (t) => { st.rvv = "pedidos"; st.p = t.dataset.goPed; goTo("avaliacoes"); }],
   [(t) => t.matches("[data-rv-open]"), (t) => { st.rvv = "avaliacoes"; st.p = t.dataset.rvOpen; render(); refocus("#h-p"); }],
-  [(t) => t.matches("[data-x=conn-add]"), (t) => menuDlg("Nova credencial", [["message-circle", "Chatwoot", (op) => cwDlg(op)], ["cable", "Outro serviço (https)", (op) => connDlg(op)]], t)],
+  [(t) => t.matches("[data-x=conn-add]"), (t) => menuDlg("Nova credencial", [["message-circle", "Chatwoot", (op) => cwDlg(op)], ["qr-code", "fzap (Pix pelo WhatsApp)", (op) => fzDlg(op)], ["cable", "Outro serviço (https)", (op) => connDlg(op)]], t)],
   [(t) => t.matches("[data-x=conn-cw]"), (t) => cwDlg(t)],
   [(t) => t.matches("[data-conn-test]"), (t) => { const c = CONNS.find((x) => x.id === t.dataset.connTest); busy(t, 700, () => say(c.kind === "chatwoot" ? "Conectou. A chave enxerga a caixa “WhatsApp do consultório”." : "Respondeu em 180 ms.")); }],
   [(t) => t.matches("[data-x=conn-menu]"), (t) => { const c = CONNS.find((x) => x.id === t.dataset.id); const u = connUsers(c);
-    menuDlg(c.n, [["pencil", "Editar", (op) => (c.kind === "chatwoot" ? cwDlg(op, c) : senhaDlg("Credenciais guardam chaves. Confirme para editar.", () => say("Credencial salva.")))],
+    menuDlg(c.n, [["pencil", "Editar", (op) => (c.kind === "chatwoot" ? cwDlg(op, c) : c.kind === "fzap" ? fzDlg(op, c) : senhaDlg("Credenciais guardam chaves. Confirme para editar.", () => say("Credencial salva.")))],
       ["key-round", "Trocar a chave", () => senhaDlg("A chave nova vale na hora para todas as automações que usam esta credencial.", () => { c.key = "Chave nova, terminada em 7b1e"; render(); say("Chave trocada. A antiga foi apagada."); })],
       ...(c.id === "n8n" ? (st.evk
         ? [["refresh-cw", "Trocar o segredo dos eventos", (op) => senhaDlg("O segredo atual para de valer na hora. O n8n precisa do novo para continuar mandando eventos.", () => { setTimeout(() => evkDlg(), 0); }, op)],
@@ -5728,7 +5739,7 @@ Se não quiser mais receber, é só responder SAIR.</textarea><span class="hint"
         <label class="field"><span class="label">Quem envia</span><select class="input"><option selected>Eu, com um toque no WhatsApp</option><option>A automação “Pedido de avaliação”</option></select></label></div>
        ${swRow("ped-du", "Só em dia útil", "Sábado, domingo e feriado passam para o próximo dia útil. Os feriados nacionais já vêm marcados.", true, true)}
        ${swRow("ped-lb", "Um lembrete, 7 dias depois", "Só se a pessoa não avaliou. Depois disso, a Zuri não sugere de novo.", true)}
-       ${ctlRow("Dias sem expediente", "Recesso, feriado da cidade ou férias. Entram na conta como feriado.", `<button class="btn btn-quiet btn-sm" type="button" data-x="day-off" aria-haspopup="dialog">${ic("calendar-plus", "ic-sm")}Adicionar dia</button>`)}`, save())}
+       ${ctlRow("Feriados e dias sem expediente", `Entram na conta como feriado. ${DIAS_OFF.length ? `${DIAS_OFF.length === 1 ? "1 dia sem expediente marcado" : `${DIAS_OFF.length} dias sem expediente marcados`}` : "Nenhum dia sem expediente marcado"}. Ficam num lugar só, em Configurações › Agenda.`, `<button class="btn btn-quiet btn-sm" type="button" data-cfg="agenda">Mudar${ic("chevron-right", "ic-sm")}</button>`)}`, save())}
   </div>`;
 }
 
@@ -6473,7 +6484,7 @@ function agenda2() {
   const A = st.agd;
   const days = Array.from({ length: 7 }, (_, i) => addD(monOf(A), i));
   const today = dkey(AG_NOW);
-  const cls = (d) => `${CF_HRS.dias.includes(d.getDay()) ? "" : " off"}${feriado(d) ? " hol" : ""}`;
+  const cls = (d) => `${cfOpen(d) ? "" : " off"}${feriado(d) ? " hol" : ""}`;
   const hh = (h) => `${p2(h)}:00`;
   const evLabel = (e) => `${e.t}, ${tipoTxt(e.tipo)}, ${evWhen(e)}, ${e.ro ? "só leitura" : STS[e.s][0]}`;
   const head = `<header class="pagehead ph-acts"><div><h1>Agenda</h1><p>Seus eventos do Google Agenda. Abra um evento para ver, editar ou mudar a situação, ou arraste para trocar o dia e a hora. Tudo vai na hora para o Google.</p></div>
@@ -6489,10 +6500,10 @@ function agenda2() {
   const col = (d) => {
     const k = dkey(d);
     const list = lanes(evOn(k).filter((e) => evEnd(e) > de * 60 && e.h * 60 + e.m < ate * 60));
-    const [a0, a1] = CF_HRS.alm, lunch = CF_HRS.dias.includes(d.getDay()) && !feriado(d) && a1 > de * 60 && a0 < ate * 60 ? `<div class="ag-lunch" style="top:${Math.max(y(a0), 0)}px;height:${Math.min(y(a1), n * AG_HR) - Math.max(y(a0), 0)}px" aria-hidden="true"><span>Almoço</span></div>` : "";
+    const [a0, a1] = CF_HRS.alm, lunch = cfOpen(d) && a1 > de * 60 && a0 < ate * 60 ? `<div class="ag-lunch" style="top:${Math.max(y(a0), 0)}px;height:${Math.min(y(a1), n * AG_HR) - Math.max(y(a0), 0)}px" aria-hidden="true"><span>Almoço</span></div>` : "";
     return `<div class="col${cls(d)}" role="cell" data-col="${k}" style="height:${n * AG_HR}px">${lunch}${list.map(({ e, s, f, lane, n: w }) => {
       const top = Math.max(y(s), 0), bottom = Math.min(y(f), n * AG_HR);
-      return `<button type="button" class="ev st-${e.s}${e.ro ? " ro" : ""}${bottom - top < 40 ? " ev-s" : ""}" data-ev="${e.id}" aria-label="${evLabel(e)}" style="top:${top + 2}px;height:${bottom - top - 4}px;left:calc(${(lane / w) * 100}% + 3px);width:calc(${100 / w}% - 6px)"><b>${e.t}</b><span class="num">${hmm(s)} · ${tipoTxt(e.tipo)}</span>${e.rec ? ic("repeat", "ic-sm ev-i") : e.ro ? ic("lock", "ic-sm ev-i") : ""}${e.ro ? "" : '<i class="ev-rz" data-rz aria-hidden="true"></i>'}</button>`;
+      return `<button type="button" class="ev st-${e.s}${e.ro ? " ro" : ""}${bottom - top < 40 ? " ev-s" : ""}" data-ev="${e.id}" aria-label="${evLabel(e)}" style="top:${top + 2}px;height:${bottom - top - 4}px;left:calc(${(lane / w) * 100}% + 3px);width:calc(${100 / w}% - 6px)"><b>${e.t}</b><span class="num">${hmm(s)} · ${tipoTxt(e.tipo)}</span>${evFora(e) ? `${ic("triangle-alert", "ic-sm ev-i ev-fora")}<span class="sr">Fora do horário de atendimento.</span>` : e.rec ? ic("repeat", "ic-sm ev-i") : e.ro ? ic("lock", "ic-sm ev-i") : ""}${e.ro ? "" : '<i class="ev-rz" data-rz aria-hidden="true"></i>'}</button>`;
     }).join("")}${k === today ? `<div class="nowline" data-de="${de}" data-ate="${ate}" data-hr="${AG_HR}" style="top:${y(nowMin())}px"${nowMin() < de * 60 || nowMin() >= ate * 60 ? " hidden" : ""} aria-hidden="true"><span class="num">${hm(nowMin())}</span></div>` : ""}</div>`;
   };
   const week = `<div class="week ag2" role="table" aria-label="Semana de ${title}, das ${hh(de)} até ${hh(ate)}" data-de="${de}" data-ate="${ate}">
@@ -6556,7 +6567,7 @@ const evClash = (e) => (e.s !== "cancelado" && EV.some((o) => o !== e && o.day =
 function evMove(e, day, mins, dur, opener) {
   const moved = day !== e.day || mins !== e.h * 60 + e.m;
   if (!moved && dur === e.dur) { render(); refocus(`.ag2 [data-ev="${e.id}"]`); return; }
-  const fora = e.tipo ? foraDoHorario(day, mins, dur) : "";
+  const fora = e.tipo && e.s !== "cancelado" ? agErro(e, day, mins, mins + Math.round(dur * 60)) : "";
   if (fora) { render(); refocus(`.ag2 [data-ev="${e.id}"]`); say(`${fora} A consulta ficou onde estava.`); return; }
   evScope(e, (extra) => evCommit("", () => {
     e.day = day; e.h = Math.floor(mins / 60); e.m = mins % 60; e.dur = dur;
@@ -6642,7 +6653,7 @@ function evDlg(e, opener) {
   rows.push(["Agenda", e.ro ? "Curso e esporte, só leitura" : "Consultório, no Google Agenda"]);
   const twins = e.tipo ? PEOPLE.filter((x) => x.n && fold(x.n) === fold(e.t)).length : 0, via = p && RESP[p.id] && pById(RESP[p.id]);
   if (e.tipo) rows.push(["Paciente", p ? `${ic("user-round-check", "ic-sm")}Vinculado a ${p.n}, ${nascTxt(p)}${twins > 1 ? ` <span class="tag">Homônimo</span>` : ""} · <a href="${href("contatos")}">Abrir em Contatos</a>${via ? `<br><span class="hint">As mensagens vão para ${escH(via.n)} (${escH(famRole(p.id, via.id))}).</span>` : ""}` : `Sem vínculo com Contatos${e.cel ? ` · ${ddiOf(e.ddi)} ${e.cel}` : ""}${twins > 1 ? `<br><span class="hint">Pessoa nova, com o mesmo nome de ${twins} contatos. O celular separa uma da outra.</span>` : ""}`]);
-  if (e.tipo) rows.push(["Financeiro", e.fin]);
+  if (e.tipo) rows.push(["Financeiro", `${e.fin}${servOf(e) && servOf(e).c && e.fin === "Não pago" && e.s !== "cancelado" ? ` · <button class="linkbtn" type="button" data-pix="${escH(e.id)}">${e.pix ? `Pix enviado ${escH(e.pix.w)}` : "Enviar Pix"}</button>` : ""}`]);
   if (e.tipo) rows.push(["Observação no Google", `<span class="num">${escH(e.tipo)}</span>${e.obs ? `<br>${e.obs}` : ""}`]);
   else if (e.obs) rows.push(["Observação", e.obs]);
   if (e.rec) rows.push(["Repete", "Toda semana"]);
@@ -6744,6 +6755,7 @@ function cfgConsultorio() {
   + sec("h-hr", "Remarcar pelo link", "Regras internas: o paciente não vê nenhuma delas, só os dias e horários que pode escolher.",
     `${ctlRow("Horário de atendimento", `${hrResumo()}. Ele fica num lugar só, em Configurações › Agenda.`, `<button class="btn btn-quiet btn-sm" type="button" data-cfg="agenda">Mudar${ic("chevron-right", "ic-sm")}</button>`)}
       ${ctlRow("Remarcar pelo link", `Dias livres nos próximos ${CF_RM_DAYS} dias, dentro do horário de atendimento e fora do almoço, até ${CF_RM_MAX} vezes por consulta e dentro do prazo de cancelamento. Depois do turno, oferece primeiro os horários colados antes ou depois de uma consulta; num turno sem consulta, duas opções sorteadas. Mais longe que ${CF_RM_DAYS} dias, a página manda falar com a equipe.`, `<span class="pill on"><i></i>Ligado</span>`)}`)
+  + pixSec()
   + sec("h-ct", "Mensagem de confirmação", "O modelo que vai para o paciente, pelo Chatwoot e pelo botão do WhatsApp. Toque numa variável para pôr no texto; ela vira o dado de cada agendamento. *Texto entre asteriscos* sai em negrito no WhatsApp.",
     `<div class="ct-grid"><div class="ct-edit"><label class="label" for="cf-tpl">Mensagem</label><textarea id="cf-tpl" class="input ct-ta" rows="9" maxlength="${CF_TPL_MAX}" data-cf-tpl aria-describedby="cf-tpl-n cf-tpl-err">${escH(CFM.tpl)}</textarea>
         <p class="ct-meta"><span class="hint num" id="cf-tpl-n" data-cf-tpl-n>${CFM.tpl.length} de ${CF_TPL_MAX}</span><span class="hint err" id="cf-tpl-err" data-cf-tpl-err role="status"></span></p>
@@ -6753,7 +6765,7 @@ function cfgConsultorio() {
   + sec("h-cs", "Como a confirmação sai", "Dois jeitos, com a mesma mensagem e o mesmo link. A resposta pelo link muda a situação e a cor na agenda e chega em Avisos.",
     `<div class="set-row"><div class="grow"><p class="t">${WA}Pelo WhatsApp, por você</p><p class="hint">Nos detalhes de cada agendamento, “Enviar pelo WhatsApp” abre o WhatsApp Web com a mensagem pronta para o paciente. Você confere e envia.</p></div><span class="pill on"><i></i>Sempre disponível</span></div>
       ${swRow("cf-auto-t", "Automático, pelo Chatwoot", `Na véspera útil, a Zuri envia a mensagem pela caixa do WhatsApp no Chatwoot para quem tem consulta ou retorno Agendado ou Reagendado e tem celular. Quem já confirmou pelo link, já recebeu pelo WhatsApp ou pelo Chatwoot, cancelou ou tem o link expirado fica de fora: ninguém recebe duas vezes. Uma mensagem por vez, com a espera em segundos da credencial do Chatwoot.`, CFM.auto)}
-      ${swRow("cf-mail-t", "Também por e-mail, na mesma hora", "Para quem tem e-mail no contato ou no agendamento. Sai pela caixa de e-mail do Chatwoot, com o mesmo texto e o mesmo link, e o link vira um botão. O que o paciente fizer primeiro vale: nenhum dos dois canais manda de novo. Assunto: “Confirme sua consulta de {dia}”.", CFM.mail)}
+      ${swRow("cf-mail-t", "Também por e-mail, na mesma hora", "Para quem tem e-mail no contato ou no agendamento. Sai pelo e-mail de Integrações › E-mail para pacientes, com o mesmo texto e o mesmo link, e o link vira um botão. O que o paciente fizer primeiro vale: nenhum dos dois canais manda de novo. Assunto: “Confirme sua consulta de {dia}”.", CFM.mail)}
       ${ctlRow("Horário do envio automático", `Próximo envio: ${dayShort(nx.d)}, às ${hh2(CFM.hour)}, para ${nx.n} ${nx.n === 1 ? "paciente" : "pacientes"}. Sábado, domingo e feriado não têm envio: a consulta de segunda recebe na sexta.`, `<label class="sr" for="cf-hour">Horário do envio automático</label><select id="cf-hour" class="input input-sm" data-cf-hour>${hours}</select>`)}
       ${ctlRow("Credencial", "A chave do Chatwoot fica no servidor e nunca aparece aqui.", `<button class="btn btn-secondary btn-sm" type="button" data-cf-cred>${ic("key-round", "ic-sm")}Chatwoot · caixa do WhatsApp</button>`)}`);
 }
@@ -6948,9 +6960,10 @@ function evEdit(ev, pre, opener) {
       if (!FORM.pid && mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail("Confira o e-mail, por exemplo nome@exemplo.com.br.", "[data-ee-mail]");
       const kRaw = dlgRaw("[data-ee-k]"), kind = kRaw === "outro" ? esc(tipoFix(dlgRaw("[data-ee-k2]"))) : kindList(ev && ev.tipo).find((k) => k === kRaw) || "", loc = pick(dlgRaw("[data-ee-loc]"), LOCS), tipo = kind ? `${kind} | ${loc}` : "", s = pick(dlgRaw("[data-ee-s]"), Object.keys(STS)), fin = pick(dlgRaw("[data-ee-fin]"), FIN);
       const pid = tipo ? FORM.pid : "", obs = dlgVal("[data-ee-obs]");
-      const mudou = !ev || ev.day !== day || ev.h * 60 + ev.m !== mins || evEnd(ev) !== end;
-      const fora = tipo && mudou ? foraDoHorario(day, mins, (end - mins) / 60) : "";
-      if (fora) return fail(fora, "[data-ee-h]");
+      /* Confere quando o horário muda, quando um compromisso vira consulta ou quando uma consulta cancelada volta. */
+      const mudou = !ev || ev.day !== day || ev.h * 60 + ev.m !== mins || evEnd(ev) !== end || !ev.tipo || (ev.s === "cancelado" && s !== "cancelado");
+      const fora = tipo && s !== "cancelado" && mudou ? agErro(ev, day, mins, end) : "";
+      if (fora) return fail(fora, `[data-ee-${pick(agErro.campo, ["d", "h", "f"])}]`);
       const twins = tipo && !pid ? PEOPLE.filter((x) => x.n && fold(x.n) === fold(t)).length : 0, twin = twins > 1;
       if (twin && !FORM.other) return fail(`Há ${twins} contatos chamados “${t}”. Escolha o certo na lista, pelo telefone e pela data de nascimento, ou toque em “É outra pessoa”.`, "[data-pt-q]");
       if (twin && !cel) return fail("Pessoa nova com o mesmo nome de um contato: o celular é obrigatório, para as automações não confundirem as duas.", "[data-ee-cel]");
@@ -6987,7 +7000,7 @@ function agSlot() {
     const d = addD(AG_NOW, i), k = dkey(d);
     if (!cfOpen(d)) continue;
     const from = i ? CF_HRS.de * 60 : Math.max(CF_HRS.de * 60, Math.ceil((nowMin() + 1) / 30) * 30);
-    for (let m = from; m + 60 <= CF_HRS.ate * 60; m += 30) if (!busy(k, m) && !foraDoHorario(k, m, 1)) return { day: k, h: Math.floor(m / 60), m: m % 60 };
+    for (let m = from; m + 60 <= CF_HRS.ate * 60; m += 30) if (!busy(k, m) && !agErro(null, k, m, m + 60)) return { day: k, h: Math.floor(m / 60), m: m % 60 };
   }
   return { day: dkey(addD(AG_NOW, 1)), h: st.ag.de, m: 0 };
 }
@@ -7097,7 +7110,7 @@ const ACT1211 = [
   [(t) => t.matches("[data-agn]"), (t) => { const n = Number(t.dataset.agn), A = st.agd; st.agd = n === 0 ? new Date(AG_NOW) : st.av === "mes" ? new Date(A.getFullYear(), A.getMonth() + n, 1) : addD(A, st.av === "dia" ? n : 7 * n); render(); refocus(`[data-agn="${n}"]`); }],
   [(t) => t.matches("[data-agd]"), (t) => { st.agd = dOf(t.dataset.agd); if (t.dataset.agv) st.av = "dia"; render(); refocus(`.daystrip [data-agd="${t.dataset.agd}"]`); }],
   [(t) => t.matches("[data-ev]"), (t) => { if (agNoClick) return; const e = evById(t.dataset.ev); if (e) evDlg(e, t); }],
-  [(t) => t.matches("[data-ev-st]"), (t) => { const e = evById(t.dataset.id), s = pick(t.dataset.evSt, Object.keys(STS)); if (!e || e.s === s) { dlgClose(); return; } DLG.opener = null; dlgClose(); evCommit(`“${e.t}” ficou como ${STS[s][0]}. A cor no Google mudou para ${STS[s][1]}.`, () => { e.s = s; }, e.id); }],
+  [(t) => t.matches("[data-ev-st]"), (t) => { const e = evById(t.dataset.id), s = pick(t.dataset.evSt, Object.keys(STS)); if (!e || e.s === s) { dlgClose(); return; } const volta = e.tipo && e.s === "cancelado" && agErro(e, e.day, e.h * 60 + e.m, evEnd(e)); if (volta) { say(`${volta} A consulta continua cancelada.`); return; } DLG.opener = null; dlgClose(); evCommit(`“${e.t}” ficou como ${STS[s][0]}. A cor no Google mudou para ${STS[s][1]}.`, () => { e.s = s; }, e.id); }],
   [(t) => t.matches("[data-ev-edit]"), (t) => { const e = evById(t.dataset.evEdit), op = DLG.opener; dlgClose(); if (e) evEdit(e, {}, op); }],
   [(t) => t.matches("[data-ev-del]"), (t) => { const e = evById(t.dataset.evDel), op = DLG.opener; dlgClose(); if (e) confirmDlg("Apagar este evento?", "Ele sai também do Google Agenda. Para guardar o histórico do cliente, prefira marcar como Cancelado.", "Apagar", () => { DLG.opener = null; evCommit(`“${e.t}” apagado daqui e do Google Agenda.`, () => { EV = EV.filter((x) => x !== e); }); }, op); }],
   [(t) => t.matches("[data-x=evento]"), (t) => evEdit(null, {}, t)],
@@ -7389,7 +7402,7 @@ function cxPayRow(e) {
       <p class="hint" id="cx-pay-h" data-cx-pay-err role="status">Toque na forma de pagamento para gravar. Vai para o extrato e para o agendamento no Google.</p></div>` : "";
   return `<li class="cx-item cx-pay-item${open ? " open" : ""}"><span class="cx-time num">${e.day === cxToday() ? hmm(e.h * 60 + e.m) : dayShort(dOf(e.day))}</span><span class="cx-bar" style="--st:var(--st-${e.s || "agendado"})" aria-hidden="true"></span>
     <div class="cx-who"><p class="t">${escH(e.t)}</p><p class="d">${escH(sv ? sv.n : tipoTxt(e.tipo))} · ${e.day === cxToday() ? evWhen(e).replace(" até ", "–") : `${hmm(e.h * 60 + e.m)}`}</p><p class="cx-tags">${cxStPill(e)}${cxPres(e) || (!cxPast(e) ? `<span class="pill off"><i></i>Às ${hmm(e.h * 60 + e.m)}</span>` : "")}${late}${status}</p></div>
-    <div class="cx-act"><p class="cx-amt num">${cxBrl(sv ? sv.c : 0)}</p>${owes ? `<button class="btn btn-secondary btn-sm" type="button" data-cx-popen="${id}" aria-expanded="${open}">${ic("wallet", "ic-sm")}Registrar pagamento</button>` : ""}</div>${form}</li>`;
+    <div class="cx-act"><p class="cx-amt num">${cxBrl(sv ? sv.c : 0)}</p>${owes ? `<div class="cx-btns"><button class="btn btn-quiet btn-sm" type="button" data-pix="${id}" aria-haspopup="dialog">${ic("qr-code", "ic-sm")}${e.pix ? "Pix enviado" : "Enviar Pix"}</button><button class="btn btn-secondary btn-sm" type="button" data-cx-popen="${id}" aria-expanded="${open}">${ic("wallet", "ic-sm")}Registrar pagamento</button></div>` : ""}</div>${form}</li>`;
 }
 function cxReceber() {
   const t = cxToday();
@@ -7582,16 +7595,60 @@ const CF_HRS = { dias: [1, 2, 3, 4, 5], get de() { return st.agDef.de; }, get at
 const CF_RM_DAYS = 8;
 const CF_RM_MAX = 2;
 const CF_GRID = 30;
-const cfOpen = (d) => CF_HRS.dias.includes(d.getDay()) && !feriado(d);
+/* Feriados e dias sem expediente: um lugar só (Configurações › Agenda). Feriado nacional fecha sozinho, menos os
+   que você marcar como "Atendo"; dias sem expediente (recesso, férias, feriado da cidade) fecham o dia inteiro. */
+const DIAS_OFF = [{ k: "2026-12-24", m: "Recesso" }, { k: "2026-12-31", m: "Recesso" }];
+const HOL_OPEN = new Set();
+const diaOff = (d) => DIAS_OFF.find((x) => x.k === dkey(d));
+const holFecha = (d) => !!feriado(d) && !HOL_OPEN.has(dkey(d));
+const cfOpen = (d) => CF_HRS.dias.includes(d.getDay()) && !holFecha(d) && !diaOff(d);
 /* Janelas do turno, em minutos: manhã do início até a pausa, tarde da pausa até o fim. */
 const cfTurno = (t) => (t === "manha" ? [CF_HRS.de * 60, CF_HRS.alm[0]] : [CF_HRS.alm[1], CF_HRS.ate * 60]);
 /* Por que um horário não aceita consulta: dia sem atendimento, fora do horário ou no almoço. Vazio quando pode. */
 function foraDoHorario(day, mins, dur) {
   const d = dOf(day), end = mins + Math.round(dur * 60), [a0, a1] = CF_HRS.alm;
   if (!CF_HRS.dias.includes(d.getDay())) return `${WDL[d.getDay()]} não é dia de atendimento.`;
+  if (holFecha(d)) return `${dayShort(d)} é feriado (${feriado(d)}). Para atender nesse dia, marque “Atendo” no feriado, em Configurações › Agenda.`;
+  const off = diaOff(d);
+  if (off) return `${dayShort(d)} está como dia sem expediente${off.m ? ` (${off.m})` : ""}, em Configurações › Agenda.`;
   if (mins < CF_HRS.de * 60 || end > CF_HRS.ate * 60) return `Fora do horário de atendimento, das ${hh2(CF_HRS.de)} às ${hh2(CF_HRS.ate)}.`;
   if (mins < a1 && end > a0) return `No almoço, das ${hmm(a0)} às ${hmm(a1)}, não entra consulta.`;
   return "";
+}
+/* Tudo o que impede uma consulta, na ordem em que a pessoa corrige. O formulário, o arrastar, a ficha do contato e
+   a remarcação pelo link passam por aqui; no sistema, a mesma regra fica em packages/shared e o servidor confere de novo. */
+const AG_PASSO = 5, AG_MIN = 15, AG_MAX = 240, AG_LONGE = 365;
+/* agErro.campo diz qual campo do formulário recebe o foco: d (data), h (início) ou f (término). */
+function agErro(e, day, mins, end) {
+  agErro.campo = "h";
+  if (mins % AG_PASSO || end % AG_PASSO) return "Use horários de 5 em 5 minutos, por exemplo 14:30 ou 14:35.";
+  if (end - mins < AG_MIN || end - mins > AG_MAX) agErro.campo = "f";
+  if (end - mins < AG_MIN) return "A consulta precisa ter pelo menos 15 minutos.";
+  if (end - mins > AG_MAX) return "A consulta passou de 4 horas. Confira a hora do término.";
+  const today = dkey(AG_NOW);
+  if (day < today || (day === today && mins < nowMin())) return "Esse horário já passou. Escolha um horário daqui para frente.";
+  if (dOf(day) > addD(AG_NOW, AG_LONGE)) { agErro.campo = "d"; return "A data passa de um ano a partir de hoje. Confira o ano."; }
+  const fora = foraDoHorario(day, mins, (end - mins) / 60);
+  if (fora && !cfOpen(dOf(day))) agErro.campo = "d";
+  if (fora) return fora;
+  const o = EV.find((x) => x !== e && x.day === day && x.tipo && x.s !== "cancelado" && x.h * 60 + x.m < end && evEnd(x) > mins);
+  if (o) return `Já há consulta de ${o.t} das ${hmm(o.h * 60 + o.m)} às ${hmm(evEnd(o))}. Escolha outro horário.`;
+  return "";
+}
+/* Consultas já marcadas que uma mudança nos ajustes deixou fora (ou criadas direto no Google): nada some, a Zuri só avisa. */
+const agForaLista = () => EV.filter((e) => e.tipo && !e.ro && e.s !== "cancelado" && e.day >= dkey(AG_NOW) && foraDoHorario(e.day, e.h * 60 + e.m, e.dur)).sort((a, b) => (a.day + p2(a.h) + p2(a.m) < b.day + p2(b.h) + p2(b.m) ? -1 : 1));
+function foraCurto(e) {
+  const d = dOf(e.day), s = e.h * 60 + e.m, [a0, a1] = CF_HRS.alm;
+  if (!CF_HRS.dias.includes(d.getDay())) return "Dia sem atendimento.";
+  if (holFecha(d)) return `Feriado: ${feriado(d)}.`;
+  if (diaOff(d)) return "Dia sem expediente.";
+  return s < a1 && s + Math.round(e.dur * 60) > a0 && s >= CF_HRS.de * 60 && s + Math.round(e.dur * 60) <= CF_HRS.ate * 60 ? "No almoço." : "Fora do horário.";
+}
+function agForaAviso() {
+  const L = agForaLista();
+  if (!L.length) return "";
+  return `<div class="cx-warn hr-fora" role="status">${ic("triangle-alert", "ic-sm")}<div class="grow"><p><b>${L.length === 1 ? "1 consulta já marcada ficou fora" : `${L.length} consultas já marcadas ficaram fora`} do horário de atendimento.</b> Elas continuam na agenda e no Google. Remarque ou cancele.</p>
+    <ul class="hr-fora-l">${L.slice(0, 5).map((e) => `<li><button class="linkbtn" type="button" data-hr-ev="${e.id}" aria-haspopup="dialog">${e.t}, ${dayShort(dOf(e.day))} às ${hmm(e.h * 60 + e.m)}</button> <span class="hint">${foraCurto(e)}</span></li>`).join("")}${L.length > 5 ? `<li class="hint">e mais ${L.length - 5}.</li>` : ""}</ul></div></div>`;
 }
 /* Sempre a mesma escrita: "Segunda a sexta" quando os dias são seguidos. */
 function hrDias() {
@@ -7613,7 +7670,18 @@ function hrBlock() {
         <label for="hr-a0">Almoço das<select id="hr-a0" class="input input-sm" data-hr="a0">${mO(de * 60 + 30, ate * 60 - 60, a0)}</select></label>
         <label for="hr-a1">até<select id="hr-a1" class="input input-sm" data-hr="a1">${mO(a0 + 30, Math.min(a0 + 180, ate * 60 - 30), a1)}</select></label></div>
       <div class="hours-bar" role="img" aria-label="${hrResumo()}"><span class="on" style="left:${pct(de * 60)};width:${pct((ate - de) * 60)}"><b class="num">${hh2(de)} até ${hh2(ate)}</b></span><span class="lunch" style="left:${pct(a0)};width:${pct(a1 - a0)}" title="Almoço"></span></div>
-      <div class="hours-scale num" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>`;
+      <div class="hours-scale num" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
+    ${holBlock()}${agForaAviso()}`;
+}
+/* Feriados nacionais dos próximos 12 meses (cada um com "Atendo") e os dias sem expediente. */
+function holBlock() {
+  const hs = [];
+  for (let i = 0; i <= 366 && hs.length < 12; i++) { const d = addD(AG_NOW, i); if (feriado(d) && CF_HRS.dias.includes(d.getDay())) hs.push(d); }
+  const offs = DIAS_OFF.filter((x) => x.k >= dkey(AG_NOW)).sort((a, b) => (a.k < b.k ? -1 : 1));
+  return `<div class="set-row set-col"><div class="grow"><p class="t" id="hol-t">Feriados nacionais</p><p class="hint">Fecham a agenda sozinhos. Marque “Atendo” se for trabalhar no feriado. Feriado em fim de semana ou dia sem atendimento não aparece.</p></div>
+      <ul class="hol-list" aria-labelledby="hol-t">${hs.map((d) => `<li><span class="num">${p2(d.getDate())}/${p2(d.getMonth() + 1)}</span><span class="grow">${feriado(d)}</span><button type="button" class="chip" data-hol="${dkey(d)}" aria-pressed="${HOL_OPEN.has(dkey(d))}" aria-label="Atendo em ${feriado(d)}">Atendo</button></li>`).join("")}</ul></div>
+    <div class="set-row set-col"><div class="grow"><p class="t" id="off-t">Dias sem expediente</p><p class="hint">Recesso, férias ou feriado da cidade. O dia fica fechado na agenda, no link de remarcar e nos envios automáticos.</p></div>
+      <div class="off-list" role="group" aria-labelledby="off-t">${offs.map((x) => `<span class="tag">${brDate(x.k)}${x.m ? ` · ${x.m}` : ""}<button type="button" class="tag-x" data-off-del="${x.k}" aria-label="Tirar ${brDate(x.k)}">${ic("x", "ic-sm")}</button></span>`).join("")}<button class="btn btn-quiet btn-sm" type="button" data-off-add aria-haspopup="dialog">${ic("calendar-plus", "ic-sm")}Adicionar dia</button></div></div>`;
 }
 function cfFree(e, k, t) {
   const [a, b] = cfTurno(t), dur = Math.round(e.dur * 60), busy = EV.filter((o) => o !== e && o.day === k && o.s !== "cancelado");
@@ -7705,7 +7773,7 @@ function cfRmPick(e, m, opener) {
     body: "", foot: `<button class="btn btn-primary" type="button" data-dlg-ok>Sim, remarcar</button><span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x data-autofocus>Voltar</button>`,
     ok: () => {
       /* Confere de novo na hora de gravar: outra pessoa pode ter pegado o horário enquanto este paciente escolhia. */
-      if (cfExpired(e) || cfLate(e) || !cfFree(e, k, st.rm.turno).out.includes(m)) { DLG.opener = null; st.rm = { ...st.rm, step: 4, more: false }; render(); say("Esse horário acabou de ser ocupado. Escolha outro."); return; }
+      if (cfExpired(e) || cfLate(e) || !cfFree(e, k, st.rm.turno).out.includes(m) || agErro(e, k, m, end)) { DLG.opener = null; st.rm = { ...st.rm, step: 4, more: false }; render(); say("Esse horário acabou de ser ocupado. Escolha outro."); return; }
       const from = `${dayShort(dOf(e.day))} às ${hmm(e.h * 60 + e.m)}`;
       Object.assign(e, { day: k, h: Math.floor(m / 60), m: m % 60, s: "reagendado", rmN: (e.rmN || 0) + 1 });
       e.cf = { ...e.cf, st: "remarcou", w: `hoje às ${hm(nowMin())}`, from };
@@ -7848,7 +7916,171 @@ ACT.unshift(
   [(t) => t.matches("[data-cx-real]"), (t) => { st.cxReal = t.dataset.cxReal === "1"; render(); refocus(`[data-cx-real="${st.cxReal ? 1 : 0}"]`); }],
   [(t) => t.matches("[data-pj]"), (t) => { const [k, v] = t.dataset.pj.split(":"); const n = Number(v); if (k === "r" && [0, 5, 10].includes(n)) st.pjR = n; else if (k === "a" && [-2, 0, 2, 4].includes(n)) st.pjA = n; else return; render(); refocus(`[data-pj="${k}:${n}"]`); }]
 );
+/* ================= 13/11/2026 · pedidos das 21:37: e-mail (Gmail ou SMTP), Pix pela fzap e segurança das integrações ================= */
+Object.assign(ICONS.lucide, {
+  "qr-code": '<rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/>'
+});
+/* E-mail para pacientes: Gmail (recomendado, sem senha guardada) ou SMTP de outro provedor. */
+st.mailMode = "gmail";
+const MAIL = { gmail: "ana@exemplo.com.br", smtp: null, sentToday: 3, cap: 100 };
+function mailSec() {
+  const g = st.mailMode === "gmail", seg = `<div class="seg" role="group" aria-label="Como o e-mail sai">${[["gmail", "Gmail (recomendado)"], ["smtp", "Outro provedor (SMTP)"]].map(([k, l]) => `<button type="button" data-mail-mode="${k}" aria-pressed="${st.mailMode === k}">${l}</button>`).join("")}</div>`;
+  const gm = MAIL.gmail
+    ? `<div class="set-row"><div class="grow"><p class="t">${ic("circle-check", "ic-sm")} Gmail conectado: ${escH(MAIL.gmail)}</p><p class="hint">Permissão só de enviar (gmail.send). A Zuri não lê, não apaga e não vê a sua caixa. Nenhuma senha fica guardada: o Google dá um token, cifrado no servidor, e você revoga quando quiser na sua conta Google.</p></div><div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-mail-test>Enviar teste para você</button><button class="btn btn-quiet btn-sm" type="button" data-mail-off>Desconectar</button></div></div>`
+    : `<div class="set-row"><div class="grow"><p class="t">Gmail não conectado</p><p class="hint">O Google pede para você permitir só o envio. Usa a mesma conexão do Google da Agenda.</p></div><button class="btn btn-primary btn-sm" type="button" data-mail-on>Conectar o Gmail</button></div>`;
+  const s = MAIL.smtp || {};
+  const sm = `<div class="form-grid">
+      <label class="field"><span class="label">Servidor</span><input class="input" data-smtp-host value="${escH(s.host || "")}" placeholder="smtp.exemplo.com.br" autocomplete="off" spellcheck="false" maxlength="120"></label>
+      <label class="field"><span class="label">Porta e segurança</span><select class="input" data-smtp-port><option value="465"${s.port === 587 ? "" : " selected"}>465 · SSL/TLS</option><option value="587"${s.port === 587 ? " selected" : ""}>587 · STARTTLS</option></select></label>
+      <label class="field"><span class="label">Usuário</span><input class="input" data-smtp-user value="${escH(s.user || "")}" placeholder="contato@exemplo.com.br" autocomplete="off" maxlength="120"></label>
+      <label class="field"><span class="label">Senha de app</span><input class="input" type="password" data-smtp-pass placeholder="${s.host ? "Em branco, fica a atual" : ""}" autocomplete="new-password" maxlength="200"><span class="hint">${s.host ? `Guardada, terminada em ${escH(s.last)}. ` : ""}Fica cifrada e nunca volta para a tela.</span></label></div>
+    <p class="hint">Só conexão cifrada (TLS); servidor sem TLS, endereço IP ou de rede interna é recusado. Mudar o servidor ou o usuário pede a senha de novo. Prefira uma senha de app, que você apaga no provedor sem trocar a senha da conta.</p><p class="hint" data-smtp-err role="status"></p>`;
+  return sec("h-mail", "E-mail para pacientes", `Por onde saem a confirmação de consulta, os parabéns e os outros e-mails aos pacientes. Até ${MAIL.cap} por dia; hoje saíram ${MAIL.sentToday}.`,
+    `${ctlRow("Como o e-mail sai", g ? "O Gmail entrega como você e já assina o e-mail (SPF e DKIM), então cai menos no spam." : "Para e-mail próprio do consultório em outro provedor.", seg)}${g ? gm : sm}`,
+    g ? "" : `<button class="btn btn-secondary" type="button" data-mail-test>Enviar teste para você</button><span class="grow"></span><button class="btn btn-primary" type="button" data-smtp-save>Salvar</button>`);
+}
+const SMTP_HOST = /^(?=.{4,120}$)(?!-)[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i;
+const isIpLike = (h) => /^\d+(\.\d+){3}$/.test(h) || h.includes(":") || /(^|\.)(localhost|local|internal|lan|home|corp)$/i.test(h);
+function smtpSave(t) {
+  const err = document.querySelector("[data-smtp-err]"), host = dlgRawIn("[data-smtp-host]").toLowerCase(), user = dlgRawIn("[data-smtp-user]"), pass = document.querySelector("[data-smtp-pass]")?.value || "", port = Number(pick(dlgRawIn("[data-smtp-port]"), ["465", "587"]));
+  const fail = (m, sel) => { err.textContent = m; err.classList.add("err"); document.querySelector(sel)?.focus(); };
+  if (!SMTP_HOST.test(host) || isIpLike(host)) return fail("Use o nome do servidor, como smtp.exemplo.com.br. IP e rede interna não valem.", "[data-smtp-host]");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user)) return fail("O usuário costuma ser o próprio e-mail, como contato@exemplo.com.br.", "[data-smtp-user]");
+  const old = MAIL.smtp, moved = !old || old.host !== host || old.user !== user;
+  if (moved && !pass) return fail(old ? "O servidor ou o usuário mudou: digite a senha de novo." : "Digite a senha de app.", "[data-smtp-pass]");
+  senhaDlg("O e-mail guarda uma senha. Confirme para salvar.", () => {
+    MAIL.smtp = { host, user, port, last: pass ? pass.slice(-2).replace(/./g, "•") + pass.slice(-2) : old.last };
+    render(); say("E-mail salvo. A Zuri conectou com TLS e o servidor aceitou o usuário.");
+  }, t);
+}
+/* Pix para cobrança: um lugar só (Configurações › Consultório). A chave fica cifrada e aparece só pelo final. */
+const PIX_T = [["CPF", "CPF"], ["CNPJ", "CNPJ"], ["EMAIL", "E-mail"], ["PHONE", "Telefone"], ["EVP", "Chave aleatória"]];
+const PIX = { type: "CNPJ", key: "12.345.678/0001-95", name: "", instr: "Depois de pagar, mande o comprovante por aqui.", conn: "fz" };
+const pixName = () => PIX.name || CF_CLINIC.n;
+const pixEnd = () => `terminada em ${PIX.key.replace(/\W/g, "").slice(-4)}`;
+const digits = (v) => v.replace(/\D/g, "");
+const cpfOk = (v) => { const d = digits(v); if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false; const dv = (n) => { let s = 0; for (let i = 0; i < n; i++) s += Number(d[i]) * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; }; return dv(9) === Number(d[9]) && dv(10) === Number(d[10]); };
+const cnpjOk = (v) => { const d = digits(v); if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false; const dv = (n) => { const w = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]; const s = w.reduce((a, x, i) => a + x * Number(d[i]), 0) % 11; return s < 2 ? 0 : 11 - s; }; return dv(12) === Number(d[12]) && dv(13) === Number(d[13]); };
+const PIX_OK = { CPF: cpfOk, CNPJ: cnpjOk, EMAIL: (v) => /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/.test(v) && v.length <= 77, PHONE: (v) => /^\+55\d{10,11}$/.test(v.replace(/[\s()-]/g, "")), EVP: (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) };
+function pixSec() {
+  const fz = connsOf("fzap"), cur = fz.find((c) => c.id === PIX.conn);
+  return sec("h-pix", "Pix para cobrança", "Usado por “Enviar Pix” no Financeiro e nos detalhes do agendamento. O paciente recebe pelo WhatsApp a mensagem de Pix com a chave e o valor, e copia a chave com um toque.",
+    `<div class="form-grid"><label class="field"><span class="label">Tipo da chave</span><select class="input" data-pix-type>${PIX_T.map(([k, l]) => `<option value="${k}"${k === PIX.type ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label class="field"><span class="label">Chave Pix</span><input class="input" data-pix-key placeholder="${PIX.key ? `Guardada, ${pixEnd()}. Em branco, fica a atual` : "Digite a chave"}" autocomplete="off" spellcheck="false" maxlength="77"></label>
+      <label class="field"><span class="label">Nome de quem recebe</span><input class="input" data-pix-name value="${escH(PIX.name)}" placeholder="${escH(CF_CLINIC.n)}" maxlength="60"><span class="hint">Em branco, vai o nome do consultório.</span></label>
+      <label class="field"><span class="label">Envia pela credencial</span><select class="input" data-pix-conn>${fz.length ? fz.map((c) => `<option value="${escH(c.id)}"${c.id === PIX.conn ? " selected" : ""}>${escH(c.n)}</option>`).join("") : `<option value="">Nenhuma credencial da fzap</option>`}</select><span class="hint">${cur ? "Fica em CRM › Credenciais." : "Crie em CRM › Credenciais › Nova credencial › fzap."}</span></label></div>
+     <label class="field"><span class="label">Instruções (opcional)</span><input class="input" data-pix-instr value="${escH(PIX.instr)}" maxlength="120"></label>
+     <p class="hint">A chave é conferida antes de salvar (CPF e CNPJ pelos dígitos verificadores). Trocar a chave pede a sua senha.</p><p class="hint" data-pix-err role="status"></p>`,
+    `<button class="btn btn-primary" type="button" data-pix-save>Salvar o Pix</button>`);
+}
+function pixSave(t) {
+  const err = document.querySelector("[data-pix-err]"), type = pick(dlgRawIn("[data-pix-type]"), PIX_T.map((x) => x[0])), key = dlgRawIn("[data-pix-key]"), name = dlgRawIn("[data-pix-name]").slice(0, 60), instr = dlgRawIn("[data-pix-instr]").slice(0, 120), conn = connsOf("fzap").find((c) => c.id === dlgRawIn("[data-pix-conn]"));
+  const fail = (m, sel) => { err.textContent = m; err.classList.add("err"); document.querySelector(sel)?.focus(); };
+  if (!key && type !== PIX.type) return fail("O tipo mudou: digite a chave de novo.", "[data-pix-key]");
+  if (key && !PIX_OK[type](key)) return fail(type === "PHONE" ? "Telefone com +55 e DDD, como +55 41 99999-0000." : type === "EVP" ? "A chave aleatória tem 32 letras e números com hífens." : `Confira o ${PIX_T.find((x) => x[0] === type)[1]}: ele não fecha.`, "[data-pix-key]");
+  const go = () => { Object.assign(PIX, { type, name: esc(name), instr: esc(instr), conn: conn ? conn.id : "" }); if (key) PIX.key = esc(key); render(); refocus("[data-pix-save]"); say(`Pix salvo: ${PIX_T.find((x) => x[0] === type)[1]} ${pixEnd()}.`); };
+  if (key) senhaDlg("Trocar a chave Pix muda para onde vão os pagamentos. Confirme.", go, t); else go();
+}
+/* Enviar Pix: só pelo seu toque, um paciente por vez, para o celular do contato (ou do responsável). */
+function pixDlg(e, opener) {
+  const sv = servOf(e), conn = connsOf("fzap").find((c) => c.id === PIX.conn), cel = cfCel(e), p = e.pid && pById(e.pid), via = p && RESP[p.id] && pById(RESP[p.id]);
+  const miss = !conn ? ["Falta a credencial da fzap.", "Crie em CRM › Credenciais.", "conexoes"] : !PIX.key ? ["Falta a chave Pix.", "Cadastre em Configurações › Consultório.", "consultorio"] : !cel ? ["Este agendamento não tem celular.", "Vincule a um contato com celular ou digite o número no agendamento.", ""] : null;
+  if (miss) { dlgShow({ t: "Não dá para enviar o Pix ainda", sub: `${miss[0]} ${miss[1]}`, body: "", foot: `<span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x>Entendi</button>` }, opener); return; }
+  const recent = e.pix && Date.now() - e.pix.at < 600000;
+  const val = ((e.pix ? e.pix.c : sv ? sv.c : 0) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+  const desc = `${sv ? sv.n : kindOf(e.tipo)} de ${brDate(e.day).slice(0, 5)}`;
+  dlgShow({ t: `Enviar Pix para ${escH(cfFirst(e))}`, sub: `Pelo WhatsApp, para ${escH(via ? `${via.n} (${famRole(p.id, via.id)})` : e.t)}, ${escH(cel)}. Sai pela credencial “${escH(conn.n)}”.`,
+    body: `<div class="grid-2"><label class="field"><span class="label">Valor</span><input class="input num" data-pix-v inputmode="decimal" value="${val}"></label>
+      <label class="field"><span class="label">Descrição</span><input class="input" data-pix-d value="${escH(desc)}" maxlength="60"></label></div>
+      <p class="label">Como chega</p>
+      <div class="pix-card" aria-label="Prévia da mensagem de Pix"><p class="pix-h">${ic("qr-code", "ic-sm")}Pagamento por Pix</p><p class="pix-v num" data-pix-pv></p><p class="pix-l"><span>Recebedor</span><b>${escH(pixName())}</b></p><p class="pix-l"><span>Chave (${PIX_T.find((x) => x[0] === PIX.type)[1]})</span><b class="num">${escH(PIX.key)}</b></p><p class="pix-l"><span>Descrição</span><b data-pix-pd></b></p>${PIX.instr ? `<p class="hint">${escH(PIX.instr)}</p>` : ""}<p class="pix-copy">Copiar chave Pix</p></div>
+      ${recent ? `<p class="cx-warn">${ic("triangle-alert", "ic-sm")}<span>Você já enviou um Pix para este agendamento ${escH(e.pix.w)}. Envie de novo só se o paciente pediu.</span></p>` : ""}
+      <p class="hint">O pagamento não é conferido sozinho: quando cair, registre em “Registrar pagamento”.</p><p class="hint" data-pix-e role="status"></p>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>${recent ? "Enviar de novo" : "Enviar Pix"}</button>`,
+    ok: () => {
+      const c = Math.round(Number(dlgRawIn("[data-pix-v]").replace(/\./g, "").replace(",", ".")) * 100), d = dlgRawIn("[data-pix-d]").slice(0, 60);
+      if (!(c >= 100) || c > 10000000) { const x = document.querySelector("[data-pix-e]"); x.textContent = "Valor de R$ 1,00 a R$ 100.000,00, por exemplo 280,00."; x.classList.add("err"); document.querySelector("[data-pix-v]").focus(); return false; }
+      e.pix = { c, d: esc(d), at: Date.now(), w: `hoje às ${hm(nowMin())}` };
+      DLG.opener = null; render(); say(`Pix de ${cxBrl(c, true)} enviado para ${cfFirst(e)} pelo WhatsApp.`);
+    } }, opener);
+  pixPrev();
+}
+/* Prévia: o que a pessoa digita entra como texto, nunca como HTML. */
+function pixPrev() {
+  const v = document.querySelector("#dlg-host [data-pix-pv]"), d = document.querySelector("#dlg-host [data-pix-pd]");
+  if (!v || !d) return;
+  const c = Math.round(Number(dlgRawIn("[data-pix-v]").replace(/\./g, "").replace(",", ".")) * 100);
+  v.textContent = c > 0 ? (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "R$ —";
+  d.textContent = dlgRawIn("[data-pix-d]") || "—";
+}
+document.addEventListener("input", (ev) => { const t = ev.target; if (t.matches && t.matches("#dlg-host [data-pix-v], #dlg-host [data-pix-d]")) pixPrev(); });
+/* Credencial da fzap: endereço da instância e token. Testar lê só o estado da sessão (GET /session/status). */
+function fzDlg(opener, c) {
+  const edit = !!c;
+  dlgShow({ t: edit ? `Editar “${escH(c.n)}”` : "Nova credencial da fzap", sub: "Para enviar Pix pelo WhatsApp. A Zuri usa só o envio de Pix e o estado da sessão; nada de grupos, contatos ou conversas.", kind: "conn",
+    body: `<label class="field"><span class="label">Nome</span><input class="input" data-fz-name value="${edit ? escH(c.n) : "fzap do consultório"}" maxlength="60"></label>
+      <label class="field"><span class="label">Endereço da instância</span><input class="input" data-fz-url value="${edit ? escH(c.url) : ""}" placeholder="https://fzap.exemplo.com.br" inputmode="url" spellcheck="false"></label>
+      <label class="field"><span class="label">Token da instância</span><input class="input" type="password" data-fz-key placeholder="${edit ? "Em branco, fica o atual" : ""}" autocomplete="new-password" maxlength="200"><span class="hint">O token da instância, não o de administrador nem o de pasta. Fica cifrado e nunca volta para a tela.</span></label>
+      <div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-fz-test>${ic("plug-zap", "ic-sm")}Testar</button><span data-fz-st role="status"></span></div>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>${edit ? "Salvar" : "Salvar credencial"}</button>`,
+    ok: () => {
+      const s = document.querySelector("[data-fz-st]"), url = dlgRawIn("[data-fz-url]").replace(/\/+$/, ""), key = document.querySelector("[data-fz-key]").value;
+      const host = (/^https:\/\/([^/\s:?#]+)$/.exec(url) || [])[1] || "";
+      if (!SMTP_HOST.test(host) || isIpLike(host)) { s.textContent = "Use o endereço https da instância, como https://fzap.exemplo.com.br, sem caminho."; s.className = "err"; document.querySelector("[data-fz-url]").focus(); return false; }
+      if ((!edit || url !== c.url) && !key) { s.textContent = edit ? "O endereço mudou: digite o token de novo." : "Cole o token da instância."; s.className = "err"; document.querySelector("[data-fz-key]").focus(); return false; }
+      const n = dlgRawIn("[data-fz-name]").slice(0, 60) || "fzap";
+      senhaDlg("Credenciais guardam chaves. Confirme para salvar.", () => {
+        const info = "Instância conectada · modo WhatsApp Web · Pix disponível · só envia Pix, nada mais";
+        if (edit) Object.assign(c, { n: esc(n), url: esc(url), info, ...(key ? { key: "Token novo, terminado em 2e9a" } : {}) });
+        else { CONNS.push({ id: `fz${CONNS.length}`, kind: "fzap", n: esc(n), url: esc(url), info, key: "Token terminado em 2e9a", extra: [] }); if (!PIX.conn) PIX.conn = CONNS[CONNS.length - 1].id; }
+        render(); say("Credencial da fzap salva. “Enviar Pix” já pode usar.");
+      });
+      return false;
+    } }, opener);
+}
+/* O que vale para toda credencial de integração (Chatwoot, fzap, e-mail, Google, MCP). */
+function intSecCard() {
+  const L = [["lock", "Cifradas no servidor com AES-256-GCM, uma chave derivada para cada integração e o endereço como dado associado: a chave de uma não abre a outra, nem funciona em outro endereço."],
+    ["eye-off", "Nunca voltam para a tela, para o navegador, para a IA, para o backup ou para a exportação. Aparece só o final. Para trocar, você digita de novo."],
+    ["globe", "Cada credencial fala só com o endereço dela, por https, sem seguir redirecionamento e sem IP ou rede interna. Mudar o endereço pede a chave de novo."],
+    ["shield-check", "Criar, editar, trocar ou remover pede a sua senha e fica em Segurança › Atividade de acesso."],
+    ["file-text", "Os registros não guardam chave, token, senha nem o texto das mensagens: só o que aconteceu, a hora e o código da resposta."],
+    ["timer", "Tempo máximo por chamada, resposta com tamanho limitado e limite por dia em cada envio. A IA não tem ferramenta para usar nem ler credenciais."]];
+  return `<section class="card p-sec" aria-labelledby="h-intsec"><div class="p-sec-h"><h2 id="h-intsec">Como as credenciais são protegidas</h2></div><ul class="ro-list">${L.map(([i, t]) => `<li>${ic(i, "ic-sm")}<span>${t}</span></li>`).join("")}</ul></section>`;
+}
+ACT.unshift(
+  [(t) => t.matches("[data-pix]"), (t) => { const e = evById(t.dataset.pix); if (!e) return; if (document.querySelector("#dlg-host .dlg-box")) dlgClose(); pixDlg(e, t); }],
+  [(t) => t.matches("[data-pix-save]"), (t) => pixSave(t)],
+  [(t) => t.matches("[data-fz-test]"), (t) => busy(t, 900, () => { const s = document.querySelector("[data-fz-st]"); if (s) { s.textContent = "Conectada. Modo WhatsApp Web: o Pix funciona."; s.className = "ok"; } })],
+  [(t) => t.matches("[data-mail-mode]"), (t) => { st.mailMode = pick(t.dataset.mailMode, ["gmail", "smtp"]); render(); refocus(`[data-mail-mode="${st.mailMode}"]`); }],
+  [(t) => t.matches("[data-mail-on]"), () => { MAIL.gmail = "ana@exemplo.com.br"; render(); refocus("[data-mail-test]"); say("Gmail conectado só para enviar."); }],
+  [(t) => t.matches("[data-mail-off]"), (t) => confirmDlg("Desconectar o Gmail?", "Os e-mails aos pacientes param até você conectar de novo ou usar SMTP. O WhatsApp continua.", "Desconectar", () => { MAIL.gmail = ""; render(); refocus("[data-mail-on]"); say("Gmail desconectado. O token foi apagado e revogado no Google."); }, t)],
+  [(t) => t.matches("[data-mail-test]"), (t) => busy(t, 900, () => say(`E-mail de teste enviado para você (${st.mailMode === "gmail" ? "pelo Gmail" : "pelo SMTP"}).`))],
+  [(t) => t.matches("[data-smtp-save]"), (t) => smtpSave(t)]
+);
 const syncPaint = () => { const s = document.querySelector("[data-ag-sync]"); if (s) s.innerHTML = syncTxt(); };
+/* ===== 13/11/2026, 21:44 · travas da agenda: feriado, dia sem expediente, passado, duração, consulta no mesmo horário ===== */
+const evFora = (e) => !!(e.tipo && !e.ro && e.s !== "cancelado" && foraDoHorario(e.day, e.h * 60 + e.m, e.dur));
+ACT.unshift(
+  [(t) => t.matches("[data-hol]"), (t) => { const k = t.dataset.hol; if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !feriado(dOf(k))) return; if (HOL_OPEN.has(k)) HOL_OPEN.delete(k); else HOL_OPEN.add(k); say(HOL_OPEN.has(k) ? `${feriado(dOf(k))}: a agenda abre nesse dia.` : `${feriado(dOf(k))}: a agenda fica fechada.`); render(); refocus(`[data-hol="${k}"]`); }],
+  [(t) => t.matches("[data-off-del]"), (t) => { const k = t.dataset.offDel, i = DIAS_OFF.findIndex((x) => x.k === k); if (i < 0) return; DIAS_OFF.splice(i, 1); say(`${brDate(k)} voltou a ser dia de atendimento.`); render(); refocus("[data-off-add]"); }],
+  [(t) => t.matches("[data-hr-ev]"), (t) => { const e = evById(t.dataset.hrEv); if (e) evDlg(e, t); }],
+  [(t) => t.matches("[data-off-add]"), (t) => dlgShow({ t: "Dia sem expediente", sub: "O dia fica fechado na agenda, no link de remarcar e nos envios automáticos.",
+    body: `<div class="form-grid"><label class="field"><span class="label">Dia</span><input class="input num" inputmode="numeric" autocomplete="off" data-mask="date" data-off-d placeholder="dd/mm/aaaa" maxlength="10" data-autofocus></label><label class="field"><span class="label">Motivo (opcional)</span><input class="input" data-off-m maxlength="40" placeholder="Por exemplo, recesso"></label></div><p class="hint" data-off-err role="status"></p>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Adicionar</button>`,
+    ok: () => {
+      const err = (m) => { const x = document.querySelector("[data-off-err]"); x.textContent = m; x.classList.add("err"); document.querySelector("#dlg-host [data-off-d]").focus(); return false; };
+      const k = isoDate(dlgRaw("[data-off-d]"));
+      if (!k) return err("Escreva a data como dd/mm/aaaa.");
+      if (k < dkey(AG_NOW)) return err("Esse dia já passou.");
+      if (dOf(k) > addD(AG_NOW, AG_LONGE)) return err("A data passa de um ano a partir de hoje. Confira o ano.");
+      if (DIAS_OFF.some((x) => x.k === k)) return err("Esse dia já está na lista.");
+      DIAS_OFF.push({ k, m: dlgVal("[data-off-m]") });
+      const n = EV.filter((e) => e.day === k && e.tipo && e.s !== "cancelado").length;
+      say(`${brDate(k)} ficou sem expediente.${n ? ` ${n === 1 ? "1 consulta marcada nesse dia precisa" : `${n} consultas marcadas nesse dia precisam`} ser remarcada${n === 1 ? "" : "s"}.` : ""}`);
+      render();
+    } }, t)]
+);
 /* Primeiro desenho só depois de todos os blocos acima existirem. */
 render();
 </script>

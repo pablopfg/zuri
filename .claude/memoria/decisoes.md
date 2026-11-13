@@ -160,3 +160,5 @@ Fatos e decisões já tomados pelo Pablo. O agente não pergunta de novo nada da
   - **Financeiro:** extrato exportável em planilha.
   - **Resultados:** nominal ou real (IPCA do Banco Central) e aba de projeções.
   - **Contatos:** família guardada só na Zuri, com responsável que recebe as mensagens.
+  - **Integrações (13/11):** e-mail a pacientes pelo Gmail (`gmail.send`, recomendado) ou SMTP com TLS; Pix pela fzap só com toque do dono; segredos cifrados, só escrita, senha para mudar, um host por credencial.
+  - **Travas da agenda (13/11):** consulta não entra no passado, em feriado (salvo "Atendo"), dia sem expediente, fora do horário, no almoço nem sobre outra consulta; feriados e dias sem expediente só em Configurações › Agenda.
