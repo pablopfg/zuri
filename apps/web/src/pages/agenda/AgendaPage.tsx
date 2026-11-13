@@ -5,7 +5,9 @@ import {
   type AgendaPrefs,
   type AppointmentProblem,
   type AgendaChange,
+  AGENDA_RULES,
   closedPeriod,
+  dayPlus,
   dayClosure,
   outsideHours,
   EVENT_STATUS_COLOR,
@@ -56,7 +58,9 @@ import {
   eventLook,
   eventsOn,
   type FormProblem,
+  formAt,
   formBody,
+  formLength,
   formOf,
   GOOGLE_STATUS_KEY,
   isFrozen,
@@ -74,7 +78,7 @@ import {
   withoutType,
 } from "../../lib/agenda.ts";
 import { applyChanges, clashes, type EventChanges, moveSlot, reschedules, resizeSlot, type Slot, STEP_MIN, slotChanges, slotOf, slotTimes } from "../../lib/agenda-edit.ts";
-import { bookedOn, hhmm, isAppointment, nextFree, slotProblem } from "../../lib/agenda-rules.ts";
+import { bookedOn, dayRefusal, freeStarts, hhmm, isAppointment, nextFree, slotProblem } from "../../lib/agenda-rules.ts";
 import { ApiError, api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { play } from "../../lib/sounds.ts";
@@ -284,7 +288,11 @@ function useNow(): number {
 const eventsKey = (from: string, to: string) => [...EVENTS_KEY, from, to] as const;
 
 /** `plain`: a personal event, offered when a closed hour refused an appointment: it starts without a type. */
-type Editing = { mode: "new"; day: string; time?: string; minutes?: number; plain?: boolean } | { mode: "edit"; event: AgendaEvent };
+type Editing = { mode: "new"; day: string; time?: string; minutes?: number; plain?: boolean; form?: EventForm } | { mode: "edit"; event: AgendaEvent };
+/** "Escolher na agenda" (protótipo v52): the form put away while the owner taps a day and an hour. */
+type Picking = { form: EventForm };
+/** A refusal of the form: why, the field it points at, the hour asked and the next free one. */
+type FormRefusal = { text: string; field: "date" | "start" | "end"; day: string; minute: number; next: { day: string; start: number } | null };
 /** An hour that takes no appointment, clicked: why, and the next free one. */
 /** A closed hour clicked, or a drop refused (`moving`: the appointment that stayed, and its length). */
 type ClosedHour = { day: string; minute: number; why: string; next: { day: string; start: number } | null; moving?: { event: AgendaEvent; length: number } };
@@ -332,6 +340,13 @@ export function AgendaPage() {
     setOpen(event);
   };
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [picking, setPicking] = useState<Picking | null>(null);
+  // The form goes away while picking: the focus goes to the band's Cancelar, the way back by the keyboard.
+  const pickingBand = useRef<HTMLDivElement>(null);
+  const isPicking = !!picking;
+  useEffect(() => {
+    if (isPicking) pickingBand.current?.querySelector("button")?.focus();
+  }, [isPicking]);
   const [closedHour, setClosedHour] = useState<ClosedHour | null>(null);
   const problemText = useProblemText(prefs);
 
@@ -411,6 +426,17 @@ export function AgendaPage() {
     if (!prefs) return;
     const minute = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
     const all = events.data?.events ?? [];
+    if (picking) {
+      // "Escolher na agenda": the form comes back with the day and the hour tapped, unless the hour takes no appointment.
+      const length = formLength(picking.form);
+      const problem = picking.form.type ? slotProblem({ prefs, events: all, day, start: minute, end: minute + length, now: Date.now(), timeZone }) : null;
+      if (!problem) {
+        setPicking(null);
+        return setEditing({ mode: "new", day, form: formAt(picking.form, day, time) });
+      }
+      if (settings.data?.sounds.notice !== false) play(REFUSAL_NOTES);
+      return setClosedHour({ day, minute, why: problemText(problem, day), next: nextFree({ prefs, events: all, day, minute, until: to, now: Date.now(), timeZone, length }) });
+    }
     // Over an appointment already there, the hour is the owner's to see: the form tells the clash.
     const taken = bookedOn(all, day, timeZone).some((slot) => slot.start <= minute && slot.end > minute);
     // The form starts with an hour; the last half hour before lunch or the end of the day takes half an hour.
@@ -605,20 +631,70 @@ export function AgendaPage() {
           setEditing({ mode: "edit", event });
         }}
       />
-      {editing && <EventFormDialog editing={editing} calendars={writable} types={types} busy={saving} prefs={prefs} events={events.data?.events ?? []} onChange={change} onClose={() => setEditing(null)} />}
+      {editing && (
+        <EventFormDialog
+          editing={editing}
+          calendars={writable}
+          types={types}
+          busy={saving}
+          prefs={prefs}
+          events={events.data?.events ?? []}
+          until={to}
+          sound={settings.data?.sounds.notice !== false}
+          onChange={change}
+          // A phone shows the day as a list, with no hour to tap: there the calendar is the way.
+          onPick={
+            wide
+              ? (form) => {
+                  setEditing(null);
+                  setPicking({ form });
+                  // The month has no hours to tap: the week has.
+                  if (view === "month") setChosen("week");
+                }
+              : undefined
+          }
+          onClose={() => setEditing(null)}
+        />
+      )}
+      {/* Room under the grid, so the last hours can scroll out from under the band. */}
+      {picking && <div aria-hidden className="h-24" />}
+      {picking && (
+        <div ref={pickingBand} role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto flex max-w-xl flex-wrap items-center gap-3 rounded-2xl border border-accent/40 bg-surface p-3 shadow-lg lg:bottom-6">
+          <CalendarPlus className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+          <span className="min-w-0 flex-1 text-sm">
+            {!picking.form.type ? t("web.agenda.pick.bannerPlain") : picking.form.title.trim() ? t("web.agenda.pick.banner", { name: picking.form.title.trim() }) : t("web.agenda.pick.bannerNoName")}
+          </span>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setEditing({ mode: "new", day: picking.form.startDate, form: picking.form });
+              setPicking(null);
+            }}
+          >
+            {t("web.cancel")}
+          </Button>
+        </div>
+      )}
       {closedHour && (
         <ClosedHourDialog
           closed={closedHour}
           onClose={() => setClosedHour(null)}
           onPlain={() => {
             setClosedHour(null);
-            setEditing({ mode: "new", day: closedHour.day, time: hhmm(closedHour.minute), plain: true });
+            if (picking) {
+              // The form typed so far, as a personal event at the hour tapped.
+              setEditing({ mode: "new", day: closedHour.day, form: { ...formAt(picking.form, closedHour.day, hhmm(closedHour.minute)), type: "" } });
+              setPicking(null);
+            } else setEditing({ mode: "new", day: closedHour.day, time: hhmm(closedHour.minute), plain: true });
           }}
           onNext={(next) => {
             setClosedHour(null);
             go(next.day);
             if (closedHour.moving) moveTo(closedHour.moving.event, { day: next.day, start: next.start, end: next.start + closedHour.moving.length });
-            else setEditing({ mode: "new", day: next.day, time: hhmm(next.start) });
+            else if (picking) {
+              setEditing({ mode: "new", day: next.day, form: formAt(picking.form, next.day, hhmm(next.start)) });
+              setPicking(null);
+            } else setEditing({ mode: "new", day: next.day, time: hhmm(next.start) });
           }}
         />
       )}
@@ -1754,10 +1830,20 @@ function EventFormDialog({
   busy,
   prefs,
   events,
+  until,
+  sound,
   onChange,
+  onPick,
   onClose,
 }: {
   editing: Editing;
+  /** The last day the events read reach: the next free hour is looked for only up to it. */
+  until: string;
+  /** The notice sound is on: a refusal plays it. */
+  sound: boolean;
+  /** "Escolher na agenda": the form goes away, kept as it is, while a day and an hour are tapped. */
+  /** Only where the Agenda has hours to tap (not on a phone). */
+  onPick: ((form: EventForm) => void) | undefined;
   /** Configurações › Agenda: an appointment is checked against them before it goes (13/11/2026, 00:44). */
   prefs: AgendaPrefs;
   /** The events read, for a clash with another appointment. */
@@ -1776,22 +1862,26 @@ function EventFormDialog({
   const toast = useToast();
   const qc = useQueryClient();
   const problemText = useProblemText();
+  const shortDay = useShortDay();
   const initial = useMemo(() => {
     if (editing.mode === "edit") return formOf(editing.event, timeZone);
+    if (editing.form) return editing.form;
     const blank = blankForm(editing.day, (calendars.find((c) => c.primary) ?? calendars[0])?.id ?? "", timeZone, Date.now(), editing.time, editing.minutes);
     // A new event is an appointment of the calendar's first "Consulta" type, unless it is a personal one.
     return editing.plain ? blank : { ...blank, type: types.find((type) => /^consulta\b/i.test(type)) ?? "" };
   }, [editing, calendars, timeZone, types]);
   const [form, setForm] = useState<EventForm>(initial);
   const [problem, setProblem] = useState<FormProblem | null>(null);
-  /** What the booking rule refused, in words, and the field it points at. */
-  const [rule, setRule] = useState<{ text: string; field: "date" | "start" | "end" } | null>(null);
+  /** What the booking rule refused, over the form: why, the field it points at and the next free hour (protótipo v52). */
+  const [refusal, setRefusal] = useState<FormRefusal | null>(null);
+  /** Said to a screen reader after "Usar este horário" or a free hour picked. */
+  const [said, setSaid] = useState("");
   const fields = useRef<HTMLFormElement>(null);
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof EventForm>(key: K, value: EventForm[K]) => {
     setForm((old) => ({ ...old, [key]: value }));
     setProblem(null);
-    setRule(null);
+    setRefusal(null);
   };
 
   /** The rule's verdict on the form as it is, or null: only for an appointment whose day or hours are new. */
@@ -1802,8 +1892,12 @@ function EventFormDialog({
     if (kept && kept.start === body.start && kept.end === body.end && initial.type !== "" && initial.status !== "cancelled") return null;
     const day = body.start.slice(0, 10);
     const minute = (at: string) => Math.round((Date.parse(`${at.slice(0, 10)}T12:00:00Z`) - Date.parse(`${day}T12:00:00Z`)) / 60_000) + Number(at.slice(11, 13)) * 60 + Number(at.slice(14, 16));
-    const found = slotProblem({ prefs, events, except: editing.mode === "edit" ? editing.event : null, day, start: minute(body.start), end: minute(body.end), now: Date.now(), timeZone });
-    return found ? { text: problemText(found, day), field: found.field } : null;
+    const start = minute(body.start);
+    const except = editing.mode === "edit" ? editing.event : null;
+    const found = slotProblem({ prefs, events, except, day, start, end: minute(body.end), now: Date.now(), timeZone });
+    if (!found) return null;
+    const next = nextFree({ prefs, events, day, minute: start, until, now: Date.now(), timeZone, length: formLength(form), except });
+    return { text: problemText(found, day), field: found.field, day, minute: start, next };
   };
 
   const submit = async (e: FormEvent) => {
@@ -1815,9 +1909,9 @@ function EventFormDialog({
     }
     const refused = ruleProblem(body);
     if (refused) {
-      setRule(refused);
-      // The focus goes to the field to fix: the day, the start or the length.
-      fields.current?.querySelector<HTMLElement>(`[data-rule="${refused.field === "end" ? "end" : refused.field === "date" ? "date" : "start"}"]`)?.focus();
+      // Over the form, with the sound: a line at its foot went unseen (Pablo, 13/11/2026 02:58).
+      if (sound) play(REFUSAL_NOTES);
+      setRefusal(refused);
       return;
     }
     if (editing.mode === "edit") {
@@ -1849,6 +1943,7 @@ function EventFormDialog({
   const typeOptions = form.type && !types.includes(form.type) ? [form.type, ...types] : types;
 
   const error = problem ? t(PROBLEM_TEXT[problem]) : null;
+  const action = editing.mode === "new" ? t("web.agenda.form.create") : t("web.save");
   return (
     <Dialog open onClose={onClose} title={t(editing.mode === "new" ? "web.agenda.form.newTitle" : "web.agenda.form.editTitle")}>
       <form ref={fields} onSubmit={submit} className="space-y-4" noValidate>
@@ -1912,11 +2007,28 @@ function EventFormDialog({
             {error}
           </p>
         )}
-        {rule && (
-          <p role="alert" className="text-sm leading-6 text-danger">
-            {rule.text}
-          </p>
+        {!form.allDay && (
+          <MiniCalendar
+            form={form}
+            prefs={prefs}
+            except={editing.mode === "edit" ? editing.event : null}
+            onDay={(day) => {
+              setForm((old) => formAt(old, day, old.startTime));
+              setProblem(null);
+              setRefusal(null);
+            }}
+            onStart={(minute) => {
+              setForm((old) => formAt(old, old.startDate, hhmm(minute)));
+              setProblem(null);
+              setRefusal(null);
+              setSaid(t("web.agenda.pick.picked", { day: shortDay(form.startDate), time: hhmm(minute) }));
+            }}
+            onAgenda={editing.mode === "new" && onPick ? () => onPick(form) : undefined}
+          />
         )}
+        <p className="sr-only" aria-live="polite">
+          {said}
+        </p>
         <div className="grid grid-cols-2 gap-3">
           {typeOptions.length > 0 && (
             <SelectField label={t("web.agenda.form.type")} value={form.type} onChange={(e) => set("type", e.target.value)}>
@@ -1950,11 +2062,278 @@ function EventFormDialog({
           <Button variant="secondary" onClick={onClose}>
             {t("web.cancel")}
           </Button>
-          <Button type="submit" loading={saving || (busy && editing.mode === "edit")}>
-            {editing.mode === "new" ? t("web.agenda.form.create") : t("web.save")}
+          <Button type="submit" data-submit loading={saving || (busy && editing.mode === "edit")}>
+            {action}
           </Button>
         </div>
+        {refusal && (
+          <FormAlert
+            refusal={refusal}
+            onFix={() => {
+              setRefusal(null);
+              // The focus goes to the field to fix: the day, the start or the length.
+              fields.current?.querySelector<HTMLElement>(`[data-rule="${refusal.field}"]`)?.focus();
+            }}
+            onUse={(next) => {
+              setForm((old) => formAt(old, next.day, hhmm(next.start)));
+              setRefusal(null);
+              setSaid(t("web.agenda.formAlert.used", { day: shortDay(next.day), time: hhmm(next.start), action }));
+              fields.current?.querySelector<HTMLElement>("[data-submit]")?.focus();
+            }}
+          />
+        )}
       </form>
     </Dialog>
   );
 }
+
+/**
+ * The refusal over the form (protótipo v52): a dialog of its own on top, so nothing typed is lost.
+ * Esc closes only it; "Corrigir" goes to the field; "Usar este horário" takes the next free hour.
+ */
+function FormAlert({ refusal, onFix, onUse }: { refusal: FormRefusal; onFix: () => void; onUse: (next: { day: string; start: number }) => void }) {
+  const { t } = useI18n();
+  const shortDay = useShortDay();
+  const ref = useRef<HTMLDialogElement>(null);
+  const id = useId();
+  useLayoutEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) dialog.showModal();
+    // The way out first: the next free hour when there is one, else "Corrigir".
+    dialog?.querySelector<HTMLElement>("[data-use]")?.focus();
+    return () => dialog?.close();
+  }, []);
+  const next = refusal.next;
+  // Closing gives the focus back to the button that opened the notice, so close first and then move it.
+  const fix = () => {
+    ref.current?.close();
+    onFix();
+  };
+  return (
+    <dialog
+      ref={ref}
+      // biome-ignore lint/a11y/useSemanticElements: a modal <dialog> on top of the form's own; the role says it is an alert.
+      role="alertdialog"
+      aria-labelledby={`${id}-title`}
+      aria-describedby={`${id}-why`}
+      onCancel={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fix();
+      }}
+      className="m-auto w-[calc(100%-3rem)] max-w-sm rounded-2xl border border-danger/40 bg-surface p-5 text-fg shadow-xl"
+    >
+      <p id={`${id}-title`} className="flex items-center gap-2 font-semibold">
+        <TriangleAlert className="h-4 w-4 shrink-0 text-danger" aria-hidden />
+        {t("web.agenda.closedHour.title")}
+      </p>
+      <p id={`${id}-why`} className="mt-2 text-sm leading-6">
+        {t("web.agenda.closedHour.when", { day: shortDay(refusal.day), time: hhmm(refusal.minute) })} {refusal.text}
+      </p>
+      {next && <p className="mt-2 text-sm leading-6 text-fg-muted">{t("web.agenda.closedHour.next", { day: shortDay(next.day), time: hhmm(next.start) })}</p>}
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <Button variant="secondary" onClick={fix}>
+          {t("web.agenda.formAlert.fix")}
+        </Button>
+        {next && (
+          <Button
+            data-use
+            onClick={() => {
+              ref.current?.close();
+              onUse(next);
+            }}
+          >
+            {t("web.agenda.formAlert.use")}
+          </Button>
+        )}
+      </div>
+    </dialog>
+  );
+}
+
+/** One month of events, read as the Agenda's month view reads it, under the same key: a month seen comes from the cache. */
+function useMonthEvents(month: string, weekStart: AgendaPrefs["weekStart"], enabled: boolean) {
+  const { from, to } = viewRange("month", `${month}-01`, weekStart);
+  return useQuery({
+    queryKey: eventsKey(from, to),
+    queryFn: ({ signal }) => api<AgendaWindow>(`/google/events?from=${from}&to=${to}`, { signal }),
+    enabled,
+  });
+}
+
+/**
+ * "Ver no calendário" (protótipo v52): the month of the form's day, the days that take no
+ * appointment struck through, and the free hours of the day chosen as buttons. It reads the
+ * month as the Agenda's month view does, under the same key: a month seen comes from the cache.
+ */
+function MiniCalendar({
+  form,
+  prefs,
+  except,
+  onDay,
+  onStart,
+  onAgenda,
+}: {
+  form: EventForm;
+  prefs: AgendaPrefs;
+  except: AgendaEvent | null;
+  onDay: (day: string) => void;
+  onStart: (minute: number) => void;
+  /** Only for a new event. */
+  onAgenda: (() => void) | undefined;
+}) {
+  const { t, locale, timeZone } = useI18n();
+  const shortDay = useShortDay();
+  const holidayOf = useHoliday();
+  const duration = useDuration();
+  const [open, setOpen] = useState(false);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(form.startDate) ? form.startDate : localDate(Date.now(), timeZone);
+  const [month, setMonth] = useState(day.slice(0, 7));
+  // The calendar follows the date typed in the form.
+  useEffect(() => setMonth(day.slice(0, 7)), [day]);
+  // A personal event (no type) is not checked: only the days gone are struck through, and no hours are offered.
+  const plain = !form.type;
+  // The month shown, for the days; the month of the form's day, for its hours (the same query when the two match).
+  const monthEvents = useMonthEvents(month, prefs.weekStart, open);
+  const dayEvents = useMonthEvents(day.slice(0, 7), prefs.weekStart, open && !plain);
+  const length = formLength(form);
+  const check = { prefs, length, now: Date.now(), timeZone, except };
+  const why = (each: string, events: readonly AgendaEvent[] = monthEvents.data?.events ?? []): string | null => {
+    const refusal = dayRefusal({ ...check, events, day: each });
+    if (!refusal || (plain && refusal.kind !== "past")) return null;
+    if (refusal.kind === "past") return t("web.agenda.pick.why.past");
+    if (refusal.kind === "full") return t("web.agenda.pick.why.full");
+    const closure = refusal.closure;
+    if (closure.kind === "weekday") return t("web.agenda.pick.why.weekday");
+    if (closure.kind === "holiday") return t("web.agenda.pick.why.holiday", { name: holidayOf(each) ?? "" });
+    return t("web.agenda.pick.why.closed");
+  };
+  const days = Array.from({ length: new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate() }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
+  const ready = monthEvents.isSuccess;
+  const reasons = new Map(ready ? days.map((each) => [each, why(each)]) : []);
+  const lead = (weekdayIndex(days[0] ?? day) - prefs.weekStart + 7) % 7;
+  const monthName = new Intl.DateTimeFormat(locale, { timeZone: "UTC", month: "long", year: "numeric" }).format(utcNoon(`${month}-01`));
+  // 01/11/2026 is a Sunday: the column's weekday from the first day of the week of the settings.
+  const weekdays = Array.from({ length: 7 }, (_, i) => {
+    const weekday = (prefs.weekStart + i) % 7;
+    return { weekday, name: new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "narrow" }).format(utcNoon(`2026-11-0${1 + weekday}`)) };
+  });
+  const full = (each: string) => new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(utcNoon(each));
+  // From this month to the last one an appointment may reach: no arrow reads Google for a month nothing fits in.
+  const today = localDate(Date.now(), timeZone);
+  const first = today.slice(0, 7);
+  const last = dayPlus(today, AGENDA_RULES.aheadDays).slice(0, 7);
+  const shift = (by: number) => {
+    const at = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + by, 1));
+    setMonth(at.toISOString().slice(0, 7));
+  };
+  // Hours only from the events of the form's own day: no hour is offered from a month not read, or that failed.
+  const hoursReady = open && !plain && dayEvents.isSuccess;
+  const ownEvents = dayEvents.data?.events ?? [];
+  const dayWhy = hoursReady ? why(day, ownEvents) : null;
+  const starts = hoursReady && !dayWhy ? freeStarts({ ...check, events: ownEvents, day }) : [];
+  const startNow = Number(form.startTime.slice(0, 2)) * 60 + Number(form.startTime.slice(3, 5));
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" aria-expanded={open} onClick={() => setOpen((was) => !was)}>
+          <CalendarDays className="h-4 w-4" aria-hidden />
+          {t(open ? "web.agenda.pick.calendarClose" : "web.agenda.pick.calendar")}
+        </Button>
+        {onAgenda && (
+          <Button variant="secondary" onClick={onAgenda}>
+            <CalendarPlus className="h-4 w-4" aria-hidden />
+            {t("web.agenda.pick.agenda")}
+          </Button>
+        )}
+      </div>
+      {open && (
+        <fieldset className="rounded-xl border border-border p-2">
+          <legend className="sr-only">{t("web.agenda.pick.month", { month: monthName })}</legend>
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={() => shift(-1)} disabled={month <= first} aria-label={t("web.agenda.pick.prevMonth")} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-fg disabled:opacity-40 disabled:hover:bg-transparent">
+              <ChevronLeft className="h-5 w-5" aria-hidden />
+            </button>
+            <b aria-live="polite" className="text-sm font-semibold first-letter:uppercase">
+              {monthName}
+            </b>
+            <button type="button" onClick={() => shift(1)} disabled={month >= last} aria-label={t("web.agenda.pick.nextMonth")} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-fg disabled:opacity-40 disabled:hover:bg-transparent">
+              <ChevronRight className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+          {monthEvents.isError ? (
+            <ErrorNotice error={monthEvents.error} onRetry={() => void monthEvents.refetch()} />
+          ) : !ready ? (
+            <p className="p-2 text-sm text-fg-muted">{t("web.agenda.pick.loading")}</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-7 text-center text-sm">
+                {weekdays.map(({ weekday, name }) => (
+                  <span key={weekday} aria-hidden className="py-1 text-xs text-fg-muted">
+                    {name}
+                  </span>
+                ))}
+                {days.map((each, index) => {
+                  const reason = reasons.get(each) ?? null;
+                  return (
+                    <button
+                      key={each}
+                      type="button"
+                      disabled={!!reason}
+                      aria-pressed={each === day}
+                      aria-label={reason ? t("web.agenda.pick.dayWhy", { day: full(each), why: reason }) : full(each)}
+                      onClick={() => onDay(each)}
+                      // The first day sits under its weekday.
+                      style={index === 0 ? { gridColumnStart: lead + 1 } : undefined}
+                      className={cn(
+                        "h-11 rounded-lg tabular-nums",
+                        reason ? "cursor-not-allowed text-fg-muted line-through opacity-60" : "hover:bg-surface-muted",
+                        each === day && "bg-accent font-semibold text-accent-fg hover:bg-accent",
+                      )}
+                    >
+                      {Number(each.slice(8))}
+                    </button>
+                  );
+                })}
+              </div>
+              {!plain && days.every((each) => reasons.get(each)) && <p className="p-2 text-sm text-fg-muted">{t("web.agenda.pick.monthFull")}</p>}
+            </>
+          )}
+        </fieldset>
+      )}
+      {hoursReady && (
+        <div className="space-y-2">
+          {dayWhy ? (
+            <p className="text-sm text-fg-muted">{t("web.agenda.pick.dayClosed", { why: dayWhy })}</p>
+          ) : (
+            <>
+              <p id={`slots-${day}`} className="text-sm text-fg-muted">
+                {t("web.agenda.pick.slots", { day: shortDay(day), length: duration(length) })}
+              </p>
+              <ul aria-labelledby={`slots-${day}`} className="flex flex-wrap gap-2">
+                {starts.map((minute) => (
+                  <li key={minute}>
+                    <button
+                      type="button"
+                      aria-pressed={minute === startNow}
+                      onClick={() => onStart(minute)}
+                      className={cn(
+                        "min-h-11 min-w-16 rounded-full border border-border px-3 text-sm tabular-nums hover:bg-surface-muted",
+                        minute === startNow && "border-accent bg-accent text-accent-fg hover:bg-accent",
+                      )}
+                    >
+                      {hhmm(minute)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 0 for Sunday to 6 for Saturday, of a "YYYY-MM-DD" day. */
+const weekdayIndex = (day: string) => utcNoon(day).getUTCDay();
