@@ -140,18 +140,28 @@ describe("credentials", () => {
     });
   });
 
-  it("are dropped when the origin or the kind changes, and on request", async () => {
+  it("never follow a new origin or kind of key: the change needs the key again (PR S17), and null drops it", async () => {
     await withFlowWorld(async (world) => {
       const id = await addConnection(world);
-      await world.connections.update(id, { origin: "https://outra.exemplo.com.br" }, { development: false });
-      expect(world.flows.list().connections[0]?.hasCredential).toBe(false);
-      await world.connections.update(id, { credential: "novo-segredo-123" }, { development: false });
+      const sealed = () => world.db.one<{ credential: string | null }>(`SELECT credential FROM zur_flow_connections WHERE id = ?`, id)?.credential;
+      const kept = sealed();
+      await expect(world.connections.update(id, { origin: "https://outra.exemplo.com.br" }, { development: false })).rejects.toMatchObject({
+        code: "VALIDATION_FAILED",
+        details: { fields: ["credential"] },
+      });
+      expect(world.connections.row(id).origin).toBe("https://api.exemplo.com.br");
+      expect(sealed()).toBe(kept);
+      await world.connections.update(id, { origin: "https://outra.exemplo.com.br", credential: "novo-segredo-123" }, { development: false });
+      expect(world.flows.list().connections[0]).toMatchObject({ origin: "https://outra.exemplo.com.br", hasCredential: true, keyEnd: "-123" });
+      expect(sealed()).not.toBe(kept);
+      await expect(world.connections.update(id, { auth: "header", headerName: "X-Key" }, { development: false })).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+      await world.connections.update(id, { auth: "header", headerName: "X-Key", credential: "outro-segredo-123" }, { development: false });
       expect(world.flows.list().connections[0]?.hasCredential).toBe(true);
-      await world.connections.update(id, { auth: "header", headerName: "X-Key" }, { development: false });
-      expect(world.flows.list().connections[0]?.hasCredential).toBe(false);
-      await world.connections.update(id, { credential: "outro-segredo-123" }, { development: false });
       await world.connections.update(id, { credential: null }, { development: false });
-      expect(world.flows.list().connections[0]?.hasCredential).toBe(false);
+      expect(world.flows.list().connections[0]).toMatchObject({ hasCredential: false, keyEnd: null });
+      // Without a key kept, a new origin needs none.
+      await world.connections.update(id, { origin: "https://terceira.exemplo.com.br" }, { development: false });
+      expect(world.connections.row(id).origin).toBe("https://terceira.exemplo.com.br");
     });
   });
 

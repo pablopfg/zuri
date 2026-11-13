@@ -264,8 +264,10 @@ describe("/api/flows/connections", () => {
     expect((await api("PATCH", `/flows/connections/${connection.id}`, { name: "Novo" })).status).toBe(403);
     await fresh();
     expect((await api("PATCH", `/flows/connections/${connection.id}`, { name: "Novo" })).status).toBe(200);
-    const moved = await api("PATCH", `/flows/connections/${connection.id}`, { origin: "https://outra.exemplo.com.br" });
-    expect(((await moved.json()) as { connection: FlowConnection }).connection).toMatchObject({ origin: "https://outra.exemplo.com.br", hasCredential: false });
+    // A new address without the key again is refused (PR S17); with it, the new key is kept.
+    expect((await api("PATCH", `/flows/connections/${connection.id}`, { origin: "https://outra.exemplo.com.br" })).status).toBe(400);
+    const moved = await api("PATCH", `/flows/connections/${connection.id}`, { origin: "https://outra.exemplo.com.br", credential: "chave-nova-de-teste-9f3a" });
+    expect(((await moved.json()) as { connection: FlowConnection }).connection).toMatchObject({ origin: "https://outra.exemplo.com.br", hasCredential: true, keyEnd: "9f3a" });
     const kinds = await inOwner((agent) => agent.store.db.all<{ kind: string }>(`SELECT kind FROM zur_auth_events`).map((r) => r.kind));
     expect(kinds).toEqual(["flow_connection_changed"]);
   });
@@ -279,6 +281,49 @@ describe("/api/flows/connections", () => {
     ]) {
       expect((await api("POST", "/flows/connections", body)).status).toBe(400);
     }
+  });
+
+  it("a Chatwoot credential (PR S17): made with the password, its waits changed without it, anything else with it; the key never comes back", async () => {
+    network.handlers.set("chat.exemplo.com.br", () => Response.json({ payload: [{ id: 7, name: "WhatsApp do consultório", channel_type: "Channel::Api" }] }));
+    const key = "chave-do-agente-zuri-4f2a";
+    const body = { kind: "chatwoot", name: "Chatwoot", origin: "https://chat.exemplo.com.br", accountId: 1, credential: key };
+    await stale();
+    expect((await api("POST", "/flows/connections", body)).status).toBe(403);
+    await fresh();
+    const created = await api("POST", "/flows/connections", body);
+    expect(created.status).toBe(201);
+    const text = await created.text();
+    expect(text).not.toContain(key);
+    const { connection } = JSON.parse(text) as { connection: FlowConnection };
+    expect(connection).toMatchObject({ kind: "chatwoot", keyEnd: "4f2a", chatwoot: { accountId: 1, bulkGap: { min: 30, max: 60 } } });
+    await stale();
+    const waits = await api("PATCH", `/flows/connections/${connection.id}`, { bulkGap: { min: 40, max: 80 }, oneGap: { min: 3, max: 6 } });
+    expect(waits.status).toBe(200);
+    expect(((await waits.json()) as { connection: FlowConnection }).connection.chatwoot).toMatchObject({ bulkGap: { min: 40, max: 80 }, oneGap: { min: 3, max: 6 } });
+    // The waits with anything else, or an empty body, still need the password.
+    for (const patch of [{ bulkGap: { min: 40, max: 80 }, name: "X" }, { inboxId: 7 }, {}]) {
+      expect((await api("PATCH", `/flows/connections/${connection.id}`, patch)).status).toBe(403);
+    }
+    await fresh();
+    const picked = await api("PATCH", `/flows/connections/${connection.id}`, { inboxId: 7 });
+    expect(((await picked.json()) as { connection: FlowConnection }).connection.chatwoot).toMatchObject({ inboxId: 7, inboxName: "WhatsApp do consultório" });
+    const res = await api("POST", `/flows/connections/${connection.id}/test`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ test: { ok: true, inboxes: [{ id: 7, name: "WhatsApp do consultório", api: true }] } });
+    const again = await api("POST", `/flows/connections/${connection.id}/test`);
+    expect(again.status).toBe(429);
+    expect(Number(again.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect((await api("GET", "/flows")).status).toBe(200);
+    expect(await (await api("GET", "/flows")).text()).not.toContain(key);
+  });
+
+  it("an http credential's waits are not a free change: unknown fields are refused, with the password asked first", async () => {
+    const { connection } = (await (await api("POST", "/flows/connections", connectionBody)).json()) as { connection: FlowConnection };
+    await stale();
+    expect((await api("PATCH", `/flows/connections/${connection.id}`, { bulkGap: { min: 40, max: 80 } })).status).toBe(403);
+    await fresh();
+    expect((await api("PATCH", `/flows/connections/${connection.id}`, { bulkGap: { min: 40, max: 80 } })).status).toBe(400);
+    expect((await api("POST", "/flows/connections/nao-e-id/test")).status).toBe(404);
   });
 
   it("won't delete a connection a flow uses", async () => {

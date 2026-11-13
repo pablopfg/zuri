@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FLOW_LIMITS, FLOW_NODE_TYPES, FLOW_SETTING_RANGES, type Flow, type FlowConnection, type FlowDraft, type FlowList, type FlowRun, type FlowRunPage, type FlowSettings, type FlowSite, type MessageKey, ptBRFlows, ptBRSchedule, type Schedule } from "@zuri/shared";
+import { FLOW_LIMITS, FLOW_NODE_TYPES, FLOW_SETTING_RANGES, type Flow, type FlowConnection, type FlowConnectionTest, type FlowDraft, type FlowList, type FlowRun, type FlowRunPage, type FlowSettings, type FlowSite, type MessageKey, ptBRFlows, ptBRSchedule, type Schedule } from "@zuri/shared";
 import { Cable, Copy, Earth, History, Info, KeyRound, Lightbulb, LockKeyhole, Pencil, Play, Power, Radar, ShieldCheck, Trash2, Workflow } from "lucide-react";
 import { useId, useState } from "react";
 import { Link } from "react-router";
@@ -368,24 +368,47 @@ export function CredentialsPart({ data, onEdit }: { data: FlowList; onEdit: (edi
   );
 }
 
+/** What a test found, as one line for the toast. */
+function testMessage(test: FlowConnectionTest, { t, plural }: ReturnType<typeof useI18n>): string {
+  if (!test.ok) return t("web.flows.test.failed", { problem: t(PROBLEM_LABEL[test.problem]) });
+  if (test.inboxes) return plural("web.flows.test.inboxes", test.inboxes.length);
+  return t("web.flows.test.answered", { ms: test.ms });
+}
+
 function ConnectionRow({ item, onEdit, onDelete }: { item: FlowConnection; onEdit: () => void; onDelete: () => void }) {
-  const { t } = useI18n();
+  const i18n = useI18n();
+  const { t } = i18n;
   const titleId = useId();
+  const { act } = useFlowAction();
+  const chatwoot = item.chatwoot;
+  const key = item.keyEnd ? t("web.flows.connections.keyEnd", { end: item.keyEnd }) : t(item.hasCredential ? "web.flows.connections.hasCredential" : "web.flows.connections.noCredential");
   return (
     <li aria-labelledby={titleId} className="zuri-routine">
       <span className="zuri-routine-tile" aria-hidden>
         <Cable />
       </span>
       <div className="min-w-0 space-y-1">
-        <h2 id={titleId} className="truncate font-semibold">
-          {item.name}
-        </h2>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <h2 id={titleId} className="min-w-0 truncate font-semibold">
+            {item.name}
+          </h2>
+          <Badge tone="neutral">{t(item.kind === "chatwoot" ? "web.flows.kind.chatwootTag" : "web.flows.kind.httpTag")}</Badge>
+        </div>
         <p className="break-all text-sm text-fg-muted">
-          {item.origin} · {item.methods.join(", ")} · {item.paths.join(", ")}
+          {chatwoot
+            ? `${item.origin} · ${t("web.flows.chatwoot.summary", {
+                account: chatwoot.accountId,
+                inbox: chatwoot.inboxName ?? t("web.flows.chatwoot.noInbox"),
+                bulkMin: chatwoot.bulkGap.min,
+                bulkMax: chatwoot.bulkGap.max,
+                oneMin: chatwoot.oneGap.min,
+                oneMax: chatwoot.oneGap.max,
+              })}`
+            : `${item.origin} · ${item.methods.join(", ")} · ${item.paths.join(", ")}`}
         </p>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
           <Badge dot tone={item.hasCredential ? "accent" : "neutral"}>
-            {t(item.hasCredential ? "web.flows.connections.hasCredential" : "web.flows.connections.noCredential")}
+            {key}
           </Badge>
           <span className="min-w-0 break-words">{item.usedBy.length > 0 ? t("web.flows.connections.usedBy", { names: item.usedBy.join(", ") }) : t("web.flows.connections.unused")}</span>
         </p>
@@ -394,6 +417,15 @@ function ConnectionRow({ item, onEdit, onDelete }: { item: FlowConnection; onEdi
         <ActionsMenu
           name={item.name}
           actions={[
+            {
+              label: t("web.flows.test.action"),
+              icon: <Radar className="h-4 w-4" />,
+              onSelect: () =>
+                void act(`test-${item.id}`, async () => {
+                  const { test } = await api<{ test: FlowConnectionTest }>(`/flows/connections/${item.id}/test`, { method: "POST" });
+                  return testMessage(test, i18n);
+                }),
+            },
             { label: t("web.flows.edit"), icon: <Pencil className="h-4 w-4" />, onSelect: onEdit },
             { label: t("web.flows.delete"), icon: <Trash2 className="h-4 w-4" />, onSelect: onDelete, danger: true },
           ]}

@@ -25,6 +25,7 @@ import {
   flowUsesAi,
   nextRun,
   type AgentCallSettings,
+  type FlowConnectionTest,
 } from "@zuri/shared";
 import { currentWake } from "../agent/wake-budget.ts";
 import type { MeteredAI } from "../ai/metered.ts";
@@ -35,7 +36,8 @@ import { AppError } from "../http/errors.ts";
 import { log } from "../log.ts";
 import { endpointUrl } from "../mcp/url.ts";
 import { parse } from "../productivity/validate.ts";
-import type { FlowConnections, FlowNetwork } from "./connections.ts";
+import { chatwootInboxes } from "./chatwoot.ts";
+import { type CallDeps, type ConnectionRow, type FlowConnections, type FlowNetwork, FlowStepError, knownKind } from "./connections.ts";
 import { type Advance, advance, type RunState, startState, type Wake } from "./engine.ts";
 import type { FlowGoogle } from "./google-steps.ts";
 import type { SiteChange, SiteStates } from "./monitor.ts";
@@ -108,6 +110,10 @@ interface Stored {
   state: RunState;
 }
 
+/** One test of a credential every 5 s at most, and the calls one may make (2 lookups and 1 request). */
+const CONNECTION_TEST_GAP_MS = 5_000;
+const CONNECTION_TEST_CALLS = 3;
+
 /** A run late by more than this after its time is a catch-up (the object was asleep or down). */
 const LATE_MS = 5 * 60_000;
 
@@ -132,6 +138,8 @@ const SETTING_COLUMNS: Record<keyof FlowSettings, string> = {
 export class FlowService {
   /** Runs executing in this instance; a row left "running" without one was cut short. */
   readonly #inFlight = new Set<string>();
+  /** When each credential was last tested (in memory: a restart only lets one more test through). */
+  readonly #tests = new Map<string, number>();
   network: FlowNetwork;
 
   constructor(
@@ -436,6 +444,65 @@ export class FlowService {
     );
   }
 
+  /**
+   * "Testar" (PR S17): one read, never a change. An http credential gets a GET
+   * of its first path (only when GET is allowed); a Chatwoot one lists the
+   * inboxes its key sees. Same rules as a flow's call (public DNS, no redirect,
+   * 10 s, 256 KB); at most one test every 5 s per credential.
+   */
+  async testConnection(id: string): Promise<FlowConnectionTest> {
+    const row = this.deps.connections.row(id);
+    const at = this.now();
+    const last = this.#tests.get(id);
+    if (last !== undefined && at - last < CONNECTION_TEST_GAP_MS) {
+      throw new AppError("RATE_LIMITED", undefined, { retryAfter: Math.max(1, Math.ceil((CONNECTION_TEST_GAP_MS - (at - last)) / 1000)) });
+    }
+    this.#tests.set(id, at);
+    const kind = knownKind(row.kind);
+    try {
+      if (kind === "chatwoot") {
+        const inboxes = await chatwootInboxes(this.deps.connections, row, this.callDeps());
+        return { ok: true, ms: Math.max(0, this.now() - at), status: null, inboxes };
+      }
+      if (kind !== "http") throw new FlowStepError("kind_not_allowed");
+      const methods: unknown = JSON.parse(row.methods);
+      const path = (JSON.parse(row.paths) as unknown[]).find((entry): entry is string => typeof entry === "string");
+      if (!Array.isArray(methods) || !methods.includes("GET") || !path) throw new FlowStepError("method_not_allowed");
+      const answer = await this.deps.connections.call(row, { method: "GET", path, body: undefined }, this.callDeps());
+      return { ok: true, ms: Math.max(0, this.now() - at), status: answer.status, inboxes: null };
+    } catch (error) {
+      if (error instanceof FlowStepError) return { ok: false, problem: error.problem, status: error.httpStatus };
+      throw error;
+    }
+  }
+
+  /** The inboxes a Chatwoot row's key sees, for picking one; a failure is the test's problem, as a refusal. */
+  inboxLookup = async (row: ConnectionRow) => {
+    try {
+      return await chatwootInboxes(this.deps.connections, row, this.callDeps());
+    } catch (error) {
+      if (error instanceof FlowStepError) throw new AppError("VALIDATION_FAILED", "error.chatwootInbox", { fields: ["inboxId"], problem: error.problem });
+      throw error;
+    }
+  };
+
+  /** A request's own count: 2 lookups and 1 call, the most a test or a pick needs. */
+  private callDeps(): CallDeps {
+    let used = 0;
+    return {
+      network: this.network,
+      development: this.deps.development(),
+      meter: {
+        room: (n) => used + n <= CONNECTION_TEST_CALLS,
+        take: () => {
+          if (used >= CONNECTION_TEST_CALLS) throw new Error("budget");
+          used++;
+        },
+      },
+      hosts: new Map(),
+    };
+  }
+
   /** Connections in use can't go: the flows that call them would fail. */
   removeConnection(id: string): void {
     const users = this.db
@@ -455,6 +522,8 @@ export class FlowService {
       if (node.type !== "request") continue;
       const connection = this.deps.connections.find(node.connection);
       if (!connection) throw new AppError("VALIDATION_FAILED", "error.flowConnectionNotFound", { fields: [`definition.nodes.${index}.connection`] });
+      // A flow calls only http credentials: a message to a patient leaves only by the code's own clients (PR S17).
+      if (knownKind(connection.kind) !== "http") throw new AppError("VALIDATION_FAILED", "error.flowConnectionKind", { fields: [`definition.nodes.${index}.connection`] });
       const methods: unknown = JSON.parse(connection.methods);
       if (!Array.isArray(methods) || !methods.includes(node.method)) {
         throw new AppError("VALIDATION_FAILED", "error.flowMethodNotAllowed", { fields: [`definition.nodes.${index}.method`] });

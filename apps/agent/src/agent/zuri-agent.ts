@@ -65,7 +65,6 @@ import { SiteStates } from "../flows/monitor.ts";
 import { type FlowNotice, FlowService } from "../flows/service.ts";
 import { AgentConfigs } from "../specialists/configs.ts";
 import { type CrmNotice, CrmService } from "../crm/service.ts";
-import { McpCredentials } from "../mcp/credentials.ts";
 import { dohResolver } from "../mcp/url.ts";
 import { ALL_TOOLS } from "../tools/index.ts";
 import type { ToolContext } from "../tools/registry.ts";
@@ -846,7 +845,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       const flows = new FlowService(
         {
           db,
-          connections: new FlowConnections(db, new McpCredentials(env.MCP_CREDENTIAL_KEY, "flows-v1")),
+          connections: new FlowConnections(db, env.MCP_CREDENTIAL_KEY),
           sites: new SiteStates(db),
           timeZone: () => settings.field("timeZone"),
           development: () => this.development(),

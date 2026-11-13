@@ -59,6 +59,8 @@ export const PROBLEM_LABEL: Record<FlowRunProblem, MessageKey> = {
   invalid_date: "web.flows.problem.invalid_date",
   events_limit: "web.flows.problem.events_limit",
   ai_check: "web.flows.problem.ai_check",
+  kind_not_allowed: "web.flows.problem.kind_not_allowed",
+  bad_answer: "web.flows.problem.bad_answer",
 };
 
 export const SITE_LABEL: Record<FlowSiteState, MessageKey> = {

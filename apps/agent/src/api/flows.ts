@@ -1,4 +1,5 @@
-import { flowConnectionCreateSchema, flowConnectionUpdateSchema, flowCreateSchema, flowSettingsSchema, flowUpdateSchema, RECORD_ID } from "@zuri/shared";
+import { CHATWOOT_FREE_FIELDS, flowCreateSchema, flowSettingsSchema, flowUpdateSchema, RECORD_ID } from "@zuri/shared";
+import { z } from "zod";
 import type { Context, Hono } from "hono";
 import type { ClientInfo } from "../auth/client.ts";
 import type { AuthService } from "../auth/service.ts";
@@ -14,6 +15,9 @@ export interface FlowRouteDeps {
   auth: AuthService;
   development: () => boolean;
 }
+
+/** A credential's body: an object, parsed again by the schema of its kind in FlowConnections. */
+const connectionBody = /* @__PURE__ */ z.record(z.string(), z.unknown());
 
 /** The bodies are small: a whole flow of 20 steps fits well under this. */
 const BODY_MAX = 64 * 1024;
@@ -73,7 +77,7 @@ export function registerFlowRoutes(app: Hono<ApiEnv>, deps: () => FlowRouteDeps,
   app.post("/flows/:id/run", async (c) => Response.json({ run: await deps().flows.runNow(flowId(c.req.param("id"))) }));
 
   app.post("/flows/connections", async (c) => {
-    const input = await readJson(c.req.raw, flowConnectionCreateSchema, 16 * 1024);
+    const input = await readJson(c.req.raw, connectionBody, 16 * 1024);
     const { flows, connections, auth, development } = deps();
     auth.requireRecentAuth(c.get("session"));
     const id = await connections.create(input, { development: development() });
@@ -84,13 +88,19 @@ export function registerFlowRoutes(app: Hono<ApiEnv>, deps: () => FlowRouteDeps,
 
   app.patch("/flows/connections/:id", async (c) => {
     const id = connectionId(c.req.param("id"));
-    const input = await readJson(c.req.raw, flowConnectionUpdateSchema, 16 * 1024);
+    const input = await readJson(c.req.raw, connectionBody, 16 * 1024);
     const { flows, connections, auth, development } = deps();
-    auth.requireRecentAuth(c.get("session"));
-    const { sensitive } = await connections.update(id, input, { development: development() });
+    // The Chatwoot's waits alone ask for no password (not a secret; the change goes to the activity log).
+    const keys = Object.keys(input);
+    const onlyWaits = keys.length > 0 && keys.every((key) => CHATWOOT_FREE_FIELDS.includes(key)) && connections.row(id).kind === "chatwoot";
+    if (!onlyWaits) auth.requireRecentAuth(c.get("session"));
+    const { sensitive } = await connections.update(id, input, { development: development(), inboxes: flows.inboxLookup });
     if (sensitive) auth.events.record("flow_connection_changed", client(c), { alert: true });
     return Response.json({ connection: flows.list().connections.find((entry) => entry.id === id) });
   });
+
+  // "Testar" (PR S17): reads only, at the address the owner already gave; no password.
+  app.post("/flows/connections/:id/test", async (c) => Response.json({ test: await deps().flows.testConnection(connectionId(c.req.param("id"))) }));
 
   // The chat's suggestions (step 22b): saving one is POST /flows with its id; dropping one asks nothing.
   app.delete("/flows/drafts/:id", (c) => {

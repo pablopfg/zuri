@@ -1096,6 +1096,35 @@ describe("flows (step 22a)", () => {
       expect(worst).toBeLessThanOrEqual(100_000 / 3);
     }));
 
+  it("a Chatwoot credential (PR S17): its waits, a test and the pick of an inbox each read a few rows and write one plus the activity", () =>
+    withFlowWorld(async (world) => {
+      world.network.handlers.set("chat.exemplo.com.br", () => Response.json({ payload: [{ id: 7, name: "WhatsApp", channel_type: "Channel::Api" }] }));
+      for (let i = 0; i < FLOW_LIMITS.connections - 1; i++) await addConnection(world, { name: `C${i}` });
+      const id = await world.connections.create({ kind: "chatwoot", name: "Chatwoot", origin: "https://chat.exemplo.com.br", accountId: 1, credential: "chave-do-agente-zuri-4f2a" }, { development: false });
+      const measure = async (fn: () => Promise<unknown>) => {
+        const before = { ...world.db.usage };
+        await fn();
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      const opts = { development: false, inboxes: world.flows.inboxLookup };
+      const waits = await measure(() => world.connections.update(id, { bulkGap: { min: 40, max: 80 } }, opts));
+      // The row, its area's version (trigger) and the activity: measured 4 written, 3 read.
+      expect(waits.written).toBeLessThanOrEqual(4);
+      expect(waits.read).toBeLessThanOrEqual(4);
+      const test = await measure(() => world.flows.testConnection(id));
+      expect(test.written).toBe(0);
+      // Measured 1 (the row).
+      expect(test.read).toBeLessThanOrEqual(2);
+      // Measured 4 written, 3 read, as the waits.
+      const pick = await measure(() => world.connections.update(id, { inboxId: 7 }, opts));
+      expect(pick.written).toBeLessThanOrEqual(4);
+      expect(pick.read).toBeLessThanOrEqual(4);
+      // The list with 20 credentials: measured 49 read, the same rows as before the kinds (one per credential plus the counters).
+      const list = await measure(async () => world.flows.list());
+      expect(list.written).toBe(0);
+      expect(list.read).toBeLessThanOrEqual(60);
+    }));
+
   it("the Flows tab, a page of the history, a monitor run of 10 sites and an idle wake read and write about one page, out of 20 flows and 2,000 runs", () =>
     withFlowWorld(async (world) => {
       const sites = Array.from({ length: FLOW_LIMITS.sites }, (_, i) => `https://s${i}.exemplo.com.br/`);

@@ -1630,6 +1630,20 @@ export const MIGRATIONS: readonly Migration[] = [
       ) WITHOUT ROWID`,
     ],
   },
+  {
+    version: 38,
+    name: "flow_connection_kinds",
+    statements: [
+      // The credentials get a kind (PR S17): 'http' (what flows call, every row of before) or
+      // 'chatwoot' (only its fixed client). No CHECK: a kind added later must not need the table
+      // rebuilt; the code checks the kind against its registry.
+      `ALTER TABLE zur_flow_connections ADD COLUMN kind TEXT NOT NULL DEFAULT 'http'`,
+      // The kind's own settings as JSON (a Chatwoot's account, inbox and waits); never a secret.
+      `ALTER TABLE zur_flow_connections ADD COLUMN meta TEXT`,
+      // The key's last 4 characters, shown on the screen; only for a key of 12 or more.
+      `ALTER TABLE zur_flow_connections ADD COLUMN key_end TEXT`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */
