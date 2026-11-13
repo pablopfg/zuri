@@ -1,4 +1,4 @@
-import { type AgendaEvent, type AgendaPrefs, type AppointmentProblem, appointmentProblem, type BookedSlot, EVENT_STATUS_COLOR, nextFreeSlot, zonedParts } from "@zuri/shared";
+import { type AgendaEvent, type AgendaPrefs, type AppointmentProblem, appointmentProblem, type BookedSlot, type DayClosure, dayClosure, EVENT_STATUS_COLOR, nextFreeSlot, zonedParts } from "@zuri/shared";
 import { eventDays, isAppointment, localDate } from "./agenda.ts";
 
 export { hhmm, isAppointment } from "./agenda.ts";
@@ -94,4 +94,38 @@ export function nextFree(input: {
     bookedOn: (day) => bookedOn(input.events, day, input.timeZone, { all: true, except: input.except ?? null }),
     ...(input.length ? { length: input.length } : {}),
   });
+}
+
+/**
+ * The free starts of `day`, on the half hour, for an appointment of `length` minutes: what the form's
+ * calendar offers as buttons (protótipo v52, 13/11/2026). The same check as the next free hour: lunch,
+ * the closed days, the hour gone and any event not cancelled at that time. `except` frees the own place
+ * of the appointment being changed.
+ */
+export function freeStarts(input: {
+  prefs: AgendaPrefs;
+  events: readonly AgendaEvent[];
+  day: string;
+  length: number;
+  now: number;
+  timeZone: string;
+  except?: Pick<AgendaEvent, "calendarId" | "id"> | null;
+}): number[] {
+  const { today, nowMinute } = clock(input.now, input.timeZone);
+  const booked = bookedOn(input.events, input.day, input.timeZone, { all: true, except: input.except ?? null });
+  const out: number[] = [];
+  for (let start = input.prefs.from * 60; start + input.length <= input.prefs.to * 60; start += 30) {
+    if (!appointmentProblem({ day: input.day, start, end: start + input.length, today, nowMinute, hours: input.prefs, booked })) out.push(start);
+  }
+  return out;
+}
+
+/** Why a day of the form's calendar takes no appointment, or null: the day gone, the day closed, or no free start left. */
+export type DayRefusal = { kind: "past" } | { kind: "full" } | { kind: "closed"; closure: DayClosure };
+
+export function dayRefusal(input: Parameters<typeof freeStarts>[0]): DayRefusal | null {
+  if (input.day < clock(input.now, input.timeZone).today) return { kind: "past" };
+  const closure = dayClosure(input.day, input.prefs);
+  if (closure) return { kind: "closed", closure };
+  return freeStarts(input).length === 0 ? { kind: "full" } : null;
 }

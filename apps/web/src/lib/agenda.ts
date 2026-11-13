@@ -218,6 +218,20 @@ export function formOf(event: AgendaEvent, timeZone: string): EventForm {
   };
 }
 
+/** How long the form's event lasts, in minutes (60 when the end can't be read yet). */
+export function formLength(form: EventForm): number {
+  if (form.duration !== OTHER_DURATION) return Number(form.duration) > 0 ? Number(form.duration) : 60;
+  if (!isDate(form.startDate) || !isTime(form.startTime) || !isDate(form.endDate) || !isTime(form.endTime)) return 60;
+  const minutes = (Date.parse(`${form.endDate}T${form.endTime}:00Z`) - Date.parse(`${form.startDate}T${form.startTime}:00Z`)) / 60_000;
+  return minutes > 0 ? minutes : 60;
+}
+
+/** The form moved to `day` at `time`, keeping its length (an "Outra" end moves with it). */
+export function formAt(form: EventForm, day: string, time: string): EventForm {
+  const end = later(day, time, formLength(form));
+  return { ...form, startDate: day, startTime: time, endDate: end.date, endTime: end.time };
+}
+
 export type FormProblem = "title" | "date" | "end";
 
 /** What the server gets: local dates or date-times (the server places them in the owner's zone). */
