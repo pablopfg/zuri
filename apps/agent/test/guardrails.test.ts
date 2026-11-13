@@ -8,7 +8,7 @@ import { callOptions } from "../src/ai/workers-ai.ts";
 import { guard } from "../src/reviews/guard.ts";
 import { ReviewResponder } from "../src/reviews/responder.ts";
 import { asksForAction, claimsDone, unverifiedClaim } from "../src/specialists/claims.ts";
-import { contactsIn, hasHidden, newContacts, withoutHidden } from "../src/specialists/checker.ts";
+import { CONTACT, contactsIn, hasHidden, newContacts, withoutHidden } from "../src/specialists/checker.ts";
 import { OWNER_LAYER_LEAD, promptVersion, runSpecialist, type Specialist, specialistSystem, specialistVersion, textHash } from "../src/specialists/contract.ts";
 import { FLOW_AI_SPECIALIST } from "../src/specialists/flow-ai.ts";
 import { approved, REVIEW_CHECK_SPECIALIST, REVIEW_DRAFT_SPECIALIST } from "../src/specialists/reviews.ts";
@@ -253,11 +253,27 @@ describe("the fixed checker (CA5, CA6)", () => {
     for (const text of hostile) contactsIn(`${text} `);
     // The unbounded patterns needed over 20 s for these; a slow runner needs well under 2 s.
     expect(performance.now() - started).toBeLessThan(2_000);
-    // The bounds never hide a contact: a longer run still matches, by its tail or its first 11 labels.
+    // The bounds never hide a contact: a longer run still matches.
     expect(contactsIn(`${"a".repeat(70)}@exemplo.com.br`).size).toBe(1);
     expect(contactsIn(`${"s".repeat(40)}://evil.ru/x`).has("evil.ru/x")).toBe(true);
-    expect([...contactsIn(`${"a.".repeat(12)}evil.ru`)]).toEqual([`${"a.".repeat(10)}evil`]);
-    expect(newContacts(`${"a.".repeat(12)}evil.ru`, [])).toHaveLength(1);
+    // A key is the whole e-mail, never its last 64 characters, and a "//" after a made-up long scheme still counts.
+    expect(newContacts(`zzzzzz${"a".repeat(64)}@exemplo.com.br`, [`${"a".repeat(64)}@exemplo.com.br`])).toEqual([`zzzzzz${"a".repeat(64)}@exemplo.com.br`]);
+    expect([...contactsIn(`${"s".repeat(33)}://intranet/x`)]).toEqual(["intranet/x"]);
+    // A host name of up to 127 labels stays whole: its key is the host, never a piece of it.
+    const host = `${Array.from({ length: 120 }, (_, i) => `l${i}`).join(".")}.exemplo.com.br`;
+    expect([...contactsIn(`veja ${host}/x`)]).toEqual([`${host}/x`]);
+    expect(newContacts(`${"a.".repeat(12)}evil.ru`, [`${"a.".repeat(12)}exemplo.com`])).toEqual([`${"a.".repeat(12)}evil.ru`]);
+  });
+
+  // SEC-A13-07: the reviews' guard runs CONTACT over the reply; the same
+  // "start again from every letter" made 60 KB of "a-a-a-…" take seconds.
+  it("SEC-A13-07 tests CONTACT in linear time and still finds a hyphenated domain", () => {
+    const started = performance.now();
+    for (const text of ["a-".repeat(30_000), "a".repeat(60_000), "a.".repeat(30_000)]) CONTACT.test(text);
+    expect(performance.now() - started).toBeLessThan(2_000);
+    expect(CONTACT.test(`${"a-".repeat(500)}evil.com`)).toBe(true);
+    expect(CONTACT.test("visite meu-site.com.br")).toBe(true);
+    expect(CONTACT.test("Obrigada pela visita")).toBe(false);
   });
 
   it("removes and detects hidden characters, keeping line breaks and the emoji joiner", () => {

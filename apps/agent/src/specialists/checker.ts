@@ -14,7 +14,7 @@ const HIDDEN_ALL = /[\p{Cf}\u2028\u2029]|(?![\n\t])\p{Cc}|(?![\ufe0e\ufe0f])\p{V
 const JOINER = "\u200d";
 
 /** Any digit, @, #, link or domain: what a public reply must never carry. */
-export const CONTACT = /[\p{N}@#]|https?:|www\.|:\/\/|\b[\p{L}\p{N}-]+\.(?:com|br|net|org|io|me|app|link|ly|info|biz|xyz|site|online|store|shop)\b/iu;
+export const CONTACT = /[\p{N}@#]|https?:|www\.|:\/\/|(?<![\p{L}\p{N}-])[\p{L}\p{N}-]+\.(?:com|br|net|org|io|me|app|link|ly|info|biz|xyz|site|online|store|shop)\b/iu;
 /** Markdown and code marks. */
 export const MARKUP = /[<>{}[\]`]|\*\*|__|~~|^\s*[-*+]\s|^\s*\d+[.)]\s|\]\(/mu;
 
@@ -41,16 +41,18 @@ export function copied(text: string, source: string, run = 5): boolean {
 
 /**
  * Any scheme ("https://", "ftp://"), a scheme-relative "//host" or "www.", up to a space or a quote.
- * The three patterns below read text a third party wrote (flow items, tool results), so every
- * run that can fail is bounded: the scheme to 32 characters, the e-mail's local part to 64 and
- * its domain to 253, a domain to 11 labels. Unbounded, a text like "a.a.a.…" made each match
- * try again from every letter, and 40 KB of it took seconds (Semgrep detect-redos, 13/11/2026).
- * A longer run still matches, by its tail, so nothing is hidden by the bounds.
+ * The patterns below read text a third party wrote (flow items, tool results), so none of them
+ * may start again from every letter of a long run: unbounded, a text like "a.a.a.…" made each
+ * match rescan to its end, and 60 KB of it took over a minute of CPU (SEC-A13-06, Semgrep
+ * detect-redos, 13/11/2026). An e-mail starts only where its local part starts (lookbehind); a
+ * scheme is at most 32 letters, and the "//" after a longer one still matches on its own; a
+ * domain takes at most 128 labels (a host name has at most 127), so only a run longer than any
+ * host name is read in pieces.
  */
-const LINK = /(?:\b[a-z][a-z0-9+.-]{0,31}:\/\/|(?<![\p{L}\p{N}:/])\/\/(?=[\p{L}\p{N}])|\bwww\.)[^\s<>"'`)\]]+/giu;
-const EMAIL = /[\p{L}\p{N}._%+-]{1,64}@[\p{L}\p{N}.-]{1,253}\.[\p{L}]{2,}/giu;
+const LINK = /(?:\b[a-z][a-z0-9+.-]{0,31}:\/\/|(?<![\p{L}\p{N}:/])\/\/(?=[\p{L}\p{N}])|\bwww\.|(?<=:)\/\/(?=[\p{L}\p{N}]))[^\s<>"'`)\]]+/giu;
+const EMAIL = /(?<![\p{L}\p{N}._%+-])[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}/giu;
 /** label.label with a final label of 2 to 24 letters: any top-level domain, not only the common ones. */
-const DOMAIN = /(?<![\p{L}\p{N}-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+){0,9}\.\p{L}{2,24}(?![\p{L}\p{N}])(?:\/[^\s<>"'`)\]]*)?/giu;
+const DOMAIN = /(?<![\p{L}\p{N}-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+){0,126}\.\p{L}{2,24}(?![\p{L}\p{N}])(?:\/[^\s<>"'`)\]]*)?/giu;
 /** File names look like domains; these endings are files, not hosts. */
 const FILE_ENDINGS = new Set(["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "txt", "md", "doc", "docx", "xls", "xlsx", "csv", "json", "js", "ts", "html", "zip", "mp3", "mp4"]);
 const IP = /(?<![\d.])\d{1,3}(?:\.\d{1,3}){3}(?![\d.])/gu;
@@ -97,7 +99,7 @@ export function contactsIn(text: string, depth = 0): Set<string> {
   }
   for (const match of plain.match(EMAIL) ?? []) out.add(match.toLowerCase());
   const rest = plain.replace(LINK, " ").replace(EMAIL, " ");
-  // nosemgrep: detect-redos -- anchored at the start of a LINK match, whose scheme is at most 32 characters
+  // nosemgrep: detect-redos -- DOMAIN is capped at 128 labels and its lookbehind starts each match at a label edge, so it is linear (SEC-A13-06)
   for (const match of rest.match(DOMAIN) ?? []) {
     const host = match.split("/")[0] ?? "";
     if (FILE_ENDINGS.has(host.split(".").at(-1)?.toLowerCase() ?? "")) continue;

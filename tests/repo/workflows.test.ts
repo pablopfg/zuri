@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   CI_PART_JOBS,
@@ -274,25 +275,45 @@ describe("source-branch check", () => {
 
 describe(".github/workflows/sonarqube.yml", () => {
   const wf = loadWorkflow(".github/workflows/sonarqube.yml");
-  const job = wf.jobs.sonarqube;
-  const all = job?.steps ?? [];
+  const jobSteps = (id: string) => wf.jobs[id]?.steps ?? [];
+  const withToken = (id: string) => jobSteps(id).filter((step) => JSON.stringify(step.env ?? {}).includes("secrets.SONAR_TOKEN"));
 
   it("runs on pull requests and on pushes to develop, read only", () => {
     expect(wf.on).toEqual({ pull_request: null, push: { branches: ["develop"] } });
     expect(wf.permissions).toEqual({ contents: "read" });
-    expect(job?.permissions).toBeUndefined();
+    for (const job of Object.values(wf.jobs)) expect(job.permissions).toBeUndefined();
   });
 
-  it("hands the token only to the pinned scanner and to the check that it is there", () => {
-    const withToken = all.filter((step) => JSON.stringify(step.env ?? {}).includes("secrets.SONAR_TOKEN"));
-    expect(withToken.map((step) => step.uses ?? step.id)).toEqual(["token", "SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4"]);
+  // SEC-A11-02: a postinstall or a test of the pull request could rewrite the
+  // scanner or $GITHUB_ENV before the step that holds the token.
+  it("SEC-A11-02 never runs the pull request's code in a job that holds the token", () => {
+    expect(withToken("token").map((step) => step.id)).toEqual(["check"]);
+    expect(jobSteps("token").filter((step) => step.uses)).toEqual([]);
+    expect(withToken("coverage")).toEqual([]);
+    expect(withToken("sonarqube").map((step) => step.uses)).toEqual(["SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4"]);
+    // An exact list, not a list of what is forbidden: a local action or any other command would come from the pull request.
+    expect(jobSteps("sonarqube").map((step) => step.uses ?? step.run)).toEqual([
+      "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      ': > "$RUNNER_TEMP/sonar.properties"',
+      "SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4",
+    ]);
+  });
+
+  it("SEC-A11-02 fixes the server and reads no settings file from the pull request", () => {
+    const scan = withToken("sonarqube")[0];
+    const args = String((scan?.with as Record<string, unknown> | undefined)?.args ?? "");
+    expect(args).toContain("-Dsonar.host.url=https://sonarcloud.io");
+    expect(args).toMatch(/-Dproject\.settings=\$\{\{ runner\.temp \}\}\/sonar\.properties/);
+    expect(existsSync("sonar-project.properties")).toBe(false);
   });
 
   it("ends green without a scan when the secret does not reach the run (fork, Dependabot)", () => {
-    const check = all.find((step) => step.id === "token");
+    const check = jobSteps("token").find((step) => step.id === "check");
     expect(check?.run).toContain('[ -z "$SONAR_TOKEN" ]');
     expect(check?.run).toContain('echo "run=false" >> "$GITHUB_OUTPUT"');
-    for (const step of all.slice(all.indexOf(check as (typeof all)[number]) + 1)) expect(step.if).toBe("steps.token.outputs.run != 'false'");
+    expect((wf.jobs.coverage as { if?: string }).if).toBe("needs.token.outputs.run == 'true'");
+    expect((wf.jobs.sonarqube as { needs?: string }).needs).toBe("coverage");
   });
 });
 
@@ -315,16 +336,23 @@ describe("security scans of the CI (docs/qa/varreduras-de-seguranca.md)", () => 
     expect(checkout?.with?.["fetch-depth"]).toBe(0);
     expect(job?.steps?.map((step) => step.run).filter(Boolean)).toContain("bash scripts/seguranca/gitleaks.sh");
     const script = readText("scripts/seguranca/gitleaks.sh");
-    expect(script).toMatch(/^SHA256=[0-9a-f]{64}$/m);
+    expect(script.match(/SHA256=[0-9a-f]{64} ;;/g)).toHaveLength(4);
     expect(script).toContain("sha256sum -c");
     expect(script).toContain("--redact");
   });
 
-  it("allows only exact test values in .gitleaks.toml, never a path", () => {
+  it("allows only exact test values in .gitleaks.toml, never a path, a rule or a whole commit", () => {
     const config = readText(".gitleaks.toml");
-    expect(config).not.toMatch(/^\s*paths\s*=/m);
+    for (const key of ["paths", "stopwords", "commits", "disabledRules"]) expect(config).not.toMatch(new RegExp(`^\\s*${key}\\s*=`, "m"));
+    expect(config).toMatch(/^useDefault = true$/m);
     const values = [...config.matchAll(/'''(.*)'''/g)].map((match) => match[1]);
     expect(values.length).toBeGreaterThan(0);
-    for (const value of values) expect(value).toMatch(/^\^[^*+?|]+\$$/);
+    // Literal characters and escapes only: no class, quantifier, dot or alternation.
+    for (const value of values) expect(value).toMatch(/^\^(?:[A-Za-z0-9_=-]|\\.)+\$$/);
+  });
+
+  it("has no file that turns a scan off in bulk", () => {
+    expect(existsSync(".gitleaksignore")).toBe(false);
+    expect(existsSync(".semgrepignore")).toBe(false);
   });
 });

@@ -2,12 +2,19 @@ name: SonarQube
 
 # SonarQube Cloud on the free plan for open source (Pablo, 13/11/2026): code
 # quality and security hotspots of every pull request and of develop, with the
-# test coverage. The only workflow of a pull request that reads a secret, and
-# only in the scan step: SONAR_TOKEN, a token of a SonarQube Cloud account made
-# only for this analysis (docs/qa/varreduras-de-seguranca.md). GitHub gives no
-# secret to a fork's or a Dependabot pull request: there the job says so and
-# ends green without a scan. Not a required check yet: the quality gate is
-# calibrated on the first analyses first.
+# test coverage. The only workflow of a pull request that reads a secret:
+# SONAR_TOKEN, a token that can only run this analysis
+# (docs/qa/varreduras-de-seguranca.md). GitHub gives no secret to a fork's or
+# a Dependabot pull request: there the run says so and ends green without a
+# scan. Not a required check yet: the quality gate is calibrated first.
+#
+# The job with the token never runs code from the pull request or its
+# dependencies (SEC-A11-02): `npm ci` and the tests run in "coverage", without
+# the secret, and hand over only coverage/lcov.info. A postinstall or a test
+# could otherwise rewrite the scanner on the runner, or $GITHUB_ENV, before
+# the step that holds the token. The scanner's settings are fixed here, never
+# read from a file in the pull request: a sonar-project.properties could point
+# the token to another server or the scanner to another Java.
 on:
   pull_request:
   push:
@@ -21,33 +28,76 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  sonarqube:
+  # Only asks whether the secret reached this run; runs nothing else.
+  token:
     runs-on: ubuntu-26.04
-    timeout-minutes: 20
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.check.outputs.run }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          # The blame of each line tells new code from old.
-          fetch-depth: 0
-      - id: token
+      - id: check
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           if [ -z "$SONAR_TOKEN" ]; then
             echo "::notice::SONAR_TOKEN is not available here (fork, Dependabot or not set up yet): no SonarQube analysis."
             echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
           fi
-      - if: steps.token.outputs.run != 'false'
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+
+  coverage:
+    needs: token
+    if: needs.token.outputs.run == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
-      - if: steps.token.outputs.run != 'false'
-        run: npm ci
-      - if: steps.token.outputs.run != 'false'
-        run: npm run test:coverage
-      - if: steps.token.outputs.run != 'false'
-        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
+      - run: npm ci
+      - run: npm run test:coverage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lcov
+          path: coverage/lcov.info
+          retention-days: 1
+
+  sonarqube:
+    needs: coverage
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The blame of each line tells new code from old.
+          fetch-depth: 0
+      # The pull request's code is only read from here on: no install, no script.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lcov
+          path: ${{ runner.temp }}/lcov
+      # An empty settings file: a sonar-project.properties in the pull request is never read.
+      - run: ': > "$RUNNER_TEMP/sonar.properties"'
+      - uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dproject.settings=${{ runner.temp }}/sonar.properties
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.organization=pablopfg
+            -Dsonar.projectKey=pablopfg_Zuri
+            -Dsonar.projectName=Zuri
+            -Dsonar.sources=apps,packages,scripts
+            -Dsonar.tests=apps,packages,tests
+            -Dsonar.test.inclusions=**/test/**,**/*.test.ts,**/*.test.tsx,tests/**
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/test/**,**/*.test.ts,**/*.test.tsx,apps/web/src/fonts/**
+            -Dsonar.coverage.exclusions=scripts/**,apps/web/src/main.tsx
+            -Dsonar.javascript.lcov.reportPaths=${{ runner.temp }}/lcov/lcov.info
+            -Dsonar.sourceEncoding=UTF-8

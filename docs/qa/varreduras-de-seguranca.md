@@ -52,7 +52,7 @@ A "Security Audit Skill" da Cloudflare do pedido é a
 
 - Varre todos os commits, não só os do PR: uma chave apagada num commit
   seguinte continua pública no histórico.
-- O binário é a release 8.30.0, conferida pelo SHA-256 antes de rodar.
+- O binário é a release 8.30.0 (Linux e macOS, x64 e arm64), conferida pelo SHA-256 antes de rodar.
 - `.gitleaks.toml` estende as regras padrão e libera só valores **exatos** de
   teste (canários, exemplos das RFCs 6455 e 8291, a chave VAPID de teste
   publicada). Nunca libere por pasta: uma chave real colada num teste tem que
@@ -65,22 +65,39 @@ A "Security Audit Skill" da Cloudflare do pedido é a
 ## SonarQube Cloud
 
 Escolha do Pablo (13/11/2026): análise pela CI com token, no plano grátis para
-código aberto. O workflow `SonarQube` é o único de PR que lê um segredo, e só
-no passo da análise. O GitHub não entrega segredos a PRs de fork nem do
-Dependabot: nelas o job avisa e termina verde, sem análise.
+código aberto. O workflow `SonarQube` é o único de PR que lê um segredo. O
+GitHub não entrega segredos a PRs de fork nem do Dependabot: nelas o workflow
+avisa e termina sem análise.
+
+Como o token fica protegido (SEC-A11-02, achado da auditoria desta PR):
+
+- O job que tem o token nunca roda código da PR nem das dependências. O
+  `npm ci` e os testes com cobertura rodam no job `coverage`, sem segredo, e só
+  passam adiante o `lcov.info`. Senão um `postinstall` ou um teste poderia
+  reescrever o scanner no runner antes do passo que recebe o token.
+- As configurações do scanner ficam no próprio workflow, com o servidor fixo
+  (`sonarcloud.io`), e nenhum `sonar-project.properties` da PR é lido. Um
+  arquivo desses poderia mandar o token para outro servidor.
+- O token é de uma conta do SonarQube Cloud usada só para esta análise, nunca
+  o token pessoal da conta principal do Pablo. Quem consegue mudar o workflow
+  numa branch deste repositório (o Pablo e os agentes) ainda conseguiria ler
+  o token: é o limite aceito desta escolha.
 
 O que o Pablo faz uma vez, pelo navegador:
 
 1. Em [sonarcloud.io](https://sonarcloud.io), **Log in with GitHub**, crie a
    organização a partir da conta `pablopfg` (plano **Free**) e importe o
    repositório Zuri. Confira que a chave da organização é `pablopfg` e a do
-   projeto é `pablopfg_Zuri`; se forem outras, troque em
-   `sonar-project.properties`.
+   projeto é `pablopfg_Zuri`; se forem outras, troque no `args` do
+   `.github/workflows/sonarqube.yml`.
 2. No projeto: **Administration → Analysis Method**, desligue
    **Automatic Analysis** (as duas juntas falham).
-3. Em **My Account → Security**, gere um token só para esta análise e grave no
-   GitHub em **Settings → Secrets and variables → Actions → New repository
-   secret**, com o nome `SONAR_TOKEN`. Nunca cole o token no chat.
+3. Gere o token numa conta só para a análise: crie no GitHub uma conta de
+   serviço (por exemplo `zuri-sonar`), entre com ela no SonarQube Cloud, ponha
+   essa conta na organização só com a permissão **Execute Analysis** no
+   projeto e gere o token em **My Account → Security**. Grave no GitHub em
+   **Settings → Secrets and variables → Actions → New repository secret**, com
+   o nome `SONAR_TOKEN`. Nunca cole o token no chat.
 
 Depois das primeiras análises, o portão de qualidade ("Sonar way") é calibrado
 e o check passa a ser exigido nas rulesets numa PR própria. Até lá, o agente lê
@@ -109,7 +126,9 @@ Na skill `auditoria-seguranca`, depois do pentest da funcionalidade:
 1. `bash scripts/seguranca/semgrep.sh` e `bash scripts/seguranca/gitleaks.sh`
    (os mesmos checks da CI, antes do push).
 2. `/differential-review:diff-review` sobre `origin/develop...HEAD`, com o
-   relatório fora do repositório.
+   relatório numa pasta fora do repositório (o `.gitignore` também barra o nome
+   padrão `*_DIFFERENTIAL_REVIEW_*.md`, porque o relatório traz passos de
+   ataque).
 3. `sharp-edges` quando o diff cria ou muda uma interface.
 4. `/insecure-defaults:audit` nas pastas que o diff toca; no passe completo, no
    repositório inteiro.
@@ -131,3 +150,16 @@ fica fora do escopo vira issue pelo modelo `erro`.
   (item de fluxo, resultado de ferramenta) levavam 70 s de CPU. Agora são
   lineares, com teste. Os outros 21 são falsos positivos, marcados linha a
   linha com o motivo.
+- **Auditoria independente desta PR:** **SEC-A11-02** (média, corrigido): no
+  primeiro desenho, o job do SonarQube rodava `npm ci` e os testes junto com o
+  token. **SEC-A13-07** (baixa, corrigido): o padrão `CONTACT` da guarda das
+  Avaliações tinha o mesmo problema do SEC-A13-06. A revisão de QA achou que
+  os primeiros limites cortavam a chave do contato (e-mail com mais de 64
+  caracteres antes do @, esquema com mais de 32 letras, host com mais de 11
+  rótulos); os padrões passaram a usar lookbehind e limites que nenhum
+  endereço válido alcança, com teste de cada caso.
+- **Pontos aceitos:** o `.npmrc` não usa `min-release-age`, porque o `npm ci`
+  instala só o que está no lockfile e uma correção de segurança do Dependabot
+  não pode esperar; um agente que acrescenta uma dependência confere a data da
+  versão (`npm view <pacote> time`) e evita versão de menos de 3 dias. As
+  pastas de teste ficam fora do Semgrep (o Gitleaks cobre segredos nelas).
