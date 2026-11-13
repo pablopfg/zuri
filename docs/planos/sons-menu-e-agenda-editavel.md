@@ -168,7 +168,7 @@ O Pablo aprovou o protótipo inteiro (v51) e pediu o código de tudo, testado. A
 
 | Entrega | O que entra (seções deste plano) | Migration | Situação |
 | --- | --- | --- | --- |
-| E5. Agenda: agendamento e travas | Formulário 24 h com término, tipo e local (Meet via `conferenceData`), vínculo a Contatos e homônimos, financeiro no evento; horário de atendimento, almoço, feriados com "Atendo" e dias sem expediente só em Configurações › Agenda; regra única `agErro` em `packages/shared` também no servidor; avisos ao tocar ou arrastar para horário fechado; consultas que ficaram fora; sem "Dia todo"; sinais da sincronização (12/11 à tarde, 00:15 itens 2–5, 00:44, 01:04 itens 5–6) | não (ajustes em `zur_settings`, dados do evento em `extendedProperties.private`) | a fazer |
+| E5. Agenda: agendamento e travas (E5a, E5b, E5c) | Formulário 24 h com término, tipo e local (Meet via `conferenceData`), vínculo a Contatos e homônimos, financeiro no evento; horário de atendimento, almoço, feriados com "Atendo" e dias sem expediente só em Configurações › Agenda; regra única `agErro` em `packages/shared` também no servidor; avisos ao tocar ou arrastar para horário fechado; consultas que ficaram fora; sem "Dia todo"; sinais da sincronização (12/11 à tarde, 00:15 itens 2–5, 00:44, 01:04 itens 5–6) | não (ajustes em `zur_settings`, dados do evento em `extendedProperties.private`) | a fazer |
 | E6. Consultório e integrações seguras | Configurações › Consultório (nome, endereço, cidade, WhatsApp); cofre de credenciais (AES-256-GCM, chave por integração, só escrita, senha para mudar, um host https por credencial); credencial fzap; e-mail aos pacientes por Gmail (`gmail.send`) ou SMTP 465/587 (00:37) | a conferir no plano da entrega | a fazer |
 | E7. Link de confirmação do paciente | Página pública `/c/<token>`: confirmar, cancelar com prazo, remarcar em 4 passos (8 dias, só dias livres, de 1 em 1 hora, colado a consulta ou 2 sorteados), WhatsApp com mensagem pronta, sons e transições; envio pelo Chatwoot, pelo botão do WhatsApp e por e-mail; mensagem modelo; token de 128 bits com hash, link único por agendamento, proteção contra enumeração (12/11 noite, 00:15 itens 6–8, 01:04 itens 3–4, 01:32 item 1) | sim (tokens do link) | a fazer |
 | E8. Gestão: Atendimentos e Financeiro | Telas nativas Atendimentos, Financeiro (A receber, Extrato com exportar em planilha, Serviços e despesas), "Enviar Pix" pela fzap, livro-caixa em centavos sem nome nem CPF | sim (livro-caixa, serviços, despesas) | a fazer |
@@ -178,6 +178,21 @@ O Pablo aprovou o protótipo inteiro (v51) e pediu o código de tudo, testado. A
 | E12. Segurança e avisos | País nos acessos (`request.cf.country`), "Todos os acessos" por dia com filtros; sino com número de não vistos (`seen_at`) (01:32 item 3, v38) | sim (`seen_at`) | a fazer |
 
 As migrations seguem a numeração livre da `develop` na hora de cada PR (hoje a próxima é a 38). As três perguntas da Gestão (não guardar nome nem CPF nos lançamentos, só o Pablo registra presença e pagamento, relatórios dentro da Zuri) seguem o que o protótipo aprovado mostra, que é a recomendação de cada uma. A pergunta 4 (e-mail) fica com as duas formas, como no protótipo, com o Gmail recomendado.
+
+#### Encaixe com o cronograma do frontend Sinal (13/11/2026, 01:52 UTC)
+
+O Pablo lembrou que já existe um cronograma em andamento: o plano do frontend Sinal ([implementacao-frontend-sinal.md](implementacao-frontend-sinal.md)), com a S16 (Configurações) em revisão e a S17 (credenciais) em seguida, e o plano da Gestão ([gestao-financeira-e-paineis.md](gestao-financeira-e-paineis.md), PR #311). As entregas E5 a E12 não criam uma segunda fila: cada uma entra depois da PR Sinal que mexe na mesma coisa e reaproveita o que ela trouxe.
+
+| Entrega | Depende de | Ajuste para manter a compatibilidade |
+| --- | --- | --- |
+| E5a, E5b, E5c (Agenda) | nada aberto | Corre junto com a S16 e a S17: mexe só na Agenda, em Configurações › Agenda (`AgendaTab.tsx`) e nas rotas `/google/events`. Não toca em `SettingsPage.tsx`, que é da S16. A E5 se divide em três PRs: E5a regras e travas (horário, almoço, feriados com "Atendo", dias sem expediente, regra única no servidor, avisos ao tocar e arrastar, sem "Dia todo"); E5b formulário (24 h, término, tipo e local com Meet, vínculo a Contatos e homônimos, financeiro, "Agendar" na ficha); E5c sinais da sincronização |
+| E6 (Consultório e integrações) | S16 e S17 mescladas | O cofre de credenciais é o da S17 (tipos `http` e `chatwoot`, chave que nunca volta ao navegador): a E6 acrescenta o tipo da fzap e o SMTP nele, sem cofre novo. O grupo Consultório entra na casca de Configurações que a S16 deixou |
+| E7 (link de confirmação) | E6, S19 (Envios) e S20 (pedido de avaliação e link) | O envio pelo Chatwoot usa a fila da S19 (nada envia duas vezes). A página pública `/c/<token>` divide com a S20 o mesmo desenho de link (token, freio por rede, página sem dado pessoal): a que chegar primeiro cria a base e a outra reaproveita |
+| E8, E9, E10 (Gestão) | PR #311 mesclada | Seguem o plano da Gestão. A área Consultório do menu aparece com a primeira tela, como a entrega 4 já prevê em `nav.ts` |
+| E11 (família nos Contatos) | E5b | Usa o vínculo e o aniversário dos contatos que a E5b traz |
+| E12 (país nos acessos e sino) | S16 mesclada | A S16 mexe em Segurança, na atividade de acesso e em Avisos; a E12 entra depois para não editar as mesmas telas ao mesmo tempo |
+
+Em todas: telas novas carregam sob demanda e o JS inicial não cresce (hoje sobram 11 B no teto de 141.000 B). Se alguma precisar de bytes no primeiro carregamento, a Zuri pergunta ao Pablo antes. As migrations pegam o número livre da `develop` na hora de cada PR, conferindo também as PRs Sinal abertas.
 
 ### Diferenças da entrega 1
 
