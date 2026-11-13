@@ -34,6 +34,8 @@ import {
   type UsageHours,
   type UsageMonths,
   USAGE_HISTORY_DAYS,
+  APP_VERSION,
+  type ServerVersion,
 } from "@zuri/shared";
 import { type Context, Hono } from "hono";
 import { type ClientInfo, clientInfo } from "../auth/client.ts";
@@ -443,6 +445,10 @@ export function createApi(deps: ApiDeps) {
   // ---------- Settings ----------
 
   app.get("/settings", () => Response.json(deps.settings().get()));
+
+  // PR S16: the version this Worker runs, for Settings > Sobre a Zuri to compare with the screen's.
+  // The same constant as the screen's bundle; only the number, never the deployment's id.
+  app.get("/version", () => Response.json({ version: APP_VERSION } satisfies ServerVersion));
 
   app.patch("/settings", async (c) => {
     const patch = await readJson(c.req.raw, settingsUpdateSchema, 4 * 1024);

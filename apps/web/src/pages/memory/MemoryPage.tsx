@@ -12,14 +12,12 @@ import {
   type MemoryReviewAction,
   type MemoryWriteResult,
   ptBRMemory,
-  type Settings,
 } from "@zuri/shared";
 import { Brain, CircleHelp, GitCompareArrows, List, Maximize, Minus, Plus, Search, ShieldCheck, Type, Waypoints } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { Button, Card, cn, Dialog, EmptyState, ErrorNotice, fieldClass, Notice, PageHeader, SelectField, Loading, TextAreaField } from "../../components/ui.tsx";
+import { Button, cn, Dialog, EmptyState, ErrorNotice, fieldClass, Notice, PageHeader, SelectField, Loading, TextAreaField } from "../../components/ui.tsx";
 import { MEMORIES_KEY, useMemories, useMemoryHistory, useMemoryReviews } from "../../hooks/memory.ts";
-import { SETTINGS_KEY } from "../../hooks/session.tsx";
 import { api, errorMessage } from "../../lib/api.ts";
 import { FlashStatus, flashClass, useDebounced, useFlash } from "../../lib/lists.tsx";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
@@ -338,8 +336,6 @@ export function MemoryPage() {
           )}
         </aside>
       </div>
-
-      <ConflictReviewSetting />
 
       {editing && <EditDialog editing={editing} onClose={() => setEditing(null)} onSaved={notify} />}
       {historyOf && <HistoryDialog memory={historyOf} onClose={() => setHistoryOf(null)} />}
@@ -713,74 +709,5 @@ function DeleteDialog({ memory, onClose, onDeleted }: { memory: Memory; onClose:
         </Button>
       </div>
     </Dialog>
-  );
-}
-
-/**
- * The switch reads the settings the session already holds and saves with a plain
- * request. Through hooks/settings.ts, shared with the settings screen, the
- * bundler would split the first load into extra chunks (rule P11).
- */
-function ConflictReviewSetting() {
-  const { t } = useI18n();
-  const qc = useQueryClient();
-  const settings = useQuery({ queryKey: SETTINGS_KEY, queryFn: () => api<Settings>("/settings"), staleTime: 5 * 60_000 });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const id = useId();
-  const on = settings.data?.memoryConflictReview ?? true;
-
-  async function save(memoryConflictReview: boolean) {
-    setSaving(true);
-    setError(null);
-    try {
-      qc.setQueryData(SETTINGS_KEY, await api<Settings>("/settings", { method: "PATCH", body: { memoryConflictReview } }));
-    } catch (failure) {
-      setError(failure);
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <Card title={t("web.memory.settings.title")}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <p id={`${id}-hint`} className="text-sm leading-6 text-fg-muted">
-          {t("web.memory.settings.conflictHint")}
-        </p>
-        <label className="flex min-h-11 shrink-0 cursor-pointer items-center gap-3">
-          <span className="text-sm font-medium">{t("web.memory.settings.conflict")}</span>
-          {/* A real checkbox as a 44 px touch target; the track and knob are drawn from its state. */}
-          <span className="relative inline-flex h-11 w-14 items-center justify-center">
-            <input
-              type="checkbox"
-              role="switch"
-              checked={on}
-              aria-checked={on}
-              // Never disabled while saving: a disabled control drops the keyboard focus.
-              disabled={settings.isPending}
-              aria-busy={saving || undefined}
-              aria-describedby={`${id}-hint`}
-              onChange={(e) => {
-                if (!saving) void save(e.target.checked);
-              }}
-              className="peer absolute inset-0 h-11 w-14 cursor-pointer appearance-none rounded-full focus-visible:outline-none disabled:cursor-wait"
-            />
-            <span
-              aria-hidden
-              className="pointer-events-none h-6 w-11 rounded-full bg-border-strong transition-colors peer-checked:bg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 peer-disabled:opacity-60"
-            />
-            <span
-              aria-hidden
-              className="pointer-events-none absolute left-2 h-5 w-5 rounded-full bg-surface shadow transition-transform peer-checked:translate-x-5"
-            />
-          </span>
-        </label>
-      </div>
-      {error !== null && (
-        <p role="alert" className="mt-2 text-sm text-danger">
-          {errorMessage(error)}
-        </p>
-      )}
-    </Card>
   );
 }

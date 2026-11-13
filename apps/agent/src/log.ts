@@ -125,7 +125,7 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "routines", "cancel", "chat", "check", "client", "code", "confirm", "connect", "conversations", "correct", "counts", "devices", "diagnostics", "disable",
   "calendars", "clients", "connections", "contacts", "crm", "drafts", "empty", "export", "import", "stages", "flows", "enable", "events", "exit", "google", "graph", "group", "labels", "mcp", "health", "heartbeat", "history", "hours", "learning", "live", "lockdown", "login", "login-options", "logout", "memories", "mfa", "months", "mute",
   "notes", "notices", "oauth", "read", "resolve", "options", "owner", "passkey", "passkeys", "password", "plans", "projects", "push", "recover", "recovery-codes", "refresh", "reindex", "request", "restore", "reviews", "run", "runs", "discard", "draft", "reply", "pause", "resume", "locations", "local-only", "providers", "retry",
-  "remote", "search", "semantic", "servers", "session", "settings", "setup", "status", "storage", "sync", "tasks", "telegram", "test", "tokens", "tools", "transcribe", "trash", "usage", "verify", "webhook",
+  "remote", "search", "semantic", "servers", "session", "settings", "setup", "status", "storage", "sync", "tasks", "telegram", "test", "tokens", "tools", "transcribe", "trash", "usage", "verify", "version", "webhook",
   // The AI screen's agents (guardrails, PR 2).
   "agents", "versions",
   // The automatic backup (step 23b).

@@ -34,12 +34,20 @@ const minute = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 /** The cf-ray's request id, without the "-GRU" data center that hints where the owner was. */
 const rayId = (ref: string) => ref.replace(/-[A-Z]{3}$/, "");
 
-/** The issue form link for one recorded failure. */
-export function issueReportUrl(entry: DiagnosticEntry): string {
+/** The form's fields the link fills, by their ids in erro.yml, in the form's order (the preview shows them so). */
+export const ISSUE_FIELDS = ["title", "contexto", "passos", "esperado", "obtido", "codigo"] as const;
+export type IssueField = (typeof ISSUE_FIELDS)[number];
+
+/**
+ * What each text field of the form will hold for one recorded failure (PR S16 added
+ * steps and expected). Steps come from where the failure happened, never from what
+ * the owner did or wrote. "Onde aconteceu" and "Impacto" are lists, which GitHub
+ * doesn't fill from a link: the preview tells the owner to pick them there.
+ */
+export function issueReportFields(entry: DiagnosticEntry): Record<IssueField, string> {
   const where = SOURCE_NAME[entry.source];
   const name = entry.errorName !== "Error" ? ` ${entry.errorName}` : "";
-  const params = new URLSearchParams({
-    template: ISSUE_TEMPLATE,
+  return {
     title: `[erro] ${entry.code}${name} (${where})`,
     contexto: [
       `Falha registrada no Diagnóstico (origem: ${where}).`,
@@ -50,10 +58,21 @@ export function issueReportUrl(entry: DiagnosticEntry): string {
     ]
       .filter(Boolean)
       .join("\n"),
+    passos: [
+      `1. Usar a Zuri na versão ${APP_VERSION}.`,
+      `2. Usar a parte de ${where}${entry.route ? ` (rota ${entry.route})` : ""}.`,
+      "3. A falha aparece em Configurações › Diagnóstico.",
+    ].join("\n"),
+    esperado: "A ação termina sem erro e nada aparece no Diagnóstico.",
     obtido: `${entry.code}${name}: ${entry.countToday} hoje, ${entry.countTotal} nos últimos 30 dias.`,
     codigo: [entry.code, entry.errorName !== "Error" ? entry.errorName : null, entry.lastRef ? `cf-ray ${rayId(entry.lastRef)}` : null, `id ${entry.id}`]
       .filter(Boolean)
       .join(" · "),
-  });
+  };
+}
+
+/** The issue form link for one recorded failure: the same fields the preview shows. */
+export function issueReportUrl(entry: DiagnosticEntry): string {
+  const params = new URLSearchParams({ template: ISSUE_TEMPLATE, ...issueReportFields(entry) });
   return `https://github.com/${ISSUE_REPOSITORY}/issues/new?${params.toString()}`;
 }

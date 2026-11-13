@@ -41,6 +41,12 @@ function seedDay(db: Database, day: string, n = 1): void {
 const monthly = (db: Database) => db.all<{ month: string; last_day: string; days: number; requests: number }>(`SELECT month, last_day, days, requests FROM zur_usage_monthly ORDER BY month`);
 
 describe("today by the hour", () => {
+  it("takes only the 24 hours of a day in the schema", () => {
+    const zero = { requests: 0, errors: 0, aborted: 0, fallbacks: 0, neurons: 0, paidUsd: 0, audioSeconds: 0 };
+    for (const hour of [0, 23]) expect(usageHoursSchema.safeParse({ day: "2026-10-31", hours: [{ hour, ...zero }] }).success, String(hour)).toBe(true);
+    for (const hour of [-1, 24, 1.5, "1"]) expect(usageHoursSchema.safeParse({ day: "2026-10-31", hours: [{ hour, ...zero }] }).success, String(hour)).toBe(false);
+  });
+
   it("is empty before any call, and matches the schema", async () => {
     await withAiWorld(({ meter }) => {
       const hours = meter.hours();

@@ -418,6 +418,13 @@ uso, com `days` (dias com uso no mês) para a média (`usageMonthsSchema`). Não
 `days=365` em `/api/usage/history` continua recusado, e o ano nunca lê 365 linhas de dia. As duas
 rotas não têm parâmetro e não gravam nada.
 
+Na tela (Configurações › Uso da IA, "Consumo por período"), o seletor tem Dia, Semana, Mês e Ano.
+Dia lê `/api/usage/hours` e mostra as 24 horas no fuso do dono, dizendo a hora em que a contagem
+recomeça (21:00 para quem está em UTC−3). Semana e Mês leem `/api/usage/history?days=7|30`. Ano lê
+`/api/usage/months`, com a média por dia com uso; como os meses não guardam a divisão por modelo, a
+tabela de modelos do Ano é a dos últimos 90 dias (`days=90`) e diz isso no título. Dia não tem a
+tabela de modelos: o cartão "Uso de hoje" já mostra cada modelo do dia.
+
 `POST /memories/:id/local-only` e `POST /notes/:id/local-only`
 (`{ "localOnly": true | false }`): liga ou desliga "Nunca enviar para fora", sem
 mudar a data da última edição.

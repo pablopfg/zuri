@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ALERT_CHANNELS, type AlertDelivery, type AlertOverview, type LearnedPriority, ptBRAlerts, type Settings } from "@zuri/shared";
 import { type FormEvent, useEffect, useId, useState } from "react";
+import { Link } from "react-router";
 import { Button, Card, cn, ErrorNotice, Loading, TextField } from "../../components/ui.tsx";
 import { useToast } from "../../components/Toaster.tsx";
 import { ALERTS_KEY, useAlertOverview } from "../../hooks/notices.ts";
@@ -11,7 +12,6 @@ import { CrmNoticesCard } from "./CrmNoticesCard.tsx";
 import { PushCard } from "./PushCard.tsx";
 import { RoutesCard } from "./RoutesCard.tsx";
 import { SoundsCard } from "./SoundsCard.tsx";
-import { TelegramCard } from "./TelegramCard.tsx";
 import { Switch } from "../../components/Switch.tsx";
 
 // This tab's pt-BR texts arrive with it (rule P11).
@@ -20,9 +20,10 @@ addMessages(ptBRAlerts);
 /**
  * Settings > Avisos, in the order the owner sets them up (stage 26c): the sound of
  * a notice in the open app (12/11/2026, first as in the prototype), where notices
- * can go and how each channel is, push on this device, the Telegram bot, which kind
- * goes to which channel, what the CRM tells (S15), then the daily summary, what the Zuri watches on her own
- * and the priorities she learned; the recent sends last.
+ * can go and how each channel is, push on this device, which kind goes to which
+ * channel, what the CRM tells (S15), then the daily summary; the recent sends last.
+ * Since PR S16 the Telegram bot lives in Integrações, and what the Zuri watches on
+ * her own and the priorities she learned in Assistente (the cards stay here, exported).
  */
 export function AlertsTab() {
   const settings = useSettings();
@@ -33,12 +34,9 @@ export function AlertsTab() {
       <SoundsCard settings={settings.data} />
       <ChannelsCard />
       <PushCard />
-      <TelegramCard />
       <RoutesCard settings={settings.data} />
       <CrmNoticesCard />
       <DigestCard settings={settings.data} />
-      <WatchersCard settings={settings.data} />
-      <LearningCard settings={settings.data} />
       <HistoryCard />
     </>
   );
@@ -89,7 +87,7 @@ function DigestCard({ settings }: { settings: Settings }) {
   );
 }
 
-function WatchersCard({ settings }: { settings: Settings }) {
+export function WatchersCard({ settings }: { settings: Settings }) {
   const { t } = useI18n();
   const toast = useToast();
   const save = useSettingsMutation();
@@ -118,7 +116,7 @@ function WatchersCard({ settings }: { settings: Settings }) {
 }
 
 /** The priority that learns: the switch, what changed and a way back for each one. */
-function LearningCard({ settings }: { settings: Settings }) {
+export function LearningCard({ settings }: { settings: Settings }) {
   const { t, dateTime } = useI18n();
   const toast = useToast();
   const qc = useQueryClient();
@@ -206,6 +204,13 @@ function ChannelsCard() {
           ))}
         </ul>
       )}
+      {/* The bot is set up with the other connections (PR S16): a button beside the line, 44 px tall. */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-2 text-sm text-fg-muted">
+        <span>{t("web.alerts.channels.telegramWhere")}</span>
+        <Link to="/configuracoes/integracoes" className="inline-flex min-h-11 items-center font-semibold text-accent-text underline-offset-4 hover:underline">
+          {t("web.alerts.channels.openIntegrations")}
+        </Link>
+      </div>
     </Card>
   );
 }
