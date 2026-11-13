@@ -85,9 +85,11 @@ function Ask() {
     event.preventDefault();
     ask(text);
   };
-  // A suggestion only fills the field: nothing is sent until the owner sends it. The tap teaches the order (its kind, never the text).
+  // A suggestion only fills the field: nothing is sent until the owner sends it. What was already written stays,
+  // with the suggestion after it, as with the voice. The tap teaches the order (its kind, never the text).
   const pick = (idea: HomeSuggestion) => {
-    setText(ideaText(t, idea));
+    const said = ideaText(t, idea);
+    setText((current) => (current.trim() ? `${current.trimEnd()} ${said}` : said).slice(0, CHAT_MESSAGE_MAX));
     field.current?.focus();
     void api(`/home/suggestions/${idea.id}/used`, { method: "POST" }).catch(() => undefined);
   };

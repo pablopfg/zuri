@@ -62,6 +62,15 @@ export interface HomeSuggestionDeps {
 }
 
 /**
+ * Whether the daily ordering may call the model now: never in a lockdown,
+ * never on a paid model (main or fallback: it only orders chips, rule 1), and
+ * only with more than its cap left in the day's Neurons (P7).
+ */
+export function homeOrderAllowed(now: { lockdown: boolean; paidModel: boolean; roomNeurons: number }): boolean {
+  return !now.lockdown && !now.paidModel && now.roomNeurons > HOME_ORDER_NEURONS;
+}
+
+/**
  * The home page's suggestions (PR S22). Fixed rules over the owner's day pick
  * the kinds that fit now; taps and, once a day, the AI only change the order.
  * Nothing here writes a sentence: the interface owns every text.
@@ -116,7 +125,8 @@ export class HomeSuggestionService {
     const bill = this.bill(now, end, zone);
     if (bill) out.push(bill);
     const review = this.deps.review();
-    if (review) out.push(review.name ? { id: "review", name: cut(review.name) } : { id: "review" });
+    const reviewer = review ? cut(review.name) : "";
+    if (review) out.push(reviewer ? { id: "review", name: reviewer } : { id: "review" });
     // Monday, or Sunday evening: the week ahead.
     if (weekday === 1 || (weekday === 0 && local.hour >= 18)) out.push({ id: "week" });
     out.push({ id: local.hour < 12 ? "today" : local.hour < 18 ? "rest" : "tomorrow" });
@@ -219,9 +229,15 @@ function orderInput(now: Date, zone: string, uses: Uses, db: Database): string {
   ].join("\n");
 }
 
-/** A name for a blank: inert, on one line, cut whole letters at 20. */
+/**
+ * A name for a blank: inert, on one line, only letters, digits, spaces and the
+ * marks names use, cut whole letters at 20. A reviewer writes their own name,
+ * and a tap copies it to the field the owner sends from: no symbol, link or
+ * markup gets that far (audit S22, low).
+ */
 function cut(text: string): string {
-  return [...neutralize(text)].slice(0, HOME_SUGGESTION_NAME_MAX).join("").trim();
+  const plain = neutralize(text).replace(/[^\p{L}\p{M}\p{N} .'’-]+/gu, " ").replace(/\s+/g, " ").trim();
+  return [...plain].slice(0, HOME_SUGGESTION_NAME_MAX).join("").trim();
 }
 
 const pad = (value: number) => String(value).padStart(2, "0");

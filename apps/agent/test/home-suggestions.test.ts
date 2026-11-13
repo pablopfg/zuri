@@ -1,10 +1,15 @@
 import { HOME_SUGGESTION_TEXT_MAX, type HomeSuggestion, ptBRHome } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
 import { InternalState } from "../src/db/internal-state.ts";
-import { HOME_ORDER_NEURONS, HomeSuggestionService } from "../src/home/suggestions.ts";
+import { HOME_ORDER_NEURONS, HomeSuggestionService, homeOrderAllowed } from "../src/home/suggestions.ts";
 import type { MeteredRequest } from "../src/ai/metered.ts";
 import type { SpecialistAi } from "../src/specialists/contract.ts";
 import { type ChatWorld, TIME_ZONE, withChatWorld } from "./chat-world.ts";
+import { AGENT_PROFILES, CHAT_MODELS } from "@zuri/shared";
+import { estimateTokens } from "../src/ai/provider.ts";
+import { stepNeurons } from "../src/ai/usage.ts";
+import { specialistSystem } from "../src/specialists/contract.ts";
+import { HOME_ORDER_SPECIALIST } from "../src/specialists/home-order.ts";
 
 // PR S22 (plan sugestoes-do-inicio.md): fixed rules over the owner's day pick
 // up to three kinds; taps and, once a day, the AI only change the order. The
@@ -19,6 +24,7 @@ interface Setup {
   review?: { name: string } | null;
   answer?: string | (() => Promise<string>);
   room?: boolean;
+  zone?: string;
 }
 
 function service(world: ChatWorld, setup: Setup = {}) {
@@ -35,7 +41,7 @@ function service(world: ChatWorld, setup: Setup = {}) {
   const home = new HomeSuggestionService({
     db: world.db,
     state,
-    timeZone: () => TIME_ZONE,
+    timeZone: () => setup.zone ?? TIME_ZONE,
     clock: () => world.clock.now,
     review: () => setup.review ?? null,
     ai: () => (setup.room === false ? null : ai),
@@ -127,6 +133,20 @@ describe("home suggestions: the rules", () => {
         expect(item.name ?? "").not.toMatch(/[<>‮]/u);
         expect(text(item).length).toBeLessThanOrEqual(HOME_SUGGESTION_TEXT_MAX);
       }
+    }));
+});
+
+describe("home suggestions: names in the blanks", () => {
+  it("keeps letters, digits and the marks of names; drops symbols, links and markup", () =>
+    withChatWorld((world) => {
+      world.clock.now = SAT_9;
+      const name = (raw: string) => service(world, { room: false, review: { name: raw } }).home.list().suggestions[0]?.name;
+      expect(name("João D'Ávila-Souza")).toBe("João D'Ávila-Souza");
+      expect(name("https://exemplo.com.br/x")).toBe("https exemplo.com.br");
+      expect(name("<b>Ana</b>")).toBe("b Ana b");
+      expect(name(`{time} $\{x} \`y\``)).toBe("time x y");
+      // Nothing left: the review shows without a name.
+      expect(service(world, { room: false, review: { name: "<<>>" } }).home.list().suggestions[0]).toEqual({ id: "review" });
     }));
 });
 
@@ -228,7 +248,7 @@ describe("home suggestions: the daily order by the AI", () => {
       await failing.settle();
       expect(ids(failing.home.list())).toEqual(["today"]);
       expect(failing.calls).toHaveLength(1);
-      // No room, a lockdown or a paid model: no call and nothing written.
+      // The gate said no (see "the gate"): no call and nothing written.
       world.clock.now += DAY;
       const off = service(world, { room: false });
       const written = world.db.usage.rowsWritten;
@@ -247,5 +267,51 @@ describe("home suggestions: the daily order by the AI", () => {
       state.set("home_suggestion_order", "{broken");
       home.list();
       expect(calls).toHaveLength(1);
+    }));
+});
+
+describe("home suggestions: the Neurons' cap", () => {
+  it("fits the call on every free model, even at the largest answer the owner may set", () =>
+    withChatWorld(async (world) => {
+      world.clock.now = SAT_9;
+      const { home, calls, settle } = service(world);
+      home.list();
+      await settle();
+      const req = calls[0];
+      if (!req) throw new Error("no call");
+      const input = estimateTokens(specialistSystem(HOME_ORDER_SPECIALIST).length + JSON.stringify(req.messages).length);
+      const output = AGENT_PROFILES.home_order.maxOutputRange?.max ?? 0;
+      for (const model of Object.keys(CHAT_MODELS)) {
+        const neurons = stepNeurons({ model, billable: true, input: { reported: 0, estimated: input }, output: { reported: 0, estimated: output } });
+        expect(neurons, model).toBeLessThanOrEqual(HOME_ORDER_NEURONS);
+      }
+    }));
+});
+
+describe("home suggestions: the gate", () => {
+  it("lets the ordering run only outside a lockdown, on a free model, with more than its cap left", () => {
+    const ok = { lockdown: false, paidModel: false, roomNeurons: HOME_ORDER_NEURONS + 1 };
+    expect(homeOrderAllowed(ok)).toBe(true);
+    expect(homeOrderAllowed({ ...ok, lockdown: true })).toBe(false);
+    expect(homeOrderAllowed({ ...ok, paidModel: true })).toBe(false);
+    expect(homeOrderAllowed({ ...ok, roomNeurons: HOME_ORDER_NEURONS })).toBe(false);
+    expect(homeOrderAllowed({ ...ok, roomNeurons: 0 })).toBe(false);
+  });
+});
+
+describe("home suggestions: days of 23 and 25 hours", () => {
+  it("keeps the bill's time and the hour's kind right across daylight saving in New York", () =>
+    withChatWorld((world) => {
+      const zone = "America/New_York";
+      // 01/11/2026 has 25 hours there: 18:00 EST is 23:00 UTC.
+      task(world, "Pay the power bill", "2026-11-01T23:00:00.000Z");
+      world.clock.now = at("2026-11-01T14:00:00Z"); // 09:00 EST, Sunday
+      expect(service(world, { room: false, zone }).home.list().suggestions).toEqual([{ id: "bill", name: "the power bill", time: "17:30" }, { id: "today" }]);
+      // 14/03/2027 has 23 hours there: 18:00 EDT is 22:00 UTC (the bill of 01/11 is late by then).
+      task(world, "Pay rent", "2027-03-14T22:00:00.000Z");
+      world.clock.now = at("2027-03-14T21:59:00Z"); // 17:59 EDT, Sunday
+      expect(ids(service(world, { room: false, zone }).home.list())).toEqual(["late", "rest"]);
+      world.clock.now = at("2027-03-14T22:00:00Z"); // 18:00 EDT
+      expect(ids(service(world, { room: false, zone }).home.list())).toEqual(["late", "week", "tomorrow"]);
     }));
 });

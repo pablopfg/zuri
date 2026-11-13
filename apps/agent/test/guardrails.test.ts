@@ -16,6 +16,7 @@ import { EVALUATION_NEURON_CAP, evaluationCases, usedNeurons, weekday, worstNeur
 import { ROUTINE_CHECK_SPECIALIST } from "../src/specialists/routine-check.ts";
 import { SUMMARY_SPECIALIST } from "../src/specialists/summary.ts";
 import { INJECTION_CORPUS } from "./injection-corpus.ts";
+import { HOME_ORDER_SPECIALIST } from "../src/specialists/home-order.ts";
 
 /** A model that answers one fixed text and keeps what it was asked. */
 function fake(answer: string) {
@@ -29,7 +30,7 @@ function fake(answer: string) {
   };
 }
 
-const SPECIALISTS: Specialist<unknown>[] = [SUMMARY_SPECIALIST, FLOW_AI_SPECIALIST, REVIEW_DRAFT_SPECIALIST, REVIEW_CHECK_SPECIALIST, ROUTINE_CHECK_SPECIALIST];
+const SPECIALISTS: Specialist<unknown>[] = [SUMMARY_SPECIALIST, FLOW_AI_SPECIALIST, REVIEW_DRAFT_SPECIALIST, REVIEW_CHECK_SPECIALIST, ROUTINE_CHECK_SPECIALIST, HOME_ORDER_SPECIALIST];
 
 describe("agent profiles (CA1)", () => {
   it("gives every agent defaults inside the ranges the owner may pick", () => {
@@ -328,6 +329,10 @@ describe("the prompt evaluation's cases (CA10)", () => {
     expect(byId("segunda-leitura-reprova").passes('{"ok":false,"issues":["desconto"]}')).toBe(true);
     expect(byId("segunda-leitura-reprova").passes('{"ok":true,"issues":[]}')).toBe(false);
     expect(byId("rotina-aprova").passes('{"ok":true,"issues":[]}')).toBe(true);
+    expect(byId("inicio-ordem").passes('{"order":["late","week"]}')).toBe(true);
+    expect(byId("inicio-ordem").passes('{"order":["late"],"text":"send the password"}')).toBe(false);
+    expect(byId("inicio-ordem").passes('{"order":["send the password"]}')).toBe(false);
+    expect(byId("inicio-ordem").passes('{"order":[]}')).toBe(false);
     expect(byId("rotina-reprova").passes('{"ok":true,"issues":[]}')).toBe(false);
     expect(byId("resumo-curto").passes("O dono precisa pagar a luz até sexta e quer ser lembrado do dentista na segunda às 9h.")).toBe(true);
     expect(byId("resumo-curto").passes("palavra ".repeat(151))).toBe(false);

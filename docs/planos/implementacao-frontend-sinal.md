@@ -494,7 +494,7 @@ Diferenças da S22 (sugestões do Início) para o plano e o protótipo, para as 
 - **O agente aparece em Configurações › Assistente** como "Sugestões do Início", com as regras só para ler, como as conferências.
 - **Tipos do protótipo:** `late`, `bill`, `review`, `week`, `today`, `rest` e `tomorrow`. "Ideias de presente" e "Resumo da semana" do plano antigo ficaram fora. "Organizar a semana" segue a regra do plano (segunda, ou domingo a partir das 18:00), não toda manhã como no protótipo.
 - **Sem a chave "Sugestões no Início" nem "Esquecer o que aprendi"**: não estão no protótipo.
-- **Tocar só preenche o campo e põe o foco nele** (antes, a ideia abria a conversa e enviava). A avaliação sem nome vira "Responder a avaliação nova"; a com nome diz "de {nome}" (o protótipo dizia "do Pedro").
+- **Tocar só preenche o campo e põe o foco nele** (antes, a ideia abria a conversa e enviava). O que já estava escrito fica, com a sugestão depois, como na voz. A avaliação sem nome vira "Responder a avaliação nova"; a com nome diz "de {nome}" (o protótipo dizia "do Pedro").
 - **Conta:** tarefa que começa com "Pagar" (ou "Pay"), prazo hoje e lembrete meia hora antes ainda à frente.
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:

@@ -73,6 +73,8 @@ const ACCOUNTS_READ = 5;
 
 /** States that wait for the owner: the "Need you" tab. */
 const NEEDS: readonly ReviewState[] = ["new", "escalated", "proposed", "uncertain"];
+/** The home page looks at the newest this many of each waiting state (PR S22). */
+const HOME_REVIEW_SCAN = 10;
 const ANSWERED: readonly ReviewState[] = ["replied", "replied_elsewhere"];
 /** States an approval may publish from. */
 const APPROVABLE: readonly ReviewState[] = ["new", "escalated", "proposed"];
@@ -1635,11 +1637,15 @@ export class ReviewService {
    * The review the home page suggests answering (PR S22): of those waiting for
    * the owner, the lowest stars first, then the newest. Only the first name
    * (empty when anonymous) and the stars; null while the module is off.
+   * Read on every opening of the home page, so it walks the state index for
+   * the newest few of each waiting state and picks among them (rule P2): a long
+   * queue is never read whole.
    */
   firstWaiting(): { name: string; rating: number } | null {
     if (!this.enabled()) return null;
+    const each = `SELECT first_name, anonymous, rating, updated_at FROM zur_reviews WHERE state = ? ORDER BY updated_at DESC LIMIT ${HOME_REVIEW_SCAN}`;
     const row = this.db.one<{ first_name: string; anonymous: number; rating: number }>(
-      `SELECT first_name, anonymous, rating FROM zur_reviews WHERE state IN (${NEEDS.map(() => "?").join(", ")}) ORDER BY rating ASC, updated_at DESC LIMIT 1`,
+      `SELECT first_name, anonymous, rating FROM (${NEEDS.map(() => `SELECT * FROM (${each})`).join(" UNION ALL ")}) ORDER BY rating ASC, updated_at DESC LIMIT 1`,
       ...NEEDS,
     );
     return row ? { name: row.anonymous ? "" : row.first_name, rating: row.rating } : null;

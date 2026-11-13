@@ -69,3 +69,46 @@ describe("the home page's suggestions", () => {
     expect(noCsrf.status).toBe(403);
   });
 });
+
+describe("the daily ordering inside the object", () => {
+  /** Counts the model calls the object makes. */
+  class Counting extends MockAIProvider {
+    calls = 0;
+    override async generate(req: Parameters<MockAIProvider["generate"]>[0]) {
+      this.calls++;
+      return super.generate(req);
+    }
+  }
+
+  const fresh = (agent: ZuriAgent) => agent.store.db.run(`DELETE FROM zur_settings WHERE key = 'home_suggestion_order'`);
+  const order = (agent: ZuriAgent) => agent.store.db.one(`SELECT value FROM zur_settings WHERE key = 'home_suggestion_order'`);
+
+  it("calls the model once a day on a free model, and never in a lockdown or with a paid model chosen", () =>
+    inOwner(async (agent) => {
+      const provider = new Counting();
+      agent.testProvider = provider;
+      try {
+        fresh(agent);
+        agent.store.auth.lockdown.mark("teste");
+        agent.store.home.list();
+        expect(order(agent)).toBeNull();
+        agent.store.auth.lockdown.clear();
+
+        agent.store.db.run(`INSERT INTO zur_settings (key, value, updated_at) VALUES ('ai_model', '"anthropic/claude-haiku-5-5"', 0)`);
+        agent.store.home.list();
+        expect(order(agent)).toBeNull();
+        agent.store.db.run(`DELETE FROM zur_settings WHERE key = 'ai_model'`);
+        expect(provider.calls).toBe(0);
+
+        agent.store.home.list();
+        expect(order(agent)).not.toBeNull();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(provider.calls).toBe(1);
+        agent.store.home.list();
+        expect(provider.calls).toBe(1);
+      } finally {
+        agent.store.db.run(`DELETE FROM zur_settings WHERE key IN ('ai_model', 'lockdown_until', 'lockdown_source', 'lockdown_exited_at')`);
+        agent.testProvider = new MockAIProvider();
+      }
+    }));
+});

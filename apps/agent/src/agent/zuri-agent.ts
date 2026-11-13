@@ -62,7 +62,7 @@ import { localToday } from "../google/events.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
 import { ReviewMatches } from "../reviews/matches.ts";
 import { ReviewRequests } from "../reviews/requests.ts";
-import { HOME_ORDER_NEURONS, HomeSuggestionService } from "../home/suggestions.ts";
+import { HomeSuggestionService, homeOrderAllowed } from "../home/suggestions.ts";
 import { ModelCatalogService } from "../ai/catalog.ts";
 import { developmentCatalog } from "../ai/dev-catalog.ts";
 import { type ReviewNotice, ReviewService } from "../reviews/service.ts";
@@ -1260,11 +1260,14 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         state,
         timeZone: () => settings.field("timeZone"),
         review: () => reviews.firstWaiting(),
-        ai: () => {
-          // Never a paid model for this (it only orders the chips), never in a lockdown, never without room in the day.
-          if (auth.lockdown.active() || isPaidModel(this.chosenModel("aiModel")) || isPaidModel(this.chosenModel("aiFallbackModel"))) return null;
-          return usage.room(this.aiLimits()).neurons > HOME_ORDER_NEURONS ? this.ai() : null;
-        },
+        ai: () =>
+          homeOrderAllowed({
+            lockdown: auth.lockdown.active(),
+            paidModel: isPaidModel(this.chosenModel("aiModel")) || isPaidModel(this.chosenModel("aiFallbackModel")),
+            roomNeurons: usage.room(this.aiLimits()).neurons,
+          })
+            ? this.ai()
+            : null,
         settings: () => agents.settings("home_order"),
         background: (work) => void this.keepAliveWhile(work),
       });

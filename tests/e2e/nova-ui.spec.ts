@@ -71,7 +71,7 @@ test("a suggestion's blanks come from the server as data, never as markup", asyn
         suggestions: [
           { id: "bill", name: "a luz", time: "17:30" },
           { id: "review", name: "<img src=x>" },
-          { id: "review" },
+          { id: "late" },
         ],
       },
     }),
@@ -79,8 +79,19 @@ test("a suggestion's blanks come from the server as data, never as markup", asyn
   await page.route("**/api/home/suggestions/*/used", (route) => route.fulfill({ status: 204 }));
   await openHome(page);
   const ideas = page.getByRole("list", { name: "Sugestões a partir do seu dia" });
-  await expect(ideas.getByRole("button")).toHaveText(["Me lembre de pagar a luz às 17:30", "Responder a avaliação de <img src=x>", "Responder a avaliação nova"]);
+  await expect(ideas.getByRole("button")).toHaveText(["Me lembre de pagar a luz às 17:30", "Responder a avaliação de <img src=x>", "Reagendar o que atrasou"]);
   await expect(ideas.locator("img")).toHaveCount(0);
+  // What was already written stays, with the suggestion after it.
+  const field = page.getByRole("textbox", { name: "Escreva para a Zuri" });
+  await field.fill("Oi,");
+  await ideas.getByRole("button", { name: "Reagendar o que atrasou" }).click();
+  await expect(field).toHaveValue("Oi, Reagendar o que atrasou");
+});
+
+test("a review without a name reads as the new review", async ({ page }) => {
+  await page.route("**/api/home/suggestions", (route) => route.fulfill({ json: { suggestions: [{ id: "review" }] } }));
+  await openHome(page);
+  await expect(page.getByRole("list", { name: "Sugestões a partir do seu dia" }).getByRole("button")).toHaveText(["Responder a avaliação nova"]);
 });
 
 test("the home page shows no suggestions when the server has none or fails", async ({ page }) => {

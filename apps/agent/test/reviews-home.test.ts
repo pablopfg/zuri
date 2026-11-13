@@ -22,4 +22,27 @@ describe("reviews: the first one waiting, for the home page", () => {
       world.db.run(`UPDATE zur_reviews SET state = 'resolved'`);
       expect(world.reviews.firstWaiting()).toBeNull();
     }));
+
+  it("reads a bounded number of rows however long the queue (rule P2)", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      world.db.transaction(() => {
+        for (let i = 0; i < 300; i++) {
+          const at = new Date(Date.UTC(2026, 9, 1) + i * 60_000).toISOString();
+          world.db.run(
+            `INSERT INTO zur_reviews (id, location, google_name, rating, first_name, comment, created_at, updated_at, state, seen_at) VALUES (?, ?, ?, ?, ?, '', ?, ?, 'new', 0)`,
+            `r${i}`,
+            LOCATION,
+            `${LOCATION}/reviews/bulk${i}`,
+            i === 295 ? 1 : 4,
+            i === 295 ? "Rui" : "Ana",
+            at,
+            at,
+          );
+        }
+      });
+      const before = world.db.usage.rowsRead;
+      expect(world.reviews.firstWaiting()).toEqual({ name: "Rui", rating: 1 });
+      expect(world.db.usage.rowsRead - before).toBeLessThanOrEqual(50);
+    }));
 });
