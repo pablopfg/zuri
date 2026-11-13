@@ -121,7 +121,7 @@ describe("SettingsRepository", () => {
 
   it("saves the Agenda's preferences whole in one row, and reads a stored one that no longer fits as the default", async () => {
     await withRepository("agenda", (settings, db) => {
-      const agenda = { from: 7, to: 20, view: "day" as const, weekStart: 0 as const, workDays: [6, 1, 1], daysOff: false, allDay: false, outside: false };
+      const agenda = { from: 7, to: 20, view: "day" as const, weekStart: 0 as const, workDays: [6, 1, 1], daysOff: false, outside: false, lunch: { from: 720, to: 780 }, openHolidays: [], closed: [] };
       expect(settings.update({ agenda }).agenda).toEqual({ ...agenda, workDays: [1, 6] });
       expect(db.all(`SELECT key FROM zur_settings`)).toEqual([{ key: "agenda" }]);
       // The same card saved again writes nothing.
@@ -134,6 +134,47 @@ describe("SettingsRepository", () => {
       // Hours a hand-edited row left upside down never reach the screen.
       db.run(`UPDATE zur_settings SET value = ? WHERE key = 'agenda'`, JSON.stringify({ ...agenda, from: 22, to: 3 }));
       expect(settings.get().agenda).toEqual(DEFAULT_SETTINGS.agenda);
+    });
+  });
+
+  it("reads a record saved before 13/11/2026 (with the all-day choice, without lunch, holidays or days off) and drops what is gone", async () => {
+    await withRepository("agenda-old", (settings, db) => {
+      const old = { from: 7, to: 20, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, allDay: false, outside: true };
+      db.run(`INSERT INTO zur_settings (key, value, updated_at) VALUES ('agenda', ?, 'x')`, JSON.stringify(old));
+      const { allDay: _gone, ...rest } = old;
+      expect(settings.get().agenda).toEqual({ ...rest, lunch: null, openHolidays: [], closed: [] });
+    });
+  });
+
+  it("keeps the lunch break inside the hours, holidays that are national, and one reason per day off", async () => {
+    await withRepository("agenda-rules", (settings) => {
+      const agenda = { ...DEFAULT_SETTINGS.agenda, from: 8, to: 18 };
+      // Days off and open holidays come back in order, each once.
+      const saved = settings.update({
+        agenda: { ...agenda, openHolidays: ["2026-12-25", "2026-11-20", "2026-12-25"], closed: [{ date: "2026-12-31", reason: "Recesso" }, { date: "2026-12-24", reason: " " }] },
+      }).agenda;
+      expect(saved.openHolidays).toEqual(["2026-11-20", "2026-12-25"]);
+      expect(saved.closed).toEqual([
+        { date: "2026-12-24", reason: "" },
+        { date: "2026-12-31", reason: "Recesso" },
+      ]);
+      expect(settings.update({ agenda: { ...agenda, lunch: null } }).agenda.lunch).toBeNull();
+      for (const patch of [
+        // Lunch on the quarter hour, longer than 3 h, touching the start or the end, or upside down.
+        { ...agenda, lunch: { from: 735, to: 780 } },
+        { ...agenda, lunch: { from: 600, to: 810 } },
+        { ...agenda, lunch: { from: 480, to: 540 } },
+        { ...agenda, lunch: { from: 1020, to: 1080 } },
+        { ...agenda, lunch: { from: 780, to: 720 } },
+        // A day that is no national holiday, an impossible date, a repeated day off, a long reason, too many days.
+        { ...agenda, openHolidays: ["2026-11-19"] },
+        { ...agenda, closed: [{ date: "2026-02-30", reason: "" }] },
+        { ...agenda, closed: [{ date: "2026-12-24", reason: "" }, { date: "2026-12-24", reason: "Natal" }] },
+        { ...agenda, closed: [{ date: "2026-12-24", reason: "x".repeat(41) }] },
+        { ...agenda, closed: Array.from({ length: 101 }, (_, index) => ({ date: new Date(Date.UTC(2027, 0, 1 + index)).toISOString().slice(0, 10), reason: "" })) },
+      ]) {
+        expect(() => settings.update({ agenda: patch } as never), JSON.stringify(patch).slice(0, 120)).toThrow(AppError);
+      }
     });
   });
 

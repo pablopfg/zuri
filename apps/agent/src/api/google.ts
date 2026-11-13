@@ -1,5 +1,6 @@
 import {
   AGENDA_LIMITS,
+  type AgendaPrefs,
   type AgendaPage,
   calendarModeSchema,
   CONTACT_LIMITS,
@@ -17,6 +18,7 @@ import type { ClientInfo } from "../auth/client.ts";
 import type { AuthService } from "../auth/service.ts";
 import { CHANNEL_ID, GOOGLE_CHANNEL_HEADER, GOOGLE_PUSH_PATH, GOOGLE_STATE_HEADER, GOOGLE_TOKEN_HEADER, isGooglePushToken } from "../gates/google-push.ts";
 import { contactAppointments } from "../google/appointments.ts";
+import { checkBooking } from "../google/booking.ts";
 import type { GoogleContacts } from "../google/contacts.ts";
 import type { ReviewService } from "../reviews/service.ts";
 import { toAppError } from "../google/errors.ts";
@@ -34,6 +36,8 @@ export interface GoogleRouteDeps {
   reviews: ReviewService;
   auth: AuthService;
   timeZone: () => string;
+  /** Configurações › Agenda: when the office takes appointments (13/11/2026). */
+  agendaHours: () => AgendaPrefs;
   /** Sets the shared alarm again (a sync or a notice became due). */
   rearm: () => Promise<void>;
 }
@@ -43,6 +47,26 @@ const ACTION_BUDGET = 12;
 /** The card's appointments: what is ahead and the last months of ten calendars, a token renewal and a retry; never near the 45 of rule P9. */
 const APPOINTMENTS_BUDGET = 24;
 const DAY_MS = 86_400_000;
+
+/** An event as it will be at Google once `body` (a create, or a PATCH over `current`) is applied. */
+function shapeOf(body: Record<string, unknown>, current: { allDay: boolean; start: string; end: string; description: string; colorId: string }) {
+  const time = (value: unknown): { at?: string; allDay?: boolean } => {
+    if (!value || typeof value !== "object") return {};
+    const { date, dateTime } = value as { date?: unknown; dateTime?: unknown };
+    if (typeof dateTime === "string") return { at: dateTime, allDay: false };
+    if (typeof date === "string") return { at: date, allDay: true };
+    return {};
+  };
+  const start = time(body.start);
+  const end = time(body.end);
+  return {
+    allDay: start.allDay ?? current.allDay,
+    start: start.at ?? current.start,
+    end: end.at ?? current.end,
+    description: typeof body.description === "string" ? body.description : current.description,
+    colorId: body.colorId === null ? "" : typeof body.colorId === "string" ? body.colorId : current.colorId,
+  };
+}
 
 /** A Google failure in the owner's words. */
 async function owner<T>(work: () => Promise<T>): Promise<T> {
@@ -246,9 +270,11 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     if (input.location) draft.location = input.location;
     if (input.description) draft.description = input.description;
     const event = await owner(async () => {
-      const body = eventBody(draft, deps().timeZone());
+      const zone = deps().timeZone();
+      const body = eventBody(draft, zone);
       // The status the form picked, as the event's color at Google; none is "Agendado".
       if (input.colorId) body.colorId = input.colorId;
+      await checkBooking({ after: shapeOf(body, { allDay: input.allDay, start: "", end: "", description: "", colorId: "" }), google, hours: deps().agendaHours(), timeZone: zone, meter: new GoogleMeter(ACTION_BUDGET) });
       return google.createEvent(input.calendarId, body, new GoogleMeter(ACTION_BUDGET));
     });
     return Response.json({ event }, { status: 201 });
@@ -266,10 +292,12 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
       for (const key of ["title", "start", "end", "location", "description"] as const) if (input[key] !== undefined) draft[key] = input[key];
       if (input.allDay !== undefined) draft.allDay = input.allDay;
       const base = current.allDay ? { start: { date: current.start }, end: { date: current.end } } : { start: { dateTime: current.start }, end: { dateTime: current.end } };
-      const patch = eventBody(draft, deps().timeZone(), base);
+      const zone = deps().timeZone();
+      const patch = eventBody(draft, zone, base);
       // The status is the event's color at Google; a null there takes the color off.
       if (input.colorId !== undefined && input.colorId !== current.colorId) patch.colorId = input.colorId || null;
       if (Object.keys(patch).length === 0) return current;
+      await checkBooking({ after: shapeOf(patch, current), before: current, google, hours: deps().agendaHours(), timeZone: zone, meter: new GoogleMeter(ACTION_BUDGET) });
       return google.updateEvent(input.calendarId, input.eventId, patch, input.etag, meter);
     });
     return Response.json({ event });
