@@ -149,7 +149,7 @@ test("CA7, CA8, CA13: dragging to another day and hour sends one change, marks R
   const helena = event(page, "Helena Duarte Prado");
   // The block names the type and the status after the hour.
   await expect(helena).toContainText("09:00 – 10:00 · Consulta · Confirmado");
-  await expect(sync(page)).toHaveText("Em dia com o Google");
+  await expect(sync(page)).toHaveText("Sincronizado");
   await expectAccessible(page, "agenda-arrastar-semana");
 
   // From Monday 9:00 to Tuesday 11:15: one column to the right and two hours and a quarter down.
@@ -162,13 +162,13 @@ test("CA7, CA8, CA13: dragging to another day and hour sends one change, marks R
   await page.mouse.up();
 
   // Shown at once where it lands, while Google has not answered.
-  await expect(sync(page)).toHaveText("Salvando no Google…");
+  await expect(sync(page)).toHaveText("Salvando…");
   await expect(column(page, "17").getByRole("button", { name: /^Helena Duarte Prado/ })).toContainText("11:15 – 12:15 · Consulta · Reagendado");
   // The release of a drag opens nothing.
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(sent.patches).toEqual([{ calendarId: "main", eventId: "e0", etag: '"v1-0"', start: "2026-11-17T11:15", end: "2026-11-17T12:15", colorId: "5" }]);
   release();
-  await expect(sync(page)).toHaveText("Salvo no Google agora");
+  await expect(sync(page)).toHaveText("Salvo no Google");
   await expect(notice(page, "“Helena Duarte Prado” agora é ter, 17/11 às 11:15. Ficou como Reagendado.")).toBeVisible();
   await expectAccessible(page, "agenda-arrastar-aviso");
 
@@ -351,7 +351,8 @@ test("CA8: with the connection down the event goes back and Tentar de novo sends
   await expect(notice(page, offline)).toBeVisible();
   // Back where it was, with the status it had.
   await expect(helena).toContainText("09:00 – 10:00 · Consulta · Confirmado");
-  await expect(sync(page)).toHaveText("Em dia com o Google");
+  // The sync signal says it too, until a change goes through (E5d).
+  await expect(sync(page)).toHaveText("Sem internet");
   expect(sent.patches).toHaveLength(1);
 
   // The notice stays until answered, and its button sends the same change.
@@ -491,7 +492,7 @@ test("Editar changes the length, the type and the status in one change, with its
   await page.getByRole("dialog", { name: "Marina Teles Barreto" }).getByRole("button", { name: "Editar" }).click();
   await form.getByRole("button", { name: "Salvar" }).click();
   await expect(form).toHaveCount(0);
-  await expect(sync(page)).not.toHaveText("Salvando no Google…");
+  await expect(sync(page)).not.toHaveText("Salvando…");
   expect(sent.patches).toHaveLength(4);
 });
 
@@ -505,7 +506,7 @@ test("on a phone the change is by Editar: no dragging, the day's list names the 
   await expect(helena).toContainText("Consulta · Confirmado · até 10:00");
   // A finger that slides over the event scrolls the page: nothing moves.
   await expect(page.locator("[data-resize]")).toHaveCount(0);
-  await expect(sync(page)).toHaveText("Em dia com o Google");
+  await expect(sync(page)).toHaveText("Sincronizado");
 
   await helena.click();
   await page.getByRole("dialog", { name: "Helena Duarte Prado" }).getByRole("button", { name: "Editar" }).click();
@@ -533,7 +534,7 @@ test("while one change is on its way the next is not taken, and leaving the Agen
   const helena = event(page, "Helena Duarte Prado");
   const from = await center(helena);
   await drag(page, from, { x: from.x, y: from.y + HOUR_PX });
-  await expect(sync(page)).toHaveText("Salvando no Google…");
+  await expect(sync(page)).toHaveText("Salvando…");
   // A second drag, of another event, before the answer: it stays where it is.
   const renato = event(page, "Renato Sampaio Cruz");
   const other = await center(renato);
@@ -564,7 +565,7 @@ test("in English the notices, the line of Google and the form speak English", as
   await page.clock.install({ time: NOW });
   await page.goto("/agenda");
   await signIn(page);
-  await expect(sync(page)).toHaveText("Up to date with Google");
+  await expect(sync(page)).toHaveText("In sync");
   const helena = event(page, "Helena Duarte Prado");
   const from = await center(helena);
   await drag(page, from, { x: from.x, y: from.y + HOUR_PX });
@@ -592,7 +593,7 @@ test("QA-E3-02: Desfazer is on offer for eight seconds, by the button and by Ctr
   await expect(undo).toHaveCount(0);
   await page.keyboard.press("Control+z");
   await expect(helena).toContainText("10:00 – 11:00");
-  await expect(sync(page)).not.toHaveText("Salvando no Google…");
+  await expect(sync(page)).not.toHaveText("Salvando…");
   expect(sent.patches).toHaveLength(1);
 
   // Inside the eight seconds the key still undoes.
@@ -622,7 +623,7 @@ test("QA-E3-04: a finger on the week's grid does not drag: the event stays and n
     await expect(helena).toContainText("09:00 – 10:00");
     await page.evaluate(({ type, init }) => window.dispatchEvent(new PointerEvent(type, init)), finger("pointerup", from.y + 2 * HOUR_PX));
     await expect(helena).toContainText("09:00 – 10:00");
-    await expect(sync(page)).toHaveText("Em dia com o Google");
+    await expect(sync(page)).toHaveText("Sincronizado");
     expect(sent.patches).toHaveLength(0);
     // The same walk with a mouse does move it: the refusal is the finger's.
     await drag(page, from, { x: from.x, y: from.y + 2 * HOUR_PX });
@@ -667,7 +668,7 @@ test("QA-E3-01, QA-E3-08, QA-E3-09: a change is never dropped in silence, and De
   const helena = event(page, "Helena Duarte Prado");
   const from = await center(helena);
   await drag(page, from, { x: from.x, y: from.y + HOUR_PX });
-  await expect(sync(page)).toHaveText("Salvando no Google…");
+  await expect(sync(page)).toHaveText("Salvando…");
 
   // QA-E3-01: "Salvar" of the form waits for the answer of the change before it; the form stays open with what was typed.
   await event(page, "Renato Sampaio Cruz").click();
@@ -699,7 +700,7 @@ test("QA-E3-01, QA-E3-08, QA-E3-09: a change is never dropped in silence, and De
   const marina = event(page, "Marina Teles Barreto");
   const at = await center(marina);
   await drag(page, at, { x: at.x, y: at.y + HOUR_PX });
-  await expect(sync(page)).toHaveText("Salvando no Google…");
+  await expect(sync(page)).toHaveText("Salvando…");
   await page.getByRole("link", { name: "Configurar a agenda" }).click();
   await expect(page.getByRole("heading", { level: 1 })).not.toHaveText("Agenda");
   release();

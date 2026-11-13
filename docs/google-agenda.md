@@ -90,9 +90,28 @@ dele. São os nomes e os números de cor do próprio Google Agenda:
 
 #### Mudar um evento na própria Agenda
 
-Nas agendas abertas para edição, cada mudança vai para o Google na hora. A
-linha ao lado dos botões diz como está: "Salvando no Google…", "Salvo no Google
-agora" ou "Em dia com o Google".
+Nas agendas abertas para edição, cada mudança vai para o Google na hora. O
+**sinal da sincronização**, ao lado dos botões, diz como está, sempre com
+ícone, cor e nome:
+
+| Sinal | Quando | O que fazer |
+| --- | --- | --- |
+| Sincronizado | Tudo igual ao Google, com a hora da última conferência | Nada |
+| Salvando… | Uma mudança está indo para o Google | Esperar |
+| Salvo no Google | A última mudança chegou, há menos de um minuto | Nada |
+| Atualizando… | A Zuri está lendo o que mudou no Google | Esperar |
+| Sem internet | A mudança não chegou; o evento voltou ao que era | Tentar de novo |
+| Falha ao salvar | O Google recusou a mudança; o evento voltou ao que era | Ver o evento |
+| Mudou no Google | O evento foi mudado lá enquanto você mexia aqui; vale a versão de lá | Ver o evento |
+| Em pausa | O Google pediu um intervalo depois de muitas mudanças seguidas | Tentar de novo em 1 minuto |
+| Desatualizada | Sem notícias do Google há mais de 15 minutos, ou a última leitura falhou | Atualizar agora |
+
+O sinal abre um painel com a situação de agora, o botão do que fazer, as
+últimas cinco mudanças desta visita (com a hora e se chegaram ao Google) e "O
+que cada sinal quer dizer", que explica também "Conexão expirou" e "Só
+leitura". Nada fica esperando escondido no navegador: sem internet, a mudança
+volta e você manda de novo. Se o acesso ao Google se perde no meio da visita, a
+Agenda troca a tela por "Conectar de novo".
 
 - **Arrastar** um evento na semana troca o dia e a hora, de 15 em 15 minutos.
   A **borda de baixo** muda a duração (no mínimo 15 minutos). O evento fica
