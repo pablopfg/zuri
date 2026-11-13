@@ -1,12 +1,12 @@
 # Plano · A Zuri dentro do Chatwoot, só para o Pablo
 
-Situação: esperando o Pablo (estudo de viabilidade, sem código)
+Situação: opção A aprovada pelo Pablo em 13/11/2026, 02:10 UTC, com configuração automática; protótipo esperando aprovação
 Origem: pedido do Pablo em 13/11/2026, 01:56 UTC
-Dependências: integração Chatwoot da [envio-chatwoot-pela-zuri.md](envio-chatwoot-pela-zuri.md) (credencial cifrada, chamadas com caminho fixo, retorno assinado). Nada disso está no código ainda.
+Dependências: S17 (cofre de credenciais no servidor, `docs/planos/implementacao-frontend-sinal.md`), onde entra um tipo novo de credencial para este canal. Não depende do envio de pedido de avaliação.
 
 ## 1. Resumo
 
-O Pablo quer conversar com a Zuri de dentro do Chatwoot, como já conversa pelo Telegram, e a Zuri não pode responder a mais ninguém: nem paciente, nem outro atendente. Dá para fazer no plano gratuito. O jeito mais seguro é uma **caixa de entrada própria, do tipo API, chamada "Zuri"**, onde só existe uma conversa (a do Pablo com a Zuri), em vez de colocar a Zuri na caixa do WhatsApp dos pacientes. Toda mensagem que chega do Chatwoot é tratada como campainha: a Zuri confere a assinatura, busca a mensagem de novo pela API do Chatwoot e só responde quando o autor é a conta do Pablo nessa conversa. Isso abre uma porta nova de fora para dentro e muda duas decisões fechadas, então precisa do OK do Pablo antes de qualquer protótipo ou código.
+O Pablo quer conversar com a Zuri de dentro do Chatwoot, como já conversa pelo Telegram, e a Zuri não pode responder a mais ninguém: nem paciente, nem outro atendente. Dá para fazer no plano gratuito. O jeito mais seguro é uma **caixa de entrada própria, do tipo API, chamada "Zuri"**, onde só existe uma conversa (a do Pablo com a Zuri), em vez de colocar a Zuri na caixa do WhatsApp dos pacientes. Toda mensagem que chega do Chatwoot é tratada como campainha: a Zuri confere a assinatura, busca a mensagem de novo pela API do Chatwoot e só responde quando o autor é a conta do Pablo nessa conversa. Isso abre uma porta nova de fora para dentro e muda duas decisões fechadas; o Pablo aprovou em 13/11 e pediu que a Zuri configure tudo sozinha, com área de configuração e teste no menu.
 
 ## 2. Contexto no sistema
 
@@ -36,17 +36,29 @@ Decisões que este pedido toca (em `.claude/memoria/decisoes.md` e na especifica
 
 ## 4. Escopo
 
-Entra: caixa "Zuri" no Chatwoot, vínculo com a conta de atendente do Pablo, endereço de retorno assinado, resposta da Zuri na mesma conversa, cartão em Configurações › Integrações › Chatwoot.
+Entra: caixa "Zuri" no Chatwoot, vínculo com a conta de atendente do Pablo, endereço de retorno assinado, resposta da Zuri na mesma conversa, configuração automática e teste em Configurações › Chatwoot.
 
 Fica de fora: a Zuri ler ou responder conversas de pacientes, notas privadas nas conversas dos pacientes (opção C, só se o Pablo pedir depois), grupos, anexos e áudio na primeira entrega, aprovação de ação destrutiva pelo Chatwoot.
 
 ## 5. Como funciona para o Pablo
 
-### Fluxo 1 · Ligar
+### Fluxo 1 · Configurar (automático)
 
-1. No Chatwoot (uma vez): criar a caixa de entrada do tipo **API** chamada "Zuri", com só o Pablo como membro, e colar no campo "Webhook URL" o endereço que a Zuri mostra. Criar um atendente "Zuri" (papel atendente, não administrador), membro só dessa caixa, e copiar a chave de acesso dele.
-2. Na Zuri, Configurações › Integrações › Chatwoot › **Conversar comigo pelo Chatwoot**: escolher a caixa "Zuri" na lista, colar a chave e o segredo de assinatura, confirmar com a senha.
-3. A Zuri cria o contato "Zuri" e a conversa única, e manda um código de 8 caracteres nela. O Pablo responde com o código pela própria conta. A Zuri grava o id da conta de atendente que respondeu, igual ao vínculo do Telegram, e pede **Confirmar esta conta** no app, com senha recente.
+Pedido do Pablo (13/11, 02:10 UTC): a Zuri cria tudo sozinha. Fica em **Configurações › Chatwoot**, página própria no grupo Conexões, com um atalho em Integrações.
+
+1. O Pablo toca em **Configurar** e informa o endereço do Chatwoot, o número da conta e a **chave de acesso dele** (Perfil › Chave de acesso). A chave precisa ser de administrador. Confirma com a senha da Zuri.
+2. A Zuri pergunta ao Chatwoot quem é o dono da chave e mostra "Esta conta é você?" com nome, e-mail e número do atendente. O vínculo fica preso a esse número.
+3. A Zuri cria a caixa "Zuri", deixa só o Pablo como membro, cria o contato "Zuri" e a conversa, manda um código de 8 caracteres e descarta a chave de administrador. Cada passo aparece na tela. Se um falhar, ela desfaz o que criou (apaga a caixa) e mostra onde parou.
+4. O Pablo responde o código na conversa "Zuri" com a própria conta. O código vale 10 minutos e dá para pedir outro.
+5. No app, **Confirmar esta conta**, com a senha. A partir daí a Zuri responde.
+
+### Fluxo 1b · Testar a configuração
+
+Botão **Testar configuração**, sem pedir chave nenhuma: Chatwoot responde por https sem redirecionamento; a caixa existe; um pedido sem o HMAC do contato é recusado (prova que a HMAC está obrigatória); contato e conversa existem; a Zuri manda "Teste da configuração" e confere a assinatura do aviso que volta, em até 30 s.
+
+**Teste completo** pede a chave de administrador de novo, só para essa hora, e confere também: o endereço de retorno da caixa continua o da Zuri, os membros são só o Pablo, o Pablo continua administrador, e quem mais é administrador (esses veem todas as caixas; a tela lista os nomes).
+
+Falha na assinatura ou no HMAC pausa o canal e aponta **Trocar os segredos**, que pede a chave de administrador, gera segredo e HMAC novos no Chatwoot e roda o teste de novo.
 
 ### Fluxo 2 · Dia a dia
 
@@ -72,6 +84,8 @@ Ficam no catálogo de i18n (pt-BR e en) quando houver código; as palavras finai
 | Mensagens por hora | 60, iguais ao Telegram |
 | Estranho na conversa | Sem resposta; 3 em 24 h desligam o canal |
 | Ação destrutiva | Nunca aprovada pelo Chatwoot |
+| Código de vínculo | 8 caracteres sem 0/O/1/I, 10 minutos, um por vez, guardado só como HMAC; 10 erros em 10 min apagam o código |
+| Chave de administrador | Só no pedido; nunca gravada, nunca em log |
 | Bloqueio | Canal mudo, nada sai |
 
 ## 7. Desenho técnico
@@ -98,24 +112,54 @@ No Worker, antes do objeto:
 No objeto:
 
 3. `X-Chatwoot-Delivery` novo; evento `message_created`; `inbox.id` e `conversation.id` iguais aos do vínculo; `message_type = outgoing`, `private = false`. Qualquer diferença: 200 sem gravar nada (o Chatwoot não precisa saber por quê).
-4. **Busca de volta:** `GET /api/v1/accounts/{conta}/conversations/{conversa}/messages` com a chave do atendente "Zuri" e pega a mensagem pelo id. Só o que voltou dessa busca é usado; o corpo do retorno é descartado. Um corpo forjado com segredo vazado ainda não consegue inventar texto, porque o texto vem do Chatwoot.
+4. **Busca de volta:** `GET /public/api/v1/inboxes/{inbox_identifier}/contacts/{source_id}/conversations/{display_id}/messages` com o `identifier_hash` e pega a mensagem pelo id. Só o que voltou dessa busca é usado; o corpo do retorno é descartado. Um corpo forjado com segredo vazado ainda não consegue inventar texto, porque o texto vem do Chatwoot.
 5. Autor da mensagem buscada = id da conta do Pablo do vínculo. Senão, conta como estranho (fluxo 3).
 6. Modo de bloqueio, teto por hora, canal ligado.
 7. Texto entra na conversa do agente como mensagem do dono (é o próprio Pablo), e qualquer coisa que o agente leia por ferramenta continua indo em `<data>`.
 
+### Chamadas ao Chatwoot, conferidas no código-fonte
+
+Conferidas em 13/11/2026 no código do Chatwoot (`chatwoot/chatwoot`, branch `develop`). O "Teste completo" confere de novo na versão instalada do Pablo.
+
+| Passo | Chamada | Chave | Fonte |
+| --- | --- | --- | --- |
+| Quem é o dono da chave | `GET /api/v1/profile` → `id`, `name`, `email`, `accounts[].role` | administrador | `config/routes.rb` (`resource :profile`), `app/views/api/v1/models/_user.json.jbuilder` |
+| Criar a caixa | `POST /api/v1/accounts/{conta}/inboxes` com `name: "Zuri"`, `channel: { type: "api", webhook_url, hmac_mandatory: true }` → `id`, `inbox_identifier`, `secret`, `hmac_token` (os dois últimos só voltam para administrador) | administrador | `InboxPolicy#create?`, `Channel::Api::EDITABLE_ATTRS`, `_inbox.json.jbuilder` |
+| Só o Pablo na caixa | `PATCH /api/v1/accounts/{conta}/inbox_members` com `inbox_id` e `user_ids: [id do Pablo]` (a lista enviada vira a lista exata) | administrador | `InboxMembersController#update` |
+| Criar o contato "Zuri" | `POST /public/api/v1/inboxes/{inbox_identifier}/contacts` com `identifier` aleatório, `identifier_hash` = HMAC-SHA256(`hmac_token`, `identifier`) e `name: "Zuri"` → `source_id` | nenhuma (API pública) | `Public::Api::V1::Inboxes::ContactsController#create` |
+| Criar a conversa | `POST /public/api/v1/inboxes/{inbox_identifier}/contacts/{source_id}/conversations` | nenhuma + `identifier_hash` | `Public::Api::V1::InboxesController#ensure_hmac_verified` |
+| A Zuri escreve | `POST …/conversations/{display_id}/messages` com `content` (sai como mensagem do contato) | nenhuma + `identifier_hash` | `Public::Api::V1::Inboxes::MessagesController#create` |
+| Busca de volta | `GET …/conversations/{display_id}/messages` → últimas 20, sem notas privadas nem atividade, com `sender.id` e `sender.type` | nenhuma + `identifier_hash` | `MessageFinder` (`filter_internal_messages`), `public/api/v1/models/_message.json.jbuilder` |
+| Trocar segredos | `POST /api/v1/accounts/{conta}/inboxes/{id}/reset_secret` e `…/rotate_hmac_token` | administrador | `config/routes.rb`, `InboxPolicy#reset_secret?`, `#rotate_hmac_token?` |
+| Desfazer na falha | `DELETE /api/v1/accounts/{conta}/inboxes/{id}` | administrador | `InboxPolicy#destroy?` |
+
+O aviso que chega: o Chatwoot manda ao `webhook_url` da caixa de API os eventos `message_created`, `message_updated`, `conversation_*` e `typing`, com `X-Chatwoot-Signature: sha256=` + HMAC-SHA256(`secret` da caixa, `timestamp.corpo`), `X-Chatwoot-Timestamp` e `X-Chatwoot-Delivery` (`lib/webhooks/trigger.rb`, `WebhookListener#deliver_api_inbox_webhooks`). Ele espera 5 s pela resposta e não repete; se a Zuri não responder 2xx, a mensagem do Pablo aparece como "falhou" no Chatwoot. Por isso a Zuri responde 200 na hora e trata depois. As mensagens que a própria Zuri manda também geram aviso (`incoming`), e ela as ignora.
+
+### O que cada chave do Chatwoot pode
+
+| Chave | O que pode | Uso na Zuri |
+| --- | --- | --- |
+| De usuário **administrador** (a do Pablo) | Tudo na conta: cria e apaga caixas, muda membros, lê `secret` e `hmac_token` das caixas | Só na configuração, no teste completo e em "Trocar os segredos". Fica em memória durante o pedido e nunca é gravada |
+| De usuário **atendente** | Só as caixas em que é membro (`InboxPolicy::Scope` → `assigned_inboxes`); não cria caixa nem muda membros; não vê `secret` nem `hmac_token` | Não serve para configurar. Se a chave colada for de atendente, a tela diz isso |
+| De **Agent Bot** | Só `conversations` (show, create, update, toggle_status, toggle_priority, custom_attributes), `messages#create`, `assignments#create` e `labels` (`BOT_ACCESSIBLE_ENDPOINTS` em `access_token_auth_helper.rb`); não lista mensagens nem caixas | Não usada: não consegue fazer a busca de volta, e ligar um bot muda o estado das conversas da caixa |
+| De **Platform App** (Super Admin da instalação) | Cria contas e usuários em toda a instalação | Nunca |
+| **API pública** da caixa: `inbox_identifier` + `source_id` + `identifier_hash` | Só cria contato, conversa e mensagem como contato, e lê as mensagens não privadas da conversa desse contato, nesta caixa | É o que fica guardado. Com `hmac_mandatory`, sem o `hmac_token` não se lê nem se escreve na conversa |
+
+Um detalhe que fica: quem tiver o `inbox_identifier` pode criar outros contatos na caixa "Zuri" pela API pública (criar contato não pede HMAC). Isso não chega a nada: a Zuri só lê a conversa do vínculo e só aceita mensagem `outgoing` do Pablo.
+
 ### Envio da resposta
 
-Uma chamada só, com caminho montado no código a partir dos ids do vínculo: mensagem `incoming` na conversa "Zuri" pela API da caixa (a caixa de API aceita mensagem do contato pela API do cliente, `/public/api/v1/inboxes/{identificador}/contacts/{contato}/conversations/{conversa}/messages`, ou pela API de aplicação com a chave do atendente; qual das duas funciona na versão do Pablo é suposição S1). Texto puro, sem formatação que o Chatwoot transforme em link ou menção (`disarmLinks`, como no Telegram). Sem redirecionamento, prazo de 10 s, sem rede privada (`mcp/guarded-fetch.ts`).
+Uma chamada só, pela API pública, com o caminho montado no código a partir do vínculo. Texto puro, sem formatação que o Chatwoot transforme em link ou menção (`disarmLinks`, como no Telegram). Sem redirecionamento, prazo de 10 s, sem rede privada (`mcp/guarded-fetch.ts`).
 
 ### Chaves e segredos
 
-- A chave do atendente "Zuri" é **separada** da chave usada no pedido de avaliação: se uma vazar, a outra não escreve na caixa dos pacientes. O atendente "Zuri" é membro só da caixa "Zuri" e não é administrador.
-- Chave, segredo de assinatura e identificador da caixa ficam cifrados no banco (`chatwoot-v1`), fora do backup e nunca no navegador; o cartão mostra só os 4 últimos caracteres.
+- Não existe atendente "Zuri" com chave guardada: a Zuri fala como o contato da caixa dela. A chave do pedido de avaliação (outra credencial) continua separada.
+- Fica guardado, no cofre da S17, num tipo novo de credencial (`chatwoot-dono`): endereço, conta, id da caixa, `inbox_identifier`, `secret` da assinatura, `hmac_token`, `identifier` e `source_id` do contato, id e `display_id` da conversa, id do atendente do Pablo. Os quatro segredos ficam cifrados, fora do backup e nunca voltam ao navegador.
 - A Zuri não ganha token de entrada: a regra "sem acesso externo por API" continua. O que entra é um retorno assinado, como o do Telegram e o do Google Agenda.
 
 ### Arquivos, rotas, banco e ferramentas
 
-Ficam para o plano de implementação, depois do OK. Estimativa: uma migration (vínculo do canal: caixa, conversa, contato, id da conta do Pablo, estado), um módulo `apps/agent/src/chatwoot/owner-channel.ts` que reaproveita a conversa do Telegram, a rota de retorno na lista do Worker e em `ROUTE_WORDS`. Nenhuma ferramenta nova do agente.
+Ficam para o plano de implementação, depois do protótipo. Estimativa: uma migration (estado do vínculo e contadores; os segredos vão para o cofre da S17), `apps/agent/src/chatwoot/owner-setup.ts` (configuração e desfazer), `owner-channel.ts` (retorno e resposta, reaproveitando a conversa do Telegram), rotas `POST /api/chatwoot/owner/setup`, `/confirm`, `/test`, `/rotate`, `DELETE /api/chatwoot/owner` e o retorno `/api/chatwoot/owner/:key`, todas em `ROUTE_WORDS`; a configuração e o teste completo recebem a chave de administrador no corpo, que nunca é registrada em log nem gravada. Nenhuma ferramenta nova do agente.
 
 ## 8. Custo e cotas do plano Free
 
@@ -129,7 +173,9 @@ Ficam para o plano de implementação, depois do OK. Estimativa: uma migration (
 | Paciente ou atendente pedindo coisas à Zuri | Só a conversa do vínculo, só o autor do vínculo, conferido na mensagem buscada pela API |
 | Retorno forjado ou repetido | Chave no caminho, assinatura HMAC em tempo constante, janela de 5 min, `X-Chatwoot-Delivery` uma vez só, busca de volta |
 | Segredo de assinatura vazado | Busca de volta impede texto inventado; trocar o segredo na tela invalida o antigo |
-| Chave do atendente "Zuri" vazada | Só escreve na caixa "Zuri"; não lê nem escreve nas caixas de pacientes; revogar no Chatwoot e colar a nova |
+| `inbox_identifier`, `source_id` e `hmac_token` vazados | Só escrevem e leem como o contato "Zuri" na caixa "Zuri"; nada das caixas de pacientes. "Trocar os segredos" gera `secret` e `hmac_token` novos |
+| Chave de administrador do Pablo | Nunca gravada nem registrada em log; usada só no pedido da configuração, do teste completo e da troca de segredos; a tela sugere gerar outra no Chatwoot depois |
+| Chave colada de outra pessoa | "Esta conta é você?" antes de criar qualquer coisa, e o código respondido pela mesma conta, confirmado com a senha da Zuri |
 | Administrador do Chatwoot escrevendo na conversa | Autor diferente: sem resposta, aviso ao Pablo, 3 avisos desligam |
 | Servidor do Chatwoot invadido | É o mesmo poder de quem invade o celular do Pablo no Telegram: ver as respostas. Por isso destrutiva nunca é aprovada por aqui, e o link do app continua pedindo login |
 | Injeção por conteúdo lido | Tudo que o agente lê continua em `<data>`; a mensagem do Pablo é a única instrução |
@@ -140,11 +186,12 @@ Ficam para o plano de implementação, depois do OK. Estimativa: uma migration (
 
 Quando houver código: unitário da assinatura (certa, errada, sem `sha256=`, timestamp no limite de 5 min, n−1/n/n+1), entrega repetida, autor diferente, caixa e conversa diferentes, mensagem privada, `incoming`; integração no workerd com um Chatwoot falso (busca de volta devolvendo outro texto, outro autor, 401, 5xx, redirecionamento recusado); bloqueio; teto por hora; e2e do cartão e do vínculo; teste de orçamento de subrequisições.
 
+Configuração automática (pedido de 13/11), no workerd com o Chatwoot falso: chave de atendente recusada com a mensagem certa; chave inválida (401); endereço sem https, com caminho ou de rede privada recusado antes de chamar; cada passo da tabela falhando (timeout, 5xx, 422) desfaz o que já foi criado e não grava nada; resposta de criação sem `secret` ou `hmac_token` (versão antiga) para e explica; chave de administrador nunca aparece no banco, no log, no backup nem na resposta da rota (busca pelo valor em todo o estado depois do teste); configurar duas vezes não cria duas caixas; teste rápido com HMAC desligada no Chatwoot acusa falha; teste completo com outro membro na caixa acusa e lista; troca de segredos invalida a assinatura antiga. E2e da página Configurações › Chatwoot em todos os estados do protótipo, com axe, claro e escuro, computador e celular.
+
 ## 11. Entrega
 
-1. Esta PR: só o plano.
-2. Com o OK: protótipo do cartão e do vínculo (regra de 12/11).
-3. Com o protótipo aprovado: uma PR de código, depois da PR 1 do envio pelo Chatwoot (credencial e chamadas fixas).
+1. Esta PR: plano e protótipo (Configurações › Chatwoot).
+2. Com o protótipo aprovado: uma PR de código depois da S17, com Chatwoot falso no workerd cobrindo cada chamada da tabela acima, e um ensaio no Chatwoot do Pablo pelo "Teste completo".
 
 ## 12. Riscos
 
@@ -153,14 +200,16 @@ Quando houver código: unitário da assinatura (certa, errada, sem `sha256=`, ti
 
 ## 13. Suposições
 
-- S1: na versão do Pablo, a caixa de API aceita a mensagem da Zuri como `incoming` pela API do cliente ou pela de aplicação. Conferir no "Enviar teste" antes de ligar.
-- S2: o "Webhook URL" da caixa de API manda as mensagens do atendente com a mesma assinatura `X-Chatwoot-Signature` do webhook da conta (o plano do pedido de avaliação confirmou essa assinatura no webhook da conta). Se não mandar, usar o webhook da conta filtrado pela caixa "Zuri".
-- S3: o Pablo tem uma conta própria de atendente no Chatwoot, separada da de outros atendentes.
+- S1: a versão instalada do Pablo se comporta como a `develop` do Chatwoot conferida em 13/11 (assinatura da caixa de API, `hmac_mandatory`, `secret` e `hmac_token` na resposta de criação). O "Teste completo" confere antes de ligar e recusa ligar se algo não bater.
+- S2: o Pablo tem uma conta própria de administrador no Chatwoot, separada da dos outros atendentes.
+- S3: a Zuri alcança o Chatwoot por https público, como no pedido de avaliação.
 
 ## 14. Entrevista com o Pablo
 
+### Respostas
+
+- 13/11/2026, 02:10 UTC: opção A, caixa própria "Zuri". Ações destrutivas continuam só no app e no Telegram; notas nas conversas de pacientes ficam para depois. Pedido a mais: a Zuri configura sozinha (caixa, contato e limite ao atendente do Pablo), com área de configuração e teste no menu, e a tela explica o limite de cada tipo de chave do Chatwoot.
+
 ### Perguntas abertas
 
-1. **Abrir a exceção:** a Zuri passa a conversar com você pelo Chatwoot, pela caixa própria "Zuri" (opção A)? Recomendo sim: o risco fica igual ao do Telegram e nenhum paciente fica ao alcance dela.
-2. **Aprovações:** ação destrutiva continua só no app e no Telegram? Recomendo sim, porque outros administradores do Chatwoot veem a conversa.
-3. **Notas nas conversas dos pacientes (opção C):** fica para depois, num plano próprio? Recomendo deixar para depois.
+Nenhuma. Falta aprovar o protótipo.
