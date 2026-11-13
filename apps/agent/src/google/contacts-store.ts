@@ -15,6 +15,9 @@ export function forgetContacts(db: Database): void {
   db.run(`DELETE FROM zur_contact_labels`);
   // The notices written from the copy carry contacts' names: they go with it (SEC-A12-01). Tasks are the owner's.
   db.run(`DELETE FROM zur_notices WHERE kind IN ('contacts.birthdays', 'contacts.dates', 'contacts.added')`);
+  // The review requests stay (who was asked is never asked again), found again by Google's name of each person
+  // once the copy is made again; the day's list is made again then, not tomorrow (PR S20).
+  db.run(`UPDATE zur_review_settings SET requests_day = '', requests_built_at = NULL WHERE id = 1`);
   db.run(
     `UPDATE zur_contact_sync SET enabled = 0, status = 'off', problem = NULL, people_sync_token = NULL, page_token = NULL, page_mode = NULL,
        full_needed = 1, full_started = NULL, first_done = 0, running_since = NULL, next_sync = NULL, last_ok_at = NULL, failures = 0,

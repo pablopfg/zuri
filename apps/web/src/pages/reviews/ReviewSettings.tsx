@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type MessageKey, REVIEW_LIMITS, type ReviewLevel, type ReviewLocation, type ReviewsStatus, type ReviewTone } from "@zuri/shared";
-import { CircleCheck, CircleDashed, Hourglass, PenLine, PlugZap, Plus, RefreshCw, X } from "lucide-react";
+import { CircleCheck, CircleDashed, Hourglass, PenLine, PlugZap, Plus, RefreshCw, SendHorizontal, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
 import { Link } from "react-router";
 import { Switch } from "../../components/Switch.tsx";
@@ -9,6 +9,7 @@ import { Button, buttonClass, Dialog, ErrorNotice, Loading, Notice, SelectField,
 import { ApiError, api, errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
 import { guardTexts, REVIEW_PROBLEM_TEXT, REVIEWS_BUT_STATUS, REVIEWS_STATUS_KEY } from "../../lib/reviews.ts";
+import { RequestSettings } from "./Requests.tsx";
 
 const DEFAULTS: MessageKey[] = ["web.reviews.card.template.default1", "web.reviews.card.template.default2", "web.reviews.card.template.default3"];
 const ACCESS_STEPS: MessageKey[] = ["web.reviews.access.1", "web.reviews.access.2", "web.reviews.access.3", "web.reviews.access.4", "web.reviews.access.5", "web.reviews.access.6"];
@@ -66,22 +67,37 @@ function useSave() {
  * step, and how Zuri replies. There is no key to paste: the permission is
  * given at Google, on the same account as the calendar and the contacts.
  */
-export function ReviewSettings({ status, reply }: { status: ReviewsStatus; reply: boolean }) {
+export function ReviewSettings({ status, sub }: { status: ReviewsStatus; sub: "connection" | "reply" | "requests" }) {
   const { t } = useI18n();
   return (
     <div className="max-w-3xl space-y-4">
       <nav aria-label={t("web.reviews.set.parts")} className="zuri-seg">
-        <Link to="/avaliacoes/ajustes" aria-current={reply ? undefined : "page"}>
+        <Link to="/avaliacoes/ajustes" aria-current={sub === "connection" ? "page" : undefined}>
           <PlugZap aria-hidden />
           {t("web.reviews.set.connection")}
         </Link>
-        <Link to="/avaliacoes/ajustes/responder" aria-current={reply ? "page" : undefined}>
+        <Link to="/avaliacoes/ajustes/responder" aria-current={sub === "reply" ? "page" : undefined}>
           <PenLine aria-hidden />
           {t("web.reviews.set.reply")}
         </Link>
+        <Link to="/avaliacoes/ajustes/pedidos" aria-current={sub === "requests" ? "page" : undefined}>
+          <SendHorizontal aria-hidden />
+          {t("web.reviews.set.requests")}
+        </Link>
       </nav>
-      {!reply ? (
+      {sub === "connection" ? (
         <Connection status={status} />
+      ) : sub === "requests" ? (
+        status.enabled ? (
+          <RequestSettings />
+        ) : (
+          <Notice>
+            {t("web.reviews.reqset.off")}{" "}
+            <Link to="/avaliacoes/ajustes" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2">
+              {t("web.reviews.set.connection")}
+            </Link>
+          </Notice>
+        )
       ) : status.enabled ? (
         <ReplyForm key={JSON.stringify(status.pattern) + status.level} status={status} />
       ) : (

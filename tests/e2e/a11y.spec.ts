@@ -135,6 +135,14 @@ for (const scheme of ["light", "dark"] as const) {
       await expect(page.getByRole("heading", { level: 2, name: "Conexão com o Perfil da Empresa" })).toBeVisible();
       await expectAccessible(page, "/avaliacoes/ajustes");
       expect(await tooSmallControls(page)).toEqual([]);
+      // Pedidos and its settings say what is missing while the reviews are off (PR S20).
+      await page.goto("/avaliacoes/pedidos");
+      await expect(page.getByText("Avaliações desligadas", { exact: true })).toBeVisible();
+      await expectAccessible(page, "/avaliacoes/pedidos");
+      await page.goto("/avaliacoes/ajustes/pedidos");
+      await expect(page.getByText("Os pedidos aparecem depois que você escolhe o perfil.")).toBeVisible();
+      await expectAccessible(page, "/avaliacoes/ajustes/pedidos");
+      expect(await tooSmallControls(page)).toEqual([]);
     });
   });
 }

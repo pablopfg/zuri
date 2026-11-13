@@ -199,6 +199,7 @@ export function Overview({ status }: { status: ReviewsStatus }) {
             <VolumeChart bars={view.bars} unit={data.unit} label={label} />
             {numbers && <Statistics numbers={numbers} unit={data.unit} index={view.index} label={label} />}
           </div>
+          {data.requests && <Funnel funnel={data.requests} />}
         </>
       )}
 
@@ -482,6 +483,44 @@ function Statistics({ numbers, unit, index, label }: { numbers: Stats; unit: Rev
           </div>
         ))}
       </dl>
+    </section>
+  );
+}
+
+/** The requests' funnel (PR S20): from the link to the review, in the period. Shown only once Zuri sent requests. */
+function Funnel({ funnel }: { funnel: NonNullable<ReviewMetrics["requests"]> }) {
+  const { t } = useI18n();
+  const id = useId();
+  const rows = [
+    ["web.reviews.funnel.sent", funnel.sent],
+    ["web.reviews.funnel.opened", funnel.opened],
+    ["web.reviews.funnel.reviewed", funnel.reviewed],
+  ] as const;
+  return (
+    <section className="zuri-review-card" aria-labelledby={`${id}-fun`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id={`${id}-fun`} className="text-base font-semibold">
+          {t("web.reviews.funnel.title")}
+        </h2>
+        <Link to="/avaliacoes/pedidos" className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
+          {t("web.reviews.funnel.see")}
+        </Link>
+      </div>
+      <ul className="mt-3 space-y-3">
+        {rows.map(([key, n], index) => {
+          const share = percent(n, funnel.sent);
+          return (
+            <li key={key} className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_5.5rem] items-center gap-3 text-sm tabular-nums">
+              <span>{t(key)}</span>
+              <span aria-hidden className="zuri-review-meter">
+                <span data-part="yes" style={{ width: `${share}%` }} />
+              </span>
+              <span className="text-right">{index === 0 ? n : t("web.reviews.funnel.row", { n, pct: share })}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-3 text-xs leading-5 text-fg-muted">{t("web.reviews.funnel.hint")}</p>
     </section>
   );
 }

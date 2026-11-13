@@ -20,7 +20,7 @@ import type { InternalState } from "../db/internal-state.ts";
 import { googlePushToken, GOOGLE_PUSH_PATH } from "../gates/google-push.ts";
 import { log } from "../log.ts";
 import { McpCredentials } from "../mcp/credentials.ts";
-import { forgetReviews } from "../reviews/store.ts";
+import { forgetReviewRequests, forgetReviews } from "../reviews/store.ts";
 import { forgetContacts } from "./contacts-store.ts";
 import { type CalendarEvent, cleanText, readEvent, startMs } from "./events.ts";
 
@@ -424,6 +424,7 @@ export class GoogleCalendar {
         this.deps.db.run(`DELETE FROM zur_google_calendars`);
         forgetContacts(this.deps.db);
         forgetReviews(this.deps.db);
+        forgetReviewRequests(this.deps.db);
       }
       this.deps.db.run(
         `INSERT INTO zur_google_account (id, email, refresh_token, access_token, access_expires_at, scopes, status, problem, problem_noticed_at, connected_at, checked_at)
@@ -513,9 +514,11 @@ export class GoogleCalendar {
     this.deps.db.transaction(() => {
       this.deps.db.run(`DELETE FROM zur_google_calendars`);
       this.deps.db.run(`DELETE FROM zur_google_account`);
-      // The contacts' and the reviews' copies go with the access that read them (steps 19b and 19c).
+      // The contacts' and the reviews' copies go with the access that read them (steps 19b and 19c), and the
+      // review requests made from them (PR S20).
       forgetContacts(this.deps.db);
       forgetReviews(this.deps.db);
+      forgetReviewRequests(this.deps.db);
       this.deps.state.delete("google_oauth_pending");
     });
     this.#due = undefined;

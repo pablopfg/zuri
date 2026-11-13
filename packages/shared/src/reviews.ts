@@ -195,6 +195,8 @@ export interface ReviewItem {
   version: string;
   /** When a proposal stops being approvable. */
   expiresAt: string | null;
+  /** Its contact, or the people it may be (PR S20); null without one. */
+  match: ReviewMatch | null;
 }
 
 export interface ReviewPage {
@@ -244,4 +246,189 @@ export interface ReviewMetrics {
 export function recommendationIndex(counts: { promoters: number; neutrals: number; detractors: number }): number | null {
   const total = counts.promoters + counts.neutrals + counts.detractors;
   return total > 0 ? Math.round(((counts.promoters - counts.detractors) / total) * 100) : null;
+}
+
+/**
+ * Review requests (PR S20): the owner sends each person a link of their own
+ * with one tap in WhatsApp (option A of 09/11/2026). The link is Zuri's short
+ * address (`/a/<code>`), which notes the first opening and goes on to the
+ * profile's review page on Google. docs/planos/s20-pedido-de-avaliacao.md.
+ */
+export const REVIEW_REQUEST_LIMITS = {
+  /** Days after the appointment; a weekend or national holiday moves it to the next working day. */
+  daysDefault: 8,
+  daysMin: 3,
+  daysMax: 30,
+  /** When the list is made and the owner hears of today's requests (the owner's time zone). */
+  hourDefault: "09:00",
+  hourMin: "06:00",
+  hourMax: "21:00",
+  /** The one reminder, this many days after the request, on the next working day. */
+  reminderAfterDays: 7,
+  /** Appointments read back from today: the days after it and three more weeks. */
+  lookbackExtraDays: 21,
+  /** A request never sent goes this many days after its day. */
+  unsentDays: 30,
+  /** The short address's code. */
+  codeLength: 10,
+  /** Letters and digits without the ones that look alike (0, O, 1, l, I): about 57 bits for 10. */
+  codeAlphabet: "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789",
+  /** A code takes the person to Google and notes the opening for this many days; after that, to Google only. */
+  linkValidDays: 30,
+  /** Codes past their time are removed after this many days. */
+  linkKeepDays: 60,
+  /** Openings of /a/ a minute from one network. */
+  hitsPerMinute: 30,
+  messageMax: 500,
+  linkMax: 300,
+  /** The same link is handed again when the owner taps once more within this time (WhatsApp didn't open). */
+  reopenMs: 10 * 60_000,
+  /** An anonymous review, or a name nobody has, becomes a guess when one link alone was opened this long before it. */
+  guessWindowMs: 48 * 3_600_000,
+  /** Requests the screen lists, newest days first. */
+  listMax: 300,
+  /** Contacts shown on a review's card of people with the same name. */
+  candidatesMax: 5,
+  /** Google calls the daily list may make: a token renewal and a few pages of each calendar. */
+  buildBudget: 12,
+  /** "Buscar no perfil" at most once a minute. */
+  refreshEveryMs: 60_000,
+} as const;
+
+/** The hosts of a Google review page; anything else is refused, whatever the address says. */
+export const REVIEW_LINK_HOSTS = ["g.page", "search.google.com", "www.google.com", "maps.app.goo.gl"] as const;
+
+/** Why an address can't be the profile's review link, or null when it can (the screen and the server ask the same). */
+export function reviewLinkProblem(value: string): "invalid" | "host" | null {
+  const text = value.trim();
+  if (!text || text.length > REVIEW_REQUEST_LIMITS.linkMax || /[\s\p{Cc}\p{Cf}]/u.test(text)) return "invalid";
+  let url: URL;
+  try {
+    url = new URL(text);
+  } catch {
+    return "invalid";
+  }
+  if (url.protocol !== "https:" || url.username || url.password || url.port) return "invalid";
+  if (!(REVIEW_LINK_HOSTS as readonly string[]).includes(url.hostname)) return "host";
+  // Google's own hosts carry redirectors (www.google.com/url): only the paths of a review page.
+  if (url.hostname === "search.google.com" && !url.pathname.startsWith("/local/")) return "host";
+  if (url.hostname === "www.google.com" && !url.pathname.startsWith("/maps/")) return "host";
+  return null;
+}
+
+/** Where a request stands for the owner, as the screen groups it. */
+export const REVIEW_REQUEST_STATES = ["today", "reminder", "scheduled", "waiting", "reminded", "reviewed", "removed", "pending", "no_phone"] as const;
+export type ReviewRequestState = (typeof REVIEW_REQUEST_STATES)[number];
+
+/** The groups of Avaliações › Pedidos, in the screen's order. */
+export const REVIEW_REQUEST_GROUPS = ["today", "scheduled", "waiting", "reviewed", "off"] as const;
+export type ReviewRequestGroup = (typeof REVIEW_REQUEST_GROUPS)[number];
+
+export const REVIEW_REQUEST_GROUP: Record<ReviewRequestState, ReviewRequestGroup> = {
+  today: "today",
+  reminder: "today",
+  scheduled: "scheduled",
+  waiting: "waiting",
+  reminded: "waiting",
+  reviewed: "reviewed",
+  removed: "reviewed",
+  pending: "off",
+  no_phone: "off",
+};
+
+/** One step of a request's timeline. */
+export interface ReviewRequestStep {
+  kind: "sent" | "reminded" | "opened" | "reviewed";
+  at: string;
+  /** The stars, on "reviewed". */
+  rating?: number;
+}
+
+/** A person of the list: the contact's name, never the phone (it travels only in the answer of "send"). */
+export interface ReviewRequestItem {
+  id: string;
+  contactId: string;
+  name: string;
+  /** The owner's local day of the appointment ("YYYY-MM-DD"). */
+  appointmentDay: string;
+  /** The day the request is (or was) due. */
+  dueDay: string;
+  /** The day the reminder is due; null without one to come. */
+  reminderDay: string | null;
+  state: ReviewRequestState;
+  /** The review the person left, when linked. */
+  reviewId: string | null;
+  rating: number | null;
+  steps: ReviewRequestStep[];
+}
+
+/** What keeps the list from being made, or null. */
+export type ReviewRequestsBlocked = "reviews" | "link" | "contacts" | "calendar";
+
+export interface ReviewRequestsPage {
+  blocked: ReviewRequestsBlocked | null;
+  /** UTC ISO of the last time the list was made from the calendar; null before the first. */
+  builtAt: string | null;
+  items: ReviewRequestItem[];
+  counts: Record<ReviewRequestGroup, number>;
+  /** The reviews and the contacts: read, linked, waiting for the owner, without a contact. */
+  matches: { read: number; linked: number; pending: number; none: number };
+}
+
+export interface ReviewRequestSettings {
+  link: {
+    /** The address Google gave for the profile; null when it gave none. */
+    google: string | null;
+    /** The one the owner pasted, which wins; null without one. */
+    manual: string | null;
+    /** UTC ISO of the last read of Google's. */
+    readAt: string | null;
+    /** The profile's name. */
+    location: string | null;
+  };
+  /** The start of each request's short address ("zuri.exemplo.com.br/a/"). */
+  shortBase: string;
+  /** The owner's message; null keeps the default text of the owner's language. */
+  message: string | null;
+  /** The default text, in the owner's language. */
+  defaultMessage: string;
+  days: number;
+  hour: string;
+  reminder: boolean;
+}
+
+/** The answer of "Enviar link de avaliação": what the owner's WhatsApp opens with. */
+export interface ReviewRequestSend {
+  /** Digits only, with the country code (wa.me's form). */
+  phone: string;
+  text: string;
+  item: ReviewRequestItem;
+}
+
+export const REVIEW_MATCH_KINDS = ["auto", "confirmed", "twins", "guess"] as const;
+export type ReviewMatchKind = (typeof REVIEW_MATCH_KINDS)[number];
+
+/** A contact a review may be from, with what tells the people with one name apart. */
+export interface ReviewMatchCandidate {
+  id: string;
+  name: string;
+  /** The last four digits of the mobile, or "". */
+  phoneEnd: string;
+  /** The e-mail with the middle hidden ("an•••@exemplo.com.br"), or "". */
+  email: string;
+  /** UTC ISO of the request sent to this contact, or null. */
+  requestedAt: string | null;
+  /** The contact opened their link in the 7 days before the review. */
+  opened: boolean;
+  /** The likeliest one; none when the clues don't tell them apart. */
+  best: boolean;
+}
+
+/** The link between a review and a contact, as a review's card shows it. */
+export interface ReviewMatch {
+  kind: ReviewMatchKind;
+  /** The contact, once linked ("auto", "confirmed"). */
+  contact: { id: string; name: string } | null;
+  /** The people it may be ("twins", "guess"). */
+  candidates: ReviewMatchCandidate[];
 }

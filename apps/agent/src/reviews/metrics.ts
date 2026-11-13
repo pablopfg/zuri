@@ -122,5 +122,20 @@ export function readMetrics(db: Database, period: ReviewMetricPeriod, now: numbe
   const window = metricWindow(period, now, timeZone);
   if (!enabled) return summarize(period, window, []);
   const rows = db.all<MetricRow>(METRICS_SQL, new Date(window.from).toISOString(), REVIEW_LIMITS.metricsRows + 1);
-  return summarize(period, window, rows.slice(0, REVIEW_LIMITS.metricsRows), rows.length > REVIEW_LIMITS.metricsRows);
+  return { ...summarize(period, window, rows.slice(0, REVIEW_LIMITS.metricsRows), rows.length > REVIEW_LIMITS.metricsRows), requests: requestFunnel(db, window.from) };
+}
+
+/**
+ * The requests' funnel (PR S20): sent in the period (by the partial index on sent_at), opened and
+ * linked to a review. One request per contact, so at most the copy's 5.000. Null while none was ever sent.
+ */
+export function requestFunnel(db: Database, from: number): ReviewMetrics["requests"] {
+  const row = db.one<{ sent: number; opened: number; reviewed: number | null }>(
+    `SELECT count(*) AS sent, count(r.opened_at) AS opened,
+       sum(EXISTS (SELECT 1 FROM zur_review_matches m WHERE m.contact_id = r.contact_id AND m.kind IN ('auto', 'confirmed'))) AS reviewed
+     FROM zur_review_requests r WHERE r.sent_at IS NOT NULL AND r.sent_at >= ?`,
+    from,
+  );
+  if (!row?.sent && !db.one(`SELECT 1 AS yes FROM zur_review_requests WHERE sent_at IS NOT NULL LIMIT 1`)) return null;
+  return { sent: row?.sent ?? 0, opened: row?.opened ?? 0, reviewed: row?.reviewed ?? 0 };
 }

@@ -20,8 +20,10 @@ import {
   type ReviewState,
   type ReviewTab,
   type ReviewTone,
+  reviewLinkProblem,
   sha256Hex,
   zonedParts,
+  googleLocationMetadataSchema,
   type AgentCallSettings,
 } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
@@ -31,7 +33,9 @@ import { type GoogleCalendar, GoogleError, GoogleMeter, GOOGLE_ACCOUNTS_API, GOO
 import { AppError } from "../http/errors.ts";
 import { log } from "../log.ts";
 import { type GuardContext, guard, languageOf, withSignature } from "./guard.ts";
+import type { ReviewMatches } from "./matches.ts";
 import { readMetrics } from "./metrics.ts";
+import { type NamePrints, namePrints } from "./names.ts";
 import { type ReviewAi, ReviewResponder } from "./responder.ts";
 import { forgetReviews } from "./store.ts";
 import { firstName, ratingOf, suspicious, triage } from "./triage.ts";
@@ -97,6 +101,12 @@ export interface ReviewsDeps {
   /** A notice to the center (the Telegram group's "Avaliações" topic, step 13). */
   notify: (notice: ReviewNotice) => void;
   clock?: () => number;
+  /**
+   * PR S20: the key of the reviewer's name prints (a Worker secret) and the links to the contacts.
+   * Without them (older tests) no print is made and nothing is linked.
+   */
+  nameSecret?: () => string;
+  matches?: ReviewMatches;
 }
 
 interface SettingsRow {
@@ -141,6 +151,8 @@ interface LocationRow {
   page_token: string | null;
   page_top: string | null;
   enabled_at: number | null;
+  names_token: string | null;
+  names_done: number;
 }
 
 export interface ReviewRow {
@@ -168,6 +180,7 @@ export interface ReviewRow {
   sending_at: number | null;
   insisted: number;
   auto: number;
+  name_fp: string | null;
 }
 
 /** What one check found, told at its end. */
@@ -368,26 +381,33 @@ export class ReviewService {
       .map((item) => (item && typeof item === "object" ? (item as { name?: unknown }).name : undefined))
       .filter((name): name is string => typeof name === "string" && /^accounts\/[A-Za-z0-9_-]{1,100}$/.test(name))
       .slice(0, ACCOUNTS_READ);
-    const found = new Map<string, string>();
+    const found = new Map<string, { title: string; uri: string | null }>();
     for (const account of names) {
       if (found.size >= REVIEW_LIMITS.listedLocations || !meter.room(1)) break;
-      const body = await this.deps.google.business(GOOGLE_LOCATIONS_API, `/${account}/locations`, meter, { query: { readMask: "name,title", pageSize: "100" } });
+      const body = await this.deps.google.business(GOOGLE_LOCATIONS_API, `/${account}/locations`, meter, { query: { readMask: "name,title,metadata", pageSize: "100" } });
       for (const item of Array.isArray(body?.locations) ? body.locations : []) {
         const location = item as { name?: unknown; title?: unknown };
         // The Business Information API names it "locations/{id}"; the reviews' API wants it under its account.
         const id = typeof location?.name === "string" ? `${account}/${location.name}` : "";
         if (!LOCATION_NAME.test(id) || found.size >= REVIEW_LIMITS.listedLocations) continue;
-        found.set(id, cleanText(location.title, 120) || id.split("/").at(-1) || id);
+        // The review link (PR S20) only when it is a Google review page: anything else is as good as none.
+        const uri = googleLocationMetadataSchema.safeParse(item).data?.metadata?.newReviewUri?.trim() ?? "";
+        found.set(id, { title: cleanText(location.title, 120) || id.split("/").at(-1) || id, uri: uri && reviewLinkProblem(uri) === null ? uri : null });
       }
     }
     this.db.transaction(() => {
-      for (const [id, title] of found) {
+      for (const [id, { title, uri }] of found) {
         this.db.run(
-          // Only a title that changed is written: every write moves the Reviews area, and the screen reads again.
-          `INSERT INTO zur_review_locations (google_name, title) VALUES (?, ?) ON CONFLICT (google_name) DO UPDATE SET title = excluded.title WHERE title != excluded.title`,
+          // Only a title or a link that changed is written: every write moves the Reviews area, and the screen reads again.
+          `INSERT INTO zur_review_locations (google_name, title, review_uri, review_uri_at) VALUES (?, ?, ?, ?) ON CONFLICT (google_name) DO UPDATE
+             SET title = excluded.title, review_uri = excluded.review_uri, review_uri_at = excluded.review_uri_at WHERE title != excluded.title OR review_uri IS NOT excluded.review_uri`,
           id,
           title,
+          uri,
+          now,
         );
+        // The time of the read moves alone, in a column no trigger watches: "Puxado do perfil … em …".
+        this.db.run(`UPDATE zur_review_locations SET review_uri_at = ? WHERE google_name = ? AND review_uri_at IS NOT ?`, now, id, now);
       }
       // A profile Google no longer lists and the owner doesn't read goes; a chosen one stays until unticked.
       for (const row of this.db.all<{ google_name: string }>(`SELECT google_name FROM zur_review_locations WHERE selected = 0`)) {
@@ -423,7 +443,7 @@ export class ReviewService {
         const on = chosen.has(location.google_name);
         if (on && location.selected !== 1) {
           this.db.run(
-            `UPDATE zur_review_locations SET selected = 1, watermark = NULL, page_token = NULL, page_top = NULL, enabled_at = ? WHERE google_name = ?`,
+            `UPDATE zur_review_locations SET selected = 1, watermark = NULL, page_token = NULL, page_top = NULL, names_token = NULL, names_done = 0, enabled_at = ? WHERE google_name = ?`,
             now,
             location.google_name,
           );
@@ -431,6 +451,8 @@ export class ReviewService {
           this.db.run(`UPDATE zur_review_locations SET selected = 0, watermark = NULL, page_token = NULL, page_top = NULL, enabled_at = NULL WHERE google_name = ?`, location.google_name);
           // Its audit goes with it: nothing of an unticked profile stays behind.
           this.db.run(`DELETE FROM zur_review_events WHERE review_id IN (SELECT id FROM zur_reviews WHERE location = ?)`, location.google_name);
+          this.db.run(`DELETE FROM zur_review_match_candidates WHERE review_id IN (SELECT id FROM zur_reviews WHERE location = ?)`, location.google_name);
+          this.db.run(`DELETE FROM zur_review_matches WHERE review_id IN (SELECT id FROM zur_reviews WHERE location = ?)`, location.google_name);
           this.db.run(`DELETE FROM zur_reviews WHERE location = ?`, location.google_name);
         }
       }
@@ -578,6 +600,8 @@ export class ReviewService {
         if (await this.read(location, meter, stamp, found)) more = true;
       }
       if (!this.mine(stamp)) return "off";
+      await this.walkNames(meter, stamp, found);
+      if (!this.mine(stamp)) return "off";
       // The team hears of the negative ones first, whatever the AI can do today.
       this.tell(found);
       await this.draftPending(found, stamp);
@@ -642,6 +666,8 @@ export class ReviewService {
       const next = typeof body?.nextPageToken === "string" && body.nextPageToken ? body.nextPageToken.slice(0, 2_000) : null;
       let older = false;
       let ignored = 0;
+      // The name's prints are made before the transaction (the HMAC waits): the name itself stays in memory only.
+      const prints = await this.printsOf(items);
       this.db.transaction(() => {
         for (const item of items) {
           const parsed = googleReviewSchema.safeParse(item);
@@ -655,11 +681,14 @@ export class ReviewService {
           if (floor && updated < floor) {
             older = true;
             // Read whole by an earlier check (the newest first, so all that follows is too): only whether
-            // someone answered it meanwhile.
-            this.refreshReply(review);
+            // someone answered it meanwhile, and the name's prints of one kept before they existed.
+            // One lookup for both (the reply leaves the name's prints alone).
+            const row = this.existing(review.name);
+            this.refreshReply(review, row);
+            this.noteName(review, prints, row);
             continue;
           }
-          this.store(location, review, first, found);
+          this.store(location, review, first, found, prints);
         }
         if (first || older || !next) {
           const mark = [location.watermark, top].filter((value): value is string => !!value).sort().at(-1) ?? new Date(this.clock()).toISOString();
@@ -682,6 +711,41 @@ export class ReviewService {
     return true;
   }
 
+  /**
+   * PR S20: one page more per check over each chosen profile, oldest page last, until the whole of it
+   * was read once: the reviews kept before the name's prints existed get them, and the ones the first
+   * read left out (it reads one page) are kept as history. Someone who reviewed long ago is never asked
+   * for a review. Stops for good at the last page.
+   */
+  private async walkNames(meter: GoogleMeter, stamp: number, found: Found): Promise<void> {
+    if (!this.deps.matches || !this.deps.nameSecret?.()) return;
+    const location = this.db.one<LocationRow>(`SELECT * FROM zur_review_locations WHERE selected = 1 AND names_done = 0 ORDER BY google_name LIMIT 1`);
+    // Two calls of room: the page and a token renewal; the check's own reads come first.
+    if (!location || !meter.room(2)) return;
+    const body = await this.deps.google.business(GOOGLE_REVIEWS_API, `/${location.google_name}/reviews`, meter, {
+      query: { pageSize: String(REVIEW_LIMITS.pageSize), orderBy: "updateTime desc", ...(location.names_token ? { pageToken: location.names_token } : {}) },
+    });
+    if (!this.mine(stamp)) return;
+    const items = Array.isArray(body?.reviews) ? body.reviews.slice(0, REVIEW_LIMITS.pageSize) : [];
+    const next = typeof body?.nextPageToken === "string" && body.nextPageToken ? body.nextPageToken.slice(0, 2_000) : null;
+    const prints = await this.printsOf(items);
+    // The mark the check's own read left (read again: it moved a moment ago).
+    const mark = this.db.one<{ watermark: string | null }>(`SELECT watermark FROM zur_review_locations WHERE google_name = ?`, location.google_name)?.watermark ?? null;
+    this.db.transaction(() => {
+      for (const item of items) {
+        const parsed = googleReviewSchema.safeParse(item);
+        if (!parsed.success || !parsed.data.name.startsWith(`${location.google_name}/reviews/`)) continue;
+        // Newer than what the check just read (it arrived meanwhile): the next check's, as a new one, never history.
+        if (!mark || instant(parsed.data.updateTime) > mark) continue;
+        const row = this.existing(parsed.data.name);
+        if (row) this.noteName(parsed.data, prints, row);
+        // Kept as history: never a notice, a draft nor a reply.
+        else this.store(location, parsed.data, true, found, prints);
+      }
+      this.db.run(`UPDATE zur_review_locations SET names_token = ?, names_done = ? WHERE google_name = ?`, next, next ? 0 : 1, location.google_name);
+    });
+  }
+
   /** The hash that tells Zuri's reply from anyone else's (exposed for the tests). */
   static replyHash(text: string): string {
     // Synchronous FNV-1a over the normalized text: enough to tell two replies apart, never a secret.
@@ -698,8 +762,7 @@ export class ReviewService {
   }
 
   /** A review older than the watermark: only the reply's state, when it changed. */
-  private refreshReply(review: GoogleReview): void {
-    const row = this.existing(review.name);
+  private refreshReply(review: GoogleReview, row: ReviewRow | null): void {
     if (!row) return;
     const reply = cleanBlock(review.reviewReply?.comment, REVIEW_LIMITS.commentMax) || null;
     if (reply === row.reply) return;
@@ -733,8 +796,35 @@ export class ReviewService {
     if (row.state === "replied" && row.reply_hash !== null) this.trip("deleted");
   }
 
+  /** The prints of each named review of a page (PR S20), by Google's name of the review. */
+  private async printsOf(items: readonly unknown[]): Promise<Map<string, NamePrints | null>> {
+    const out = new Map<string, NamePrints | null>();
+    const secret = this.deps.nameSecret?.();
+    if (!secret || !this.deps.matches) return out;
+    for (const item of items) {
+      const parsed = googleReviewSchema.safeParse(item);
+      if (!parsed.success) continue;
+      const reviewer = parsed.data.reviewer;
+      out.set(parsed.data.name, reviewer?.isAnonymous || !reviewer?.displayName ? null : await namePrints(secret, reviewer.displayName));
+    }
+    return out;
+  }
+
+  /**
+   * A review kept before the prints existed (or before its name could be read): its prints and its
+   * link to a contact, once. Inside the page's transaction.
+   */
+  private noteName(review: GoogleReview, prints: Map<string, NamePrints | null>, row: ReviewRow | null): void {
+    if (!prints.has(review.name) || !this.deps.matches) return;
+    if (!row || row.name_fp !== null) return;
+    const print = prints.get(review.name) ?? null;
+    // An anonymous review keeps an empty print, so it is not read again for one.
+    this.db.run(`UPDATE zur_reviews SET name_fp = ?, short_fp = ? WHERE id = ?`, print?.full ?? "", print?.short ?? null, row.id);
+    this.deps.matches.assign(row.id, review.reviewer?.displayName ?? "", !!review.reviewer?.isAnonymous || !print, Date.parse(row.created_at));
+  }
+
   /** A new or changed review, inside the page's transaction. */
-  private store(location: LocationRow, review: GoogleReview, first: boolean, found: Found): void {
+  private store(location: LocationRow, review: GoogleReview, first: boolean, found: Found, prints: Map<string, NamePrints | null> = new Map()): void {
     const now = this.clock();
     const rating = ratingOf(review.starRating);
     const name = firstName(review.reviewer?.displayName, review.reviewer?.isAnonymous);
@@ -745,6 +835,7 @@ export class ReviewService {
     const reply = cleanBlock(review.reviewReply?.comment, REVIEW_LIMITS.commentMax) || null;
     const row = this.existing(review.name);
     if (row) {
+      this.noteName(review, prints, row);
       if (row.updated_at === updated && row.rating === rating && row.comment === comment) {
         if (reply !== row.reply) this.applyReply(row, reply, replyTime(review));
         return;
@@ -789,8 +880,8 @@ export class ReviewService {
     }
     if (this.level(this.row()) === "off" && state === "new") needsDraft = 0;
     this.db.run(
-      `INSERT INTO zur_reviews (id, location, google_name, rating, first_name, anonymous, comment, created_at, updated_at, state, reasons, needs_draft, reply, replied_at, seen_at, escalated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO zur_reviews (id, location, google_name, rating, first_name, anonymous, comment, created_at, updated_at, state, reasons, needs_draft, reply, replied_at, seen_at, escalated_at, name_fp, short_fp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       location.google_name,
       review.name,
@@ -807,7 +898,11 @@ export class ReviewService {
       reply ? replyTime(review) : null,
       now,
       escalatedAt,
+      // PR S20: the name's prints (an empty one for an anonymous review), never the name.
+      prints.has(review.name) ? (prints.get(review.name)?.full ?? "") : null,
+      prints.get(review.name)?.short ?? null,
     );
+    if (prints.has(review.name)) this.deps.matches?.assign(id, review.reviewer?.displayName ?? "", anonymous === 1 || !prints.get(review.name), Date.parse(created));
     if (state === "escalated") found.negatives.push(this.byId(id) as ReviewRow);
   }
 
@@ -1478,7 +1573,14 @@ export class ReviewService {
       auto: row.auto === 1,
       version,
       expiresAt: row.state === "proposed" && row.proposed_at !== null ? new Date(row.proposed_at + REVIEW_LIMITS.proposalTtlMs).toISOString() : null,
+      match: this.deps.matches?.forReview(row.id, Date.parse(row.created_at)) ?? null,
     }));
+  }
+
+  /** One review as its card shows it (after the owner's choice of its contact); null when gone or off. */
+  async review(id: string): Promise<ReviewItem | null> {
+    const row = this.enabled() ? this.byId(id) : null;
+    return row ? this.item(row) : null;
   }
 
   /** A page of the screen: newest change first; `cursor` continues it. */

@@ -1,6 +1,16 @@
-import { reviewApproveSchema, reviewIntervalSchema, reviewMetricsQuerySchema, reviewSettingsSchema, reviewsQuerySchema } from "@zuri/shared";
+import {
+  reviewApproveSchema,
+  reviewIntervalSchema,
+  reviewLinkSchema,
+  reviewMatchSchema,
+  reviewMetricsQuerySchema,
+  reviewRequestSettingsSchema,
+  reviewSettingsSchema,
+  reviewsQuerySchema,
+} from "@zuri/shared";
 import type { Context, Hono } from "hono";
-import type { ClientInfo } from "../auth/client.ts";
+import { type ClientInfo, networkKey } from "../auth/client.ts";
+import { REVIEW_OPEN_HEADER, REVIEW_OPEN_PATH } from "../gates/review-link.ts";
 import { toAppError } from "../google/errors.ts";
 import { AppError } from "../http/errors.ts";
 import type { ApiEnv } from "./app.ts";
@@ -22,6 +32,21 @@ function reviewId(c: Context<ApiEnv>): string {
   const id = c.req.param("id") ?? "";
   if (!ID.test(id)) throw new AppError("NOT_FOUND", "error.reviewNotFound");
   return id;
+}
+
+/**
+ * Somebody opened a short address of a review request (PR S20): before the session check, since
+ * the patient has no session. Only the Worker reaches it (the header), and only with a code it
+ * already checked the shape of; the answer is the kind and, for "go", the profile's review page.
+ */
+export function registerReviewOpen(app: Hono<ApiEnv>, deps: () => GoogleRouteDeps): void {
+  app.get(`${REVIEW_OPEN_PATH.replace(/^\/api/, "")}/:code`, async (c) => {
+    const mode = c.req.header(REVIEW_OPEN_HEADER);
+    if (mode !== "go" && mode !== "preview") throw new AppError("NOT_FOUND");
+    const ip = (c.req.header("cf-connecting-ip") ?? "").slice(0, 64).trim();
+    const answer = await deps().reviewRequests.open(c.req.param("code") ?? "", ip ? networkKey(ip) : "", mode === "preview");
+    return Response.json(answer);
+  });
 }
 
 /**
@@ -121,6 +146,65 @@ export function registerReviewRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     // A period written twice is refused too, never the first one taken.
     if (!query.success || (c.req.queries("period")?.length ?? 0) > 1) throw new AppError("VALIDATION_FAILED");
     return Response.json(deps().reviews.metrics(query.data.period));
+  });
+
+  // ---------- Review requests and the link (PR S20) ----------
+
+  /** Avaliações › Pedidos: the day's list, made by the alarm (never from Google here). */
+  app.get("/reviews/requests", async () => {
+    const { reviewRequests } = deps();
+    // The very first list is made now, when the owner opens it, instead of at tomorrow's hour.
+    await owner(() => reviewRequests.firstBuild());
+    return Response.json(reviewRequests.list());
+  });
+
+  /** Avaliações › Ajustes › Pedidos e link. */
+  app.get("/reviews/requests/settings", () => Response.json(deps().reviewRequests.settings()));
+
+  /**
+   * The link the requests lead to, pasted by the owner (null: back to Google's). The password typed
+   * recently and an alert on every channel: whoever changes it decides where the patients land.
+   */
+  app.put("/reviews/requests/link", async (c) => {
+    const { link } = await readJson(c.req.raw, reviewLinkSchema, 2 * 1024);
+    const { reviewRequests, auth } = deps();
+    auth.requireRecentAuth(c.get("session"));
+    const before = reviewRequests.settings().link.manual;
+    const settings = reviewRequests.setLink(link);
+    if (link !== null && link !== before) auth.events.record("review_link_changed", client(c), { alert: true });
+    await deps().rearm();
+    return Response.json(settings);
+  });
+
+  /** "Buscar no perfil": the profiles read from Google again, their review links with them. */
+  app.post("/reviews/requests/link/refresh", async () => {
+    await owner(() => deps().reviews.listLocations());
+    return Response.json(deps().reviewRequests.settings());
+  });
+
+  /** The message and "Quando pedir". */
+  app.patch("/reviews/requests/settings", async (c) => {
+    const input = await readJson(c.req.raw, reviewRequestSettingsSchema, 4 * 1024);
+    const settings = deps().reviewRequests.update(input);
+    await deps().rearm();
+    return Response.json(settings);
+  });
+
+  /** "Enviar link de avaliação" or "Lembrar pelo WhatsApp": the text and the number for the owner's WhatsApp. */
+  app.post("/reviews/requests/:id/send", async (c) => {
+    const id = c.req.param("id") ?? "";
+    if (!ID.test(id)) throw new AppError("NOT_FOUND", "error.reviewRequestNotFound");
+    return Response.json(await deps().reviewRequests.send(id));
+  });
+
+  /** "É esta", "É ele" (a contact), "Nenhuma das duas", "Não é" or undoing a link (null). */
+  app.post("/reviews/:id/match", async (c) => {
+    const id = reviewId(c);
+    const { contactId } = await readJson(c.req.raw, reviewMatchSchema, 1024);
+    const { reviews, reviewMatches } = deps();
+    if (!(await reviews.review(id))) throw new AppError("NOT_FOUND", "error.reviewNotFound");
+    reviewMatches.decide(id, contactId);
+    return Response.json({ review: await reviews.review(id) });
   });
 
   app.post("/reviews/:id/draft", async (c) => Response.json({ review: await owner(() => deps().reviews.redraft(reviewId(c))) }));

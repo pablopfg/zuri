@@ -87,9 +87,31 @@ describe("reading the reviews", () => {
       await turnOn(world);
       await later(world);
       await later(world);
-      expect(world.db.all(`SELECT id FROM zur_reviews`)).toHaveLength(REVIEW_LIMITS.pageSize);
+      // The names' walk (PR S20) reads the older pages too, a page per check: every one of them is history.
+      expect(world.db.all(`SELECT id FROM zur_reviews`)).toHaveLength(REVIEW_LIMITS.pageSize + 5);
       expect(world.db.all(`SELECT id FROM zur_reviews WHERE state != 'history'`)).toEqual([]);
       expect(world.notices).toEqual([]);
+    }));
+
+  it("never keeps as history a review that arrives between the check's read and the names' walk (PR S20)", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      // A walk still under way (reviews kept before the prints existed): it reads the first page again, and a
+      // review written in between shows up only there.
+      world.db.run(`UPDATE zur_review_locations SET names_done = 0, names_token = NULL`);
+      const business = world.google.business.bind(world.google);
+      let calls = 0;
+      world.google.business = (async (...args: Parameters<typeof business>) => {
+        if (args[1].endsWith("/reviews") && ++calls === 2) add(world, "between", 1, "Péssimo", { at: new Date(world.clock.now + 60_000).toISOString() });
+        return business(...args);
+      }) as typeof business;
+      world.clock.now += 16 * 60_000;
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      expect(calls).toBe(2);
+      expect(row(world, "between")).toBeNull();
+      world.google.business = business;
+      await later(world);
+      expect(row(world, "between")?.state).toBe("escalated");
     }));
 
   it("catches a review Google lists late, within an hour of the last one read", () =>

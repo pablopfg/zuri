@@ -62,7 +62,7 @@ cautelosa, nunca menos. Mais de 3 negativas numa leitura viram um aviso só, e
 ### A tela Avaliações
 
 **Avaliações** (`/avaliacoes`, no menu; o endereço antigo
-`/contatos/avaliacoes` leva para ela) tem três partes. No alto ficam o perfil
+`/contatos/avaliacoes` leva para ela) tem quatro partes. No alto ficam o perfil
 lido, a hora da última leitura, a contagem para a próxima e dois botões:
 **Conferir agora** e **Pausar respostas**.
 
@@ -91,7 +91,10 @@ lido, a hora da última leitura, a contagem para a próxima e dois botões:
   (quando o nível automático está ligado ou alguma resposta saiu assim) e
   **Todas**, mais o filtro por nota. Cada avaliação mostra só o primeiro nome
   de quem avaliou, as estrelas, o texto como texto puro e o que a Zuri fez.
-- **Ajustes** (`/avaliacoes/ajustes`): **Conexão** e **Como responder**.
+- **Pedidos** (`/avaliacoes/pedidos`): quem deve receber o link de avaliação.
+  Veja "Pedidos de avaliação" abaixo.
+- **Ajustes** (`/avaliacoes/ajustes`): **Conexão**, **Como responder** e
+  **Pedidos e link**.
 
 Num rascunho você pode:
 
@@ -182,9 +185,76 @@ sem rascunho, se for negativa.
 - **Desligar avaliações** (em Ajustes › Conexão) apaga a cópia das avaliações, os rascunhos, o
   histórico e os avisos feitos a partir delas, e para a leitura. A conexão do
   Google continua.
-- **Desconectar** o Google também apaga tudo isso.
+- **Desconectar** o Google também apaga tudo isso, e os pedidos de
+  avaliação.
 
 No Google nada muda: as avaliações e as respostas publicadas continuam lá.
+
+### Pedidos de avaliação
+
+Todo dia, no horário de **Quando pedir** (09:00 se você não mudar), a Zuri
+olha a agenda e monta a lista de quem teve consulta e ainda não avaliou. Na
+primeira vez que você abre **Pedidos**, a lista sai na hora.
+
+- Entra quem teve consulta numa agenda aberta para a Zuri, com o título do
+  evento igual ao nome de um contato (só das etiquetas escolhidas em
+  Contatos). Se dois contatos têm o mesmo nome, entra só quem tem algo dele no
+  evento (telefone, e-mail, CPF ou nascimento). Na dúvida, ninguém.
+- O pedido é para 8 dias depois da consulta (de 3 a 30). Sábado, domingo e
+  feriado nacional passam para o próximo dia útil.
+- Cada pessoa recebe um pedido na vida, mais um lembrete 7 dias depois, se
+  ainda não avaliou. O lembrete pode ser desligado.
+- Quem já tem avaliação ligada, ou uma avaliação esperando você confirmar,
+  fica de fora.
+- Em dia útil com alguém para hoje, um aviso diz quantos pedidos estão
+  prontos.
+
+A lista tem os grupos **Para enviar hoje**, **Agendados**, **Sem resposta**,
+**Já avaliaram** e **Não recebem**. Na pessoa, **Enviar link de avaliação**
+confere tudo de novo e abre o seu WhatsApp com a mensagem e um link só dela
+(`zuri.exemplo.com.br/a/k7Q2mX9pAB`). Você confere e envia: a Zuri nunca
+manda nada sozinha. Tocar de novo nos 10 minutos seguintes abre o mesmo link.
+
+Quem toca no link vai direto para a página de avaliação do perfil no
+Google, e a Zuri anota a primeira abertura. A prévia que o WhatsApp ou o
+Telegram montam não conta. Um código vale 30 dias; depois disso o link ainda
+leva ao Google, sem anotar nada. Código que não existe dá 404, sem dizer mais
+nada. A rota não passa pelo Cloudflare Access, já que o paciente não entra
+na Zuri.
+
+Em **Ajustes › Pedidos e link**:
+
+- **Link de avaliação**: vem do perfil do Google (`newReviewUri`), com a data
+  em que foi lido; **Buscar no perfil** lê de novo. Você pode colar outro, que
+  vence o do Google. Só entra `https` de `g.page`, `maps.app.goo.gl`,
+  `search.google.com/local/…` ou `www.google.com/maps/…`, sem usuário nem
+  porta. Trocar o link pede a senha digitada há pouco e gera um alerta de
+  segurança.
+- **Mensagem do pedido**: até 500 caracteres, com `{link}` e, se quiser,
+  `{primeiro_nome}`.
+- **Quando pedir**: os dias depois da consulta, o horário (06:00 a 21:00) e o
+  lembrete.
+
+#### Avaliação ligada ao contato
+
+A Zuri liga cada avaliação a um contato pelo nome, para saber quem já
+avaliou. O nome inteiro de quem avaliou não é guardado: só duas impressões
+HMAC (do nome inteiro e do primeiro com o último).
+
+- Nome inteiro igual ao de um contato só: liga sozinha. Na avaliação aberta,
+  **Não é** desfaz.
+- Nome igual ao de dois ou mais contatos: **nunca liga sozinha**. O cartão
+  mostra cada um (final do telefone, e-mail escondido, se recebeu ou abriu o
+  link) e espera **É esta** ou **Nenhuma das duas**.
+- Só o primeiro e o último nome batem, ou não há nome e um único link foi
+  aberto nas 48 horas antes: vira sugestão, com **É essa pessoa** e **Não é**.
+
+A Visão geral mostra o funil dos pedidos (receberam, abriram e avaliaram)
+depois do primeiro envio.
+
+Desconectar o Google apaga os pedidos e os códigos já enviados (eles passam a
+dar 404). Desligar só os contatos ou só as avaliações mantém os pedidos:
+quem já recebeu o link não recebe de novo.
 
 ## Para quem instala
 
@@ -220,6 +290,15 @@ escolher).
 - Migration 26 (`google_reviews`): `zur_review_settings`, `zur_review_locations`,
   `zur_reviews` e `zur_review_events` (auditoria de 180 dias, só ações e códigos
   da conferência, nunca o texto).
+- Migration 41 (`review_requests`, PR S20): o link do perfil e a leitura dos
+  nomes em `zur_review_locations`, as impressões do nome em `zur_reviews`,
+  `zur_review_matches` e `zur_review_match_candidates` (avaliação ↔ contato),
+  `zur_review_requests` (um por pessoa, achada pelo `resourceName` do Google
+  quando a cópia dos contatos é refeita), `zur_review_links` (código → pedido),
+  `zur_review_link_hits` (aberturas por rede e minuto, apagadas em 2 minutos)
+  e a mensagem e "Quando pedir" em `zur_review_settings`. Código em
+  `reviews/names.ts`, `matches.ts` e `requests.ts`; o portão de `/a/` em
+  `gates/review-link.ts` e `index.ts`.
 - Leitura: `orderBy=updateTime desc`, páginas de 50, até 3 páginas por
   leitura (o resto continua no despertar seguinte). Uma marca d'água guarda a
   hora da avaliação mais nova lida, e a leitura olha uma hora para trás dela,
@@ -305,6 +384,8 @@ tela **Avaliações › Visão geral** mostra. O código está em
 | Período de experiência (19d) | 10 aprovações sem edição entre as 30 últimas decisões |
 | Resposta | 40 a 600 caracteres |
 | Auditoria | 180 dias |
+| Pedidos de avaliação | um por pessoa e um lembrete; a lista lê a agenda uma vez por dia, com até 12 chamadas ao Google |
+| Link pessoal (`/a/<código>`) | 10 caracteres, 30 dias; 30 aberturas por minuto por rede (429) |
 | Visão geral (`GET /api/reviews/metrics`) | 30 dias, 6 ou 12 meses, 2 anos por semestre ou 5 anos por ano; até 5.000 avaliações por período, as mais novas |
 
 Medido no teste de orçamento (`apps/agent/test/free-tier-budget.test.ts`),
@@ -314,3 +395,10 @@ grava cerca de 60 linhas. A visão geral lê uma linha do índice por avaliaçã
 do período (59 linhas com 55 avaliações no período e 1.000 mais antigas na
 cópia) e não grava nada. Nenhuma mudança no JavaScript da primeira tela: a
 área de Avaliações e a seção de Integrações carregam sob demanda.
+
+Pedidos (PR S20), no mesmo teste: a leitura dos nomes das avaliações antigas
+pega carona na leitura, uma página a mais por vez até o fim do perfil (com
+1.000 avaliações, cerca de 3 horas, uma vez só; cerca de 660 linhas gravadas
+por página). Montar a lista de 300 pedidos faz 5 chamadas ao Google, grava
+cerca de 1.800 linhas e lê cerca de 10.100, uma vez por dia. Um envio grava
+até 12 linhas e uma abertura do link, até 10.

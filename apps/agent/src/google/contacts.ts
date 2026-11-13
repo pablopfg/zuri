@@ -1158,6 +1158,35 @@ export class GoogleContacts {
       .map((row) => ({ id: row.id, data: parseData(row.data) }));
   }
 
+  /**
+   * The contacts whose name is this word or starts with it and a space (folded as `searchText`), for
+   * the reviews' links (PR S20): "ana" finds "Ana" and "Ana Souza", never "Anabela". One index range.
+   */
+  startingWith(word: string, limit = 300): { id: string; name: string }[] {
+    if (!this.enabled() || !word || /\s/.test(word)) return [];
+    // "!" sorts right after the space: the range holds the word alone, its note (SEARCH_BREAK) and the word with more words.
+    return this.db.all<{ id: string; name: string }>(
+      `SELECT id, display_name AS name FROM zur_contacts WHERE search_name >= ? AND search_name < ? ORDER BY search_name, id LIMIT ?`,
+      word,
+      `${word}!`,
+      limit,
+    );
+  }
+
+  /** The phones (E.164 when known) and e-mails of a contact, for "send" and the cards of people with one name. */
+  reach(id: string): { name: string; phones: string[]; emails: string[]; given: string } | null {
+    if (!this.enabled() || !/^[0-9a-f-]{36}$/.test(id)) return null;
+    const row = this.db.one<{ display_name: string; data: string }>(`SELECT display_name, data FROM zur_contacts WHERE id = ?`, id);
+    if (!row) return null;
+    const data = parseData(row.data);
+    return {
+      name: row.display_name,
+      phones: data.phones.map((phone) => phoneKey(phone.value) ?? "").filter((phone) => phone.startsWith("+")),
+      emails: data.emails.map((email) => email.value),
+      given: data.given,
+    };
+  }
+
   /** What the calendar needs of one contact to find its events: the name, what proves who it is, the others with the name. */
   identity(id: string): ContactIdentity | null {
     if (!this.enabled() || !/^[0-9a-f-]{36}$/.test(id)) return null;

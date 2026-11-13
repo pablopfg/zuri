@@ -20,6 +20,8 @@ import { CHANNEL_ID, GOOGLE_CHANNEL_HEADER, GOOGLE_PUSH_PATH, GOOGLE_STATE_HEADE
 import { contactAppointments } from "../google/appointments.ts";
 import { checkBooking } from "../google/booking.ts";
 import type { GoogleContacts } from "../google/contacts.ts";
+import type { ReviewMatches } from "../reviews/matches.ts";
+import type { ReviewRequests } from "../reviews/requests.ts";
 import type { ReviewService } from "../reviews/service.ts";
 import { toAppError } from "../google/errors.ts";
 import { type EventDraft, eventBody, localInstant, nextDay } from "../google/events.ts";
@@ -34,6 +36,10 @@ export interface GoogleRouteDeps {
   contacts: GoogleContacts;
   /** The Google reviews (step 19c). */
   reviews: ReviewService;
+  /** Review requests and the link (PR S20). */
+  reviewRequests: ReviewRequests;
+  /** Which contact left a review (PR S20). */
+  reviewMatches: ReviewMatches;
   auth: AuthService;
   timeZone: () => string;
   /** Configurações › Agenda: when the office takes appointments (13/11/2026). */

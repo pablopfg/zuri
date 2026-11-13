@@ -243,7 +243,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S16 | mesclada (#325) |
 | S17 | mesclada (#327) |
 | S18 | mesclada (#332) |
-| S19 | em revisão |
+| S19 | mesclada (#334) |
+| S20 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -453,6 +454,19 @@ Diferenças da S19 (Envios) para o plano e o protótipo, para as PRs seguintes n
 - **Pausada pelo bloqueio** é um quinto estado da situação, sem botão: só sair do bloqueio volta a enviar.
 - **Prazo de 7 dias** para a mensagem sem hora-limite própria, e o que uma automação pausada ou desligada pôs na fila espera sem sair (auditoria). O contato é procurado de novo a cada tentativa, por causa do `crmBloqueado`.
 - **Os ícones** de Envios são os que nenhuma outra tela sob demanda usa (ou que o CRM já traz): ícone compartilhado vira um arquivo próprio e o nome dele pesa no JS inicial.
+
+Diferenças da S20 (pedido de avaliação e link pessoal) para o plano e o protótipo, para as PRs seguintes não as desfazerem (plano em [s20-pedido-de-avaliacao.md](s20-pedido-de-avaliacao.md)):
+
+- **Quem envia é você, com um toque no WhatsApp.** A automação "Pedido de avaliação" pelo Chatwoot e pela fila da S19, o webhook assinado ("entregue", "não quer receber", SAIR), a aprovação pelo Telegram e o cartão "Avaliação no Google" na ficha do contato ficam para a **S20b**. A mensagem padrão não traz a linha do SAIR, porque ninguém lê a resposta ainda.
+- **Só o primeiro perfil escolhido** dá o link de avaliação (o primeiro pela identificação do Google). Com mais de um perfil, um link por perfil fica para depois.
+- **Só feriados nacionais** mudam o dia do pedido (os do código, como na Agenda).
+- **A primeira lista sai ao abrir Pedidos**, sem esperar o horário de amanhã. Depois, uma vez por dia, no horário de "Quando pedir".
+- **A leitura dos nomes** das avaliações antigas (para as impressões) lê uma página a mais por conferência até o fim do perfil e guarda o que a primeira leitura não trouxe como histórico. Avaliação mais nova que a leitura daquela conferência fica para a próxima, como nova.
+- **Prévia de link** (WhatsApp, Telegram e afins) e `HEAD` levam ao Google sem anotar a abertura (o plano dizia 200 vazio): assim a prévia mostra a página certa.
+- **Textos sem gênero** nos cartões do vínculo: "É essa pessoa", "Nenhuma delas" e, com dois, "Nenhuma das duas" (o protótipo dizia "É ele").
+- **Link do Google só nos caminhos de avaliação**: `search.google.com` só em `/local/…` e `www.google.com` só em `/maps/…`, para não aceitar os redirecionadores do próprio Google.
+- **Os pedidos ficam fora do backup**, como a cópia das avaliações e dos contatos de onde saem (o plano dizia que entravam). Desconectar o Google apaga os pedidos e os códigos já enviados; desligar só os contatos ou só as avaliações mantém os pedidos, e cada um acha a pessoa de novo pelo `resourceName` do Google quando a cópia é refeita.
+- **Os ícones** de Pedidos são os que nenhuma outra tela sob demanda usa. O JS inicial ficou em 140.999 B (teto 141.000).
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 
