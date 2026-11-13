@@ -37,6 +37,7 @@ test("no page breaks the Content Security Policy @mobile", async ({ page }) => {
     ["/rotinas", "Rotinas"],
     // An address that moved (packages/shared/src/pages.ts) lands on its new screen.
     ["/automacoes", "Rotinas"],
+    ["/crm", "CRM"],
     ["/crm/fluxos", "CRM"],
     ["/avaliacoes", "Avaliações"],
     ["/contatos", "Contatos"],

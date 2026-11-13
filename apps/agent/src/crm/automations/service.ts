@@ -199,9 +199,12 @@ export class CrmAutomations {
     };
   }
 
-  /** The credential's users by id, for "Usada por" and for refusing to remove one in use. */
+  /**
+   * The credential's users by id, for "Usada por" and for refusing to remove one in use: the ones on (rehearsal,
+   * live or paused). One turned off only remembers the pick; starting it again checks the credential once more.
+   */
   users(connectionId: string): string[] {
-    return this.db.all<{ id: string }>(`SELECT id FROM zur_crm_automations WHERE connection_id = ? LIMIT 100`, connectionId).map((row) => row.id);
+    return this.db.all<{ id: string }>(`SELECT id FROM zur_crm_automations WHERE connection_id = ? AND state != 'off' LIMIT 100`, connectionId).map((row) => row.id);
   }
 
   activity(id: string): CrmAutomationActivity {

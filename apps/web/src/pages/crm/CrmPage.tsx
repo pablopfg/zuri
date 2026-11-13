@@ -21,7 +21,7 @@ const DESCRIPTION: Record<CrmPart, MessageKey> = { automacoes: "web.crmAutomatio
 /**
  * CRM (Sinal, S15 and S18): the automations brought from the n8n, the flows the
  * owner builds and the credentials they call with, each part at its own address
- * (/crm and /crm/automacoes, /crm/fluxos, /crm/credenciais).
+ * (/crm for the automations, /crm/fluxos, /crm/credenciais).
  * The head's button creates what the open part lists. App.tsx only lets the
  * known parts through; any other address under /crm goes back to it.
  */
@@ -75,7 +75,7 @@ export function CrmPage() {
         }
       />
       <nav aria-label={t("web.crm.parts")} className="zuri-seg">
-        <Link to="/crm/automacoes" aria-current={part === "automacoes" ? "page" : undefined}>
+        <Link to="/crm" aria-current={part === "automacoes" ? "page" : undefined}>
           <Zap aria-hidden />
           {t("web.crm.part.automations")}
           {automations.data && <Count n={automations.data.automations.length} />}

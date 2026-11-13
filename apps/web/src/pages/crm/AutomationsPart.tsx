@@ -13,12 +13,10 @@ import {
 } from "@zuri/shared";
 import {
   Bell,
-  BellOff,
   CalendarCheck,
   ChartNoAxesColumn,
   Check,
   Contact,
-  FlaskConical,
   Gift,
   HeartPulse,
   Info,
@@ -31,6 +29,7 @@ import {
   RefreshCcw,
   Settings2,
   UserRoundCheck,
+  Zap,
 } from "lucide-react";
 import { useId, useState } from "react";
 import { Link } from "react-router";
@@ -230,7 +229,7 @@ function AutomationRow({ item, open, onToggle, connections, rehearsalDays }: { i
   const { busy, act } = useAction();
   const titleId = useId();
   const panelId = useId();
-  const Icon = ICON[item.id] ?? FlaskConical;
+  const Icon = ICON[item.id] ?? Zap;
   const coming = item.availability !== "ready";
   const [label, tone] = STATE[coming ? item.availability : item.state] ?? STATE.off as [MessageKey, Tone];
   const title = name(item.id);
@@ -269,7 +268,7 @@ function AutomationRow({ item, open, onToggle, connections, rehearsalDays }: { i
               })
             }
           >
-            {item.watch ? <BellOff className="h-4 w-4" aria-hidden /> : <Bell className="h-4 w-4" aria-hidden />}
+            {item.watch ? <Check className="h-4 w-4" aria-hidden /> : <Bell className="h-4 w-4" aria-hidden />}
           </button>
         ) : (
           <Button variant="secondary" aria-expanded={open} aria-controls={panelId} onClick={onToggle}>
@@ -397,7 +396,7 @@ function SetupPanel({ item, title, connections, rehearsalDays, onCancel }: { ite
         <p className="text-sm leading-6 text-fg-muted">{t("web.crmAutomations.setup.startHint", { days: rehearsalDays })}</p>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" loading={busy === "start"} disabled={!canSave} onClick={() => !canSave && toast(t("web.crmAutomations.setup.testFirst"))}>
-            <FlaskConical className="h-4 w-4" aria-hidden />
+            <Zap className="h-4 w-4" aria-hidden />
             {t("web.crmAutomations.setup.save")}
           </Button>
           <Button variant="ghost" onClick={onCancel}>

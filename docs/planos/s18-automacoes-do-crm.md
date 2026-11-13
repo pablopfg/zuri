@@ -39,7 +39,7 @@ A do protótipo aprovado do Sinal (CRM › Automações): pedido de avaliação,
 | CA9 | Disjuntor: 2 falhas seguidas ou a credencial recusada pausam e avisam; o teto de execuções do dia segura até o dia seguinte | modulos.md |
 | CA10 | Versão nova dos efeitos no código devolve uma automação ligada ao ensaio e avisa | modulos.md |
 | CA11 | Cada efeito tem chave única: a mesma chave nunca sai duas vezes | modulos.md, "Envio sem repetir" |
-| CA12 | Credencial usada por uma automação não pode ser apagada (`CONFLICT` com o nome) e aparece em "Usada por" | modulos.md, regra 5 |
+| CA12 | Credencial usada por uma automação ligada (ensaio, ligada ou pausada) não pode ser apagada (`CONFLICT` com o nome) e aparece em "Usada por"; a desligada só lembra a escolha, conferida de novo ao religar | modulos.md, regra 5 |
 | CA13 | "Avisar quando chegar" guarda o pedido e avisa uma vez quando a automação ganha código | protótipo |
 | CA14 | CRM › Automações mostra a lista na ordem, o estado de cada uma, se escreve a contatos e o que usa, com estados vazio, carregando e erro | protótipo, P20 |
 

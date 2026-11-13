@@ -218,11 +218,17 @@ describe("states", () => {
     });
   });
 
-  it("a credential set on an automation can't be removed and shows who uses it", async () => {
+  it("a credential of an automation that is on can't be removed and shows who uses it; one off doesn't hold it", async () => {
     await withWorld([fake("fake")], async (world) => {
       world.automations.configure("fake", { connectionId: world.chatwoot, options: {} });
+      expect(world.flows.list().connections.find((item) => item.id === world.chatwoot)?.usedBy).toEqual([]);
+      world.automations.setMode("fake", "rehearsal");
       expect(world.flows.list().connections.find((item) => item.id === world.chatwoot)?.usedBy).toEqual(["fake"]);
       expect(() => world.flows.removeConnection(world.chatwoot)).toThrowError(expect.objectContaining({ code: "CONFLICT", details: { flows: ["fake"] } }));
+      world.automations.setMode("fake", "off");
+      world.flows.removeConnection(world.chatwoot);
+      // Started again, the pick that's gone is refused.
+      expect(() => world.automations.setMode("fake", "rehearsal")).toThrowError(expect.objectContaining({ code: "VALIDATION_FAILED", details: { fields: ["connectionId"] } }));
     });
   });
 });

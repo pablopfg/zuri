@@ -370,7 +370,7 @@ test("flows with a daily, weekly or hourly schedule read on the CRM opened direc
     }
 
     // A fresh load of the CRM, never through Rotinas: the schedule's words must come with this screen.
-    for (const address of ["/crm", "/crm/fluxos"]) {
+    for (const address of ["/crm/fluxos"]) {
       await page.goto(address);
       await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
       for (const { name, reads } of schedules) await expect(flowRow(page, name).getByText(reads), `${address}: ${name}`).toBeVisible();
@@ -497,25 +497,28 @@ test("a flow the chat suggests waits on the tab; saved by the owner, it starts o
   await expect(flowRow(page, name)).toHaveCount(0);
 });
 
-test("the CRM has two parts, each at its address; the ones still without a server don't show (S15) @mobile", async ({ page }) => {
-  await page.goto("/crm");
+test("the CRM has three parts, Automações at /crm; Envios still waits for its server (S15, S18) @mobile", async ({ page }) => {
+  await page.goto("/crm/fluxos");
   await signIn(page);
   const parts = page.getByRole("navigation", { name: "Partes do CRM" });
-  // /crm is the flows; the number beside each name is how many it holds.
-  await expect(parts.getByRole("link")).toHaveCount(2);
-  await expect(parts.getByRole("link").first()).toHaveAccessibleName(/^Fluxos \d+$/);
-  await expect(parts.getByRole("link").last()).toHaveAccessibleName(/^Credenciais \d+$/);
+  // The number beside each name is how many it holds.
+  await expect(parts.getByRole("link")).toHaveCount(3);
+  await expect(parts.getByRole("link").nth(0)).toHaveAccessibleName(/^Automações \d+$/);
+  await expect(parts.getByRole("link").nth(1)).toHaveAccessibleName(/^Fluxos \d+$/);
+  await expect(parts.getByRole("link").nth(2)).toHaveAccessibleName(/^Credenciais \d+$/);
   await expect(page.getByText("Fluxos que você monta passo a passo, com hora para rodar e limites.")).toBeVisible();
   await expect(parts.getByRole("link", { name: /^Fluxos/ })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("button", { name: "Novo fluxo" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Nova credencial" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Últimas execuções" })).toBeVisible();
-  // "Automações" and "Envios" wait for their server (S18, S19): no link, and their addresses go back to the CRM.
-  await expect(page.getByRole("link", { name: /Automações|Envios/ })).toHaveCount(0);
+  // "Envios" waits for its server (S19): no link, and its address goes back to the CRM, as /crm/automacoes does.
+  await expect(page.getByRole("link", { name: /Envios/ })).toHaveCount(0);
   for (const address of ["/crm/automacoes", "/crm/envios"]) {
     await page.goto(address);
     await expect(page).toHaveURL(/\/crm$/);
+    await expect(parts.getByRole("link", { name: /^Automações/ })).toHaveAttribute("aria-current", "page");
   }
+  await page.goto("/crm/fluxos");
   // By the keyboard: the link of the other part, then back by the note under the flows' runs.
   await parts.getByRole("link", { name: /^Credenciais/ }).focus();
   await page.keyboard.press("Enter");
@@ -529,7 +532,7 @@ test("the CRM has two parts, each at its address; the ones still without a serve
   await expectAccessible(page, "crm credenciais");
   expect(await tooSmallControls(page), "every control of Credenciais is a 44 px target").toEqual([]);
   await page.goBack();
-  await expect(page).toHaveURL(/\/crm$/);
+  await expect(page).toHaveURL(/\/crm\/fluxos$/);
   await page.getByRole("link", { name: "Ver credenciais" }).click();
   await expect(page).toHaveURL(/\/crm\/credenciais$/);
 });

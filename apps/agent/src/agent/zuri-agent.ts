@@ -1163,13 +1163,13 @@ function crmAutomationNotice(alerts: AlertService, notice: AutomationNotice, loc
   const source = `crm-automation:${notice.id}`;
   switch (notice.kind) {
     case "paused":
-      alerts.raise({ kind: "crmAutomation.paused", category: "system", priority: "high", params: { name, reason: t(locale, AUTOMATION_PAUSE[notice.reason]) }, source, link: "/crm/automacoes" });
+      alerts.raise({ kind: "crmAutomation.paused", category: "system", priority: "high", params: { name, reason: t(locale, AUTOMATION_PAUSE[notice.reason]) }, source, link: "/crm" });
       return;
     case "rehearsal":
-      alerts.raise({ kind: "crmAutomation.rehearsal", category: "system", priority: "high", params: { name }, source, link: "/crm/automacoes" });
+      alerts.raise({ kind: "crmAutomation.rehearsal", category: "system", priority: "high", params: { name }, source, link: "/crm" });
       return;
     case "arrived":
-      alerts.raise({ kind: "crmAutomation.arrived", category: "system", priority: "normal", params: { name }, source, link: "/crm/automacoes" });
+      alerts.raise({ kind: "crmAutomation.arrived", category: "system", priority: "normal", params: { name }, source, link: "/crm" });
       return;
   }
 }
