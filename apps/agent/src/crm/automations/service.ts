@@ -156,10 +156,12 @@ export class CrmAutomations {
         .all<{ day: string; verdict: CrmAutomationVerdict }>(`SELECT day, verdict FROM zur_crm_automation_days WHERE automation_id = ? AND day >= ? ORDER BY day DESC LIMIT ?`, row.id, days.at(-1) as string, CRM_AUTOMATION_LIMITS.days)
         .map((entry) => [entry.day, entry.verdict]),
     );
+    const today = this.dayOf(this.now());
     let count = 0;
-    for (const [index, day] of days.entries()) {
+    for (const day of days) {
       const verdict = verdicts.get(day);
-      if (verdict === undefined && index === 0) continue;
+      // Only today may stay open: a past day left unchecked breaks the row, whatever the weekday.
+      if (verdict === undefined && day === today) continue;
       if (verdict !== "match") break;
       count++;
     }
@@ -263,7 +265,8 @@ export class CrmAutomations {
             .all<{ day: string; verdict: CrmAutomationVerdict; note: string | null }>(`SELECT day, verdict, note FROM zur_crm_automation_days WHERE automation_id = ? AND day >= ? ORDER BY day DESC LIMIT ?`, id, oldest, CRM_AUTOMATION_LIMITS.days)
             .map((entry) => [entry.day, entry]),
         );
-        days = list.map((day) => ({ day, would: would.get(day) ?? 0, ran: this.ranOn(id, day), verdict: checked.get(day)?.verdict ?? null, note: checked.get(day)?.note ?? null }));
+        const today = this.dayOf(this.now());
+        days = list.map((day) => ({ day, would: would.get(day) ?? 0, ran: this.ranOn(id, day), today: day === today, verdict: checked.get(day)?.verdict ?? null, note: checked.get(day)?.note ?? null }));
       }
     }
     return { runs, effects, days };
@@ -274,6 +277,9 @@ export class CrmAutomations {
   /** The credential (of the kind the manifest asks for) and the options, inside their ranges. */
   configure(id: string, input: { connectionId: string | null; options: Record<string, number | string> }): void {
     const { module } = this.ready(id);
+    // Another credential or other limits are another rehearsal: only while it is off.
+    const current = this.row(id)?.state;
+    if (current !== undefined && current !== "off") throw new AppError("CONFLICT", "error.crmAutomationTurnOffFirst");
     const manifest = module.manifest;
     this.checkConnection(manifest.connection, input.connectionId);
     const options = optionsFor(manifest.options, input.options);
@@ -359,8 +365,8 @@ export class CrmAutomations {
     this.ready(id);
     const row = this.row(id);
     if (!row?.rehearsal_since || row.live_since || (row.state !== "rehearsal" && row.state !== "paused")) throw new AppError("CONFLICT", "error.crmAutomationNotRehearsing");
-    // Only a working day of the rehearsal on which it already ran: a day can't be called right before it happened.
-    if (!this.rehearsalDays(row.rehearsal_since, 366).includes(day) || !this.ranOn(id, day)) throw new AppError("VALIDATION_FAILED", "error.crmAutomationDay", { fields: ["day"] });
+    // Only a past working day of the rehearsal on which it ran: a day can't be called right before it ends.
+    if (day >= this.dayOf(this.now()) || !this.rehearsalDays(row.rehearsal_since, 366).includes(day) || !this.ranOn(id, day)) throw new AppError("VALIDATION_FAILED", "error.crmAutomationDay", { fields: ["day"] });
     this.db.run(
       `INSERT INTO zur_crm_automation_days (automation_id, day, verdict, note, decided_at) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(automation_id, day) DO UPDATE SET verdict = excluded.verdict, note = excluded.note, decided_at = excluded.decided_at`,
@@ -440,7 +446,11 @@ export class CrmAutomations {
         this.deps.notify({ kind: "rehearsal", id: row.id });
         changed = true;
       } else {
-        this.db.run(`UPDATE zur_crm_automations SET effects_version = ? WHERE id = ?`, module.manifest.effectsVersion, row.id);
+        // In rehearsal (or paused in it): the days checked were of the old effects, so the rehearsal starts over.
+        const at = this.iso();
+        this.db.run(`UPDATE zur_crm_automations SET effects_version = ?, rehearsal_since = ?, updated_at = ? WHERE id = ?`, module.manifest.effectsVersion, at, at, row.id);
+        this.deps.notify({ kind: "rehearsal", id: row.id });
+        changed = true;
       }
     }
     // Marked after the loop: an error halfway leaves the rest for the next wake.
@@ -534,7 +544,10 @@ export class CrmAutomations {
         return answer.body;
       } catch (error) {
         // The wake's share ran out before the request left (the flows took it): what's left waits, it isn't a failure.
-        if ((error instanceof Error && error.message === "budget") || (error instanceof FlowStepError && error.problem === "calls_limit")) throw new CapReached();
+        if ((error instanceof Error && error.message === "budget") || (error instanceof FlowStepError && error.problem === "calls_limit")) {
+          calls--;
+          throw new CapReached();
+        }
         throw error;
       }
     };
@@ -571,21 +584,25 @@ export class CrmAutomations {
         );
         if (rowsWritten === 0) return "skipped";
         effectsLeft--;
-        effects++;
         // The rehearsal's promise: its call is never made.
-        if (mode === "rehearsal") return "would";
+        if (mode === "rehearsal") {
+          effects++;
+          return "would";
+        }
         try {
           await call(input.call, false, input.params, input.body);
         } catch (error) {
           if (error instanceof CapReached || error instanceof Stopped || error instanceof ManifestViolation) {
             // Nothing left for the service: the key is free again for a later run.
             this.db.run(`DELETE FROM zur_crm_automation_effects WHERE automation_id = ? AND mode = 'live' AND key = ? AND status = 'pending'`, row.id, input.key);
+            effectsLeft++;
           } else {
             this.db.run(`UPDATE zur_crm_automation_effects SET status = 'failed', updated_at = ? WHERE automation_id = ? AND mode = 'live' AND key = ?`, this.iso(), row.id, input.key);
           }
           throw error;
         }
         this.db.run(`UPDATE zur_crm_automation_effects SET status = 'done', updated_at = ? WHERE automation_id = ? AND mode = 'live' AND key = ?`, this.iso(), row.id, input.key);
+        effects++;
         return "done";
       },
     };

@@ -204,6 +204,12 @@ for (const [device, options] of [
           await page.request.put(`${BASE}/api/crm/automations/example/config`, { headers: CSRF, data: { connectionId: chatwoot.id, options: { perDay: 3 } } });
           await page.request.post(`${BASE}/api/crm/automations/example/mode`, { headers: CSRF, data: { mode: "rehearsal" } });
         }
+        // The first run comes on the alarm: wait for what it noted.
+        for (let n = 0; n < 40; n++) {
+          const activity = (await (await page.request.get(`${BASE}/api/crm/automations/example/activity`, { headers: CSRF })).json()) as { effects: unknown[] };
+          if (activity.effects.length > 0) break;
+          await page.waitForTimeout(250);
+        }
       }
       if (/^contatos?(-|$)/.test(screen.name)) {
         await seedContacts(page, BASE);

@@ -3,6 +3,7 @@ import { runInDurableObject } from "cloudflare:test";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
 import { EXAMPLE_AUTOMATION } from "../src/crm/automations/example.ts";
+import { InternalState } from "../src/db/internal-state.ts";
 import { useCatalog } from "./crm-automations-world.ts";
 import { FakeNetwork } from "./flow-world.ts";
 import { call, CSRF, errorBody, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
@@ -120,5 +121,23 @@ describe("CRM › Automações routes", () => {
     const huge = await api("PUT", "/crm/automations/example/config", { connectionId: chatwoot, options: { perDay: "1".repeat(5_000) } });
     expect(huge.status).toBe(400);
     expect(((await huge.json()) as { details: unknown }).details).toEqual({ fields: ["_body"] });
+  });
+
+  it("answers 423 to every route during a lockdown", async () => {
+    await inOwner((agent) => new InternalState(agent.store.db).set("lockdown_until", new Date(Date.now() + 3_600_000).toISOString()));
+    try {
+      for (const [method, path, body] of [
+        ["GET", "/crm/automations", undefined],
+        ["PUT", "/crm/automations/example/config", { connectionId: chatwoot, options: {} }],
+        ["POST", "/crm/automations/example/mode", { mode: "off" }],
+        ["GET", "/crm/automations/example/activity", undefined],
+        ["PUT", "/crm/automations/example/days/2026-11-03", { verdict: "match" }],
+        ["PUT", "/crm/automations/review-request/watch", { watch: true }],
+      ] as const) {
+        expect((await api(method, path, body)).status, `${method} ${path}`).toBe(423);
+      }
+    } finally {
+      await inOwner((agent) => new InternalState(agent.store.db).delete("lockdown_until"));
+    }
   });
 });

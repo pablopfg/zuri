@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Database } from "../src/db/database.ts";
 import { MIGRATIONS, migrate } from "../src/db/migrations.ts";
 import { EXAMPLE_AUTOMATION } from "../src/crm/automations/example.ts";
+import { FlowStepError } from "../src/flows/connections.ts";
 import { type AutomationContext, type AutomationModule, MAX_CALLS_PER_RUN, type Manifest, manifestSchema, optionsFor } from "../src/crm/automations/manifest.ts";
 import { buildCatalog } from "../src/crm/automations/registry.ts";
 import { type AutomationNotice, CrmAutomations } from "../src/crm/automations/service.ts";
@@ -251,22 +252,26 @@ describe("the rehearsal checked by the owner", () => {
       // Today hasn't run yet: it can't be called right before it happened.
       ranOn(world, "2026-11-03", "2026-11-04");
       expect(() => world.automations.checkDay("fake", "2026-11-05", { verdict: "match" })).toThrowError(expect.objectContaining({ code: "VALIDATION_FAILED" }));
-      expect(world.automations.activity("fake").days[0]).toEqual({ day: "2026-11-05", would: 0, ran: false, verdict: null, note: null });
+      expect(world.automations.activity("fake").days[0]).toEqual({ day: "2026-11-05", would: 0, ran: false, today: true, verdict: null, note: null });
       ranOn(world, "2026-11-05");
-      world.automations.checkDay("fake", "2026-11-03", { verdict: "match" });
+      // Ran, but today isn't over: still refused.
+      expect(() => world.automations.checkDay("fake", "2026-11-05", { verdict: "match" })).toThrowError(expect.objectContaining({ code: "VALIDATION_FAILED" }));
+      world.clock.now += DAY; // Friday the 6th
+      world.automations.checkDay("fake", "2026-11-05", { verdict: "match" });
       world.automations.checkDay("fake", "2026-11-04", { verdict: "match" });
       // Two days (n-1): not enough to go live without the risk.
       expect(view(world, "fake")?.rehearsal).toEqual({ matched: 2, required: 3, ready: false });
       expect(() => world.automations.setMode("fake", "live")).toThrowError(expect.objectContaining({ messageKey: "error.crmAutomationRehearsalDays" }));
-      world.automations.checkDay("fake", "2026-11-05", { verdict: "match" });
+      world.automations.checkDay("fake", "2026-11-03", { verdict: "match" });
       expect(view(world, "fake")?.rehearsal).toEqual({ matched: 3, required: 3, ready: true });
       // A wrong day breaks the row; marking it right again mends it.
       world.automations.checkDay("fake", "2026-11-04", { verdict: "differs", note: "Faltou uma pessoa" });
       expect(view(world, "fake")?.rehearsal.matched).toBe(1);
       expect(world.automations.activity("fake").days).toEqual([
-        { day: "2026-11-05", would: 0, ran: true, verdict: "match", note: null },
-        { day: "2026-11-04", would: 0, ran: true, verdict: "differs", note: "Faltou uma pessoa" },
-        { day: "2026-11-03", would: 0, ran: true, verdict: "match", note: null },
+        { day: "2026-11-06", would: 0, ran: false, today: true, verdict: null, note: null },
+        { day: "2026-11-05", would: 0, ran: true, today: false, verdict: "match", note: null },
+        { day: "2026-11-04", would: 0, ran: true, today: false, verdict: "differs", note: "Faltou uma pessoa" },
+        { day: "2026-11-03", would: 0, ran: true, today: false, verdict: "match", note: null },
       ]);
       world.automations.checkDay("fake", "2026-11-04", { verdict: "match" });
       world.automations.setMode("fake", "live");
@@ -288,6 +293,12 @@ describe("the rehearsal checked by the owner", () => {
       for (const day of ["2026-11-07", "2026-11-04", "2026-11-11", "2026-02-30"]) {
         expect(() => world.automations.checkDay("fake", day, { verdict: "match" })).toThrowError(expect.objectContaining({ code: "VALIDATION_FAILED" }));
       }
+      // Only today may stay open: a past day left unchecked breaks the row on any weekday (Saturday and Monday alike).
+      world.db.run(`DELETE FROM zur_crm_automation_days WHERE day = '2026-11-09'`);
+      world.clock.now = Date.parse("2026-11-14T12:00:00Z"); // Saturday
+      expect(view(world, "fake")?.rehearsal.matched).toBe(0);
+      world.clock.now = Date.parse("2026-11-16T12:00:00Z"); // Monday
+      expect(view(world, "fake")?.rehearsal.matched).toBe(0);
       expect(CrmAutomations.workingDay("2026-11-20")).toBe(false);
       expect(CrmAutomations.workingDay("2026-11-02")).toBe(false);
       expect(CrmAutomations.workingDay("2026-11-19")).toBe(true);
@@ -465,6 +476,23 @@ describe("runtime", () => {
     });
   });
 
+  it("a newer version of its effects in rehearsal starts the rehearsal over: the days checked were of the old effects", async () => {
+    await withWorld([fake("fake")], async (world) => {
+      await rehearse(world);
+      world.clock.now += 4 * DAY; // Saturday the 7th
+      ranOn(world, "2026-11-03", "2026-11-04", "2026-11-05");
+      for (const day of ["2026-11-03", "2026-11-04", "2026-11-05"]) world.automations.checkDay("fake", day, { verdict: "match" });
+      // Friday the 6th left open breaks the row; checked, the three before it count.
+      ranOn(world, "2026-11-06");
+      world.automations.checkDay("fake", "2026-11-06", { verdict: "match" });
+      expect(view(world, "fake")?.rehearsal.ready).toBe(true);
+      world.restart([fake("fake", undefined, { effectsVersion: 2 })]);
+      await world.automations.tick();
+      expect(view(world, "fake")).toMatchObject({ state: "rehearsal", rehearsal: { matched: 0, ready: false } });
+      expect(world.told).toEqual([{ kind: "rehearsal", id: "fake" }]);
+    });
+  });
+
   it("a newer version of its effects sends a live one back to rehearsal and tells the owner", async () => {
     await withWorld([fake("fake")], async (world) => {
       await rehearse(world);
@@ -496,6 +524,38 @@ describe("runtime", () => {
 
 // The audit of S18 (docs/qa/auditorias): each test carries the finding's id.
 describe("audit S18", () => {
+  it("S18-QA10: the credential and the limits change only while it is off", async () => {
+    await withWorld([fake("fake")], async (world) => {
+      await rehearse(world);
+      expect(() => world.automations.configure("fake", { connectionId: world.chatwoot, options: { perDay: 5 } })).toThrowError(
+        expect.objectContaining({ code: "CONFLICT", messageKey: "error.crmAutomationTurnOffFirst" }),
+      );
+      world.automations.setMode("fake", "off");
+      world.automations.configure("fake", { connectionId: world.chatwoot, options: { perDay: 5 } });
+      expect(view(world, "fake")?.options.perDay).toBe(5);
+    });
+  });
+
+  it("S18-QA CA9: an answer out of shape pauses it at once, and a refused key tells the owner why", async () => {
+    // The module checks what it read and finds it out of shape.
+    const strict = fake("fake", async (ctx) => {
+      const answer = await ctx.read("inboxes");
+      if (!Array.isArray(answer)) throw new FlowStepError("bad_answer");
+    });
+    await withWorld([strict], async (world) => {
+      await rehearse(world);
+      await world.automations.tick();
+      expect(view(world, "fake")).toMatchObject({ state: "paused", pausedReason: "bad_answer" });
+      world.network.handlers.set(HOST, () => Response.json({ error: "unauthorized" }, { status: 401 }));
+      world.automations.setMode("fake", "rehearsal");
+      await world.automations.tick();
+      expect(world.told).toEqual([
+        { kind: "paused", id: "fake", reason: "bad_answer" },
+        { kind: "paused", id: "fake", reason: "credential" },
+      ]);
+    });
+  });
+
   it("S18-A1: turning it off mid-run stops the effects still to go, and the owner's off stays as it was left", async () => {
     let world!: World;
     await withWorld([fake("fake")], async (w) => {
@@ -557,7 +617,11 @@ describe("audit S18", () => {
         world.clock.now += 60 * 60_000;
       }
       expect(row(world, "fake")).toMatchObject({ state: "live", failures: 0 });
-      expect(world.automations.activity("fake").runs.map((run) => run.outcome)).toEqual(["cap", "cap"]);
+      // Nothing left: the runs count no call and no effect (QA 8).
+      expect(world.automations.activity("fake").runs.map((run) => [run.outcome, run.calls, run.effects])).toEqual([
+        ["cap", 0, 0],
+        ["cap", 0, 0],
+      ]);
       expect(effects(world).filter((effect) => effect.mode === "live")).toEqual([]);
       world.flows.automationCallDeps = original;
       await world.automations.tick();

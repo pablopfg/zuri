@@ -109,8 +109,11 @@ No meio de uma execução, **Desligar** e o modo de bloqueio valem para o
 próximo efeito: o que ainda não saiu não sai. Durante o bloqueio, o horário
 de cada automação anda sozinho, sem rodar. Em fim de semana e feriado, uma
 automação de dia útil dorme até as 00:01 do próximo dia útil. Só dá para
-conferir um dia do ensaio em que ela já rodou. Uma automação cujo código saiu
-numa atualização fica desligada.
+conferir um dia do ensaio que já terminou e em que ela rodou; um dia passado
+sem conferir quebra a sequência. A credencial e os limites só mudam com a
+automação desligada. Se o que ela envia muda numa atualização durante o
+ensaio, o ensaio recomeça. Uma automação cujo código saiu numa atualização
+fica desligada.
 
 ## Segurança e privacidade
 

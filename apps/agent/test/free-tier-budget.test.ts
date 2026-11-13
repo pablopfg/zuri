@@ -1339,7 +1339,6 @@ describe("CRM's automations (PR S18)", () => {
     expect(empty.status).toBe(200);
     expect(empty.read).toBeLessThanOrEqual(10);
     expect(empty.written).toBe(0);
-    const day = new Date().toISOString().slice(0, 10);
     await runInDurableObject(owner(), async (agent: ZuriAgent) => {
       const { db } = agent.store;
       const automations = useCatalog(agent, [EXAMPLE_AUTOMATION]);
@@ -1374,7 +1373,6 @@ describe("CRM's automations (PR S18)", () => {
       });
       const after = await runInDurableObject(owner(), (agent: ZuriAgent) => ({ ...agent.store.db.usage }));
       expect(after.rowsRead - before.rowsRead).toBeLessThanOrEqual(2);
-      expect(day).toMatch(/^\d{4}/);
     } finally {
       await runInDurableObject(owner(), (agent: ZuriAgent) => {
         const { db } = agent.store;

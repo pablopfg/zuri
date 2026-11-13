@@ -680,6 +680,7 @@ export const ptBRServer = {
   "error.crmAutomationNotRehearsing": "Só dá para conferir um dia enquanto a automação está em ensaio.",
   "error.crmAutomationDay": "Esse dia não é um dia útil do ensaio.",
   "error.crmAutomationAlreadyHere": "Essa automação já chegou. Ligue pelo botão dela.",
+  "error.crmAutomationTurnOffFirst": "Desligue a automação antes de mudar a credencial ou os limites.",
   "notice.crmAutomation.paused.title": "A automação {name} foi pausada",
   "notice.crmAutomation.paused.body": "{reason} Veja em CRM › Automações e ligue de novo quando estiver resolvido.",
   "notice.crmAutomation.reason.failures": "Ela falhou duas vezes seguidas.",

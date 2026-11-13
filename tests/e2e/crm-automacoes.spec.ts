@@ -44,6 +44,8 @@ test("lists the automations in the order they arrive, with the base and the noti
   await expect(list.getByRole("listitem").first()).toContainText("1Pedido de avaliação");
   await expect(row(page, "Pedido de avaliação")).toContainText("Próxima a chegar");
   await expect(row(page, "Pedido de avaliação")).toContainText("Escreve a contatos");
+  // What it will use shows before it arrives.
+  await expect(row(page, "Pedido de avaliação")).toContainText("Usa: credencial do Chatwoot");
   await expect(row(page, "Ligar avaliação ao contato")).toContainText("Em desenvolvimento");
   await expect(row(page, "Acompanhamento do plano")).toContainText("10");
   // Only local development has the example, last, with its code.
@@ -54,8 +56,10 @@ test("lists the automations in the order they arrive, with the base and the noti
   await expect(bell).toHaveAttribute("aria-pressed", "false");
   await bell.click();
   await expect(toast(page, "Aviso ligado")).toBeVisible();
-  const unwatch = row(page, "Pedido de avaliação").getByRole("button", { name: "Não avisar quando “Pedido de avaliação” chegar" });
+  // The same name; pressed now, and the tooltip says the next press turns it off.
+  const unwatch = bell;
   await expect(unwatch).toHaveAttribute("aria-pressed", "true");
+  await expect(unwatch).toHaveAttribute("title", "Não avisar quando “Pedido de avaliação” chegar");
   await page.reload();
   await expect(unwatch).toHaveAttribute("aria-pressed", "true");
   await unwatch.click();
@@ -96,7 +100,7 @@ test("the example: credential tested, rehearsal, a day checked, on for real taki
       body: JSON.stringify({
         runs: [],
         effects: [{ id: "rehearsal:a", at: "2026-11-05T12:00:00.000Z", mode: "rehearsal", status: "would", label: "Pessoa de exemplo 1" }],
-        days: [{ day: "2026-11-05", would: 2, ran: true, verdict: null, note: null }],
+        days: [{ day: "2026-11-05", would: 2, ran: true, today: false, verdict: null, note: null }],
       }),
     }),
   );

@@ -249,7 +249,7 @@ function AutomationRow({ item, open, onToggle, connections, rehearsalDays }: { i
             {t(label)}
           </Badge>
           {item.writesToContacts && <Badge tone="neutral">{t("web.crmAutomations.writes")}</Badge>}
-          {item.connectionKind && !coming && <span>{t(item.connectionKind === "chatwoot" ? "web.crmAutomations.uses.chatwoot" : "web.crmAutomations.uses.http")}</span>}
+          {item.connectionKind && <span>{t(item.connectionKind === "chatwoot" ? "web.crmAutomations.uses.chatwoot" : "web.crmAutomations.uses.http")}</span>}
         </p>
       </div>
       <div className="zuri-routine-actions">
@@ -258,7 +258,8 @@ function AutomationRow({ item, open, onToggle, connections, rehearsalDays }: { i
             type="button"
             className="zuri-icon-button"
             aria-pressed={item.watch}
-            aria-label={t(item.watch ? "web.crmAutomations.watch.off" : "web.crmAutomations.watch.on", { name: title })}
+            // One name; aria-pressed says whether it's on (a second name would say it twice). The tooltip says what a press does.
+            aria-label={t("web.crmAutomations.watch.on", { name: title })}
             title={t(item.watch ? "web.crmAutomations.watch.off" : "web.crmAutomations.watch.on", { name: title })}
             disabled={busy !== null}
             onClick={() =>
@@ -450,7 +451,7 @@ function FollowPanel({ item }: { item: CrmAutomation }) {
               ) : (
                 <ul className="divide-y divide-border rounded-xl border border-border bg-surface px-3">
                   {activity.data.days.map((day) => (
-                    <DayRow key={day.day} automationId={item.id} day={day.day} label={dayName(day.day)} items={plural("web.crmAutomations.day.items", day.would)} ran={day.ran} verdict={day.verdict} note={day.note} />
+                    <DayRow key={day.day} automationId={item.id} day={day.day} label={dayName(day.day)} items={day.would === 0 ? t("web.crmAutomations.day.none") : plural("web.crmAutomations.day.items", day.would)} ran={day.ran} today={day.today} verdict={day.verdict} note={day.note} />
                   ))}
                 </ul>
               )}
@@ -509,7 +510,7 @@ function FollowPanel({ item }: { item: CrmAutomation }) {
 }
 
 /** One working day of the rehearsal: right, or wrong with the reason (the server asks for one). */
-function DayRow({ automationId, day, label, items, ran, verdict, note }: { automationId: string; day: string; label: string; items: string; ran: boolean; verdict: CrmAutomationVerdict | null; note: string | null }) {
+function DayRow({ automationId, day, label, items, ran, today, verdict, note }: { automationId: string; day: string; label: string; items: string; ran: boolean; today: boolean; verdict: CrmAutomationVerdict | null; note: string | null }) {
   const { t } = useI18n();
   const { busy, act } = useAction();
   const [writing, setWriting] = useState(verdict === "differs");
@@ -527,8 +528,8 @@ function DayRow({ automationId, day, label, items, ran, verdict, note }: { autom
           <b className="font-semibold">{label}</b> · <span className="text-fg-muted">{items}</span>
         </span>
         {/* A day is checked once the rehearsal ran on it, never before it happened. */}
-        {!ran ? (
-          <span className="text-sm text-fg-muted">{t("web.crmAutomations.day.notRun")}</span>
+        {!ran || today ? (
+          <span className="text-sm text-fg-muted">{t(ran ? "web.crmAutomations.day.today" : "web.crmAutomations.day.notRun")}</span>
         ) : (
         <fieldset aria-labelledby={groupId} className="flex gap-2">
           <Button
