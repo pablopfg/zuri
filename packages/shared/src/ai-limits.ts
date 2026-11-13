@@ -26,6 +26,10 @@ export type PaidModel = (typeof PAID_MODEL_IDS)[number];
 export const AI_MODEL_IDS = [...CHAT_MODEL_IDS, ...PAID_MODEL_IDS] as const;
 export type AiModel = (typeof AI_MODEL_IDS)[number];
 
+/** What the owner may have chosen: a model of the list, or one put on it from the catalog (PR S21). */
+export type ChosenModel = AiModel | `@cf/${string}`;
+export type ChosenFallback = FallbackModel | `@cf/${string}`;
+
 /** The companies behind the paid models. */
 export const PAID_PROVIDER_IDS = ["anthropic", "openai"] as const;
 export type PaidProviderId = (typeof PAID_PROVIDER_IDS)[number];

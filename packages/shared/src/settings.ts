@@ -4,6 +4,7 @@ import "./zod-config.ts";
 import { z } from "zod";
 import { DEFAULT_LOCALE, LOCALES } from "../i18n/index.ts";
 import { AI_LIMIT_RANGES, AI_MODEL_IDS, DEFAULT_CHAT_MODEL, DEFAULT_FALLBACK_MODEL, FALLBACK_MODEL_IDS } from "./ai-limits.ts";
+import { catalogModelIdSchema } from "./model-catalog.ts";
 
 import { ALERT_LIMITS, alertFullTextSchema, alertRoutesSchema, DEFAULT_ALERT_ROUTES, DEFAULT_DIGEST_TIME } from "./alerts.ts";
 import { AGENDA_VIEWS, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
@@ -133,9 +134,10 @@ export const settingsSchema = /* @__PURE__ */ z
     /** Step 7: look for older memories a new one may replace or contradict (rules only, no AI). */
     memoryConflictReview: z.boolean(),
     /** Step 8: the chat model and the daily AI limits, counted before every call. */
-    aiModel: z.enum(AI_MODEL_IDS),
+    /** PR S21: or a model the owner put on the list from the catalog (the server checks the list). */
+    aiModel: z.union([z.enum(AI_MODEL_IDS), catalogModelIdSchema]),
     /** The model that answers when aiModel fails before answering; "none", or the same model, turns it off. */
-    aiFallbackModel: z.enum(FALLBACK_MODEL_IDS),
+    aiFallbackModel: z.union([z.enum(FALLBACK_MODEL_IDS), catalogModelIdSchema]),
     aiRequestsPerDay: range(AI_LIMIT_RANGES.aiRequestsPerDay),
     aiNeuronsPerDay: range(AI_LIMIT_RANGES.aiNeuronsPerDay),
     aiMaxOutputTokens: range(AI_LIMIT_RANGES.aiMaxOutputTokens),

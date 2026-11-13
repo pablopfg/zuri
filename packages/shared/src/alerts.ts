@@ -80,6 +80,9 @@ export const NOTICE_KINDS = [
   "chatwoot.stranger",
   "chatwoot.recreated",
   "chatwoot.paused",
+  "ai.modelLeaving",
+  "ai.modelSwitched",
+  "ai.fallbackOff",
 ] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
 
@@ -342,7 +345,7 @@ export interface AlertOverview {
 }
 
 /** Pages of the app a new notice may open. Anything else is dropped: a notice never carries an address someone else chose. */
-export const NOTICE_LINKS = ["/tarefas", "/rotinas", "/configuracoes/ia", "/configuracoes/diagnostico", "/configuracoes/avisos", "/configuracoes/seguranca", "/acessos", "/configuracoes/integracoes", "/contatos", "/crm/fluxos", "/crm", "/avaliacoes", "/configuracoes/chatwoot", "/crm/envios", "/avaliacoes/pedidos"] as const;
+export const NOTICE_LINKS = ["/tarefas", "/rotinas", "/configuracoes/ia", "/configuracoes/diagnostico", "/configuracoes/avisos", "/configuracoes/seguranca", "/acessos", "/configuracoes/integracoes", "/contatos", "/crm/fluxos", "/crm", "/avaliacoes", "/configuracoes/chatwoot", "/crm/envios", "/avaliacoes/pedidos", "/configuracoes/modelos"] as const;
 export type NoticeLink = (typeof NOTICE_LINKS)[number];
 
 export const noticeCursorSchema = /* @__PURE__ */ z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\|[0-9a-f-]{36}$/);

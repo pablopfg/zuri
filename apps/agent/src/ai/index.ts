@@ -1,4 +1,4 @@
-import { type AiModel, type FallbackModel, isChatModel, isPaidModel, type Locale, NO_FALLBACK_MODEL, paidProviderOf } from "@zuri/shared";
+import { type ChosenFallback, type ChosenModel, isPaidModel, type Locale, NO_FALLBACK_MODEL, paidProviderOf } from "@zuri/shared";
 import { AppError } from "../http/errors.ts";
 import { type CircuitBreaker, ProviderChain } from "./chain.ts";
 import { MockAIProvider } from "./mock.ts";
@@ -21,7 +21,7 @@ export { UsageMeter } from "./usage.ts";
 export function chooseProvider(options: {
   development: boolean;
   binding: Ai | undefined;
-  model: AiModel;
+  model: ChosenModel;
   locale: () => Locale;
   keys?: PaidKeys;
 }): AIProvider {
@@ -33,7 +33,7 @@ export function chooseProvider(options: {
 }
 
 /** A real provider, or NOT_CONFIGURED: Workers AI without the binding, a paid model without its company's key. */
-function realProvider(model: AiModel, binding: Ai | undefined, keys: PaidKeys): AIProvider {
+function realProvider(model: ChosenModel, binding: Ai | undefined, keys: PaidKeys): AIProvider {
   if (isPaidModel(model)) {
     const key = paidKey(keys, paidProviderOf(model));
     if (!key) throw new AppError("NOT_CONFIGURED");
@@ -52,8 +52,8 @@ function realProvider(model: AiModel, binding: Ai | undefined, keys: PaidKeys): 
 export function chooseChain(options: {
   development: boolean;
   binding: Ai | undefined;
-  model: AiModel;
-  fallback: FallbackModel;
+  model: ChosenModel;
+  fallback: ChosenFallback;
   locale: () => Locale;
   breaker: CircuitBreaker;
   keys?: PaidKeys;
@@ -69,7 +69,7 @@ export function chooseChain(options: {
   }
   let fallback: AIProvider | null = null;
   // A fallback that can't be built (no binding, no key) is no fallback: the chosen model still answers.
-  if (wanted && (isChatModel(wanted) ? options.binding : paidKey(options.keys ?? {}, paidProviderOf(wanted)))) {
+  if (wanted && (isPaidModel(wanted) ? paidKey(options.keys ?? {}, paidProviderOf(wanted)) : options.binding)) {
     fallback = realProvider(wanted, options.binding, options.keys ?? {});
   }
   let primary: AIProvider;

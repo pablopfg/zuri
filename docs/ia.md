@@ -394,6 +394,49 @@ transcrição devolve um texto fixo do catálogo.
   veio do modelo reserva. Só a marca, sem o nome do modelo; segue a mensagem
   no backup.
 
+## Catálogo de modelos (PR S21)
+
+A lista de modelos grátis não fica parada na tabela datada. Uma vez por dia, às 06:00 UTC
+(03:00 em Brasília), a Zuri lê o catálogo de modelos de texto do Workers AI pelo próprio binding
+de IA (`env.AI.models`, sem chave nova e sem gastar Neurons) e compara com a lista dela. O código
+fica em `apps/agent/src/ai/catalog.ts`; o contrato, em `packages/shared/src/model-catalog.ts`.
+
+- **Modelo novo** aparece como "Novo" no cartão "Catálogo de modelos" (Configurações › Modelos e
+  limites) só quando aceita ferramentas, tem pelo menos 16.000 tokens de contexto e tem preço
+  publicado (sem preço não dá para conferir o teto do dia, regra P7). Ele só entra na lista quando
+  você toca em **Pôr na lista**; a partir daí aparece nos dois campos, de conversa e reserva.
+- **Modelo que vai sair** (`planned_deprecation_date` do catálogo) aparece com a data. Se está em
+  uso, a Zuri avisa uma vez. No dia, troca o modelo de conversa pelo padrão (ou pelo primeiro da
+  lista fixa que continua no catálogo, se o padrão também sai) e o reserva pelo reserva padrão, ou
+  por nenhum quando o padrão é o que sai. Cada troca vira um aviso. Um modelo que você pôs na lista
+  e sumiu do catálogo sai da lista do mesmo jeito.
+- **Mudança de preço** de um modelo da lista aparece por uma semana. A estimativa de Neurons passa
+  a usar o preço novo; o que já foi contado não muda.
+- A Zuri nunca troca sozinha para um modelo pago nem para um que você não pôs na lista, e nunca
+  mexe num modelo pago escolhido.
+- O que vem do catálogo é validado com Zod, item por item: id no formato `@cf/<autor>/<nome>`,
+  preço em US$ entre zero e US$ 110 por milhão de tokens, data `AAAA-MM-DD`. Uma resposta sem
+  nenhum modelo da lista fixa (erro, formato novo) não apaga nada: o cartão diz que a última
+  tentativa falhou e a Zuri tenta de novo em uma hora. A chamada tem prazo de 15 s.
+- **Conferir agora** roda na hora, no máximo uma vez por minuto (`429` com `retryAfter`).
+- O nome de um modelo fora da tabela é a última parte do id (`gemma-3-12b-it`), nunca um texto do
+  catálogo.
+- Em desenvolvimento local o catálogo é fixo (`apps/agent/src/ai/dev-catalog.ts`): um modelo novo,
+  um sem ferramentas e o Llama 3.3 70B saindo em 60 dias.
+
+O estado fica numa linha de `zur_settings` (`model_catalog`, sem migration) e não entra no backup.
+Depois de restaurar um backup, um modelo do catálogo escolhido antes volta ao padrão até a próxima
+conferência e o seu toque em **Pôr na lista**.
+
+`GET /api/ai/catalog`, `POST /api/ai/catalog/check` e `POST /api/ai/catalog/models`
+(`{ "id": "@cf/..." }`), todas com sessão e CSRF. `PATCH /api/settings` aceita em `aiModel` e
+`aiFallbackModel` um modelo da lista fixa que não saiu, um pago (com a chave) ou um que você pôs na
+lista; o resto é `VALIDATION_FAILED`.
+
+Custo: a conferência é uma subrequisição por dia (fora do teto de Neurons) e grava uma linha só
+quando algo mudou. Medido no teste de orçamento: a conferência lê 2 linhas e grava 2 (a do
+catálogo e a da sessão), o cartão lê 2 e não grava, **Pôr na lista** lê 5 e grava 1.
+
 ## API
 
 `GET /api/usage` (sessão + CSRF): o uso de hoje contra os limites, uma linha

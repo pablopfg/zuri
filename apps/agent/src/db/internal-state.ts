@@ -98,7 +98,10 @@ export type InternalKey =
   // the notices seen, the counters of the hour, of strangers and of recreations, the last events) and the
   // app conversation it writes to. The inbox's secrets are in zur_flow_connections, sealed.
   | "chatwoot_owner"
-  | "chatwoot_conversation";
+  | "chatwoot_conversation"
+  // PR S21, the catalog of models: one JSON object (the last check, the next, the models it kept with their
+  // price, window and leaving day, the ones the owner put on the list and the leaving dates already told).
+  | "model_catalog";
 
 export class InternalState {
   constructor(private readonly db: Database) {}

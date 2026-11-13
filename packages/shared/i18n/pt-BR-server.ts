@@ -728,4 +728,12 @@ export const ptBRServer = {
   "reviews.link.unavailable": "Este link não abriu agora. Tente de novo daqui a pouco.",
   "notice.security.review_link_changed.title": "Link de avaliação trocado",
   "notice.security.review_link_changed.body": "O link para onde os pedidos de avaliação levam foi trocado em Avaliações › Pedidos e link. Se não foi você, volte ao link do Google e troque a senha.",
+  "error.modelCatalogSoon": "O catálogo de modelos acabou de ser conferido. Tente de novo daqui a um minuto.",
+  "error.modelCatalogUnfit": "Este modelo não pode entrar na lista: ele precisa aceitar ferramentas, ter contexto suficiente e continuar no catálogo.",
+  "notice.ai.modelLeaving.title": "{model} sai do catálogo em {on}",
+  "notice.ai.modelLeaving.body": "Ele está em uso. No dia, a Zuri troca para o modelo padrão e avisa. Para escolher outro antes, abra Configurações › Modelos e limites.",
+  "notice.ai.modelSwitched.title": "Modelo trocado: {from} saiu do catálogo",
+  "notice.ai.modelSwitched.body": "No lugar dele entrou {to}. Para escolher outro, abra Configurações › Modelos e limites.",
+  "notice.ai.fallbackOff.title": "Modelo reserva desligado: {from} saiu do catálogo",
+  "notice.ai.fallbackOff.body": "Não havia outro reserva padrão para pôr no lugar. Para escolher um, abra Configurações › Modelos e limites.",
 } as const;

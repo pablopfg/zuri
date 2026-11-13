@@ -53,10 +53,11 @@ describe("default settings", () => {
     expect(settingsSchema.parse(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS);
   });
 
-  it("take a fallback model from the free list, or none; never a model off the list", () => {
+  it("take a fallback model from the free list, a Workers AI id (checked against the catalog by the server), or none", () => {
     expect(settingsUpdateSchema.safeParse({ aiFallbackModel: "none" }).success).toBe(true);
     expect(settingsUpdateSchema.safeParse({ aiFallbackModel: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" }).success).toBe(true);
-    for (const bad of ["", "None", "@cf/openai/gpt-4o", null, 1]) expect(settingsUpdateSchema.safeParse({ aiFallbackModel: bad }).success).toBe(false);
+    expect(settingsUpdateSchema.safeParse({ aiFallbackModel: "@cf/openai/gpt-4o" }).success).toBe(true);
+    for (const bad of ["", "None", "openai/gpt-4o", "@cf/openai", null, 1]) expect(settingsUpdateSchema.safeParse({ aiFallbackModel: bad }).success).toBe(false);
     // The default pair is always two different models.
     expect(DEFAULT_SETTINGS.aiFallbackModel).not.toBe(DEFAULT_SETTINGS.aiModel);
   });

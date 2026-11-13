@@ -1,13 +1,13 @@
 import {
   AI_LIMIT_RANGES,
   AI_MODEL_IDS,
-  type AiModel,
+  type CatalogModel,
   CHAT_MODEL_IDS,
   CHAT_MODELS,
-  chatNeurons,
+  type ChosenFallback,
+  type ChosenModel,
   DEFAULT_CHAT_MODEL,
   FALLBACK_MODEL_IDS,
-  type FallbackModel,
   formatDateTimeParts,
   isPaidModel,
   modelLabel,
@@ -43,6 +43,7 @@ import { api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { useToast } from "../../components/Toaster.tsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CatalogPanel, useModelCatalog } from "./ModelCatalog.tsx";
 import { useUsd } from "./usd.ts";
 
 // This tab's pt-BR texts arrive with it, not in the first bundle (rule P11).
@@ -359,8 +360,9 @@ function LimitsForm({ settings }: { settings: Settings }) {
   const save = useSettingsMutation();
   const toast = useToast();
   const usage = useUsage();
-  const [model, setModel] = useState<AiModel>(settings.aiModel);
-  const [fallback, setFallback] = useState<FallbackModel>(usableFallback(settings.aiFallbackModel, settings.aiModel));
+  const catalog = useModelCatalog();
+  const [model, setModel] = useState<ChosenModel>(settings.aiModel);
+  const [fallback, setFallback] = useState<ChosenFallback>(usableFallback(settings.aiFallbackModel, settings.aiModel));
   const [values, setValues] = useState<Record<LimitField, string>>(() => texts(settings));
   const [cap, setCap] = useState(() => dollars(settings.aiUsdCentsPerDay));
   const [status, setStatus] = useState<"unchanged" | null>(null);
@@ -377,6 +379,10 @@ function LimitsForm({ settings }: { settings: Settings }) {
     setCap(dollars(settings.aiUsdCentsPerDay));
   }, [settings]);
 
+  // The free models: the catalog's list (PR S21), with the ones the owner added; the fixed list until it loads.
+  const listed = catalog.data?.listed ?? FIXED_FREE;
+  // A stored model the list no longer has (one that left the catalog today) still shows as chosen.
+  const free = [...listed, ...[settings.aiModel, settings.aiFallbackModel].filter((id) => !isPaidModel(id) && id !== NO_FALLBACK_MODEL && !listed.some((m) => m.id === id)).map(unlisted)];
   const configured = (id: PaidModel) => usage.data?.providers.find((p) => p.id === paidProviderOf(id))?.configured === true;
   const problems = Object.fromEntries(LIMIT_FIELDS.map((field) => [field, invalid(field, values[field])])) as Record<LimitField, boolean>;
   const capCents = cents(cap);
@@ -384,7 +390,9 @@ function LimitsForm({ settings }: { settings: Settings }) {
   const modelHint = isPaidModel(model)
     ? t("web.ai.modelHintPaid", { usd: usd(paidUsd(model, TYPICAL_TURN_TOKENS.input, TYPICAL_TURN_TOKENS.output)), company: PAID_PROVIDERS[paidProviderOf(model)].label })
     : (() => {
-        const turn = chatNeurons(model, TYPICAL_TURN_TOKENS.input, TYPICAL_TURN_TOKENS.output);
+        // The catalog's last price (PR S21) once it loaded, the dated table's before.
+        const rate = free.find((m) => m.id === model) ?? unlisted(model);
+        const turn = (TYPICAL_TURN_TOKENS.input * rate.input + TYPICAL_TURN_TOKENS.output * rate.output) / 1_000_000;
         return t("web.ai.modelHint", { neurons: number(turn), turns: number(Math.floor(neuronCap / turn)) });
       })();
 
@@ -426,7 +434,7 @@ function LimitsForm({ settings }: { settings: Settings }) {
   }
 
   // The default is named only in the chosen model's list, as before.
-  const option = (id: AiModel, named = true) =>
+  const option = (id: string, named = true) =>
     isPaidModel(id) ? (
       <option key={id} value={id} disabled={!configured(id)}>
         {configured(id)
@@ -435,7 +443,7 @@ function LimitsForm({ settings }: { settings: Settings }) {
       </option>
     ) : (
       <option key={id} value={id}>
-        {named && id === DEFAULT_CHAT_MODEL ? t("web.ai.modelDefault", { label: CHAT_MODELS[id].label }) : CHAT_MODELS[id].label}
+        {named && id === DEFAULT_CHAT_MODEL ? t("web.ai.modelDefault", { label: CHAT_MODELS[id].label }) : (free.find((m) => m.id === id)?.label ?? modelLabel(id))}
       </option>
     );
 
@@ -447,7 +455,7 @@ function LimitsForm({ settings }: { settings: Settings }) {
         value={model}
         disabled={save.isPending}
         onChange={(e) => {
-          const next = AI_MODEL_IDS.find((id) => id === e.target.value);
+          const next = AI_MODEL_IDS.find((id) => id === e.target.value) ?? (free.find((m) => m.id === e.target.value)?.id as ChosenModel | undefined);
           if (!next) return;
           setModel(next);
           // The same model twice is no fallback.
@@ -455,7 +463,7 @@ function LimitsForm({ settings }: { settings: Settings }) {
           setStatus(null);
         }}
       >
-        <optgroup label={t("web.ai.modelsFree")}>{CHAT_MODEL_IDS.map((id) => option(id))}</optgroup>
+        <optgroup label={t("web.ai.modelsFree")}>{free.map((m) => option(m.id))}</optgroup>
         <optgroup label={t("web.ai.modelsPaid")}>{PAID_MODEL_IDS.map((id) => option(id))}</optgroup>
       </SelectField>
       <SelectField
@@ -464,13 +472,13 @@ function LimitsForm({ settings }: { settings: Settings }) {
         value={fallback}
         disabled={save.isPending}
         onChange={(e) => {
-          const next = FALLBACK_MODEL_IDS.find((id) => id === e.target.value);
+          const next = FALLBACK_MODEL_IDS.find((id) => id === e.target.value) ?? (free.find((m) => m.id === e.target.value)?.id as ChosenFallback | undefined);
           if (next) setFallback(next);
           setStatus(null);
         }}
       >
         <option value={NO_FALLBACK_MODEL}>{t("web.ai.fallbackNone")}</option>
-        <optgroup label={t("web.ai.modelsFree")}>{CHAT_MODEL_IDS.filter((id) => id !== model).map((id) => option(id, false))}</optgroup>
+        <optgroup label={t("web.ai.modelsFree")}>{free.filter((m) => m.id !== model).map((m) => option(m.id, false))}</optgroup>
         <optgroup label={t("web.ai.modelsPaid")}>{PAID_MODEL_IDS.filter((id) => id !== model).map((id) => option(id, false))}</optgroup>
       </SelectField>
       <details open={advanced} onToggle={(event) => setAdvanced(event.currentTarget.open)} className="group rounded-xl border border-border">
@@ -519,6 +527,7 @@ function LimitsForm({ settings }: { settings: Settings }) {
           />
         </div>
       </details>
+      {catalog.isError ? <ErrorNotice error={catalog.error} onRetry={() => void catalog.refetch()} /> : catalog.data ? <CatalogPanel catalog={catalog.data} /> : null}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" loading={save.isPending}>
           {t("web.ai.save")}
@@ -679,8 +688,17 @@ const LABELS = {
 } as const;
 
 /** The fallback as the form shows it: the chosen model again means none. */
-function usableFallback(fallback: FallbackModel, model: AiModel): FallbackModel {
+function usableFallback(fallback: ChosenFallback, model: ChosenModel): ChosenFallback {
   return fallback === model ? NO_FALLBACK_MODEL : fallback;
+}
+
+/** The fixed free list at the dated prices: what the choices show until the catalog loads. */
+const FIXED_FREE: CatalogModel[] = CHAT_MODEL_IDS.map((id) => ({ id, label: CHAT_MODELS[id].label, context: CHAT_MODELS[id].context, input: CHAT_MODELS[id].input, output: CHAT_MODELS[id].output, fixed: true }));
+
+/** A stored model the catalog's list doesn't have: named by its id, priced as the dearest of the fixed list. */
+function unlisted(id: string): CatalogModel {
+  const dearest = FIXED_FREE.reduce((a, b) => (b.input + b.output > a.input + a.output ? b : a));
+  return { ...dearest, id, label: modelLabel(id), fixed: false };
 }
 
 /** The ceiling in cents as the field shows it, in dollars ("0" is no ceiling). */
