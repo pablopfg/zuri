@@ -42,6 +42,9 @@ test("the new places answer at their addresses, each with its title @mobile", as
     ["/avaliacoes/lista", "/avaliacoes/lista"],
     ["/avaliacoes/ajustes/responder", "/avaliacoes/ajustes/responder"],
     ["/avaliacoes/ajustes/agente", "/avaliacoes/ajustes"],
+    ["/avaliacoes/pedidos", "/avaliacoes/pedidos"],
+    ["/avaliacoes/ajustes/pedidos", "/avaliacoes/ajustes/pedidos"],
+    ["/avaliacoes/pedidos/nada", "/avaliacoes/pedidos"],
     ["/avaliacoes/lista/nada", "/avaliacoes/lista"],
     // A slash hidden in the last part is another address altogether: it never leaves the area.
     ["/avaliacoes/lista/..%2Fentrar", "/avaliacoes"],

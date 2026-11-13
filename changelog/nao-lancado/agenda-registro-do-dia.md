@@ -9,4 +9,4 @@
 
 ### Atualização
 
-- Migration 41 (`agenda_record`) cria as tabelas do registro do dia. Ela só acrescenta tabelas e roda sozinha na próxima inicialização. O registro começa no dia da atualização: nenhum dia anterior é copiado.
+- Migration 42 (`agenda_record`) cria as tabelas do registro do dia. Ela só acrescenta tabelas e roda sozinha na próxima inicialização. O registro começa no dia da atualização: nenhum dia anterior é copiado.

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ptBRReviews, REVIEW_LIMITS, type ReviewsStatus } from "@zuri/shared";
-import { CirclePause, CirclePlay, LayoutGrid, MessageSquareText, RefreshCw, SlidersVertical } from "lucide-react";
+import { CirclePause, CirclePlay, LayoutGrid, MessageSquareText, RefreshCw, SendHorizontal, SlidersVertical } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router";
 import { useToast } from "../../components/Toaster.tsx";
@@ -11,6 +11,7 @@ import { REVIEW_BREAKER_TEXT, REVIEW_PROBLEM_TEXT, REVIEWS_BUT_STATUS, REVIEWS_S
 import { countdown, type ReviewPart, reviewAddress } from "./numbers.ts";
 import { Overview } from "./Overview.tsx";
 import { ReviewList } from "./ReviewList.tsx";
+import { RequestsPart } from "./Requests.tsx";
 import { ReviewSettings } from "./ReviewSettings.tsx";
 
 // The area's pt-BR texts travel with its code, not in the first bundle (rule P11).
@@ -134,6 +135,10 @@ function Area({ part, item }: { part: ReviewPart | null; item: string | null }) 
             </>
           )}
         </Link>
+        <Link to="/avaliacoes/pedidos" aria-current={part === "pedidos" ? "page" : undefined}>
+          <SendHorizontal aria-hidden />
+          {t("web.reviews.part.requests")}
+        </Link>
         <Link to="/avaliacoes/ajustes" aria-current={part === "ajustes" ? "page" : undefined}>
           <SlidersVertical aria-hidden />
           {t("web.reviews.part.settings")}
@@ -155,7 +160,7 @@ function Area({ part, item }: { part: ReviewPart | null; item: string | null }) 
             </>
           )}
           {part === "ajustes" ? (
-            <ReviewSettings status={data} reply={item === "responder"} />
+            <ReviewSettings status={data} sub={item === "responder" ? "reply" : item === "pedidos" ? "requests" : "connection"} />
           ) : !data.enabled ? (
             <EmptyState icon={<MessageSquareText className="h-6 w-6" />} title={t("web.reviews.off.title")}>
               <p>{t("web.reviews.off.body")}</p>
@@ -165,6 +170,8 @@ function Area({ part, item }: { part: ReviewPart | null; item: string | null }) 
             </EmptyState>
           ) : part === "lista" ? (
             <ReviewList status={data} id={item} />
+          ) : part === "pedidos" ? (
+            <RequestsPart status={data} id={item} />
           ) : (
             <Overview status={data} />
           )}

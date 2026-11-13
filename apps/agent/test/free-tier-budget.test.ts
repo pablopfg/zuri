@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, CONTACT_LIMITS, CRM_LIMITS, FLOW_LIMITS, LIST_LIMIT_DEFAULT, REVIEW_LIMITS } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, CONTACT_LIMITS, CRM_LIMITS, FLOW_LIMITS, LIST_LIMIT_DEFAULT, REVIEW_LIMITS, REVIEW_REQUEST_LIMITS } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -15,7 +15,7 @@ import { mcpFixture } from "./mcp-fixture.ts";
 import { withChatWorld } from "./chat-world.ts";
 import { addConnection, FakeNetwork, withFlowWorld } from "./flow-world.ts";
 import { withOwnerWorld } from "./chatwoot-owner-world.ts";
-import { add, draftAnswer, LOCATION, PATTERN, SECOND_OK, turnOn, withReviewsWorld } from "./reviews-world.ts";
+import { add, DAY, draftAnswer, LOCATION, PATTERN, person, SECOND_OK, setUp, turnOn, visit, WEDNESDAY_9, withReviewsWorld } from "./reviews-world.ts";
 import { EXAMPLE_AUTOMATION } from "../src/crm/automations/example.ts";
 import type { AutomationModule } from "../src/crm/automations/manifest.ts";
 import { useCatalog } from "./crm-automations-world.ts";
@@ -974,14 +974,34 @@ describe("Google reviews (step 19c)", () => {
         expect(await world.reviews.check("alarm")).toBe("ok");
         return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten, calls: world.sim.seen.length - calls };
       };
+      // PR S20: the names walk reads one page more per check until the profile's last one, keeping the
+      // reviews the first read left out as history (each with its indexes, counters and name's prints;
+      // measured 658 written and up to 1,035 read). Once, about 3 hours for these 1,000; never again after.
+      const walked = (name = LOCATION) => world.db.one<{ done: number }>(`SELECT names_done AS done FROM zur_review_locations WHERE google_name = ?`, name)?.done;
+      let walks = 0;
+      while (walked() === 0 && walks < 25) {
+        const walk = await measure();
+        // The check's own pages, the walk's one and a token renewal at most.
+        expect(walk.calls).toBeLessThanOrEqual(4);
+        expect(walk.written).toBeLessThanOrEqual(700);
+        expect(walk.read).toBeLessThanOrEqual(1_100);
+        walks++;
+      }
+      expect(walks).toBeLessThanOrEqual(Math.ceil(1_000 / REVIEW_LIMITS.pageSize));
+      expect(walked()).toBe(1);
+      expect(world.db.one(`SELECT count(*) AS n FROM zur_reviews WHERE id NOT LIKE 'old-%'`)).toEqual({ n: 1_000 });
       const number = world.db.one(`SELECT reviews FROM zur_area_versions WHERE id = 1`);
+      // The burst count reads the reviews seen in the last hour, the walk's history among them (300 more on the
+      // check right after the walk's last page): the quiet check is measured once that hour has passed.
+      world.clock.now += REVIEW_LIMITS.burstWindowMs;
       const quiet = await measure();
-      // One page of the profile (a token renewal at most).
-      expect(quiet.calls).toBeLessThanOrEqual(2);
-      // The lock, the check's own row and the release; the 50 reviews of the page looked up by their unique name, the
-      // counters and the area's number read twice (measured 5 and 125 on this first check after turning on, which
-      // also moves the profile's mark; 3 written from then on, reviews-sync.test.ts). The screens' number stays.
-      expect(quiet.written).toBeLessThanOrEqual(5);
+      // The profile's pages down to the watermark's overlap (two here: these reviews came one a minute) and,
+      // after that hour, a token renewal.
+      expect(quiet.calls).toBeLessThanOrEqual(3);
+      // The lock, the check's own row and the release, the renewed token, and the page's mark set and cleared by the
+      // second page; the reviews of both pages looked up by their unique name, the counters and the area's number
+      // read twice (measured 6 and 129; 3 written with one page and no renewal, reviews-sync.test.ts). The screens' number stays.
+      expect(quiet.written).toBeLessThanOrEqual(6);
       expect(quiet.read).toBeLessThanOrEqual(150);
       expect(world.db.one(`SELECT reviews FROM zur_area_versions WHERE id = 1`)).toEqual(number);
       world.answers.push(draftAnswer("Obrigado pela visita, Ana! Ficamos muito felizes com a sua avaliação."), SECOND_OK);
@@ -989,8 +1009,9 @@ describe("Google reviews (step 19c)", () => {
       add(world, "p0", 5, "Adorei o atendimento, todos muito gentis.");
       const busy = await measure();
       expect(busy.calls).toBeLessThanOrEqual(2);
-      // Five reviews stored, triaged, drafted and audited, with their indexes, counters and the area's number (measured 80 and 217).
-      expect(busy.written).toBeLessThanOrEqual(100);
+      // Five reviews stored, triaged, drafted and audited, with their indexes, counters, the area's number and (PR S20) the
+      // name's prints with each one's match (measured 80 and 217 before S20, 102 and 225 after).
+      expect(busy.written).toBeLessThanOrEqual(110);
       expect(busy.read).toBeLessThanOrEqual(250);
       // The owner's interval (PATCH /api/reviews/interval): the interval and the next check; the same one again, nothing.
       const interval = { ...world.db.usage };
@@ -1005,16 +1026,18 @@ describe("Google reviews (step 19c)", () => {
       await world.reviews.list({ tab: "needs" });
       world.reviews.status();
       expect(world.sim.seen.length).toBe(calls);
-      // Two pages of 30 and their counts from zur_counts, whatever the copy holds (1,055 reviews; measured 147).
+      // Two pages of 30 and their counts from zur_counts, whatever the copy holds (2,005 reviews, the walk's 950 among them; measured 147).
       expect(world.db.usage.rowsRead - before.rowsRead).toBeLessThanOrEqual(200);
-      expect(world.db.all(`SELECT id FROM zur_reviews WHERE location = ?`, LOCATION)).toHaveLength(1_055);
-      // The overview (GET /api/reviews/metrics, PR S11): one row of its index per review of the period (the 55 of the
-      // last days), never the 1,000 older ones nor the table, and nothing written (measured 59 and 0).
+      expect(world.db.all(`SELECT id FROM zur_reviews WHERE location = ?`, LOCATION)).toHaveLength(2_005);
+      // The overview (GET /api/reviews/metrics, PR S11): one row of its index per review of the period (the 1,005 of the
+      // last days, now that the walk kept the whole profile), never the 1,000 older ones nor the table, and nothing
+      // written (measured 59 for 55 reviews before S20, so 4 over the count; the funnel adds its one row).
       for (const period of ["30d", "6m", "12m"] as const) {
         const start = { ...world.db.usage };
         const metrics = world.reviews.metrics(period);
-        expect(metrics.ratings.reduce((sum, n) => sum + n, 0)).toBe(55);
-        expect(world.db.usage.rowsRead - start.rowsRead).toBeLessThanOrEqual(70);
+        const counted = metrics.ratings.reduce((sum, n) => sum + n, 0);
+        expect(counted).toBe(1_005);
+        expect(world.db.usage.rowsRead - start.rowsRead).toBeLessThanOrEqual(counted + 15);
         expect(world.db.usage.rowsWritten - start.rowsWritten).toBe(0);
       }
       // The long periods (by half year and by year) read one row of the index per review they count, and no more.
@@ -1022,7 +1045,7 @@ describe("Google reviews (step 19c)", () => {
         const start = { ...world.db.usage };
         const metrics = world.reviews.metrics(period);
         const counted = metrics.ratings.reduce((sum, n) => sum + n, 0);
-        expect(counted).toBeGreaterThanOrEqual(55);
+        expect(counted).toBeGreaterThanOrEqual(1_005);
         expect(world.db.usage.rowsRead - start.rowsRead).toBeLessThanOrEqual(counted + 15);
         expect(world.db.usage.rowsWritten - start.rowsWritten).toBe(0);
       }
@@ -1545,4 +1568,57 @@ describe("the record of the day (E5b)", () => {
     expect(route.status).toBe(200);
     expect(route.read).toBeLessThanOrEqual(12);
   });
+});
+
+// PR S20: the day's list of review requests from 300 contacts and 300 appointments, the screen, a send and an opening.
+describe("Review requests (PR S20)", () => {
+  it("makes the day's list, shows it, sends and opens within the plan's numbers", () =>
+    withReviewsWorld(async (world) => {
+      await setUp(world, () => {
+        for (let i = 0; i < 300; i++) person(world, `p${i}`, `Pessoa${String.fromCharCode(97 + (i % 26))} Exemplo${i}`, { phoneNumbers: [{ value: `(41) 9${String(i).padStart(4, "0")}-0000` }] });
+      });
+      for (let i = 0; i < 300; i++) visit(world, `Pessoa${String.fromCharCode(97 + (i % 26))} Exemplo${i}`, 8 + (i % 10));
+      world.clock.now = WEDNESDAY_9;
+      // The list: once a day, each new request one row and its index; Google read in two pages of 250 and a token (measured 5).
+      const start = { ...world.db.usage };
+      const calls = world.sim.seen.length;
+      expect(await world.requests_.tick()).toBe(true);
+      expect(world.sim.seen.length - calls).toBeLessThanOrEqual(6);
+      expect(world.db.one(`SELECT count(*) AS n FROM zur_review_requests`)).toEqual({ n: 300 });
+      const built = { read: world.db.usage.rowsRead - start.rowsRead, written: world.db.usage.rowsWritten - start.rowsWritten };
+      // Once a day: a request is its row, two indexes, the unique contact and person and the area's number (measured
+      // 1,804); each event's names looked up in the copy's index and the contact's proof (measured 10,116).
+      expect(built.written).toBeLessThanOrEqual(300 * 6 + 20);
+      expect(built.read).toBeLessThanOrEqual(300 * 35);
+      // The screen (GET /api/reviews/requests): one row per request of the index and its contact, never Google.
+      const screen = { ...world.db.usage };
+      const page = world.requests_.list();
+      expect(page.items).toHaveLength(300);
+      expect(world.db.usage.rowsRead - screen.rowsRead).toBeLessThanOrEqual(300 * 6 + 20);
+      expect(world.db.usage.rowsWritten - screen.rowsWritten).toBeLessThanOrEqual(1);
+      // A send: the request and its code; an opening: the code and the request (the network's count lives in memory).
+      const due = page.items.find((item) => item.state === "today");
+      const sendStart = { ...world.db.usage };
+      const { text } = await world.requests_.send(due?.id as string);
+      expect(world.db.usage.rowsWritten - sendStart.rowsWritten).toBeLessThanOrEqual(12);
+      expect(world.db.usage.rowsRead - sendStart.rowsRead).toBeLessThanOrEqual(40);
+      const code = /\/a\/(\w{10})$/.exec(text)?.[1] as string;
+      const openStart = { ...world.db.usage };
+      expect((await world.requests_.open(code, "198.51.100.30", false)).kind).toBe("go");
+      expect(world.db.usage.rowsWritten - openStart.rowsWritten).toBeLessThanOrEqual(10);
+      expect(world.db.usage.rowsRead - openStart.rowsRead).toBeLessThanOrEqual(10);
+      // A stranger's unknown code and a held network (S20-1): nothing written, one row read at most.
+      const stranger = { ...world.db.usage };
+      expect((await world.requests_.open("BBBBBBBBBB", "198.51.100.31", false)).kind).toBe("missing");
+      for (let i = 0; i < REVIEW_REQUEST_LIMITS.hitsPerMinute; i++) await world.requests_.open("BBBBBBBBBB", "198.51.100.32", false);
+      expect((await world.requests_.open(code, "198.51.100.32", false)).kind).toBe("limited");
+      expect(world.db.usage.rowsWritten - stranger.rowsWritten).toBe(0);
+      expect(world.db.usage.rowsRead - stranger.rowsRead).toBeLessThanOrEqual(REVIEW_REQUEST_LIMITS.hitsPerMinute + 1);
+      // The next day: nobody new, nothing written but the day's marks.
+      world.clock.now += DAY;
+      const again = { ...world.db.usage };
+      await world.requests_.tick();
+      expect(world.db.usage.rowsWritten - again.rowsWritten).toBeLessThanOrEqual(10);
+      expect(world.reviews.metrics("30d").requests).toEqual({ sent: 1, opened: 1, reviewed: 0 });
+    }));
 });

@@ -3,7 +3,9 @@ import { inWake, WakeBudget } from "../src/agent/wake-budget.ts";
 import type { DevEvent } from "../src/google/dev-google.ts";
 import { ALL_TOOLS } from "../src/tools/index.ts";
 import { runApprovedAction, ToolError, ToolExecutor } from "../src/tools/registry.ts";
-import { type ChatWorld, withChatWorld } from "./chat-world.ts";
+import { type ChatWorld, TIME_ZONE, withChatWorld } from "./chat-world.ts";
+import { InternalState } from "../src/db/internal-state.ts";
+import { AgendaRecord } from "../src/google/record.ts";
 import { AppError } from "../src/http/errors.ts";
 
 // Step 19: the Google Calendar tools. Reading also in routines; creating and
@@ -80,6 +82,26 @@ describe("list_calendar_events", () => {
       const events = result.events as { title: string; calendar: string; when: string; event_id: string }[];
       expect(events.map((e) => e.event_id)).toEqual(["b1", "a1"]);
       expect(events[1]).toMatchObject({ title: "Dentista", calendar: PRIMARY, when: "2026-10-31 15:00 – 16:00", location: "Rua A" });
+    }));
+
+  it("lists a closed day from its record and says what changed at Google afterwards, but a search is Google's own", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, { id: "a1", summary: "Consulta" });
+      const notices: unknown[] = [];
+      const record = new AgendaRecord({ db: world.db, state: new InternalState(world.db), google: world.google, timeZone: () => TIME_ZONE, notify: (notice) => notices.push(notice) });
+      await record.tick();
+      world.clock.now = Date.parse("2026-11-01T03:00:01Z");
+      expect(await record.tick()).toBe(true);
+      // Changed at Google after 31/10 closed.
+      const list = world.googleSim.events.get(PRIMARY) ?? [];
+      list[0] = { ...list[0], etag: '"a1-2"', summary: "Consulta mudada" } as DevEvent;
+      const exec = new ToolExecutor(ALL_TOOLS, { ...world.ctx(world.conversations.create("x").id), agendaRecord: record }, { maxToolCalls: 12 });
+      const listed = data(await exec.execute("list_calendar_events", { from: "2026-10-31", to: "2026-10-31" }, "r1")).events as { title: string; changed_in_google_after_the_day_closed?: string }[];
+      expect(listed).toEqual([expect.objectContaining({ title: "Consulta", changed_in_google_after_the_day_closed: "changed" })]);
+      expect(notices).toHaveLength(1);
+      const searched = data(await exec.execute("list_calendar_events", { from: "2026-10-31", to: "2026-10-31", query: "Consulta" }, "r2")).events as { title: string }[];
+      expect(searched.map((event) => event.title)).toEqual(["Consulta mudada"]);
     }));
 
   it("refuses more than 62 days, a backwards window and an unknown calendar", () =>

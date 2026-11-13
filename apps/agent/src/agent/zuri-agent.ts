@@ -60,6 +60,8 @@ import { GoogleCalendar } from "../google/service.ts";
 import { AgendaRecord } from "../google/record.ts";
 import { localToday } from "../google/events.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
+import { ReviewMatches } from "../reviews/matches.ts";
+import { ReviewRequests } from "../reviews/requests.ts";
 import { type ReviewNotice, ReviewService } from "../reviews/service.ts";
 import { developmentOwnerNetwork } from "../chatwoot/dev-chatwoot-owner.ts";
 import { ChatwootOwner } from "../chatwoot/owner-service.ts";
@@ -142,6 +144,10 @@ interface Store {
   reviews: ReviewService;
   /** The record of the day (13/11/2026): the copy of each closed day of the Agenda. */
   agendaRecord: AgendaRecord;
+  /** Which contact left a review (PR S20). */
+  reviewMatches: ReviewMatches;
+  /** Review requests and the link (PR S20). */
+  reviewRequests: ReviewRequests;
   /** The flows and the site monitor (step 22a). */
   flows: FlowService;
   /** The internal CRM (step 22b). */
@@ -287,6 +293,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       contacts: this.store.contacts,
       reviews: this.store.reviews,
       record: this.store.agendaRecord,
+      reviewRequests: this.store.reviewRequests,
+      reviewMatches: this.store.reviewMatches,
       auth: this.store.auth,
       timeZone: () => this.store.settings.field("timeZone"),
       agendaHours: () => this.store.settings.field("agenda"),
@@ -433,6 +441,12 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       if (await this.store.reviews.tick()) await automations.rearm();
     } catch (error) {
       log("error", "google_alarm_failed", { error });
+    }
+    // The day's review requests (PR S20), once a day at the owner's hour, after the check.
+    try {
+      if (await this.store.reviewRequests.tick()) await automations.rearm();
+    } catch (error) {
+      log("error", "review_requests_failed", { error });
     }
     // The flows (step 22a): waiting runs go on, then the ones due; the alarm is set again inside.
     try {
@@ -781,6 +795,15 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
+          // The day's review requests (PR S20).
+          const requestsDue = (() => {
+            try {
+              const at = reviewRequests.nextDue();
+              return at === null ? null : new Date(at).toISOString();
+            } catch {
+              return null;
+            }
+          })();
           // The flows' runs and waits (step 22a).
           const flowsDue = (() => {
             try {
@@ -822,7 +845,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
-          const due = [tries, watch, indexing, tools, channels, people, recordDue, reviewsDue, flowsDue, crmAutomationsDue, outboxDue, crmDue, backupDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
+          const due = [tries, watch, indexing, tools, channels, people, recordDue, reviewsDue, requestsDue, flowsDue, crmAutomationsDue, outboxDue, crmDue, backupDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
           // Work already past due is only left there when its step failed on the last
           // alarm (a full disk, say): wait a minute before trying again, never at once,
           // so a step that keeps failing can't spin the alarm through the day's quota.
@@ -919,6 +942,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         },
       });
       // The Google reviews (step 19c): the reviews' agent has no tools, only the metered model; its notices go to the center.
+      // Which contact left a review (PR S20): by HMAC prints of the name, never the name kept; homonyms never link by themselves.
+      const reviewMatches = new ReviewMatches({ db, contacts: () => contacts });
       const reviews = new ReviewService({
         db,
         google,
@@ -927,6 +952,21 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         timeZone: () => settings.field("timeZone"),
         lockdown: () => auth.lockdown.active(),
         notify: (notice) => reviewNotice(alerts, notice),
+        nameSecret: () => env.PASSWORD_PEPPER,
+        matches: reviewMatches,
+      });
+      // Review requests with one tap (PR S20): the day's list from the calendar; the owner sends from their own WhatsApp.
+      const reviewRequests = new ReviewRequests({
+        db,
+        google,
+        contacts: () => contacts,
+        matches: reviewMatches,
+        reviewsOn: () => reviews.enabled(),
+        timeZone: () => settings.field("timeZone"),
+        locale: () => this.locale(),
+        publicUrl: () => this.publicUrl(),
+        secret: () => env.PASSWORD_PEPPER,
+        notify: (notice) => alerts.raise({ kind: notice.kind, category: "system", priority: "normal", link: "/avaliacoes/pedidos", source: null, params: { count: notice.count } }),
       });
       // The flows (step 22a): only the screen changes them; their calls go only to the connections the owner registered.
       const flowFetch = ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init)) as typeof fetch;
@@ -1155,7 +1195,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         },
         telegram: { chat: () => telegram.ownerChat(), client: (options) => telegram.client(options) },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner };
     }
     return this.#store;
   }

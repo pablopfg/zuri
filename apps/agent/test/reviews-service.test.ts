@@ -1,7 +1,7 @@
 import { BUSINESS_SCOPE, REVIEW_LIMITS } from "@zuri/shared";
 import { describe, expect, it, vi } from "vitest";
 import { AppError } from "../src/http/errors.ts";
-import { add, draftAnswer, later, LOCATION, OTHER, PATTERN, row, SECOND_NO, SECOND_OK, turnOn, withReviewsWorld, consent, type ReviewsWorld } from "./reviews-world.ts";
+import { add, DAY, draftAnswer, later, LOCATION, OTHER, PATTERN, row, SECOND_NO, SECOND_OK, turnOn, withReviewsWorld, consent, type ReviewsWorld } from "./reviews-world.ts";
 
 // Step 19c: the reviews read from the Business Profile (simulated), triaged by
 // the rating, drafted by an agent without tools, checked by the fixed checker
@@ -87,9 +87,64 @@ describe("reading the reviews", () => {
       await turnOn(world);
       await later(world);
       await later(world);
-      expect(world.db.all(`SELECT id FROM zur_reviews`)).toHaveLength(REVIEW_LIMITS.pageSize);
+      // The names' walk (PR S20) reads the older pages too, a page per check: every one of them is history.
+      expect(world.db.all(`SELECT id FROM zur_reviews`)).toHaveLength(REVIEW_LIMITS.pageSize + 5);
       expect(world.db.all(`SELECT id FROM zur_reviews WHERE state != 'history'`)).toEqual([]);
       expect(world.notices).toEqual([]);
+    }));
+
+  it("never keeps as history a review that arrives between the check's read and the names' walk (PR S20)", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      // A walk still under way (reviews kept before the prints existed): it reads the first page again, and a
+      // review written in between shows up only there.
+      world.db.run(`UPDATE zur_review_locations SET names_done = 0, names_token = NULL`);
+      const business = world.google.business.bind(world.google);
+      let calls = 0;
+      world.google.business = (async (...args: Parameters<typeof business>) => {
+        if (args[1].endsWith("/reviews") && ++calls === 2) add(world, "between", 1, "Péssimo", { at: new Date(world.clock.now + 60_000).toISOString() });
+        return business(...args);
+      }) as typeof business;
+      world.clock.now += 16 * 60_000;
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      expect(calls).toBe(2);
+      expect(row(world, "between")).toBeNull();
+      world.google.business = business;
+      await later(world);
+      expect(row(world, "between")?.state).toBe("escalated");
+    }));
+
+  it("gives the reviews kept before the prints existed their name's prints, and the walk ends at the profile's last page (PR S20)", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      add(world, "older", 5, "Ótimo", { name: "Lúcia Ferraz", at: new Date(world.clock.now - 60_000).toISOString() });
+      await later(world);
+      // As if kept before migration 41: no prints, and the walk not made yet.
+      world.db.run(`UPDATE zur_reviews SET name_fp = NULL, short_fp = NULL`);
+      world.db.run(`UPDATE zur_review_locations SET names_done = 0, names_token = NULL`);
+      world.clock.now += 16 * 60_000;
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      expect(world.db.one<{ fp: string | null }>(`SELECT name_fp AS fp FROM zur_reviews WHERE google_name LIKE '%older'`)?.fp).toMatch(/^[0-9a-f]{64}$/);
+      expect(world.db.one(`SELECT names_done AS done FROM zur_review_locations`)).toEqual({ done: 1 });
+    }));
+
+  it("walks the older pages for the names' prints at most a day's pages, and goes on the next day (PR S20)", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      const today = () => new Date(world.clock.now).toISOString().slice(0, 10);
+      world.db.run(`UPDATE zur_review_locations SET names_done = 0, names_token = NULL, names_day = ?, names_pages = ?`, today(), REVIEW_LIMITS.namesPagesPerDay);
+      const pages = () => world.sim.seen.filter((call) => new URL(call.url).pathname.endsWith("/reviews")).length;
+      let before = pages();
+      world.clock.now += 16 * 60_000;
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      // Only the check's own page: the walk waits.
+      expect(pages() - before).toBe(1);
+      expect(world.db.one(`SELECT names_done AS done FROM zur_review_locations`)).toEqual({ done: 0 });
+      world.clock.now += DAY;
+      before = pages();
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      expect(pages() - before).toBe(2);
+      expect(world.db.one(`SELECT names_done AS done, names_pages AS pages FROM zur_review_locations`)).toEqual({ done: 1, pages: 1 });
     }));
 
   it("catches a review Google lists late, within an hour of the last one read", () =>

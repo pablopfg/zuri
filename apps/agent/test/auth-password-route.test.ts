@@ -87,6 +87,8 @@ const PUBLIC = new Set([
   "GET /api/health",
   // Telegram's webhook: no session, only its secret header (step 12).
   "POST /api/telegram/webhook",
+  // A review request's short address (PR S20): no session, only the Worker's internal header.
+  "GET /api/reviews/open/:code",
   // The bot's /aprovar page: no session, only a one-time token and a passkey (step 15a).
   "POST /api/approvals/telegram/options",
   "POST /api/approvals/telegram/verify",

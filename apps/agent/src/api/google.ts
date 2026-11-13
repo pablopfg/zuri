@@ -22,6 +22,8 @@ import { contactAppointments } from "../google/appointments.ts";
 import { checkBooking, checkOpenDay, shapeOf } from "../google/booking.ts";
 import type { GoogleContacts } from "../google/contacts.ts";
 import type { AgendaRecord } from "../google/record.ts";
+import type { ReviewMatches } from "../reviews/matches.ts";
+import type { ReviewRequests } from "../reviews/requests.ts";
 import type { ReviewService } from "../reviews/service.ts";
 import { toAppError } from "../google/errors.ts";
 import { type EventDraft, eventBody, localInstant, nextDay } from "../google/events.ts";
@@ -38,6 +40,10 @@ export interface GoogleRouteDeps {
   reviews: ReviewService;
   /** The record of the day (13/11/2026): closed days show their copy. */
   record: AgendaRecord;
+  /** Review requests and the link (PR S20). */
+  reviewRequests: ReviewRequests;
+  /** Which contact left a review (PR S20). */
+  reviewMatches: ReviewMatches;
   auth: AuthService;
   timeZone: () => string;
   /** Configurações › Agenda: when the office takes appointments (13/11/2026). */

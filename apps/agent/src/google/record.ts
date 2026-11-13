@@ -55,9 +55,7 @@ export class AgendaRecord {
   }
 
   /** The day to close next, or null when every day before today is closed (or too old to copy). */
-  private pending(today: string): string | null {
-    const from = this.deps.state.get<string>("agenda_record_from");
-    if (!from) return null;
+  private pending(today: string, from: string): string | null {
     // Only days before today count: a day of today or later (a forged backup, a time zone moved back) never stops the record.
     const last = this.deps.db.one<{ day: string | null }>(`SELECT MAX(day) AS day FROM zur_agenda_closed_days WHERE day < ?`, today)?.day ?? null;
     let next = last && last >= from ? dayPlus(last, 1) : from;
@@ -67,9 +65,7 @@ export class AgendaRecord {
   }
 
   /** How many days the record will never copy (more than a week behind), or 0. */
-  private skipped(today: string): number {
-    const from = this.deps.state.get<string>("agenda_record_from");
-    if (!from) return 0;
+  private skipped(today: string, from: string): number {
     const last = this.deps.db.one<{ day: string | null }>(`SELECT MAX(day) AS day FROM zur_agenda_closed_days WHERE day < ?`, today)?.day ?? null;
     const next = last && last >= from ? dayPlus(last, 1) : from;
     const oldest = dayPlus(today, -RECORD_CATCH_UP_DAYS);
@@ -82,7 +78,8 @@ export class AgendaRecord {
     const now = this.deps.google.now().getTime();
     const retry = this.deps.state.get<number>("agenda_record_retry_at") ?? 0;
     const today = this.today();
-    if (!this.deps.state.get<string>("agenda_record_from") || this.pending(today)) return Math.max(now, retry);
+    const from = this.deps.state.get<string>("agenda_record_from");
+    if (!from || this.pending(today, from)) return Math.max(now, retry);
     return localInstant(dayPlus(today, 1), this.deps.timeZone())?.getTime() ?? now + 3_600_000;
   }
 
@@ -96,15 +93,16 @@ export class AgendaRecord {
     const { db, state, google } = this.deps;
     if (!google.usable()) return false;
     const today = this.today();
-    if (!state.get<string>("agenda_record_from")) {
+    const from = state.get<string>("agenda_record_from");
+    if (!from) {
       state.set("agenda_record_from", today);
       return true;
     }
     if ((state.get<number>("agenda_record_retry_at") ?? 0) > google.now().getTime()) return false;
-    const day = this.pending(today);
+    const day = this.pending(today, from);
     if (!day) return false;
     // Said once, when the oldest day kept is the one closing: the days before it are past copying.
-    const behind = this.skipped(today);
+    const behind = this.skipped(today, from);
     if (behind > 0) log("warn", "agenda_record_skipped", { count: behind });
     const zone = this.deps.timeZone();
     const calendars = google.writable();

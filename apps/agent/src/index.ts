@@ -1,4 +1,15 @@
-import { AGENT_INSTANCE_NAME, CHATWOOT_OWNER_LIMITS, GOOGLE_CALLBACK_PATH, GOOGLE_RETURN_PAGE, LIVE_PATH, LOGIN_OPTIONS_PATH, type LoginOptions, TELEGRAM_LIMITS } from "@zuri/shared";
+import {
+  AGENT_INSTANCE_NAME,
+  CHATWOOT_OWNER_LIMITS,
+  GOOGLE_CALLBACK_PATH,
+  GOOGLE_RETURN_PAGE,
+  LIVE_PATH,
+  LOGIN_OPTIONS_PATH,
+  type LoginOptions,
+  reviewLinkProblem,
+  t,
+  TELEGRAM_LIMITS,
+} from "@zuri/shared";
 import { checkCsrf, readBodyLimited } from "./api/http.ts";
 import { CLIENT_GEO_HEADER, geoFromCf } from "./auth/client.ts";
 import { TURNSTILE_ORIGIN, turnstileSiteKey } from "./auth/turnstile.ts";
@@ -6,7 +17,7 @@ import { type Config, readConfig, secretProblems } from "./config.ts";
 import type { WorkerEnv } from "./env.ts";
 import { type AccessConfig, verifyAccessToken } from "./gates/access.ts";
 import { withBodyRead } from "./gates/body.ts";
-import { withApiHeaders, withWebHeaders } from "./gates/headers.ts";
+import { WEB_HEADERS, withApiHeaders, withWebHeaders } from "./gates/headers.ts";
 import { isTelegramWebhookSecret, TELEGRAM_SECRET_HEADER, TELEGRAM_WEBHOOK_PATH } from "./gates/telegram.ts";
 import {
   CHATWOOT_DELIVERY_HEADER,
@@ -17,6 +28,7 @@ import {
   plausibleChatwootNotice,
 } from "./gates/chatwoot-owner.ts";
 import { GOOGLE_CHANNEL_HEADER, GOOGLE_PUSH_PATH, GOOGLE_STATE_HEADER, GOOGLE_TOKEN_HEADER, isGooglePushToken } from "./gates/google-push.ts";
+import { isPreviewAgent, REVIEW_LINK_PREFIX, REVIEW_OPEN_HEADER, REVIEW_OPEN_PATH, reviewLinkCode } from "./gates/review-link.ts";
 import { AppError, errorResponse } from "./http/errors.ts";
 import { log } from "./log.ts";
 
@@ -64,6 +76,9 @@ async function handle(request: Request, env: WorkerEnv): Promise<Response> {
   if (request.headers.get("upgrade")?.toLowerCase() === "websocket" && !(request.method === "GET" && url.pathname === LIVE_PATH)) {
     return refuse(new AppError("FORBIDDEN", "error.websocketNotSupported"));
   }
+
+  // A review request's short address (PR S20): opened by patients, who never sign in to Access.
+  if (url.pathname.startsWith(REVIEW_LINK_PREFIX)) return reviewLink(request, url, config.secretsReady, env);
 
   // Gate 3.
   if (config.access && !(await passesAccess(request, url, config.access, config.secretsReady, env))) {
@@ -208,6 +223,53 @@ async function chatwootHook(request: Request, url: URL, env: WorkerEnv, hook: { 
   void answer.body?.cancel();
   // The Chatwoot never repeats a notice: only the status matters (401 for a wrong signature).
   return new Response(null, { status: answer.status === 401 ? 401 : answer.status >= 500 ? 500 : 200 });
+}
+
+/**
+ * /a/<code>, a review request's short address (PR S20), before Access: the patient has no
+ * account. GET or HEAD only, a code of the right shape (anything else is a 404 without an
+ * object request), and only the code, the address and whether it looks like a preview robot go
+ * on. The destination comes from the object (the profile's review page it keeps), never from the
+ * address: this can't become an open redirect. No cookie is read or set, no referrer goes on.
+ */
+async function reviewLink(request: Request, url: URL, secretsReady: boolean, env: WorkerEnv): Promise<Response> {
+  await request.body?.cancel();
+  const code = reviewLinkCode(url.pathname);
+  if ((request.method !== "GET" && request.method !== "HEAD") || !code || !secretsReady) return linkAnswer(404);
+  const preview = request.method === "HEAD" || isPreviewAgent(request.headers.get("user-agent") ?? "");
+  const agent = env.AGENT.getByName(AGENT_INSTANCE_NAME);
+  const forwarded = new Request(new URL(`${REVIEW_OPEN_PATH}/${code}`, url.origin), {
+    method: "GET",
+    headers: { [REVIEW_OPEN_HEADER]: preview ? "preview" : "go", "cf-connecting-ip": (request.headers.get("cf-connecting-ip") ?? "").slice(0, 64) },
+  });
+  const answer = await agent.fetch(forwarded);
+  if (!answer.ok) {
+    void answer.body?.cancel();
+    return linkAnswer(answer.status === 404 ? 404 : 503);
+  }
+  const body = (await answer.json().catch(() => null)) as { kind?: unknown; location?: unknown } | null;
+  if (body?.kind === "limited") return linkAnswer(429);
+  // Checked again here: only an https address of Google's review hosts ever leaves.
+  if (body?.kind === "go" && typeof body.location === "string" && reviewLinkProblem(body.location) === null) return linkAnswer(302, body.location);
+  return linkAnswer(404);
+}
+
+function linkAnswer(status: number, location?: string): Response {
+  const headers = new Headers({
+    "cache-control": "no-store",
+    "referrer-policy": "no-referrer",
+    "x-robots-tag": "noindex, nofollow",
+    "x-content-type-options": "nosniff",
+    "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+    // The patient's first visit to the domain can be this one: it learns HTTPS here too (S20-3).
+    "strict-transport-security": WEB_HEADERS["strict-transport-security"],
+    "x-frame-options": "DENY",
+    "cross-origin-resource-policy": "same-origin",
+  });
+  if (location) headers.set("location", location);
+  else headers.set("content-type", "text/plain; charset=utf-8");
+  const text = location ? null : t("pt-BR", status === 429 ? "reviews.link.limited" : status === 404 ? "reviews.link.missing" : "reviews.link.unavailable");
+  return new Response(text, { status, headers });
 }
 
 /**
