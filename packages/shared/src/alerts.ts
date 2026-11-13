@@ -75,6 +75,7 @@ export const NOTICE_KINDS = [
   "reviews.problem",
   "reviews.auto",
   "reviews.breaker",
+  "reviews.requests",
   "security",
   "chatwoot.stranger",
   "chatwoot.recreated",
@@ -118,6 +119,7 @@ export const SECURITY_ALERT_EVENTS = [
   "google_connected",
   "google_calendar_write",
   "reviews_autonomy",
+  "review_link_changed",
   "setup_failure",
   "setup_locked",
   "owner_created",
@@ -340,7 +342,7 @@ export interface AlertOverview {
 }
 
 /** Pages of the app a new notice may open. Anything else is dropped: a notice never carries an address someone else chose. */
-export const NOTICE_LINKS = ["/tarefas", "/rotinas", "/configuracoes/ia", "/configuracoes/diagnostico", "/configuracoes/avisos", "/configuracoes/seguranca", "/acessos", "/configuracoes/integracoes", "/contatos", "/crm/fluxos", "/crm", "/avaliacoes", "/configuracoes/chatwoot", "/crm/envios"] as const;
+export const NOTICE_LINKS = ["/tarefas", "/rotinas", "/configuracoes/ia", "/configuracoes/diagnostico", "/configuracoes/avisos", "/configuracoes/seguranca", "/acessos", "/configuracoes/integracoes", "/contatos", "/crm/fluxos", "/crm", "/avaliacoes", "/configuracoes/chatwoot", "/crm/envios", "/avaliacoes/pedidos"] as const;
 export type NoticeLink = (typeof NOTICE_LINKS)[number];
 
 export const noticeCursorSchema = /* @__PURE__ */ z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\|[0-9a-f-]{36}$/);

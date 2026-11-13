@@ -2,7 +2,7 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { REVIEW_LEVELS, REVIEW_LIMITS, REVIEW_METRIC_PERIODS, REVIEW_TABS, REVIEW_TONES } from "./reviews.ts";
+import { REVIEW_LEVELS, REVIEW_LIMITS, REVIEW_METRIC_PERIODS, REVIEW_REQUEST_LIMITS, REVIEW_TABS, REVIEW_TONES, messageHasAddress, reviewLinkProblem } from "./reviews.ts";
 
 /**
  * Google reviews (step 19c): the routes' request bodies, what Zuri reads of
@@ -122,3 +122,52 @@ export const reviewSecondReadSchema = /* @__PURE__ */ (() =>
       issues: z.array(z.string().max(200)).max(10),
     })
     .strict())();
+
+/** Avaliações › Ajustes › Pedidos e link: the link the owner pasted (null clears it, back to Google's). */
+export const reviewLinkSchema = /* @__PURE__ */ (() =>
+  z
+    .object({
+      link: z
+        .string()
+        .max(REVIEW_REQUEST_LIMITS.linkMax + 50)
+        .transform((value) => value.trim())
+        .refine((value) => reviewLinkProblem(value) === null)
+        .nullable(),
+    })
+    .strict())();
+
+const HOUR = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** The message and "Quando pedir"; a message must carry {link}. Null keeps the default text. */
+export const reviewRequestSettingsSchema = /* @__PURE__ */ (() =>
+  z
+    .object({
+      message: z
+        .string()
+        .max(REVIEW_REQUEST_LIMITS.messageMax * 2)
+        .transform((value) => value.replace(/\r\n?/g, "\n").replace(/[ \t]+\n/g, "\n").trim().normalize("NFC"))
+        .pipe(
+          z
+            .string()
+            .min(1)
+            .max(REVIEW_REQUEST_LIMITS.messageMax)
+            .refine((value) => value.includes("{link}") && !messageHasAddress(value) && !/(?!\n)\p{Cc}|\p{Cf}/u.test(value)),
+        )
+        .nullable()
+        .optional(),
+      days: z.number().int().min(REVIEW_REQUEST_LIMITS.daysMin).max(REVIEW_REQUEST_LIMITS.daysMax).optional(),
+      hour: z
+        .string()
+        .regex(HOUR)
+        .refine((value) => value >= REVIEW_REQUEST_LIMITS.hourMin && value <= REVIEW_REQUEST_LIMITS.hourMax)
+        .optional(),
+      reminder: z.boolean().optional(),
+    })
+    .strict())();
+
+/** "É esta" or "É ele" (a contact's id), "Nenhuma das duas", "Não é" or undoing a link (null). */
+export const reviewMatchSchema = /* @__PURE__ */ (() => z.object({ contactId: z.string().regex(/^[0-9a-f-]{36}$/).nullable() }).strict())();
+
+/** What Zuri reads of a profile in Business Information's list: its review link, when Google gives one. */
+export const googleLocationMetadataSchema = /* @__PURE__ */ (() =>
+  z.object({ metadata: z.object({ newReviewUri: z.string().max(2_000).optional() }).optional() }))();

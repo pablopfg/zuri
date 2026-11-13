@@ -93,6 +93,25 @@ export function titleNames(title: string, name: string): "whole" | "piece" | nul
   return null;
 }
 
+/**
+ * The names a title may be of, folded as `searchText`: the title itself (without the note after the
+ * name) and each of its pieces ("Retorno - Ana Souza" gives "ana souza"). For finding the contacts an
+ * event may be of (PR S20); `readAppointment` decides which one it is.
+ */
+export function titleKeys(title: string): string[] {
+  const keys = new Set<string>();
+  const whole = searchText(splitName(title).name);
+  if (whole) keys.add(whole);
+  const folded = searchText(title);
+  for (const pieces of [SOFT_PIECES, PIECES]) {
+    for (const piece of folded.split(pieces)) {
+      const key = piece.trim().replace(LEADING, "").trim();
+      if (key) keys.add(key);
+    }
+  }
+  return [...keys].slice(0, 10);
+}
+
 /** A phone as its national number: without Brazil's country code and the leading zeros. */
 function national(digits: string): string {
   const plain = digits.replace(/^0+/, "");

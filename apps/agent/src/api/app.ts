@@ -67,7 +67,7 @@ import { registerApprovalRoutes } from "./approvals.ts";
 import { registerSemanticRoutes, type SemanticDeps } from "./semantic.ts";
 import { type McpRouteDeps, registerMcpRoutes } from "./mcp.ts";
 import { type GoogleRouteDeps, registerGooglePush, registerGoogleRoutes } from "./google.ts";
-import { registerReviewRoutes } from "./reviews.ts";
+import { registerReviewOpen, registerReviewRoutes } from "./reviews.ts";
 import { type ChatwootRouteDeps, registerChatwootHook, registerChatwootRoutes } from "./chatwoot.ts";
 import { type FlowRouteDeps, registerFlowRoutes } from "./flows.ts";
 import { type CrmRouteDeps, registerCrmRoutes } from "./crm.ts";
@@ -226,6 +226,8 @@ export function createApi(deps: ApiDeps) {
   // The owner's inbox in the Chatwoot: no cookie and no Origin, the token in the path and the inbox's signature (checked inside).
   const chatwoot = deps.chatwoot;
   if (chatwoot) registerChatwootHook(app, () => chatwoot());
+  // A patient opening a review request's short address (PR S20): no cookie, only the Worker's header (checked inside).
+  if (google) registerReviewOpen(app, () => google());
 
   app.use("*", async (c, next) => {
     checkCsrf(c.req.raw, deps.origin());
