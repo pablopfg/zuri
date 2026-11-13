@@ -1631,6 +1631,20 @@ export class ReviewService {
     return readMetrics(this.db, period, this.clock(), this.deps.timeZone(), this.enabled());
   }
 
+  /**
+   * The review the home page suggests answering (PR S22): of those waiting for
+   * the owner, the lowest stars first, then the newest. Only the first name
+   * (empty when anonymous) and the stars; null while the module is off.
+   */
+  firstWaiting(): { name: string; rating: number } | null {
+    if (!this.enabled()) return null;
+    const row = this.db.one<{ first_name: string; anonymous: number; rating: number }>(
+      `SELECT first_name, anonymous, rating FROM zur_reviews WHERE state IN (${NEEDS.map(() => "?").join(", ")}) ORDER BY rating ASC, updated_at DESC LIMIT 1`,
+      ...NEEDS,
+    );
+    return row ? { name: row.anonymous ? "" : row.first_name, rating: row.rating } : null;
+  }
+
   /** The /status line: how many wait, and whether replies are paused. */
   summary(): { enabled: boolean; needs: number; paused: boolean; problem: ReviewProblem | null } {
     const status = this.status();

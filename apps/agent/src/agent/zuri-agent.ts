@@ -62,6 +62,7 @@ import { localToday } from "../google/events.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
 import { ReviewMatches } from "../reviews/matches.ts";
 import { ReviewRequests } from "../reviews/requests.ts";
+import { HOME_ORDER_NEURONS, HomeSuggestionService } from "../home/suggestions.ts";
 import { ModelCatalogService } from "../ai/catalog.ts";
 import { developmentCatalog } from "../ai/dev-catalog.ts";
 import { type ReviewNotice, ReviewService } from "../reviews/service.ts";
@@ -166,6 +167,8 @@ interface Store {
   chatwootOwner: ChatwootOwner;
   /** The catalog of Workers AI models, checked once a day (PR S21). */
   modelCatalog: ModelCatalogService;
+  /** The home page's suggestions (PR S22). */
+  home: HomeSuggestionService;
 }
 
 /**
@@ -235,6 +238,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     aiMonths: () => this.store.usage.months(),
     paidConfigured: (provider) => this.paidConfigured(provider),
     modelCatalog: () => this.store.modelCatalog,
+    home: () => this.store.home,
     retryPaidProvider: (provider) => this.breaker().reset(provider),
     versions: () => readAreaVersions(this.store.db, this.store.usage.version),
     passwordSecretSet: () => this.passwordSecretSet(),
@@ -1250,7 +1254,21 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           alerts.raise({ kind, category: "system", priority: "normal", link: "/configuracoes/modelos", source: null, params });
         },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog };
+      // The home page's suggestions (PR S22): rules over the day; the AI only orders ids, once a day, with room to spare.
+      const home = new HomeSuggestionService({
+        db,
+        state,
+        timeZone: () => settings.field("timeZone"),
+        review: () => reviews.firstWaiting(),
+        ai: () => {
+          // Never a paid model for this (it only orders the chips), never in a lockdown, never without room in the day.
+          if (auth.lockdown.active() || isPaidModel(this.chosenModel("aiModel")) || isPaidModel(this.chosenModel("aiFallbackModel"))) return null;
+          return usage.room(this.aiLimits()).neurons > HOME_ORDER_NEURONS ? this.ai() : null;
+        },
+        settings: () => agents.settings("home_order"),
+        background: (work) => void this.keepAliveWhile(work),
+      });
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog, home };
     }
     return this.#store;
   }

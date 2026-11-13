@@ -41,13 +41,53 @@ test("the home page sends what is written to a new conversation, once @mobile", 
   expect(again).toBe(0);
 });
 
-test("an idea on the home page starts a conversation with it", async ({ page }) => {
+test("a suggestion from the day fills the field and sends nothing @mobile", async ({ page }) => {
+  let sent = 0;
+  page.on("request", (r) => r.url().endsWith("/api/chat") && r.method() === "POST" && sent++);
   await openHome(page);
-  const ideas = page.getByRole("list", { name: "Ideias para começar" });
-  await expect(ideas.getByRole("button")).toHaveText(["Organizar a semana", "O que tenho amanhã?", "Me lembre de pagar a luz"]);
-  await ideas.getByRole("button", { name: "O que tenho amanhã?" }).click();
-  await expect(page).toHaveURL(/\/conversa\/[0-9a-f-]{36}$/);
-  await expect(page.getByRole("log").getByText("O que tenho amanhã?", { exact: true })).toBeVisible();
+  const ideas = page.getByRole("list", { name: "Sugestões a partir do seu dia" });
+  const buttons = ideas.getByRole("button");
+  await expect(buttons.first()).toBeVisible();
+  expect(await buttons.count()).toBeLessThanOrEqual(3);
+  // Whatever the server's hour, one of the hour's kinds is always there.
+  await expect(ideas.getByRole("button", { name: /^(O que tenho hoje\?|O que falta para hoje\?|O que tenho amanhã\?)$/ })).toBeVisible();
+  expect(await tooSmallControls(page)).toEqual([]);
+  const first = (await buttons.first().textContent()) ?? "";
+  const counted = page.waitForResponse((r) => /\/api\/home\/suggestions\/[a-z]+\/used$/.test(r.url()));
+  await buttons.first().click();
+  expect((await counted).status()).toBe(204);
+  const field = page.getByRole("textbox", { name: "Escreva para a Zuri" });
+  await expect(field).toHaveValue(first);
+  await expect(field).toBeFocused();
+  await expect(page).toHaveURL(/\/$/);
+  expect(sent).toBe(0);
+  await expectAccessible(page, "início com sugestões");
+});
+
+test("a suggestion's blanks come from the server as data, never as markup", async ({ page }) => {
+  await page.route("**/api/home/suggestions", (route) =>
+    route.fulfill({
+      json: {
+        suggestions: [
+          { id: "bill", name: "a luz", time: "17:30" },
+          { id: "review", name: "<img src=x>" },
+          { id: "review" },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/home/suggestions/*/used", (route) => route.fulfill({ status: 204 }));
+  await openHome(page);
+  const ideas = page.getByRole("list", { name: "Sugestões a partir do seu dia" });
+  await expect(ideas.getByRole("button")).toHaveText(["Me lembre de pagar a luz às 17:30", "Responder a avaliação de <img src=x>", "Responder a avaliação nova"]);
+  await expect(ideas.locator("img")).toHaveCount(0);
+});
+
+test("the home page shows no suggestions when the server has none or fails", async ({ page }) => {
+  await page.route("**/api/home/suggestions", (route) => route.fulfill({ status: 500, json: { code: "INTERNAL_ERROR", message: "x" } }));
+  await openHome(page);
+  await expect(page.getByRole("heading", { name: "Seu dia" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Sugestões a partir do seu dia" })).toHaveCount(0);
 });
 
 test("recent conversations come by day and the list has its own search", async ({ page }) => {

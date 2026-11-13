@@ -245,7 +245,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S18 | mesclada (#332) |
 | S19 | mesclada (#334) |
 | S20 | mesclada (#339) |
-| S21 | em revisão |
+| S21 | mesclada (#342) |
+| S22 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -484,6 +485,17 @@ Diferenças da S21 (catálogo de modelos) para o plano e o protótipo, para as P
 - **O cartão fica dentro do formulário de "Modelo"**, entre os limites avançados e "Salvar limites", como no protótipo; seus botões não salvam o formulário. A frase "Vai sair" muda quando o modelo está em uso. "Preço" diz "mudou de preço" depois do nome, para o nome vir sempre primeiro nas duas línguas.
 - **Os avisos novos** (`ai.modelLeaving`, `ai.modelSwitched`, `ai.fallbackOff`) levam a `/configuracoes/modelos`, que entrou na lista de links dos avisos.
 - **Revisões (Cloudflare, QA e segurança):** a conferência lê até 3 páginas de 100; um modelo só sai depois de faltar em duas respostas completas seguidas; modelos que raciocinam não aparecem como "Novo"; preço que muda até 1% não é mudança; modelo da lista fixa com preço abaixo de um décimo da tabela fica com o da tabela; falhas seguidas esperam 1, 2, 4… horas; o estado é relido depois da chamada (um "Pôr na lista" no meio não se perde) e dois "Conferir agora" juntos fazem uma chamada; um modelo guardado que não vale mais usa o padrão e, no reserva, "Nenhum".
+
+Diferenças da S22 (sugestões do Início) para o plano e o protótipo, para as PRs seguintes não as desfazerem (plano em [s22-sugestoes-do-inicio.md](s22-sugestoes-do-inicio.md)):
+
+- **Sem migration.** O contador por tipo e a ordem do dia são duas linhas de `zur_settings` (`home_suggestion_uses`, `home_suggestion_order`), fora do backup. O plano antigo pedia a tabela `zur_suggestion_stats`; com sete tipos, uma linha basta.
+- **A IA ordena na primeira abertura do Início do dia**, não dentro do resumo da manhã: o resumo não chama IA, e assim um dia sem o Início aberto não gasta Neurons. A marca do dia é gravada antes da chamada, então falha ou demora não tentam de novo no mesmo dia (P7); a ordem nova vale a partir da abertura seguinte.
+- **A IA recebe só contagens e ids** (dia da semana, tarefas atrasadas e de hoje até 20, toques por tipo), nunca título, nome ou texto. Não roda em bloqueio, com modelo pago escolhido ou sem folga no teto do dia.
+- **O agente aparece em Configurações › Assistente** como "Sugestões do Início", com as regras só para ler, como as conferências.
+- **Tipos do protótipo:** `late`, `bill`, `review`, `week`, `today`, `rest` e `tomorrow`. "Ideias de presente" e "Resumo da semana" do plano antigo ficaram fora. "Organizar a semana" segue a regra do plano (segunda, ou domingo a partir das 18:00), não toda manhã como no protótipo.
+- **Sem a chave "Sugestões no Início" nem "Esquecer o que aprendi"**: não estão no protótipo.
+- **Tocar só preenche o campo e põe o foco nele** (antes, a ideia abria a conversa e enviava). A avaliação sem nome vira "Responder a avaliação nova"; a com nome diz "de {nome}" (o protótipo dizia "do Pedro").
+- **Conta:** tarefa que começa com "Pagar" (ou "Pay"), prazo hoje e lembrete meia hora antes ainda à frente.
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 

@@ -48,6 +48,7 @@ export const LOG_EVENTS = [
   "review_replied",
   "automation_interrupted",
   "flow_failed",
+  "home_order_failed",
   "crm_alarm_failed",
   "backup_export_skipped",
   "backup_auto_done",
@@ -137,6 +138,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "remote", "search", "semantic", "servers", "session", "settings", "setup", "status", "storage", "sync", "tasks", "telegram", "test", "tokens", "tools", "transcribe", "trash", "usage", "verify", "version", "webhook",
   // The AI screen's agents (guardrails, PR 2).
   "agents", "versions",
+  // The home page's suggestions (PR S22).
+  "home", "suggestions", "used",
   // The automatic backup (step 23b).
   "auto", "key", "copies",
   // How often the reviews are checked (the owner's interval).

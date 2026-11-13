@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { type AutomationList, CHAT_MESSAGE_MAX, ptBRHome } from "@zuri/shared";
+import { type AutomationList, CHAT_MESSAGE_MAX, type HomeSuggestion, type HomeSuggestions, type MessageKey, ptBRHome } from "@zuri/shared";
 import { ArrowUp, ChevronRight } from "lucide-react";
-import { type FormEvent, type ReactNode, useCallback, useId, useState } from "react";
+import { type FormEvent, type ReactNode, useCallback, useId, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Greeting } from "../../components/Greeting.tsx";
 import { cn, ErrorNotice, Loading } from "../../components/ui.tsx";
@@ -23,8 +23,8 @@ const SHOWN = 5;
 const NEXT_DAYS = 7;
 
 /**
- * The home page: the greeting, a field to write to Zuri, three ideas to start
- * with, "Seu dia" and the next days. The greeting's placeholder comes from the
+ * The home page: the greeting, a field to write to Zuri, up to three
+ * suggestions from the day, "Seu dia" and the next days. The greeting's placeholder comes from the
  * page, which shows the same one while this part loads.
  */
 export function HomeBody({ greetingSlot }: { greetingSlot: ReactNode }) {
@@ -50,11 +50,34 @@ export function HomeBody({ greetingSlot }: { greetingSlot: ReactNode }) {
   );
 }
 
+/** The text of each kind of suggestion: always the interface's own, with the server's blanks. */
+const IDEAS: Record<HomeSuggestion["id"], MessageKey> = {
+  late: "web.home.idea.late",
+  bill: "web.home.idea.bill",
+  review: "web.home.idea.review",
+  week: "web.home.idea.week",
+  today: "web.home.idea.today",
+  rest: "web.home.idea.rest",
+  tomorrow: "web.home.idea.tomorrow",
+};
+
+function ideaText(t: ReturnType<typeof useI18n>["t"], idea: HomeSuggestion): string {
+  if (idea.id === "review" && !idea.name) return t("web.home.idea.reviewAnon");
+  return t(IDEAS[idea.id], { name: idea.name ?? "", time: idea.time ?? "" });
+}
+
 /** Whatever is written here opens a new conversation with it (ChatPage reads it from the address's state). */
 function Ask() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [text, setText] = useState("");
+  const field = useRef<HTMLTextAreaElement>(null);
+  // Picked on the server from the day; read again at most once a minute.
+  const suggestions = useQuery({
+    queryKey: ["home", "suggestions"],
+    queryFn: ({ signal }) => api<HomeSuggestions>("/home/suggestions", { signal }),
+    staleTime: 60_000,
+  });
   // What was said lands after what is written, for the owner to read before sending (as in the conversation).
   const voice = useVoice(useCallback((said: string) => setText((current) => (current.trim() ? `${current.trimEnd()} ${said}` : said).slice(0, CHAT_MESSAGE_MAX)), []));
   const ask = (message: string) => message.trim() && navigate("/conversa", { state: { ask: message.trim() } });
@@ -62,7 +85,13 @@ function Ask() {
     event.preventDefault();
     ask(text);
   };
-  const ideas = [t("web.home.idea.week"), t("web.home.idea.tomorrow"), t("web.home.idea.remind")];
+  // A suggestion only fills the field: nothing is sent until the owner sends it. The tap teaches the order (its kind, never the text).
+  const pick = (idea: HomeSuggestion) => {
+    setText(ideaText(t, idea));
+    field.current?.focus();
+    void api(`/home/suggestions/${idea.id}/used`, { method: "POST" }).catch(() => undefined);
+  };
+  const ideas = suggestions.data?.suggestions ?? [];
   return (
     <>
       <form
@@ -75,6 +104,7 @@ function Ask() {
         <label className="min-w-0 basis-full">
           <span className="sr-only">{t("web.home.ask")}</span>
           <textarea
+            ref={field}
             value={text}
             rows={1}
             onChange={(event) => setText(event.target.value)}
@@ -101,19 +131,23 @@ function Ask() {
           <ArrowUp className="h-5 w-5" strokeWidth={2.25} aria-hidden />
         </button>
       </form>
-      <ul className="mt-3 flex flex-wrap gap-2" aria-label={t("web.home.ideas")}>
-        {ideas.map((idea) => (
-          <li key={idea}>
-            <button
-              type="button"
-              onClick={() => ask(idea)}
-              className="min-h-11 rounded-full border border-border-strong bg-surface px-3.5 text-sm font-medium text-fg transition-colors hover:bg-raised"
-            >
-              {idea}
-            </button>
-          </li>
-        ))}
-      </ul>
+      {/* The chips' room is kept while they load, so "Seu dia" doesn't jump down when they arrive. */}
+      {suggestions.isPending && <div className="mt-3 min-h-11" aria-hidden />}
+      {ideas.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-2" aria-label={t("web.home.ideas")}>
+          {ideas.map((idea) => (
+            <li key={idea.id}>
+              <button
+                type="button"
+                onClick={() => pick(idea)}
+                className="min-h-11 rounded-full border border-border-strong bg-surface px-3.5 text-sm font-medium text-fg transition-colors hover:bg-raised"
+              >
+                {ideaText(t, idea)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }
