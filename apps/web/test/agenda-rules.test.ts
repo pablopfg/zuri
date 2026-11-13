@@ -68,7 +68,10 @@ describe("slotProblem and nextFree", () => {
   it("refuses lunch, the past and a day off of the settings", () => {
     expect(check("2026-11-16", 12 * 60)).toBe("lunch");
     expect(check("2026-11-13", 9 * 60)).toBe("past");
-    expect(slotProblem({ prefs: { ...prefs, closed: [{ date: "2026-11-17", reason: "" }] }, events, day: "2026-11-17", start: 540, end: 600, now: NOW, timeZone: SP })?.code).toBe("closed");
+    expect(slotProblem({ prefs: { ...prefs, closed: [{ from: "2026-11-17", to: "2026-11-18", reason: "" }] }, events, day: "2026-11-17", start: 540, end: 600, now: NOW, timeZone: SP })?.code).toBe("closed");
+    // Every day of a period is closed, and the day after it is open again.
+    expect(slotProblem({ prefs: { ...prefs, closed: [{ from: "2026-11-17", to: "2026-11-18", reason: "" }] }, events, day: "2026-11-18", start: 540, end: 600, now: NOW, timeZone: SP })?.code).toBe("closed");
+    expect(slotProblem({ prefs: { ...prefs, closed: [{ from: "2026-11-17", to: "2026-11-18", reason: "" }] }, events, day: "2026-11-19", start: 540, end: 600, now: NOW, timeZone: SP })?.code ?? null).toBeNull();
   });
 
   it("offers the next free hour among the events read, never past the last day read", () => {

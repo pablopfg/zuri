@@ -18,10 +18,10 @@ test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
  */
 const NOW = new Date("2026-11-16T07:20:00-03:00");
 /**
- * The office as this file needs it: every day, until 20:00, no lunch and the holiday of the 20th worked.
- * What is tested here is the hand (drag, keyboard, Desfazer); the booking rule is agenda-travas.spec.ts.
+ * The office as this file needs it: every day, until 20:00 and no lunch. The holiday of the 20th is always
+ * closed (13/11/2026). What is tested here is the hand (drag, keyboard, Desfazer); the rule is agenda-travas.spec.ts.
  */
-const OPEN = { workDays: [0, 1, 2, 3, 4, 5, 6], to: 20, lunch: null, openHolidays: ["2026-11-20"] };
+const OPEN = { workDays: [0, 1, 2, 3, 4, 5, 6], to: 20, lunch: null };
 const iso = (local: string) => new Date(`${local}:00-03:00`).toISOString();
 /** One hour of the week's grid, in pixels (3.5 rem). */
 const HOUR_PX = 56;
@@ -199,6 +199,8 @@ test("CA7: the lower edge changes the length a quarter of an hour at a time and 
   const low = { x: short.x, y: short.box.y + short.box.height - 2 };
   await drag(page, low, { x: low.x, y: low.y - 6 * HOUR_PX });
   await expect(helena).toContainText("09:00 – 09:15");
+  // The notice of this change arms the undo: Ctrl + Z before Google answers would have nothing to undo yet.
+  await expect(notice(page, "“Helena Duarte Prado” agora vai até 09:15.")).toBeVisible();
   expect(sent.patches[1]).toMatchObject({ etag: '"v2-0"', start: "2026-11-16T09:00", end: "2026-11-16T09:15" });
 
   // Ctrl + Z, while the notice offers "Desfazer", is the same as the button.
@@ -294,15 +296,15 @@ test("CA7: Alt + arrows move the event by the keyboard and send it once, when Al
   await page.keyboard.down("Alt");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowRight");
-  // Drawn in the next day, said as it moves, still focused, and nothing sent while Alt is held.
-  await expect(column(page, "20").getByRole("button", { name: /^Isadora Pires Falcão/ })).toContainText("09:30 – 10:30");
-  await expect(page.getByText("sexta-feira, 20 de novembro, das 09:30 às 10:30")).toHaveCount(1);
+  await page.keyboard.press("ArrowLeft");
+  // Drawn in the day before, said as it moves, still focused, and nothing sent while Alt is held.
+  await expect(column(page, "18").getByRole("button", { name: /^Isadora Pires Falcão/ })).toContainText("09:30 – 10:30");
+  await expect(page.getByText("quarta-feira, 18 de novembro, das 09:30 às 10:30")).toHaveCount(1);
   await expect(isadora).toBeFocused();
   expect(sent.patches).toHaveLength(0);
   await page.keyboard.up("Alt");
-  await expect(notice(page, "“Isadora Pires Falcão” agora é sex, 20/11 às 09:30. Ficou como Reagendado.")).toBeVisible();
-  expect(sent.patches).toEqual([{ calendarId: "main", eventId: "e4", etag: '"v1-4"', start: "2026-11-20T09:30", end: "2026-11-20T10:30", colorId: "5" }]);
+  await expect(notice(page, "“Isadora Pires Falcão” agora é qua, 18/11 às 09:30. Ficou como Reagendado.")).toBeVisible();
+  expect(sent.patches).toEqual([{ calendarId: "main", eventId: "e4", etag: '"v1-4"', start: "2026-11-18T09:30", end: "2026-11-18T10:30", colorId: "5" }]);
   await expect(isadora).toBeFocused();
 
   // With Shift, up and down change only the end.
@@ -312,7 +314,7 @@ test("CA7: Alt + arrows move the event by the keyboard and send it once, when Al
   await page.keyboard.press("Shift+ArrowUp");
   await page.keyboard.up("Alt");
   await expect(notice(page, "“Isadora Pires Falcão” agora vai até 10:45.")).toBeVisible();
-  expect(sent.patches[1]).toEqual({ calendarId: "main", eventId: "e4", etag: '"v2-4"', start: "2026-11-20T09:30", end: "2026-11-20T10:45" });
+  expect(sent.patches[1]).toEqual({ calendarId: "main", eventId: "e4", etag: '"v2-4"', start: "2026-11-18T09:30", end: "2026-11-18T10:45" });
 
   // Escape gives up a move not yet sent; a move back to where it was sends nothing.
   await page.keyboard.down("Alt");
@@ -322,8 +324,8 @@ test("CA7: Alt + arrows move the event by the keyboard and send it once, when Al
   await page.keyboard.up("Alt");
   await expect(isadora).toContainText("09:30 – 10:45");
   await page.keyboard.down("Alt");
-  await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowLeft");
   await page.keyboard.up("Alt");
   expect(sent.patches).toHaveLength(2);
 
