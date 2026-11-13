@@ -106,7 +106,7 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   // The same day at both ends, whatever hour the test runs at.
   const day = await form.getByLabel("Dia", { exact: true }).inputValue();
   // Another length than the list's: the end has its own day and hour.
-  await form.getByLabel("Dura").selectOption("other");
+  await form.getByLabel("Dura", { exact: true }).selectOption("other");
   await form.getByLabel("Termina em").fill(day);
   await form.getByLabel("Hora de início").fill("20:00");
   await form.getByLabel("Hora de fim").fill("19:00");

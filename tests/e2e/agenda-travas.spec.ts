@@ -158,7 +158,7 @@ test("a click on the lunch hour says why and offers the next free hour; a holida
   // The last half hour before lunch takes a half-hour appointment: the form opens with 30 minutes, not the notice.
   await clickHour(page, "19", 3.5);
   await expect(form.getByLabel("Hora de início")).toHaveValue("11:30");
-  await expect(form.getByLabel("Dura")).toHaveValue("30");
+  await expect(form.getByLabel("Dura", { exact: true })).toHaveValue("30");
 });
 
 test("a consultation dragged into the lunch or onto the holiday is refused with its reason, and a meeting is not", async ({ page }) => {
@@ -226,26 +226,49 @@ test("a consultation dragged into the lunch or onto the holiday is refused with 
   expect(sent.patches).toHaveLength(2);
 });
 
-test("the form refuses a consultation at lunch and points at the start; without a type the lunch takes it", async ({ page }) => {
+test("the form refuses a consultation at lunch over the form, with Corrigir, Esc and the next free hour; without a type the lunch takes it", async ({ page }) => {
   const sent = await routeAgenda(page, WEEK);
   await openAgenda(page);
   await event(page, "Isadora Pires Falcão").click();
   await page.getByRole("dialog", { name: "Isadora Pires Falcão" }).getByRole("button", { name: "Editar" }).click();
   const form = page.getByRole("dialog", { name: "Editar evento" });
-  await form.getByLabel("Hora de início").fill("12:30");
-  await form.getByRole("button", { name: "Salvar" }).click();
-  await expect(form.getByRole("alert")).toHaveText("No almoço, das 12:00 às 14:00, não entra consulta.");
-  await expect(form.getByLabel("Hora de início")).toBeFocused();
-  expect(sent.patches).toEqual([]);
+  const start = form.getByLabel("Hora de início");
+  const save = form.getByRole("button", { name: "Salvar" });
+  // Changed herself, her own 09:00 is free; Renato takes 14:00, so the next free hour after lunch is 15:00 (E5c, protótipo v52).
+  await start.fill("12:30");
+  await save.click();
+  const refusal = page.getByRole("alertdialog", { name: "Consulta não entra neste horário" });
+  await expect(refusal).toHaveAccessibleDescription("qui, 19/11, às 12:30. No almoço, das 12:00 às 14:00, não entra consulta.");
+  await expect(refusal.getByText("Próximo horário livre: qui, 19/11, às 15:00.")).toBeVisible();
+  await expect(refusal.getByRole("button", { name: "Usar este horário" })).toBeFocused();
   await expectAccessible(page, "agenda-travas-formulario");
+  // Esc closes only the notice: the form stays as it was typed, the cursor on the start.
+  await page.keyboard.press("Escape");
+  await expect(refusal).toHaveCount(0);
+  await expect(form).toBeVisible();
+  await expect(start).toBeFocused();
+  await expect(start).toHaveValue("12:30");
+  await save.click();
+  await refusal.getByRole("button", { name: "Corrigir" }).click();
+  await expect(start).toBeFocused();
+  // "Usar este horário" takes the next free hour, keeps the length and goes to Salvar.
+  await save.click();
+  await refusal.getByRole("button", { name: "Usar este horário" }).click();
+  await expect(refusal).toHaveCount(0);
+  await expect(start).toHaveValue("15:00");
+  await expect(form.getByLabel("Dura", { exact: true })).toHaveValue("60");
+  await expect(save).toBeFocused();
+  await expect(form.getByText("Horário trocado para qui, 19/11, às 15:00. Confira e toque em Salvar.")).toBeAttached();
+  expect(sent.patches).toEqual([]);
   // Minutes off the five-minute step are refused before anything else.
-  await form.getByLabel("Hora de início").fill("10:03");
-  await form.getByRole("button", { name: "Salvar" }).click();
-  await expect(form.getByRole("alert")).toHaveText("Use horários de 5 em 5 minutos, por exemplo 14:30 ou 14:35.");
+  await start.fill("10:03");
+  await save.click();
+  await expect(refusal).toHaveAccessibleDescription(/Use horários de 5 em 5 minutos, por exemplo 14:30 ou 14:35\.$/);
+  await page.keyboard.press("Escape");
   // Without a type it is a personal event: the lunch takes it.
-  await form.getByLabel("Hora de início").fill("12:30");
+  await start.fill("12:30");
   await form.getByLabel("Tipo").selectOption("");
-  await form.getByRole("button", { name: "Salvar" }).click();
+  await save.click();
   await expect(form).toHaveCount(0);
   expect(sent.patches).toHaveLength(1);
   expect(sent.patches[0]).toMatchObject({ eventId: "e0", start: "2026-11-19T12:30", end: "2026-11-19T13:30", description: "" });
