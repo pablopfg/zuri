@@ -42,6 +42,7 @@ export const LOG_EVENTS = [
   "reviews_breaker",
   "reviews_auto_stopped",
   "reviews_draft_failed",
+  "review_requests_failed",
   "review_replied",
   "automation_interrupted",
   "flow_failed",
@@ -144,6 +145,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "config", "mode", "days", "watch",
   // The outbox (PR S19).
   "outbox",
+  // Review requests and the link (PR S20).
+  "requests", "link", "send", "match", "open",
 ]);
 const MAX_SEGMENTS = 8;
 

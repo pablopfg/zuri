@@ -184,13 +184,21 @@ export function mark(firstName: string, anonymous: boolean): string {
 }
 
 /** The parts of the area after /avaliacoes; App.tsx sends anything else back to the overview. */
-export const REVIEW_PARTS = ["lista", "ajustes"] as const;
+export const REVIEW_PARTS = ["lista", "pedidos", "ajustes"] as const;
 export type ReviewPart = (typeof REVIEW_PARTS)[number];
+
+/** The parts of Avaliações › Ajustes after /avaliacoes/ajustes (none: the connection). */
+export const REVIEW_SETTING_PARTS = ["responder", "pedidos"] as const;
 
 /** Where an address under /avaliacoes should go instead, or null when it is a real one. */
 export function reviewAddress(part: string | undefined, item: string | undefined): string | null {
   if (part === undefined) return null;
-  if (part === "lista") return item === undefined || /^[0-9a-f-]{36}$/.test(item) ? null : "/avaliacoes/lista";
-  if (part === "ajustes") return item === undefined || item === "responder" ? null : "/avaliacoes/ajustes";
+  if (part === "lista" || part === "pedidos") return item === undefined || /^[0-9a-f-]{36}$/.test(item) ? null : `/avaliacoes/${part}`;
+  if (part === "ajustes") return item === undefined || (REVIEW_SETTING_PARTS as readonly string[]).includes(item) ? null : "/avaliacoes/ajustes";
   return "/avaliacoes";
+}
+
+/** The WhatsApp address that opens a chat with `phone` (digits only) and the text written in. */
+export function whatsAppLink(phone: string, text: string): string {
+  return `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
 }

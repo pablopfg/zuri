@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { REVIEW_LIMITS, recommendationIndex } from "../src/reviews.ts";
+import { messageHasAddress, REVIEW_LIMITS, recommendationIndex } from "../src/reviews.ts";
 import { reviewApproveSchema, reviewMetricsQuerySchema, reviewSettingsSchema } from "../src/reviews-schemas.ts";
 
 // Step 19c: the edges of what the owner may save and approve (n-1, n, n+1).
@@ -78,5 +78,12 @@ describe("the recommendation index (PR S11)", () => {
 
   it("is null without reviews, never a zero that would read as a bad score", () => {
     expect(recommendationIndex({ promoters: 0, neutrals: 0, detractors: 0 })).toBeNull();
+  });
+});
+
+describe("the review request's message (PR S20)", () => {
+  it("S20-2: refuses an address besides {link}, never a sentence's full stop", () => {
+    for (const text of ["https://exemplo.com.br {link}", "http:x {link}", "www.exemplo {link}", "exemplo.com.br/a {link}", "golpe.io {link}", "Veja-aqui.app"]) expect(messageHasAddress(text), text).toBe(true);
+    for (const text of ["Oi, {primeiro_nome}! Obrigada pela consulta. Leva 1 minuto: {link}", "{link}", "Até 2.5 minutos", "Dr. Silva {link}", "fim.Às"]) expect(messageHasAddress(text), text).toBe(false);
   });
 });

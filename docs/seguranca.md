@@ -1002,6 +1002,55 @@ que a Zuri lê. O que protege:
   Desligar as avaliações ou desconectar o Google apaga a cópia guardada; no
   Google nada muda.
 
+### Pedidos de avaliação e o link `/a/<código>`
+
+A S20 deixa o dono pedir uma avaliação com um toque (`docs/avaliacoes-google.md`).
+A Zuri não envia nada sozinha: o WhatsApp do dono abre com o texto pronto e
+quem envia é ele. O que protege:
+
+- **Rota pública estreita.** `/a/<código>` é tratada pelo Worker depois do
+  domínio e do HTTPS e antes do Access, só em GET e HEAD, com um código de
+  exatamente 10 caracteres (cerca de 57 bits, sorteado com
+  `crypto.getRandomValues`). O Worker repassa ao objeto por um cabeçalho
+  interno que ninguém de fora consegue mandar (o prefixo `x-zuri-client-` é
+  tirado de toda requisição). A resposta sai sem cookie, com `no-store`,
+  `no-referrer`, HSTS, `x-frame-options: DENY` e
+  `cross-origin-resource-policy: same-origin`.
+- **Destino só do banco.** O endereço nunca escolhe para onde vai: o destino é
+  a página de avaliação do perfil guardada no banco, conferida de novo no
+  objeto e no Worker (só `https` e só os hosts de avaliação do Google). Nada
+  na consulta (`?next=`) é usado.
+- **Limite sem gravar.** As aberturas são contadas na memória do objeto, por
+  rede (HMAC do endereço, `/64` no IPv6) e no total do minuto: 30 por rede e
+  300 no total. Um código desconhecido ou recusado não grava nada no banco.
+  Um reinício do objeto zera a conta, o que só deixa passar mais algumas.
+- **Mensagem sem endereço estranho.** Só o `{link}` pode levar a um endereço:
+  a mensagem com `http`, `www.` ou um `palavra.dominio` é recusada. Assim uma
+  sessão roubada não troca o texto para mandar os pacientes a outro lugar. O
+  link de destino exige a senha digitada há pouco e gera alerta de
+  segurança.
+- **Homônimos nunca ligam sozinhos.** Do nome de quem avaliou ficam só duas
+  impressões HMAC (o nome inteiro; o primeiro com o último), nunca o nome.
+  Dois contatos com o nome (com ou sem título, como "Dra."), um de mesmo
+  primeiro e último nome ou mais contatos com o primeiro nome do que a Zuri
+  lê (300) fazem o dono escolher, e ninguém recebe pedido antes disso.
+- **Chave das impressões.** As impressões e a chave por rede usam o
+  `PASSWORD_PEPPER` com um prefixo próprio em cada texto (HMAC, que separa os
+  usos). Trocar o pepper faz as impressões guardadas pararem de bater: as
+  avaliações de antes não acham mais o contato pelo nome, e um paciente que
+  já avaliou pode voltar a aparecer na lista. Depois de trocar, confira os
+  pedidos antes de enviar.
+- **Código no log.** O código vai no caminho, então aparece nos logs de
+  invocação do Workers Logs, junto com o IP. Quem lê os logs da conta pode
+  marcar uma abertura falsa e mexer no palpite de quem avaliou (um único link
+  aberto nas 48 horas antes de uma avaliação anônima). Não leva a dado de
+  ninguém: o código só abre a página pública do Google.
+- **Bloqueio.** No bloqueio o link continua levando ao Google e anotando a
+  abertura (o paciente não tem como saber do bloqueio), mas nada lê a agenda
+  nem monta a lista.
+- **Fora do backup.** Os links, as aberturas e as impressões ficam fora do
+  backup. Desconectar o Google apaga pedidos e links.
+
 ## Sem acesso por token
 
 Decisão do Pablo (11/11/2026): a Zuri não tem API para outros sistemas. O

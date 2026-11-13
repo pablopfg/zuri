@@ -388,7 +388,7 @@ describe("the overview read from the copy", () => {
       const metrics = world.reviews.metrics("30d");
       expect(metrics.partial).toBe(true);
       expect(metrics.ratings).toEqual([REVIEW_LIMITS.metricsRows, 0, 0, 0, 0]);
-      // One row of the index per review counted, the one that shows there are more, and the settings.
-      expect(world.db.usage.rowsRead - before).toBeLessThanOrEqual(REVIEW_LIMITS.metricsRows + 5);
+      // One row of the index per review counted, the one that shows there are more, the settings and the requests' funnel (none sent).
+      expect(world.db.usage.rowsRead - before).toBeLessThanOrEqual(REVIEW_LIMITS.metricsRows + 7);
     }));
 });

@@ -9,6 +9,7 @@ import { api, errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
 import { guardTexts, REVIEW_REASON_TEXT, REVIEW_SOURCE_TEXT, REVIEW_STATE_TEXT, REVIEWS_KEY, refusedCodes } from "../../lib/reviews.ts";
 import { Mark, Stars } from "./parts.tsx";
+import { ReviewMatchBlock } from "./Requests.tsx";
 
 const TAB_TEXT = { needs: "web.reviews.tab.needs", answered: "web.reviews.tab.answered", auto: "web.reviews.tab.auto", all: "web.reviews.tab.all" } as const;
 const EMPTY_TEXT = {
@@ -236,6 +237,7 @@ function ReviewCard({ review, paused, level }: { review: ReviewItem; paused: boo
           </li>
         ))}
       </ul>
+      <ReviewMatchBlock review={review} />
       {review.comment ? (
         <blockquote className="whitespace-pre-wrap break-words border-l-2 border-border-strong pl-4 text-[15px] leading-7">{review.comment}</blockquote>
       ) : (

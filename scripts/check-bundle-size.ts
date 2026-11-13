@@ -24,9 +24,12 @@ import { gzipSync } from "node:zlib";
 // 141 kB (12/11/2026), the top of what the owner approved on 10/11/2026: the notice
 // sound adds 33 bytes to the first load (two names in its list of files to fetch;
 // the sound code itself loads after the first screen), which left 9 bytes of room.
+// 141.1 kB, with the owner's OK on 13/11/2026 (PR S20): the review requests add
+// nothing to the first load, but the hashed names of the files to fetch change
+// with every build and took the 13 bytes of room left (141,003 B measured).
 // Never raise it without the owner's OK; the ceiling of P11 is 160 kB and its
 // goal 150 kB.
-const BUDGET_KB = 141;
+const BUDGET_KB = 141.1;
 
 const dist = join(import.meta.dirname, "..", "apps", "web", "dist");
 const html = readFileSync(join(dist, "index.html"), "utf8");
