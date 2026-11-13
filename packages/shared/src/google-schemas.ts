@@ -2,7 +2,8 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { CALENDAR_MODES, EVENT_STATUS_COLOR, GOOGLE_LIMITS, GOOGLE_STATE_PREFIX } from "./google.ts";
+import { isCountry, validPhone } from "./countries.ts";
+import { CALENDAR_MODES, EVENT_PAYMENTS, EVENT_STATUS_COLOR, GOOGLE_LIMITS, GOOGLE_STATE_PREFIX, PATIENT_LIMITS } from "./google.ts";
 
 /**
  * The Google Calendar routes' request bodies (step 19). Apart from google.ts,
@@ -50,6 +51,25 @@ const eventFields = /* @__PURE__ */ (() => ({
   description: z.string().max(GOOGLE_LIMITS.descriptionMax),
 }))();
 
+/**
+ * The patient's contact and the payment (E5e), each one optional; "" clears it at Google. Only these
+ * keys reach the event's private properties: the schema is strict.
+ */
+const patientFields = /* @__PURE__ */ (() => ({
+  country: z.string().refine((code) => code === "" || isCountry(code)).optional(),
+  phone: z.string().regex(/^\d{0,15}$/).optional(),
+  email: z.union([z.literal(""), z.string().max(PATIENT_LIMITS.emailMax).email()]).optional(),
+  payment: z.enum([...EVENT_PAYMENTS, ""]).optional(),
+  /** Ask Google for a Meet call (true) or take the call off (false). */
+  meet: z.boolean().optional(),
+}))();
+
+/** A phone is read with its country: the one sent, else Brazil. */
+function phoneFits(value: { country?: string | undefined; phone?: string | undefined }): boolean {
+  if (!value.phone) return true;
+  return validPhone(value.country || "BR", value.phone);
+}
+
 /** A status, as the color it is at Google: one of the four, never another color. */
 const statusColor = /* @__PURE__ */ (() => z.enum(Object.values(EVENT_STATUS_COLOR)))();
 
@@ -62,8 +82,10 @@ export const googleEventCreateSchema = /* @__PURE__ */ (() =>
       description: eventFields.description.optional(),
       /** Born with a status other than "Agendado": the color it is at Google. */
       colorId: statusColor.optional(),
+      ...patientFields,
     })
-    .strict())();
+    .strict()
+    .refine(phoneFits, { path: ["phone"] }))();
 export type GoogleEventCreate = z.input<typeof googleEventCreateSchema>;
 
 /** A change of one event: only the fields sent, and the version the owner saw (`etag`). */
@@ -81,8 +103,10 @@ export const googleEventUpdateSchema = /* @__PURE__ */ (() =>
       description: eventFields.description.optional(),
       /** The status, as the color it is at Google; "" takes the color off. Never another color. */
       colorId: z.enum([...Object.values(EVENT_STATUS_COLOR), ""]).optional(),
+      ...patientFields,
     })
-    .strict())();
+    .strict()
+    .refine(phoneFits, { path: ["phone"] }))();
 export type GoogleEventUpdate = z.input<typeof googleEventUpdateSchema>;
 
 export const googleEventDeleteSchema = /* @__PURE__ */ (() => z.object({ calendarId, eventId, etag: z.string().min(1).max(200) }).strict())();

@@ -260,6 +260,45 @@ describe("events and calendars other people see", () => {
     expect(readEvent({ ...base, attendees: [{}] }, PRIMARY)).toMatchObject({ shared: true, guests: 1 });
   });
 
+  it("E5e: readEvent takes from the private properties only what Zuri writes, and only Google's own Meet address", () => {
+    const base = { id: "e", start: { dateTime: "2026-11-03T15:00:00Z" }, end: { dateTime: "2026-11-03T16:00:00Z" } };
+    const props = (values: Record<string, unknown>) => readEvent({ ...base, extendedProperties: { private: values } }, PRIMARY);
+    expect(props({ zuriCountry: "BR", zuriPhone: "41999990000", zuriEmail: "a@exemplo.com.br", zuriPayment: "free", other: "x" })).toMatchObject({
+      country: "BR",
+      phone: "41999990000",
+      email: "a@exemplo.com.br",
+      payment: "free",
+    });
+    // Anyone with access to the calendar can set these: what is out of shape is left out, never shown.
+    const hostile = props({ zuriCountry: "ZZ", zuriPhone: "<img src=x>", zuriEmail: "javascript:alert(1)", zuriPayment: "paid; drop" });
+    for (const key of ["country", "phone", "email", "payment"]) expect(hostile).not.toHaveProperty(key);
+    expect(readEvent({ ...base, extendedProperties: "x" }, PRIMARY)).not.toHaveProperty("phone");
+    expect(props({ zuriPhone: 41999990000 })).not.toHaveProperty("phone");
+
+    const meet = (extra: Record<string, unknown>) => readEvent({ ...base, ...extra }, PRIMARY)?.meet;
+    expect(meet({ hangoutLink: "https://meet.google.com/abc-defg-hij" })).toBe("https://meet.google.com/abc-defg-hij");
+    expect(meet({ conferenceData: { entryPoints: [{ entryPointType: "video", uri: "https://meet.google.com/abc-defg-hij" }] } })).toBe("https://meet.google.com/abc-defg-hij");
+    expect(meet({ hangoutLink: "javascript:alert(1)" })).toBeUndefined();
+    expect(meet({ hangoutLink: "https://meet.google.com.exemplo.com.br/abc-defg-hij" })).toBeUndefined();
+    expect(meet({ conferenceData: { entryPoints: [{ entryPointType: "video", uri: "https://zoom.exemplo.com.br/j/1" }] } })).toBeUndefined();
+    expect(meet({ conferenceData: { createRequest: { status: { statusCode: "pending" } } } })).toBe("pending");
+    expect(meet({ conferenceData: { createRequest: { status: { statusCode: "failure" } } } })).toBe("failed");
+    expect(meet({})).toBeUndefined();
+  });
+
+  it("E5e: eventBody writes the private properties and the Meet request, and a change clears with null", () => {
+    const zone = "America/Sao_Paulo";
+    const created = eventBody({ title: "x", start: "2026-11-30T14:00", phone: "41999990000", country: "BR", email: "", payment: "unpaid", meet: true }, zone);
+    expect(created.extendedProperties).toEqual({ private: { zuriPhone: "41999990000", zuriCountry: "BR", zuriPayment: "unpaid" } });
+    expect(created.conferenceData).toMatchObject({ createRequest: { conferenceSolutionKey: { type: "hangoutsMeet" } } });
+    const base = { start: { dateTime: "2026-11-30T17:00:00Z" }, end: { dateTime: "2026-11-30T18:00:00Z" } };
+    const patch = eventBody({ phone: "", meet: false }, zone, base);
+    expect(patch).toEqual({ extendedProperties: { private: { zuriPhone: null } }, conferenceData: null });
+    // A new event never sends a null.
+    expect(eventBody({ title: "x", start: "2026-11-30T14:00", phone: "", meet: false }, zone)).not.toHaveProperty("extendedProperties");
+    expect(eventBody({ title: "x", start: "2026-11-30T14:00", meet: false }, zone)).not.toHaveProperty("conferenceData");
+  });
+
   it("the calendar names the model reads come only inside <data>, never in an error", () =>
     withChatWorld(async (world) => {
       await connect(world, { [PRIMARY]: "write", [READER]: "read" });

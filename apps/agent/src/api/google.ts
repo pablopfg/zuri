@@ -73,6 +73,10 @@ async function owner<T>(work: () => Promise<T>): Promise<T> {
  * it. The answer is always an empty 200, so a probe learns nothing, and
  * Google never retries.
  */
+
+/** The patient's contact and the payment of an appointment, kept in the event's private properties (E5e). */
+const PATIENT_KEYS = ["country", "phone", "email", "payment"] as const;
+
 export function registerGooglePush(app: Hono<ApiEnv>, deps: () => GoogleRouteDeps): void {
   app.post(GOOGLE_PUSH_PATH.replace(/^\/api/, ""), async (c) => {
     await c.req.raw.body?.cancel();
@@ -264,6 +268,8 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     const draft: EventDraft = { title: input.title, allDay: input.allDay, start: input.start, end: input.end };
     if (input.location) draft.location = input.location;
     if (input.description) draft.description = input.description;
+    for (const key of PATIENT_KEYS) if (input[key]) draft[key] = input[key];
+    if (input.meet) draft.meet = true;
     const event = await owner(async () => {
       const zone = deps().timeZone();
       const body = eventBody(draft, zone);
@@ -286,6 +292,9 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
       const draft: EventDraft = {};
       for (const key of ["title", "start", "end", "location", "description"] as const) if (input[key] !== undefined) draft[key] = input[key];
       if (input.allDay !== undefined) draft.allDay = input.allDay;
+      // Only what differs from Google's version: an unchanged field writes nothing (rule P4).
+      for (const key of PATIENT_KEYS) if (input[key] !== undefined && input[key] !== (current[key] ?? "")) draft[key] = input[key];
+      if (input.meet !== undefined && input.meet !== (current.meet !== undefined)) draft.meet = input.meet;
       const base = current.allDay ? { start: { date: current.start }, end: { date: current.end } } : { start: { dateTime: current.start }, end: { dateTime: current.end } };
       const zone = deps().timeZone();
       const patch = eventBody(draft, zone, base);

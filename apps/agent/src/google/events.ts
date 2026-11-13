@@ -1,4 +1,4 @@
-import { GOOGLE_LIMITS, isValidCalendarDate, zonedParts, zonedTimeToUtc } from "@zuri/shared";
+import { EVENT_PAYMENTS, type EventPayment, GOOGLE_LIMITS, isCountry, isValidCalendarDate, MEET_URL, PATIENT_LIMITS, zonedParts, zonedTimeToUtc } from "@zuri/shared";
 
 /**
  * Dates of the Google Calendar (step 19): what the owner and the model write
@@ -63,16 +63,49 @@ export interface EventDraft {
   allDay?: boolean;
   location?: string;
   description?: string;
+  /** The patient's contact and the payment (E5e); "" clears one. */
+  country?: string;
+  phone?: string;
+  email?: string;
+  payment?: string;
+  /** Ask Google for a Meet call, or take it off. */
+  meet?: boolean;
+}
+
+/**
+ * The event's private properties Zuri writes, and nothing else: a private property shows only on this
+ * calendar's copy, never in Google Calendar's screen or to a guest.
+ */
+export const PRIVATE_KEYS = { country: "zuriCountry", phone: "zuriPhone", email: "zuriEmail", payment: "zuriPayment" } as const;
+
+/**
+ * The private properties and the Meet request of a draft. A change (PATCH) merges into Google's map, so
+ * a key cleared is sent as null; a new event leaves it out.
+ */
+function extras(draft: EventDraft, patching: boolean): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const props: Record<string, string | null> = {};
+  for (const field of Object.keys(PRIVATE_KEYS) as (keyof typeof PRIVATE_KEYS)[]) {
+    const value = draft[field];
+    if (value === undefined) continue;
+    if (value !== "") props[PRIVATE_KEYS[field]] = value;
+    else if (patching) props[PRIVATE_KEYS[field]] = null;
+  }
+  if (Object.keys(props).length > 0) out.extendedProperties = { private: props };
+  if (draft.meet === true) out.conferenceData = { createRequest: { requestId: crypto.randomUUID(), conferenceSolutionKey: { type: "hangoutsMeet" } } };
+  else if (draft.meet === false && patching) out.conferenceData = null;
+  return out;
 }
 
 /**
  * The Google body of a draft. A new timed event lasts an hour unless told;
  * moving only the start of an event keeps its length; an all-day end is
- * inclusive here and exclusive at Google. Never attendees, reminders or
- * conference data: Zuri sends nothing to anyone else.
+ * inclusive here and exclusive at Google. Never attendees or reminders:
+ * Zuri sends nothing to anyone else. A Meet call (E5e, approved 13/11/2026)
+ * only makes a link at Google; nobody is invited to it.
  */
 export function eventBody(draft: EventDraft, timeZone: string, base?: { start?: EventTime; end?: EventTime }): Record<string, unknown> {
-  const body: Record<string, unknown> = {};
+  const body: Record<string, unknown> = extras(draft, base !== undefined);
   if (draft.title !== undefined) body.summary = draft.title;
   if (draft.location !== undefined) body.location = draft.location;
   if (draft.description !== undefined) body.description = draft.description;
@@ -168,6 +201,13 @@ export interface CalendarEvent {
    * A change by the model to such an event reaches other people, so it is never made without the owner.
    */
   shared: boolean;
+  /** The patient's contact and the payment, from the private properties (E5e); absent when unset. */
+  country?: string;
+  phone?: string;
+  email?: string;
+  payment?: EventPayment;
+  /** The Meet call: Google's address, "pending" while Google makes it, "failed" when it could not. */
+  meet?: string;
 }
 
 /** One of Google's events, or null when it is cancelled or has no usable time. */
@@ -204,7 +244,46 @@ export function readEvent(item: unknown, calendarId: string): CalendarEvent | nu
     guests,
     colorId: typeof e.colorId === "string" && COLOR_ID.test(e.colorId) ? e.colorId : "",
     shared: guests > 0 || !organizedHere(e.organizer, calendarId),
+    ...privateFields(e.extendedProperties),
+    ...meetOf(e),
   };
+}
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * The private properties Zuri wrote, each one only when it is what Zuri writes: anyone with access to
+ * the calendar can set them, so a value out of shape is left out, never shown.
+ */
+function privateFields(value: unknown): Pick<CalendarEvent, "country" | "phone" | "email" | "payment"> {
+  const props = value && typeof value === "object" ? (value as { private?: unknown }).private : undefined;
+  if (!props || typeof props !== "object") return {};
+  const read = (key: string) => {
+    const item = (props as Record<string, unknown>)[key];
+    return typeof item === "string" ? item : "";
+  };
+  const out: Pick<CalendarEvent, "country" | "phone" | "email" | "payment"> = {};
+  const country = read(PRIVATE_KEYS.country);
+  if (isCountry(country)) out.country = country;
+  const phone = read(PRIVATE_KEYS.phone);
+  if (/^\d{6,15}$/.test(phone)) out.phone = phone;
+  const email = read(PRIVATE_KEYS.email);
+  if (email.length <= PATIENT_LIMITS.emailMax && EMAIL.test(email)) out.email = email;
+  const payment = read(PRIVATE_KEYS.payment);
+  if ((EVENT_PAYMENTS as readonly string[]).includes(payment)) out.payment = payment as EventPayment;
+  return out;
+}
+
+/** The Meet call of an event: only Google's own address becomes a link. */
+function meetOf(e: Record<string, unknown>): Pick<CalendarEvent, "meet"> {
+  const conference = e.conferenceData && typeof e.conferenceData === "object" ? (e.conferenceData as Record<string, unknown>) : null;
+  const points = Array.isArray(conference?.entryPoints) ? (conference.entryPoints as { entryPointType?: unknown; uri?: unknown }[]) : [];
+  const video = points.find((point) => point && point.entryPointType === "video")?.uri;
+  for (const uri of [e.hangoutLink, video]) if (typeof uri === "string" && MEET_URL.test(uri)) return { meet: uri };
+  const status = (conference?.createRequest as { status?: { statusCode?: unknown } } | undefined)?.status?.statusCode;
+  if (status === "pending") return { meet: "pending" };
+  if (status === "failure") return { meet: "failed" };
+  return {};
 }
 
 /** The owner (or this very calendar) organizes the event; no organizer at all counts as theirs. */
