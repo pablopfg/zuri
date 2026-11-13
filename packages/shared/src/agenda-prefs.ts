@@ -1,5 +1,7 @@
 /**
- * How the Agenda shows the owner's days (Sinal, S08). No schema here: the
+ * How the Agenda shows the owner's days (Sinal, S08) and, since 13/11/2026,
+ * when the office takes appointments: one place for both (rule
+ * uma-fonte-por-ajuste). No schema here: the
  * screens import this file, and the schema lives in settings.ts (rule P11).
  */
 
@@ -19,9 +21,17 @@ export interface AgendaPrefs {
   workDays: number[];
   /** Whether the week also shows the days off. */
   daysOff: boolean;
-  /** Whether all-day events and events outside the working hours show without asking. */
-  allDay: boolean;
+  /** Whether events outside the working hours show without asking. */
   outside: boolean;
+  /**
+   * The lunch break, in minutes of the owner's clock (720 = 12:00), or none.
+   * No appointment goes into it (13/11/2026): see agenda-rules.ts.
+   */
+  lunch: { from: number; to: number } | null;
+  /** National holidays the owner works on ("YYYY-MM-DD"): any other closes the day by itself. */
+  openHolidays: string[];
+  /** Days off (a break, a holiday of the city), each with an optional reason. */
+  closed: { date: string; reason: string }[];
 }
 
 export const DEFAULT_AGENDA_PREFS: AgendaPrefs = /* @__PURE__ */ Object.freeze({
@@ -31,6 +41,8 @@ export const DEFAULT_AGENDA_PREFS: AgendaPrefs = /* @__PURE__ */ Object.freeze({
   weekStart: 1,
   workDays: [1, 2, 3, 4, 5],
   daysOff: true,
-  allDay: true,
   outside: true,
+  lunch: { from: 720, to: 840 },
+  openHolidays: [],
+  closed: [],
 });

@@ -1,4 +1,6 @@
-import { type AgendaEvent, AGENDA_LIMITS, type AgendaPrefs, type AgendaView, type EventStatus, eventStatus, type GoogleCalendarInfo, zonedParts } from "@zuri/shared";
+import { type AgendaEvent, AGENDA_LIMITS, bindsBooking, typeLine, type AgendaPrefs, type AgendaView, type EventStatus, eventStatus, type GoogleCalendarInfo, zonedParts } from "@zuri/shared";
+
+export { typeLine };
 
 /**
  * The Agenda screen's dates (step 19). Days are "YYYY-MM-DD" in the owner's
@@ -116,26 +118,6 @@ export function eventsOn(events: readonly AgendaEvent[], day: string, timeZone: 
     .sort((a, b) => (a.allDay === b.allDay ? (a.start < b.start ? -1 : a.start > b.start ? 1 : 0) : a.allDay ? -1 : 1));
 }
 
-const plain = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-const KNOWN_TYPE = /^(?:primeira consulta|consulta|retorno|avaliacao|atendimento)(?:\s|$)/;
-
-/**
- * The line of a description that is the appointment's type, by the rule the
- * server reads appointments with (apps/agent/src/google/appointments.ts): a
- * line shaped "Type | Place" whose type has a letter, is at most 80 characters
- * and is no address or tag. One that says "Consulta" or "Retorno" wins over any
- * other line that happens to hold a "|"; without a shaped line, the first that
- * begins with "Consulta" or "Retorno". "" when the event has no type.
- */
-export function typeLine(description: string): string {
-  const lines = description.split("\n").map((line) => line.trim());
-  const shaped = lines.filter((line) => {
-    const type = /^([^|<>]{1,80})\|\s*[^|<>\s][^|<>]{0,119}$/.exec(line)?.[1] ?? "";
-    return /\p{L}/u.test(type) && !line.includes("://");
-  });
-  return shaped.find((line) => KNOWN_TYPE.test(plain(line))) ?? lines.find((line) => /^(?:primeira consulta|consulta|retorno)(?:\s|$)/.test(plain(line)) && !/[|<>]/.test(line)) ?? shaped[0] ?? "";
-}
-
 /** "Consulta" of "Consulta | Consultório". */
 export function typeName(line: string): string {
   return (line.split("|")[0] ?? "").trim();
@@ -189,18 +171,18 @@ export interface EventForm {
  * A new event: one hour long, at `time` when the owner clicked an hour of the
  * week, else at the next whole hour of the day chosen (today: from now).
  */
-export function blankForm(day: string, calendarId: string, timeZone: string, now = Date.now(), time?: string): EventForm {
+export function blankForm(day: string, calendarId: string, timeZone: string, now = Date.now(), time?: string, minutes = 60): EventForm {
   const today = localDate(now, timeZone);
   const hour = day === today ? Math.min(zonedParts(new Date(now), timeZone).hour + 1, 23) : 9;
   const startTime = time ?? `${pad(hour)}:00`;
-  const end = later(day, startTime, 60);
+  const end = later(day, startTime, minutes);
   return {
     calendarId,
     title: "",
     allDay: false,
     startDate: day,
     startTime,
-    duration: "60",
+    duration: String(minutes),
     endDate: end.date,
     endTime: end.time,
     type: "",
@@ -278,7 +260,7 @@ export function changedFields(before: EventForm, after: ReturnType<typeof formBo
 }
 
 /** The slice of the preferences that decides what a day shows. */
-export type DayPrefs = Pick<AgendaPrefs, "from" | "to" | "allDay" | "outside">;
+export type DayPrefs = Pick<AgendaPrefs, "from" | "to" | "outside">;
 
 /**
  * The shortest block the week draws, in minutes of its scale: a 5-minute event is still a button
@@ -376,15 +358,13 @@ export function outsideHours(event: AgendaEvent, day: string, hours: { from: num
 
 /**
  * What a day lists under the preferences, and how many events they left out.
- * Nothing leaves without a count: the screen shows it beside "Mostrar".
+ * Nothing leaves without a count: the screen shows it beside "Mostrar". All-day
+ * events always show (the "Dia todo" choice left on 13/11/2026).
  */
-export function dayEvents(events: readonly AgendaEvent[], day: string, prefs: DayPrefs, timeZone: string): { events: AgendaEvent[]; allDay: number; outside: number } {
-  const out = { events: [] as AgendaEvent[], allDay: 0, outside: 0 };
+export function dayEvents(events: readonly AgendaEvent[], day: string, prefs: DayPrefs, timeZone: string): { events: AgendaEvent[]; outside: number } {
+  const out = { events: [] as AgendaEvent[], outside: 0 };
   for (const event of eventsOn(events, day, timeZone)) {
-    if (event.allDay) {
-      if (prefs.allDay) out.events.push(event);
-      else out.allDay++;
-    } else if (!prefs.outside && outsideHours(event, day, prefs, timeZone)) out.outside++;
+    if (!event.allDay && !prefs.outside && outsideHours(event, day, prefs, timeZone)) out.outside++;
     else out.events.push(event);
   }
   return out;
@@ -450,4 +430,15 @@ export function eventLook(event: Pick<AgendaEvent, "colorId">, calendar: Pick<Go
 export function isWeekend(day: string): boolean {
   const n = weekday(day);
   return n === 0 || n === 6;
+}
+
+/** Whether an event is bound by the rule: it has a type ("Consulta | Consultório") and is not cancelled. */
+/** Whether the booking rule binds an event: the same test the server makes (packages/shared/src/agenda-rules.ts). */
+export function isAppointment(event: Pick<AgendaEvent, "description" | "colorId" | "allDay">): boolean {
+  return bindsBooking(event);
+}
+
+/** "14:05" of 845 minutes. */
+export function hhmm(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }

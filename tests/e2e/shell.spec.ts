@@ -136,7 +136,7 @@ test("settings has the nine sections, each with its address and content: tabs on
     ["Segurança", "seguranca", "Atividade de acesso"],
     ["Uso da IA", "ia", "Uso de hoje"],
     ["Modelos e limites", "modelos", "Modelo de conversa"],
-    ["Agenda", "agenda", "Horário de trabalho"],
+    ["Agenda", "agenda", "Horário de atendimento"],
     ["Avisos", "avisos", "Resumo do dia"],
     ["Integrações", "integracoes", "Serviços externos (MCP)"],
     ["Dados", "dados", "Exportar e importar"],

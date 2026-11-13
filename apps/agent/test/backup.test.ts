@@ -336,10 +336,10 @@ describe("import", () => {
   });
 
   it("SEC-S08-01: the Agenda's preferences go in the file and come back, and a bad one is refused whole", async () => {
-    const agenda = { from: 7, to: 20, view: "day", weekStart: 0, workDays: [1, 2, 3], daysOff: false, allDay: false, outside: false };
+    const agenda = { from: 7, to: 20, view: "day", weekStart: 0, workDays: [1, 2, 3], daysOff: false, outside: false, lunch: { from: 720, to: 810 }, openHolidays: ["2026-12-25"], closed: [{ date: "2026-12-24", reason: "Recesso" }] };
     const before = await inOwner((agent) => agent.store.settings.get().agenda);
     try {
-      await inOwner((agent) => agent.store.settings.update({ agenda: agenda as typeof before }));
+      await inOwner((agent) => agent.store.settings.update({ agenda: agenda as unknown as typeof before }));
       expect((JSON.parse(await exported()) as { data: { settings: { agenda: unknown } } }).data.settings.agenda).toEqual(agenda);
       await inOwner((agent) => agent.store.settings.update({ agenda: before }));
       await ok(session("POST", "/backup/import", backup({ settings: { agenda } })));

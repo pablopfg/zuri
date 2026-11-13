@@ -42,6 +42,10 @@
  *   needs --exemplos).
  * - `agenda-editar=/agenda`: the form of that event ("Dura", "Tipo", "Situação"); `agenda-movido=/agenda`: the
  *   Agenda right after the event moved, with the notice that offers "Desfazer" (both need --exemplos).
+ * - `agenda-hora-fechada=/agenda`: the notice of a click on today's lunch, "Consulta não entra neste horário"
+ *   (computer only: a phone's day has no grid to click; run it with `--relogio` before noon).
+ * - `configuracoes-agenda-feriados=/configuracoes/agenda`: Configurações › Agenda scrolled to the national
+ *   holidays and the days off.
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
  *   page's day and its line of now come out the same at any hour the script runs).
  * - `--exemplos`: fills the empty database with the sample data of
@@ -282,6 +286,17 @@ for (const [device, options] of [
           await form.getByRole("button", { name: "Salvar" }).click();
         }
         await page.getByRole("button", { name: "Desfazer" }).waitFor();
+      }
+      if (screen.name === "agenda-hora-fechada" && device === "computador") {
+        // Today's lunch, a quarter past noon: the last striped hour of the week is today's or a later day's.
+        const lunch = page.getByRole("main").locator("[data-lunch]").last();
+        const box = await lunch.boundingBox();
+        if (!box) throw new Error("agenda-hora-fechada needs a working day with lunch in the week");
+        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 4);
+        await page.getByRole("dialog", { name: "Consulta não entra neste horário" }).waitFor();
+      }
+      if (screen.name === "configuracoes-agenda-feriados") {
+        await page.getByText("Feriados nacionais", { exact: true }).evaluate((title) => title.scrollIntoView({ block: "start" }));
       }
       if (screen.name === "conversa-menu") await page.getByRole("complementary", { name: "Conversas" }).getByRole("button", { name: /^Mais opções/ }).click();
       if (screen.name === "conversas") {

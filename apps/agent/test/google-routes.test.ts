@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, type AgendaPage, type AgendaEvent, type GoogleCalendarInfo, type GoogleStatus } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, type AgendaPage, type AgendaEvent, type GoogleCalendarInfo, type GoogleStatus, DEFAULT_AGENDA_PREFS, nationalHoliday } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -466,6 +466,124 @@ describe("/api/google/events: the Agenda screen", () => {
     seedEvent(PRIMARY, "Reuni‮ão\u0007 <script>");
     const page = (await (await api("GET", `/google/events?from=${window().from}&to=${window().to}`)).json()) as AgendaPage;
     expect(page.events[0]?.title).toBe("Reuni ão <script>");
+  });
+});
+
+describe("/api/google/events: the booking rule, checked again by the server (13/11/2026)", () => {
+  const SP = "America/Sao_Paulo";
+  /** "YYYY-MM-DD" of today in the owner's zone, plus some days. */
+  const localDay = (plus: number) => new Intl.DateTimeFormat("en-CA", { timeZone: SP }).format(new Date(Date.now() + plus * 86_400_000));
+  const weekday = (day: string) => new Date(`${day}T12:00:00Z`).getUTCDay();
+  /** The first day from a week on that is a weekday of `kind`, or any national holiday on a working day. */
+  const findDay = (test: (day: string) => boolean) => {
+    for (let plus = 7; plus < 400; plus++) if (test(localDay(plus))) return localDay(plus);
+    throw new Error("no such day");
+  };
+  const monday = () => findDay((day) => weekday(day) === 1 && nationalHoliday(day) === null);
+  const appointment = (day: string, from: string, to: string, more: Record<string, unknown> = {}) => ({
+    calendarId: WORK,
+    title: "Ana Souza",
+    allDay: false,
+    start: `${day}T${from}`,
+    end: `${day}T${to}`,
+    description: "Consulta | Consultório",
+    ...more,
+  });
+  /** The owner's wall time of `day` as an instant (São Paulo is UTC−3 all year). */
+  const localDate = (day: string, time: string) => new Date(`${day}T${time}:00-03:00`).toISOString();
+  const problem = async (res: Response) => ({ status: res.status, problem: ((await res.json()) as { details?: { problem?: string } }).details?.problem });
+  const inserts = () => google.seen.filter((r) => r.method === "POST" && r.url.includes("/events?")).length;
+
+  afterEach(async () => {
+    await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, openHolidays: [], closed: [] } }));
+  });
+
+  it("books inside the hours and refuses lunch, the evening, the weekend and the past without asking Google", async () => {
+    await connect();
+    await setMode(WORK, "write");
+    const day = monday();
+    expect((await api("POST", "/google/events", appointment(day, "09:00", "10:00"))).status).toBe(201);
+    const before = inserts();
+    const reads = google.seen.filter((r) => r.method === "GET" && r.url.includes("/events?")).length;
+    expect(await problem(await api("POST", "/google/events", appointment(day, "12:30", "13:30")))).toEqual({ status: 400, problem: "lunch" });
+    expect(await problem(await api("POST", "/google/events", appointment(day, "17:30", "18:30")))).toEqual({ status: 400, problem: "hours" });
+    expect(await problem(await api("POST", "/google/events", appointment(findDay((d) => weekday(d) === 6), "09:00", "10:00")))).toEqual({ status: 400, problem: "weekday" });
+    expect(await problem(await api("POST", "/google/events", appointment(localDay(-2), "09:00", "10:00")))).toEqual({ status: 400, problem: "past" });
+    expect(await problem(await api("POST", "/google/events", appointment(day, "09:02", "10:00")))).toEqual({ status: 400, problem: "step" });
+    expect(await problem(await api("POST", "/google/events", appointment(day, "14:00", "14:10")))).toEqual({ status: 400, problem: "short" });
+    expect(await problem(await api("POST", "/google/events", appointment(findDay((d) => d > localDay(366) && weekday(d) === 1 && nationalHoliday(d) === null), "09:00", "10:00")))).toEqual({ status: 400, problem: "far" });
+    expect(inserts()).toBe(before);
+    // Refused by a fixed rule: Google not even asked for the day.
+    expect(google.seen.filter((r) => r.method === "GET" && r.url.includes("/events?")).length).toBe(reads);
+    // A meeting has no type: any hour, even at lunch.
+    expect((await api("POST", "/google/events", { ...appointment(day, "12:30", "13:30"), description: "Reunião com o contador" })).status).toBe(201);
+  });
+
+  it("refuses an appointment over another one, in any calendar read, and takes the edges touching", async () => {
+    await connect();
+    await setMode(WORK, "write");
+    await setMode(PRIMARY, "read");
+    const day = monday();
+    expect((await api("POST", "/google/events", appointment(day, "14:00", "15:00"))).status).toBe(201);
+    expect(await problem(await api("POST", "/google/events", appointment(day, "14:30", "15:30")))).toEqual({ status: 400, problem: "clash" });
+    // One in the calendar only read, made in Google itself: it takes its hour too.
+    const list = google.events.get(PRIMARY) ?? [];
+    list.push({ id: "outra", etag: '"1"', summary: "Bruno Lima", description: "Retorno | Sala 2", start: { dateTime: localDate(day, "10:00") }, end: { dateTime: localDate(day, "11:00") } });
+    google.events.set(PRIMARY, list);
+    expect(await problem(await api("POST", "/google/events", appointment(day, "10:30", "11:30")))).toEqual({ status: 400, problem: "clash" });
+    expect((await api("POST", "/google/events", appointment(day, "15:00", "16:00"))).status).toBe(201);
+    // A cancelled one frees its hour.
+    expect((await api("POST", "/google/events", appointment(day, "16:00", "17:00", { colorId: "11" }))).status).toBe(201);
+    expect((await api("POST", "/google/events", appointment(day, "16:00", "17:00"))).status).toBe(201);
+  });
+
+  it("closes a national holiday until it is opened, and a day off of the settings", async () => {
+    await connect();
+    await setMode(WORK, "write");
+    const holiday = findDay((day) => nationalHoliday(day) !== null && weekday(day) >= 1 && weekday(day) <= 5);
+    expect(await problem(await api("POST", "/google/events", appointment(holiday, "09:00", "10:00")))).toEqual({ status: 400, problem: "holiday" });
+    await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, openHolidays: [holiday] } }));
+    expect((await api("POST", "/google/events", appointment(holiday, "09:00", "10:00"))).status).toBe(201);
+    const off = monday();
+    await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, closed: [{ date: off, reason: "Recesso" }] } }));
+    const refused = await api("POST", "/google/events", appointment(off, "09:00", "10:00"));
+    expect(refused.status).toBe(400);
+    const body = (await refused.json()) as { code: string; message: string; details: unknown };
+    expect(body).toMatchObject({ code: "VALIDATION_FAILED", details: { problem: "closed" } });
+    expect(body.message).toMatch(/sem expediente/);
+  });
+
+  it("checks a move, never a change that keeps the day and the hours of an old appointment", async () => {
+    await connect();
+    await setMode(WORK, "write");
+    const day = monday();
+    const created = await api("POST", "/google/events", appointment(day, "10:00", "11:00"));
+    const { event } = (await created.json()) as { event: AgendaEvent };
+    expect(await problem(await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: event.etag, start: `${day}T12:00`, end: `${day}T13:00` }))).toEqual({ status: 400, problem: "lunch" });
+    // Half an hour on, over its own old place: no clash with itself.
+    const moved = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: event.etag, start: `${day}T10:30`, end: `${day}T11:30` });
+    expect(moved.status).toBe(200);
+    const { event: back } = (await moved.json()) as { event: AgendaEvent };
+    const home = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: back.etag, start: `${day}T10:00`, end: `${day}T11:00` });
+    expect(home.status).toBe(200);
+    event.etag = ((await home.json()) as { event: AgendaEvent }).event.etag;
+    // Lunch moved over it in the settings: the appointment stays, and a new title still goes.
+    await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, lunch: { from: 600, to: 660 } } }));
+    try {
+      const renamed = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: event.etag, title: "Ana Souza Lima", start: `${day}T10:00`, end: `${day}T11:00` });
+      expect(renamed.status).toBe(200);
+      // Taking a cancelled appointment back is a booking again.
+      const { event: renamedEvent } = (await renamed.json()) as { event: AgendaEvent };
+      const cancelled = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: renamedEvent.etag, colorId: "11" });
+      const { event: off } = (await cancelled.json()) as { event: AgendaEvent };
+      expect(await problem(await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: off.etag, colorId: "7" }))).toEqual({ status: 400, problem: "lunch" });
+      // Turning a meeting into an appointment at lunch is refused too.
+      const meeting = await api("POST", "/google/events", { ...appointment(day, "10:00", "10:30"), description: "" });
+      const { event: plain } = (await meeting.json()) as { event: AgendaEvent };
+      expect(await problem(await api("PATCH", "/google/events", { calendarId: WORK, eventId: plain.id, etag: plain.etag, description: "Retorno | Consultório" }))).toEqual({ status: 400, problem: "lunch" });
+    } finally {
+      await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, lunch: DEFAULT_AGENDA_PREFS.lunch } }));
+    }
   });
 });
 

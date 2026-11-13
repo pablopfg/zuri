@@ -12,8 +12,16 @@ import { expectAccessible, signIn } from "./ui-helpers.ts";
 
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
-/** Wednesday, 18/11/2026, 10:20 in São Paulo: the week runs from Monday 16 to Sunday 22. */
-const NOW = new Date("2026-11-18T10:20:00-03:00");
+/**
+ * Monday, 16/11/2026, 07:20 in São Paulo, before the office opens: the week runs from Monday 16 to Sunday 22
+ * and all of it is still ahead, so the booking rule never refuses a move for being in the past.
+ */
+const NOW = new Date("2026-11-16T07:20:00-03:00");
+/**
+ * The office as this file needs it: every day, until 20:00, no lunch and the holiday of the 20th worked.
+ * What is tested here is the hand (drag, keyboard, Desfazer); the booking rule is agenda-travas.spec.ts.
+ */
+const OPEN = { workDays: [0, 1, 2, 3, 4, 5, 6], to: 20, lunch: null, openHolidays: ["2026-11-20"] };
 const iso = (local: string) => new Date(`${local}:00-03:00`).toISOString();
 /** One hour of the week's grid, in pixels (3.5 rem). */
 const HOUR_PX = 56;
@@ -60,6 +68,12 @@ type Answer = { status: number; json?: unknown; wait?: Promise<void>; abort?: bo
 async function routeAgenda(page: Page, samples: Sample[], change: (body: Body, count: number) => Answer = () => ({ status: 200 })) {
   const events = samples.map(wire);
   const sent = { patches: [] as Body[], posts: [] as Body[], reads: 0 };
+  await page.route("**/api/settings", async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const response = await route.fetch();
+    const settings = (await response.json()) as { agenda: object };
+    await route.fulfill({ response, json: { ...settings, agenda: { ...settings.agenda, ...OPEN } } });
+  });
   await page.route("**/api/google", (route) =>
     route.fulfill({ json: { configured: true, connected: true, account: "dono@exemplo.com.br", status: "connected", problem: null, connectedAt: iso("2026-11-10T10:00"), calendars: CALENDARS } }),
   );
@@ -409,10 +423,11 @@ test("an empty hour opens Novo evento on that day and hour; the form's Dura, Tip
     { calendarId: "main", title: "Bruno Macedo Teixeira", allDay: false, start: "2026-11-19T11:30", end: "2026-11-19T12:00", location: "", description: "Retorno | Consultório", colorId: "10" },
   ]);
 
-  // "Agendado" is an event without a color: nothing of it is sent.
+  // "Agendado" is an event without a color: nothing of it is sent. A new event starts as a Consulta.
   await page.getByRole("button", { name: "Novo evento" }).click();
   await form.getByRole("textbox", { name: "Título" }).fill("Clara Nóbrega Dias");
   await form.getByLabel("Dura").selectOption("other");
+  await form.getByLabel("Dia", { exact: true }).fill("2026-11-18");
   await form.getByLabel("Hora de início").fill("15:00");
   await form.getByLabel("Termina em").fill("2026-11-18");
   await form.getByLabel("Hora de fim").fill("14:00");
@@ -421,7 +436,7 @@ test("an empty hour opens Novo evento on that day and hour; the form's Dura, Tip
   await form.getByLabel("Hora de fim").fill("15:50");
   await form.getByRole("button", { name: "Criar evento" }).click();
   await expect(form).toHaveCount(0);
-  expect(sent.posts[1]).toEqual({ calendarId: "main", title: "Clara Nóbrega Dias", allDay: false, start: "2026-11-18T15:00", end: "2026-11-18T15:50", location: "", description: "" });
+  expect(sent.posts[1]).toEqual({ calendarId: "main", title: "Clara Nóbrega Dias", allDay: false, start: "2026-11-18T15:00", end: "2026-11-18T15:50", location: "", description: "Consulta | Consultório" });
 });
 
 test("Editar changes the length, the type and the status in one change, with its notice and Desfazer; a new hour marks Reagendado unless a status is picked", async ({ page }) => {
@@ -626,10 +641,11 @@ test("QA-E3-07: a device far from the owner's zone drags by the owner's hours", 
     await expect(helena).toContainText("09:00 – 10:00");
     const from = await center(helena);
     const tuesday = await center(column(page, "17"));
-    await drag(page, from, { x: tuesday.x, y: from.y + HOUR_PX });
-    await expect(notice(page, "“Helena Duarte Prado” agora é ter, 17/11 às 10:00. Ficou como Reagendado.")).toBeVisible();
-    expect(sent.patches).toEqual([{ calendarId: "main", eventId: "e0", etag: '"v1-0"', start: "2026-11-17T10:00", end: "2026-11-17T11:00", colorId: "5" }]);
-    await expect(column(page, "17").getByRole("button", { name: /^Helena Duarte Prado/ })).toContainText("10:00 – 11:00");
+    // 11:00, right after Renato's consultation: 10:00 would sit on it and be refused.
+    await drag(page, from, { x: tuesday.x, y: from.y + 2 * HOUR_PX });
+    await expect(notice(page, "“Helena Duarte Prado” agora é ter, 17/11 às 11:00. Ficou como Reagendado.")).toBeVisible();
+    expect(sent.patches).toEqual([{ calendarId: "main", eventId: "e0", etag: '"v1-0"', start: "2026-11-17T11:00", end: "2026-11-17T12:00", colorId: "5" }]);
+    await expect(column(page, "17").getByRole("button", { name: /^Helena Duarte Prado/ })).toContainText("11:00 – 12:00");
   } finally {
     await context.close();
   }

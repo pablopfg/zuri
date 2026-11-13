@@ -600,6 +600,36 @@ Pedido: evitar consulta em horário não permitido (almoço, feriado, fora do ho
 2. **Outras telas:** respiro padrão entre blocos de formulário em Configurações (campo depois de grade, ajuda depois de campos, editor da mensagem). A prévia do Pix ocupa a largura do diálogo. Na página do paciente, o ícone do endereço alinha com a primeira linha e o prazo de cancelamento fica centralizado. Filtros em diálogo não encolhem mais (o grupo de botões ficava como uma linha fina).
 3. **Atividade de acesso e Todos os acessos:** cada acesso mostra ícone e situação, o aparelho, a cidade aproximada e o **país** (nome e sigla, com destaque quando é fora do Brasil) e o IP. O diálogo agrupa por dia e filtra por Todos, Atenção e Fora do Brasil. No sistema, o país vem de `request.cf.country`, que sempre chega; a cidade pode faltar. Ver docs/seguranca.md, que já guarda o IP por 90 dias: o país entra no mesmo registro, sem coluna nova se o campo de localização já existir (conferir na implementação).
 
+### Link do paciente: erros, caminhos e Cloudflare (13/11/2026, 03:08 UTC)
+
+Pergunta do Pablo: como o link único funciona, se precisa de configuração na Cloudflare e se o sistema trata páginas e caminhos que não existem. Entra na E7.
+
+**Cloudflare.** Nada novo. O link usa o mesmo domínio e o mesmo Worker do 1º deploy (`PUBLIC_URL` com HTTPS). Não precisa de KV, D1, regra de WAF, Turnstile nem recurso pago: o freio por rede, o token e as conferências ficam no código. O Turnstile fica fora da página do paciente de propósito (atrapalharia quem abre pelo celular).
+
+**O que já existe hoje (conferido no código em 13/11):**
+
+- O Worker recebe todo pedido primeiro (`run_worker_first`, `apps/agent/wrangler.jsonc`). Caminho de API que não existe responde `NOT_FOUND` em JSON; caminho de tela que não existe abre a página "não encontrada" depois da entrada, e sem sessão leva à tela de entrar.
+- O registro de cada pedido troca todo trecho do endereço que não é palavra de rota por `:id` (`apps/agent/src/log.ts`): o token nunca aparece nos registros.
+
+**O que a E7 acrescenta (critérios de aceite novos):**
+
+| Caso | O que acontece |
+| --- | --- |
+| `/c/<token>` com formato errado (tamanho, caractere fora de base64url) | Página "Link inválido", sem consultar o banco nem o Durable Object (P6) |
+| Token que não existe, revogado, de evento apagado ou movido para outra agenda | A mesma página "Link inválido", com o mesmo tempo de resposta e o mesmo texto: ninguém descobre se um token existiu |
+| `/c/`, `/c/<token>/qualquer-coisa`, `/c/<token>?x=…` | "Link inválido" (só o formato exato vale; parâmetros são ignorados) |
+| Consulta passada, a menos de 1 hora, ou cancelada | "Este link expirou", com o WhatsApp da equipe |
+| Muitas tentativas da mesma rede (força bruta) | 429 com a mesma página e "Tente de novo em alguns minutos"; o freio vale para abrir e para os botões |
+| Botão tocado duas vezes, ou em duas abas | Resposta idempotente: a segunda não faz nada de novo e mostra o estado atual |
+| `POST` vindo de outro site, sem `Origin` igual ao domínio, ou com ação fora de `confirmar`, `cancelar`, `remarcar` | 403 ou 400, sem mudar nada |
+| Google fora do ar ou lento | A página diz "Não deu para carregar agora. Tente de novo em instantes" sem nenhum dado; um botão que falha não muda nada e diz o mesmo |
+| Prévia do WhatsApp ou robô abrindo o link | O `GET` não muda nada; o HTML inicial é o genérico da Zuri, sem nome, data nem consultório |
+| Busca e cache | Cabeçalhos `X-Robots-Tag: noindex`, `Cache-Control: no-store` e `Referrer-Policy: no-referrer` (o token não vaza para o WhatsApp ou o Maps ao tocar nos links da página); o service worker não guarda nada de `/c/` |
+| Página da Zuri aberta pelo paciente (`/`, `/agenda`, `/configuracoes`) | Sem sessão, vai para a tela de entrar; nenhum dado aparece. A página do link não mostra o menu nem links para dentro da Zuri |
+| Dois pacientes remarcando para o mesmo horário ao mesmo tempo (ou o paciente e o Pablo) | A reserva do horário passa por uma trava única no objeto do agente e o dia é lido de novo depois de gravar: só um fica com o horário, o outro vê "Esse horário acabou de ser ocupado" e escolhe outro (achado da auditoria da E5a) |
+
+Testes da E7: um para cada linha acima (unitário do formato, integração das rotas e e2e da página), mais os de "Link único" já listados.
+
 ## 12. Riscos
 
 - **Som bloqueado pelo navegador** antes do primeiro clique: o aviso chega sem som. Mitigação: o cartão explica e o "Testar" destrava.
