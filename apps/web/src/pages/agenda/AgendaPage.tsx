@@ -2161,7 +2161,7 @@ function EventFormDialog({
         />
         {/* The patient's contact (12/11/2026): an appointment only; a plain event has none. */}
         {appointment && (
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <CountryField
               value={form.country}
               onChange={(country) => {
@@ -2182,6 +2182,7 @@ function EventFormDialog({
             <TextField
               data-field="email"
               type="email"
+              className="sm:col-span-2"
               label={t("web.agenda.form.email")}
               autoComplete="off"
               value={form.email}
@@ -2316,7 +2317,7 @@ function EventFormDialog({
         <p className="sr-only" aria-live="polite">
           {said}
         </p>
-        <div className={cn("grid gap-3", appointment ? "sm:grid-cols-4" : "grid-cols-2")}>
+        <div className={cn("grid gap-3", appointment ? "sm:grid-cols-2" : "grid-cols-2")}>
           <div className="space-y-3">
             <SelectField
               label={t("web.agenda.form.kind")}
