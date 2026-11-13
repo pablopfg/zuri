@@ -16,6 +16,7 @@ import { withChatWorld } from "./chat-world.ts";
 import { addConnection, withFlowWorld } from "./flow-world.ts";
 import { add, draftAnswer, LOCATION, PATTERN, SECOND_OK, turnOn, withReviewsWorld } from "./reviews-world.ts";
 import { EXAMPLE_AUTOMATION } from "../src/crm/automations/example.ts";
+import type { AutomationModule } from "../src/crm/automations/manifest.ts";
 import { useCatalog } from "./crm-automations-world.ts";
 
 // What each route costs in the units the Free plan bills: rows read and rows
@@ -596,7 +597,8 @@ describe("the Free plan budget of each route", () => {
     // 55: the automatic backup (step 23b) asks whether the bot is linked before counting its 30-day warning
     // (its own state is read once per object and kept in memory).
     // 62: the CRM's automations (PR S18): the run due and the next one (two indexed looks), and, once per start
-    // of the object and once a day, the rows set up and the three prunings by their date indexes.
+    // of the object (in memory, so again on a cold wake), the rows set up, the three prunings (runs and
+    // effects by their date indexes, the checked days by each automation's key) and the pending effects.
     expect(wake.read).toBeLessThanOrEqual(62);
     expect(wake.written).toBeLessThanOrEqual(30);
   });
@@ -1281,6 +1283,51 @@ describe("the CRM (step 22b)", () => {
 });
 
 describe("CRM's automations (PR S18)", () => {
+  it("a run at its ceilings: 60 effects noted in one wake cost their own rows, and the counts read only the day", async () => {
+    // A module at the manifest's ceilings: 96 runs and 60 effects a day. In rehearsal no call is made, so the
+    // test needs no network; live adds one write per effect (its status after the call).
+    const busy: AutomationModule = {
+      manifest: {
+        ...EXAMPLE_AUTOMATION.manifest,
+        id: "example",
+        trigger: { kind: "every", minutes: 15, workingDays: false },
+        caps: { runsPerDay: 96, callsPerRun: 2, effectsPerDay: 60, neuronsPerRun: 0 },
+      },
+      run: async (ctx) => {
+        for (let n = 0; n < 60; n++) await ctx.effect({ effect: EXAMPLE_AUTOMATION.manifest.effects[0] as string, key: `${ctx.day}:${n}`, label: "Pessoa de exemplo", call: "note" });
+      },
+    };
+    const measured = await runInDurableObject(owner(), async (agent: ZuriAgent) => {
+      const { db } = agent.store;
+      for (const table of ["zur_crm_automations", "zur_crm_automation_runs", "zur_crm_automation_effects", "zur_crm_automation_days"]) db.run(`DELETE FROM ${table}`);
+      db.run(
+        `INSERT INTO zur_flow_connections (id, name, origin, methods, paths, auth, header_name, credential, created_at, updated_at, kind, meta) VALUES ('budget-chatwoot', 'Chatwoot', 'https://chat.exemplo.com.br', '["GET"]', '["/api"]', 'header', 'api_access_token', 'v1.a.b', 't', 't', 'chatwoot', '{"accountId":1}')`,
+      );
+      const automations = useCatalog(agent, [busy]);
+      const now = Date.now();
+      db.run(`INSERT INTO zur_crm_automations (id, state, effects_version, connection_id, rehearsal_since, next_run_at, updated_at) VALUES ('example', 'rehearsal', 1, 'budget-chatwoot', ?, ?, ?)`, new Date(now - 86_400_000).toISOString(), new Date(now - 1000).toISOString(), new Date(now).toISOString());
+      // A wake first: the start of the object and the day's pruning, kept in memory, are not this one's.
+      db.run(`UPDATE zur_crm_automations SET next_run_at = NULL`);
+      await automations.tick();
+      db.run(`UPDATE zur_crm_automations SET next_run_at = ?`, new Date(now - 1000).toISOString());
+      // Half a year of runs before today's: the count reads only the day's by the index.
+      for (let n = 1; n < 180 * 24; n++) db.run(`INSERT INTO zur_crm_automation_runs (automation_id, started_at, mode, outcome) VALUES ('example', ?, 'rehearsal', 'ok')`, new Date(now - n * 3_600_000).toISOString());
+      const before = { ...db.usage };
+      await automations.tick();
+      const after = { ...db.usage };
+      const noted = db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_crm_automation_effects`)?.n;
+      for (const table of ["zur_crm_automations", "zur_crm_automation_runs", "zur_crm_automation_effects", "zur_crm_automation_days"]) db.run(`DELETE FROM ${table}`);
+      db.run(`DELETE FROM zur_flow_connections WHERE id = 'budget-chatwoot'`);
+      return { read: after.rowsRead - before.rowsRead, written: after.rowsWritten - before.rowsWritten, noted };
+    });
+    expect(measured.noted).toBe(60);
+    // Each effect: its row, the primary key and 3 indexes (and a read of the state before it, S18-A1);
+    // the run: its row and 2 indexes; the next time: the row and the partial index.
+    expect(measured.written).toBeLessThanOrEqual(60 * 4 + 3 + 3);
+    // The due row, the day's runs (at most 24 here) and effects, the credential and the 60 state reads.
+    expect(measured.read).toBeLessThanOrEqual(130);
+  });
+
   it("the list, the activity and the alarm's look stay small", async () => {
     await runInDurableObject(owner(), async (agent: ZuriAgent) => {
       const { db } = agent.store;

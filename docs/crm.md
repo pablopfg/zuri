@@ -101,6 +101,16 @@ Chatwoot, contato de cada consulta), com o que já está pronto.
 Cada automação declara no código os caminhos que chama, os limites por
 execução e por dia e se escreve a contatos. A Zuri confere essa declaração
 antes de rodar e recusa chamada fora dela. Nenhuma usa IA ainda.
+A chave de cada efeito leva a data ou o id do evento (por exemplo, a
+consulta), porque o registro do efeito some em 180 dias: uma chave sem data
+poderia sair de novo depois disso.
+
+No meio de uma execução, **Desligar** e o modo de bloqueio valem para o
+próximo efeito: o que ainda não saiu não sai. Durante o bloqueio, o horário
+de cada automação anda sozinho, sem rodar. Em fim de semana e feriado, uma
+automação de dia útil dorme até as 00:01 do próximo dia útil. Só dá para
+conferir um dia do ensaio em que ela já rodou. Uma automação cujo código saiu
+numa atualização fica desligada.
 
 ## Segurança e privacidade
 

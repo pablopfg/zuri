@@ -96,7 +96,7 @@ test("the example: credential tested, rehearsal, a day checked, on for real taki
       body: JSON.stringify({
         runs: [],
         effects: [{ id: "rehearsal:a", at: "2026-11-05T12:00:00.000Z", mode: "rehearsal", status: "would", label: "Pessoa de exemplo 1" }],
-        days: [{ day: "2026-11-05", would: 2, verdict: null, note: null }],
+        days: [{ day: "2026-11-05", would: 2, ran: true, verdict: null, note: null }],
       }),
     }),
   );

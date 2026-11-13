@@ -450,7 +450,7 @@ function FollowPanel({ item }: { item: CrmAutomation }) {
               ) : (
                 <ul className="divide-y divide-border rounded-xl border border-border bg-surface px-3">
                   {activity.data.days.map((day) => (
-                    <DayRow key={day.day} automationId={item.id} day={day.day} label={dayName(day.day)} items={plural("web.crmAutomations.day.items", day.would)} verdict={day.verdict} note={day.note} />
+                    <DayRow key={day.day} automationId={item.id} day={day.day} label={dayName(day.day)} items={plural("web.crmAutomations.day.items", day.would)} ran={day.ran} verdict={day.verdict} note={day.note} />
                   ))}
                 </ul>
               )}
@@ -509,7 +509,7 @@ function FollowPanel({ item }: { item: CrmAutomation }) {
 }
 
 /** One working day of the rehearsal: right, or wrong with the reason (the server asks for one). */
-function DayRow({ automationId, day, label, items, verdict, note }: { automationId: string; day: string; label: string; items: string; verdict: CrmAutomationVerdict | null; note: string | null }) {
+function DayRow({ automationId, day, label, items, ran, verdict, note }: { automationId: string; day: string; label: string; items: string; ran: boolean; verdict: CrmAutomationVerdict | null; note: string | null }) {
   const { t } = useI18n();
   const { busy, act } = useAction();
   const [writing, setWriting] = useState(verdict === "differs");
@@ -526,6 +526,10 @@ function DayRow({ automationId, day, label, items, verdict, note }: { automation
         <span id={groupId} className="min-w-0 flex-1 text-sm">
           <b className="font-semibold">{label}</b> · <span className="text-fg-muted">{items}</span>
         </span>
+        {/* A day is checked once the rehearsal ran on it, never before it happened. */}
+        {!ran ? (
+          <span className="text-sm text-fg-muted">{t("web.crmAutomations.day.notRun")}</span>
+        ) : (
         <fieldset aria-labelledby={groupId} className="flex gap-2">
           <Button
             variant={verdict === "match" ? "primary" : "secondary"}
@@ -542,6 +546,7 @@ function DayRow({ automationId, day, label, items, verdict, note }: { automation
             {t("web.crmAutomations.day.wrong")}
           </Button>
         </fieldset>
+        )}
       </div>
       {writing && (
         <form

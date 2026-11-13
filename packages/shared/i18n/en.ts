@@ -3604,6 +3604,7 @@ export const en: Messages = {
   "web.crmAutomations.day.note": "What's wrong",
   "web.crmAutomations.day.saveNote": "Save reason",
   "web.crmAutomations.day.saved": "Day checked",
+  "web.crmAutomations.day.notRun": "Hasn't run on this day yet",
   "web.crmAutomations.effects.title": "What Zuri did",
   "web.crmAutomations.effects.empty": "Nothing yet. The first run shows up here.",
   "web.crmAutomations.effect.would": "Would do",

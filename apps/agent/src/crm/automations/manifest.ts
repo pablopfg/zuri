@@ -1,11 +1,15 @@
 import { CRM_AUTOMATION_LIMITS, type CrmAutomationOption, FLOW_CONNECTION_KINDS, FLOW_METHODS } from "@zuri/shared";
 import { z } from "zod";
+import { WAKE_NOTICE_RESERVE, WAKE_SUBREQUESTS } from "../../agent/wake-budget.ts";
 
 /**
  * The manifest every CRM automation declares (PR S18; docs/planos/modulos.md,
  * "O manifesto"). Checked by Zod in the tests and again when the registry is
  * built, so an automation that asks for more than it says never starts.
  */
+
+/** The calls of one run fit the areas' share of a wake, with the 2 DNS lookups of the credential's host. */
+export const MAX_CALLS_PER_RUN = WAKE_SUBREQUESTS - WAKE_NOTICE_RESERVE - 2;
 
 const NAME = /^[a-z][A-Za-z0-9]{0,31}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -46,7 +50,7 @@ export const manifestSchema = z
     caps: z
       .object({
         runsPerDay: z.number().int().min(1).max(96),
-        callsPerRun: z.number().int().min(0).max(40),
+        callsPerRun: z.number().int().min(0).max(MAX_CALLS_PER_RUN),
         effectsPerDay: z.number().int().min(0).max(60),
         // No automation calls the AI yet: one that does raises this with the daily ceiling (rule P7).
         neuronsPerRun: z.number().int().min(0).max(0),
@@ -79,7 +83,8 @@ export interface AutomationContext {
   read(call: string, params?: Record<string, string | number>): Promise<unknown>;
   /**
    * An effect: in rehearsal only a note ("would"); live, the key is written as pending, the call is made and
-   * the key marked done. The same key never goes out twice: "skipped" when it was already there.
+   * the key marked done. The same key never goes out twice: "skipped" when it was already there. The key
+   * carries the date or the event's id (an appointment): an effect's row is removed after 180 days.
    */
   effect(input: {
     effect: string;

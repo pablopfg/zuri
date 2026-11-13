@@ -65,6 +65,9 @@ export class ManifestViolation extends Error {
 /** The run's own ceilings: what's left waits for the next run (or the next day). */
 class CapReached extends Error {}
 
+/** Turned off, sent to another mode or locked down during the run: nothing else goes out, and it isn't a failure. */
+class Stopped extends Error {}
+
 const PARAM = /^[A-Za-z0-9_-]{1,64}$/;
 const DAY_MS = 86_400_000;
 const FAILURES_TO_PAUSE = 2;
@@ -120,6 +123,27 @@ export class CrmAutomations {
       if (CrmAutomations.workingDay(day)) days.push(day);
     }
     return days;
+  }
+
+  /** The instants where the owner's day begins and the next one does. */
+  private dayBounds(day: string): [string, string] {
+    const at = (date: string) => zonedTimeToUtc({ ...dayParts(date), hour: 0, minute: 0 }, this.deps.timeZone())?.toISOString() ?? `${date}T00:00:00.000Z`;
+    return [at(day), at(nextDay(day))];
+  }
+
+  /** Whether the rehearsal ran on that day: only a day it ran can be checked. */
+  private ranOn(id: string, day: string): boolean {
+    const [from, to] = this.dayBounds(day);
+    return (
+      this.db.one(`SELECT 1 AS ran FROM zur_crm_automation_runs WHERE automation_id = ? AND started_at >= ? AND started_at < ? AND mode = 'rehearsal' LIMIT 1`, id, from, to) !== null
+    );
+  }
+
+  /** The first working day after this one, at 00:01 of the owner's time zone. */
+  private nextWorkingStart(day: string, fallback: string): string {
+    let next = nextDay(day);
+    for (let i = 0; i < 14 && !CrmAutomations.workingDay(next); i++) next = nextDay(next);
+    return zonedTimeToUtc({ ...dayParts(next), hour: 0, minute: 1 }, this.deps.timeZone())?.toISOString() ?? fallback;
   }
 
   /** Working days in a row checked as right, from the newest one checked; today may still be open. */
@@ -239,7 +263,7 @@ export class CrmAutomations {
             .all<{ day: string; verdict: CrmAutomationVerdict; note: string | null }>(`SELECT day, verdict, note FROM zur_crm_automation_days WHERE automation_id = ? AND day >= ? ORDER BY day DESC LIMIT ?`, id, oldest, CRM_AUTOMATION_LIMITS.days)
             .map((entry) => [entry.day, entry]),
         );
-        days = list.map((day) => ({ day, would: would.get(day) ?? 0, verdict: checked.get(day)?.verdict ?? null, note: checked.get(day)?.note ?? null }));
+        days = list.map((day) => ({ day, would: would.get(day) ?? 0, ran: this.ranOn(id, day), verdict: checked.get(day)?.verdict ?? null, note: checked.get(day)?.note ?? null }));
       }
     }
     return { runs, effects, days };
@@ -335,7 +359,8 @@ export class CrmAutomations {
     this.ready(id);
     const row = this.row(id);
     if (!row?.rehearsal_since || row.live_since || (row.state !== "rehearsal" && row.state !== "paused")) throw new AppError("CONFLICT", "error.crmAutomationNotRehearsing");
-    if (!this.rehearsalDays(row.rehearsal_since, 366).includes(day)) throw new AppError("VALIDATION_FAILED", "error.crmAutomationDay", { fields: ["day"] });
+    // Only a working day of the rehearsal on which it already ran: a day can't be called right before it happened.
+    if (!this.rehearsalDays(row.rehearsal_since, 366).includes(day) || !this.ranOn(id, day)) throw new AppError("VALIDATION_FAILED", "error.crmAutomationDay", { fields: ["day"] });
     this.db.run(
       `INSERT INTO zur_crm_automation_days (automation_id, day, verdict, note, decided_at) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(automation_id, day) DO UPDATE SET verdict = excluded.verdict, note = excluded.note, decided_at = excluded.decided_at`,
@@ -372,15 +397,30 @@ export class CrmAutomations {
    * owner of an awaited automation that arrived, sends back to rehearsal a live
    * one whose effects changed, and stops one whose code left.
    */
-  private start(): void {
-    if (this.#started) return;
-    this.#started = true;
+  private start(): boolean {
+    if (this.#started) return false;
+    let changed = false;
     for (const row of this.rows().values()) {
       const entry = this.deps.catalog.find((item) => item.id === row.id);
       const module = entry?.module;
       if (!module) {
-        if (row.next_run_at !== null) this.db.run(`UPDATE zur_crm_automations SET next_run_at = NULL WHERE id = ?`, row.id);
+        // Its code left: it turns off, so it neither runs nor holds its credential nor counts among the 10.
+        if (row.state !== "off") {
+          this.db.run(`UPDATE zur_crm_automations SET state = 'off', next_run_at = NULL, paused_reason = NULL, failures = 0, rehearsal_since = NULL, live_since = NULL, updated_at = ? WHERE id = ?`, this.iso(), row.id);
+          changed = true;
+        }
         continue;
+      }
+      if (row.state === "live" || row.state === "paused") {
+        // A live effect left 'pending' by an object that stopped mid-call (a deploy): never sent again, marked failed.
+        // Its key keeps it from going twice; only the last days can hold one.
+        const { rowsWritten } = this.db.run(
+          `UPDATE zur_crm_automation_effects SET status = 'failed', updated_at = ? WHERE automation_id = ? AND mode = 'live' AND day >= ? AND status = 'pending'`,
+          this.iso(),
+          row.id,
+          CrmAutomations.previousDay(this.dayOf(this.now())),
+        );
+        changed ||= rowsWritten > 0;
       }
       if (row.watch === 1 && row.watch_told === 0) {
         this.db.run(`UPDATE zur_crm_automations SET watch_told = 1 WHERE id = ?`, row.id);
@@ -398,19 +438,23 @@ export class CrmAutomations {
           row.id,
         );
         this.deps.notify({ kind: "rehearsal", id: row.id });
+        changed = true;
       } else {
         this.db.run(`UPDATE zur_crm_automations SET effects_version = ? WHERE id = ?`, module.manifest.effectsVersion, row.id);
       }
     }
+    // Marked after the loop: an error halfway leaves the rest for the next wake.
+    this.#started = true;
+    return changed;
   }
 
   /** Runs on the shared alarm: at most one automation per wake. True when the alarm must be set again. */
   async tick(): Promise<boolean> {
-    if (this.deps.lockdown()) return false;
-    this.start();
+    if (this.deps.lockdown()) return this.holdForLockdown();
+    const changed = this.start();
     this.prune();
     const due = this.db.one<Row>(`SELECT * FROM zur_crm_automations WHERE next_run_at IS NOT NULL AND next_run_at <= ? ORDER BY next_run_at LIMIT 1`, this.iso());
-    if (!due) return false;
+    if (!due) return changed;
     const entry = this.deps.catalog.find((item) => item.id === due.id);
     if (!entry?.module || (due.state !== "rehearsal" && due.state !== "live")) {
       this.db.run(`UPDATE zur_crm_automations SET next_run_at = NULL WHERE id = ?`, due.id);
@@ -420,13 +464,32 @@ export class CrmAutomations {
     return true;
   }
 
+  /**
+   * Lockdown: nothing runs, and what was due moves on to its next time, as a flow's run does (it would
+   * otherwise wake the object every minute for as long as the lockdown lasts).
+   */
+  private holdForLockdown(): boolean {
+    const due = this.db.all<{ id: string }>(`SELECT id FROM zur_crm_automations WHERE next_run_at IS NOT NULL AND next_run_at <= ? ORDER BY next_run_at LIMIT ?`, this.iso(), 100);
+    for (const { id } of due) {
+      const minutes = this.deps.catalog.find((item) => item.id === id)?.module?.manifest.trigger.minutes ?? 60;
+      this.db.run(`UPDATE zur_crm_automations SET next_run_at = ? WHERE id = ?`, this.iso(this.now() + minutes * 60_000), id);
+    }
+    return due.length > 0;
+  }
+
+  /** Still the same state it started the run in, and no lockdown: one read by the key before each call. */
+  private stillOn(id: string, state: CrmAutomationState): void {
+    if (this.deps.lockdown() || this.db.one<{ state: string }>(`SELECT state FROM zur_crm_automations WHERE id = ?`, id)?.state !== state) throw new Stopped();
+  }
+
   private async run(entry: CatalogEntry & { module: NonNullable<CatalogEntry["module"]> }, row: Row): Promise<void> {
     const manifest = entry.module.manifest;
     const at = this.now();
     const day = this.dayOf(at);
     const next = this.iso(at + manifest.trigger.minutes * 60_000);
     if (manifest.trigger.workingDays && !CrmAutomations.workingDay(day)) {
-      this.db.run(`UPDATE zur_crm_automations SET next_run_at = ? WHERE id = ?`, next, row.id);
+      // A weekend or a holiday: straight to the next working day, not a wake every few minutes to skip.
+      this.db.run(`UPDATE zur_crm_automations SET next_run_at = ? WHERE id = ? AND state = ?`, this.nextWorkingStart(day, next), row.id, row.state);
       return;
     }
     const mode = row.state === "live" ? "live" : "rehearsal";
@@ -435,7 +498,7 @@ export class CrmAutomations {
     if (runsToday >= manifest.caps.runsPerDay) {
       // The day's runs are spent: the next one tomorrow, after the owner's midnight.
       const tomorrow = zonedTimeToUtc({ ...dayParts(nextDay(day)), hour: 0, minute: 1 }, this.deps.timeZone())?.toISOString() ?? next;
-      this.db.run(`UPDATE zur_crm_automations SET next_run_at = ? WHERE id = ?`, tomorrow, row.id);
+      this.db.run(`UPDATE zur_crm_automations SET next_run_at = ? WHERE id = ? AND state = ?`, tomorrow, row.id, row.state);
       return;
     }
     let calls = 0;
@@ -446,7 +509,7 @@ export class CrmAutomations {
     let effectsLeft = manifest.caps.effectsPerDay - (this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_crm_automation_effects WHERE automation_id = ? AND mode = ? AND day = ?`, row.id, mode, day)?.n ?? 0);
     const connection = manifest.connection ? this.deps.connections.find(row.connection_id ?? "") : null;
     if (manifest.connection && (!connection || knownKind(connection.kind) !== manifest.connection)) {
-      this.pause(row.id, "credential");
+      this.pause(row.id, row.state, "credential");
       return;
     }
     // The run counts its own calls; the meter also counts the 2 DNS lookups of the credential's host (once per run).
@@ -456,18 +519,22 @@ export class CrmAutomations {
       if (!found || (found.method === "GET") !== wantRead) throw new ManifestViolation(`call ${name}`);
       if (!connection || !manifest.connection) throw new ManifestViolation("connection");
       if (calls >= manifest.caps.callsPerRun) throw new CapReached();
-      const filled: Record<string, string | number> = { ...(manifest.connection === "chatwoot" ? { account: chatwootSettings(connection).accountId } : {}), ...params };
+      // The account is the credential's own: a module never picks another one on the same server.
+      if (manifest.connection === "chatwoot" && "account" in params) throw new ManifestViolation("param account");
+      const filled: Record<string, string | number> = { ...params, ...(manifest.connection === "chatwoot" ? { account: chatwootSettings(connection).accountId } : {}) };
       const path = found.path.replace(/\{([a-z][A-Za-z0-9]*)\}/g, (_hole, key: string) => {
         const value = filled[key];
         if (value === undefined || !PARAM.test(String(value))) throw new ManifestViolation(`param ${key}`);
         return String(value);
       });
+      this.stillOn(row.id, row.state);
       calls++;
       try {
         const answer = await this.deps.connections.fixed(connection, manifest.connection, { method: found.method, path, ...(body === undefined ? {} : { body: body as Json }) }, callDeps);
         return answer.body;
       } catch (error) {
-        if (error instanceof Error && error.message === "budget") throw new CapReached();
+        // The wake's share ran out before the request left (the flows took it): what's left waits, it isn't a failure.
+        if ((error instanceof Error && error.message === "budget") || (error instanceof FlowStepError && error.problem === "calls_limit")) throw new CapReached();
         throw error;
       }
     };
@@ -487,6 +554,7 @@ export class CrmAutomations {
         if (!found || found.method === "GET") throw new ManifestViolation(`call ${input.call}`);
         if (input.key.length === 0 || input.key.length > CRM_AUTOMATION_LIMITS.key) throw new ManifestViolation("key");
         if (effectsLeft <= 0) throw new CapReached();
+        this.stillOn(row.id, row.state);
         const label = cleanLabel(input.label);
         const when = this.iso();
         const status = mode === "rehearsal" ? "would" : "pending";
@@ -509,7 +577,12 @@ export class CrmAutomations {
         try {
           await call(input.call, false, input.params, input.body);
         } catch (error) {
-          this.db.run(`UPDATE zur_crm_automation_effects SET status = 'failed', updated_at = ? WHERE automation_id = ? AND mode = 'live' AND key = ?`, this.iso(), row.id, input.key);
+          if (error instanceof CapReached || error instanceof Stopped || error instanceof ManifestViolation) {
+            // Nothing left for the service: the key is free again for a later run.
+            this.db.run(`DELETE FROM zur_crm_automation_effects WHERE automation_id = ? AND mode = 'live' AND key = ? AND status = 'pending'`, row.id, input.key);
+          } else {
+            this.db.run(`UPDATE zur_crm_automation_effects SET status = 'failed', updated_at = ? WHERE automation_id = ? AND mode = 'live' AND key = ?`, this.iso(), row.id, input.key);
+          }
           throw error;
         }
         this.db.run(`UPDATE zur_crm_automation_effects SET status = 'done', updated_at = ? WHERE automation_id = ? AND mode = 'live' AND key = ?`, this.iso(), row.id, input.key);
@@ -522,6 +595,8 @@ export class CrmAutomations {
     } catch (error) {
       if (error instanceof CapReached) {
         outcome = "cap";
+      } else if (error instanceof Stopped) {
+        outcome = "skipped";
       } else {
         outcome = "failed";
         if (error instanceof FlowStepError && (error.problem === "credential" || error.httpStatus === 401 || error.httpStatus === 403)) pause = "credential";
@@ -538,13 +613,20 @@ export class CrmAutomations {
       calls,
       effects,
     );
-    if (pause) this.pause(row.id, pause);
-    else this.db.run(`UPDATE zur_crm_automations SET next_run_at = ?, failures = ? WHERE id = ?`, next, failures, row.id);
+    // Only on the state the run began in: a "Desligar" or another mode during the run stays as the owner left it.
+    if (pause) this.pause(row.id, row.state, pause);
+    else this.db.run(`UPDATE zur_crm_automations SET next_run_at = ?, failures = ? WHERE id = ? AND state = ?`, next, failures, row.id, row.state);
   }
 
-  private pause(id: string, reason: CrmAutomationPause): void {
-    this.db.run(`UPDATE zur_crm_automations SET state = 'paused', paused_reason = ?, next_run_at = NULL, failures = 0, updated_at = ? WHERE id = ?`, reason, this.iso(), id);
-    this.deps.notify({ kind: "paused", id, reason });
+  private pause(id: string, from: CrmAutomationState, reason: CrmAutomationPause): void {
+    const { rowsWritten } = this.db.run(
+      `UPDATE zur_crm_automations SET state = 'paused', paused_reason = ?, next_run_at = NULL, failures = 0, updated_at = ? WHERE id = ? AND state = ?`,
+      reason,
+      this.iso(),
+      id,
+      from,
+    );
+    if (rowsWritten > 0) this.deps.notify({ kind: "paused", id, reason });
   }
 
   /** Once a day: runs after 90 days, effects and checked days after 180. */
@@ -555,7 +637,11 @@ export class CrmAutomations {
     const before = (days: number) => this.iso(this.now() - days * DAY_MS);
     this.db.run(`DELETE FROM zur_crm_automation_runs WHERE started_at < ?`, before(CRM_AUTOMATION_LIMITS.runsKeepDays));
     this.db.run(`DELETE FROM zur_crm_automation_effects WHERE created_at < ?`, before(CRM_AUTOMATION_LIMITS.effectsKeepDays));
-    this.db.run(`DELETE FROM zur_crm_automation_days WHERE decided_at < ?`, before(CRM_AUTOMATION_LIMITS.effectsKeepDays));
+    // By the key (automation, day), one automation at a time: no index on decided_at to keep up.
+    const oldDay = before(CRM_AUTOMATION_LIMITS.effectsKeepDays).slice(0, 10);
+    for (const { id } of this.db.all<{ id: string }>(`SELECT id FROM zur_crm_automations LIMIT ?`, 100)) {
+      this.db.run(`DELETE FROM zur_crm_automation_days WHERE automation_id = ? AND day < ?`, id, oldDay);
+    }
   }
 }
 

@@ -91,7 +91,10 @@ describe("CRM › Automações routes", () => {
     // Ten days back, so a working day is always there whatever day the suite runs on.
     const day = await inOwner((agent) => {
       agent.store.db.run(`UPDATE zur_crm_automations SET rehearsal_since = ?`, new Date(Date.now() - 10 * 86_400_000).toISOString());
-      return agent.store.crmAutomations.activity("example").days.at(-1)?.day ?? "";
+      const oldest = agent.store.crmAutomations.activity("example").days.at(-1)?.day ?? "";
+      // It ran that day (15:00 UTC is midday in São Paulo): only such a day can be checked.
+      agent.store.db.run(`INSERT INTO zur_crm_automation_runs (automation_id, started_at, mode, outcome) VALUES ('example', ?, 'rehearsal', 'ok')`, `${oldest}T15:00:00.000Z`);
+      return oldest;
     });
     expect(day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect((await api("PUT", `/crm/automations/example/days/${day}`, { verdict: "differs" })).status).toBe(400);
@@ -100,7 +103,7 @@ describe("CRM › Automações routes", () => {
     expect((await api("PUT", "/crm/automations/example/days/1999-01-04", { verdict: "match" })).status).toBe(400);
     const activity = await json<CrmAutomationActivity>(await api("GET", "/crm/automations/example/activity"));
     expect(activity.days.at(-1)).toMatchObject({ day, verdict: "differs", note: "Faltou uma pessoa" });
-    expect(activity.runs).toEqual([]);
+    expect(activity.runs).toEqual([{ startedAt: `${day}T15:00:00.000Z`, mode: "rehearsal", outcome: "ok", calls: 0, effects: 0 }]);
   });
 
   it("watches one on its way; refuses hostile ids and bodies", async () => {

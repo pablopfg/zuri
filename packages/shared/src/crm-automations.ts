@@ -103,6 +103,8 @@ export interface CrmAutomationDay {
   day: string;
   /** What Zuri would have done that day (rehearsal effects). */
   would: number;
+  /** Whether the rehearsal ran that day: only then can the owner check it. */
+  ran: boolean;
   verdict: CrmAutomationVerdict | null;
   note: string | null;
 }

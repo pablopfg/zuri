@@ -62,6 +62,7 @@ export const ptBRCrmAutomations = {
   "web.crmAutomations.day.note": "O que está errado",
   "web.crmAutomations.day.saveNote": "Salvar motivo",
   "web.crmAutomations.day.saved": "Dia conferido",
+  "web.crmAutomations.day.notRun": "Ainda não rodou neste dia",
   "web.crmAutomations.effects.title": "O que a Zuri fez",
   "web.crmAutomations.effects.empty": "Nada ainda. A primeira execução aparece aqui.",
   "web.crmAutomations.effect.would": "Faria",
