@@ -68,6 +68,20 @@ O Pablo abre a conversa "Zuri" no Chatwoot e escreve como escreveria no Telegram
 
 Se outro atendente escrever na conversa "Zuri" (um administrador do Chatwoot enxerga todas as caixas), a Zuri não responde nada ali. O Pablo recebe um aviso no app e no Telegram: "Alguém que não é você escreveu na conversa Zuri do Chatwoot", sem o texto. Três avisos em 24 h desligam o canal sozinho até o Pablo religar.
 
+### Fluxo 4 · Quando algo some ou muda (pergunta do Pablo, 13/11, 02:36 UTC)
+
+| Situação | Como a Zuri percebe | O que ela faz | Chave de administrador? |
+| --- | --- | --- | --- |
+| Conversa "Zuri" apagada | 404 ao escrever ou ler a conversa | Abre uma conversa nova pelo mesmo contato (API pública), grava o novo id e avisa no app e no Telegram. Continua só com o id do atendente do Pablo | Não |
+| Contato "Zuri" apagado | 404 no contato | Cria contato e conversa de novo (`identifier` e `identifier_hash` novos) e avisa | Não |
+| Caixa "Zuri" apagada | 404 na caixa | Pausa o canal e mostra **Reparar**, que refaz a caixa e o resto | Sim, uma vez |
+| Segredo ou HMAC trocados no Chatwoot | Assinatura não bate ou 401 da API pública | Pausa o canal e mostra **Trocar os segredos** | Sim, uma vez |
+| Endereço do Chatwoot ou da Zuri mudou | Teste falha ou o retorno deixa de chegar | **Reparar** atualiza o endereço do Chatwoot na Zuri e o `webhook_url` da caixa | Sim, uma vez |
+| Pablo trocou de conta de atendente | O autor das mensagens deixa de bater | Nada responde à conta nova até **Vincular outra conta**: código novo na conversa, respondido pela conta nova, confirmado com a senha da Zuri | Não |
+| Pablo trocou o número do celular | Não afeta | A caixa "Zuri" é de API e o Pablo fala pelo Chatwoot logado | Não |
+
+A recriação automática só acontece dentro da caixa do vínculo e no máximo 3 vezes por dia; depois disso o canal pausa e pede **Reparar**, para um apagar repetido não virar laço.
+
 ### Textos visíveis
 
 Ficam no catálogo de i18n (pt-BR e en) quando houver código; as palavras finais saem do protótipo, que vem antes, pela regra de 12/11.

@@ -8560,7 +8560,9 @@ function cfgChatwoot() {
     + ctlRow("Membros da caixa", "Só você. Se alguém for incluído, o teste avisa.", `<span class="pill on"><i></i>Só você</span>`)
     + ctlRow("Também veem a caixa", `${CWO.admins.map(escH).join(", ")}: administrador do Chatwoot vê todas as caixas. Se escrever na conversa, a Zuri não responde e avisa você, sem o texto. Três vezes em 24 h desligam o canal.`, `<span class="pill wait"><i></i>${CWO.admins.length} administrador</span>`)
     + `<p class="t">Últimas mensagens</p><ul class="runs">${(CWO.log.length ? CWO.log : [["agora", "Você", "Código de vínculo", "on", "Vinculado"]]).map(([h, q, w, s, l]) => `<li><time class="num">${h}</time><span><b>${q}</b> · ${w}</span><span class="pill ${s}"><i></i>${l}</span></li>`).join("")}</ul>`,
-    `<button class="btn btn-secondary" type="button" data-cwo-test aria-haspopup="dialog">${ic("circle-check", "ic-sm")}Testar configuração</button><button class="btn btn-quiet" type="button" data-cwo-rotate aria-haspopup="dialog">${ic("key-round", "ic-sm")}Trocar os segredos</button><button class="btn btn-quiet" type="button" data-cwo-off>${ic("power", "ic-sm")}Desligar e esquecer</button>`) + keys;
+    `<button class="btn btn-secondary" type="button" data-cwo-test aria-haspopup="dialog">${ic("circle-check", "ic-sm")}Testar configuração</button><button class="btn btn-quiet" type="button" data-cwo-rotate aria-haspopup="dialog">${ic("key-round", "ic-sm")}Trocar os segredos</button><button class="btn btn-quiet" type="button" data-cwo-repair aria-haspopup="dialog">${ic("refresh-cw", "ic-sm")}Reparar</button><button class="btn btn-quiet" type="button" data-cwo-relink>${ic("user", "ic-sm")}Vincular outra conta</button><button class="btn btn-quiet" type="button" data-cwo-off>${ic("power", "ic-sm")}Desligar e esquecer</button><button class="btn btn-quiet" type="button" data-cwo-gone>Simular conversa apagada (protótipo)</button>`)
+    + sec("h-cwr", "Quando algo some ou muda", "O que a Zuri resolve sozinha e o que pede você.",
+      `<ul class="runs">${[["Conversa ou contato “Zuri” apagados", "A Zuri cria de novo e avisa você. Até 3 vezes por dia.", "on", "Sozinha"], ["Caixa apagada, endereço mudou", "O canal pausa. Toque em Reparar e cole a chave de administrador.", "wait", "Reparar"], ["Segredos trocados no Chatwoot", "O canal pausa. Toque em Trocar os segredos.", "wait", "Trocar"], ["Você trocou de conta de atendente", "Vincular outra conta: código novo e senha.", "wait", "Vincular"], ["Você trocou o número do celular", "Não muda nada: você conversa pelo Chatwoot logado.", "off", "Nada a fazer"]].map(([n, d, c, l]) => `<li><span><b>${n}</b><br><span class="hint">${d}</span></span><span class="pill ${c}"><i></i>${l}</span></li>`).join("")}</ul>`) + keys;
 }
 CFG_VIEW.chatwoot = cfgChatwoot;
 /* Integrações aponta para a página própria. */
@@ -8608,7 +8610,7 @@ function cwoWho(opener, sim) {
   }, 900);
 }
 /* Passo 3: a Zuri cria tudo e mostra cada passo. */
-function cwoMake(opener, fail) {
+function cwoMake(opener, fail, repair) {
   let k = 0;
   const tick = () => {
     if (k > 0 && !DLG.def) return;
@@ -8618,6 +8620,12 @@ function cwoMake(opener, fail) {
       return;
     }
     dlgShow({ t: "Configurando…", sub: "Leva alguns segundos. Não feche esta janela.", body: cwoSteps(k), foot: "" }, opener);
+    if (k === CWO_STEPS.length && repair) {
+      CWO.st = "on"; CWO.log.unshift(["agora", "Zuri", "Reparo: caixa, endereço de retorno, membros e conversa conferidos", "on", "Reparado"]);
+      dlgShow({ t: "Reparado", sub: "A caixa estava no lugar. A Zuri refez só o que faltava, e a sua chave foi descartada.", body: cwoSteps(k), foot: `<span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Pronto</button>` }, opener);
+      render();
+      return;
+    }
     if (k === CWO_STEPS.length) {
       CWO.code = cwoCode(); CWO.st = "code";
       dlgShow({ t: "Caixa criada", sub: "Falta você responder o código na conversa “Zuri”.", body: `${cwoSteps(k)}<p class="t">Responda <b class="num">${CWO.code}</b> na conversa “Zuri” do Chatwoot.</p><p class="hint">Use a sua conta (${escH(CWO.me.n)}). Depois, confirme aqui no app com a senha.</p>`,
@@ -8670,6 +8678,9 @@ function cwoAdminKey(opener, title, why, then) {
 }
 ACT.unshift(
   [(t) => t.matches("[data-cwo-start]"), (t) => cwoStart(t)],
+  [(t) => t.matches("[data-cwo-gone]"), () => { CWO.log.unshift(["agora", "Chatwoot", "A conversa “Zuri” foi apagada. A Zuri abriu outra e avisou você", "wait", "Recriada"]); render(); refocus("[data-cwo-gone]"); say("A conversa “Zuri” sumiu no Chatwoot. A Zuri abriu outra e avisou no app e no Telegram."); }],
+  [(t) => t.matches("[data-cwo-repair]"), (t) => cwoAdminKey(t, "Reparar", "A Zuri confere a caixa, o endereço de retorno, os membros, o contato e a conversa, e refaz só o que faltar.", () => cwoMake(t, -1, true))],
+  [(t) => t.matches("[data-cwo-relink]"), (t) => senhaDlg("Para vincular outra conta de atendente do Chatwoot.", () => { CWO.code = cwoCode(); CWO.st = "code"; render(); refocus("[data-cwo-reply]"); say(`Código novo enviado na conversa “Zuri”. Responda com a conta nova. Até lá, a Zuri não responde a ninguém.`); }, t)],
   [(t) => t.matches("[data-cwo-make]"), () => cwoMake(DLG.opener, CWO.sim === "drop" ? 3 : -1)],
   [(t) => t.matches("[data-cwo-again]"), () => cwoMake(DLG.opener, -1)],
   [(t) => t.matches("[data-cwo-newcode]"), (t) => { CWO.code = cwoCode(); render(); refocus("[data-cwo-newcode]"); say(`Código novo enviado na conversa “Zuri”. O anterior não vale mais.`); }],
