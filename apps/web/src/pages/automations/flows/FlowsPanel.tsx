@@ -14,6 +14,7 @@ import { FlashStatus, flashClass, useFlash } from "../../../lib/lists.tsx";
 import { Badge } from "../parts.tsx";
 import type { Editing } from "./FlowEditor.tsx";
 import { capitalizeFirst, NODE_LABEL, PROBLEM_LABEL, RUN_STATUS_LABEL, RUN_TRIGGER_LABEL, SITE_LABEL } from "./labels.ts";
+import { OutboxSummary } from "../../crm/OutboxPart.tsx";
 
 // The tab's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRFlows);
@@ -406,6 +407,7 @@ function ConnectionRow({ item, onEdit, onDelete }: { item: FlowConnection; onEdi
               })}`
             : `${item.origin} · ${item.methods.join(", ")} · ${item.paths.join(", ")}`}
         </p>
+        {chatwoot && <OutboxSummary connectionId={item.id} gap={chatwoot.bulkGap} />}
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
           <Badge dot tone={item.hasCredential ? "accent" : "neutral"}>
             {key}

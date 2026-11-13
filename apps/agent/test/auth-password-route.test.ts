@@ -78,7 +78,7 @@ function registeredRoutes(): string[] {
   const unused = () => {
     throw new Error("not used");
   };
-  const app = createApi({ locale: () => "pt-BR", auth: unused, settings: unused, productivity: unused, memories: unused, automations: unused, aiUsage: unused, aiHistory: unused, aiHours: unused, aiMonths: unused, chat: unused, notices: unused, telegram: unused, semantic: unused, mcp: unused, google: unused, flows: unused, crm: unused, crmAutomations: unused, chatwoot: unused, backup: unused, passwordSecretSet: () => true, origin: () => ORIGIN, development: () => false });
+  const app = createApi({ locale: () => "pt-BR", auth: unused, settings: unused, productivity: unused, memories: unused, automations: unused, aiUsage: unused, aiHistory: unused, aiHours: unused, aiMonths: unused, chat: unused, notices: unused, telegram: unused, semantic: unused, mcp: unused, google: unused, flows: unused, crm: unused, crmAutomations: unused, chatwoot: unused, outbox: unused, backup: unused, passwordSecretSet: () => true, origin: () => ORIGIN, development: () => false });
   return [...new Set(app.routes.filter((r) => r.method !== "ALL").map((r) => `${r.method} ${r.path}`))];
 }
 

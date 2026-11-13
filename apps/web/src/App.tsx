@@ -71,14 +71,14 @@ function Moved() {
 
 /**
  * The CRM's parts with an address of their own. Automações (PR S18) is /crm itself: any other address under it,
- * /crm/automacoes too, goes back there (one name less in the first bundle). "envios" arrives with S19.
+ * /crm/automacoes too, goes back there (one name less in the first bundle).
  */
-const CRM_PARTS = ["fluxos", "credenciais"];
+const CRM_PARTS = ["fluxos", "credenciais", "envios"];
 
 /** The address is checked here, so the router stays out of the lazy screen (armadilhas.md, "Pacote da interface"). */
 function Crm() {
   const { parte } = useParams();
-  return parte !== undefined && !CRM_PARTS.includes(parte) ? <Navigate to="/crm" replace /> : <CrmPage />;
+  return parte && !CRM_PARTS.includes(parte) ? <Navigate to="/crm" replace /> : <CrmPage />;
 }
 
 export function App() {
