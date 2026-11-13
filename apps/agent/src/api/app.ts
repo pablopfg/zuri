@@ -68,6 +68,7 @@ import { registerSemanticRoutes, type SemanticDeps } from "./semantic.ts";
 import { type McpRouteDeps, registerMcpRoutes } from "./mcp.ts";
 import { type GoogleRouteDeps, registerGooglePush, registerGoogleRoutes } from "./google.ts";
 import { registerReviewRoutes } from "./reviews.ts";
+import { type ChatwootRouteDeps, registerChatwootHook, registerChatwootRoutes } from "./chatwoot.ts";
 import { type FlowRouteDeps, registerFlowRoutes } from "./flows.ts";
 import { type CrmRouteDeps, registerCrmRoutes } from "./crm.ts";
 import { type CrmAutomationRouteDeps, registerCrmAutomationRoutes } from "./crm-automations.ts";
@@ -121,6 +122,8 @@ export interface ApiDeps {
   google?(): GoogleRouteDeps;
   /** The flows and the site monitor (step 22a). Absent only in tests of other routes. */
   flows?(): FlowRouteDeps;
+  /** The owner's conversation with Zuri in the Chatwoot (docs/planos/zuri-no-chatwoot.md). Absent only in tests of other routes. */
+  chatwoot?(): ChatwootRouteDeps;
   /** The internal CRM (step 22b). Absent only in tests of other routes. */
   crm?(): CrmRouteDeps;
   crmAutomations?(): CrmAutomationRouteDeps;
@@ -217,6 +220,9 @@ export function createApi(deps: ApiDeps) {
   // Google's push notices (step 19): no cookie and no Origin, only the channel's token (checked inside).
   const google = deps.google;
   if (google) registerGooglePush(app, () => google());
+  // The owner's inbox in the Chatwoot: no cookie and no Origin, the token in the path and the inbox's signature (checked inside).
+  const chatwoot = deps.chatwoot;
+  if (chatwoot) registerChatwootHook(app, () => chatwoot());
 
   app.use("*", async (c, next) => {
     checkCsrf(c.req.raw, deps.origin());
@@ -546,6 +552,7 @@ export function createApi(deps: ApiDeps) {
   if (google) registerReviewRoutes(app, () => google(), client);
   const flows = deps.flows;
   if (flows) registerFlowRoutes(app, () => flows(), client);
+  if (chatwoot) registerChatwootRoutes(app, () => chatwoot(), client);
   const crm = deps.crm;
   if (crm) registerCrmRoutes(app, () => crm());
   const crmAutomations = deps.crmAutomations;

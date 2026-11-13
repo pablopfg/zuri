@@ -13,4 +13,5 @@ export const ptBRSettingsTabs = {
   "web.settings.tab.data": "Dados",
   "web.settings.tab.diagnostics": "Diagnóstico",
   "web.settings.tab.about": "Sobre a Zuri",
+  "web.settings.tab.chatwoot": "Chatwoot",
 } as const;

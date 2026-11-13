@@ -92,7 +92,13 @@ export type InternalKey =
   // Step 23b, the automatic backup: one JSON object (the owner's public key and its id, the next run,
   // the tries of the day, the last copy and the last failure, the last download, the 30-day warning
   // and the month the copy last went to Telegram). The private key is never here.
-  | "backup";
+  | "backup"
+  // The owner's conversation with Zuri in the Chatwoot (docs/planos/zuri-no-chatwoot.md): one JSON object
+  // (the link's state, the account, inbox and conversation, the owner's agent account, the code's HMAC,
+  // the notices seen, the counters of the hour, of strangers and of recreations, the last events) and the
+  // app conversation it writes to. The inbox's secrets are in zur_flow_connections, sealed.
+  | "chatwoot_owner"
+  | "chatwoot_conversation";
 
 export class InternalState {
   constructor(private readonly db: Database) {}

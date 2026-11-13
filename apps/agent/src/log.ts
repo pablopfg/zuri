@@ -76,6 +76,8 @@ export const LOG_EVENTS = [
   "mcp_tool_skipped",
   "routine_check_failed",
   "live_notify_failed",
+  "chatwoot_owner_failed",
+  "chatwoot_owner_undo_failed",
 ] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
 
@@ -135,6 +137,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "interval",
   // The overview of the reviews (PR S11).
   "metrics",
+  // The owner's conversation with Zuri in the Chatwoot.
+  "chatwoot", "hook", "relink", "rotate", "repair", "full", "unlock",
   // The CRM's automations (PR S18).
   "config", "mode", "days", "watch",
 ]);

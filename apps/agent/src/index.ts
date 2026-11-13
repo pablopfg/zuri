@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, GOOGLE_CALLBACK_PATH, GOOGLE_RETURN_PAGE, LIVE_PATH, LOGIN_OPTIONS_PATH, type LoginOptions, TELEGRAM_LIMITS } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, CHATWOOT_OWNER_LIMITS, GOOGLE_CALLBACK_PATH, GOOGLE_RETURN_PAGE, LIVE_PATH, LOGIN_OPTIONS_PATH, type LoginOptions, TELEGRAM_LIMITS } from "@zuri/shared";
 import { checkCsrf, readBodyLimited } from "./api/http.ts";
 import { CLIENT_GEO_HEADER, geoFromCf } from "./auth/client.ts";
 import { TURNSTILE_ORIGIN, turnstileSiteKey } from "./auth/turnstile.ts";
@@ -8,6 +8,14 @@ import { type AccessConfig, verifyAccessToken } from "./gates/access.ts";
 import { withBodyRead } from "./gates/body.ts";
 import { withApiHeaders, withWebHeaders } from "./gates/headers.ts";
 import { isTelegramWebhookSecret, TELEGRAM_SECRET_HEADER, TELEGRAM_WEBHOOK_PATH } from "./gates/telegram.ts";
+import {
+  CHATWOOT_DELIVERY_HEADER,
+  CHATWOOT_SIGNATURE_HEADER,
+  CHATWOOT_TIMESTAMP_HEADER,
+  chatwootHookPath,
+  isChatwootHookToken,
+  plausibleChatwootNotice,
+} from "./gates/chatwoot-owner.ts";
 import { GOOGLE_CHANNEL_HEADER, GOOGLE_PUSH_PATH, GOOGLE_STATE_HEADER, GOOGLE_TOKEN_HEADER, isGooglePushToken } from "./gates/google-push.ts";
 import { AppError, errorResponse } from "./http/errors.ts";
 import { log } from "./log.ts";
@@ -86,6 +94,8 @@ async function handle(request: Request, env: WorkerEnv): Promise<Response> {
   }
   if (url.pathname === TELEGRAM_WEBHOOK_PATH) return withApiHeaders(await telegramWebhook(request, url, env));
   if (url.pathname === GOOGLE_PUSH_PATH) return withApiHeaders(await googlePush(request, url, env));
+  const hook = chatwootHookPath(url.pathname);
+  if (hook || url.pathname.startsWith("/api/chatwoot/owner/hook/")) return withApiHeaders(await chatwootHook(request, url, env, hook));
   // What the sign-in form draws, answered here: public settings need no Durable
   // Object request (they count on the Free plan, and anyone can ask for them).
   if (url.pathname === LOGIN_OPTIONS_PATH && (request.method === "GET" || request.method === "HEAD")) {
@@ -147,6 +157,57 @@ async function telegramWebhook(request: Request, url: URL, env: WorkerEnv): Prom
   void answer.body?.cancel();
   // A failure inside the object asks Telegram to try again (the update_id is only kept once handled).
   return new Response(null, { status: answer.status >= 500 ? 500 : 200 });
+}
+
+/**
+ * The return of the owner's inbox in the Chatwoot (docs/planos/zuri-no-chatwoot.md),
+ * checked here before it costs an object request: POST, the token in the path
+ * compared in constant time (derived from SESSION_SECRET: nothing read from the
+ * database), a signature header present, JSON and at most 64 KB (413). Only the
+ * body and the three Chatwoot headers go on, in a fresh request. The signature
+ * itself is checked in the object, where the inbox's secret is kept.
+ */
+async function chatwootHook(request: Request, url: URL, env: WorkerEnv, hook: { linkId: string; token: string } | null): Promise<Response> {
+  if (request.method !== "POST" || !hook) {
+    await request.body?.cancel();
+    return errorResponse(new AppError("NOT_FOUND"));
+  }
+  if (!(await isChatwootHookToken(hook.linkId, hook.token, env.SESSION_SECRET)) || !request.headers.get(CHATWOOT_SIGNATURE_HEADER)) {
+    await request.body?.cancel();
+    return errorResponse(new AppError("FORBIDDEN"));
+  }
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+    await request.body?.cancel();
+    return errorResponse(new AppError("VALIDATION_FAILED", undefined, { fields: ["_body"] }));
+  }
+  if (!plausibleChatwootNotice(request.headers.get(CHATWOOT_SIGNATURE_HEADER), request.headers.get(CHATWOOT_TIMESTAMP_HEADER), Date.now())) {
+    await request.body?.cancel();
+    return new Response(null, { status: 401 });
+  }
+  let body: Uint8Array;
+  try {
+    body = await readBodyLimited(request, CHATWOOT_OWNER_LIMITS.hookBodyMax);
+  } catch (error) {
+    const refused = errorResponse(error);
+    const tooLarge = error instanceof AppError && error.messageKey === "error.bodyTooLarge";
+    return tooLarge ? new Response(refused.body, { status: 413, headers: refused.headers }) : refused;
+  }
+  const header = (name: string) => (request.headers.get(name) ?? "").slice(0, 200);
+  const agent = env.AGENT.getByName(AGENT_INSTANCE_NAME);
+  const forwarded = new Request(new URL(url.pathname, url.origin), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      [CHATWOOT_SIGNATURE_HEADER]: header(CHATWOOT_SIGNATURE_HEADER),
+      [CHATWOOT_TIMESTAMP_HEADER]: header(CHATWOOT_TIMESTAMP_HEADER),
+      [CHATWOOT_DELIVERY_HEADER]: header(CHATWOOT_DELIVERY_HEADER),
+    },
+    body,
+  });
+  const answer = await agent.fetch(forwarded);
+  void answer.body?.cancel();
+  // The Chatwoot never repeats a notice: only the status matters (401 for a wrong signature).
+  return new Response(null, { status: answer.status === 401 ? 401 : answer.status >= 500 ? 500 : 200 });
 }
 
 /**
@@ -255,6 +316,9 @@ async function passesAccess(
   if (google && (await isGooglePushToken(request.headers.get(GOOGLE_CHANNEL_HEADER), request.headers.get(GOOGLE_TOKEN_HEADER), env.SESSION_SECRET))) {
     return true;
   }
+  // The owner's inbox in the Chatwoot can't sign in to Access either: the token in its path proves it.
+  const hook = request.method === "POST" && secretsReady && !request.headers.has("cookie") && !request.headers.has("authorization") ? chatwootHookPath(url.pathname) : null;
+  if (hook && (await isChatwootHookToken(hook.linkId, hook.token, env.SESSION_SECRET))) return true;
   return verifyAccessToken(request.headers.get("cf-access-jwt-assertion"), access);
 }
 
