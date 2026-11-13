@@ -27,6 +27,7 @@ export const LOG_EVENTS = [
   "chat_stream_failed",
   "tool_failed",
   "automation_failed",
+  "crm_automation_failed",
   "google_revoke_failed",
   "google_watch_failed",
   "google_alarm_failed",
@@ -138,6 +139,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "metrics",
   // The owner's conversation with Zuri in the Chatwoot.
   "chatwoot", "hook", "relink", "rotate", "repair", "full", "unlock",
+  // The CRM's automations (PR S18).
+  "config", "mode", "days", "watch",
 ]);
 const MAX_SEGMENTS = 8;
 

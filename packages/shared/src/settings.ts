@@ -7,6 +7,9 @@ import { AI_LIMIT_RANGES, AI_MODEL_IDS, DEFAULT_CHAT_MODEL, DEFAULT_FALLBACK_MOD
 
 import { ALERT_LIMITS, alertFullTextSchema, alertRoutesSchema, DEFAULT_ALERT_ROUTES, DEFAULT_DIGEST_TIME } from "./alerts.ts";
 import { AGENDA_VIEWS, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
+import { AGENDA_RULES } from "./agenda-rules.ts";
+import { isValidCalendarDate } from "./dates.ts";
+import { nationalHoliday } from "./holidays.ts";
 import { DEFAULT_SOUND_PREFS, NOTICE_SOUNDS } from "./sounds.ts";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "./time-zone.ts";
 
@@ -51,6 +54,12 @@ export function isOwnerName(name: string): boolean {
  */
 export const ownerNameSchema = /* @__PURE__ */ z.string().max(OWNER_NAME_MAX * 10).transform(normalizeOwnerName).refine(isOwnerName);
 
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const isDay = (day: string) => {
+  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+  return isValidCalendarDate(y, m, d);
+};
+
 const range = (r: { min: number; max: number }) => z.number().int().min(r.min).max(r.max);
 
 /**
@@ -76,12 +85,39 @@ export const agendaPrefsSchema = /* @__PURE__ */ z
       .transform((days) => [...new Set(days)].sort((a, b) => a - b)),
     /** Whether the week also shows the days off. */
     daysOff: z.boolean(),
-    /** Whether all-day events and events outside the working hours show without asking. */
-    allDay: z.boolean(),
+    /** Whether events outside the working hours show without asking. */
     outside: z.boolean(),
+    /** Gone on 13/11/2026 with the "Dia todo" row: a stored one is still read, and dropped. */
+    allDay: z.boolean().optional(),
+    /** The lunch break in minutes, or none; a record saved before 13/11/2026 has none. */
+    lunch: z
+      .object({ from: z.number().int().min(0).max(1_440), to: z.number().int().min(0).max(1_440) })
+      .strict()
+      .nullable()
+      .default(null),
+    /** National holidays the owner works on, each once, in order. */
+    openHolidays: z
+      .array(z.string().regex(DAY).refine((day) => nationalHoliday(day) !== null))
+      .max(AGENDA_RULES.openHolidaysMax)
+      .default([])
+      .transform((days) => [...new Set(days)].sort()),
+    /** Days off, one per date, in order. */
+    closed: z
+      .array(z.object({ date: z.string().regex(DAY).refine(isDay), reason: z.string().trim().max(AGENDA_RULES.closedReasonMax) }).strict())
+      .max(AGENDA_RULES.closedMax)
+      .default([])
+      .refine((days) => new Set(days.map((day) => day.date)).size === days.length)
+      .transform((days) => [...days].sort((a, b) => (a.date < b.date ? -1 : 1))),
   })
   .strict()
-  .refine((prefs) => prefs.from < prefs.to);
+  .refine((prefs) => prefs.from < prefs.to)
+  // Whole half hours, up to 3 h, with half an hour of work at least before and after (agenda-rules.ts).
+  .refine(({ lunch, from, to }) => {
+    if (!lunch) return true;
+    const { lunchStep, lunchMax, lunchMargin } = AGENDA_RULES;
+    return lunch.from % lunchStep === 0 && lunch.to % lunchStep === 0 && lunch.to > lunch.from && lunch.to - lunch.from <= lunchMax && lunch.from >= from * 60 + lunchMargin && lunch.to <= to * 60 - lunchMargin;
+  })
+  .transform(({ allDay: _gone, ...prefs }) => prefs);
 
 /** The sounds of the open app (12/11/2026): saved whole, like the Agenda's preferences. */
 export const soundPrefsSchema = /* @__PURE__ */ z.object({ notice: z.boolean(), pick: z.enum(NOTICE_SOUNDS), recording: z.boolean() }).strict();
