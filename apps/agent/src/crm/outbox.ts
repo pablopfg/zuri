@@ -326,8 +326,9 @@ export class Outbox {
   private gapMs(row: ConnectionRow, bulk: boolean, slow: boolean): number {
     const { bulkGap, oneGap } = chatwootSettings(row);
     const gap = bulk ? bulkGap : oneGap;
-    const random = this.deps.random?.() ?? crypto.getRandomValues(new Uint32Array(1))[0]! / 2 ** 32;
-    const seconds = gap.min + Math.floor(random * (gap.max - gap.min + 1));
+    const range = gap.max - gap.min + 1;
+    const random = this.deps.random;
+    const seconds = gap.min + (random ? Math.floor(random() * range) : uniformBelow(range));
     return seconds * 1000 * (slow ? 2 : 1);
   }
 
@@ -722,4 +723,13 @@ function problemOf(error: unknown): OutboxProblem {
 /** A contact's name for the history: one line, no control characters, cut by characters. */
 function cleanLabel(value: string): string {
   return [...value.replace(/[\p{Cc}\p{Cf}]/gu, " ").replace(/\s+/g, " ").trim()].slice(0, OUTBOX_LIMITS.label).join("");
+}
+
+/** A whole number in [0, range), uniform: a 32-bit value below the largest multiple of range, then its remainder. */
+export function uniformBelow(range: number): number {
+  const limit = Math.floor(0x1_0000_0000 / range) * range;
+  for (;;) {
+    const value = crypto.getRandomValues(new Uint32Array(1))[0] ?? limit;
+    if (value < limit) return value % range;
+  }
 }

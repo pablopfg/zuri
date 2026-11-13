@@ -2,7 +2,7 @@ import { OUTBOX_LIMITS, outboxListQuerySchema } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
 import { phoneVariants } from "../src/flows/chatwoot.ts";
 import { inWake, WAKE_NOTICE_RESERVE, WAKE_SUBREQUESTS, WakeBudget } from "../src/agent/wake-budget.ts";
-import { Outbox, type OutboxInput, type OutboxNotice, OutboxRefused } from "../src/crm/outbox.ts";
+import { Outbox, type OutboxInput, type OutboxNotice, OutboxRefused, uniformBelow } from "../src/crm/outbox.ts";
 import { type FlowWorld, withFlowWorld } from "./flow-world.ts";
 
 // PR S19: the outbox. One message at a time per Chatwoot credential, the credential's gap apart, and never twice.
@@ -778,4 +778,17 @@ describe("security audit (PR S19)", () => {
       expect(await outbox.tick()).toBe(true);
       expect(sends(world)).toHaveLength(1);
     }));
+});
+
+describe("the gap's random part (CodeQL js/biased-cryptographic-random)", () => {
+  it("stays in [0, range) and reaches both ends", () => {
+    const seen = new Set<number>();
+    for (let i = 0; i < 400; i++) {
+      const value = uniformBelow(3);
+      expect(Number.isInteger(value) && value >= 0 && value < 3).toBe(true);
+      seen.add(value);
+    }
+    expect([...seen].sort()).toEqual([0, 1, 2]);
+    expect(uniformBelow(1)).toBe(0);
+  });
 });
