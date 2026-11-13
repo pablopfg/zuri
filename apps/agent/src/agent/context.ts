@@ -1,4 +1,5 @@
-import { CHAT_MODELS, type ChatModel, type PendingAction, type TaskPlan } from "@zuri/shared";
+import type { ChatModel, PendingAction, TaskPlan } from "@zuri/shared";
+import { modelRate } from "../ai/catalog-rates.ts";
 import { estimateTokens, type ModelMessage } from "../ai/provider.ts";
 import { decodeQuoted, decodeTools, type MessageRow } from "../chat/conversations.ts";
 import { dataLine } from "./data.ts";
@@ -18,7 +19,7 @@ export const SUMMARIZE_THRESHOLD = 8;
  * 3.3 70B has 24,000 tokens in all, so its share is the smallest).
  */
 export function contextBudget(model: string, limitTokens: number, maxOutputTokens: number, toolTokens: number): number {
-  const window = (CHAT_MODELS as Record<string, { context: number }>)[model]?.context;
+  const window = modelRate(model)?.context;
   if (!window) return limitTokens;
   return Math.max(MIN_HISTORY_TOKENS, Math.min(limitTokens, window - maxOutputTokens - toolTokens - WINDOW_MARGIN));
 }

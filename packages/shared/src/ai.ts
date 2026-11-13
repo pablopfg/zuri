@@ -7,6 +7,8 @@ import {
   AI_LIMIT_RANGES,
   AI_MODEL_IDS,
   type AiModel,
+  type ChosenFallback,
+  type ChosenModel,
   isPaidModel,
   PAID_MODEL_IDS,
   PAID_PROVIDER_IDS,
@@ -27,6 +29,8 @@ export {
   AI_LIMIT_RANGES,
   AI_MODEL_IDS,
   type AiModel,
+  type ChosenFallback,
+  type ChosenModel,
   isPaidModel,
   PAID_MODEL_IDS,
   PAID_PROVIDER_IDS,
@@ -184,7 +188,8 @@ export const usageReportSchema = /* @__PURE__ */ mini.strictObject({
   resetsAt: mini.iso.datetime(),
   /** Who answers with the main model: Workers AI, a paid company (step 21) or the simulator. */
   provider: mini.enum(["workers-ai", "anthropic", "openai", "mock"]),
-  model: mini.enum(AI_MODEL_IDS),
+  /** The chosen model: one of the list, or one put on it from the catalog (PR S21). */
+  model: mini.string().check(mini.minLength(1)),
   today: mini.strictObject({
     requests: count,
     errors: count,

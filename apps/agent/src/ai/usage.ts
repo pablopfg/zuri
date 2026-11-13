@@ -1,9 +1,8 @@
+import { modelRate } from "./catalog-rates.ts";
 import {
   AUDIO_SECONDS_PER_DAY,
   CHAT_MODELS,
-  chatNeurons,
   EMBEDDING_NEURONS_PER_MILLION,
-  isChatModel,
   isPaidModel,
   PAID_MODEL_IDS,
   type ModelUsage,
@@ -11,7 +10,7 @@ import {
   paidUsd,
   paidProviderOf,
   ANTHROPIC_CACHE_RATES,
-  type AiModel,
+  type ChosenModel,
   type UsageHistory,
   type UsageHistoryDays,
   type UsageHours,
@@ -76,7 +75,9 @@ export function stepNeurons(usage: StepUsage): number {
   if (!usage.billable || isPaidModel(usage.model)) return 0;
   const input = usage.input.reported + usage.input.estimated;
   const output = usage.output.reported + usage.output.estimated;
-  if (isChatModel(usage.model)) return chatNeurons(usage.model, input, output);
+  // The catalog's last price (PR S21) or the dated table's; a model of neither is priced as the dearest.
+  const rate = modelRate(usage.model);
+  if (rate) return (input * rate.input + output * rate.output) / 1_000_000;
   return (input * DEAREST.input + output * DEAREST.output) / 1_000_000;
 }
 
@@ -418,7 +419,7 @@ export class UsageMeter {
   report(
     limits: AiLimits,
     provider: UsageReport["provider"],
-    model: AiModel,
+    model: ChosenModel,
     providers: { id: PaidProviderId; configured: boolean; state: ProviderState }[] = [],
   ): UsageReport {
     const day = this.today();
