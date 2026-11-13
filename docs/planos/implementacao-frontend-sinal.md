@@ -241,7 +241,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S14 | mesclada (#317) |
 | S15 | mesclada (#320) |
 | S16 | mesclada (#325) |
-| S17 | em revisão |
+| S17 | mesclada (#327) |
+| S18 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -432,6 +433,15 @@ Diferenças da S17 (servidor das credenciais) para o plano e o protótipo, para 
 - **Mudar o endereço, a conta ou o tipo de chave pede a chave de novo** (`VALIDATION_FAILED`, campo `credential`), em vez de apagar a guardada. O aviso de Credenciais diz isso.
 - **"Testar" fica no menu "Mais opções"**, não como botão na linha. Até 5 por minuto por credencial (buscar caixas também conta, porque usa a mesma chamada). O webhook do Chatwoot, o segredo da assinatura e "Enviar teste para mim" ficam com quem os usa (S19/S20).
 - **Fim da chave** só para chaves de 12 caracteres ou mais; abaixo disso a linha diz "Com chave".
+
+Diferenças da S18 (automações do CRM) para o plano e o protótipo, para as PRs seguintes não as desfazerem (plano em [s18-automacoes-do-crm.md](s18-automacoes-do-crm.md)):
+
+- **Sem comparação com o n8n.** O Pablo vai desligar o n8n e a Zuri passa a fazer o que ele fazia (13/11, 03:19 UTC). O ensaio mostra o que a Zuri faria em cada dia e o dono marca "Está certo" ou "Tem erro" (com o motivo). Ligar de verdade pede 3 dias úteis seguidos marcados como certos, ou "assumindo o risco", e a senha.
+- **Automações fica em `/crm`**, a primeira parte. `/crm/automacoes` volta para `/crm` (não entrou em `CRM_PARTS`: cada texto do `App.tsx` pesa no JS inicial). Fluxos ficou em `/crm/fluxos`; "Criar fluxo" na paleta abre `/crm/fluxos#novo-fluxo`.
+- **Sem rota `/test` de automação.** O teste é o da credencial (S17), feito no painel "Ligar" antes de salvar.
+- **Os avisos da automação** (pausada, voltou ao ensaio, chegou) levam a `/crm`.
+- **Só a automação ligada (ensaio, de verdade ou pausada) prende a credencial.** Desligada, a credencial pode ser apagada.
+- **A ordem do catálogo é a do protótipo aprovado**, que respondeu a dependência "ordem dos fluxos". Nenhum módulo real ainda: só a "Automação de exemplo", que existe apenas no ambiente local e não fala com ninguém. As automações não entram no backup: depois de restaurar, tudo volta desligado.
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 

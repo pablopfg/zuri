@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, isPaidModel, isPasswordHash, isUsableSetupCode, type Locale, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
+import { DEFAULT_LOCALE, isPaidModel, isPasswordHash, isUsableSetupCode, type CrmAutomationPause as AutomationPause, type Locale, type MessageKey, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
 import { Agent } from "agents";
 import { chooseChain, CircuitBreaker, MeteredAI, type PaidKeys, ProviderChain, paidKey, UsageMeter } from "../ai/index.ts";
 import type { AIProvider } from "../ai/provider.ts";
@@ -63,6 +63,10 @@ import { FlowConnections } from "../flows/connections.ts";
 import { developmentFlowNetwork } from "../flows/dev-flows.ts";
 import { SiteStates } from "../flows/monitor.ts";
 import { type FlowNotice, FlowService } from "../flows/service.ts";
+import { EXAMPLE_AUTOMATION } from "../crm/automations/example.ts";
+import { AUTOMATION_NAME } from "../crm/automations/names.ts";
+import { buildCatalog } from "../crm/automations/registry.ts";
+import { type AutomationNotice, CrmAutomations } from "../crm/automations/service.ts";
 import { AgentConfigs } from "../specialists/configs.ts";
 import { type CrmNotice, CrmService } from "../crm/service.ts";
 import { dohResolver } from "../mcp/url.ts";
@@ -134,6 +138,8 @@ interface Store {
   flows: FlowService;
   /** The internal CRM (step 22b). */
   crm: CrmService;
+  /** The CRM's automations (PR S18). */
+  crmAutomations: CrmAutomations;
   /** Each agent's settings on the AI screen (guardrails, PR 2). */
   agents: AgentConfigs;
   /** The automatic backup to BACKUP_BUCKET (step 23b). */
@@ -232,6 +238,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     mcp: () => ({ service: this.store.mcp, auth: this.store.auth, automations: this.store.automations }),
     flows: () => ({ flows: this.store.flows, connections: this.store.flows.connections, auth: this.store.auth, development: () => this.development() }),
     crm: () => ({ crm: this.store.crm, rearm: () => this.store.automations.rearm() }),
+    crmAutomations: () => ({ automations: this.store.crmAutomations, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
     backup: () => {
       const { db, settings, productivity, crm, auth, automations } = this.store;
       let zoneBefore: string | null = null;
@@ -410,6 +417,12 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       await this.store.flows.tick();
     } catch (error) {
       log("error", "flow_failed", { error });
+    }
+    // The CRM's automations (PR S18): one per wake, after the flows, in the same count of calls.
+    try {
+      if (await this.store.crmAutomations.tick()) await automations.rearm();
+    } catch (error) {
+      log("error", "crm_automation_failed", { error });
     }
     // The CRM's follow-ups and birthdays (step 22b): set the alarm again when they moved.
     try {
@@ -739,6 +752,14 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
+          // The CRM's automations (PR S18).
+          const crmAutomationsDue = (() => {
+            try {
+              return crmAutomations.nextDue();
+            } catch {
+              return null;
+            }
+          })();
           // The CRM's follow-ups and birthdays (step 22b).
           const crmDue = (() => {
             try {
@@ -756,7 +777,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
-          const due = [tries, watch, indexing, tools, channels, people, reviewsDue, flowsDue, crmDue, backupDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
+          const due = [tries, watch, indexing, tools, channels, people, reviewsDue, flowsDue, crmAutomationsDue, crmDue, backupDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
           // Work already past due is only left there when its step failed on the last
           // alarm (a full disk, say): wait a minute before trying again, never at once,
           // so a step that keeps failing can't spin the alarm through the day's quota.
@@ -864,6 +885,17 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       // Local development never reaches a real site (src/flows/dev-flows.ts).
       if (this.development()) flows.network = developmentFlowNetwork(flows.network);
       // The internal CRM (step 22b): its notices go to the center; nothing in it ever reaches a log.
+      // The CRM's automations (PR S18): the code's catalog; the example only in local development.
+      const crmAutomations = new CrmAutomations({
+        db,
+        connections: flows.connections,
+        callDeps: (calls) => flows.automationCallDeps(calls),
+        timeZone: () => settings.field("timeZone"),
+        lockdown: () => auth.lockdown.active(),
+        notify: (notice) => crmAutomationNotice(alerts, notice, this.locale()),
+        catalog: buildCatalog(this.development() ? [EXAMPLE_AUTOMATION] : []),
+      });
+      flows.automationUsers = (id) => crmAutomations.users(id).map((automation) => automationName(this.locale(), automation));
       const crm = new CrmService({ db, timeZone: () => settings.field("timeZone"), locale: () => this.locale(), notify: (notice) => crmNotice(alerts, notice), assertBytes: () => productivity.storage.assertBytes() });
       // The owner's conversation in the bot (step 14): the same runner, meter and turns as the app.
       const telegramConversation = new TelegramConversation({
@@ -1017,7 +1049,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         },
         telegram: { chat: () => telegram.ownerChat(), client: (options) => telegram.client(options) },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, agents, backupAuto };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmAutomations, agents, backupAuto };
     }
     return this.#store;
   }
@@ -1110,6 +1142,35 @@ function flowNotice(alerts: AlertService, diagnostics: DiagnosticsService, notic
       return;
     case "paused":
       alerts.raise({ kind: "flow.paused", category: "system", priority: "high", params: { name: notice.flowName }, source, link: "/crm/fluxos" });
+      return;
+  }
+}
+
+/** The name of a CRM automation in the owner's language (the example's too, in local development). */
+function automationName(locale: Locale, id: string): string {
+  const key = AUTOMATION_NAME[id];
+  return key ? t(locale, key) : id;
+}
+
+const AUTOMATION_PAUSE: Record<AutomationPause, MessageKey> = {
+  failures: "notice.crmAutomation.reason.failures",
+  credential: "notice.crmAutomation.reason.credential",
+  bad_answer: "notice.crmAutomation.reason.bad_answer",
+};
+
+/** A notice of the CRM's automations (PR S18): its name, never a person's. */
+function crmAutomationNotice(alerts: AlertService, notice: AutomationNotice, locale: Locale): void {
+  const name = automationName(locale, notice.id);
+  const source = `crm-automation:${notice.id}`;
+  switch (notice.kind) {
+    case "paused":
+      alerts.raise({ kind: "crmAutomation.paused", category: "system", priority: "high", params: { name, reason: t(locale, AUTOMATION_PAUSE[notice.reason]) }, source, link: "/crm" });
+      return;
+    case "rehearsal":
+      alerts.raise({ kind: "crmAutomation.rehearsal", category: "system", priority: "high", params: { name }, source, link: "/crm" });
+      return;
+    case "arrived":
+      alerts.raise({ kind: "crmAutomation.arrived", category: "system", priority: "normal", params: { name }, source, link: "/crm" });
       return;
   }
 }

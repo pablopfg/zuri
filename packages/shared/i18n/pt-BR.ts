@@ -28,6 +28,7 @@ import { ptBRBackup } from "./pt-BR-backup.ts";
 import { ptBRMenu } from "./pt-BR-menu.ts";
 import { ptBRVoice } from "./pt-BR-voice.ts";
 import { ptBRSchedule } from "./pt-BR-schedule.ts";
+import { ptBRCrmAutomations } from "./pt-BR-crm-automations.ts";
 
 // Default and fallback catalog. Every key must also exist in en.ts and be used in the code (npm run lint).
 // The texts of the lazy screens live in their own files (pt-BR-memory.ts, pt-BR-productivity.ts,
@@ -169,4 +170,5 @@ export const ptBR = /* @__PURE__ */ join(
   ptBRMenu,
   ptBRVoice,
   ptBRSchedule,
+  ptBRCrmAutomations,
 );
