@@ -3071,6 +3071,7 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .pix-v{font-size:22px;font-weight:700}
 .pix-l{display:flex;justify-content:space-between;gap:12px;font-size:var(--t-sm)}.pix-l span{color:var(--muted)}.pix-l b{text-align:right;overflow-wrap:anywhere}
 .pix-card .pix-copy{margin-top:4px;padding:8px;border-radius:8px;text-align:center;font-weight:600;font-size:var(--t-sm);background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.cwo-steps li{grid-template-columns:24px minmax(0,1fr)}
 </style>
 </head>
 <body>
@@ -8511,6 +8512,186 @@ ACT.unshift(
       say(`${brDate(k)} ficou sem expediente.${n ? ` ${n === 1 ? "1 consulta marcada nesse dia precisa" : `${n} consultas marcadas nesse dia precisam`} ser remarcada${n === 1 ? "" : "s"}.` : ""}`);
       render();
     } }, t)]
+);
+/* ===== 13/11/2026 · Conversar com a Zuri pelo Chatwoot: configuração automática, só o dono, teste ===== */
+/* A Zuri cria no Chatwoot uma caixa só dela e responde só à conta de atendente do dono.
+   A chave de administrador serve só para a configuração e é descartada no fim. */
+const CWO = { st: "off", url: "https://chat.exemplo.com.br", acc: "1", code: "", me: { n: "Ana Martins", id: 7, mail: "ana@exemplo.com.br" }, admins: ["Rafael Souza"], since: "", log: [] };
+CFG.splice(CFG.findIndex((x) => x[0] === "integ") + 1, 0, ["chatwoot", "message-circle", "Chatwoot", "Conexões"]);
+CFG_HINT.chatwoot = "Converse com a Zuri por uma caixa só sua";
+CFG_HINT.integ = "Google, Telegram, Chatwoot e outros serviços";
+const CWO_STEPS = [
+  ["Conferir a chave", "A chave é de administrador da conta e é sua. Quem é você no Chatwoot vem dela."],
+  ["Criar a caixa “Zuri”", "Caixa do tipo API, com o endereço de retorno da Zuri, assinatura e HMAC obrigatória."],
+  ["Deixar só você na caixa", "Você é o único membro. Nenhum outro atendente recebe a caixa."],
+  ["Criar o contato “Zuri” e a conversa", "Pela API pública da caixa, com identificador próprio e HMAC."],
+  ["Mandar o código de vínculo", "Chega na conversa “Zuri”. Você responde com a sua conta."],
+  ["Descartar a chave de administrador", "Nada dela fica guardado. Fica só o que a caixa precisa, cifrado."]
+];
+const CWO_KEYS = [
+  ["Chave de administrador (a sua)", "Cria caixas, muda membros e lê os segredos da caixa.", "Só na configuração, no teste completo e para trocar os segredos. Nunca fica guardada.", "wait", "Só na hora"],
+  ["Chave de atendente", "Só enxerga as caixas em que a pessoa é membro. Não cria caixa nem muda membros.", "Não serve para configurar.", "off", "Não usada"],
+  ["Chave de bot (Agent Bot)", "Só mexe em conversas e envia mensagens. Não lê mensagens nem lista caixas.", "Não é preciso: a Zuri fala como contato da caixa dela.", "off", "Não usada"],
+  ["Chave de plataforma (Super Admin)", "Cria contas e usuários em toda a instalação.", "Nunca. Poder demais para uma conversa.", "bad", "Nunca"],
+  ["Identificador da caixa + HMAC do contato", "Só escreve e lê como o contato “Zuri”, na caixa “Zuri”. Não vê nenhuma outra caixa.", "É o que fica guardado, cifrado, com o segredo da assinatura.", "on", "Guardada"]
+];
+function cwoSteps(done, fail) {
+  return `<ol class="fq-steps cwo-steps">${CWO_STEPS.map(([t, d], k) => {
+    const c = fail === k ? "bad" : k < done ? "on" : "";
+    const i = fail === k ? "circle-x" : k < done ? "circle-check" : k === done ? "loader-circle" : "clock";
+    return `<li class="${c}"><span>${ic(i, `ic-sm${k === done && fail !== k ? " spin" : ""}`)}</span><span><b>${t}</b><br><span class="hint">${d}</span></span></li>`;
+  }).join("")}</ol>`;
+}
+function cfgChatwoot() {
+  const keys = sec("h-cwk", "O que cada chave do Chatwoot pode", "O Chatwoot tem cinco tipos de acesso. A Zuri usa o menor que resolve.",
+    `<div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Chave</th><th scope="col">O que ela pode</th><th scope="col">Uso na Zuri</th></tr></thead><tbody>${CWO_KEYS.map(([n, p, u, s, l]) => `<tr><th scope="row">${n}</th><td>${p}</td><td><span class="pill ${s}"><i></i>${l}</span> ${u}</td></tr>`).join("")}</tbody></table></div>`);
+  if (CWO.st === "off") return sec("h-cwo", "Conversar com a Zuri pelo Chatwoot", "A Zuri cria uma caixa só dela no seu Chatwoot e responde só a você. Paciente e outro atendente nunca recebem resposta.",
+    `<p class="t">O que a Zuri faz sozinha</p>${cwoSteps(-1)}
+     <p class="hint">${ic("shield-check", "ic-sm")} Ela não entra na caixa do WhatsApp dos pacientes e não lê as conversas deles. Ações que apagam ou mudam muita coisa você aprova no app ou no Telegram, nunca pelo Chatwoot.</p>`,
+    `<button class="btn btn-primary" type="button" data-cwo-start aria-haspopup="dialog">${ic("plug", "ic-sm")}Configurar</button>`) + keys;
+  if (CWO.st === "code") return sec("h-cwo", "Conversar com a Zuri pelo Chatwoot", "Falta um passo: responder o código na conversa “Zuri”.",
+    `<div class="set-row"><div class="grow"><p class="t"><span class="pill wait"><i></i>Esperando a sua resposta</span></p><p class="hint">Abra a caixa “Zuri” no Chatwoot e responda <b class="num">${CWO.code}</b> com a sua conta (${escH(CWO.me.n)}). O código vale 10 minutos.</p></div><div class="row-actions"><a class="btn btn-secondary btn-sm" href="${escH(CWO.url)}/app/accounts/${escH(CWO.acc)}/inbox" target="_blank" rel="noopener">${ic("external-link", "ic-sm")}Abrir o Chatwoot</a><button class="btn btn-quiet btn-sm" type="button" data-cwo-reply>Simular a resposta (protótipo)</button><button class="btn btn-quiet btn-sm" type="button" data-cwo-newcode>Mandar outro código</button></div></div>`) + keys;
+  if (CWO.st === "confirm") return sec("h-cwo", "Conversar com a Zuri pelo Chatwoot", "A resposta chegou. Confirme que foi você.",
+    `<div class="set-row"><div class="grow"><p class="t"><span class="pill wait"><i></i>Falta confirmar</span></p><p class="hint">O código veio da conta <b>${escH(CWO.me.n)}</b> (atendente nº <span class="num">${CWO.me.id}</span>). Só depois de confirmar a Zuri passa a responder.</p></div><div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-cwo-confirm>Confirmar esta conta</button><button class="btn btn-quiet btn-sm" type="button" data-cwo-off>Cancelar</button></div></div>`) + keys;
+  const on = CWO.st === "on";
+  return sec("h-cwo", "Conversar com a Zuri pelo Chatwoot", "Caixa “Zuri”, só para você.",
+    swRow("cwo-sw", "Conversar com a Zuri por aqui", on ? `Ligado desde ${escH(CWO.since)}. Escreva na conversa “Zuri” como no Telegram.` : "Desligado. A Zuri não responde nada na caixa até você ligar.", on)
+    + ctlRow("Responde só a", `${escH(CWO.me.n)} · atendente nº <span class="num">${CWO.me.id}</span> · ${escH(CWO.me.mail)}`, `<span class="pill on"><i></i>Vinculada</span>`)
+    + ctlRow("Membros da caixa", "Só você. Se alguém for incluído, o teste avisa.", `<span class="pill on"><i></i>Só você</span>`)
+    + ctlRow("Também veem a caixa", `${CWO.admins.map(escH).join(", ")}: administrador do Chatwoot vê todas as caixas. Se escrever na conversa, a Zuri não responde e avisa você, sem o texto. Três vezes em 24 h desligam o canal.`, `<span class="pill wait"><i></i>${CWO.admins.length} administrador</span>`)
+    + `<p class="t">Últimas mensagens</p><ul class="runs">${(CWO.log.length ? CWO.log : [["agora", "Você", "Código de vínculo", "on", "Vinculado"]]).map(([h, q, w, s, l]) => `<li><time class="num">${h}</time><span><b>${q}</b> · ${w}</span><span class="pill ${s}"><i></i>${l}</span></li>`).join("")}</ul>`,
+    `<button class="btn btn-secondary" type="button" data-cwo-test aria-haspopup="dialog">${ic("circle-check", "ic-sm")}Testar configuração</button><button class="btn btn-quiet" type="button" data-cwo-rotate aria-haspopup="dialog">${ic("key-round", "ic-sm")}Trocar os segredos</button><button class="btn btn-quiet" type="button" data-cwo-repair aria-haspopup="dialog">${ic("refresh-cw", "ic-sm")}Reparar</button><button class="btn btn-quiet" type="button" data-cwo-relink>${ic("user", "ic-sm")}Vincular outra conta</button><button class="btn btn-quiet" type="button" data-cwo-off>${ic("power", "ic-sm")}Desligar e esquecer</button><button class="btn btn-quiet" type="button" data-cwo-gone>Simular conversa apagada (protótipo)</button>`)
+    + sec("h-cwr", "Quando algo some ou muda", "O que a Zuri resolve sozinha e o que pede você.",
+      `<ul class="runs">${[["Conversa ou contato “Zuri” apagados", "A Zuri cria de novo e avisa você. Até 3 vezes por dia.", "on", "Sozinha"], ["Caixa apagada, endereço mudou", "O canal pausa. Toque em Reparar e cole a chave de administrador.", "wait", "Reparar"], ["Segredos trocados no Chatwoot", "O canal pausa. Toque em Trocar os segredos.", "wait", "Trocar"], ["Você trocou de conta de atendente", "Vincular outra conta: código novo e senha.", "wait", "Vincular"], ["Você trocou o número do celular", "Não muda nada: você conversa pelo Chatwoot logado.", "off", "Nada a fazer"]].map(([n, d, c, l]) => `<li><span><b>${n}</b><br><span class="hint">${d}</span></span><span class="pill ${c}"><i></i>${l}</span></li>`).join("")}</ul>`) + keys;
+}
+CFG_VIEW.chatwoot = cfgChatwoot;
+/* Integrações aponta para a página própria. */
+{
+  const base = CFG_VIEW.integ;
+  CFG_VIEW.integ = () => {
+    const h = base(), i = h.indexOf('<section class="card set-sec" aria-labelledby="h-mcp"');
+    const row = sec("h-cwl", "Chatwoot", "Converse com a Zuri por uma caixa só sua no Chatwoot.",
+      ctlRow(CWO.st === "on" ? `${ic("circle-check", "ic-sm")} Ligado: responde só a ${escH(CWO.me.n)}` : "Não configurado", "Configuração, teste e o que cada chave do Chatwoot pode.", `<button class="btn btn-quiet btn-sm" type="button" data-cfg="chatwoot">Abrir${ic("chevron-right", "ic-sm")}</button>`));
+    return i < 0 ? h + row : h.slice(0, i) + row + h.slice(i);
+  };
+}
+const cwoCode = () => Array.from({ length: 8 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
+/* Passo 1: endereço, conta e a chave de administrador (só nesta hora). */
+function cwoStart(opener, why) {
+  dlgShow({ t: "Configurar o Chatwoot", sub: "A Zuri faz o resto sozinha. A chave de administrador é usada agora e descartada no fim.",
+    body: `<div class="grid-2 grid-url"><label class="field"><span class="label">Endereço do Chatwoot</span><input class="input" data-cwo-url value="${escH(CWO.url)}" inputmode="url" autocomplete="off" spellcheck="false" maxlength="200"></label>
+      <label class="field"><span class="label">Número da conta</span><input class="input num" data-cwo-acc value="${escH(CWO.acc)}" inputmode="numeric" maxlength="9"><span class="hint">Aparece no endereço: /app/accounts/<b>1</b>/…</span></label></div>
+      <label class="field"><span class="label">Sua chave de acesso</span><input class="input" type="password" data-cwo-key autocomplete="off" placeholder="Perfil › Chave de acesso, no Chatwoot"><span class="hint">Precisa ser de administrador. Fica só na memória durante a configuração. Se quiser, gere uma chave nova no seu perfil do Chatwoot depois.</span></label>
+      <label class="field"><span class="label">No protótipo, simular</span><select class="input" data-cwo-sim><option value="ok">Tudo certo</option><option value="agent">Chave de atendente (sem ser administrador)</option><option value="bad">Chave recusada</option><option value="http">Endereço sem https</option><option value="drop">Chatwoot cai no meio da configuração</option></select></label>
+      <p class="hint" data-cwo-err role="status">${why || ""}</p>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Continuar</button>`,
+    ok: () => {
+      const err = (m, sel) => { const x = document.querySelector("[data-cwo-err]"); x.textContent = m; x.classList.add("err"); document.querySelector(`#dlg-host ${sel}`).focus(); return false; };
+      const url = dlgRaw("[data-cwo-url]").replace(/\/+$/, ""), acc = dlgRaw("[data-cwo-acc]"), sim = ["ok", "agent", "bad", "http", "drop"].find((x) => x === dlgRaw("[data-cwo-sim]")) || "ok";
+      if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(url) || sim === "http") return err("Use o endereço com https://, só o domínio, sem caminho. A Zuri não chama endereço sem https nem de rede interna.", "[data-cwo-url]");
+      if (!/^\d{1,9}$/.test(acc)) return err("O número da conta tem só algarismos.", "[data-cwo-acc]");
+      if (!dlgRaw("[data-cwo-key]")) return err("Cole a sua chave de acesso.", "[data-cwo-key]");
+      CWO.url = url; CWO.acc = acc; CWO.sim = sim;
+      senhaDlg("A Zuri vai criar uma caixa no seu Chatwoot.", () => setTimeout(() => cwoWho(opener, sim), 300), opener);
+      return false;
+    } }, opener);
+}
+/* Passo 2: quem é o dono da chave. */
+function cwoWho(opener, sim) {
+  dlgShow({ t: "Conferindo a chave…", body: `<p class="dlg-wait" role="status">${ic("loader-circle", "spin")}<span>Perguntando ao Chatwoot quem é o dono desta chave…</span></p>`, foot: "" }, opener);
+  setTimeout(() => {
+    if (!DLG.def) return;
+    if (sim === "bad") { cwoStart(opener, "O Chatwoot recusou a chave (401). Confira se copiou inteira, em Perfil › Chave de acesso."); return; }
+    if (sim === "agent") { cwoStart(opener, `Esta chave é de ${CWO.me.n}, mas com papel de atendente na conta ${CWO.acc}. Para criar a caixa, use a chave de um administrador.`); return; }
+    dlgShow({ t: "Esta conta é você?", sub: "A Zuri vai responder só a esta conta de atendente.",
+      body: `<div class="set-row"><span class="tile tile-sm">${ic("user", "ic-sm")}</span><div class="grow"><p class="t">${escH(CWO.me.n)}</p><p class="hint">${escH(CWO.me.mail)} · atendente nº <span class="num">${CWO.me.id}</span> · administrador da conta <span class="num">${escH(CWO.acc)}</span></p></div></div>
+        <p class="hint">${ic("triangle-alert", "ic-sm")} Se esta chave não for sua, pare aqui: a Zuri responderia ao dono dela.</p>`,
+      foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Não sou eu</button><button class="btn btn-primary" type="button" data-cwo-make data-autofocus>Sou eu, criar a caixa</button>` }, opener);
+  }, 900);
+}
+/* Passo 3: a Zuri cria tudo e mostra cada passo. */
+function cwoMake(opener, fail, repair) {
+  let k = 0;
+  const tick = () => {
+    if (k > 0 && !DLG.def) return;
+    if (k === fail) {
+      dlgShow({ t: "A configuração parou", sub: "Nada ficou pela metade: a Zuri desfez o que tinha criado.", body: `${cwoSteps(k, k)}<p class="hint">O Chatwoot não respondeu em 10 s ao criar o contato. A caixa “Zuri” criada agora foi apagada. Tente de novo em alguns minutos.</p>`,
+        foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Fechar</button><button class="btn btn-primary" type="button" data-cwo-again>Tentar de novo</button>` }, opener);
+      return;
+    }
+    dlgShow({ t: "Configurando…", sub: "Leva alguns segundos. Não feche esta janela.", body: cwoSteps(k), foot: "" }, opener);
+    if (k === CWO_STEPS.length && repair) {
+      CWO.st = "on"; CWO.log.unshift(["agora", "Zuri", "Reparo: caixa, endereço de retorno, membros e conversa conferidos", "on", "Reparado"]);
+      dlgShow({ t: "Reparado", sub: "A caixa estava no lugar. A Zuri refez só o que faltava, e a sua chave foi descartada.", body: cwoSteps(k), foot: `<span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Pronto</button>` }, opener);
+      render();
+      return;
+    }
+    if (k === CWO_STEPS.length) {
+      CWO.code = cwoCode(); CWO.st = "code";
+      dlgShow({ t: "Caixa criada", sub: "Falta você responder o código na conversa “Zuri”.", body: `${cwoSteps(k)}<p class="t">Responda <b class="num">${CWO.code}</b> na conversa “Zuri” do Chatwoot.</p><p class="hint">Use a sua conta (${escH(CWO.me.n)}). Depois, confirme aqui no app com a senha.</p>`,
+        foot: `<span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Entendi</button>` }, opener);
+      render();
+      return;
+    }
+    k += 1; setTimeout(tick, 650);
+  };
+  tick();
+}
+/* Teste da configuração: o rápido não pede chave; o completo pede a de administrador de novo. */
+const CWO_TEST = [
+  ["Chatwoot responde", "https, sem redirecionamento, em 0,4 s.", "on"],
+  ["Caixa “Zuri” existe", "API pública da caixa respondeu.", "on"],
+  ["HMAC obrigatória", "Pedido sem o HMAC do contato foi recusado, como deve ser.", "on"],
+  ["Contato e conversa da Zuri", "A conversa do vínculo continua aberta.", "on"],
+  ["Assinatura do retorno", "A Zuri mandou “Teste da configuração” e o aviso assinado voltou em 1,2 s, com a assinatura certa.", "on"]
+];
+const CWO_FULL = [
+  ["Endereço de retorno da caixa", "É o da Zuri. Ninguém trocou.", "on"],
+  ["Membros da caixa", "Só você.", "on"],
+  ["Você ainda é administrador", "Sim, na conta 1.", "on"],
+  ["Quem mais vê a caixa", `${CWO.admins.join(", ")} é administrador e vê todas as caixas. A Zuri não responde a ele.`, "wait"]
+];
+function cwoTest(opener, full, sim) {
+  const rows = full ? [...CWO_TEST, ...CWO_FULL] : CWO_TEST;
+  const list = (n) => `<ol class="fq-steps cwo-steps">${rows.map(([t, d, s], k) => {
+    const bad = sim === "sig" && k === 4;
+    const c = k < n ? (bad ? "bad" : s === "on" ? "on" : "") : "";
+    const i = k < n ? (bad ? "circle-x" : s === "on" ? "circle-check" : "circle-alert") : k === n ? "loader-circle" : "clock";
+    return `<li class="${c}"><span>${ic(i, `ic-sm${k === n ? " spin" : ""}`)}</span><span><b>${t}</b>${k < n ? `<br><span class="hint">${bad ? "A assinatura não bateu: o segredo foi trocado no Chatwoot. Toque em “Trocar os segredos”." : d}</span>` : ""}</span></li>`;
+  }).join("")}</ol>`;
+  let n = 0;
+  const tick = () => {
+    if (n > 0 && !DLG.def) return;
+    const end = n === rows.length;
+    dlgShow({ t: full ? "Teste completo" : "Teste da configuração", sub: end ? (sim === "sig" ? "Uma conferência falhou. A Zuri desligou o canal até você corrigir." : "Tudo certo. A Zuri só responde a você.") : "Conferindo cada parte…",
+      body: `${list(n)}${end && !full ? `<p class="hint">O teste completo também confere membros, administradores e o endereço de retorno. Pede a sua chave de administrador de novo, só para essa hora.</p>` : ""}`,
+      foot: end ? `<button class="btn btn-quiet" type="button" data-cwo-test-sig>Simular segredo trocado (protótipo)</button><span class="grow"></span>${full ? "" : `<button class="btn btn-secondary" type="button" data-cwo-full>Teste completo</button>`}<button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Pronto</button>` : "" }, opener);
+    if (end) { if (sim === "sig") { CWO.st = "paused"; render(); } return; }
+    n += 1; setTimeout(tick, 420);
+  };
+  tick();
+}
+function cwoAdminKey(opener, title, why, then) {
+  dlgShow({ t: title, sub: why, body: `<label class="field"><span class="label">Sua chave de acesso de administrador</span><input class="input" type="password" data-cwo-key2 autocomplete="off" data-autofocus><span class="hint">Usada só agora e descartada.</span></label><p class="hint" data-cwo-err2 role="status"></p>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Continuar</button>`,
+    ok: () => { if (!dlgRaw("[data-cwo-key2]")) { const x = document.querySelector("[data-cwo-err2]"); x.textContent = "Cole a chave para continuar."; x.classList.add("err"); return false; } setTimeout(then, 200); return false; } }, opener);
+}
+ACT.unshift(
+  [(t) => t.matches("[data-cwo-start]"), (t) => cwoStart(t)],
+  [(t) => t.matches("[data-cwo-gone]"), () => { CWO.log.unshift(["agora", "Chatwoot", "A conversa “Zuri” foi apagada. A Zuri abriu outra e avisou você", "wait", "Recriada"]); render(); refocus("[data-cwo-gone]"); say("A conversa “Zuri” sumiu no Chatwoot. A Zuri abriu outra e avisou no app e no Telegram."); }],
+  [(t) => t.matches("[data-cwo-repair]"), (t) => cwoAdminKey(t, "Reparar", "A Zuri confere a caixa, o endereço de retorno, os membros, o contato e a conversa, e refaz só o que faltar.", () => cwoMake(t, -1, true))],
+  [(t) => t.matches("[data-cwo-relink]"), (t) => senhaDlg("Para vincular outra conta de atendente do Chatwoot.", () => { CWO.code = cwoCode(); CWO.st = "code"; render(); refocus("[data-cwo-reply]"); say(`Código novo enviado na conversa “Zuri”. Responda com a conta nova. Até lá, a Zuri não responde a ninguém.`); }, t)],
+  [(t) => t.matches("[data-cwo-make]"), () => cwoMake(DLG.opener, CWO.sim === "drop" ? 3 : -1)],
+  [(t) => t.matches("[data-cwo-again]"), () => cwoMake(DLG.opener, -1)],
+  [(t) => t.matches("[data-cwo-newcode]"), (t) => { CWO.code = cwoCode(); render(); refocus("[data-cwo-newcode]"); say(`Código novo enviado na conversa “Zuri”. O anterior não vale mais.`); }],
+  [(t) => t.matches("[data-cwo-reply]"), () => { CWO.st = "confirm"; render(); refocus("[data-cwo-confirm]"); say(`O código chegou da conta ${CWO.me.n}.`); }],
+  [(t) => t.matches("[data-cwo-confirm]"), (t) => senhaDlg("Para a Zuri responder a esta conta do Chatwoot.", () => { CWO.st = "on"; CWO.since = "hoje, 10:02"; CWO.log = [["10:02", "Você", "Código de vínculo", "on", "Vinculado"]]; render(); refocus("[data-cwo-test]"); say("Pronto. A Zuri responde só a você na conversa “Zuri”."); }, t)],
+  [(t) => t.matches("[data-cwo-test]"), (t) => cwoTest(t, false)],
+  [(t) => t.matches("[data-cwo-test-sig]"), () => cwoTest(DLG.opener, false, "sig")],
+  [(t) => t.matches("[data-cwo-full]"), () => { const o = DLG.opener; cwoAdminKey(o, "Teste completo", "Para ler membros, administradores e o endereço de retorno da caixa.", () => cwoTest(o, true)); }],
+  [(t) => t.matches("[data-cwo-rotate]"), (t) => cwoAdminKey(t, "Trocar os segredos", "A Zuri pede ao Chatwoot um segredo de assinatura e um HMAC novos para a caixa “Zuri”. Os antigos param de valer na hora.", () => senhaDlg("Para trocar os segredos da caixa.", () => { if (CWO.st === "paused") CWO.st = "on"; render(); say("Segredos trocados. O teste passou com os novos."); }, t))],
+  [(t) => t.matches("[data-cwo-off]"), (t) => confirmDlg("Desligar e esquecer o Chatwoot?", "A Zuri apaga o que guardou da caixa e para de responder. A caixa “Zuri” fica no Chatwoot: apague lá se quiser.", "Desligar", () => { CWO.st = "off"; CWO.log = []; render(); refocus("[data-cwo-start]"); say("Chatwoot desligado. Nada da caixa ficou guardado."); }, t)],
+  [(t) => t.matches("[role=switch][aria-labelledby=cwo-sw]"), (t) => { CWO.st = CWO.st === "on" ? "paused" : "on"; if (CWO.st === "on" && !CWO.since) CWO.since = "agora"; render(); refocus("[aria-labelledby=cwo-sw]"); say(CWO.st === "on" ? "A Zuri voltou a responder na conversa “Zuri”." : "Pausado. A Zuri não responde nada na caixa."); }]
 );
 /* Primeiro desenho só depois de todos os blocos acima existirem. */
 render();
