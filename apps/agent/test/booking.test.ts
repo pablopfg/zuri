@@ -111,19 +111,16 @@ describe("checkBooking", () => {
     expect(await refusal(checkBooking({ ...base, google: fakeGoogle({ events: [{ ...there, colorId: "11" }] }).google, after: shape("2026-11-17T13:30:00Z", "2026-11-17T14:30:00Z") }))).toBeNull();
   });
 
-  it("lets an appointment that already began run late, but never books a new one in the past", async () => {
-    // Today 10:00 to 11:00, at 10:40 the end goes to 11:30.
+  it("fixes the day and the hours of an appointment once it began, and still lets the rest change (Pablo, 13/11/2026)", async () => {
+    // Today 10:00 to 11:00; at 10:40 the end can't go to 11:30.
     const late = new Date("2026-11-16T13:40:00Z");
     const base = { hours: DEFAULT_AGENDA_PREFS, timeZone: SP, meter: meter(), now: late };
     const before = { ...shape("2026-11-16T13:00:00Z", "2026-11-16T14:00:00Z"), id: "esta", calendarId: "trabalho@exemplo.com.br" };
-    expect(await refusal(checkBooking({ ...base, before, google: fakeGoogle().google, after: shape("2026-11-16T13:00:00Z", "2026-11-16T14:30:00Z") }))).toBeNull();
-    // A cancelled one from this morning taken back to mark it done: same start, no "past".
-    const cancelled = { ...before, colorId: "11" };
-    expect(await refusal(checkBooking({ ...base, before: cancelled, google: fakeGoogle().google, after: shape("2026-11-16T13:00:00Z", "2026-11-16T14:00:00Z") }))).toBeNull();
-    // Still the other rules: running into lunch is refused.
-    expect(await refusal(checkBooking({ ...base, before, google: fakeGoogle().google, after: shape("2026-11-16T13:00:00Z", "2026-11-16T15:30:00Z") }))).toMatchObject({ problem: "lunch" });
-    // A new start before now is the past.
-    expect(await refusal(checkBooking({ ...base, before, google: fakeGoogle().google, after: shape("2026-11-16T13:15:00Z", "2026-11-16T14:15:00Z") }))).toMatchObject({ problem: "past" });
+    expect(await refusal(checkBooking({ ...base, before, google: fakeGoogle().google, after: shape("2026-11-16T13:00:00Z", "2026-11-16T14:30:00Z") }))).toMatchObject({ problem: "past" });
+    // Same day and hours (a new title, a new status): it goes.
+    expect(await refusal(checkBooking({ ...base, before, google: fakeGoogle().google, after: shape("2026-11-16T13:00:00Z", "2026-11-16T14:00:00Z", { colorId: "10" }) }))).toBeNull();
+    // A cancelled one from this morning is not booked again.
+    expect(await refusal(checkBooking({ ...base, before: { ...before, colorId: "11" }, google: fakeGoogle().google, after: shape("2026-11-16T13:00:00Z", "2026-11-16T14:00:00Z") }))).toMatchObject({ problem: "past" });
     expect(await refusal(checkBooking({ ...base, google: fakeGoogle().google, after: shape("2026-11-16T13:00:00Z", "2026-11-16T14:00:00Z") }))).toMatchObject({ problem: "past" });
   });
 });

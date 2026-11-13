@@ -57,10 +57,8 @@ export function slotProblem(input: {
   end: number;
   now: number;
   timeZone: string;
-  keepsStart?: boolean;
 }): AppointmentProblem | null {
   return appointmentProblem({
-    ...(input.keepsStart ? { keepsStart: true } : {}),
     day: input.day,
     start: input.start,
     end: input.end,

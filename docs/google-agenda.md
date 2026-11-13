@@ -172,9 +172,9 @@ compromissos sem tipo ficam livres a qualquer hora.
 - **O formulário** diz o motivo embaixo dos campos e leva o cursor ao campo a
   corrigir. Uma consulta antiga que você só renomeia ou muda de situação, sem
   mexer no dia e na hora, salva normalmente.
-- **Consulta que atrasou**: numa consulta que já começou, puxar só o fim (ou
-  tirar do Cancelado uma de hoje) não conta como "já passou". As outras regras
-  continuam: o fim não entra no almoço.
+- **Consulta que já começou**: o dia e a hora travam. Puxar o fim ou tirar do
+  Cancelado conta como "já passou". O título, a descrição e a situação
+  continuam editáveis.
 - Clicar na última meia hora antes do almoço ou do fim do dia abre o
   formulário com 30 minutos.
 - A Zuri confere tudo de novo no servidor antes de chamar o Google, então outra
