@@ -2,14 +2,12 @@ import { CRM_AUTOMATION_DAY, crmAutomationConfigSchema, crmAutomationDaySchema, 
 import type { Hono } from "hono";
 import type { AuthService } from "../auth/service.ts";
 import type { CrmAutomations } from "../crm/automations/service.ts";
-import type { FlowService } from "../flows/service.ts";
 import { AppError } from "../http/errors.ts";
 import type { ApiEnv } from "./app.ts";
 import { readJson } from "./http.ts";
 
 export interface CrmAutomationRouteDeps {
   automations: CrmAutomations;
-  flows: FlowService;
   auth: AuthService;
   rearm: () => Promise<void>;
 }
@@ -38,16 +36,6 @@ export function registerCrmAutomationRoutes(app: Hono<ApiEnv>, deps: () => CrmAu
     auth.requireRecentAuth(c.get("session"));
     automations.configure(id, input);
     return Response.json({ automation: automations.list().automations.find((item) => item.id === id) });
-  });
-
-  // The credential's test of S17: one read, 5 a minute per credential.
-  app.post("/crm/automations/:id/test", async (c) => {
-    const id = automationId(c.req.param("id"));
-    const { automations, flows } = deps();
-    const found = automations.list().automations.find((item) => item.id === id);
-    if (!found) throw new AppError("NOT_FOUND", "error.crmAutomationNotFound");
-    if (found.availability !== "ready" || !found.connectionId) throw new AppError("CONFLICT", "error.crmAutomationNotConfigured");
-    return Response.json({ test: await flows.testConnection(found.connectionId) });
   });
 
   app.post("/crm/automations/:id/mode", async (c) => {

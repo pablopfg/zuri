@@ -53,7 +53,7 @@ A do protótipo aprovado do Sinal (CRM › Automações): pedido de avaliação,
 
 1. CRM abre em **Automações**: a base (dias úteis e feriados, fila do Chatwoot, contato de cada consulta, cada uma com o estado real) e a lista numerada.
 2. Automação sem código: "Próxima a chegar" ou "Em desenvolvimento", com o sino **Avisar quando chegar**.
-3. Automação com código: **Ligar** abre o painel com a credencial (só as do tipo que ela pede), **Testar credencial**, as opções com faixa e **Salvar e começar o ensaio** (senha).
+3. Automação com código: **Ligar** abre o painel com a credencial (só as do tipo que ela pede), **Testar credencial** (o teste da S17, `POST /api/flows/connections/:id/test`), as opções com faixa e **Salvar e começar o ensaio** (senha).
 4. Em ensaio, **Acompanhar** mostra o que a Zuri faria, dia a dia, com **Está certo** e **Tem erro**; depois de 3 dias úteis conferidos, **Ligar de verdade** (senha). **Desligar** sempre.
 
 ### Textos visíveis
@@ -72,7 +72,6 @@ A do protótipo aprovado do Sinal (CRM › Automações): pedido de avaliação,
 | --- | --- | --- |
 | `GET /api/crm/automations` | Base, lista e estado | Sessão |
 | `PUT /api/crm/automations/:id/config` | Credencial e opções | Sessão + senha recente |
-| `POST /api/crm/automations/:id/test` | Testa a credencial escolhida (o teste da S17, só leitura) | Sessão |
 | `POST /api/crm/automations/:id/mode` | `rehearsal`, `live`, `off` | Sessão + senha recente, menos `off` |
 | `GET /api/crm/automations/:id/activity` | Execuções, efeitos e dias conferidos | Sessão |
 | `PUT /api/crm/automations/:id/days/:day` | Conferência do dia (`match` = "Está certo", `differs` = "Tem erro", com o motivo) | Sessão |

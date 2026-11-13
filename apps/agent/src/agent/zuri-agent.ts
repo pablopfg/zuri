@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, isPaidModel, isPasswordHash, isUsableSetupCode, type Locale, type MessageKey, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, ptBR, t, type UsageReport } from "@zuri/shared";
+import { DEFAULT_LOCALE, isPaidModel, isPasswordHash, isUsableSetupCode, type CrmAutomationPause as AutomationPause, type Locale, type MessageKey, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
 import { Agent } from "agents";
 import { chooseChain, CircuitBreaker, MeteredAI, type PaidKeys, ProviderChain, paidKey, UsageMeter } from "../ai/index.ts";
 import type { AIProvider } from "../ai/provider.ts";
@@ -64,6 +64,7 @@ import { developmentFlowNetwork } from "../flows/dev-flows.ts";
 import { SiteStates } from "../flows/monitor.ts";
 import { type FlowNotice, FlowService } from "../flows/service.ts";
 import { EXAMPLE_AUTOMATION } from "../crm/automations/example.ts";
+import { AUTOMATION_NAME } from "../crm/automations/names.ts";
 import { buildCatalog } from "../crm/automations/registry.ts";
 import { type AutomationNotice, CrmAutomations } from "../crm/automations/service.ts";
 import { AgentConfigs } from "../specialists/configs.ts";
@@ -237,7 +238,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     mcp: () => ({ service: this.store.mcp, auth: this.store.auth, automations: this.store.automations }),
     flows: () => ({ flows: this.store.flows, connections: this.store.flows.connections, auth: this.store.auth, development: () => this.development() }),
     crm: () => ({ crm: this.store.crm, rearm: () => this.store.automations.rearm() }),
-    crmAutomations: () => ({ automations: this.store.crmAutomations, flows: this.store.flows, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
+    crmAutomations: () => ({ automations: this.store.crmAutomations, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
     backup: () => {
       const { db, settings, productivity, crm, auth, automations } = this.store;
       let zoneBefore: string | null = null;
@@ -1146,9 +1147,15 @@ function flowNotice(alerts: AlertService, diagnostics: DiagnosticsService, notic
 
 /** The name of a CRM automation in the owner's language (the example's too, in local development). */
 function automationName(locale: Locale, id: string): string {
-  const key = `web.crmAutomations.name.${id}`;
-  return key in ptBR ? t(locale, key as MessageKey) : id;
+  const key = AUTOMATION_NAME[id];
+  return key ? t(locale, key) : id;
 }
+
+const AUTOMATION_PAUSE: Record<AutomationPause, MessageKey> = {
+  failures: "notice.crmAutomation.reason.failures",
+  credential: "notice.crmAutomation.reason.credential",
+  bad_answer: "notice.crmAutomation.reason.bad_answer",
+};
 
 /** A notice of the CRM's automations (PR S18): its name, never a person's. */
 function crmAutomationNotice(alerts: AlertService, notice: AutomationNotice, locale: Locale): void {
@@ -1156,7 +1163,7 @@ function crmAutomationNotice(alerts: AlertService, notice: AutomationNotice, loc
   const source = `crm-automation:${notice.id}`;
   switch (notice.kind) {
     case "paused":
-      alerts.raise({ kind: "crmAutomation.paused", category: "system", priority: "high", params: { name, reason: t(locale, `notice.crmAutomation.reason.${notice.reason}`) }, source, link: "/crm/automacoes" });
+      alerts.raise({ kind: "crmAutomation.paused", category: "system", priority: "high", params: { name, reason: t(locale, AUTOMATION_PAUSE[notice.reason]) }, source, link: "/crm/automacoes" });
       return;
     case "rehearsal":
       alerts.raise({ kind: "crmAutomation.rehearsal", category: "system", priority: "high", params: { name }, source, link: "/crm/automacoes" });

@@ -77,15 +77,12 @@ describe("CRM › Automações routes", () => {
     expect((await json<{ automation: CrmAutomation }>(off)).automation.state).toBe("off");
   });
 
-  it("refuses going live before the days without the risk; the test reads the credential", async () => {
+  it("refuses going live before the days without the risk", async () => {
     await api("PUT", "/crm/automations/example/config", { connectionId: chatwoot, options: {} });
     await api("POST", "/crm/automations/example/mode", { mode: "rehearsal" });
     const early = await api("POST", "/crm/automations/example/mode", { mode: "live" });
     expect(early.status).toBe(409);
-    expect((await errorBody(early)).details).toEqual({ days: 3 });
-    const test = await json<{ test: { ok: boolean; inboxes: unknown[] } }>(await api("POST", "/crm/automations/example/test"));
-    expect(test.test).toMatchObject({ ok: true });
-    expect((await api("POST", "/crm/automations/review-request/test")).status).toBe(409);
+    expect(((await early.json()) as { details: unknown }).details).toEqual({ days: 3 });
   });
 
   it("checks a day of the rehearsal and shows the activity", async () => {
@@ -119,6 +116,6 @@ describe("CRM › Automações routes", () => {
     expect((await api("POST", "/crm/automations/example/mode", { mode: "live", extra: 1 })).status).toBe(400);
     const huge = await api("PUT", "/crm/automations/example/config", { connectionId: chatwoot, options: { perDay: "1".repeat(5_000) } });
     expect(huge.status).toBe(400);
-    expect((await errorBody(huge)).details).toEqual({ fields: ["_body"] });
+    expect(((await huge.json()) as { details: unknown }).details).toEqual({ fields: ["_body"] });
   });
 });

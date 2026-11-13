@@ -69,8 +69,8 @@ function Moved() {
   return to ? <Navigate replace to={{ pathname: to, search, hash }} /> : <NotFoundPage />;
 }
 
-/** The parts of the CRM that exist today; "automacoes" and "envios" get their address when their server arrives. */
-const CRM_PARTS = ["fluxos", "credenciais"];
+/** The parts of the CRM that exist today; "envios" gets its address when its server arrives (S19). */
+const CRM_PARTS = ["automacoes", "fluxos", "credenciais"];
 
 /** The address is checked here, so the router stays out of the lazy screen (armadilhas.md, "Pacote da interface"). */
 function Crm() {

@@ -139,7 +139,7 @@ export function CommandPalette({
         group: t("web.palette.groupCreate"),
         label: t("web.palette.newFlow"),
         icon: Plus,
-        to: ["/crm", "/crm/fluxos"].includes(location.pathname) ? location.pathname : `/crm/fluxos#${NEW_FLOW}`,
+        to: location.pathname === "/crm/fluxos" ? location.pathname : `/crm/fluxos#${NEW_FLOW}`,
         before: () => window.dispatchEvent(new Event(NEW_FLOW)),
       },
       { id: "new-note", group: t("web.palette.groupCreate"), label: t("web.palette.newNote"), icon: FilePlus2, to: "/notas/nova" },

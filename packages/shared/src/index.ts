@@ -44,6 +44,7 @@ export {
   ptBRMenu,
   ptBRVoice,
   ptBRSchedule,
+  ptBRCrmAutomations,
   t,
 } from "../i18n/index.ts";
 export { AGENDA_VIEWS, type AgendaPrefs, type AgendaView, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";

@@ -215,12 +215,12 @@ export class CrmAutomations {
       )
       .map((run) => ({ startedAt: run.started_at, mode: run.mode, outcome: run.outcome, calls: run.calls, effects: run.effects }));
     const effects: CrmAutomationEffect[] = this.db
-      .all<{ created_at: string; mode: CrmAutomationEffect["mode"]; status: CrmAutomationEffect["status"]; label: string }>(
-        `SELECT created_at, mode, status, label FROM zur_crm_automation_effects WHERE automation_id = ? ORDER BY created_at DESC LIMIT ?`,
+      .all<{ key: string; created_at: string; mode: CrmAutomationEffect["mode"]; status: CrmAutomationEffect["status"]; label: string }>(
+        `SELECT key, created_at, mode, status, label FROM zur_crm_automation_effects WHERE automation_id = ? ORDER BY created_at DESC LIMIT ?`,
         id,
         CRM_AUTOMATION_LIMITS.activity,
       )
-      .map((effect) => ({ at: effect.created_at, mode: effect.mode, status: effect.status, label: effect.label }));
+      .map((effect) => ({ id: `${effect.mode}:${effect.key}`, at: effect.created_at, mode: effect.mode, status: effect.status, label: effect.label }));
     let days: CrmAutomationDay[] = [];
     if (row?.rehearsal_since && !row.live_since && row.state !== "off") {
       const list = this.rehearsalDays(row.rehearsal_since, CRM_AUTOMATION_LIMITS.days);

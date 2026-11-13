@@ -108,6 +108,8 @@ export interface CrmAutomationDay {
 }
 
 export interface CrmAutomationEffect {
+  /** Its mode and unique key: one line per effect. */
+  id: string;
   at: string;
   mode: "rehearsal" | "live";
   status: "would" | "pending" | "done" | "failed";
@@ -128,27 +130,27 @@ export interface CrmAutomationActivity {
   days: CrmAutomationDay[];
 }
 
-const optionValue = /* @__PURE__ */ z.union([/* @__PURE__ */ z.number().int().min(-1_000_000).max(1_000_000), /* @__PURE__ */ z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)]);
+const optionValue = /* @__PURE__ */ (() => z.union([z.number().int().min(-1_000_000).max(1_000_000), z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)]))();
 
 /** The credential and the options; each option is checked again against the manifest's range. */
-export const crmAutomationConfigSchema = /* @__PURE__ */ z
-  .object({
-    connectionId: z.string().regex(RECORD_ID).nullable(),
-    options: z.record(z.string().regex(/^[a-z][A-Za-z0-9]{0,31}$/), optionValue).refine((value) => Object.keys(value).length <= 20),
-  })
-  .strict();
+export const crmAutomationConfigSchema = /* @__PURE__ */ (() =>
+  z
+    .object({
+      connectionId: z.string().regex(RECORD_ID).nullable(),
+      options: z.record(z.string().regex(/^[a-z][A-Za-z0-9]{0,31}$/), optionValue).refine((value) => Object.keys(value).length <= 20),
+    })
+    .strict())();
 
 /** "Salvar e começar o ensaio", "Ligar de verdade" (taking the risk before the days), "Desligar". */
-export const crmAutomationModeSchema = /* @__PURE__ */ z
-  .object({ mode: z.enum(["rehearsal", "live", "off"]), acceptRisk: z.boolean().optional() })
-  .strict();
+export const crmAutomationModeSchema = /* @__PURE__ */ (() => z.object({ mode: z.enum(["rehearsal", "live", "off"]), acceptRisk: z.boolean().optional() }).strict())();
 
 /** A day of the rehearsal checked by the owner: "Está certo" (match) or "Tem erro" (differs), which says why. */
-export const crmAutomationDaySchema = /* @__PURE__ */ z
-  .object({ verdict: z.enum(["match", "differs"]), note: line(CRM_AUTOMATION_LIMITS.note).optional() })
-  .strict()
-  .refine((value) => value.verdict === "match" || (value.note?.length ?? 0) > 0, { path: ["note"] });
+export const crmAutomationDaySchema = /* @__PURE__ */ (() =>
+  z
+    .object({ verdict: z.enum(["match", "differs"]), note: line(CRM_AUTOMATION_LIMITS.note).optional() })
+    .strict()
+    .refine((value) => value.verdict === "match" || (value.note?.length ?? 0) > 0, { path: ["note"] }))();
 
-export const crmAutomationWatchSchema = /* @__PURE__ */ z.object({ watch: z.boolean() }).strict();
+export const crmAutomationWatchSchema = /* @__PURE__ */ (() => z.object({ watch: z.boolean() }).strict())();
 
 export const CRM_AUTOMATION_DAY = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
