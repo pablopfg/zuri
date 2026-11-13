@@ -1710,6 +1710,96 @@ export const MIGRATIONS: readonly Migration[] = [
       ...areaTriggers("crm", "zur_crm_automation_days"),
     ],
   },
+  {
+    version: 40,
+    name: "outbox",
+    statements: [
+      // The outbox (PR S19): what the CRM's automations send to contacts, one row per unique key of an
+      // automation. The phone and the text stay only while the message may still go out; `grp` is the
+      // history's group (waiting, sent, failed, skipped), kept beside the status for its index.
+      `CREATE TABLE IF NOT EXISTS zur_outbox (
+        id TEXT PRIMARY KEY,
+        automation_id TEXT NOT NULL,
+        key TEXT NOT NULL,
+        connection_id TEXT NOT NULL,
+        priority INTEGER NOT NULL,
+        bulk INTEGER NOT NULL DEFAULT 1 CHECK (bulk IN (0, 1)),
+        label TEXT NOT NULL,
+        phone TEXT,
+        text TEXT,
+        status TEXT NOT NULL CHECK (status IN ('queued', 'sending', 'checking', 'sent', 'delivered', 'failed', 'expired', 'blocked', 'optout')),
+        grp TEXT NOT NULL CHECK (grp IN ('waiting', 'sent', 'failed', 'skipped')),
+        attempts INTEGER NOT NULL DEFAULT 0,
+        available_at TEXT NOT NULL,
+        expires_at TEXT,
+        sending_at TEXT,
+        -- When a POST of it may have reached the Chatwoot (no answer, a 5xx, or an object that stopped):
+        -- every later try, "Tentar de novo" too, looks in the conversation from this time before sending.
+        maybe_at TEXT,
+        contact_id INTEGER,
+        conversation_id INTEGER,
+        message_id INTEGER,
+        day TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        done_at TEXT,
+        UNIQUE (automation_id, key)
+      )`,
+      // The next one of a credential: by priority, then by its time.
+      `CREATE INDEX IF NOT EXISTS zur_outbox_due ON zur_outbox (connection_id, priority, available_at) WHERE status IN ('queued', 'checking')`,
+      // Everything still waiting, by time: the screen's queue and the alarm's next time.
+      `CREATE INDEX IF NOT EXISTS zur_outbox_waiting ON zur_outbox (available_at) WHERE status IN ('queued', 'sending', 'checking')`,
+      `CREATE INDEX IF NOT EXISTS zur_outbox_sending ON zur_outbox (sending_at) WHERE status = 'sending'`,
+      `CREATE INDEX IF NOT EXISTS zur_outbox_expiry ON zur_outbox (expires_at) WHERE status IN ('queued', 'checking') AND expires_at IS NOT NULL`,
+      `CREATE INDEX IF NOT EXISTS zur_outbox_history ON zur_outbox (created_at DESC, id DESC)`,
+      `CREATE INDEX IF NOT EXISTS zur_outbox_group ON zur_outbox (grp, created_at DESC, id DESC)`,
+      // The failed ones still holding their text (kept 7 days for "Tentar de novo"): the daily pruning reads only these.
+      `CREATE INDEX IF NOT EXISTS zur_outbox_failed_text ON zur_outbox (created_at) WHERE grp = 'failed' AND text IS NOT NULL`,
+      // A message's timeline: what happened and when, never its text.
+      `CREATE TABLE IF NOT EXISTS zur_outbox_steps (
+        id INTEGER PRIMARY KEY,
+        outbox_id TEXT NOT NULL,
+        at TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        attempt INTEGER,
+        ms INTEGER,
+        problem TEXT
+      )`,
+      `CREATE INDEX IF NOT EXISTS zur_outbox_steps_by ON zur_outbox_steps (outbox_id, id)`,
+      // Each Chatwoot credential's clock: the next free time (written only if it is still the one read), the
+      // breaker, the last answers' times and the stall notice already given.
+      `CREATE TABLE IF NOT EXISTS zur_outbox_queues (
+        connection_id TEXT PRIMARY KEY,
+        next_free_at TEXT,
+        stopped_at TEXT,
+        stopped_reason TEXT,
+        failed_streak INTEGER NOT NULL DEFAULT 0,
+        last_failed_id TEXT,
+        recent_ms TEXT NOT NULL DEFAULT '[]',
+        last_sent_at TEXT,
+        stall_told INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      ) WITHOUT ROWID`,
+      // "Pausar envios": one switch for every credential.
+      `CREATE TABLE IF NOT EXISTS zur_outbox_state (id INTEGER PRIMARY KEY CHECK (id = 1), paused_at TEXT)`,
+      `INSERT INTO zur_outbox_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
+      // The counts of each of the owner's days, so the history's numbers never read half a year of rows.
+      `CREATE TABLE IF NOT EXISTS zur_outbox_days (
+        day TEXT PRIMARY KEY,
+        queued INTEGER NOT NULL DEFAULT 0,
+        sent INTEGER NOT NULL DEFAULT 0,
+        delivered INTEGER NOT NULL DEFAULT 0,
+        failed INTEGER NOT NULL DEFAULT 0,
+        skipped INTEGER NOT NULL DEFAULT 0,
+        ms_total INTEGER NOT NULL DEFAULT 0,
+        ms_n INTEGER NOT NULL DEFAULT 0
+      ) WITHOUT ROWID`,
+      // CRM › Envios follows the queue live: a status, a stop or a pause; a send's own columns move nothing.
+      ...areaTriggers("crm", "zur_outbox", "OF status"),
+      ...areaTriggers("crm", "zur_outbox_queues", "OF stopped_at"),
+      ...areaTriggers("crm", "zur_outbox_state", "OF paused_at"),
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

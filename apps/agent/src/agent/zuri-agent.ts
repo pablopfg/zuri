@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, isPaidModel, isPasswordHash, isUsableSetupCode, type CrmAutomationPause as AutomationPause, type Locale, type MessageKey, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
+import { DEFAULT_LOCALE, isPaidModel, isPasswordHash, isUsableSetupCode, type CrmAutomationPause as AutomationPause, type Locale, type MessageKey, type OutboxStopReason, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
 import { Agent } from "agents";
 import { chooseChain, CircuitBreaker, MeteredAI, type PaidKeys, ProviderChain, paidKey, UsageMeter } from "../ai/index.ts";
 import type { AIProvider } from "../ai/provider.ts";
@@ -59,6 +59,9 @@ import { developmentGoogle, developmentGoogleNetwork } from "../google/dev-googl
 import { GoogleCalendar } from "../google/service.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
 import { type ReviewNotice, ReviewService } from "../reviews/service.ts";
+import { developmentOwnerNetwork } from "../chatwoot/dev-chatwoot-owner.ts";
+import { ChatwootOwner } from "../chatwoot/owner-service.ts";
+import { chatwootHookPath, isChatwootHookToken } from "../gates/chatwoot-owner.ts";
 import { FlowConnections } from "../flows/connections.ts";
 import { developmentFlowNetwork } from "../flows/dev-flows.ts";
 import { SiteStates } from "../flows/monitor.ts";
@@ -67,6 +70,7 @@ import { EXAMPLE_AUTOMATION } from "../crm/automations/example.ts";
 import { AUTOMATION_NAME } from "../crm/automations/names.ts";
 import { buildCatalog } from "../crm/automations/registry.ts";
 import { type AutomationNotice, CrmAutomations } from "../crm/automations/service.ts";
+import { Outbox, type OutboxNotice } from "../crm/outbox.ts";
 import { AgentConfigs } from "../specialists/configs.ts";
 import { type CrmNotice, CrmService } from "../crm/service.ts";
 import { dohResolver } from "../mcp/url.ts";
@@ -140,10 +144,14 @@ interface Store {
   crm: CrmService;
   /** The CRM's automations (PR S18). */
   crmAutomations: CrmAutomations;
+  /** The outbox of the CRM's messages (PR S19). */
+  outbox: Outbox;
   /** Each agent's settings on the AI screen (guardrails, PR 2). */
   agents: AgentConfigs;
   /** The automatic backup to BACKUP_BUCKET (step 23b). */
   backupAuto: AutomaticBackup;
+  /** The owner's conversation with Zuri in the Chatwoot (docs/planos/zuri-no-chatwoot.md). */
+  chatwootOwner: ChatwootOwner;
 }
 
 /**
@@ -237,8 +245,10 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     }),
     mcp: () => ({ service: this.store.mcp, auth: this.store.auth, automations: this.store.automations }),
     flows: () => ({ flows: this.store.flows, connections: this.store.flows.connections, auth: this.store.auth, development: () => this.development() }),
+    chatwoot: () => ({ owner: this.store.chatwootOwner, auth: this.store.auth }),
     crm: () => ({ crm: this.store.crm, rearm: () => this.store.automations.rearm() }),
     crmAutomations: () => ({ automations: this.store.crmAutomations, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
+    outbox: () => ({ outbox: this.store.outbox, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
     backup: () => {
       const { db, settings, productivity, crm, auth, automations } = this.store;
       let zoneBefore: string | null = null;
@@ -423,6 +433,12 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       if (await this.store.crmAutomations.tick()) await automations.rearm();
     } catch (error) {
       log("error", "crm_automation_failed", { error });
+    }
+    // The outbox (PR S19): at most one message per wake, after the automations that fill it.
+    try {
+      if (await this.store.outbox.tick()) await automations.rearm();
+    } catch (error) {
+      log("error", "outbox_failed", { error });
     }
     // The CRM's follow-ups and birthdays (step 22b): set the alarm again when they moved.
     try {
@@ -760,6 +776,14 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
+          // The outbox (PR S19).
+          const outboxDue = (() => {
+            try {
+              return outbox.nextDue();
+            } catch {
+              return null;
+            }
+          })();
           // The CRM's follow-ups and birthdays (step 22b).
           const crmDue = (() => {
             try {
@@ -777,7 +801,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
-          const due = [tries, watch, indexing, tools, channels, people, reviewsDue, flowsDue, crmAutomationsDue, crmDue, backupDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
+          const due = [tries, watch, indexing, tools, channels, people, reviewsDue, flowsDue, crmAutomationsDue, outboxDue, crmDue, backupDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
           // Work already past due is only left there when its step failed on the last
           // alarm (a full disk, say): wait a minute before trying again, never at once,
           // so a step that keeps failing can't spin the alarm through the day's quota.
@@ -884,9 +908,49 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       );
       // Local development never reaches a real site (src/flows/dev-flows.ts).
       if (this.development()) flows.network = developmentFlowNetwork(flows.network);
+      // The owner's conversation with Zuri in the Chatwoot: the flows' network and vault, the same runner and turns as Telegram.
+      const ownerNetwork = this.development()
+        ? developmentOwnerNetwork(flows.network, (address, raw, headers) => {
+            // Local development: the simulated Chatwoot's notice goes in as the return would, token checked.
+            const hook = chatwootHookPath(new URL(address).pathname);
+            if (!hook) return;
+            void this.keepAliveWhile(async () => {
+              if (await isChatwootHookToken(hook.linkId, hook.token, env.SESSION_SECRET)) await chatwootOwner.receive(hook.linkId, raw, headers);
+            });
+          })
+        : null;
+      const chatwootOwner = new ChatwootOwner({
+        state,
+        connections: flows.connections,
+        network: () => ownerNetwork ?? flows.network,
+        development: () => this.development(),
+        publicUrl: () => this.publicUrl(),
+        sessionSecret: () => env.SESSION_SECRET,
+        locale: () => this.locale(),
+        lockdown: () => auth.lockdown.active(),
+        runner: () => this.runner(),
+        conversations: () => conversations,
+        activeRuns: this.activeRuns,
+        notify: (notice) => chatwootNotice(alerts, notice),
+        keepAlive: (work) => {
+          void this.keepAliveWhile(work);
+        },
+      });
       // The internal CRM (step 22b): its notices go to the center; nothing in it ever reaches a log.
+      // The outbox (PR S19): the only way out to a contact, filled by the CRM's automations.
+      const outbox = new Outbox({
+        db,
+        connections: flows.connections,
+        callDeps: (calls) => flows.automationCallDeps(calls),
+        timeZone: () => settings.field("timeZone"),
+        lockdown: () => auth.lockdown.active(),
+        notify: (notice) => outboxNotice(alerts, notice, this.locale()),
+        // An automation paused or turned off holds what it queued (SEC-A8-04); it expires in its time.
+        active: (automationId) => crmAutomations.sends(automationId),
+      });
       // The CRM's automations (PR S18): the code's catalog; the example only in local development.
       const crmAutomations = new CrmAutomations({
+        outbox,
         db,
         connections: flows.connections,
         callDeps: (calls) => flows.automationCallDeps(calls),
@@ -1049,7 +1113,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         },
         telegram: { chat: () => telegram.ownerChat(), client: (options) => telegram.client(options) },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmAutomations, agents, backupAuto };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner };
     }
     return this.#store;
   }
@@ -1175,7 +1239,42 @@ function crmAutomationNotice(alerts: AlertService, notice: AutomationNotice, loc
   }
 }
 
+const OUTBOX_STOP: Record<OutboxStopReason, MessageKey> = {
+  failures: "notice.outbox.reason.failures",
+  credential: "notice.outbox.reason.credential",
+  bad_answer: "notice.outbox.reason.bad_answer",
+};
+
+/** A notice of the outbox (PR S19): the automation's or the credential's name, never a person's. */
+function outboxNotice(alerts: AlertService, notice: OutboxNotice, locale: Locale): void {
+  switch (notice.kind) {
+    case "stopped":
+      alerts.raise({ kind: "outbox.stopped", category: "system", priority: "high", params: { name: notice.name, reason: t(locale, OUTBOX_STOP[notice.reason]) }, source: `outbox:${notice.connectionId}`, link: "/crm/envios" });
+      return;
+    case "failed":
+      alerts.raise({ kind: "outbox.failed", category: "system", priority: "normal", params: { name: automationName(locale, notice.automationId) }, source: "outbox", link: "/crm/envios" });
+      return;
+    case "stalled":
+      alerts.raise({ kind: "outbox.stalled", category: "system", priority: "high", params: {}, source: "outbox", link: "/crm/envios" });
+      return;
+  }
+}
+
 /** A notice of the CRM (step 22b): a client's name only in the notice itself, never in a log. */
+/** The Chatwoot's notices: never the text of a message, always the page of Settings › Chatwoot. */
+function chatwootNotice(alerts: AlertService, notice: { kind: "chatwoot.stranger" | "chatwoot.recreated" | "chatwoot.paused"; reason?: string }): void {
+  const link = "/configuracoes/chatwoot" as const;
+  if (notice.kind === "chatwoot.stranger") {
+    alerts.raise({ kind: notice.kind, category: "system", priority: "high", link, dedupeKey: "chatwoot-stranger", dedupeMs: 3_600_000 });
+    return;
+  }
+  if (notice.kind === "chatwoot.recreated") {
+    alerts.raise({ kind: notice.kind, category: "system", priority: "normal", link });
+    return;
+  }
+  alerts.raise({ kind: notice.kind, category: "system", priority: "high", link, dedupeKey: `chatwoot-paused-${notice.reason ?? "owner"}`, dedupeMs: 3_600_000 });
+}
+
 function crmNotice(alerts: AlertService, notice: CrmNotice): void {
   switch (notice.kind) {
     case "crm.followUp":

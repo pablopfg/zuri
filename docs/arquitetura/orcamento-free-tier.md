@@ -74,10 +74,19 @@ Medido dentro do workerd por `apps/agent/test/free-tier-budget.test.ts`, com
 | `PATCH /api/mcp/servers/:id/tools/:tool` | até 20 | até 3 |
 | `POST /api/chat` com uma ferramenta externa (conversa curta) | 41 (teto 80) | 18 (teto 30) |
 | `POST /api/actions/:id/approve` de uma chamada externa | 13 (teto 25) | 2 (teto 12) |
+| `GET /api/chatwoot/owner` | 3 (teto 4) | 0 |
+| Aviso da caixa do Chatwoot com assinatura errada | 3 (teto 4) | 0 |
+| Aviso de outra pessoa na caixa do Chatwoot | 8 (teto 10) | 2 (teto 3) |
+| Aviso do dono na caixa do Chatwoot, com o turno do agente | 18 (teto 20) | 10 (teto 12) |
 
 Os números contam só o SQL do Zuri (`Database.usage`): a cada despertar o
 Agents SDK lê algumas linhas das tabelas `cf_agents_*`, quase vazias hoje. O
 painel da Cloudflare dá o total real depois do deploy.
+
+Cada aviso da caixa do Chatwoot do dono faz até 12 chamadas ao Chatwoot (busca
+da mensagem, até 3 blocos da resposta, refazer a conversa e o DNS) e responde
+200 antes do trabalho; o eco das mensagens da própria Zuri volta como aviso e é
+descartado antes de abrir o cofre, fora do teste.
 
 Pendências técnicas, medidas:
 

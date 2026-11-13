@@ -78,7 +78,7 @@ function registeredRoutes(): string[] {
   const unused = () => {
     throw new Error("not used");
   };
-  const app = createApi({ locale: () => "pt-BR", auth: unused, settings: unused, productivity: unused, memories: unused, automations: unused, aiUsage: unused, aiHistory: unused, aiHours: unused, aiMonths: unused, chat: unused, notices: unused, telegram: unused, semantic: unused, mcp: unused, google: unused, flows: unused, crm: unused, crmAutomations: unused, backup: unused, passwordSecretSet: () => true, origin: () => ORIGIN, development: () => false });
+  const app = createApi({ locale: () => "pt-BR", auth: unused, settings: unused, productivity: unused, memories: unused, automations: unused, aiUsage: unused, aiHistory: unused, aiHours: unused, aiMonths: unused, chat: unused, notices: unused, telegram: unused, semantic: unused, mcp: unused, google: unused, flows: unused, crm: unused, crmAutomations: unused, chatwoot: unused, outbox: unused, backup: unused, passwordSecretSet: () => true, origin: () => ORIGIN, development: () => false });
   return [...new Set(app.routes.filter((r) => r.method !== "ALL").map((r) => `${r.method} ${r.path}`))];
 }
 
@@ -104,6 +104,8 @@ const PUBLIC = new Set([
   "POST /api/auth/recover/confirm",
   // Google's push notices (step 19): no session, only the channel's HMAC token.
   "POST /api/google/push",
+  // The return of the owner's Chatwoot inbox: no session, the path's HMAC token and the inbox's signature.
+  "POST /api/chatwoot/owner/hook/:id/:token",
 ]);
 /** The four the owner can still use while the password must change. */
 const ALLOWED = new Set(["GET /api/auth/session", "POST /api/auth/heartbeat", "POST /api/auth/logout", "POST /api/auth/password"]);

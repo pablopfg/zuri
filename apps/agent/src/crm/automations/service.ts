@@ -21,6 +21,7 @@ import type { Json } from "../../flows/paths.ts";
 import { AppError } from "../../http/errors.ts";
 import { type AutomationContext, cleanLabel, type ManifestCall, optionsFor } from "./manifest.ts";
 import { AUTOMATION_BASE, type CatalogEntry } from "./registry.ts";
+import type { Outbox } from "../outbox.ts";
 
 export type AutomationNotice =
   | { kind: "paused"; id: string; reason: CrmAutomationPause }
@@ -36,6 +37,8 @@ export interface CrmAutomationDeps {
   lockdown: () => boolean;
   notify: (notice: AutomationNotice) => void;
   catalog: readonly CatalogEntry[];
+  /** The queue a live automation's messages go into (PR S19). */
+  outbox?: Pick<Outbox, "enqueue">;
   clock?: () => number;
 }
 
@@ -229,6 +232,11 @@ export class CrmAutomations {
    * The credential's users by id, for "Usada por" and for refusing to remove one in use: the ones on (rehearsal,
    * live or paused). One turned off only remembers the pick; starting it again checks the credential once more.
    */
+  /** Whether what this automation queued may go out: only while it is on for real. */
+  sends(id: string): boolean {
+    return this.db.one<{ state: string }>(`SELECT state FROM zur_crm_automations WHERE id = ?`, id)?.state === "live";
+  }
+
   users(connectionId: string): string[] {
     return this.db.all<{ id: string }>(`SELECT id FROM zur_crm_automations WHERE connection_id = ? AND state != 'off' LIMIT 100`, connectionId).map((row) => row.id);
   }
@@ -604,6 +612,63 @@ export class CrmAutomations {
         this.db.run(`UPDATE zur_crm_automation_effects SET status = 'done', updated_at = ? WHERE automation_id = ? AND mode = 'live' AND key = ?`, this.iso(), row.id, input.key);
         effects++;
         return "done";
+      },
+      send: async (input) => {
+        if (!manifest.effects.includes("message") || manifest.connection !== "chatwoot" || !manifest.writesToContacts) throw new ManifestViolation("send");
+        if (input.key.length === 0 || input.key.length > CRM_AUTOMATION_LIMITS.key) throw new ManifestViolation("key");
+        // The example writes to made-up numbers: only ever to the Chatwoot the Worker simulates (SEC-A13-01).
+        if (manifest.id === "example" && !(connection && /(^|\.)exemplo\.com\.br$/.test(new URL(connection.origin).hostname))) throw new ManifestViolation("example");
+        if (effectsLeft <= 0) throw new CapReached();
+        this.stillOn(row.id, row.state);
+        const when = this.iso();
+        const { rowsWritten } = this.db.run(
+          `INSERT OR IGNORE INTO zur_crm_automation_effects (automation_id, key, mode, day, status, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          row.id,
+          input.key,
+          mode,
+          day,
+          mode === "rehearsal" ? "would" : "pending",
+          cleanLabel(input.label),
+          when,
+          when,
+        );
+        if (rowsWritten === 0) return "skipped";
+        effectsLeft--;
+        // The rehearsal's promise: nothing enters the queue.
+        if (mode === "rehearsal") {
+          effects++;
+          return "would";
+        }
+        const free = () => {
+          this.db.run(`DELETE FROM zur_crm_automation_effects WHERE automation_id = ? AND mode = 'live' AND key = ? AND status = 'pending'`, row.id, input.key);
+          effectsLeft++;
+        };
+        let queued: "queued" | "skipped" | "cap";
+        try {
+          if (!this.deps.outbox || !row.connection_id) throw new ManifestViolation("outbox");
+          queued = this.deps.outbox.enqueue({
+            automationId: row.id,
+            connectionId: row.connection_id,
+            key: input.key,
+            label: input.label,
+            phone: input.phone,
+            text: input.text,
+            bulk: input.bulk ?? true,
+            ...(input.notBefore === undefined ? {} : { notBefore: input.notBefore }),
+            ...(input.notAfter === undefined ? {} : { notAfter: input.notAfter }),
+          });
+        } catch (error) {
+          free();
+          throw error;
+        }
+        // The day's ceiling of all automations together: the key stays free for tomorrow.
+        if (queued === "cap") {
+          free();
+          throw new CapReached();
+        }
+        this.db.run(`UPDATE zur_crm_automation_effects SET status = 'done', updated_at = ? WHERE automation_id = ? AND mode = 'live' AND key = ?`, this.iso(), row.id, input.key);
+        effects++;
+        return queued;
       },
     };
     try {

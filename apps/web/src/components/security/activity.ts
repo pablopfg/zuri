@@ -63,6 +63,10 @@ export const KIND_LABEL: Record<AuthEventKind, MessageKey> = {
   recovery_requested: "web.activity.kind.recovery_requested",
   password_recovered: "web.activity.kind.password_recovered",
   agent_settings_changed: "web.activity.kind.agent_settings_changed",
+  chatwoot_owner_linked: "web.activity.kind.chatwoot_owner_linked",
+  chatwoot_owner_changed: "web.activity.kind.chatwoot_owner_changed",
+  chatwoot_owner_removed: "web.activity.kind.chatwoot_owner_removed",
+  chatwoot_owner_unlocked: "web.activity.kind.chatwoot_owner_unlocked",
 };
 
 /** The filter groups, as the access log's select names them. */

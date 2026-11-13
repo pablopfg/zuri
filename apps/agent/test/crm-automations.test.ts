@@ -7,6 +7,7 @@ import { FlowStepError } from "../src/flows/connections.ts";
 import { type AutomationContext, type AutomationModule, MAX_CALLS_PER_RUN, type Manifest, manifestSchema, optionsFor } from "../src/crm/automations/manifest.ts";
 import { buildCatalog } from "../src/crm/automations/registry.ts";
 import { type AutomationNotice, CrmAutomations } from "../src/crm/automations/service.ts";
+import { Outbox, OutboxRefused } from "../src/crm/outbox.ts";
 import { addConnection, type FlowWorld, withFlowWorld } from "./flow-world.ts";
 import { runInDurableObject } from "cloudflare:test";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -56,6 +57,7 @@ function fake(id: string, body?: (ctx: AutomationContext) => Promise<void>, patc
 
 interface World extends FlowWorld {
   automations: CrmAutomations;
+  outbox: Outbox;
   told: AutomationNotice[];
   chatwoot: string;
   /** A new service on the same tables, as after a deploy. */
@@ -79,9 +81,19 @@ function withWorld<T>(modules: AutomationModule[], fn: (world: World) => T | Pro
         lockdown: () => base.lockdown.active,
         notify: (notice) => told.push(notice),
         catalog: buildCatalog(list),
+        outbox,
         clock: () => base.clock.now,
       });
-    const world: World = { ...base, automations: make(modules), told, chatwoot, restart: (list = modules) => (world.automations = make(list)) };
+    const outbox = new Outbox({
+      db: base.db,
+      connections: base.connections,
+      callDeps: (calls) => base.flows.automationCallDeps(calls),
+      timeZone: () => "America/Sao_Paulo",
+      lockdown: () => base.lockdown.active,
+      notify: () => {},
+      clock: () => base.clock.now,
+    });
+    const world: World = { ...base, automations: make(modules), told, chatwoot, outbox, restart: (list = modules) => (world.automations = make(list)) };
     base.flows.automationUsers = (id) => world.automations.users(id);
     return fn(world);
   });
@@ -170,7 +182,7 @@ describe("states", () => {
       const list = world.automations.list();
       expect(list.automations.map((item) => [item.position, item.availability, item.state])).toEqual(CRM_AUTOMATION_IDS.map((_, index) => [index + 1, index === 0 ? "next" : "development", "off"]));
       expect(list.automations[0]).toMatchObject({ id: "review-request", writesToContacts: true, connectionKind: "chatwoot", connectionId: null, watch: false });
-      expect(list.base).toEqual({ calendar: "ready", queue: "coming", identity: "coming" });
+      expect(list.base).toEqual({ calendar: "ready", queue: "ready", identity: "coming" });
       // Nothing to run, nothing due: the alarm reads one row and stops.
       expect(world.automations.nextDue()).toBeNull();
     });
@@ -700,7 +712,7 @@ describe("upkeep", () => {
     await runInDurableObject(stub, async (_agent: ZuriAgent, state) => {
       const db = new Database(state.storage);
       migrate(db, MIGRATIONS.filter((migration) => migration.version <= 38));
-      expect(migrate(db)).toBe(39);
+      expect(migrate(db, MIGRATIONS.filter((migration) => migration.version <= 39))).toBe(39);
       const before = db.one<{ crm: number }>(`SELECT crm FROM zur_area_versions WHERE id = 1`)?.crm ?? 0;
       db.run(`INSERT INTO zur_crm_automations (id, updated_at) VALUES ('fake', '2026-11-03T12:00:00.000Z')`);
       db.run(`UPDATE zur_crm_automations SET next_run_at = '2026-11-03T13:00:00.000Z', failures = 1`);
@@ -708,4 +720,79 @@ describe("upkeep", () => {
       expect(() => db.run(`INSERT INTO zur_crm_automations (id, state, updated_at) VALUES ('x', 'on', 'x')`)).toThrow();
     });
   });
+});
+
+describe("messages through the outbox (PR S19)", () => {
+  const sender = (people: number, patch: Partial<Manifest> = {}) =>
+    fake(
+      "fake",
+      async (ctx) => {
+        for (let n = 0; n < people; n++) {
+          await ctx.send({ key: `${ctx.day}:${n}`, label: `Pessoa ${n + 1}`, phone: `+55119876543${String(n).padStart(2, "0")}`, text: `Olá ${n + 1}` });
+        }
+      },
+      patch,
+    );
+  const queued = (world: World) => world.db.all<{ key: string; automation_id: string }>(`SELECT key, automation_id FROM zur_outbox ORDER BY key`);
+
+  it("in rehearsal nothing enters the queue: a note of what it would send", () =>
+    withWorld([sender(2)], async (world) => {
+      await rehearse(world);
+      await world.automations.tick();
+      expect(queued(world)).toEqual([]);
+      expect(effects(world).map((effect) => effect.status)).toEqual(["would", "would"]);
+    }));
+
+  it("live, each key enters the queue once, under the automation and its credential", () =>
+    withWorld([sender(2)], async (world) => {
+      await rehearse(world);
+      world.automations.setMode("fake", "live", true);
+      await world.automations.tick();
+      expect(queued(world)).toEqual([
+        { key: "2026-11-03:0", automation_id: "fake" },
+        { key: "2026-11-03:1", automation_id: "fake" },
+      ]);
+      expect(world.db.one(`SELECT connection_id FROM zur_outbox LIMIT 1`)).toEqual({ connection_id: world.chatwoot });
+      expect(effects(world).map((effect) => effect.status)).toEqual(["done", "done"]);
+      world.clock.now += 61 * 60_000;
+      await world.automations.tick();
+      expect(queued(world)).toHaveLength(2);
+    }));
+
+  it("refuses to send without the effect 'message', a Chatwoot credential or writesToContacts", () =>
+    withWorld([sender(1, { writesToContacts: false })], async (world) => {
+      await rehearse(world);
+      world.automations.setMode("fake", "live", true);
+      await world.automations.tick();
+      expect(queued(world)).toEqual([]);
+      expect(world.db.one(`SELECT outcome FROM zur_crm_automation_runs ORDER BY id DESC LIMIT 1`)).toEqual({ outcome: "failed" });
+    }));
+
+  it("a message the queue refuses (a phone out of shape) leaves the key free and counts as a failure", () =>
+    withWorld(
+      [
+        fake("fake", async (ctx) => {
+          await ctx.send({ key: `${ctx.day}:x`, label: "Pessoa", phone: "11987654321", text: "Olá" });
+        }),
+      ],
+      async (world) => {
+        await rehearse(world);
+        world.automations.setMode("fake", "live", true);
+        await world.automations.tick();
+        expect(effects(world)).toEqual([]);
+        expect(row(world, "fake")?.failures).toBe(1);
+        expect(() => world.outbox.enqueue({ automationId: "fake", connectionId: world.chatwoot, key: "k", label: "P", phone: "1", text: "t", bulk: true })).toThrow(OutboxRefused);
+      },
+    ));
+
+  it("the day's ceiling of all automations together stops the run as a cap; the keys stay free for tomorrow", () =>
+    withWorld([sender(3, { caps: { runsPerDay: 24, callsPerRun: 10, effectsPerDay: 20, neuronsPerRun: 0 } })], async (world) => {
+      world.db.run(`INSERT INTO zur_outbox_days (day, queued) VALUES ('2026-11-03', 59)`);
+      await rehearse(world);
+      world.automations.setMode("fake", "live", true);
+      await world.automations.tick();
+      expect(queued(world)).toHaveLength(1);
+      expect(effects(world)).toHaveLength(1);
+      expect(world.db.one(`SELECT outcome FROM zur_crm_automation_runs ORDER BY id DESC LIMIT 1`)).toEqual({ outcome: "cap" });
+    }));
 });

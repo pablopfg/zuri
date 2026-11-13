@@ -39,7 +39,7 @@ test("lists the automations in the order they arrive, with the base and the noti
   const base = page.getByRole("region", { name: "Base" });
   await expect(base.getByRole("listitem")).toHaveCount(3);
   await expect(base.getByRole("listitem").filter({ hasText: "Dias úteis e feriados." })).toContainText("Pronta");
-  await expect(base.getByRole("listitem").filter({ hasText: "Envio pelo Chatwoot, com fila." })).toContainText("A caminho");
+  await expect(base.getByRole("listitem").filter({ hasText: "Envio pelo Chatwoot, com fila." })).toContainText("Pronta");
   const list = page.getByRole("list", { name: "Automações, na ordem em que chegam" });
   await expect(list.getByRole("listitem").first()).toContainText("1Pedido de avaliação");
   await expect(row(page, "Pedido de avaliação")).toContainText("Próxima a chegar");

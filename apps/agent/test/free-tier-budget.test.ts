@@ -1,4 +1,3 @@
-import { localInstant, localToday } from "../src/google/events.ts";
 import { AGENT_INSTANCE_NAME, CONTACT_LIMITS, CRM_LIMITS, FLOW_LIMITS, LIST_LIMIT_DEFAULT, REVIEW_LIMITS } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -14,7 +13,8 @@ import { unit } from "../src/semantic/vectors.ts";
 import { CSRF, call, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, signedCookies } from "./helpers.ts";
 import { mcpFixture } from "./mcp-fixture.ts";
 import { withChatWorld } from "./chat-world.ts";
-import { addConnection, withFlowWorld } from "./flow-world.ts";
+import { addConnection, FakeNetwork, withFlowWorld } from "./flow-world.ts";
+import { withOwnerWorld } from "./chatwoot-owner-world.ts";
 import { add, draftAnswer, LOCATION, PATTERN, SECOND_OK, turnOn, withReviewsWorld } from "./reviews-world.ts";
 import { EXAMPLE_AUTOMATION } from "../src/crm/automations/example.ts";
 import type { AutomationModule } from "../src/crm/automations/manifest.ts";
@@ -600,7 +600,9 @@ describe("the Free plan budget of each route", () => {
     // 62: the CRM's automations (PR S18): the run due and the next one (two indexed looks), and, once per start
     // of the object (in memory, so again on a cold wake), the rows set up, the three prunings (runs and
     // effects by their date indexes, the checked days by each automation's key) and the pending effects.
-    expect(wake.read).toBeLessThanOrEqual(62);
+    // 69: the outbox (PR S19): whether anything waits, in the wake and in the planning (one indexed look each),
+    // and its day's pruning, kept in memory (rows and timelines after 180 days, counts after 400, texts after 7).
+    expect(wake.read).toBeLessThanOrEqual(69);
     expect(wake.written).toBeLessThanOrEqual(30);
   });
 
@@ -731,7 +733,8 @@ describe("the Free plan budget of each route", () => {
       // 233: and the flows' next scheduled or waiting run (step 22a, two indexed looks).
       // 236: and the CRM's next follow-up or birthday notice (step 22b, three indexed looks).
       // 237: and the CRM's next automation run (PR S18, one indexed look).
-      expect(reindex.read).toBeLessThanOrEqual(237);
+      // 238: and whether anything waits in the outbox (PR S19, one indexed look).
+      expect(reindex.read).toBeLessThanOrEqual(238);
       expect(reindex.written).toBeLessThanOrEqual(4);
       const off = await cost("PATCH", "/semantic", { enabled: false });
       expect(off.status).toBe(200);
@@ -1283,6 +1286,43 @@ describe("the CRM (step 22b)", () => {
   });
 });
 
+describe("the owner's Chatwoot (docs/planos/zuri-no-chatwoot.md)", () => {
+  it("the page, a forged notice, a stranger and an answered message read and write a handful of rows", () =>
+    withOwnerWorld(async (world) => {
+      await world.link();
+      const measure = async (fn: () => unknown) => {
+        const before = { ...world.db.usage };
+        await fn();
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      // Measured 13/11/2026: page 3 read; forged 3 read; stranger 8 read, 2 written; answered 18 read, 10 written
+      // (the first answer also opens the app conversation "Chatwoot").
+      // The page: the link (one setting) and the vault's row.
+      const page = await measure(() => world.owner.status());
+      expect(page.written).toBe(0);
+      expect(page.read).toBeLessThanOrEqual(4);
+      // A forged notice: the link and the row read, nothing written (a flood costs no writes).
+      const link = JSON.parse(world.state.get<string>("chatwoot_owner") as string) as { id: string };
+      const forged = await measure(() => world.owner.receive(link.id, "{}", { signature: `sha256=${"0".repeat(64)}`, timestamp: String(Math.floor(Date.now() / 1000)), delivery: "x" }));
+      expect(forged.written).toBe(0);
+      expect(forged.read).toBeLessThanOrEqual(4);
+      // Someone else writes: the delivery seen, the stranger counted (the link's setting, a few times).
+      const stranger = await measure(async () => {
+        await world.chatwoot.agentSays(world.conversationId(), "oi", { id: 9, name: "Rafael Souza" });
+        await world.settle();
+      });
+      expect(stranger.written).toBeLessThanOrEqual(3);
+      expect(stranger.read).toBeLessThanOrEqual(10);
+      // The owner writes and the (fake) agent answers: the link's setting a few times and the app conversation's row.
+      const answered = await measure(async () => {
+        await world.chatwoot.agentSays(world.conversationId(), "oi");
+        await world.settle();
+      });
+      expect(answered.written).toBeLessThanOrEqual(12);
+      expect(answered.read).toBeLessThanOrEqual(20);
+    }));
+});
+
 describe("CRM's automations (PR S18)", () => {
   it("a run at its ceilings: 60 effects noted in one wake cost their own rows, and the counts read only the day", async () => {
     // A module at the manifest's ceilings: 96 runs and 60 effects a day. In rehearsal no call is made, so the
@@ -1291,11 +1331,14 @@ describe("CRM's automations (PR S18)", () => {
       manifest: {
         ...EXAMPLE_AUTOMATION.manifest,
         id: "example",
+        // An effect of its own call (the example sends through the outbox since PR S19).
+        calls: [...EXAMPLE_AUTOMATION.manifest.calls, { name: "note", method: "POST", path: "/api/v1/accounts/{account}/zuri-example" }],
+        effects: ["note"],
         trigger: { kind: "every", minutes: 15, workingDays: false },
         caps: { runsPerDay: 96, callsPerRun: 2, effectsPerDay: 60, neuronsPerRun: 0 },
       },
       run: async (ctx) => {
-        for (let n = 0; n < 60; n++) await ctx.effect({ effect: EXAMPLE_AUTOMATION.manifest.effects[0] as string, key: `${ctx.day}:${n}`, label: "Pessoa de exemplo", call: "note" });
+        for (let n = 0; n < 60; n++) await ctx.effect({ effect: "note", key: `${ctx.day}:${n}`, label: "Pessoa de exemplo", call: "note" });
       },
     };
     const measured = await runInDurableObject(owner(), async (agent: ZuriAgent) => {
@@ -1311,12 +1354,9 @@ describe("CRM's automations (PR S18)", () => {
       db.run(`UPDATE zur_crm_automations SET next_run_at = NULL`);
       await automations.tick();
       db.run(`UPDATE zur_crm_automations SET next_run_at = ?`, new Date(now - 1000).toISOString());
-      // Half a year of runs before today's: the count reads only the day's by the index. They end before
-      // the owner's midnight, so the measure is the same at any hour the suite runs (it read one row
-      // more per hour of the day before).
-      const zone = agent.store.settings.field("timeZone");
-      const midnight = localInstant(localToday(zone, new Date(now)), zone)?.getTime() ?? now;
-      for (let n = 1; n < 180 * 24; n++) db.run(`INSERT INTO zur_crm_automation_runs (automation_id, started_at, mode, outcome) VALUES ('example', ?, 'rehearsal', 'ok')`, new Date(midnight - n * 3_600_000).toISOString());
+      // Half a year of runs before today's: the count reads only the day's by the index. They start a full day back,
+      // so none falls inside the owner's today whatever the hour the test runs at (from 8 a.m. on it read 133).
+      for (let n = 1; n < 180 * 24; n++) db.run(`INSERT INTO zur_crm_automation_runs (automation_id, started_at, mode, outcome) VALUES ('example', ?, 'rehearsal', 'ok')`, new Date(now - (24 + n) * 3_600_000).toISOString());
       const before = { ...db.usage };
       await automations.tick();
       const after = { ...db.usage };
@@ -1329,7 +1369,7 @@ describe("CRM's automations (PR S18)", () => {
     // Each effect: its row, the primary key and 3 indexes (and a read of the state before it, S18-A1);
     // the run: its row and 2 indexes; the next time: the row and the partial index.
     expect(measured.written).toBeLessThanOrEqual(60 * 4 + 3 + 3);
-    // The due row, the day's effects, the credential and the 60 state reads; no run of an earlier day.
+    // The due row, the day's runs and effects, the credential and the 60 state reads.
     expect(measured.read).toBeLessThanOrEqual(130);
   });
 
@@ -1384,5 +1424,87 @@ describe("CRM's automations (PR S18)", () => {
         for (const table of ["zur_crm_automations", "zur_crm_automation_runs", "zur_crm_automation_effects", "zur_crm_automation_days"]) db.run(`DELETE FROM ${table}`);
       });
     }
+  });
+});
+
+describe("the outbox (PR S19)", () => {
+  it("CRM › Envios with half a year of history reads about one page; one send writes its own rows", async () => {
+    const seeded = await runInDurableObject(owner(), async (agent: ZuriAgent) => {
+      const { db } = agent.store;
+      for (const table of ["zur_outbox", "zur_outbox_steps", "zur_outbox_queues", "zur_outbox_days"]) db.run(`DELETE FROM ${table}`);
+      const now = Date.now();
+      // 180 days of 20 messages each, all ended, and their days' counts.
+      for (let day = 0; day < 180; day++) {
+        const date = new Date(now - day * 86_400_000).toISOString();
+        db.run(`INSERT INTO zur_outbox_days (day, sent, ms_total, ms_n) VALUES (?, 20, 20000, 20)`, date.slice(0, 10));
+        for (let n = 0; n < 20; n++) {
+          db.run(
+            `INSERT INTO zur_outbox (id, automation_id, key, connection_id, priority, label, status, grp, attempts, available_at, day, created_at, updated_at, done_at) VALUES (?, 'review-request', ?, 'budget-chatwoot', 3, 'Pessoa', 'sent', 'sent', 1, ?, ?, ?, ?, ?)`,
+            `o-${day}-${n}`,
+            `${day}:${n}`,
+            date,
+            date.slice(0, 10),
+            new Date(Date.parse(date) - n * 1000).toISOString(),
+            date,
+            date,
+          );
+        }
+      }
+      return db.one<{ id: string }>(`SELECT id FROM zur_outbox ORDER BY created_at DESC LIMIT 1`)?.id as string;
+    });
+    const status = await cost("GET", "/outbox/status");
+    expect(status.status).toBe(200);
+    // Nothing waiting: the state, the queues and two indexed lookups.
+    expect(status.read).toBeLessThanOrEqual(10);
+    expect(status.written).toBe(0);
+    const month = await cost("GET", "/outbox?period=30d");
+    expect(month.status).toBe(200);
+    // A page (51 rows) and the 30 days' counts, never the half year.
+    expect(month.read).toBeLessThanOrEqual(51 + 30 + 5);
+    const failed = await cost("GET", "/outbox?period=30d&filter=failed");
+    // No failed row in half a year: the group's index finds none; the 30 days' counts are still read.
+    expect(failed.read).toBeLessThanOrEqual(30 + 5);
+    const detail = await cost("GET", `/outbox/${seeded}`);
+    expect(detail.read).toBeLessThanOrEqual(5);
+    const paused = await cost("POST", "/outbox/pause");
+    // The switch, its area's number, the activity row with its index, and the alarm planned again.
+    expect(paused.written).toBeLessThanOrEqual(5);
+    await cost("POST", "/outbox/resume");
+
+    const sent = await runInDurableObject(owner(), async (agent: ZuriAgent) => {
+      const { db } = agent.store;
+      for (const table of ["zur_outbox", "zur_outbox_steps", "zur_outbox_queues", "zur_outbox_days"]) db.run(`DELETE FROM ${table}`);
+      const connection = await agent.store.flows.connections.create({ kind: "chatwoot", name: "Chatwoot", origin: "https://chat.exemplo.com.br", accountId: 1, credential: "chave-do-agente-zuri-4f2a" }, { development: false });
+      db.run(`UPDATE zur_flow_connections SET meta = json_set(meta, '$.inboxId', 7) WHERE id = ?`, connection);
+      const network = new FakeNetwork();
+      network.handlers.set("chat.exemplo.com.br", (request) => {
+        const path = new URL(request.url).pathname;
+        if (path.endsWith("/contacts/search")) return Response.json({ payload: [{ id: 5, phone_number: "+5511987654321" }] });
+        if (path.endsWith("/conversations") && request.method === "GET") return Response.json({ payload: [{ id: 9, inbox_id: 7, status: "open" }] });
+        return Response.json({ id: 11 });
+      });
+      agent.store.flows.network = network;
+      const { outbox } = agent.store;
+      // Only what an automation on for real queued goes out (SEC-A8-04).
+      db.run(`INSERT INTO zur_crm_automations (id, state, updated_at) VALUES ('review-request', 'live', ?) ON CONFLICT (id) DO UPDATE SET state = 'live'`, new Date().toISOString());
+      outbox.enqueue({ automationId: "review-request", connectionId: connection, key: "k1", label: "Pessoa", phone: "+5511987654321", text: "Olá", bulk: true });
+      // A wake first: the day's pruning, kept in memory, is not this one's.
+      await outbox.tick();
+      outbox.enqueue({ automationId: "review-request", connectionId: connection, key: "k2", label: "Pessoa", phone: "+5511987654321", text: "Olá", bulk: true });
+      db.run(`UPDATE zur_outbox_queues SET next_free_at = NULL`);
+      const before = { ...db.usage };
+      await outbox.tick();
+      const after = { ...db.usage };
+      const done = db.one(`SELECT status FROM zur_outbox WHERE key = 'k2'`);
+      for (const table of ["zur_outbox", "zur_outbox_steps", "zur_outbox_queues", "zur_outbox_days"]) db.run(`DELETE FROM ${table}`);
+      db.run(`DELETE FROM zur_crm_automations WHERE id = 'review-request'`);
+      db.run(`DELETE FROM zur_flow_connections WHERE id = ?`, connection);
+      return { read: after.rowsRead - before.rowsRead, written: after.rowsWritten - before.rowsWritten, done };
+    });
+    expect(sent.done).toEqual({ status: "sent" });
+    // Measured 14 written and 20 read: the claim and the status with their indexes and trigger, the step,
+    // the day's count, the queue's clock and the contact's and conversation's ids.
+    expect(sent.written).toBeLessThanOrEqual(16);
+    expect(sent.read).toBeLessThanOrEqual(24);
   });
 });
