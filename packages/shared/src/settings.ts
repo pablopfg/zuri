@@ -8,9 +8,8 @@ import { catalogModelIdSchema } from "./model-catalog.ts";
 
 import { ALERT_LIMITS, alertFullTextSchema, alertRoutesSchema, DEFAULT_ALERT_ROUTES, DEFAULT_DIGEST_TIME } from "./alerts.ts";
 import { AGENDA_VIEWS, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
-import { AGENDA_RULES } from "./agenda-rules.ts";
+import { AGENDA_RULES, periodDays } from "./agenda-rules.ts";
 import { isValidCalendarDate } from "./dates.ts";
-import { nationalHoliday } from "./holidays.ts";
 import { DEFAULT_SOUND_PREFS, NOTICE_SOUNDS } from "./sounds.ts";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "./time-zone.ts";
 
@@ -96,19 +95,28 @@ export const agendaPrefsSchema = /* @__PURE__ */ z
       .strict()
       .nullable()
       .default(null),
-    /** National holidays the owner works on, each once, in order. */
-    openHolidays: z
-      .array(z.string().regex(DAY).refine((day) => nationalHoliday(day) !== null))
-      .max(AGENDA_RULES.openHolidaysMax)
-      .default([])
-      .transform((days) => [...new Set(days)].sort()),
-    /** Days off, one per date, in order. */
+    /** Gone on 13/11/2026 (a national holiday always closes): a stored one is still read, and dropped. */
+    openHolidays: z.array(z.string()).max(AGENDA_RULES.closedMax).optional(),
+    /**
+     * Periods off, in order, none overlapping another, 1 to 90 days each. A
+     * record saved before 13/11/2026 has one day per entry ({ date }): it is
+     * read as a period of that day.
+     */
     closed: z
-      .array(z.object({ date: z.string().regex(DAY).refine(isDay), reason: z.string().trim().max(AGENDA_RULES.closedReasonMax) }).strict())
+      .array(
+        z.union([
+          z.object({ from: z.string().regex(DAY).refine(isDay), to: z.string().regex(DAY).refine(isDay), reason: z.string().trim().max(AGENDA_RULES.closedReasonMax) }).strict(),
+          z
+            .object({ date: z.string().regex(DAY).refine(isDay), reason: z.string().trim().max(AGENDA_RULES.closedReasonMax) })
+            .strict()
+            .transform(({ date, reason }) => ({ from: date, to: date, reason })),
+        ]),
+      )
       .max(AGENDA_RULES.closedMax)
       .default([])
-      .refine((days) => new Set(days.map((day) => day.date)).size === days.length)
-      .transform((days) => [...days].sort((a, b) => (a.date < b.date ? -1 : 1))),
+      .transform((days) => [...days].sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0)))
+      .refine((days) => days.every((day) => day.from <= day.to && periodDays(day) <= AGENDA_RULES.closedDaysMax))
+      .refine((days) => days.every((day, index) => index === 0 || (days[index - 1] as { to: string }).to < day.from)),
   })
   .strict()
   .refine((prefs) => prefs.from < prefs.to)
@@ -118,7 +126,7 @@ export const agendaPrefsSchema = /* @__PURE__ */ z
     const { lunchStep, lunchMax, lunchMargin } = AGENDA_RULES;
     return lunch.from % lunchStep === 0 && lunch.to % lunchStep === 0 && lunch.to > lunch.from && lunch.to - lunch.from <= lunchMax && lunch.from >= from * 60 + lunchMargin && lunch.to <= to * 60 - lunchMargin;
   })
-  .transform(({ allDay: _gone, ...prefs }) => prefs);
+  .transform(({ allDay: _gone, openHolidays: _open, ...prefs }) => prefs);
 
 /** The sounds of the open app (12/11/2026): saved whole, like the Agenda's preferences. */
 export const soundPrefsSchema = /* @__PURE__ */ z.object({ notice: z.boolean(), pick: z.enum(NOTICE_SOUNDS), recording: z.boolean() }).strict();

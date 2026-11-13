@@ -3,7 +3,9 @@ import { inWake, WakeBudget } from "../src/agent/wake-budget.ts";
 import type { DevEvent } from "../src/google/dev-google.ts";
 import { ALL_TOOLS } from "../src/tools/index.ts";
 import { runApprovedAction, ToolError, ToolExecutor } from "../src/tools/registry.ts";
-import { type ChatWorld, withChatWorld } from "./chat-world.ts";
+import { type ChatWorld, TIME_ZONE, withChatWorld } from "./chat-world.ts";
+import { InternalState } from "../src/db/internal-state.ts";
+import { AgendaRecord } from "../src/google/record.ts";
 import { AppError } from "../src/http/errors.ts";
 
 // Step 19: the Google Calendar tools. Reading also in routines; creating and
@@ -80,6 +82,26 @@ describe("list_calendar_events", () => {
       const events = result.events as { title: string; calendar: string; when: string; event_id: string }[];
       expect(events.map((e) => e.event_id)).toEqual(["b1", "a1"]);
       expect(events[1]).toMatchObject({ title: "Dentista", calendar: PRIMARY, when: "2026-10-31 15:00 – 16:00", location: "Rua A" });
+    }));
+
+  it("lists a closed day from its record and says what changed at Google afterwards, but a search is Google's own", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, { id: "a1", summary: "Consulta" });
+      const notices: unknown[] = [];
+      const record = new AgendaRecord({ db: world.db, state: new InternalState(world.db), google: world.google, timeZone: () => TIME_ZONE, notify: (notice) => notices.push(notice) });
+      await record.tick();
+      world.clock.now = Date.parse("2026-11-01T03:00:01Z");
+      expect(await record.tick()).toBe(true);
+      // Changed at Google after 31/10 closed.
+      const list = world.googleSim.events.get(PRIMARY) ?? [];
+      list[0] = { ...list[0], etag: '"a1-2"', summary: "Consulta mudada" } as DevEvent;
+      const exec = new ToolExecutor(ALL_TOOLS, { ...world.ctx(world.conversations.create("x").id), agendaRecord: record }, { maxToolCalls: 12 });
+      const listed = data(await exec.execute("list_calendar_events", { from: "2026-10-31", to: "2026-10-31" }, "r1")).events as { title: string; changed_in_google_after_the_day_closed?: string }[];
+      expect(listed).toEqual([expect.objectContaining({ title: "Consulta", changed_in_google_after_the_day_closed: "changed" })]);
+      expect(notices).toHaveLength(1);
+      const searched = data(await exec.execute("list_calendar_events", { from: "2026-10-31", to: "2026-10-31", query: "Consulta" }, "r2")).events as { title: string }[];
+      expect(searched.map((event) => event.title)).toEqual(["Consulta mudada"]);
     }));
 
   it("refuses more than 62 days, a backwards window and an unknown calendar", () =>
@@ -219,6 +241,27 @@ describe("delete_calendar_event", () => {
       expect(world.googleSim.events.get(PRIMARY)).toHaveLength(1);
     }));
 
+  it("can't be proposed for an event of a day that already closed, nor approved once its day closes", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, { id: "old", summary: "Consulta", start: { dateTime: "2026-10-30T15:00:00-03:00" }, end: { dateTime: "2026-10-30T16:00:00-03:00" } });
+      seed(world, PRIMARY, { id: "d1", summary: "Consulta" });
+      const chat = world.conversations.create("x").id;
+      const exec = executor(world, chat);
+      expect(await refused(exec.execute("delete_calendar_event", { calendar: PRIMARY, event_id: "old" }, "old"))).toMatch(/already closed/);
+      expect(await refused(exec.execute("update_calendar_event", { calendar: PRIMARY, event_id: "old", title: "Outro" }, "u1"))).toMatch(/already closed.*Nothing was changed/s);
+      // Proposed at 23:50 and approved after midnight: the day of the event closed meanwhile.
+      world.clock.now = Date.parse("2026-11-01T02:50:00Z");
+      const actionId = await propose(world, chat);
+      world.clock.now = Date.parse("2026-11-01T03:00:01Z");
+      const error = await runApprovedAction(ALL_TOOLS, world.ctx(chat), actionId).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(AppError);
+      expect((error as AppError).details).toMatchObject({ problem: "frozen" });
+      expect(world.googleSim.events.get(PRIMARY)).toHaveLength(2);
+      expect(world.googleSim.seen.filter((r) => r.method === "DELETE")).toEqual([]);
+      expect(world.actions.view(actionId).status).toBe("failed");
+    }));
+
   it("can't be proposed for an event renamed earlier in the same turn", () =>
     withChatWorld(async (world) => {
       await connect(world);
@@ -330,17 +373,18 @@ describe("the Agenda's booking rule in the chat (issue #328)", () => {
       expect(world.googleSim.events.get(PRIMARY)).toHaveLength(1);
     }));
 
-  it("refuses the closed days and hours: weekend, national holiday, a day off, before opening and the past", () =>
+  it("refuses the closed days and hours: weekend, national holiday, a day off, before opening and a closed day", () =>
     withChatWorld(async (world) => {
       await connect(world);
-      world.settings.agenda = { ...world.settings.agenda, closed: [{ date: "2026-11-04", reason: "" }] };
+      world.settings.agenda = { ...world.settings.agenda, closed: [{ from: "2026-11-04", to: "2026-11-04", reason: "" }] };
       const exec = executor(world, world.conversations.create("x").id);
       const at = (start: string, id: string) => refused(exec.execute("create_calendar_event", { title: "Ana Souza", start, description: APPOINTMENT }, id));
       expect(await at("2026-11-07T10:00", "1")).toMatch(/weekday/);
       expect(await at("2026-11-02T10:00", "2")).toMatch(/holiday/);
       expect(await at("2026-11-04T10:00", "3")).toMatch(/day off/);
       expect(await at("2026-11-03T07:00", "4")).toMatch(/opening hours/);
-      expect(await at("2026-10-30T10:00", "5")).toMatch(/already passed/);
+      // A day before today is closed: its record froze at midnight.
+      expect(await at("2026-10-30T10:00", "5")).toMatch(/already closed.*Nothing was created/s);
       expect(writes(world).map((r) => `${r.method} ${r.url}`)).toEqual([]);
     }));
 

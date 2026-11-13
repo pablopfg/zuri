@@ -99,6 +99,9 @@ export type InternalKey =
   // app conversation it writes to. The inbox's secrets are in zur_flow_connections, sealed.
   | "chatwoot_owner"
   | "chatwoot_conversation"
+  // The record of the day (13/11/2026): the first day copied (the day of this delivery) and the next try after a failed reading.
+  | "agenda_record_from"
+  | "agenda_record_retry_at"
   // PR S21, the catalog of models: one JSON object (the last check, the next, the models it kept with their
   // price, window and leaving day, the ones the owner put on the list and the leaving dates already told).
   | "model_catalog";

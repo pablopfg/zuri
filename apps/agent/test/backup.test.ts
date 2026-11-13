@@ -41,6 +41,8 @@ const DATA_TABLES = [
   "zur_crm_history",
   "zur_crm_clients",
   "zur_trash",
+  "zur_agenda_record",
+  "zur_agenda_closed_days",
 ];
 
 const wipe = () =>
@@ -130,7 +132,7 @@ describe("export", () => {
     expect(file.format).toBe(BACKUP_FORMAT);
     expect(file.version).toBe(BACKUP_VERSION);
     expect(file.schema).toBe(LATEST_SCHEMA_VERSION);
-    expect(Object.keys(file.data)).toEqual(["settings", "projects", "tasks", "notes", "memories", "conversations", "automations", "alertLearning", "crm"]);
+    expect(Object.keys(file.data)).toEqual(["settings", "projects", "tasks", "notes", "memories", "conversations", "automations", "alertLearning", "crm", "agendaRecord"]);
     expect(file.data.tasks).toHaveLength(2);
     expect(file.data.notes.find((n: { title: string }) => n.title.startsWith("Senha")).localOnly).toBe(true);
     expect(file.data.memories.find((m: { content: string }) => m.content.startsWith("Meu médico")).localOnly).toBe(true);
@@ -336,7 +338,7 @@ describe("import", () => {
   });
 
   it("SEC-S08-01: the Agenda's preferences go in the file and come back, and a bad one is refused whole", async () => {
-    const agenda = { from: 7, to: 20, view: "day", weekStart: 0, workDays: [1, 2, 3], daysOff: false, outside: false, lunch: { from: 720, to: 810 }, openHolidays: ["2026-12-25"], closed: [{ date: "2026-12-24", reason: "Recesso" }] };
+    const agenda = { from: 7, to: 20, view: "day", weekStart: 0, workDays: [1, 2, 3], daysOff: false, outside: false, lunch: { from: 720, to: 810 }, closed: [{ from: "2026-12-24", to: "2027-01-03", reason: "Recesso" }] };
     const before = await inOwner((agent) => agent.store.settings.get().agenda);
     try {
       await inOwner((agent) => agent.store.settings.update({ agenda: agenda as unknown as typeof before }));
@@ -349,6 +351,41 @@ describe("import", () => {
       expect(await inOwner((agent) => agent.store.settings.get().agenda)).toEqual(agenda);
     } finally {
       await inOwner((agent) => agent.store.settings.update({ agenda: before }));
+    }
+  });
+
+  it("the record of the day goes in the file and comes back, and a day already closed here is never changed", async () => {
+    const event = (title: string) => ({ id: "ev1", calendarId: "dono@exemplo.com.br", title, start: "2026-10-30T13:00:00.000Z", end: "2026-10-30T14:00:00.000Z", allDay: false, location: "", description: "Consulta | Consultório", etag: '"ev1-1"', recurring: false, guests: 0, colorId: "", shared: false });
+    const close = (day: string, title: string) =>
+      inOwner((agent) => {
+        const { db } = agent.store;
+        db.run(`INSERT INTO zur_agenda_closed_days (day, closed_at, events) VALUES (?, ?, 1)`, day, `${day}T03:00:05.000Z`);
+        db.run(`INSERT INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES (?, 'dono@exemplo.com.br', 'ev1', '"ev1-1"', ?)`, day, JSON.stringify(event(title)));
+      });
+    await close("2026-10-30", "Ana Souza");
+    await inOwner((agent) => agent.store.db.run(`INSERT INTO zur_agenda_closed_days (day, closed_at, events) VALUES ('2026-10-31', '2026-11-01T03:00:05.000Z', 0)`));
+    const file = JSON.parse(await exported());
+    expect(file.data.agendaRecord).toEqual([
+      { day: "2026-10-30", closedAt: "2026-10-30T03:00:05.000Z", events: [event("Ana Souza")] },
+      { day: "2026-10-31", closedAt: "2026-11-01T03:00:05.000Z", events: [] },
+    ]);
+    await wipe();
+    // Here 30/10 closed with another copy: it stays; 31/10 comes back from the file.
+    await close("2026-10-30", "Bruno Lima");
+    // SEC-E5b-03: a day of today or later in the file is no closed day: it is left out.
+    await ok(session("POST", "/backup/import", { ...file, data: { ...file.data, agendaRecord: [...file.data.agendaRecord, { day: "2099-12-31", closedAt: "2026-10-30T03:00:05.000Z", events: [event("Inventado")] }] } }));
+    const rows = await inOwner((agent) => ({
+      days: agent.store.db.all<{ day: string; events: number }>(`SELECT day, events FROM zur_agenda_closed_days ORDER BY day`),
+      titles: agent.store.db.all<{ data: string }>(`SELECT data FROM zur_agenda_record`).map((row) => (JSON.parse(row.data) as { title: string }).title),
+    }));
+    expect(rows).toEqual({ days: [{ day: "2026-10-30", events: 1 }, { day: "2026-10-31", events: 0 }], titles: ["Bruno Lima"] });
+    // A bad day refuses the whole file.
+    const bad = { ...file, data: { ...file.data, agendaRecord: [{ day: "30/10/2026", closedAt: "2026-10-30T03:00:05.000Z", events: [] }] } };
+    expect((await session("POST", "/backup/import", bad)).status).toBe(400);
+    // SEC-E5b-04: a copy whose time the Agenda can't read refuses the whole file too.
+    for (const start of ["x", "2026-02-30", "2026-10-30T25:00:00.000Z"]) {
+      const broken = { ...file, data: { ...file.data, agendaRecord: [{ day: "2026-10-29", closedAt: "2026-10-30T03:00:05.000Z", events: [{ ...event("Ana Souza"), start }] }] } };
+      expect((await session("POST", "/backup/import", broken)).status, start).toBe(400);
     }
   });
 

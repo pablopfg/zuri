@@ -32,6 +32,8 @@ export const LOG_EVENTS = [
   "google_revoke_failed",
   "google_watch_failed",
   "google_alarm_failed",
+  "agenda_record_skipped",
+  "agenda_record_unread",
   "contacts_synced",
   "contacts_ignored",
   "contacts_sync_failed",
@@ -139,6 +141,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "auto", "key", "copies",
   // How often the reviews are checked (the owner's interval).
   "interval",
+  // The record of the day (13/11/2026).
+  "record",
   // The overview of the reviews (PR S11).
   "metrics",
   // The owner's conversation with Zuri in the Chatwoot.

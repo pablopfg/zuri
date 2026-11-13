@@ -793,6 +793,7 @@ const KIND_TEXT: Record<Exclude<NoticeKind, "security">, Text> = {
   "chatwoot.stranger": { title: "notice.chatwoot.stranger.title", body: "notice.chatwoot.stranger.body" },
   "chatwoot.recreated": { title: "notice.chatwoot.recreated.title", body: "notice.chatwoot.recreated.body" },
   "chatwoot.paused": { title: "notice.chatwoot.paused.title", body: "notice.chatwoot.paused.body" },
+  "agenda.changed": { title: "notice.agenda.changed.title", body: "notice.agenda.changed.body" },
   "ai.modelLeaving": { title: "notice.ai.modelLeaving.title", body: "notice.ai.modelLeaving.body" },
   "ai.modelSwitched": { title: "notice.ai.modelSwitched.title", body: "notice.ai.modelSwitched.body" },
   "ai.fallbackOff": { title: "notice.ai.fallbackOff.title", body: "notice.ai.fallbackOff.body" },

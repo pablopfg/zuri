@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SETTINGS,
+  dayPlus,
   DEFAULT_TIME_ZONE,
   isTimeZone,
   normalizeOwnerName,
@@ -46,7 +47,7 @@ describe("default settings", () => {
       alertPerDay: 30,
       alertLearning: true,
       alertFullText: [],
-      agenda: { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: { from: 720, to: 840 }, openHolidays: [], closed: [] },
+      agenda: { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: { from: 720, to: 840 }, closed: [] },
       sounds: { notice: true, pick: "sino", recording: true },
     });
     expect(DEFAULT_TIME_ZONE).toBe("America/Sao_Paulo");
@@ -100,6 +101,32 @@ describe("default settings", () => {
     }
     // A piece alone is refused: the screen saves the whole card, so a half never lands.
     expect(settingsUpdateSchema.safeParse({ agenda: { from: 9 } }).success).toBe(false);
+  });
+
+  it("take the days off as periods: 1 to 90 days, in order, none over another; a record of single days still reads (13/11/2026)", () => {
+    const agenda = DEFAULT_SETTINGS.agenda;
+    const parse = (closed: unknown, more: object = {}) => settingsUpdateSchema.safeParse({ agenda: { ...agenda, ...more, closed } });
+    const period = (from: string, to: string, reason = "") => ({ from, to, reason });
+    expect(parse([period("2027-01-18", "2027-01-29", " Férias "), period("2026-12-24", "2027-01-03")]).data?.agenda?.closed).toEqual([period("2026-12-24", "2027-01-03"), period("2027-01-18", "2027-01-29", "Férias")]);
+    // One day, and 90 days (n−1, n, n+1 around the limit).
+    expect(parse([period("2027-03-01", "2027-03-01")]).success).toBe(true);
+    expect(parse([period("2027-01-01", "2027-03-30")]).success).toBe(true);
+    expect(parse([period("2027-01-01", "2027-03-31")]).success).toBe(true);
+    expect(parse([period("2027-01-01", "2027-04-01")]).success).toBe(false);
+    // Touching ends are one over the other; the next day is not.
+    expect(parse([period("2027-01-01", "2027-01-10"), period("2027-01-10", "2027-01-12")]).success).toBe(false);
+    expect(parse([period("2027-01-01", "2027-01-10"), period("2027-01-05", "2027-01-06")]).success).toBe(false);
+    expect(parse([period("2027-01-01", "2027-01-10"), period("2027-01-11", "2027-01-12")]).success).toBe(true);
+    for (const bad of [[period("2027-01-10", "2027-01-09")], [period("2026-02-30", "2026-03-01")], [period("2027-01-01", "2027-1-2")], [{ ...period("2027-01-01", "2027-01-01"), extra: 1 }], [period("2027-01-01", "2027-01-01", "x".repeat(41))], [{ from: "2027-01-01", reason: "" }]]) {
+      expect(parse(bad).success, JSON.stringify(bad)).toBe(false);
+    }
+    const many = Array.from({ length: 101 }, (_, index) => period(dayPlus("2027-01-01", index * 2), dayPlus("2027-01-01", index * 2)));
+    expect(parse(many.slice(0, 100)).success).toBe(true);
+    expect(parse(many).success).toBe(false);
+    // Saved before 13/11/2026: single days become one-day periods, and the opened holidays are dropped.
+    const old = parse([{ date: "2026-12-31", reason: "Recesso" }, { date: "2026-12-24", reason: "" }], { openHolidays: ["2026-11-20"] });
+    expect(old.data?.agenda?.closed).toEqual([period("2026-12-24", "2026-12-24"), period("2026-12-31", "2026-12-31", "Recesso")]);
+    expect(old.data?.agenda).not.toHaveProperty("openHolidays");
   });
 
   it("cannot be changed in place", () => {

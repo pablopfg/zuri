@@ -57,6 +57,8 @@ import { McpMeaning } from "../mcp/meaning.ts";
 import { McpService, OAUTH_CALLBACK_PATH } from "../mcp/service.ts";
 import { developmentGoogle, developmentGoogleNetwork } from "../google/dev-google.ts";
 import { GoogleCalendar } from "../google/service.ts";
+import { AgendaRecord } from "../google/record.ts";
+import { localToday } from "../google/events.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
 import { ReviewMatches } from "../reviews/matches.ts";
 import { ReviewRequests } from "../reviews/requests.ts";
@@ -142,6 +144,8 @@ interface Store {
   contacts: GoogleContacts;
   /** The Google reviews (step 19c), on the same connection. */
   reviews: ReviewService;
+  /** The record of the day (13/11/2026): the copy of each closed day of the Agenda. */
+  agendaRecord: AgendaRecord;
   /** Which contact left a review (PR S20). */
   reviewMatches: ReviewMatches;
   /** Review requests and the link (PR S20). */
@@ -273,6 +277,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           db,
           storage: productivity.storage,
           crm,
+          today: () => localToday(settings.field("timeZone"), new Date()),
           applySettings: (patch) => {
             zoneBefore = settings.field("timeZone");
             settings.update(patch);
@@ -294,6 +299,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       google: this.store.google,
       contacts: this.store.contacts,
       reviews: this.store.reviews,
+      record: this.store.agendaRecord,
       reviewRequests: this.store.reviewRequests,
       reviewMatches: this.store.reviewMatches,
       auth: this.store.auth,
@@ -325,7 +331,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     const { db, productivity, memories, conversations, plans, actions, automations, semantic, mcp, google, contacts, crm, flows } = this.store;
     // Only a draft handle: the 22a rule (only the screen changes flows) holds for every tool.
     const flowDrafts = { save: (input: { name: string; definition: unknown }) => flows.saveDraft(input), connectionIds: () => flows.connections.rows().map((row) => row.id) };
-    return { db, productivity, memories, conversations, plans, actions, automations, semantic, mcpService: mcp, calendar: google, agendaHours: () => this.store.settings.field("agenda"), contacts, crm, flowDrafts };
+    return { db, productivity, memories, conversations, plans, actions, automations, semantic, mcpService: mcp, calendar: google, agendaHours: () => this.store.settings.field("agenda"), agendaRecord: this.store.agendaRecord, contacts, crm, flowDrafts };
   }
 
   /** How an automation runs: reminders and the digest without AI, routines through the runner. */
@@ -413,6 +419,12 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     // The Google Calendar's push channels (step 19): the open calendars' channels opened or renewed, a few per wake.
     try {
       await this.store.google.renewWatches();
+    } catch (error) {
+      log("error", "google_alarm_failed", { error });
+    }
+    // The record of the day (13/11/2026): the day that ended is copied, one per wake.
+    try {
+      if (await this.store.agendaRecord.tick()) await automations.rearm();
     } catch (error) {
       log("error", "google_alarm_failed", { error });
     }
@@ -794,6 +806,15 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
+          // The record of the day: at the owner's 0:00, or now with a day still to close.
+          const recordDue = (() => {
+            try {
+              const at = agendaRecord.nextDue();
+              return at === null ? null : new Date(at).toISOString();
+            } catch {
+              return null;
+            }
+          })();
           // The reviews' check (step 19c).
           const reviewsDue = (() => {
             try {
@@ -861,7 +882,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
-          const due = [tries, watch, indexing, tools, channels, people, reviewsDue, requestsDue, flowsDue, crmAutomationsDue, outboxDue, crmDue, backupDue, catalogDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
+          const due = [tries, watch, indexing, tools, channels, people, recordDue, reviewsDue, requestsDue, flowsDue, crmAutomationsDue, outboxDue, crmDue, backupDue, catalogDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
           // Work already past due is only left there when its step failed on the last
           // alarm (a full disk, say): wait a minute before trying again, never at once,
           // so a step that keeps failing can't spin the alarm through the day's quota.
@@ -926,6 +947,27 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       });
       // Local development never reaches Google (src/google/dev-google.ts).
       if (this.development()) google.network = developmentGoogleNetwork(developmentGoogle(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET));
+      // The record of the day (13/11/2026): each day that ends is copied at 0:00; its notices go to the center, never with a title.
+      const agendaRecord = new AgendaRecord({
+        db,
+        state,
+        google,
+        timeZone: () => settings.field("timeZone"),
+        notify: (notice) => {
+          const [, month, day] = notice.day.split("-");
+          alerts.raise({
+            kind: "agenda.changed",
+            category: "events",
+            // Low and never learned: the bell only, no push nor Telegram (plan agenda-registro-do-dia.md, assumption 13).
+            priority: "low",
+            source: null,
+            params: { day: `${day}/${month}` },
+            link: "/agenda",
+            dedupeKey: `agenda-record:${notice.day}:${notice.versions}`,
+            dedupeMs: 365 * 86_400_000,
+          });
+        },
+      });
       // The copy of the Google contacts (step 19b), on the same connection; its notices go to the center.
       const contacts = new GoogleContacts({
         db,
@@ -1071,7 +1113,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       const telegramApprovals = new TelegramApprovals({
         actions: () => actions,
         tools: ALL_TOOLS,
-        toolContext: (conversationId) => ({ db, productivity, memories, conversations, plans, actions, automations, calendar: google, agendaHours: () => settings.field("agenda"), contacts, timeZone: settings.field("timeZone"), mode: "chat", conversationId }),
+        toolContext: (conversationId) => ({ db, productivity, memories, conversations, plans, actions, automations, calendar: google, agendaHours: () => settings.field("agenda"), agendaRecord, contacts, timeZone: settings.field("timeZone"), mode: "chat", conversationId }),
         buttons: commandButtons,
         locale: () => this.locale(),
         hour: (ms) => telegramHour(ms, this.locale(), settings.field("timeZone")),
@@ -1208,7 +1250,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           alerts.raise({ kind, category: "system", priority: "normal", link: "/configuracoes/modelos", source: null, params });
         },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, reviewMatches, reviewRequests, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog };
     }
     return this.#store;
   }
