@@ -71,6 +71,7 @@ import { registerReviewRoutes } from "./reviews.ts";
 import { type FlowRouteDeps, registerFlowRoutes } from "./flows.ts";
 import { type CrmRouteDeps, registerCrmRoutes } from "./crm.ts";
 import { type CrmAutomationRouteDeps, registerCrmAutomationRoutes } from "./crm-automations.ts";
+import { type OutboxRouteDeps, registerOutboxRoutes } from "./outbox.ts";
 import { registerTelegramRoutes, registerTelegramWebhook, type TelegramDeps } from "./telegram.ts";
 import { type BackupRouteDeps, registerBackupRoutes } from "./backup.ts";
 import { log, rayOf, routeLabel } from "../log.ts";
@@ -124,6 +125,8 @@ export interface ApiDeps {
   /** The internal CRM (step 22b). Absent only in tests of other routes. */
   crm?(): CrmRouteDeps;
   crmAutomations?(): CrmAutomationRouteDeps;
+  /** CRM › Envios (PR S19). Absent only in tests of other routes. */
+  outbox?(): OutboxRouteDeps;
   /** Storage use, the export and the import (step 23). Absent only in tests of other routes. */
   backup?(): BackupRouteDeps;
   /** Each agent's settings on the AI screen (guardrails, PR 2). Absent only in tests of other routes. */
@@ -550,6 +553,8 @@ export function createApi(deps: ApiDeps) {
   if (crm) registerCrmRoutes(app, () => crm());
   const crmAutomations = deps.crmAutomations;
   if (crmAutomations) registerCrmAutomationRoutes(app, () => crmAutomations());
+  const outbox = deps.outbox;
+  if (outbox) registerOutboxRoutes(app, () => outbox());
   const backup = deps.backup;
   if (backup) registerBackupRoutes(app, () => backup(), client);
 

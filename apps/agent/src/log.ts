@@ -28,6 +28,7 @@ export const LOG_EVENTS = [
   "tool_failed",
   "automation_failed",
   "crm_automation_failed",
+  "outbox_failed",
   "google_revoke_failed",
   "google_watch_failed",
   "google_alarm_failed",
@@ -137,6 +138,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "metrics",
   // The CRM's automations (PR S18).
   "config", "mode", "days", "watch",
+  // The outbox (PR S19).
+  "outbox",
 ]);
 const MAX_SEGMENTS = 8;
 

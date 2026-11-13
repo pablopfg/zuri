@@ -100,5 +100,5 @@ export const ptBRCrmAutomations = {
   "web.crmAutomations.about.birthday": "No dia, pelo WhatsApp e por e-mail.",
   "web.crmAutomations.about.win-back": "Para quem não volta há 30 ou 60 dias.",
   "web.crmAutomations.about.plan-follow-up": "15 dias depois do plano, pergunta como está indo.",
-  "web.crmAutomations.about.example": "Só no ambiente local: anota três pessoas de exemplo e não fala com ninguém.",
+  "web.crmAutomations.about.example": "Só no ambiente local: manda três mensagens de exemplo pela fila a um Chatwoot de mentira, que não fala com ninguém.",
 } as const;

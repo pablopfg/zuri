@@ -115,6 +115,55 @@ automação desligada. Se o que ela envia muda numa atualização durante o
 ensaio, o ensaio recomeça. Uma automação cujo código saiu numa atualização
 fica desligada.
 
+### Envios
+
+**CRM › Envios** (`/crm/envios`) é a fila de saída: o único caminho de uma
+mensagem até um contato. A automação só grava a intenção ("mandar este texto
+para esta pessoa, com esta chave"); quem envia é a fila, pelo Chatwoot, uma
+mensagem por vez, com a espera sorteada da credencial entre uma e outra. No
+ensaio nada entra na fila: a automação só anota o que faria.
+
+- **Situação**, no topo: **Enviando**, **Lenta**, **Parada desde 10:04**,
+  **Pausada por você** ou **Pausada pelo bloqueio**, com a última, a próxima e
+  quantas esperam. **Pausar envios** e **Retomar envios** valem na hora.
+  Depois de uma parada por falha, **Retomar envios** pede a sua senha e
+  **Testar a credencial** confere a chave antes.
+- **Na fila agora**: quem recebe, de qual automação e a hora prevista.
+  Confirmação de consulta passa na frente de pedido de avaliação (a ordem:
+  confirmação, plano liberado, aniversário, pedido de avaliação,
+  acompanhamento, recaptação).
+- **Histórico** de hoje, 7 ou 30 dias, por situação, 50 por vez. **Ver** abre
+  a linha do tempo do envio; um envio que falhou tem **Tentar de novo** (até 7
+  dias, com a mesma chave).
+- Em **Credenciais**, a linha do Chatwoot mostra quantas esperam e leva a
+  **Abrir Envios**.
+
+Nada sai duas vezes. A chave de cada mensagem é única por automação; a vez
+de cada credencial é reservada com uma atualização condicional (só um
+despertar ganha o horário livre) e o envio só passa a "enviando" se ainda
+estava na fila. Quando o Chatwoot não responde depois do envio (sem resposta
+ou erro 5xx), a Zuri lê a conversa antes de repetir: se a mesma mensagem já
+está lá, marca como enviada.
+
+Quando algo dá errado:
+
+- Uma mensagem que falha é tentada mais duas vezes, 2 e 4 minutos depois. Na
+  terceira falha fica **Falhou** e você recebe um aviso.
+- Duas mensagens diferentes seguidas com falha, a chave recusada ou uma
+  resposta fora do formato param a fila. O aviso vai para o sino e para o
+  Telegram, e a fila só volta com **Retomar envios**.
+- Com o Chatwoot lento (média acima de 5 s nas últimas 5 respostas) a espera
+  dobra e volta ao normal sozinha.
+- A mensagem que perderia a hora não sai e aparece em **Não saíram**.
+- Fila sem andar por 15 minutos com mensagem na hora: um aviso por ocorrência.
+- Contato marcado como bloqueado no Chatwoot (`crmBloqueado`) não recebe.
+- Teto geral de 60 mensagens novas por dia e de 1.000 caracteres por
+  mensagem; telefone no formato internacional (com e sem o 9º dígito na
+  busca do contato).
+
+"Entregue" e "não quer receber" chegam com o webhook do Chatwoot, junto com o
+pedido de avaliação: até lá, a tela diz "Enviada" e nunca promete entrega.
+
 ## Segurança e privacidade
 
 - O CRM não tem porta para outros sistemas: só a sua sessão e a conversa
@@ -138,6 +187,13 @@ fica desligada.
   a mensagem; as execuções somem em 90 dias e os efeitos em 180. As
   automações não entram no backup: depois de restaurar, tudo volta
   desligado.
+- Envios: só os caminhos fixos do Chatwoot (contato, conversa, mensagens), na
+  conta da credencial, com a resposta conferida. A IA não chega à fila: só o
+  código das automações grava nela. O texto e o telefone ficam guardados só
+  enquanto o envio precisa deles e somem quando ele termina (um envio que
+  falhou guarda os dois por 7 dias, para o "Tentar de novo"). A tela e as
+  rotas nunca mostram texto nem telefone. Pausar, retomar e tentar de novo
+  ficam no registro de atividade. A fila não entra no backup.
 
 ## Custo no plano gratuito
 
@@ -150,6 +206,11 @@ As automações rodam no alarme único da Zuri, uma por vez, e o alarme lê só 
 próxima pelo índice. Cada execução tem teto de chamadas e de efeitos, e o
 teto de chamadas de cada despertar continua valendo.
 
+A fila de envios também roda no alarme, depois das automações: um envio por
+despertar, até 8 subrequisições (6 chamadas e 2 consultas de DNS) e cerca de
+12 linhas escritas. Pausada, parada ou vazia, ela não faz o alarme voltar a
+cada minuto.
+
 ## Modelo de dados
 
 Migration 39 (`crm_automations`):
@@ -160,3 +221,13 @@ Migration 39 (`crm_automations`):
 | `zur_crm_automation_runs` | Cada execução, só números (90 dias) |
 | `zur_crm_automation_effects` | Cada efeito por chave única, com um rótulo curto (180 dias) |
 | `zur_crm_automation_days` | A sua conferência de cada dia do ensaio |
+
+Migration 40 (`outbox`):
+
+| Tabela | O que guarda |
+| --- | --- |
+| `zur_outbox` | Cada mensagem por chave única da automação: situação, tentativas, horários; texto e telefone só enquanto o envio precisa (180 dias) |
+| `zur_outbox_steps` | A linha do tempo de cada envio, sem texto |
+| `zur_outbox_queues` | Por credencial: o próximo horário livre, a parada e as últimas medidas |
+| `zur_outbox_state` | A pausa |
+| `zur_outbox_days` | As contagens de cada dia (400 dias) |

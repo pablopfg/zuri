@@ -99,7 +99,7 @@ for (const scheme of ["light", "dark"] as const) {
     test(`the three parts of the CRM have no serious violation (${scheme}) @mobile`, async ({ page }) => {
       await page.goto("/crm/fluxos");
       await signIn(page);
-      for (const address of ["/crm", "/crm/fluxos", "/crm/credenciais"]) {
+      for (const address of ["/crm", "/crm/fluxos", "/crm/credenciais", "/crm/envios"]) {
         await page.goto(address);
         await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
         await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);

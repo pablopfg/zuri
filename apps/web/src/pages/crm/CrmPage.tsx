@@ -1,6 +1,6 @@
 import type { MessageKey } from "@zuri/shared";
 import { FLOW_LIMITS } from "@zuri/shared";
-import { KeyRound, Plus, Radar, Workflow, Zap } from "lucide-react";
+import { KeyRound, MessageSquareShare, Plus, Radar, Workflow, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Button, ErrorNotice, Loading, PageHeader } from "../../components/ui.tsx";
@@ -9,28 +9,31 @@ import { CredentialDialog } from "../automations/flows/CredentialDialog.tsx";
 import { type Editing, FlowEditor } from "../automations/flows/FlowEditor.tsx";
 import { type ConnectionEditing, CredentialsPart, FlowsPart, useFlows } from "../automations/flows/FlowsPanel.tsx";
 import { AutomationsPart, useCrmAutomations } from "./AutomationsPart.tsx";
+import { OutboxPart, useOutboxStatus } from "./OutboxPart.tsx";
 
-/** The parts of the CRM that exist today. "Envios" gets its place when its server arrives (S19). */
-export type CrmPart = "automacoes" | "fluxos" | "credenciais";
+/** The parts of the CRM, each at its own address. */
+export type CrmPart = "automacoes" | "fluxos" | "credenciais" | "envios";
 
 /** The palette's "Criar fluxo": an address and an event of that name (CommandPalette.tsx). */
 const NEW_FLOW = "novo-fluxo";
 
-const DESCRIPTION: Record<CrmPart, MessageKey> = { automacoes: "web.crmAutomations.description", fluxos: "web.flows.description", credenciais: "web.flows.connections.description" };
+const DESCRIPTION: Record<CrmPart, MessageKey> = { automacoes: "web.crmAutomations.description", fluxos: "web.flows.description", credenciais: "web.flows.connections.description", envios: "web.outbox.description" };
 
 /**
- * CRM (Sinal, S15 and S18): the automations brought from the n8n, the flows the
- * owner builds and the credentials they call with, each part at its own address
- * (/crm for the automations, /crm/fluxos, /crm/credenciais).
+ * CRM (Sinal, S15, S18 and S19): the automations brought from the n8n, the flows the
+ * owner builds, the credentials they call with and the queue of messages to contacts,
+ * each part at its own address (/crm for the automations, /crm/fluxos,
+ * /crm/credenciais, /crm/envios).
  * The head's button creates what the open part lists. App.tsx only lets the
  * known parts through; any other address under /crm goes back to it.
  */
 export function CrmPage() {
   const { t } = useI18n();
   const parte = useParams().parte;
-  const part: CrmPart = parte === "credenciais" ? "credenciais" : parte === "fluxos" ? "fluxos" : "automacoes";
+  const part: CrmPart = parte === "credenciais" || parte === "fluxos" || parte === "envios" ? parte : "automacoes";
   const list = useFlows();
   const automations = useCrmAutomations();
+  const outbox = useOutboxStatus();
   const [editing, setEditing] = useState<Editing | null>(null);
   const [connection, setConnection] = useState<ConnectionEditing | null>(null);
   const data = list.data;
@@ -55,7 +58,7 @@ export function CrmPage() {
         title={t("web.nav.crm")}
         description={<span className="block max-w-prose leading-6">{t(DESCRIPTION[part])}</span>}
         actions={
-          part === "automacoes" ? null : part === "fluxos" ? (
+          part === "automacoes" || part === "envios" ? null : part === "fluxos" ? (
             <>
               <Button variant="secondary" disabled={!data || flowsFull} onClick={() => setEditing({ mode: "monitor" })}>
                 <Radar className="h-4 w-4" aria-hidden />
@@ -90,9 +93,16 @@ export function CrmPage() {
           {t("web.crm.part.credentials")}
           {data && <Count n={data.connections.length} />}
         </Link>
+        <Link to="/crm/envios" aria-current={part === "envios" ? "page" : undefined}>
+          <MessageSquareShare aria-hidden />
+          {t("web.crm.part.outbox")}
+          {outbox.data && <Count n={outbox.data.waiting} />}
+        </Link>
       </nav>
       {part === "automacoes" ? (
         <AutomationsPart connections={data?.connections ?? []} />
+      ) : part === "envios" ? (
+        <OutboxPart />
       ) : list.isPending ? (
         <Loading label={t("web.flows.loading")} />
       ) : !data ? (

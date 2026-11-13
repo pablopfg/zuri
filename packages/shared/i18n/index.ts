@@ -31,6 +31,7 @@ import { ptBRMenu } from "./pt-BR-menu.ts";
 import { ptBRVoice } from "./pt-BR-voice.ts";
 import { ptBRSchedule } from "./pt-BR-schedule.ts";
 import { ptBRCrmAutomations } from "./pt-BR-crm-automations.ts";
+import { ptBROutbox } from "./pt-BR-outbox.ts";
 
 export type MessageKey = keyof typeof ptBR;
 export type Messages = Record<MessageKey, string>;
@@ -81,6 +82,7 @@ export {
   ptBRVoice,
   ptBRSchedule,
   ptBRCrmAutomations,
+  ptBROutbox,
 };
 
 export type Params = Record<string, string | number>;

@@ -242,7 +242,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S15 | mesclada (#320) |
 | S16 | mesclada (#325) |
 | S17 | mesclada (#327) |
-| S18 | em revisão |
+| S18 | mesclada (#332) |
+| S19 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -442,6 +443,15 @@ Diferenças da S18 (automações do CRM) para o plano e o protótipo, para as PR
 - **Os avisos da automação** (pausada, voltou ao ensaio, chegou) levam a `/crm`.
 - **Só a automação ligada (ensaio, de verdade ou pausada) prende a credencial.** Desligada, a credencial pode ser apagada.
 - **A ordem do catálogo é a do protótipo aprovado**, que respondeu a dependência "ordem dos fluxos". Nenhum módulo real ainda: só a "Automação de exemplo", que existe apenas no ambiente local e não fala com ninguém. As automações não entram no backup: depois de restaurar, tudo volta desligado.
+
+Diferenças da S19 (Envios) para o plano e o protótipo, para as PRs seguintes não as desfazerem (plano em [s19-envios.md](s19-envios.md)):
+
+- **Sem o webhook do Chatwoot.** "Entregue" e "não quer receber" chegam com a S20, junto com o pedido de avaliação. Até lá o número "Entregues" fica em zero e o filtro do histórico é "Enviadas" (o protótipo dizia "Entregues"). A tela nunca promete entrega.
+- **Sem "digitando" e sem adiar quando o paciente conversa com a equipe**: são política de cada automação, a partir da S20.
+- **A "Automação de exemplo"** (só no ambiente local) agora manda três mensagens pela fila a um Chatwoot simulado pelo próprio Worker. A base "Envio pelo Chatwoot, com fila" passa a "Pronta".
+- **Um envio custa até 8 subrequisições** (6 chamadas e 2 consultas de DNS): achar ou criar o contato, achar ou criar a conversa, conferir quando o envio anterior foi incerto e enviar.
+- **Pausada pelo bloqueio** é um quinto estado da situação, sem botão: só sair do bloqueio volta a enviar.
+- **Os ícones** de Envios são os que nenhuma outra tela sob demanda usa (ou que o CRM já traz): ícone compartilhado vira um arquivo próprio e o nome dele pesa no JS inicial.
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 

@@ -6,7 +6,7 @@ import type { FlowNetwork } from "./connections.ts";
  * e2e tests and the screenshots never reach a real site. `fora.exemplo.com.br`
  * is a site that is down; `api.exemplo.com.br` is a small JSON service with
  * clients under `/v1/clientes`; `chat.exemplo.com.br` is a Chatwoot whose
- * account 1 has two inboxes (PR S17). Every other address goes out as in production.
+ * account 1 has two inboxes (PR S17) and takes the outbox's messages (PR S19). Every other address goes out as in production.
  */
 const SIMULATED = /\.exemplo\.com\.br$/;
 
@@ -27,8 +27,13 @@ function answer(request: Request): Response {
     // Any key works here except one that says it's wrong: the screen's "refused" case.
     if (request.headers.get("api_access_token") === "chave-recusada-exemplo") return Response.json({ error: "unauthorized" }, { status: 401 });
     if (url.pathname === "/api/v1/accounts/1/inboxes") return Response.json({ payload: INBOXES });
-    // The example automation's effect (crm/automations/example.ts): answered here, never a real path.
-    if (url.pathname === "/api/v1/accounts/1/zuri-example" && request.method === "POST") return Response.json({ ok: true });
+    // The outbox (PR S19), for the example automation's messages: nobody is found, so a contact and a
+    // conversation are made up, and every message "goes"; nothing is kept between calls.
+    if (url.pathname === "/api/v1/accounts/1/contacts/search") return Response.json({ payload: [] });
+    if (url.pathname === "/api/v1/accounts/1/contacts" && request.method === "POST") return Response.json({ payload: { contact: { id: 41 } } });
+    if (/^\/api\/v1\/accounts\/1\/contacts\/\d+\/conversations$/.test(url.pathname)) return Response.json({ payload: [] });
+    if (url.pathname === "/api/v1/accounts/1/conversations" && request.method === "POST") return Response.json({ id: 51 });
+    if (/^\/api\/v1\/accounts\/1\/conversations\/\d+\/messages$/.test(url.pathname)) return request.method === "POST" ? Response.json({ id: 61 }) : Response.json({ payload: [] });
     return Response.json({ error: "not_found" }, { status: 404 });
   }
   if (url.hostname === "fora.exemplo.com.br") return new Response("indisponível", { status: 503 });
