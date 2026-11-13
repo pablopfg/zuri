@@ -78,8 +78,6 @@ export async function checkBooking(input: {
   const { after, before, timeZone } = input;
   if (!bound(after)) return;
   if (before && bound(before) && Date.parse(before.start) === Date.parse(after.start) && Date.parse(before.end) === Date.parse(after.end)) return;
-  // The start stays where Google has it (only the end moves, or a cancelled one comes back): it may have begun already.
-  const keepsStart = !!before && Date.parse(before.start) === Date.parse(after.start);
   const start = new Date(after.start);
   const end = new Date(after.end);
   // Fail closed: an appointment whose time can't be read is never written.
@@ -87,7 +85,7 @@ export async function checkBooking(input: {
   const day = localToday(timeZone, start);
   const now = input.now ?? new Date();
   const clock = zonedParts(now, timeZone);
-  const base = { day, start: minuteOf(start, day, timeZone), end: minuteOf(end, day, timeZone), today: localToday(timeZone, now), nowMinute: clock.hour * 60 + clock.minute, hours: input.hours, keepsStart };
+  const base = { day, start: minuteOf(start, day, timeZone), end: minuteOf(end, day, timeZone), today: localToday(timeZone, now), nowMinute: clock.hour * 60 + clock.minute, hours: input.hours };
   // Everything but a clash first: no call to Google for a lunch hour.
   const fixed = appointmentProblem(base);
   if (fixed) throw refuse(fixed.code);
