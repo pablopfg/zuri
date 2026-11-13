@@ -22,7 +22,7 @@ import {
   ptBRAgenda,
   type Settings,
 } from "@zuri/shared";
-import { CalendarDays, CalendarOff, CalendarPlus, ChevronLeft, ChevronRight, CircleCheck, Flag, LoaderCircle, MapPin, Palette, Pencil, RefreshCw, Repeat, Tag, Trash2, TriangleAlert, Users } from "lucide-react";
+import { CalendarDays, CalendarOff, CalendarPlus, ChevronLeft, ChevronRight, Flag, MapPin, Palette, Pencil, RefreshCw, Repeat, Tag, Trash2, TriangleAlert, Users } from "lucide-react";
 import {
   type CSSProperties,
   type FormEvent,
@@ -82,7 +82,8 @@ import { bookedOn, dayRefusal, freeStarts, hhmm, isAppointment, nextFree, slotPr
 import { ApiError, api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { play } from "../../lib/sounds.ts";
-import { EVENTS_KEY, useEventChanges } from "./changes.ts";
+import { EVENTS_KEY, lostGoogle, useEventChanges } from "./changes.ts";
+import { SyncSignal, syncKind } from "./SyncSignal.tsx";
 
 // This screen's pt-BR texts travel with its code, not in the first bundle (rule P11).
 addMessages(ptBRAgenda);
@@ -99,7 +100,7 @@ const WIDE = "(min-width: 64rem)";
 const HOUR_REM = 3.5;
 /** A press turns into a drag after this many pixels: a click that slips never moves an event. */
 const DRAG_PX = 5;
-/** How long the toolbar says "Salvo no Google agora" after a change went through. */
+/** How long the sync signal says "Salvo no Google" after a change went through. */
 const SAVED_MS = 60_000;
 /** An empty hour of the week opens "Novo evento" at the half hour clicked. */
 const NEW_STEP_MIN = 30;
@@ -112,7 +113,6 @@ const PROBLEM_TEXT: Record<FormProblem, Parameters<T>[0]> = {
   end: "web.agenda.form.error.end",
 };
 
-const SYNC_TEXT: Record<Sync, Parameters<T>[0]> = { idle: "web.agenda.sync.idle", saving: "web.agenda.sync.saving", saved: "web.agenda.sync.saved" };
 const STATUS_TEXT: Record<EventStatus, Parameters<T>[0]> = {
   scheduled: "web.agenda.status.scheduled",
   confirmed: "web.agenda.status.confirmed",
@@ -299,7 +299,6 @@ type ClosedHour = { day: string; minute: number; why: string; next: { day: strin
 /** What a change did, for the words of its notice. */
 type Changed = { kind: "moved" | "resized" | "updated"; rescheduled: boolean };
 type Change = (event: AgendaEvent, changes: EventChanges, changed: Changed) => void;
-type Sync = "idle" | "saving" | "saved";
 /** What the preferences hide and the owner asked to see in this visit. */
 type Reveal = { outside: boolean; daysOff: boolean };
 
@@ -361,6 +360,11 @@ export function AgendaPage() {
     refetchOnWindowFocus: true,
     placeholderData: (previous) => previous,
   });
+  // A reading refused because the access to Google was lost: the screen turns to "Conectar de novo".
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (events.error) lostGoogle(qc, events.error);
+  }, [events.error, qc]);
   const calendars = events.data?.calendars ?? status.data?.calendars.filter((c) => c.mode !== "off") ?? [];
   const byId = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const writable = calendars.filter((c) => c.mode === "write" && c.writable);
@@ -368,7 +372,7 @@ export function AgendaPage() {
   // The types the calendar already uses ("Consulta | Consultório"): the form offers them.
   const types = useMemo(() => [...new Set((events.data?.events ?? []).map((event) => typeLine(event.description)).filter(Boolean))].sort(), [events.data]);
 
-  const { send, undo, forget, saving, savedAt } = useEventChanges();
+  const { send, undo, forget, saving, savedAt, problem: changeProblem, log, note } = useEventChanges();
   // Read when Google answers: what else is at that hour by then.
   const onScreen = useRef(shown);
   onScreen.current = shown;
@@ -559,7 +563,24 @@ export function AgendaPage() {
         onStep={(direction) => go(step(view, anchor, direction))}
         onToday={() => setPicked(null)}
         loading={events.isFetching}
-        sync={saving ? "saving" : savedAt !== null && now - savedAt < SAVED_MS ? "saved" : "idle"}
+        signal={
+          <SyncSignal
+            kind={syncKind({ saving, problem: changeProblem?.kind ?? null, fetching: events.isFetching, readFailed: events.isError, readAt: events.dataUpdatedAt, savedAt, savedMs: SAVED_MS, now })}
+            readAt={events.dataUpdatedAt}
+            problem={changeProblem}
+            log={log}
+            onPull={() => void events.refetch()}
+            // Only an event still on screen opens: one deleted at Google meanwhile has nothing to show.
+            onShow={
+              changeProblem && shown.some((each) => each.id === changeProblem.event.id && each.calendarId === changeProblem.event.calendarId)
+                ? (failed) => {
+                    const found = shown.find((each) => each.id === failed.event.id && each.calendarId === failed.event.calendarId);
+                    if (found) show(found);
+                  }
+                : undefined
+            }
+          />
+        }
       />
       {!canCreate && <Notice>{t("web.agenda.noWritable")}</Notice>}
       {events.data?.more && <Notice tone="warning">{t("web.agenda.more")}</Notice>}
@@ -624,6 +645,7 @@ export function AgendaPage() {
         frozen={open ? isFrozen(open, today, timeZone) : false}
         onClose={() => setOpen(null)}
         onSend={forget}
+        onNote={note}
         // Only while the details still show that event: closed, or on another one, the answer changes nothing here.
         onChange={(saved) => setOpen((old) => (old && eventKey(old) === eventKey(saved) ? saved : old))}
         onEdit={(event) => {
@@ -653,6 +675,7 @@ export function AgendaPage() {
                 }
               : undefined
           }
+          onCreated={note}
           onClose={() => setEditing(null)}
         />
       )}
@@ -718,8 +741,8 @@ function Toolbar({
   onStep,
   onToday,
   loading,
-  sync,
-}: { view: AgendaView; onView: (view: AgendaView) => void; from: string; to: string; onStep: (direction: 1 | -1) => void; onToday: () => void; loading: boolean; sync: Sync }) {
+  signal,
+}: { view: AgendaView; onView: (view: AgendaView) => void; from: string; to: string; onStep: (direction: 1 | -1) => void; onToday: () => void; loading: boolean; signal: ReactNode }) {
   const { t, locale } = useI18n();
   const label = rangeLabel(view, from, to, locale);
   return (
@@ -756,16 +779,9 @@ function Toolbar({
         ))}
       </fieldset>
       {/* Every change goes to Google as it is made: this line says where that stands. Under the bar on a phone, before the views on a computer. */}
-      <p role="status" data-sync={sync} className="flex basis-full items-center gap-1.5 text-xs text-fg-muted lg:order-1 lg:basis-auto">
-        {sync === "saving" ? (
-          <LoaderCircle className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden />
-        ) : sync === "saved" ? (
-          <CircleCheck className="h-3.5 w-3.5 text-success" aria-hidden />
-        ) : (
-          <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-        )}
-        {t(SYNC_TEXT[sync])}
-      </p>
+      <div role="status" className="flex basis-full items-center lg:order-1 lg:basis-auto">
+        {signal}
+      </div>
     </div>
   );
 }
@@ -1613,6 +1629,7 @@ function EventDialog({
   onSend,
   onChange,
   onEdit,
+  onNote,
 }: {
   event: AgendaEvent | null;
   calendar?: GoogleCalendarInfo | undefined;
@@ -1624,6 +1641,8 @@ function EventDialog({
   /** The event as Google answered after a change of status: the dialog stays open on it, with the new version. */
   onChange: (event: AgendaEvent) => void;
   onEdit: (event: AgendaEvent) => void;
+  /** A line in "Últimas mudanças" of the sync signal: what happened, and whether it reached Google. */
+  onNote: (text: string, ok: boolean) => void;
 }) {
   const { t, plural } = useI18n();
   const toast = useToast();
@@ -1649,7 +1668,10 @@ function EventDialog({
       const saved = await api<{ event: AgendaEvent }>("/google/events", { method: "PATCH", body });
       onChange(saved.event);
       setNote({ text: t("web.agenda.status.saved"), failed: false });
+      onNote(t("web.agenda.sync.lineAbout", { title: event.title || t("web.agenda.event.untitled"), text: t("web.agenda.status.saved") }), true);
     } catch (failure) {
+      onNote(t("web.agenda.sync.lineAbout", { title: event.title || t("web.agenda.event.untitled"), text: errorMessage(failure) }), false);
+      lostGoogle(qc, failure);
       // Changed or deleted at Google meanwhile: this dialog shows an old version, so it closes and the screen shows the event as it is now.
       if (failure instanceof ApiError && (failure.code === "TARGET_CHANGED" || failure.code === "NOT_FOUND")) {
         toast(errorMessage(failure));
@@ -1671,9 +1693,12 @@ function EventDialog({
     try {
       await api("/google/events", { method: "DELETE", body: { calendarId: event.calendarId, eventId: event.id, etag: event.etag } });
       toast(t("web.agenda.deleted"));
+      onNote(t("web.agenda.sync.lineAbout", { title: event.title || t("web.agenda.event.untitled"), text: t("web.agenda.deleted") }), true);
       onClose();
     } catch (failure) {
       toast(errorMessage(failure));
+      onNote(t("web.agenda.sync.lineAbout", { title: event.title || t("web.agenda.event.untitled"), text: errorMessage(failure) }), false);
+      lostGoogle(qc, failure);
     } finally {
       setBusy(false);
       // Deleted, or changed at Google in the meantime: either way the window is read again.
@@ -1834,6 +1859,7 @@ function EventFormDialog({
   sound,
   onChange,
   onPick,
+  onCreated,
   onClose,
 }: {
   editing: Editing;
@@ -1844,6 +1870,8 @@ function EventFormDialog({
   /** "Escolher na agenda": the form goes away, kept as it is, while a day and an hour are tapped. */
   /** Only where the Agenda has hours to tap (not on a phone). */
   onPick: ((form: EventForm) => void) | undefined;
+  /** A new event reached Google, or did not: a line in "Últimas mudanças". */
+  onCreated: (text: string, ok: boolean) => void;
   /** Configurações › Agenda: an appointment is checked against them before it goes (13/11/2026, 00:44). */
   prefs: AgendaPrefs;
   /** The events read, for a clash with another appointment. */
@@ -1932,9 +1960,12 @@ function EventFormDialog({
       const colorId = form.status && form.status !== "scheduled" ? { colorId: EVENT_STATUS_COLOR[form.status] } : {};
       await api("/google/events", { method: "POST", body: { calendarId: form.calendarId, ...body, ...colorId } });
       toast(t("web.agenda.created"));
+      onCreated(t("web.agenda.sync.lineAbout", { title: body.title, text: t("web.agenda.created") }), true);
       onClose();
     } catch (failure) {
       toast(errorMessage(failure), { failed: true });
+      onCreated(t("web.agenda.sync.lineAbout", { title: body.title, text: errorMessage(failure) }), false);
+      lostGoogle(qc, failure);
     } finally {
       setSaving(false);
       void qc.invalidateQueries({ queryKey: EVENTS_KEY });
@@ -2251,13 +2282,13 @@ function MiniCalendar({
         <fieldset className="rounded-xl border border-border p-2">
           <legend className="sr-only">{t("web.agenda.pick.month", { month: monthName })}</legend>
           <div className="flex items-center justify-between">
-            <button type="button" onClick={() => shift(-1)} disabled={month <= first} aria-label={t("web.agenda.pick.prevMonth")} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-fg disabled:opacity-40 disabled:hover:bg-transparent">
+            <button type="button" onClick={() => shift(-1)} disabled={month <= first} aria-label={t("web.agenda.pick.prevMonth")} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted hover:bg-raised hover:text-fg disabled:opacity-40 disabled:hover:bg-transparent">
               <ChevronLeft className="h-5 w-5" aria-hidden />
             </button>
             <b aria-live="polite" className="text-sm font-semibold first-letter:uppercase">
               {monthName}
             </b>
-            <button type="button" onClick={() => shift(1)} disabled={month >= last} aria-label={t("web.agenda.pick.nextMonth")} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-fg disabled:opacity-40 disabled:hover:bg-transparent">
+            <button type="button" onClick={() => shift(1)} disabled={month >= last} aria-label={t("web.agenda.pick.nextMonth")} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted hover:bg-raised hover:text-fg disabled:opacity-40 disabled:hover:bg-transparent">
               <ChevronRight className="h-5 w-5" aria-hidden />
             </button>
           </div>
@@ -2287,8 +2318,7 @@ function MiniCalendar({
                       style={index === 0 ? { gridColumnStart: lead + 1 } : undefined}
                       className={cn(
                         "h-11 rounded-lg tabular-nums",
-                        reason ? "cursor-not-allowed text-fg-muted line-through opacity-60" : "hover:bg-surface-muted",
-                        each === day && "bg-accent font-semibold text-accent-fg hover:bg-accent",
+                        reason ? "cursor-not-allowed text-fg-muted line-through opacity-60" : each === day ? "bg-accent font-semibold text-accent-fg" : "hover:bg-raised",
                       )}
                     >
                       {Number(each.slice(8))}
@@ -2318,8 +2348,9 @@ function MiniCalendar({
                       aria-pressed={minute === startNow}
                       onClick={() => onStart(minute)}
                       className={cn(
-                        "min-h-11 min-w-16 rounded-full border border-border px-3 text-sm tabular-nums hover:bg-surface-muted",
-                        minute === startNow && "border-accent bg-accent text-accent-fg hover:bg-accent",
+                        "min-h-11 min-w-16 rounded-full border px-3 text-sm tabular-nums",
+                        // The hover never paints over the one chosen: white on a light hover would be unreadable.
+                        minute === startNow ? "border-accent bg-accent text-accent-fg" : "border-border hover:bg-raised",
                       )}
                     >
                       {hhmm(minute)}
