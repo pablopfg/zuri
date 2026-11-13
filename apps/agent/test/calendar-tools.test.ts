@@ -297,3 +297,115 @@ describe("the push channels the alarm keeps", () => {
       expect(world.google.watchDue()).toBeNull();
     }));
 });
+
+describe("the Agenda's booking rule in the chat (issue #328)", () => {
+  // The world's clock is Saturday 31/10/2026, 09:00 in São Paulo; the default
+  // Agenda works Monday to Friday, 08:00 to 18:00, with lunch from 12:00 to 14:00.
+  const APPOINTMENT = "Consulta | Consultório";
+  const writes = (world: ChatWorld) => world.googleSim.seen.filter((r) => (r.method === "POST" || r.method === "PATCH") && r.url.includes("/events") && !r.url.includes("/events/watch"));
+
+  it("refuses an appointment at lunch without calling Google, and still books a meeting there", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      const exec = executor(world, world.conversations.create("x").id);
+      const before = world.googleSim.seen.length;
+      const message = await refused(exec.execute("create_calendar_event", { title: "Ana Souza", start: "2026-11-03T12:30", description: APPOINTMENT }, "c1"));
+      expect(message).toMatch(/lunch break/);
+      expect(message).toMatch(/Nothing was created/);
+      // Not even the day's reading: the fixed rules come first.
+      expect(world.googleSim.seen.length).toBe(before);
+      expect(world.googleSim.events.get(PRIMARY) ?? []).toHaveLength(0);
+      // A meeting has no type: the rule leaves it free.
+      expect(await exec.execute("create_calendar_event", { title: "Reunião", start: "2026-11-03T12:30" }, "c2")).toContain('"created":true');
+      expect(world.googleSim.events.get(PRIMARY)).toHaveLength(1);
+    }));
+
+  it("books an appointment inside the hours and refuses one over it, in any open calendar", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, READER, { id: "r1", summary: "Bruno Lima", description: APPOINTMENT, start: { dateTime: "2026-11-03T15:00:00-03:00" }, end: { dateTime: "2026-11-03T16:00:00-03:00" } });
+      const exec = executor(world, world.conversations.create("x").id);
+      expect(await exec.execute("create_calendar_event", { title: "Ana Souza", start: "2026-11-03T10:00", description: APPOINTMENT }, "c1")).toContain('"created":true');
+      expect(await refused(exec.execute("create_calendar_event", { title: "Carla Dias", start: "2026-11-03T15:30", description: APPOINTMENT }, "c2"))).toMatch(/Another appointment/);
+      expect(world.googleSim.events.get(PRIMARY)).toHaveLength(1);
+    }));
+
+  it("refuses the closed days and hours: weekend, national holiday, a day off, before opening and the past", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      world.settings.agenda = { ...world.settings.agenda, closed: [{ date: "2026-11-04", reason: "" }] };
+      const exec = executor(world, world.conversations.create("x").id);
+      const at = (start: string, id: string) => refused(exec.execute("create_calendar_event", { title: "Ana Souza", start, description: APPOINTMENT }, id));
+      expect(await at("2026-11-07T10:00", "1")).toMatch(/weekday/);
+      expect(await at("2026-11-02T10:00", "2")).toMatch(/holiday/);
+      expect(await at("2026-11-04T10:00", "3")).toMatch(/day off/);
+      expect(await at("2026-11-03T07:00", "4")).toMatch(/opening hours/);
+      expect(await at("2026-10-30T10:00", "5")).toMatch(/already passed/);
+      expect(writes(world).map((r) => `${r.method} ${r.url}`)).toEqual([]);
+    }));
+
+  it("refuses moving an appointment to a holiday, and lets a change that keeps its time through", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, { id: "m1", summary: "Ana Souza", description: APPOINTMENT, start: { dateTime: "2026-11-03T10:00:00-03:00" }, end: { dateTime: "2026-11-03T11:00:00-03:00" } });
+      const exec = executor(world, world.conversations.create("x").id);
+      expect(await refused(exec.execute("update_calendar_event", { calendar: PRIMARY, event_id: "m1", start: "2026-11-02T10:00" }, "u1"))).toMatch(/holiday.*Nothing was changed/s);
+      expect(writes(world).map((r) => `${r.method} ${r.url}`)).toEqual([]);
+      // Adding a type to a meeting at lunch makes it an appointment there: refused too.
+      seed(world, PRIMARY, { id: "m2", summary: "Reunião", start: { dateTime: "2026-11-03T12:30:00-03:00" }, end: { dateTime: "2026-11-03T13:30:00-03:00" } });
+      expect(await refused(exec.execute("update_calendar_event", { calendar: PRIMARY, event_id: "m2", description: APPOINTMENT }, "u2"))).toMatch(/lunch break/);
+      // The same time, a new title: never refused.
+      expect(await exec.execute("update_calendar_event", { calendar: PRIMARY, event_id: "m1", title: "Ana Souza (retorno)" }, "u3")).toContain('"updated":true');
+    }));
+
+  it("doesn't propose a change of a shared event that breaks the rule", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, { id: "s1", summary: "Ana Souza", description: APPOINTMENT, attendees: [{ email: "ana@exemplo.com.br" }], start: { dateTime: "2026-11-03T10:00:00-03:00" }, end: { dateTime: "2026-11-03T11:00:00-03:00" } });
+      const exec = executor(world, world.conversations.create("x").id);
+      expect(await refused(exec.execute("change_shared_calendar_event", { calendar: PRIMARY, event_id: "s1", start: "2026-11-03T12:00" }, "p1"))).toMatch(/lunch break/);
+      expect(exec.actionFor("p1")).toBeFalsy();
+    }));
+
+  it("says the turn ran out of calls when the day's reading doesn't fit, and writes nothing", () =>
+    withChatWorld(async (world) => {
+      // Six open calendars against a Telegram turn's six calls: the day is never read whole.
+      for (let i = 0; i < 4; i++) world.googleSim.calendars.push({ id: `extra${i}@exemplo.com.br`, summary: `Extra ${i}`, accessRole: "reader" });
+      const modes: Record<string, "read" | "write"> = { [PRIMARY]: "write", [READER]: "read" };
+      for (let i = 0; i < 4; i++) modes[`extra${i}@exemplo.com.br`] = "read";
+      await connect(world, modes);
+      const exec = new ToolExecutor(ALL_TOOLS, { ...world.ctx(world.conversations.create("x").id), source: "telegram" }, { maxToolCalls: 12 });
+      const message = await refused(exec.execute("create_calendar_event", { title: "Ana Souza", start: "2026-11-03T10:00", description: APPOINTMENT }, "c1"));
+      expect(message).toMatch(/all the Google Calendar calls/);
+      expect(writes(world)).toEqual([]);
+    }));
+
+  it("refuses on approval a change whose time passed while it waited", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, { id: "s1", summary: "Ana Souza", description: APPOINTMENT, attendees: [{ email: "ana@exemplo.com.br" }], start: { dateTime: "2026-11-03T10:00:00-03:00" }, end: { dateTime: "2026-11-03T11:00:00-03:00" } });
+      const chat = world.conversations.create("x").id;
+      const exec = executor(world, chat);
+      // Saturday 31/10 open, for a change proposed at 09:00 for 09:15 the same morning (a proposal lasts 30 minutes).
+      world.settings.agenda = { ...world.settings.agenda, workDays: [0, 1, 2, 3, 4, 5, 6] };
+      expect(await exec.execute("change_shared_calendar_event", { calendar: PRIMARY, event_id: "s1", start: "2026-10-31T09:15" }, "p1")).toContain("awaiting_owner_approval");
+      // Approved at 09:20, after the time it proposed.
+      world.clock.now += 20 * 60_000;
+      await expect(runApprovedAction(ALL_TOOLS, world.ctx(chat), exec.actionFor("p1") ?? "")).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { problem: "past" } });
+      expect(writes(world)).toEqual([]);
+    }));
+
+  it("checks the rule again on approval: another appointment that took the hour meanwhile stops the change", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, { id: "s1", summary: "Ana Souza", description: APPOINTMENT, attendees: [{ email: "ana@exemplo.com.br" }], start: { dateTime: "2026-11-03T10:00:00-03:00" }, end: { dateTime: "2026-11-03T11:00:00-03:00" } });
+      const chat = world.conversations.create("x").id;
+      const exec = executor(world, chat);
+      expect(await exec.execute("change_shared_calendar_event", { calendar: PRIMARY, event_id: "s1", start: "2026-11-03T15:00" }, "p1")).toContain("awaiting_owner_approval");
+      // Booked on the Agenda before the owner approved.
+      seed(world, READER, { id: "r1", summary: "Bruno Lima", description: APPOINTMENT, start: { dateTime: "2026-11-03T15:00:00-03:00" }, end: { dateTime: "2026-11-03T16:00:00-03:00" } });
+      await expect(runApprovedAction(ALL_TOOLS, world.ctx(chat), exec.actionFor("p1") ?? "")).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { problem: "clash" } });
+      expect(writes(world)).toEqual([]);
+      expect(world.googleSim.events.get(PRIMARY)?.[0]).toMatchObject({ start: { dateTime: "2026-11-03T10:00:00-03:00" } });
+    }));
+});

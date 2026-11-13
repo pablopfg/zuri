@@ -310,7 +310,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     const { db, productivity, memories, conversations, plans, actions, automations, semantic, mcp, google, contacts, crm, flows } = this.store;
     // Only a draft handle: the 22a rule (only the screen changes flows) holds for every tool.
     const flowDrafts = { save: (input: { name: string; definition: unknown }) => flows.saveDraft(input), connectionIds: () => flows.connections.rows().map((row) => row.id) };
-    return { db, productivity, memories, conversations, plans, actions, automations, semantic, mcpService: mcp, calendar: google, contacts, crm, flowDrafts };
+    return { db, productivity, memories, conversations, plans, actions, automations, semantic, mcpService: mcp, calendar: google, agendaHours: () => this.store.settings.field("agenda"), contacts, crm, flowDrafts };
   }
 
   /** How an automation runs: reminders and the digest without AI, routines through the runner. */
@@ -902,7 +902,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           rearm: () => automations.rearm(),
           notify: (notice) => flowNotice(alerts, diagnostics, notice, this.locale()),
           // The Google steps (step 22c): the connection of step 19 and the copy of step 19b.
-          google: { calendar: () => google, contacts: () => contacts, timeZone: () => settings.field("timeZone") },
+          google: { calendar: () => google, contacts: () => contacts, timeZone: () => settings.field("timeZone"), agendaHours: () => settings.field("agenda") },
         },
         { fetch: flowFetch, resolve: dohResolver(flowFetch) },
       );
@@ -994,7 +994,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       const telegramApprovals = new TelegramApprovals({
         actions: () => actions,
         tools: ALL_TOOLS,
-        toolContext: (conversationId) => ({ db, productivity, memories, conversations, plans, actions, automations, calendar: google, contacts, timeZone: settings.field("timeZone"), mode: "chat", conversationId }),
+        toolContext: (conversationId) => ({ db, productivity, memories, conversations, plans, actions, automations, calendar: google, agendaHours: () => settings.field("agenda"), contacts, timeZone: settings.field("timeZone"), mode: "chat", conversationId }),
         buttons: commandButtons,
         locale: () => this.locale(),
         hour: (ms) => telegramHour(ms, this.locale(), settings.field("timeZone")),

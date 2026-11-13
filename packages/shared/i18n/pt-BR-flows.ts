@@ -268,6 +268,7 @@ export const ptBRFlows = {
   "web.flows.connection.create": "Criar credencial",
   "web.flows.problem.kind_not_allowed": "um fluxo não usa esse tipo de credencial",
   "web.flows.problem.bad_answer": "o serviço respondeu num formato que a Zuri não conhece",
+  "web.flows.problem.agenda_rule": "uma consulta caiu fora das regras da Agenda (horário, almoço, folga ou outra consulta), e não foi criada",
   "web.flows.connection.keyAgain": "O endereço mudou: digite a chave de novo.",
   "web.flows.connections.keyEnd": "Chave terminada em {end}",
   "web.flows.kind.question": "Que tipo de credencial você quer criar?",

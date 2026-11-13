@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, openSettingsSection, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
+import { expectAccessible, expectFits, openSettingsSection, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // The notice center, Settings > Avisos and Settings > Diagnóstico against the
 // real Worker (step 11): a reminder run lands under the bell, which counts it,
@@ -286,6 +286,8 @@ test("Settings > Avisos: the channels of each kind of notice are saved; security
   await expect(saved.getByRole("checkbox", { name: "Lembretes por Notificação no aparelho" })).not.toBeChecked();
   await expect(saved.getByRole("checkbox", { name: "Texto completo de Lembretes no Telegram" })).toBeChecked();
   await expectAccessible(page, "canais por tipo de aviso");
+  // The table of channels fits the narrowest phone without pushing anything past the screen's edge (#316).
+  await expectFits(page, "canais por tipo de aviso");
 
   // Back to the defaults: the database is shared by the runs and the projects.
   const reset = await page.request.patch("/api/settings", { headers: CSRF, data: { alertRoutes: { reminders: ["push", "telegram"] }, alertFullText: [] } });

@@ -150,7 +150,7 @@ export function withChatWorld<T>(fn: (world: ChatWorld) => T | Promise<T>): Prom
       },
       connectionIds: () => [],
     };
-    const services = () => ({ db, productivity, memories, conversations, plans, actions, automations, mcpService: mcp, calendar: google, contacts, crm, flowDrafts: flowHandle });
+    const services = () => ({ db, productivity, memories, conversations, plans, actions, automations, mcpService: mcp, calendar: google, agendaHours: () => settings.agenda, contacts, crm, flowDrafts: flowHandle });
     const world: ChatWorld = {
       db,
       productivity,
