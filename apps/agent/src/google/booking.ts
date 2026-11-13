@@ -110,6 +110,8 @@ export function fixedProblem(after: BookingShape, hours: AgendaPrefs, timeZone: 
 export async function checkBooking(input: {
   after: BookingShape;
   before?: (BookingShape & Pick<CalendarEvent, "id" | "calendarId">) | undefined;
+  /** A new event's own id, when it has one already (a flow's key): a retry never clashes with the event it made. */
+  self?: Pick<CalendarEvent, "id" | "calendarId"> | undefined;
   google: GoogleCalendar;
   hours: AgendaPrefs;
   timeZone: string;
@@ -127,11 +129,14 @@ export async function checkBooking(input: {
   const from = localInstant(day, timeZone);
   const to = localInstant(nextDay(day), timeZone);
   if (!from || !to) throw new AppError("VALIDATION_FAILED", "error.googleEventDate");
-  const { events, more, skipped } = await input.google.events(input.google.readable(), from, to, input.meter, { timeZone, perCalendar: 100, max: 200 });
+  const open = input.google.readable();
+  // A listing reads ten calendars at most: an eleventh would go unread and not show as skipped.
+  if (open.length > GOOGLE_LIMITS.listCalendars) throw new AppError("SERVICE_UNAVAILABLE", "error.agendaRule.unread");
+  const { events, more, skipped } = await input.google.events(open, from, to, input.meter, { timeZone, perCalendar: 100, max: 200 });
   // A day read in part could hide the other appointment: no write until the whole day is read.
   if (more || skipped.length > 0) throw new AppError("SERVICE_UNAVAILABLE", "error.agendaRule.unread");
   const booked: BookedSlot[] = events
-    .filter((other) => bound(other) && !(before && other.id === before.id && other.calendarId === before.calendarId))
+    .filter((other) => bound(other) && !(before && other.id === before.id && other.calendarId === before.calendarId) && !(input.self && other.id === input.self.id && other.calendarId === input.self.calendarId))
     .map((other) => ({ start: minuteOf(new Date(other.start), day, timeZone), end: minuteOf(new Date(other.end), day, timeZone), title: "" }));
   const clash = appointmentProblem({ ...base, booked });
   if (clash) throw refuse(clash.code);

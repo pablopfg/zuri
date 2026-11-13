@@ -366,4 +366,18 @@ describe("the Agenda's booking rule in the chat (issue #328)", () => {
       expect(await refused(exec.execute("change_shared_calendar_event", { calendar: PRIMARY, event_id: "s1", start: "2026-11-03T12:00" }, "p1"))).toMatch(/lunch break/);
       expect(exec.actionFor("p1")).toBeFalsy();
     }));
+
+  it("checks the rule again on approval: another appointment that took the hour meanwhile stops the change", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, { id: "s1", summary: "Ana Souza", description: APPOINTMENT, attendees: [{ email: "ana@exemplo.com.br" }], start: { dateTime: "2026-11-03T10:00:00-03:00" }, end: { dateTime: "2026-11-03T11:00:00-03:00" } });
+      const chat = world.conversations.create("x").id;
+      const exec = executor(world, chat);
+      expect(await exec.execute("change_shared_calendar_event", { calendar: PRIMARY, event_id: "s1", start: "2026-11-03T15:00" }, "p1")).toContain("awaiting_owner_approval");
+      // Booked on the Agenda before the owner approved.
+      seed(world, READER, { id: "r1", summary: "Bruno Lima", description: APPOINTMENT, start: { dateTime: "2026-11-03T15:00:00-03:00" }, end: { dateTime: "2026-11-03T16:00:00-03:00" } });
+      await expect(runApprovedAction(ALL_TOOLS, world.ctx(chat), exec.actionFor("p1") ?? "")).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { problem: "clash" } });
+      expect(writes(world)).toEqual([]);
+      expect(world.googleSim.events.get(PRIMARY)?.[0]).toMatchObject({ start: { dateTime: "2026-11-03T10:00:00-03:00" } });
+    }));
 });

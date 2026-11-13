@@ -1,4 +1,4 @@
-import { type AgendaPrefs, FLOW_LIMITS, type FlowNode, isValidCalendarDate, sha256Hex } from "@zuri/shared";
+import { type AgendaPrefs, FLOW_LIMITS, GOOGLE_LIMITS, type FlowNode, isValidCalendarDate, sha256Hex } from "@zuri/shared";
 import { type BookingShape, bound, checkBooking, fixedProblem, shapeOf } from "../google/booking.ts";
 import type { GoogleContacts } from "../google/contacts.ts";
 import { DATE, DATE_TIME, localInstant, localToday, nextDay } from "../google/events.ts";
@@ -164,9 +164,9 @@ const NEW_EVENT: BookingShape = { allDay: false, start: "", end: "", description
  * other appointments of its day are read in every open calendar, an event
  * made earlier in the run among them, so two items never take the same hour.
  */
-async function keepsAgenda(after: BookingShape, calendar: GoogleCalendar, google: FlowGoogle, meter: GoogleMeter): Promise<void> {
+async function keepsAgenda(after: BookingShape, self: { id: string; calendarId: string } | undefined, calendar: GoogleCalendar, google: FlowGoogle, meter: GoogleMeter): Promise<void> {
   try {
-    await checkBooking({ after, google: calendar, hours: google.agendaHours(), timeZone: google.timeZone(), meter, now: calendar.now() });
+    await checkBooking({ after, self, google: calendar, hours: google.agendaHours(), timeZone: google.timeZone(), meter, now: calendar.now() });
   } catch (error) {
     if (error instanceof GoogleError) throw problemOf(error);
     if (error instanceof AppError && error.code === "SERVICE_UNAVAILABLE") throw new FlowStepError("unavailable", true);
@@ -219,11 +219,13 @@ export async function createEvents(node: Extract<FlowNode, { type: "calendar_cre
     const shape = shapes[partial.done] as BookingShape;
     const appointment = bound(shape);
     // The event and maybe a token renewal; an appointment also reads its day in each open calendar.
-    const meter = meterFor(appointment ? calendar.readable().length + 2 : 2, state, wake, callsPerRun);
+    // A listing reads ten calendars at most (more refuse before any call), so the need stays under a wake's 20.
+    const meter = meterFor(appointment ? Math.min(calendar.readable().length, GOOGLE_LIMITS.listCalendars) + 2 : 2, state, wake, callsPerRun);
     const id = entry.key ? await eventId(flowId, node.calendar, entry.key) : undefined;
     let made: { id: string; created: boolean };
     try {
-      if (appointment) await keepsAgenda(shape, calendar, google, meter);
+      // With a key, the event this item made in an earlier run (or a try that timed out) is its own place, not a clash.
+      if (appointment) await keepsAgenda(shape, id ? { id, calendarId: node.calendar } : undefined, calendar, google, meter);
       const event = await calendar.createEvent(node.calendar, bodies[partial.done] as Record<string, unknown>, meter, id);
       made = { id: event.id, created: true };
     } catch (error) {

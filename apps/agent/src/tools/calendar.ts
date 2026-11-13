@@ -442,7 +442,12 @@ export const calendarTools = [
       // Without the version seen at the proposal, Google can't refuse a newer one: nothing is sent.
       if (!change?.etag) throw new TargetGone(false);
       try {
-        await service(ctx).updateEvent(calendarId, event, change.patch, change.etag, meter(ctx));
+        // Approved hours later, the time may have passed or another appointment may have taken it: the Agenda's rule again.
+        const calendar = service(ctx);
+        const current = await calendar.event(calendarId, event, meter(ctx));
+        if (current.etag !== change.etag) throw new TargetGone(false);
+        await checkBooking({ after: shapeOf(change.patch, current), before: current, google: calendar, hours: ctx.agendaHours?.() ?? DEFAULT_AGENDA_PREFS, timeZone: ctx.timeZone, meter: meter(ctx), now: calendar.now() });
+        await calendar.updateEvent(calendarId, event, change.patch, change.etag, meter(ctx));
       } catch (error) {
         approvedFailure(error);
       }

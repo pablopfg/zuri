@@ -411,6 +411,17 @@ describe("creating appointments keeps the Agenda's rule (issue #328)", () => {
     });
   });
 
+  it("runs again over an appointment made with a key without calling it a clash with itself", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      const flow = await world.flows.create({ name: "Chave", definition: manual([one({ quando: "2026-11-05T10:00", id: "p1" }), create({ start: "{{quando}}", description: APPOINTMENT, key: "{{id}}" }), tell("{{event.created}}")]) });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "success" });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "success" });
+      expect(titles(world)).toEqual(["true", "false"]);
+      expect(world.googleSim.events.get(PRIMARY)).toHaveLength(1);
+    });
+  });
+
   it("waits for the next wake when the day's reading doesn't fit in the wake's calls", async () => {
     await withFlowWorld(async (world) => {
       await connect(world);
