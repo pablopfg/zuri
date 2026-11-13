@@ -158,6 +158,7 @@ export * from "./contacts.ts";
 export * from "./contacts-schemas.ts";
 export * from "./flows.ts";
 export * from "./flows-schemas.ts";
+export * from "./crm-automations.ts";
 export * from "./crm.ts";
 export * from "./crm-schemas.ts";
 export * from "./reviews.ts";

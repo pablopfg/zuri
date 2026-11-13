@@ -15,6 +15,8 @@ import { mcpFixture } from "./mcp-fixture.ts";
 import { withChatWorld } from "./chat-world.ts";
 import { addConnection, withFlowWorld } from "./flow-world.ts";
 import { add, draftAnswer, LOCATION, PATTERN, SECOND_OK, turnOn, withReviewsWorld } from "./reviews-world.ts";
+import { EXAMPLE_AUTOMATION } from "../src/crm/automations/example.ts";
+import { useCatalog } from "./crm-automations-world.ts";
 
 // What each route costs in the units the Free plan bills: rows read and rows
 // written in the object's SQLite (docs/arquitetura/orcamento-free-tier.md). A
@@ -593,7 +595,9 @@ describe("the Free plan budget of each route", () => {
     // follow-up and whether any client has a birthday in the planning; five indexed looks.
     // 55: the automatic backup (step 23b) asks whether the bot is linked before counting its 30-day warning
     // (its own state is read once per object and kept in memory).
-    expect(wake.read).toBeLessThanOrEqual(55);
+    // 62: the CRM's automations (PR S18): the run due and the next one (two indexed looks), and, once per start
+    // of the object and once a day, the rows set up and the three prunings by their date indexes.
+    expect(wake.read).toBeLessThanOrEqual(62);
     expect(wake.written).toBeLessThanOrEqual(30);
   });
 
@@ -723,7 +727,8 @@ describe("the Free plan budget of each route", () => {
       // 231: the alarm's planning also checks the MCP tools for a stale vector (step 18b, one read).
       // 233: and the flows' next scheduled or waiting run (step 22a, two indexed looks).
       // 236: and the CRM's next follow-up or birthday notice (step 22b, three indexed looks).
-      expect(reindex.read).toBeLessThanOrEqual(236);
+      // 237: and the CRM's next automation run (PR S18, one indexed look).
+      expect(reindex.read).toBeLessThanOrEqual(237);
       expect(reindex.written).toBeLessThanOrEqual(4);
       const off = await cost("PATCH", "/semantic", { enabled: false });
       expect(off.status).toBe(200);
@@ -1270,6 +1275,63 @@ describe("the CRM (step 22b)", () => {
       await runInDurableObject(owner(), (agent: ZuriAgent) => {
         const { db } = agent.store;
         for (const table of ["zur_crm_tags", "zur_crm_history", "zur_crm_clients", "zur_crm_tag_counts"]) db.run(`DELETE FROM ${table}`);
+      });
+    }
+  });
+});
+
+describe("CRM's automations (PR S18)", () => {
+  it("the list, the activity and the alarm's look stay small", async () => {
+    await runInDurableObject(owner(), async (agent: ZuriAgent) => {
+      const { db } = agent.store;
+      for (const table of ["zur_crm_automations", "zur_crm_automation_runs", "zur_crm_automation_effects", "zur_crm_automation_days"]) db.run(`DELETE FROM ${table}`);
+      useCatalog(agent, []);
+    });
+    // Nothing set up: the catalog comes from the code; one empty read of the table.
+    const empty = await cost("GET", "/crm/automations");
+    expect(empty.status).toBe(200);
+    expect(empty.read).toBeLessThanOrEqual(10);
+    expect(empty.written).toBe(0);
+    const day = new Date().toISOString().slice(0, 10);
+    await runInDurableObject(owner(), async (agent: ZuriAgent) => {
+      const { db } = agent.store;
+      const automations = useCatalog(agent, [EXAMPLE_AUTOMATION]);
+      const now = Date.now();
+      db.run(`INSERT INTO zur_crm_automations (id, state, effects_version, rehearsal_since, next_run_at, updated_at) VALUES ('example', 'rehearsal', 1, ?, ?, ?)`, new Date(now - 30 * 86_400_000).toISOString(), new Date(now + 3_600_000).toISOString(), new Date(now).toISOString());
+      // Half a year of an automation at its ceilings: 24 runs and 3 effects a day.
+      for (let n = 0; n < 180 * 24; n++) db.run(`INSERT INTO zur_crm_automation_runs (automation_id, started_at, mode, outcome) VALUES ('example', ?, 'rehearsal', 'ok')`, new Date(now - n * 3_600_000).toISOString());
+      for (let n = 0; n < 180 * 3; n++) {
+        const at = new Date(now - n * 8 * 3_600_000).toISOString();
+        db.run(`INSERT INTO zur_crm_automation_effects (automation_id, key, mode, day, status, label, created_at, updated_at) VALUES ('example', ?, 'rehearsal', ?, 'would', 'Pessoa de exemplo', ?, ?)`, `k${n}`, at.slice(0, 10), at, at);
+      }
+      for (let n = 0; n < 20; n++) db.run(`INSERT OR IGNORE INTO zur_crm_automation_days (automation_id, day, verdict, decided_at) VALUES ('example', ?, 'match', ?)`, new Date(now - n * 86_400_000).toISOString().slice(0, 10), new Date(now).toISOString());
+      expect(automations.nextDue()).not.toBeNull();
+    });
+    try {
+      const list = await cost("GET", "/crm/automations");
+      expect(list.status).toBe(200);
+      // The rows set up and the rehearsal's last 14 days checked.
+      expect(list.read).toBeLessThanOrEqual(40);
+      expect(list.written).toBe(0);
+      const activity = await cost("GET", "/crm/automations/example/activity");
+      expect(activity.status).toBe(200);
+      // 50 runs, 50 effects, the 14 days' effects by the day index and their checks: never the half year.
+      expect(activity.read).toBeLessThanOrEqual(260);
+      const checked = await cost("PUT", `/crm/automations/review-link/watch`, { watch: true });
+      expect(checked.status).toBe(200);
+      expect(checked.written).toBeLessThanOrEqual(12);
+      // The alarm's look when nothing is due: one row from the index.
+      const before = await runInDurableObject(owner(), (agent: ZuriAgent) => ({ ...agent.store.db.usage }));
+      await runInDurableObject(owner(), async (agent: ZuriAgent) => {
+        agent.store.crmAutomations.nextDue();
+      });
+      const after = await runInDurableObject(owner(), (agent: ZuriAgent) => ({ ...agent.store.db.usage }));
+      expect(after.rowsRead - before.rowsRead).toBeLessThanOrEqual(2);
+      expect(day).toMatch(/^\d{4}/);
+    } finally {
+      await runInDurableObject(owner(), (agent: ZuriAgent) => {
+        const { db } = agent.store;
+        for (const table of ["zur_crm_automations", "zur_crm_automation_runs", "zur_crm_automation_effects", "zur_crm_automation_days"]) db.run(`DELETE FROM ${table}`);
       });
     }
   });

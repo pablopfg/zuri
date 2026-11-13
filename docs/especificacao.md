@@ -232,6 +232,7 @@ Todas as rotas ficam sob `/api`, recebem e devolvem JSON validado por Zod (`pack
 | 16 | GET `/api/lockdown`, POST `/api/lockdown/exit` | sessão + CSRF + senha recente | `{totp}` ou `{recoveryCode}` | 204; 423 `LOCKDOWN_ACTIVE` |
 | 22b | GET `/api/crm`; GET e POST `/api/crm/clients` (`?q&stage&tag&followUp&after`, 50 por página); GET, PATCH e DELETE `/api/crm/clients/:id`; POST `/api/crm/clients/:id/notes`; PATCH `/api/crm/stages`; PATCH `/api/crm/settings` | sessão + CSRF | cliente, anotação, funil ou avisos | 200 ou 201; 400 `VALIDATION_FAILED`; 404; 507 `STORAGE_LIMIT_REACHED` (5.000 clientes, 200 etiquetas); 423 no bloqueio |
 | 22b | DELETE `/api/flows/drafts/:id` | sessão + CSRF | — | 200; 404 |
+| S18 | GET `/api/crm/automations`; PUT `/api/crm/automations/:id/config`; POST `/api/crm/automations/:id/{test,mode}`; GET `/api/crm/automations/:id/activity`; PUT `/api/crm/automations/:id/days/:day`; PUT `/api/crm/automations/:id/watch` | sessão + CSRF (+ senha recente em `config` e em `mode` para `rehearsal` e `live`) | `{connectionId, options}`, `{mode, acceptRisk?}`, `{verdict, note?}`, `{watch}` | 200; 400 `VALIDATION_FAILED`; 404 `NOT_FOUND`; 409 `CONFLICT` (sem código, sem configurar, 10 ligadas, dias do ensaio); 423 no bloqueio |
 
 Tokens remotos nunca alcançam `/api/auth*`, `/api/telegram*`, `/api/approvals*`, `/api/lockdown*`, aprovações nem planos. Um teste percorre todas as rotas registradas e confere isso.
 
