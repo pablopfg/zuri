@@ -14,6 +14,7 @@ import { CSRF, call, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, si
 import { mcpFixture } from "./mcp-fixture.ts";
 import { withChatWorld } from "./chat-world.ts";
 import { addConnection, FakeNetwork, withFlowWorld } from "./flow-world.ts";
+import { withOwnerWorld } from "./chatwoot-owner-world.ts";
 import { add, draftAnswer, LOCATION, PATTERN, SECOND_OK, turnOn, withReviewsWorld } from "./reviews-world.ts";
 import { EXAMPLE_AUTOMATION } from "../src/crm/automations/example.ts";
 import type { AutomationModule } from "../src/crm/automations/manifest.ts";
@@ -1285,6 +1286,43 @@ describe("the CRM (step 22b)", () => {
   });
 });
 
+describe("the owner's Chatwoot (docs/planos/zuri-no-chatwoot.md)", () => {
+  it("the page, a forged notice, a stranger and an answered message read and write a handful of rows", () =>
+    withOwnerWorld(async (world) => {
+      await world.link();
+      const measure = async (fn: () => unknown) => {
+        const before = { ...world.db.usage };
+        await fn();
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      // Measured 13/11/2026: page 3 read; forged 3 read; stranger 8 read, 2 written; answered 18 read, 10 written
+      // (the first answer also opens the app conversation "Chatwoot").
+      // The page: the link (one setting) and the vault's row.
+      const page = await measure(() => world.owner.status());
+      expect(page.written).toBe(0);
+      expect(page.read).toBeLessThanOrEqual(4);
+      // A forged notice: the link and the row read, nothing written (a flood costs no writes).
+      const link = JSON.parse(world.state.get<string>("chatwoot_owner") as string) as { id: string };
+      const forged = await measure(() => world.owner.receive(link.id, "{}", { signature: `sha256=${"0".repeat(64)}`, timestamp: String(Math.floor(Date.now() / 1000)), delivery: "x" }));
+      expect(forged.written).toBe(0);
+      expect(forged.read).toBeLessThanOrEqual(4);
+      // Someone else writes: the delivery seen, the stranger counted (the link's setting, a few times).
+      const stranger = await measure(async () => {
+        await world.chatwoot.agentSays(world.conversationId(), "oi", { id: 9, name: "Rafael Souza" });
+        await world.settle();
+      });
+      expect(stranger.written).toBeLessThanOrEqual(3);
+      expect(stranger.read).toBeLessThanOrEqual(10);
+      // The owner writes and the (fake) agent answers: the link's setting a few times and the app conversation's row.
+      const answered = await measure(async () => {
+        await world.chatwoot.agentSays(world.conversationId(), "oi");
+        await world.settle();
+      });
+      expect(answered.written).toBeLessThanOrEqual(12);
+      expect(answered.read).toBeLessThanOrEqual(20);
+    }));
+});
+
 describe("CRM's automations (PR S18)", () => {
   it("a run at its ceilings: 60 effects noted in one wake cost their own rows, and the counts read only the day", async () => {
     // A module at the manifest's ceilings: 96 runs and 60 effects a day. In rehearsal no call is made, so the
@@ -1316,8 +1354,9 @@ describe("CRM's automations (PR S18)", () => {
       db.run(`UPDATE zur_crm_automations SET next_run_at = NULL`);
       await automations.tick();
       db.run(`UPDATE zur_crm_automations SET next_run_at = ?`, new Date(now - 1000).toISOString());
-      // Half a year of runs before today's: the count reads only the day's by the index.
-      for (let n = 1; n < 180 * 24; n++) db.run(`INSERT INTO zur_crm_automation_runs (automation_id, started_at, mode, outcome) VALUES ('example', ?, 'rehearsal', 'ok')`, new Date(now - n * 3_600_000).toISOString());
+      // Half a year of runs before today's: the count reads only the day's by the index. They start a full day back,
+      // so none falls inside the owner's today whatever the hour the test runs at (from 8 a.m. on it read 133).
+      for (let n = 1; n < 180 * 24; n++) db.run(`INSERT INTO zur_crm_automation_runs (automation_id, started_at, mode, outcome) VALUES ('example', ?, 'rehearsal', 'ok')`, new Date(now - (24 + n) * 3_600_000).toISOString());
       const before = { ...db.usage };
       await automations.tick();
       const after = { ...db.usage };
@@ -1330,7 +1369,7 @@ describe("CRM's automations (PR S18)", () => {
     // Each effect: its row, the primary key and 3 indexes (and a read of the state before it, S18-A1);
     // the run: its row and 2 indexes; the next time: the row and the partial index.
     expect(measured.written).toBeLessThanOrEqual(60 * 4 + 3 + 3);
-    // The due row, the day's runs (at most 24 here) and effects, the credential and the 60 state reads.
+    // The due row, the day's runs and effects, the credential and the 60 state reads.
     expect(measured.read).toBeLessThanOrEqual(130);
   });
 

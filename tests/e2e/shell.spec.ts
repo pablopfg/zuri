@@ -113,7 +113,7 @@ test("the notification center opens from the bell and closes with Escape", async
   await expect(bell).toBeFocused();
 });
 
-test("settings has the eleven sections in five groups, each with its address and content: a submenu on a computer, a list on a phone @mobile", async ({ page }) => {
+test("settings has the twelve sections in five groups, each with its address and content: a submenu on a computer, a list on a phone @mobile", async ({ page }) => {
   await page.goto("/configuracoes");
   await signIn(page);
   // Conta opens at once on every size (PR S16), under one title.
@@ -126,7 +126,7 @@ test("settings has the eleven sections in five groups, each with its address and
     await expect(select).toBeHidden();
     await expect(sections.getByRole("heading")).toHaveText(["Você", "A Zuri", "Seu dia", "Conexões", "Sistema"]);
     await expect(sections.getByRole("link")).toHaveText(
-      ["Conta", "Segurança", "Assistente", "Uso da IA", "Modelos e limites", "Agenda", "Avisos", "Integrações", "Dados", "Diagnóstico", "Sobre a Zuri"].map((name) => new RegExp(`^${name}`)),
+      ["Conta", "Segurança", "Assistente", "Uso da IA", "Modelos e limites", "Agenda", "Avisos", "Integrações", "Chatwoot", "Dados", "Diagnóstico", "Sobre a Zuri"].map((name) => new RegExp(`^${name}`)),
     );
     await expect(sections.getByRole("link", { name: "Segurança", exact: true })).toHaveAccessibleDescription("Senha, duas etapas, passkeys e sessões");
     // The version in the account panel leads to Sobre a Zuri.
@@ -138,7 +138,7 @@ test("settings has the eleven sections in five groups, each with its address and
     await expect(sections).toBeHidden();
     await expect(select).toHaveValue("conta");
     await expect(select.locator("optgroup")).toHaveCount(5);
-    await expect(select.locator("option")).toHaveCount(11);
+    await expect(select.locator("option")).toHaveCount(12);
     await expect(select.locator("optgroup").first()).toHaveAttribute("label", "Você");
   }
   await expectAccessible(page, "configuracoes");
@@ -150,6 +150,7 @@ test("settings has the eleven sections in five groups, each with its address and
     ["Agenda", "agenda", "Horário de atendimento"],
     ["Avisos", "avisos", "Resumo do dia"],
     ["Integrações", "integracoes", "Serviços externos (MCP)"],
+    ["Chatwoot", "chatwoot", "O que cada chave do Chatwoot pode"],
     ["Dados", "dados", "Exportar e importar"],
     ["Diagnóstico", "diagnostico", "Nada do que você escreveu entra neste registro."],
     ["Sobre a Zuri", "sobre", "Código e licença"],

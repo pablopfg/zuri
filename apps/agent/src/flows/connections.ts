@@ -53,7 +53,24 @@ export const CONNECTION_KINDS: Record<FlowConnectionKind, { info: string; freeFi
   http: { info: "flows-v1", freeFields: [] },
   // The waits are not a secret: changing only them asks for no password (it goes to the activity log).
   chatwoot: { info: "chatwoot-v1", freeFields: CHATWOOT_FREE_FIELDS },
+  // The owner's conversation with Zuri (docs/planos/zuri-no-chatwoot.md): the inbox's public access and its
+  // signing secret, sealed together. Only Settings › Chatwoot makes or opens it; no screen edits it here.
+  "chatwoot-dono": { info: "chatwoot-dono-v1", freeFields: [] },
 };
+
+/** The kind kept apart from CRM › Credentials: never listed, changed or called by a flow. */
+export const OWNER_KIND = "chatwoot-dono";
+
+/** What the owner's inbox keeps sealed: the public API's access, the contact's identifier and the signing secret. */
+export interface OwnerSecrets {
+  inboxIdentifier: string;
+  secret: string;
+  hmacToken: string;
+  identifier: string;
+  sourceId: string;
+}
+
+const OWNER_FIELDS = ["inboxIdentifier", "secret", "hmacToken", "identifier", "sourceId"] as const;
 
 /** The Chatwoot's key goes in this header (its API's own name). */
 export const CHATWOOT_KEY_HEADER = "api_access_token";
@@ -167,24 +184,77 @@ export class FlowConnections {
     return this.#vaults.http.available;
   }
 
+  // The owner's inbox (OWNER_KIND) is left out of every query a screen or a flow reaches.
   rows(): ConnectionRow[] {
-    return this.db.all<ConnectionRow>(`SELECT * FROM zur_flow_connections ORDER BY name COLLATE NOCASE, id LIMIT ?`, FLOW_LIMITS.connections);
+    return this.db.all<ConnectionRow>(`SELECT * FROM zur_flow_connections WHERE kind != ? ORDER BY name COLLATE NOCASE, id LIMIT ?`, OWNER_KIND, FLOW_LIMITS.connections);
   }
 
   row(id: string): ConnectionRow {
-    const row = this.db.one<ConnectionRow>(`SELECT * FROM zur_flow_connections WHERE id = ?`, id);
+    const row = this.find(id);
     if (!row) throw new AppError("NOT_FOUND", "error.flowConnectionNotFound");
     return row;
   }
 
   find(id: string): ConnectionRow | null {
-    return this.db.one<ConnectionRow>(`SELECT * FROM zur_flow_connections WHERE id = ?`, id) ?? null;
+    return this.db.one<ConnectionRow>(`SELECT * FROM zur_flow_connections WHERE id = ? AND kind != ?`, id, OWNER_KIND) ?? null;
+  }
+
+  // ---------- The owner's inbox in the Chatwoot (Settings › Chatwoot) ----------
+
+  /** The one row of the owner's inbox, if any. */
+  ownerRow(): ConnectionRow | null {
+    return this.db.one<ConnectionRow>(`SELECT * FROM zur_flow_connections WHERE kind = ? ORDER BY created_at LIMIT 1`, OWNER_KIND) ?? null;
+  }
+
+  /** Keeps the owner's inbox: one row, replaced whole; the secrets sealed under the row's id. */
+  async saveOwner(id: string, origin: string, secrets: OwnerSecrets): Promise<void> {
+    const sealed = await this.seal(OWNER_KIND, id, JSON.stringify(Object.fromEntries(OWNER_FIELDS.map((field) => [field, secrets[field]]))));
+    const at = new Date(this.clock()).toISOString();
+    this.db.transaction(() => {
+      this.db.run(`DELETE FROM zur_flow_connections WHERE kind = ? AND id != ?`, OWNER_KIND, id);
+      this.db.run(
+        `INSERT INTO zur_flow_connections (id, name, origin, methods, paths, auth, header_name, credential, kind, meta, key_end, created_at, updated_at)
+         VALUES (?, 'Chatwoot', ?, '[]', '[]', 'none', NULL, ?, ?, NULL, NULL, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET origin = excluded.origin, credential = excluded.credential, updated_at = excluded.updated_at`,
+        id,
+        origin,
+        sealed,
+        OWNER_KIND,
+        at,
+        at,
+      );
+    });
+  }
+
+  /** The sealed secrets of the owner's inbox, or null when they can't be opened (another key, a row edited by hand). */
+  async openOwner(row: ConnectionRow): Promise<OwnerSecrets | null> {
+    if (row.kind !== OWNER_KIND || !row.credential) return null;
+    const plain = await this.#vaults[OWNER_KIND].decrypt(row.id, row.credential);
+    if (plain === null) return null;
+    try {
+      const parsed: unknown = JSON.parse(plain);
+      if (!parsed || typeof parsed !== "object") return null;
+      const record = parsed as Record<string, unknown>;
+      if (!OWNER_FIELDS.every((field) => typeof record[field] === "string" && record[field] !== "")) return null;
+      return Object.fromEntries(OWNER_FIELDS.map((field) => [field, record[field]])) as unknown as OwnerSecrets;
+    } catch {
+      return null;
+    }
+  }
+
+  removeOwner(): void {
+    this.db.run(`DELETE FROM zur_flow_connections WHERE kind = ?`, OWNER_KIND);
+  }
+
+  /** False without MCP_CREDENTIAL_KEY: the owner's inbox can't be kept. */
+  get ownerAvailable(): boolean {
+    return this.#vaults[OWNER_KIND].available;
   }
 
   /** `kind` picks the schema; left out, it is `http`, as every body of before. */
   async create(input: unknown, opts: { development: boolean }): Promise<string> {
     const kind = kindOfBody(input);
-    const count = this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_flow_connections`)?.n ?? 0;
+    const count = this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_flow_connections WHERE kind != ?`, OWNER_KIND)?.n ?? 0;
     const id = crypto.randomUUID();
     const at = new Date(this.clock()).toISOString();
     if (kind === "chatwoot") {
@@ -508,7 +578,8 @@ function kindOfBody(input: unknown): FlowConnectionKind {
   const kind = input && typeof input === "object" && "kind" in input ? (input as { kind: unknown }).kind : undefined;
   if (kind === undefined) return "http";
   const known = typeof kind === "string" ? knownKind(kind) : null;
-  if (!known) throw new AppError("VALIDATION_FAILED", undefined, { fields: ["kind"] });
+  // The owner's inbox is made only by Settings › Chatwoot.
+  if (!known || known === OWNER_KIND) throw new AppError("VALIDATION_FAILED", undefined, { fields: ["kind"] });
   return known;
 }
 

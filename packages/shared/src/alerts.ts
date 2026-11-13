@@ -76,6 +76,9 @@ export const NOTICE_KINDS = [
   "reviews.auto",
   "reviews.breaker",
   "security",
+  "chatwoot.stranger",
+  "chatwoot.recreated",
+  "chatwoot.paused",
 ] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
 
@@ -124,6 +127,9 @@ export const SECURITY_ALERT_EVENTS = [
   "backup_imported",
   "backup_key_set",
   "agent_settings_changed",
+  "chatwoot_owner_linked",
+  "chatwoot_owner_changed",
+  "chatwoot_owner_unlocked",
 ] as const satisfies readonly AuthEventKind[];
 export type SecurityAlertEvent = (typeof SECURITY_ALERT_EVENTS)[number];
 
@@ -334,7 +340,7 @@ export interface AlertOverview {
 }
 
 /** Pages of the app a new notice may open. Anything else is dropped: a notice never carries an address someone else chose. */
-export const NOTICE_LINKS = ["/tarefas", "/rotinas", "/configuracoes/ia", "/configuracoes/diagnostico", "/configuracoes/avisos", "/configuracoes/seguranca", "/acessos", "/configuracoes/integracoes", "/contatos", "/crm/fluxos", "/crm", "/avaliacoes", "/crm/envios"] as const;
+export const NOTICE_LINKS = ["/tarefas", "/rotinas", "/configuracoes/ia", "/configuracoes/diagnostico", "/configuracoes/avisos", "/configuracoes/seguranca", "/acessos", "/configuracoes/integracoes", "/contatos", "/crm/fluxos", "/crm", "/avaliacoes", "/configuracoes/chatwoot", "/crm/envios"] as const;
 export type NoticeLink = (typeof NOTICE_LINKS)[number];
 
 export const noticeCursorSchema = /* @__PURE__ */ z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\|[0-9a-f-]{36}$/);

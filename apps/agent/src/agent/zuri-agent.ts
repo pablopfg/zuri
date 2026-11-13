@@ -59,6 +59,9 @@ import { developmentGoogle, developmentGoogleNetwork } from "../google/dev-googl
 import { GoogleCalendar } from "../google/service.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
 import { type ReviewNotice, ReviewService } from "../reviews/service.ts";
+import { developmentOwnerNetwork } from "../chatwoot/dev-chatwoot-owner.ts";
+import { ChatwootOwner } from "../chatwoot/owner-service.ts";
+import { chatwootHookPath, isChatwootHookToken } from "../gates/chatwoot-owner.ts";
 import { FlowConnections } from "../flows/connections.ts";
 import { developmentFlowNetwork } from "../flows/dev-flows.ts";
 import { SiteStates } from "../flows/monitor.ts";
@@ -147,6 +150,8 @@ interface Store {
   agents: AgentConfigs;
   /** The automatic backup to BACKUP_BUCKET (step 23b). */
   backupAuto: AutomaticBackup;
+  /** The owner's conversation with Zuri in the Chatwoot (docs/planos/zuri-no-chatwoot.md). */
+  chatwootOwner: ChatwootOwner;
 }
 
 /**
@@ -240,6 +245,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     }),
     mcp: () => ({ service: this.store.mcp, auth: this.store.auth, automations: this.store.automations }),
     flows: () => ({ flows: this.store.flows, connections: this.store.flows.connections, auth: this.store.auth, development: () => this.development() }),
+    chatwoot: () => ({ owner: this.store.chatwootOwner, auth: this.store.auth }),
     crm: () => ({ crm: this.store.crm, rearm: () => this.store.automations.rearm() }),
     crmAutomations: () => ({ automations: this.store.crmAutomations, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
     outbox: () => ({ outbox: this.store.outbox, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
@@ -902,6 +908,34 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       );
       // Local development never reaches a real site (src/flows/dev-flows.ts).
       if (this.development()) flows.network = developmentFlowNetwork(flows.network);
+      // The owner's conversation with Zuri in the Chatwoot: the flows' network and vault, the same runner and turns as Telegram.
+      const ownerNetwork = this.development()
+        ? developmentOwnerNetwork(flows.network, (address, raw, headers) => {
+            // Local development: the simulated Chatwoot's notice goes in as the return would, token checked.
+            const hook = chatwootHookPath(new URL(address).pathname);
+            if (!hook) return;
+            void this.keepAliveWhile(async () => {
+              if (await isChatwootHookToken(hook.linkId, hook.token, env.SESSION_SECRET)) await chatwootOwner.receive(hook.linkId, raw, headers);
+            });
+          })
+        : null;
+      const chatwootOwner = new ChatwootOwner({
+        state,
+        connections: flows.connections,
+        network: () => ownerNetwork ?? flows.network,
+        development: () => this.development(),
+        publicUrl: () => this.publicUrl(),
+        sessionSecret: () => env.SESSION_SECRET,
+        locale: () => this.locale(),
+        lockdown: () => auth.lockdown.active(),
+        runner: () => this.runner(),
+        conversations: () => conversations,
+        activeRuns: this.activeRuns,
+        notify: (notice) => chatwootNotice(alerts, notice),
+        keepAlive: (work) => {
+          void this.keepAliveWhile(work);
+        },
+      });
       // The internal CRM (step 22b): its notices go to the center; nothing in it ever reaches a log.
       // The outbox (PR S19): the only way out to a contact, filled by the CRM's automations.
       const outbox = new Outbox({
@@ -1079,7 +1113,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         },
         telegram: { chat: () => telegram.ownerChat(), client: (options) => telegram.client(options) },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmAutomations, outbox, agents, backupAuto };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner };
     }
     return this.#store;
   }
@@ -1227,6 +1261,20 @@ function outboxNotice(alerts: AlertService, notice: OutboxNotice, locale: Locale
 }
 
 /** A notice of the CRM (step 22b): a client's name only in the notice itself, never in a log. */
+/** The Chatwoot's notices: never the text of a message, always the page of Settings › Chatwoot. */
+function chatwootNotice(alerts: AlertService, notice: { kind: "chatwoot.stranger" | "chatwoot.recreated" | "chatwoot.paused"; reason?: string }): void {
+  const link = "/configuracoes/chatwoot" as const;
+  if (notice.kind === "chatwoot.stranger") {
+    alerts.raise({ kind: notice.kind, category: "system", priority: "high", link, dedupeKey: "chatwoot-stranger", dedupeMs: 3_600_000 });
+    return;
+  }
+  if (notice.kind === "chatwoot.recreated") {
+    alerts.raise({ kind: notice.kind, category: "system", priority: "normal", link });
+    return;
+  }
+  alerts.raise({ kind: notice.kind, category: "system", priority: "high", link, dedupeKey: `chatwoot-paused-${notice.reason ?? "owner"}`, dedupeMs: 3_600_000 });
+}
+
 function crmNotice(alerts: AlertService, notice: CrmNotice): void {
   switch (notice.kind) {
     case "crm.followUp":

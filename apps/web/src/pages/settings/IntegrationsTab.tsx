@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MCP_LIMITS, MCP_TOOL_KINDS, MCP_TOOL_POLICIES, type McpAuthType, type McpOverview, type McpServerInfo, type McpServerProblem, type McpToolInfo, type McpToolKind, type McpToolProblem } from "@zuri/shared";
-import { CircleAlert, CircleCheck, Pencil, Plug, RefreshCw, Trash2 } from "lucide-react";
+import { type ChatwootOwnerStatus, MCP_LIMITS, MCP_TOOL_KINDS, MCP_TOOL_POLICIES, type McpAuthType, type McpOverview, type McpServerInfo, type McpServerProblem, type McpToolInfo, type McpToolKind, type McpToolProblem } from "@zuri/shared";
+import { ChevronRight, CircleAlert, CircleCheck, Pencil, Plug, RefreshCw, Trash2 } from "lucide-react";
+import { Link } from "react-router";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
@@ -84,6 +85,7 @@ export function IntegrationsTab() {
       <GoogleCard />
       {/* The Telegram bot sits with the other connections since PR S16 (it was in Avisos). */}
       <TelegramCard />
+      <ChatwootShortcut />
       <Card
         title={t("web.integrations.title")}
         description={t("web.integrations.description")}
@@ -131,6 +133,40 @@ export function IntegrationsTab() {
       </Card>
       <ServerDialog open={adding} onClose={() => setAdding(false)} credentials={overview.data?.credentialsAvailable ?? false} />
     </div>
+  );
+}
+
+/** Settings › Chatwoot has its own page (one place per setting): here only its state and the way there. */
+function ChatwootShortcut() {
+  const { t } = useI18n();
+  const status = useQuery({ queryKey: ["chatwoot-owner"], queryFn: ({ signal }) => api<ChatwootOwnerStatus>("/chatwoot/owner", { signal }) });
+  const data = status.data;
+  const line = !data?.configured
+    ? t("web.chatwoot.shortcut.off")
+    : data.state === "on" && data.owner
+      ? t("web.chatwoot.shortcut.on", { name: data.owner.name })
+      : data.state === "paused"
+        ? t("web.chatwoot.shortcut.paused")
+        : t("web.chatwoot.shortcut.waiting");
+  return (
+    <Card title={t("web.settings.tab.chatwoot")} description={t("web.chatwoot.shortcut.description")}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 text-sm">
+          {status.isPending ? (
+            <Loading rows={1} />
+          ) : status.isError ? (
+            <ErrorNotice error={status.error} onRetry={() => void status.refetch()} />
+          ) : (
+            <p className="flex items-center gap-2 font-medium">{data?.state === "on" && <CircleCheck className="h-4 w-4 text-success" aria-hidden />}{line}</p>
+          )}
+          <p className="leading-6 text-fg-muted">{t("web.chatwoot.shortcut.hint")}</p>
+        </div>
+        <Link to="/configuracoes/chatwoot" className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 text-sm font-semibold text-accent-text hover:bg-raised">
+          {t("web.chatwoot.shortcut.open")}
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </Link>
+      </div>
+    </Card>
   );
 }
 

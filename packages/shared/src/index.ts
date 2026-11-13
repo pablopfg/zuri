@@ -44,6 +44,7 @@ export {
   ptBRMenu,
   ptBRVoice,
   ptBRSchedule,
+  ptBRChatwoot,
   ptBRCrmAutomations,
   ptBROutbox,
   t,
@@ -184,4 +185,6 @@ export * from "./reviews-schemas.ts";
 export * from "./backup.ts";
 export * from "./backup-file.ts";
 export * from "./agents-schemas.ts";
+export * from "./chatwoot-owner.ts";
+export * from "./chatwoot-owner-schemas.ts";
 export * from "./outbox.ts";

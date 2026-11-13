@@ -130,8 +130,10 @@ export type FlowAuthType = (typeof FLOW_AUTH_TYPES)[number];
  * is used only by the fixed client written for it in the code (a flow never
  * calls one). A kind added later goes at the end of the list and gets its
  * entry in the server's registry (CONNECTION_KINDS in apps/agent/src/flows/connections.ts).
+ * `chatwoot-dono` is the owner's own conversation with Zuri (docs/planos/zuri-no-chatwoot.md):
+ * made only by Settings › Chatwoot, never listed in CRM › Credentials.
  */
-export const FLOW_CONNECTION_KINDS = ["http", "chatwoot"] as const;
+export const FLOW_CONNECTION_KINDS = ["http", "chatwoot", "chatwoot-dono"] as const;
 export type FlowConnectionKind = (typeof FLOW_CONNECTION_KINDS)[number];
 
 /** A wait drawn between two messages, in seconds. */
