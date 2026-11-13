@@ -1,6 +1,6 @@
 # Plano · Sons, áudio de 2 minutos, menu por áreas e agenda que edita
 
-Situação: concluído em 12/11/2026 (o Pablo aprovou as três recomendações; as quatro entregas da seção 11 estão na develop)
+Situação: concluído em 12/11/2026 (o Pablo aprovou as três recomendações; as quatro entregas da seção 11 estão na develop). Ajuste 3b (formulário do agendamento e sinais da sincronização) em protótipo, esperando aprovação.
 Origem: pedido do Pablo em 12/11/2026
 Dependências: nenhuma PR aberta. A área "Consultório" do menu depende do plano da Gestão do consultório, que corre à parte.
 
@@ -160,6 +160,24 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 | 2. Situação por cor, feriados e fins de semana | mesclada (#319) |
 | 3. Arrastar, duração, desfazer e avisos de sincronização | mesclada (#321) |
 | 4. Menu por áreas | mesclada (#322) |
+| 3b. Formulário do agendamento, paciente vinculado e sinais da sincronização | protótipo aprovado em 13/11, 01:44 UTC; código no cronograma abaixo (E5) |
+
+### Cronograma depois da aprovação (13/11/2026, 01:44 UTC)
+
+O Pablo aprovou o protótipo inteiro (v51) e pediu o código de tudo, testado. As melhorias viram oito entregas, uma PR e uma thread cada, na ordem abaixo: cada uma depende só das anteriores. Toda entrega passa por `planejar` (detalhe técnico), `verificar`, `revisao-qa` e `auditoria-seguranca`, traz changelog, README e capturas lado a lado com o protótipo, e confere o teto do JS inicial (141.000 B, 11 B de folga: telas novas entram lazy).
+
+| Entrega | O que entra (seções deste plano) | Migration | Situação |
+| --- | --- | --- | --- |
+| E5. Agenda: agendamento e travas | Formulário 24 h com término, tipo e local (Meet via `conferenceData`), vínculo a Contatos e homônimos, financeiro no evento; horário de atendimento, almoço, feriados com "Atendo" e dias sem expediente só em Configurações › Agenda; regra única `agErro` em `packages/shared` também no servidor; avisos ao tocar ou arrastar para horário fechado; consultas que ficaram fora; sem "Dia todo"; sinais da sincronização (12/11 à tarde, 00:15 itens 2–5, 00:44, 01:04 itens 5–6) | não (ajustes em `zur_settings`, dados do evento em `extendedProperties.private`) | a fazer |
+| E6. Consultório e integrações seguras | Configurações › Consultório (nome, endereço, cidade, WhatsApp); cofre de credenciais (AES-256-GCM, chave por integração, só escrita, senha para mudar, um host https por credencial); credencial fzap; e-mail aos pacientes por Gmail (`gmail.send`) ou SMTP 465/587 (00:37) | a conferir no plano da entrega | a fazer |
+| E7. Link de confirmação do paciente | Página pública `/c/<token>`: confirmar, cancelar com prazo, remarcar em 4 passos (8 dias, só dias livres, de 1 em 1 hora, colado a consulta ou 2 sorteados), WhatsApp com mensagem pronta, sons e transições; envio pelo Chatwoot, pelo botão do WhatsApp e por e-mail; mensagem modelo; token de 128 bits com hash, link único por agendamento, proteção contra enumeração (12/11 noite, 00:15 itens 6–8, 01:04 itens 3–4, 01:32 item 1) | sim (tokens do link) | a fazer |
+| E8. Gestão: Atendimentos e Financeiro | Telas nativas Atendimentos, Financeiro (A receber, Extrato com exportar em planilha, Serviços e despesas), "Enviar Pix" pela fzap, livro-caixa em centavos sem nome nem CPF | sim (livro-caixa, serviços, despesas) | a fazer |
+| E9. Gestão: importar planilha | Modelo, conferência linha a linha, duplicados, linhas com problema em planilha, desfazer importação (01:04 item 1) | usa a da E8 (lote por importação) | a fazer |
+| E10. Gestão: Resultados | Nominal ou real (IPCA, série 433 do Banco Central) e Projeções (Focus), em painel (00:15) | cache do IPCA, se preciso | a fazer |
+| E11. Contatos: família e ficha | Família e responsável que recebe as mensagens, ficha sem campos vazios com "Agendar", sem aviso de aniversário (00:15) | sim (`zur_contact_family`, no backup) | a fazer |
+| E12. Segurança e avisos | País nos acessos (`request.cf.country`), "Todos os acessos" por dia com filtros; sino com número de não vistos (`seen_at`) (01:32 item 3, v38) | sim (`seen_at`) | a fazer |
+
+As migrations seguem a numeração livre da `develop` na hora de cada PR (hoje a próxima é a 38). As três perguntas da Gestão (não guardar nome nem CPF nos lançamentos, só o Pablo registra presença e pagamento, relatórios dentro da Zuri) seguem o que o protótipo aprovado mostra, que é a recomendação de cada uma. A pergunta 4 (e-mail) fica com as duas formas, como no protótipo, com o Gmail recomendado.
 
 ### Diferenças da entrega 1
 
@@ -216,6 +234,357 @@ Cada uma com changelog, README, capturas e auditoria, para a `develop`.
 - **Grupo recolhido do menu antigo abre de novo.** "Organizar" deixou de existir; quem o tinha recolhido vê o menu aberto na primeira visita.
 - **O lugar perdeu o `id`.** Para caber no teto de 141 kB do JS inicial (ficou em 140.989 B), cada lugar do menu passou a se identificar pelo endereço, que já era único. A paleta de comandos usa o endereço como chave.
 
+### Ajustes pedidos depois da entrega 3 (12/11/2026, à tarde)
+
+O Pablo viu a entrega 3 e pediu cinco ajustes, com um print do formulário do outro sistema do consultório como modelo. Pela regra de 12/11, eles entram primeiro no protótipo (bloco "12/11/2026, à tarde" no fim do script de `prototipo-interativo.html`); o código só começa depois da aprovação, numa PR própria (3b).
+
+1. **Horário de 24 horas, sem AM e PM.** Hoje os campos de data e hora são os do navegador, que seguem o idioma do aparelho: num navegador em inglês aparecem "10:00 AM" e "11/12/2026". Eles saem. Data e hora viram campos de texto com máscara: "dd/mm/aaaa" e "hh:mm", de 00:00 a 23:59, sempre. Digitar só números basta (1430 vira 14:30). A hora do início sugere os horários de 15 em 15 minutos, e a do término sugere 15 min, 30 min, 45 min, 1 h, 1 h 30, 2 h e 3 h depois do início.
+2. **Duração padrão de 1 hora, ajustável.** O campo "Dura" dá lugar à "Hora do término", como no outro sistema. O término começa 1 h depois do início e acompanha o início quando ele muda, mantendo a duração. Mudar o término ajusta a duração daquele agendamento ("Dura 1 h 30. Voltar para 1 h"). Término antes do início é recusado.
+3. **Mesmo padrão do outro sistema.** Ordem dos campos: nome completo do paciente; DDI, celular com DDD e e-mail; data da consulta, hora do início e hora do término; tipo, atendimento (presencial ou online), situação e financeiro; observação. O "Tipo" (Consulta, Retorno, Avaliação física) continua, e o atendimento vira a segunda parte da linha do tipo na descrição ("Consulta | Consultório" ou "Consulta | Online"), a mesma regra que a ficha do contato já lê. Com "Sem tipo" o formulário vira o de um compromisso comum (reunião, curso): título, data, horário, situação e observação, sem paciente, contato nem financeiro.
+4. **Sinais da sincronização.** A linha "Em dia com o Google" vira um botão com ícone, cor e nome curto. Ele abre um painel com a situação de agora, o que fazer, as últimas mudanças e "O que cada sinal quer dizer":
+
+   | Sinal | Quando | O que a pessoa pode fazer |
+   | --- | --- | --- |
+   | ✓ verde, Sincronizado | tudo igual ao Google, com a hora da última conferência | nada |
+   | ⟳ azul, Salvando… | uma mudança está indo para o Google | esperar |
+   | ✓ verde, Salvo no Google | a última mudança chegou agora | nada |
+   | ⟳ azul, Atualizando… | a Zuri está trazendo o que mudou no Google | esperar |
+   | Wi-Fi cortado, âmbar, Sem internet | uma mudança não foi enviada e continua na tela, marcada | Tentar de novo |
+   | ✕ vermelho, Falha ao salvar | o Google recusou; o evento voltou ao que era | Tentar de novo |
+   | ↺ âmbar, Mudou no Google | o evento foi mudado lá enquanto a pessoa mexia aqui; vale a versão de lá | Ver o evento |
+   | Ampulheta âmbar, Em pausa | o Google pediu um intervalo depois de muitas mudanças seguidas | nada; a Zuri tenta de novo em 1 min |
+   | Nuvem cortada, âmbar, Desatualizada | sem notícias do Google há mais de 15 min | Atualizar agora |
+   | Corrente partida, vermelho, Conexão expirou | a Zuri perdeu o acesso ao Google Agenda; nada é lido nem gravado | Conectar de novo (Configurações › Integrações) |
+   | Cadeado cinza, Só leitura | eventos de outra agenda, só para leitura | mudar no Google Agenda |
+
+   As cores nunca andam sozinhas: todo sinal tem ícone e nome, e o leitor de tela lê "Sincronização com o Google: Sem internet. Ver detalhes". O aviso com "Desfazer" de cada mudança continua como na entrega 3. No protótipo, o botão "Simular" de cada linha do painel (e o parâmetro `sync=`) mostra cada sinal; ele não vai para o sistema.
+5. **Vincular o agendamento ao paciente, ou não.**
+   - Ao digitar duas letras do nome, a Zuri procura em Contatos (a cópia que já existe, sem chamar o Google), sem acento e pelo começo de cada palavra ("carla m" acha "Carla Mendes"). Clientes do consultório vêm primeiro. Cada linha mostra o nome, o celular e a última consulta, para separar homônimos. A última linha da lista é sempre "Agendar “nome” sem vínculo".
+   - Escolher um contato preenche o nome, o DDI, o celular e o e-mail, que ficam só para leitura com "Vinculado a …" e "Remover vínculo". Os dados continuam sendo os de Contatos: para mudar, o Pablo edita o contato no Google (a Zuri só lê Contatos).
+   - Nada se vincula sozinho. Nome igual ao de um único contato mostra "“Paula Régis Amaral” está em Contatos" com o botão "Vincular". Nome igual ao de dois ou mais contatos mostra "2 contatos com este nome" e abre a lista para escolher pelo telefone (regra de homônimos de 12/11: são pessoas diferentes e nunca se ligam sozinhas).
+   - Mudar o nome depois de vincular desfaz o vínculo e limpa o celular e o e-mail que vieram do contato, para que os dados de uma pessoa nunca fiquem no agendamento de outra. "Remover vínculo" faz o mesmo.
+   - Sem vínculo vale sempre: paciente novo, que ainda não está em Contatos, ou quem o Pablo preferir não ligar. O agendamento fica com o nome e com o celular e o e-mail digitados (o celular é conferido: DDD e número no Brasil). Nos detalhes, um agendamento sem vínculo mostra "Vincular", que abre o formulário já com a busca.
+   - **Onde fica cada dado:** o nome continua sendo o título do evento e o tipo continua na primeira linha da descrição, como hoje; a observação vem depois. O vínculo (id do contato), o DDI, o celular, o e-mail e o financeiro vão para as propriedades privadas do evento no Google (`extendedProperties.private`): viajam com o evento, não aparecem no Google Agenda e não pedem tabela nova nem migration. A lista fixa de campos do `PATCH` e do `POST` ganha esses campos, com Zod e limites de tamanho.
+
+**Segunda rodada (12/11/2026, 17:32 UTC).** O Pablo respondeu às perguntas 2 e 3 e pediu mais quatro ajustes, já no protótipo:
+
+- **DDI de todos os países**, com o Brasil primeiro e como padrão ("BR Brasil (+55)", como no outro sistema). O valor guardado é o código do país (BR, PT, US), porque Estados Unidos e Canadá dividem o +1. Os nomes vêm do próprio navegador em português, sem lista de tradução.
+- **Celular formatado enquanto se digita:** no Brasil, "(41) 99999-0000" (quem cola "+55 41…" perde o 55); nos outros países, blocos de três números. Trocar o país reformata o que já foi digitado.
+- **Homônimos pela data de nascimento também:** cada linha da busca mostra o celular, a data de nascimento e a última consulta, e o vínculo mostra "Vinculado a Carla Mendes, nasc. 02/09/1995". Contato sem data aparece como "sem data de nascimento". No sistema, a cópia de Contatos passa a guardar o aniversário que o Google já tem (o campo novo sobe o `FIELDS_VERSION` de `google/contacts.ts`, que é o que manda regravar os contatos).
+- **Financeiro:** "Não pago", "Pago" e "Gratuito".
+- **Tipo do evento numa lista só**, que junta o tipo e o atendimento: "Consulta | Consultório", "Consulta | Online", "Retorno | Consultório", "Retorno | Online", "Avaliação física | Consultório", os tipos que já aparecem na agenda, "Outro, digitar" e "Sem tipo (compromisso comum)". O tipo digitado segue "Tipo | Lugar"; sem o lugar, fica "| Consultório". Depois de usado, ele entra na lista. O campo "Atendimento" sai.
+
+**Gestão dentro do protótipo (12/11/2026, 17:48 UTC).** A pedido do Pablo, a área Consultório do menu abre as três telas do protótipo da Gestão (Atendimentos, Financeiro e Resultados), no lugar das telas "Em planejamento". O protótipo principal mostra `prototipo-gestao.html` num quadro, sem o menu e a barra dele, no mesmo tema; o desenho e o plano da Gestão continuam em [gestao-financeira-e-paineis.md](gestao-financeira-e-paineis.md) e na PR #311. Enquanto a #311 não estiver na `develop`, o quadro só abre no protótipo publicado.
+
+**Contato que agenda e contagem dos avisos (12/11/2026, 18:45 UTC).** Mais três pedidos do Pablo, já no protótipo:
+
+- **Ficha do contato só com o que está preenchido.** A linha "Vazio no Google" sai. Campo vazio no Google não aparece.
+- **"Agendar" na ficha do contato**, entre "Perguntar à Zuri" e "Telefone". Um toque leva à Agenda e abre "Novo agendamento" já preenchido. A lógica, pensada para não dar erro:
+  - Contato com nome: o agendamento já vem vinculado a ele, pelo id. Nome, DDI, celular e e-mail vêm de Contatos e ficam só para leitura, como no "Vincular". Como o vínculo é pelo contato aberto, homônimo não confunde. O foco vai direto para a data.
+  - Contato sem nome no Google: não vincula, porque o nome é o título do evento. O celular e o e-mail vêm preenchidos e a Zuri pede o nome completo.
+  - Dia e hora: o primeiro horário livre de 1 h a partir de agora, de 30 em 30 min. Precisa ser dia útil, sem feriado nacional, dentro do horário da agenda (08:00 às 18:00 por padrão) e sem outro evento no meio (cancelado não conta). A Agenda abre na semana desse horário. O texto do diálogo diz qual horário foi escolhido e pede para conferir.
+  - Já tem consulta marcada daqui para frente: o diálogo avisa ("Atenção: já existe “Consulta | Consultório” em sex, 13/11 às 09:00"), para não marcar duas vezes. O aviso não impede: retorno e consulta na mesma semana são possíveis.
+  - Tipo "Consulta | Consultório", situação Agendado e financeiro Não pago, que são os padrões do formulário. Tudo dá para mudar antes de salvar.
+  - Cancelar volta para a mesma ficha, com o foco no "Agendar". Agendar fica na Agenda, com o aviso de "Desfazer" de sempre.
+  - No celular, "Perguntar à Zuri" e "Agendar" ficam na primeira linha e os três canais (Ligar, WhatsApp, E-mail) na segunda.
+  - No sistema: a ficha manda o id do contato pelo endereço (`/agenda?novo=1&contato=<id>`). A Agenda confere que o contato existe na cópia de Contatos antes de vincular. Id que não existe abre o formulário vazio, sem erro. Os dados nunca vão no endereço: só o id.
+- **Número de avisos não vistos no sino.** O sino mostra quantos avisos chegaram e ainda não foram vistos (até "99+"), e o título da aba ganha "(3)". O leitor de tela lê "Avisos: 3 não vistos". As regras:
+  - Um aviso só conta como visto quando o Pablo abre o sino e o aviso aparece na lista por pelo menos 0,6 s, com mais da metade dele na tela. Abrir e fechar na hora não conta. Aviso que fica abaixo da dobra só conta quando a lista rola até ele.
+  - Aviso que chega com o painel aberto entra na lista e conta como visto do mesmo jeito.
+  - Push, Telegram e e-mail não contam como visto. Só o sino conta.
+  - "Visto" é diferente de "lido". O número do sino é dos não vistos. O destaque verde e "N novos" dentro do painel continuam até o Pablo abrir o aviso ou tocar em "Marcar como lidos", que também marca todos como vistos.
+  - No protótipo, o botão "Simular aviso" da barra de cima faz chegar um aviso novo.
+  - No sistema: a tabela de avisos ganha a coluna `seen_at`, numa migration nova de acréscimo (a próxima livre, 38 hoje; conferir na `develop`). A interface manda `POST /api/notices/seen` com os ids vistos (lista com Zod, até 50 por vez, só avisos da própria conta). O número vem com a lista de avisos e chega pelo canal ao vivo (`/api/live`), então ver num aparelho zera o sino nos outros. O ícone do app instalado (`navigator.setAppBadge`) mostra o mesmo número onde o navegador permitir. Tudo é texto e um número: o JS inicial não cresce de forma relevante.
+
+**Gestão mais rápida, padrão único e link de confirmação (12/11/2026, 20:53 UTC).** Pedidos do Pablo, já no protótipo:
+
+- **Gestão abria mais devagar.** Causa: a cada clique, o protótipo principal se redesenha e recriava o quadro da Gestão, que baixava e montava a página inteira de novo, sem o esqueleto das outras telas e mostrando o menu próprio dela por um instante. Agora o quadro é um só, carregado em segundo plano logo depois da primeira tela, e fica por cima do espaço da tela. Na primeira visita aparece o mesmo esqueleto das outras telas (0,7 s); da segunda em diante e na troca de aba, abre na hora. No sistema não existe quadro: a Gestão é uma tela como as outras, carregada sob demanda.
+- **Gestão no padrão das outras telas:** mesma margem e largura de página, título com o mesmo espaçamento, abas do mesmo tamanho e com ícone (Hoje, Indicadores, A receber, Lançamentos, Importar planilha, Preços e despesas, Painel, Relatórios), cartões com a mesma sombra e etiquetas com o mesmo peso. No celular, as abas de quatro partes ficam em duas linhas, centralizadas.
+- **Revisão geral:** todas as telas passaram de novo pelo axe (WCAG A e AA) no computador claro e no celular escuro, sem erro e sem rolagem para o lado. O botão "Apagar" dos diálogos usava uma cor de texto fraca demais no escuro: passou para a cor de alerta de texto.
+- **Link de confirmação do agendamento.**
+  - **Na Agenda:** os detalhes de cada agendamento com tipo ganham "Confirmação do paciente", com a situação (Link ainda não enviado, Link enviado, Confirmou pelo link, Cancelou pelo link) e três botões: "Enviar pelo WhatsApp" (abre o WhatsApp com a mensagem e o link; o Pablo confere e envia), "Copiar link" e "Ver como o paciente". Sem celular no agendamento, fica só "Copiar link". Agendamento cancelado ou que já passou não oferece envio.
+  - **Na página do paciente**, sem login e sem o menu da Zuri, com o nome do consultório: primeiro nome, dia, horário e tipo, e dois botões, "Confirmar presença" e "Não vou poder ir". Cancelar pede um segundo toque ("Sim, cancelar a consulta"). Para mudar o dia ou o horário, a página orienta a falar com a equipe pelo WhatsApp do consultório. Depois de confirmar, ainda dá para cancelar. Depois de cancelar, a página só orienta a falar com a equipe. Fora do prazo (seção seguinte), cancelar pela página dá lugar a "fale com a nossa equipe".
+  - **A resposta** muda a situação e a cor do evento no Google (Confirmado, Manjericão; Cancelado, Tomate, que guarda o histórico e não apaga o evento) e chega em Avisos ("Érica Valadão Sena confirmou pelo link").
+  - **Estados da página:** link válido (pendente, confirmado, cancelado), consulta que já passou e link inválido. No protótipo, os botões acima do cartão mostram cada um.
+- **Lógica e segurança do link (para o código):**
+  - **Link sem dado pessoal:** `https://<domínio>/c/<token>`, com 128 bits aleatórios (`crypto.getRandomValues`, 22 caracteres base64url). Um link por agendamento, para a vida toda dele (seção "Link único e expiração" abaixo). O banco guarda o SHA-256 do token para achar o link e o token cifrado para poder reenviar o mesmo endereço, numa tabela nova de acréscimo (`zur_appointment_links`: id do evento, hash, token cifrado, criado em, situação, respondido em, revogado em). Migration nova (a próxima livre, conferir na `develop`).
+  - **Abrir não muda nada.** O `GET` só mostra a página: o WhatsApp e outros aplicativos abrem o link sozinhos para montar a prévia, e isso não pode confirmar nem cancelar. Só o `POST` do botão muda, com a ação numa lista fixa (`confirmar` | `cancelar`, Zod), conferência de `Origin` igual ao domínio da Zuri e resposta idempotente (repetir o mesmo toque não faz nada de novo).
+  - **Pouco dado na tela:** primeiro nome, dia, horário e tipo. Nunca celular, e-mail, nome completo, observação ou financeiro. A página não carrega nada de fora, tem CSP própria, `X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer` (o token está no endereço), `Cache-Control: no-store`, e o token nunca vai para os registros.
+  - **Validade:** até 1 hora antes do início, e acaba na hora se a consulta for cancelada (seção "Link único e expiração"). Token que não existe ou de evento apagado mostra "Este link não vale mais", sem dizer o motivo, para não servir de teste de tokens. Enviar de novo reenvia o mesmo link.
+  - **Evento mudado de dia ou hora:** o link continua o mesmo, mostra o horário novo e volta a pedir a confirmação ("mover marca Reagendado" já tira o Confirmado).
+  - **Limites:** por rede, 30 páginas e 10 respostas a cada 10 minutos; por link, 10 respostas por dia. Acima disso, 429 com a mesma página de "tente daqui a pouco".
+  - **Gravação no Google:** o `PATCH` de sempre (`colorId` e situação), com etag. Se o Google recusar, a resposta fica guardada, a página diz que recebeu e a Zuri tenta de novo na próxima rodada, com aviso ao Pablo se falhar três vezes.
+  - **Envio:** pelo Chatwoot, sozinho, e pelo botão do WhatsApp (seção seguinte, pedido de 21:37 UTC).
+  - **Superfície nova:** é a primeira página pública da Zuri além de Entrar. Passa por auditoria de segurança própria, com teste de força bruta nos tokens, prévia de link, `POST` de outra origem e evento apagado.
+
+**Prazo do cancelamento, envio pelo Chatwoot e pelo WhatsApp, dados do consultório (12/11/2026, 21:37 UTC).** Pedidos do Pablo, já no protótipo:
+
+- **Prazo para cancelar pelo link:** até 12 horas antes do início e nunca no dia da consulta, o que vier primeiro. Consulta às 09:00 de sábado: cancela até 21:00 de sexta. Consulta às 20:00 de sábado: até 23:59 de sexta (o dia anterior vence as 12 horas). Confirmar vale até o link expirar, 1 hora antes do início. O prazo é conferido no servidor, no fuso do dono, e a página mostra a data e a hora exatas ("Dá para cancelar por aqui até sexta, 13 de novembro, às 21:00").
+- **Página do link, em ordem:**
+  - Primeira visita: "Olá, Érica! Confirme sua presença na consulta.", o cartão com dia, horário, tipo (presencial ou online) e endereço do consultório, o botão "Confirmar presença" e o WhatsApp da equipe para mudar o dia ou a hora. Abaixo de uma linha, "Não vou poder ir: cancelar a consulta", para quem já sabe que não vem não ter de confirmar antes.
+  - Abrindo o link de novo depois de confirmar: a confirmação em verde e, embaixo, "Não vou mais poder ir: cancelar a consulta".
+  - Cancelar sempre abre um aviso que pede a confirmação ("Cancelar a consulta?", com o dia e a hora). O foco começa em "Não, manter a consulta", então Enter ou um toque duplo por engano não cancelam. Só "Sim, cancelar a consulta" cancela. No celular os dois botões ficam um embaixo do outro, com "manter" em cima. O servidor confere o prazo de novo no `POST`.
+  - Fora do prazo, o botão de cancelar dá lugar a "O prazo para cancelar por aqui terminou. Fale com a nossa equipe".
+- **Dados do consultório num lugar só:** Configurações › Consultório (grupo novo "Consultório") guarda nome, endereço, cidade e WhatsApp da equipe, numa chave de `zur_settings` (`clinic`, Zod: nome até 80, endereço até 160, cidade até 80, telefone no formato brasileiro). A página do link, a mensagem de confirmação, o pedido de avaliação e o perfil em Avaliações leem dali; mudar ali muda em todos, sem cópia guardada em outro lugar. A página do link lê na hora de montar, então um link enviado antes já mostra o endereço novo.
+- **Mensagem modelo:** na mesma tela, um texto com variáveis (`{nome}`, `{tipo}`, `{consultorio}`, `{dia}`, `{hora}`, `{local}`, `{link}`, `{prazo}`, `{whatsapp}`), botões para inserir cada uma, prévia ao vivo no balão do WhatsApp e "Voltar ao modelo padrão". Regras, conferidas no servidor com Zod: não vazia, até 1.000 caracteres, com `{link}` obrigatório e só as variáveis da lista (o resto é recusado com o nome da variável). `*texto*` sai em negrito no WhatsApp. O mesmo modelo serve ao Chatwoot e ao botão. A prévia é montada com nós de texto, nunca com `innerHTML`.
+- **Envio manual pelo WhatsApp:** nos detalhes do agendamento, "Enviar pelo WhatsApp" é um link `https://wa.me/<DDI+celular>?text=<mensagem>`, com a mensagem do modelo já preenchida (nome, dia, hora, local, link e prazo). Abre o WhatsApp Web ou o aplicativo; o Pablo confere e envia. Ao tocar, a situação vira "Enviado pelo WhatsApp hoje às 21:45" e o envio automático pula esse agendamento. "Copiar mensagem" copia o mesmo texto. Sem celular no agendamento, o botão não aparece.
+- **Envio automático pelo Chatwoot (para o código):**
+  - **Liga e desliga** em Configurações › Consultório, com a hora do envio (07:00 a 20:00, padrão 07:00) e a credencial do Chatwoot já cadastrada em CRM › Credenciais. O token fica só no servidor, cifrado como as outras credenciais.
+  - **Quando:** no último dia útil antes da consulta, na hora escolhida, pelo alarme único. Consulta de segunda sai na sexta; véspera em feriado nacional ou fim de semana recua para o dia útil anterior. Nunca sai no próprio dia, nunca depois do prazo de cancelar e nunca de madrugada.
+  - **Quem recebe:** evento com tipo de atendimento (Consulta, Retorno, Avaliação física), situação Agendado ou Reagendado, com celular, com o link ainda valendo e sem envio nem resposta para este horário (regras de não duplicar na seção "Link único e expiração"). A chave de "já enviado" é o id do evento mais o início; mudar o horário permite um envio novo, com o mesmo link.
+  - **Passos no Chatwoot** (API de conta, `api_access_token`): procurar o contato pelo celular em E.164 (`GET /contacts/search`), criar se não existir (`POST /contacts`, só nome e telefone), reaproveitar a conversa aberta da caixa ou abrir uma (`POST /conversations`) e enviar a mensagem (`POST /conversations/:id/messages`, `message_type: outgoing`). Caixa do WhatsApp Cloud oficial só aceita mensagem modelo aprovada fora da janela de 24 horas: nesse caso o envio usa o modelo aprovado com as mesmas variáveis, e a tela avisa se a caixa escolhida é desse tipo. Caixa do tipo API manda texto livre.
+  - **Ritmo:** uma mensagem por vez, com a espera em segundos da credencial (seção seguinte), no máximo 5 envios por despertar para caber nas 44 subrequisições. O que sobra sai no despertar seguinte, ainda antes do prazo.
+  - **Falha:** até 3 tentativas com espera crescente. Depois, um aviso ao Pablo ("Não deu para enviar a confirmação de Érica pelo Chatwoot") com o botão do WhatsApp, e o agendamento mostra "Não foi enviado".
+  - **Registro:** cada envio guarda id do evento, início, canal (Chatwoot ou WhatsApp), hora e situação, sem o texto da mensagem e sem o telefone (tabela de acréscimo junto de `zur_appointment_links`, mesma migration).
+  - **Regra de produto:** até aqui a Zuri só escrevia a pacientes para pedir avaliação. A confirmação de consulta passa a ser o segundo caso, decidido pelo Pablo, com o mesmo cuidado: só o modelo dele, só pelo Chatwoot, com tetos.
+
+**Link único, expiração e envio sem duplicar (12/11/2026, 22:02 UTC).** Pedidos do Pablo, já no protótipo:
+
+- **Um link por agendamento, sem acesso a outro.**
+  - Cada agendamento tem um token só dele (128 bits aleatórios), criado na primeira vez que a mensagem é montada. A tabela tem `UNIQUE` no id do evento e no hash: dois agendamentos nunca dividem um link, e reenviar (WhatsApp ou Chatwoot) usa o mesmo endereço.
+  - O servidor acha o agendamento só pelo hash do token. Nenhum id de evento, nome ou telefone vem do navegador: o `POST` leva só o token (no endereço) e a ação (`confirmar` | `cancelar`). Não existe rota que receba um id de evento sem sessão.
+  - Antes de mostrar ou mudar, o servidor confere que o evento do link ainda é o mesmo (id e agenda guardados junto) e que o token não foi revogado. Se o evento sumiu, foi para outra agenda ou o token não confere, a página é a de link inválido, sem nenhum dado.
+  - A página mostra só o primeiro nome, dia, horário, tipo e o endereço do consultório. A resposta não traz o id do evento nem outro agendamento do mesmo paciente.
+  - Testes: token de um agendamento nunca abre outro; `POST` com token de A não muda B; força bruta em tokens dá 429 e a mesma página; o mesmo paciente com duas consultas tem dois links diferentes, cada um só com a sua.
+- **O link expira sozinho:**
+  - 1 hora antes do início. Depois disso não confirma nem cancela, e a página diz "Este link expirou" e orienta a falar com a equipe.
+  - Quando a consulta é cancelada, pelo link ou pela Agenda (cor Tomate). Quem acabou de cancelar vê "Consulta cancelada. Este link deixou de valer." Abrindo de novo, vê "Este link expirou".
+  - O servidor confere a expiração a cada abertura e a cada `POST`, pelo horário do evento no Google naquele momento, no fuso do dono. A linha do link é marcada `revoked_at` no cancelamento e não volta a valer, nem se o evento for reaberto (um envio novo, depois de reagendar, gera link novo só nesse caso).
+- **Chatwoot sem envio duplicado:** a mensagem é sempre a mensagem modelo de Configurações › Consultório. O Chatwoot NÃO envia quando:
+  - o paciente já confirmou pelo link (não precisa de lembrete);
+  - a mensagem já foi pelo botão do WhatsApp ou pelo próprio Chatwoot para este horário;
+  - a consulta foi cancelada ou o link expirou.
+  - A conferência é feita duas vezes: ao montar a fila do dia e de novo, no próprio banco, imediatamente antes de cada envio (o paciente pode confirmar ou o Pablo pode tocar no WhatsApp entre uma mensagem e outra da fila). O registro do envio é gravado antes da chamada ao Chatwoot, com a chave id do evento mais o início como `UNIQUE`: se dois despertares tentarem o mesmo, só um passa.
+  - Nos detalhes, quem já confirmou não mostra mais o botão do WhatsApp: "Já confirmou pelo link: não precisa enviar de novo, nem pelo WhatsApp nem pelo Chatwoot."
+
+**Respostas do paciente nas cores, proteção do link e espera entre envios (12/11/2026, 22:11 UTC).** Pedidos do Pablo, já no protótipo:
+
+- **Cada resposta pelo link muda a cor na Agenda e no Google** (o mesmo `PATCH` com `colorId` e etag):
+  - Confirmar: Confirmado, Manjericão (verde).
+  - Cancelar: Cancelado, Tomate (vermelho). O link expira na hora.
+  - Remarcar: Reagendado, Banana (amarelo). A página ganhou "Preciso remarcar", que também pede confirmação num aviso ("Pedir para remarcar?", foco em "Voltar"). O horário continua reservado até a equipe combinar o novo; a página mostra "Pedido recebido. A nossa equipe vai falar com você pelo WhatsApp". O aviso ao Pablo diz "pediu para remarcar", e os detalhes do agendamento trocam o envio da mensagem por "Falar com o paciente" (WhatsApp sem texto pronto). Quando o Pablo move o agendamento, o link continua o mesmo, mostra o novo horário e volta a pedir a confirmação. Escolha minha: o paciente não escolhe o novo horário sozinho, porque o pedido anterior foi "para reagendar, orienta a falar com a equipe".
+  - A resposta guardada (`zur_appointment_links.situação`) e a cor do evento andam juntas: se o Google recusar, a Zuri tenta de novo e avisa depois da terceira falha (regra que já estava no plano).
+- **Proteção contra descobrir outros agendamentos mexendo no link:**
+  - O token é aleatório, 128 bits (22 caracteres base64url), sem relação com o id do evento, a data ou o paciente. Não existe sequência: trocar uma letra cai num token que não existe (chance de acertar um válido é de 1 em 2¹²⁸ por tentativa).
+  - O endereço é só `/c/<token>`. Nenhum outro parâmetro é lido: `?id=`, `?evento=`, caminho a mais ou token com tamanho ou caracteres fora do formato (Zod, exatamente 22 de `[A-Za-z0-9_-]`) recebem a mesma página de link inválido, sem tocar no banco.
+  - A busca é pelo SHA-256 do token, com índice `UNIQUE`; o token nunca é comparado em texto nem gravado nos registros. A resposta de inválido tem o mesmo tamanho, o mesmo código (404) e um tempo parecido com a de um link que existe mas expirou, para não dar pista.
+  - Freio de tentativas: por rede, 30 aberturas e 10 respostas a cada 10 minutos; 3 tokens inválidos em 10 minutos bloqueiam a rede por 1 hora na rota `/c/` (só nela; era 5 até 22:37), e a Zuri avisa o Pablo uma vez por dia se isso acontecer.
+  - Um link por agendamento (`UNIQUE` no id do evento), e o `POST` só age sobre o evento ligado ao token. Testes: token de A nunca abre nem muda B; tokens vizinhos e alterados dão a página de inválido; parâmetros extras são ignorados; o freio dispara no 4º token inválido.
+- **Detalhes do agendamento:** saiu a linha "Expira … ou se a consulta for cancelada" e a lembrança do prazo de cancelamento. Ficam só a situação e as ações.
+- **Espera entre envios em massa, em segundos (Chatwoot):**
+  - Fica na credencial do Chatwoot (CRM › Credenciais), um lugar só para todas as automações que usam a caixa: "Espera entre envios em massa (segundos)", com "De" e "Até". A Zuri sorteia um valor entre os dois a cada mensagem, para não parecer robô. Padrão de 30 a 60 s; aceita de 5 a 600 s, conferido no servidor (Zod, números inteiros, "De" menor ou igual a "Até").
+  - Vale só para mensagens que vão para vários pacientes: confirmações da véspera, pedidos de avaliação e fluxos com várias pessoas. Mensagem para uma pessoa só (por exemplo, um fluxo disparado por um paciente) sai na hora, sem espera.
+  - Como funciona no servidor: uma fila por credencial, já existente, com a hora da próxima saída guardada no banco. Cada envio em massa marca `próxima = agora + sorteio(De, Até)`, e o alarme único acorda nessa hora. Assim a espera é respeitada mesmo entre automações diferentes, sem `sleep` e sem segurar o despertar. Até 5 envios por despertar continuam valendo como teto; com espera de 5 s, um despertar pode mandar mais de uma, sempre respeitando a espera entre elas.
+  - Substitui o "30 s a 1 min" fixo da decisão de 10/11.
+
+**Consultório no padrão das outras telas, remarcação pelo link e esperas do Chatwoot (12/11/2026, 22:37 UTC).** Pedidos do Pablo, já no protótipo:
+
+- **Fim do salto nas telas do Consultório.** Causa: Atendimentos, Financeiro e Resultados eram outra página dentro de um quadro, com carregamento, entrada animada das barras e ícones postos depois de desenhar; por isso pareciam "dar um clique" ao abrir. Agora são telas da própria Zuri, com o mesmo esqueleto de carregamento, a mesma entrada, o mesmo cabeçalho, as mesmas abas com ícone, os mesmos cartões, indicadores, barras e listas da Agenda e das Avaliações. Nenhuma barra cresce ao abrir. Regra para o código: uma tela nova usa os componentes de `apps/web` (PageHeader, abas, cartões, `kpis`, `hbars`, `cols`), sem estilo nem animação própria.
+- **Atendimentos** (abas Dia e Indicadores):
+  - Lê a Agenda ao vivo (`/api/live`, área `agenda`): marcar, mover, cancelar ou mudar a cor de um agendamento aparece aqui na hora, sem recarregar. A linha "Ao vivo com a Agenda" diz quantos atendimentos o dia tem.
+  - Grupos: "Para registrar" (já passou do horário, com Veio e Faltou), "A seguir", "Registrados" e "Cancelados" recolhido. Cada linha tem a cor da situação da Agenda, o serviço e a resposta pelo link (confirmou, cancelou, remarcou).
+  - Setas para ver outro dia. Dia futuro mostra o resumo de confirmados, esperando confirmação, reagendados e cancelados.
+  - **Dia sem atendimentos:** cartão "Nenhum atendimento hoje" com o motivo (feriado com o nome, fim de semana, todos cancelados ou nada marcado), o próximo atendimento com dia, hora e tipo e "Ver esse dia", e os botões "Agendar neste dia" (abre o formulário da Agenda já no dia) e "Abrir a Agenda". Se alguém for marcado enquanto a tela está aberta, a lista aparece sozinha.
+  - Presença (Veio, Faltou) fica no próprio evento (`extendedProperties.private`, como o Financeiro), sem migration.
+- **Financeiro** (A receber, Extrato, Serviços e despesas, Importar planilha):
+  - **A receber, ligado aos atendimentos do dia:** "Hoje, para receber" (atendimentos de hoje com valor e sem pagamento), "Hoje, ainda vão acontecer" (dá para registrar antes, se o paciente já pagou), "De outros dias, em aberto" (com "há N dias") e "Recebidos hoje". Cada linha mostra horário, paciente, serviço, valor, cor da situação, presença e atraso. Quem faltou ou cancelou sai sozinho. Quatro indicadores no topo: a receber hoje, em aberto de outros dias, recebido hoje e recebido no mês.
+  - "Registrar pagamento" abre na própria linha: valor sugerido pelo serviço, forma (Pix, Dinheiro, Débito, Crédito) ou "Sem cobrança". Grava o Financeiro no evento do Google (o mesmo campo do formulário da Agenda) e o lançamento no extrato, com "Desfazer".
+  - **Serviços e valores** (antes "Preço da consulta"): lista de serviços com nome, tipo da Agenda ligado, duração e valor; "Novo serviço" e editar. Um tipo da Agenda só pode ter um serviço; valor 0 vira "Sem cobrança" e não entra em A receber.
+  - **Despesas que se repetem:** cada despesa é "Todo mês, dia N" ou "Só uma vez". As mensais entram sozinhas no extrato no dia escolhido; antes do dia, aparecem como "previsto" no mês corrente, e o total de previstas aparece no indicador de saídas. No código: o alarme diário (já existente) cria o lançamento do mês com a chave `despesa + AAAA-MM` como `UNIQUE`, então rodar duas vezes não duplica; dia 29 a 31 cai no último dia de mês mais curto; mudar o valor vale do próximo lançamento em diante e não mexe no que já está no extrato; apagar a despesa para os próximos meses e mantém os lançados. Tabelas novas de acréscimo (`zur_services`, `zur_expenses`), na migration da Gestão.
+  - **Extrato:** mês com setas, indicadores de entradas, saídas e saldo, filtro Tudo, Entradas e Saídas, e cada lançamento com a origem (Atendimento, Planilha, À mão, Todo mês).
+- **Resultados** (Painel e Relatórios), só financeiro: recebido, despesas, resultado e a receber, comparados com os mesmos dias do mês anterior; entradas e saídas por mês; ponto de equilíbrio (quantos atendimentos cobrem as despesas fixas e em que dia do mês isso aconteceu); por serviço, por forma de pagamento e maiores despesas. Botão "Ocultar valores" em Financeiro e Resultados.
+- **Remarcar pelo link, pelo próprio paciente:**
+  - Onde aparece: "Preciso remarcar" na página do link (antes e depois de confirmar) e "Prefiro remarcar" dentro do aviso de cancelamento.
+  - Passo 1, "Para quando?": os próximos 15 dias, de amanhã em diante. Dia fechado (fim de semana, feriado, fora dos dias de atendimento) ou sem vaga aparece desativado com o motivo. Dias que já têm consultas ganham um destaque ("horários colados a outras consultas"). Data depois de 15 dias: a página manda falar com a equipe pelo WhatsApp.
+  - Passo 2, "Manhã ou tarde?": do início até a pausa e da pausa até o fim, com o número de horários livres; turno sem vaga fica desativado.
+  - Passo 3, "Tem um horário de preferência?": horas cheias do turno ou "Tanto faz".
+  - Passo 4, "Horários livres para você": até 3 opções, a primeira marcada "Melhor opção", e "Ver os N horários deste turno". Escolher abre um aviso de confirmação ("Remarcar para este horário?", foco em "Voltar").
+  - **Busca de vagas:** grade de 30 min dentro do horário de atendimento do consultório (Configurações › Consultório › Horário de atendimento: dias, início, fim e pausa), com a duração do próprio agendamento. Um horário só é livre se não encosta em nenhum evento do dia em nenhuma agenda lida, inclusive compromissos que não são de paciente e agendas só de leitura. Nota de cada horário: encostar no começo ou no fim de outra consulta vale mais (menos buracos na agenda); depois, ficar perto do horário preferido; empate vai para o mais cedo.
+  - **Sem conflito:** o servidor refaz a busca na hora de gravar, lendo a Agenda do Google naquele momento, dentro do mesmo Durable Object (um pedido por vez). Se o horário foi ocupado entre a escolha e o toque, a página diz "Esse horário acabou de ser ocupado" e mostra os que sobraram. A gravação é o `PATCH` do evento com etag; etag velho refaz a leitura. Nada é criado: o mesmo evento muda de dia e hora.
+  - **Depois de remarcar:** o evento fica Reagendado (Banana, amarelo), o link continua o mesmo e mostra o horário novo ("Consulta remarcada. Até lá"), e o Pablo recebe o aviso "remarcou pelo link: de sáb, 14/11 às 09:00 para ter, 17/11 às 09:00". A página continua oferecendo cancelar dentro do prazo.
+  - **Limites:** até 2 remarcações por consulta pelo link (depois, só pela equipe); só dentro do prazo de cancelamento (12 horas antes e até o dia anterior); a lista de dias e vagas tem o mesmo freio por rede do link; a resposta mostra só horários livres, nunca nome, tipo ou quantidade de outros pacientes.
+  - Pedido de remarcar sem escolher horário (versão de 22:11) saiu: o paciente escolhe sozinho.
+- **Bloqueio por links errados:** 3 tokens inválidos em 10 minutos bloqueiam a rede por 1 hora na rota `/c/` (antes 5).
+- **Espera para mensagem a uma pessoa:** na credencial do Chatwoot, "Espera para mensagem a uma pessoa (segundos)", com "De" e "Até", padrão 2 a 5 s, de 1 a 30 s, sempre menor que a espera dos envios em massa (o servidor recusa se não for). Mesma fila por credencial: a próxima saída é `agora + sorteio(De, Até)` do tipo da mensagem.
+
+**O que não muda:** arrastar, Alt com as setas, "Desfazer", "mover marca Reagendado", a cor de cada situação e a agenda só de leitura. O primeiro carregamento também não, porque o formulário está no pedaço da Agenda, que carrega sob demanda; a busca usa a lista de Contatos que a tela já lê, sem chamada nova ao Google.
+
+**Perguntas ao Pablo** (seção 14).
+
+### Ajustes de 13/11/2026 (00:15 UTC)
+
+O Pablo pediu onze ajustes. Todos entraram no protótipo, no bloco "13/11/2026" no fim do script e nas funções que já existiam.
+
+**1. Um lugar só para dias, horário e almoço.** Havia duas coisas parecidas: "Dias de trabalho" e "Horário de trabalho" em Configurações › Agenda, e "Horário de atendimento" em Configurações › Consultório. Agora existe um bloco só, "Agenda e horário de atendimento", em Configurações › Agenda. Ele tem os dias de atendimento, o começo, o fim e o almoço (de 30 em 30 min, no máximo 3 h, com pelo menos 30 min de atendimento antes e depois). A Agenda, o Seu dia, o novo agendamento, "Agendar" pela ficha do contato e a remarcação pelo link leem daqui. Configurações › Consultório só mostra o resumo ("Segunda a sexta, das 08:00 às 18:00, almoço das 12:00 às 13:00") com o botão "Mudar", que leva ao bloco. "Mostrar sábado e domingo" virou "Mostrar os dias sem atendimento", porque é só visual.
+- Na Agenda, o almoço aparece como faixa listrada em cada dia de atendimento, e os dias sem atendimento ficam com o fundo de fora do expediente (antes era só sábado e domingo).
+- **Consulta não entra fora do horário nem no almoço.** Vale para o formulário (a mensagem diz o motivo e o foco vai para a hora) e para arrastar ou esticar (a consulta volta para onde estava e o aviso explica). Compromissos sem tipo, como reuniões, podem ficar em qualquer hora. Editar uma consulta antiga sem mudar dia nem hora não é bloqueado.
+- No sistema: um registro `clinic_hours` em `zur_settings` (dias, início, fim, almoço), validado por Zod no servidor com as mesmas regras. Sem migration.
+- **Regra nova contra duplicidade:** `.claude/rules/uma-fonte-por-ajuste.md`. Cada ajuste tem um lugar só para editar; as outras telas mostram o valor e levam até ele.
+
+**2. Remarcar pelo link, revisado.**
+- Até **8 dias** (antes 15).
+- O paciente não vê nenhuma regra interna. Saíram: "nos próximos 15 dias", "os marcados têm horários colados a outras consultas", o número de horários livres no dia e no turno, "Melhor opção" e "Ver os N horários". Na página ficam só os dias, o turno e os horários. O aviso de cancelar diz só "você pode remarcar agora".
+- Passo 2 (manhã ou tarde): turno sem vaga fica desativado com "sem horário". Manhã vai do início ao almoço; tarde, do fim do almoço ao fim.
+- Passo 3: só as horas do turno, sem "Tanto faz".
+- Passo 4 (regra interna, em Configurações › Consultório): turno com consulta mostra os horários livres colados antes ou depois de uma consulta, até 3, os mais perto da hora escolhida primeiro. Turno com consulta, mas sem horário colado livre: os 2 mais perto de uma consulta. Turno sem consulta: 2 horários sorteados. No sistema o sorteio usa `crypto.getRandomValues` e fica guardado por link, dia e turno, para recarregar a página não trocar as opções.
+- Tudo respeita a agenda e o horário de atendimento: só dia de atendimento, sem feriado, sem almoço, sem conflito, e o servidor confere de novo na hora de gravar.
+
+**3. Tipo e local separados.** O formulário ganhou o campo "Local" (Presencial ou Online). "Tipo do evento" passa a ser só o nome: Consulta, Retorno, Avaliação física, os que já existem na agenda e "Outro" para digitar.
+- Presencial: o endereço vem de Configurações › Consultório e vai no campo Local do evento no Google.
+- Online: ao salvar, a Zuri pede ao Google uma chamada do Meet (`conferenceData.createRequest` com `conferenceSolutionKey.type = "hangoutsMeet"` e `conferenceDataVersion=1`). **É viável sem permissão nova**: o escopo `calendar.events` já cobre. O link volta em `hangoutLink` e aparece nos detalhes do agendamento ("Google Meet · meet.google.com/…", com Copiar), na variável `{local}` da mensagem de confirmação e no e-mail. Se o Google ainda estiver criando (`status: pending`), os detalhes mostram "O Google está criando o link da chamada…" e a Zuri lê de novo. Contas do Google Workspace com o Meet desligado pelo administrador não recebem o link; a tela avisa e o agendamento continua salvo.
+- Observação no Google: a Zuri escreve sempre a primeira linha "Tipo | Local" (por exemplo "Consulta | Online"), como hoje; o que o Pablo escrever vai na linha de baixo. O formulário mostra isso embaixo do campo. Os detalhes mostram "Observação no Google" com as duas partes. Assim as automações, a ficha do contato e os Serviços e valores continuam lendo o mesmo texto.
+
+**4. Homônimos no agendamento.**
+- Nome igual ao de dois ou mais contatos: não dá para agendar sem escolher o contato certo na lista (telefone, data de nascimento e última consulta) ou tocar em "É outra pessoa".
+- "É outra pessoa" deixa o celular obrigatório, porque é ele que separa as duas pessoas nas automações.
+- Os detalhes mostram a etiqueta "Homônimo" ao lado do contato vinculado, ou "Pessoa nova, com o mesmo nome de N contatos".
+- As automações (confirmação, aniversário, avaliação, Financeiro) nunca usam o nome: usam o contato vinculado, guardado em `extendedProperties.private` do evento. Sem vínculo, usam o celular.
+- Corrigido junto: o aviso dizia "há mais de um contato com esse nome" mesmo quando havia só um.
+
+**5. Botão de sincronização com o Google, revisado.** Achados e correções no protótipo, que valem para o código:
+
+| Situação | Antes | Agora |
+| --- | --- | --- |
+| Salvo no Google | Ficava para sempre | Fica 4 s e volta para "Sincronizado", com a hora da conferência |
+| Sincronizado | Hora fixa ("14:10") | Hora da última conferência de verdade |
+| Falha ao salvar | "Tentar de novo", mas o evento já tinha voltado ao que era: repetir daria o mesmo erro | Recusa do Google (permissão, dado inválido) volta o evento e oferece "Ver o evento". Erro de rede ou do Google (5xx) não é falha: vira fila |
+| Sem internet | "1 mudança" fixo; mudanças novas viravam "Salvando…" | Conta as mudanças na fila; as novas entram na fila e saem na ordem quando a conexão volta, ou em "Tentar agora" |
+| Em pausa (429) | Mudanças novas ignoravam a pausa | Esperam na fila; a Zuri tenta sozinha |
+| Conexão expirou | Ainda deixava mudar na tela | Nada muda na tela até conectar de novo |
+| Atualizar agora | Só em "Desatualizada" | Também em "Sincronizado", com intervalo mínimo de 10 s |
+
+- Prioridade quando duas situações valem ao mesmo tempo: Conexão expirou > Falha ao salvar > Sem internet > Mudou no Google > Em pausa > Salvando > Atualizando > Desatualizada > Salvo no Google > Sincronizado.
+- No código, para não ter erro em produção:
+  - fila guardada no navegador (IndexedDB), uma mudança por vez com `etag`;
+  - nova tentativa com espera crescente (2, 4, 8 s… até 1 min);
+  - 412 vira "Mudou no Google";
+  - aviso ao fechar a aba com mudança na fila;
+  - "Desatualizada" depois de 15 min sem notícia do canal `events.watch`, e então a Zuri lê sozinha;
+  - ao voltar para a aba, lê de novo;
+  - o mesmo sinal na Agenda e no Seu dia.
+
+**6. Confirmação também por e-mail.**
+- Configurações › Consultório ganhou "Também por e-mail, na mesma hora", ligado.
+- Na véspera útil, quem tem e-mail no contato ou no agendamento recebe o mesmo texto e o mesmo link por e-mail, junto com o WhatsApp. O assunto é "Confirme sua consulta de {dia}" e o link vira um botão.
+- O que o paciente fizer primeiro vale. Nenhum canal manda de novo, porque o link é um só.
+- Nos detalhes há também "Enviar por e-mail".
+- **Canal:** o `SEND_EMAIL` da Cloudflare só envia ao e-mail verificado do dono, então não serve para pacientes. A recomendação é a caixa de e-mail do próprio Chatwoot, que já é a integração das mensagens a pacientes: o mesmo registro de envio, sem serviço novo e sem custo. A alternativa é a API do Gmail com `gmail.send`, que pede uma permissão nova do Google (seção 14).
+
+**7. Aniversários sem aviso.** Saíram "Aniversários do dia" (Integrações › Contatos) e "Aniversários de clientes, às 9h" (Avisos › CRM). O módulo "Parabéns de aniversário" diz que envia pelo WhatsApp e por e-mail.
+
+**8. Extrato em planilha.**
+- Financeiro › Extrato ganhou "Exportar planilha", que baixa o mês aberto.
+- No protótipo é CSV com ";" e vírgula decimal, que o Excel e o Google Planilhas abrem direto em português. No código, sai .xlsx com a mesma biblioteca da importação.
+- Toda célula que começa com `=`, `+`, `-` ou `@` ganha um apóstrofo, para texto vindo de planilha importada nunca virar fórmula (CSV injection).
+
+**9. IPCA e projeções em Resultados.**
+- **Nominal | Real (IPCA):** o gráfico de entradas e saídas passa para reais de hoje.
+- **Desempenho real:** a inflação do período, a receita real e o resultado líquido real (o que entrou menos as despesas) do primeiro ao último mês fechado, com a margem.
+- **Aba Projeções:**
+  - os próximos 3 meses com resultado previsto e uma faixa de receita (±10%);
+  - "Já marcado", o que a agenda do mês que vem já garante;
+  - dois botões de "E se…": reajuste dos serviços (0, 5 ou 10%) e atendimentos por semana (−2 a +4);
+  - "Como a Zuri calcula": média dos 3 últimos meses fechados em reais de hoje, mais a tendência, com as despesas corrigidas pelo IPCA esperado.
+- **Fonte:**
+  - IPCA: série 433 do Banco Central (`api.bcb.gov.br`, pública, sem chave);
+  - IPCA esperado: boletim Focus (`olinda.bcb.gov.br`);
+  - o servidor lê uma vez por mês, depois do dia 10, num endereço fixo (não é HTTP livre do agente), e guarda.
+- Uma subrequisição por mês, sem custo. O mês corrente usa o último IPCA conhecido, marcado como prévia.
+
+**10. Família nos Contatos.**
+- A ficha do contato ganhou o cartão "Família" com "Ligar parente". A pessoa escolhe:
+  - o parente, pelo nome, telefone e data de nascimento, porque homônimos são pessoas diferentes;
+  - o papel dele, que pode ser mãe, pai, filha, filho, irmã, irmão, avó, avô, neta, neto, tia, tio, sobrinha, sobrinho, prima, primo, cônjuge, responsável legal ou dependente;
+  - o papel do outro lado, com as opções certas para o papel escolhido.
+- O grupo familiar junta quem se liga mesmo sem ligação direta ("Também no grupo familiar: …").
+- **Responsável:** com pai, mãe, avó, avô, tia, tio, irmã, irmão ou responsável legal, dá para marcar "As mensagens do consultório para Lucas vão para Helena". A confirmação, o e-mail e o WhatsApp usam então o celular e o e-mail do responsável, e os detalhes do agendamento dizem isso. É o caso de criança ou de quem não usa celular.
+- No sistema:
+  - as ligações ficam só na Zuri, na tabela nova `zur_contact_family` (contato A, contato B, papel de cada lado, quem recebe as mensagens), pela `resourceName` do Google;
+  - migration de acréscimo, a próxima livre na develop;
+  - o Google Contatos fica só de leitura e não muda;
+  - entra no backup, porque é dado do Pablo e não cópia do Google.
+
+**Perguntas ao Pablo** (seção 14): o canal do e-mail.
+
+### Ajustes de 13/11/2026 (00:37 UTC): e-mail, Pix pela fzap e segurança das integrações
+
+1. **E-mail para pacientes** (Configurações › Integrações): dois modos, um ativo por vez.
+   - **Gmail (recomendado):** permissão `gmail.send` na conexão do Google que já existe. Só envia, não lê a caixa. Nenhuma senha fica na Zuri e o acesso sai pelo Google a qualquer hora.
+   - **SMTP:** host, porta 465 (TLS direto) ou 587 (STARTTLS obrigatório), usuário e senha de app. Pelo `connect()` dos Workers; a porta 25 é bloqueada. Host sem IP nem endereço interno. Trocar host ou usuário pede a senha de novo.
+   - O `SEND_EMAIL` da Cloudflare continua só para avisos ao dono (ele não envia a terceiros).
+2. **Pix pelo WhatsApp (fzap):** credencial em CRM › Credenciais (URL https da instância e token, só escrita). Chave Pix, tipo, nome do recebedor e instruções em Configurações › Consultório (um lugar só). Botão "Enviar Pix" em Financeiro › A receber e no detalhe do atendimento não pago.
+   - Chamada: `POST /chat/send/pix` com `phone` (dígitos), `keyType` (PHONE, EMAIL, CPF, CNPJ, EVP), `key`, `name`, `amount` (decimal) e `description`. Só no modo WhatsApp Web; no Cloud API a fzap responde 501 e a Zuri explica.
+   - Só sai com toque do dono, valor de R$ 1 a R$ 100.000, prévia em texto puro e aviso de reenvio em menos de 10 min. O pagamento não se confirma sozinho: continua "Registrar pagamento".
+   - A chave é validada antes de salvar (dígitos do CPF e do CNPJ, e-mail, celular +55, chave aleatória).
+3. **Segurança das integrações** (vale para fzap, SMTP, Chatwoot e as que vierem):
+
+| Ameaça | Proteção |
+| --- | --- |
+| Vazamento do banco ou do backup | Segredo cifrado com AES-256-GCM, chave derivada por integração (HKDF) e o endereço como dado associado; o backup e a exportação não levam segredos |
+| Ver o segredo pela tela | Campo só de escrita; a tela mostra só os últimos caracteres |
+| Sessão roubada mudando a credencial | Criar, editar ou trocar o endereço pede a senha de novo e registra em Atividade |
+| Mandar o token para outro servidor (SSRF) | Cada credencial fala só com o próprio host https, sem redirecionamento, sem IP e sem rede interna; mudar o endereço pede o token de novo |
+| IA lendo ou usando o segredo | Nenhuma ferramenta do agente lê credenciais; o envio de Pix não é ferramenta da IA |
+| Segredo em log | Logs sem cabeçalhos nem corpo das chamadas externas |
+
+### Ajustes de 13/11/2026 (00:44 UTC): travas da agenda
+
+Pedido: evitar consulta em horário não permitido (almoço, feriado, fora do horário e outros casos). Uma função só, `agErro`, confere tudo na ordem em que a pessoa corrige, e o formulário, o arrastar, a volta de uma consulta cancelada, a ficha do contato e a remarcação pelo link passam por ela. No sistema, a mesma regra fica em `packages/shared` e o servidor confere de novo antes de gravar no Google.
+
+| Caso | O que acontece |
+| --- | --- |
+| Horário que já passou | Bloqueia ("Esse horário já passou") |
+| Data a mais de um ano | Bloqueia (erro de digitação no ano) |
+| Minutos fora do passo de 5 | Bloqueia |
+| Menos de 15 min ou mais de 4 h | Bloqueia, com foco no término |
+| Dia sem atendimento | Bloqueia |
+| Feriado nacional | Bloqueia, a não ser que o feriado esteja marcado "Atendo" |
+| Dia sem expediente (recesso, férias, feriado da cidade) | Bloqueia |
+| Fora do horário ou no almoço | Bloqueia |
+| Outra consulta no mesmo horário | Bloqueia, dizendo de quem é |
+| Compromisso pessoal no mesmo horário | Só avisa |
+| Paciente escolhe horário que acabou de ser ocupado ou fechado | Confere de novo na hora de gravar e pede outro |
+
+- **Feriados e dias sem expediente** ficam num lugar só, Configurações › Agenda: os feriados nacionais dos próximos 12 meses com "Atendo", e a lista de dias sem expediente. CRM › Pedidos de avaliação só mostra o resumo com "Mudar".
+- **Consultas que já estavam marcadas** e ficam fora depois de uma mudança nos ajustes (ou que foram criadas direto no Google) não somem: Configurações › Agenda lista até 5, com o motivo, e a agenda marca o evento com um alerta.
+- Compromissos sem tipo (reunião, pessoal) continuam livres.
+- Sem exceção manual por enquanto: se o Pablo quiser atender fora do horário de vez em quando, entra um "Agendar mesmo assim" com confirmação.
+
+### Ajustes de 13/11/2026 (01:04 UTC): planilha, remarcar, avisos da agenda e link
+
+1. **Importar planilha (Financeiro).** Modelo para baixar com as colunas Data, Tipo, Descrição, Valor (obrigatórias), Categoria, Forma de pagamento, Paciente e Observação, e 3 linhas de exemplo que a importação reconhece e pula. No sistema, o modelo também sai em .xlsx com listas nas colunas Tipo e Forma e uma aba de instruções. Nada é gravado antes da conferência. O servidor confere tudo de novo e grava cada importação numa transação só. A importação inteira pode ser desfeita.
+
+| Situação | O que acontece |
+| --- | --- |
+| .xls antigo, outro formato, arquivo vazio, mais de 5 MB, planilha com senha | Recusa com o motivo |
+| Arquivo fora do UTF-8 (Excel do Windows) | Converte os acentos e avisa |
+| Título acima do cabeçalho; nomes de coluna diferentes (Histórico, Valor (R$), Forma) | Pula o título e reconhece os nomes |
+| Coluna obrigatória faltando ou repetida | Para e indica o modelo |
+| Colunas a mais | Ignora e lista |
+| Mais de 5.000 linhas; aspas sem fechar; linha com colunas a mais | Recusa o arquivo ou a linha |
+| Data inexistente, no formato mês/dia, no futuro ou antes de 2000 | Erro na linha; aceita dd/mm/aaaa, d/m/aa, aaaa-mm-dd e o número do Excel |
+| Valor em texto, zero, acima de R$ 1 milhão, entrada negativa | Erro na linha; aceita R$, ponto de milhar, vírgula ou ponto, parênteses |
+| Mais de 2 casas decimais | Arredonda e avisa |
+| Tipo diferente de Entrada ou Saída (aceita Receita, Despesa, E, S) | Erro na linha |
+| Categoria, serviço ou forma de pagamento que não existe | Entra em Outros (ou Não informada) e avisa |
+| Linha repetida na planilha, lançamento já no extrato, atendimento pago no mesmo dia e valor, mesmo arquivo de novo | Duplicada: fica de fora, a não ser que a pessoa marque "Importar mesmo assim" |
+| Texto que começa com =, +, - ou @ | Entra só como texto |
+| CPF no texto | Sai antes de gravar |
+| Nome do paciente | Só liga ao contato (um contato com esse nome); homônimo ou ausente fica sem vínculo; o nome não é guardado |
+| Linhas com problema | Saem numa planilha com a coluna Problema, no mesmo formato, para corrigir e importar de novo |
+
+2. **Configurações › Integrações › E-mail:** os campos ficam alinhados mesmo quando um deles tem dica embaixo (`.field` alinhado ao topo, vale para todos os formulários).
+3. **Remarcar pelo link:** só aparecem dias e turnos com horário livre. Os horários são de 1 em 1 hora, a partir do início do turno, e a consulta dura o tempo do serviço (1 h no padrão). Sem nenhum dia livre, a página oferece "Combinar pelo WhatsApp". Os passos entram com uma transição curta (sem animação para quem pede menos movimento) e tocam os sons do sistema: Sino ao confirmar ou remarcar, Gota ao cancelar, dois tons graves quando o horário acabou de ser ocupado.
+4. **WhatsApp com mensagem pronta:** "Olá! Sou {nome}, tenho consulta marcada para {dia} às {hora} e não achei um bom horário para remarcar pelo link. Vocês podem me ajudar?" (ou "tenho uma dúvida"). O link inválido abre sem nome. Botões do link com três pesos: Confirmar (principal), Preciso remarcar (contorno), Falar com a equipe (texto), e Cancelar a consulta em vermelho, numa linha só.
+5. **Agenda, horário fechado:** tocar num horário que não aceita consulta abre um aviso com o motivo (`agErro`), o próximo horário livre ("Usar o próximo livre") e "Criar compromisso pessoal". Ao arrastar, a consulta fica com borda vermelha e o motivo curto (Almoço, Feriado, Já passou, Ocupado…); soltar ali não muda nada, toca um som discreto e explica. Vale também para a borda de duração e para Alt + setas.
+6. **Sem a linha "Dia todo"** na agenda e sem o ajuste "Eventos de dia inteiro". O feriado aparece embaixo do dia, no cabeçalho, e o dia sem expediente também.
+
+### Ajustes de 13/11/2026 (01:32 UTC): respiro nas telas e país nos acessos
+
+1. **Remarcar pelo link:** cada passo tem barra de progresso, título, a consulta marcada num bloco próprio ("Consulta marcada", dia por extenso), o rótulo "Escolha o novo dia" junto da grade e o contato da equipe separado por uma linha. Os dias mostram o nome inteiro e a data ("Sexta, 13 de nov"). Corrigido um `div` sem fechar que juntava tudo.
+2. **Outras telas:** respiro padrão entre blocos de formulário em Configurações (campo depois de grade, ajuda depois de campos, editor da mensagem). A prévia do Pix ocupa a largura do diálogo. Na página do paciente, o ícone do endereço alinha com a primeira linha e o prazo de cancelamento fica centralizado. Filtros em diálogo não encolhem mais (o grupo de botões ficava como uma linha fina).
+3. **Atividade de acesso e Todos os acessos:** cada acesso mostra ícone e situação, o aparelho, a cidade aproximada e o **país** (nome e sigla, com destaque quando é fora do Brasil) e o IP. O diálogo agrupa por dia e filtra por Todos, Atenção e Fora do Brasil. No sistema, o país vem de `request.cf.country`, que sempre chega; a cidade pode faltar. Ver docs/seguranca.md, que já guarda o IP por 90 dias: o país entra no mesmo registro, sem coluna nova se o campo de localização já existir (conferir na implementação).
+
 ## 12. Riscos
 
 - **Som bloqueado pelo navegador** antes do primeiro clique: o aviso chega sem som. Mitigação: o cartão explica e o "Testar" destrava.
@@ -241,4 +610,11 @@ O Pablo respondeu "siga as recomendações":
 
 ### Perguntas abertas
 
-Nenhuma.
+Sobre os ajustes de 12/11 à tarde, com a recomendação entre parênteses:
+
+1. ~~O protótipo está aprovado?~~ Aprovado em 13/11, 01:44 UTC (v51), com tudo o que entrou até ali. Código no cronograma da seção 11.
+2. ~~Até quando o paciente cancela pelo link?~~ Respondida em 12/11, 21:37 UTC: até 12 horas antes e só até o dia anterior.
+3. ~~Quem envia o link?~~ Respondida em 12/11, 21:37 UTC: as duas formas, sozinha pelo Chatwoot e pelo botão do WhatsApp com a mensagem modelo.
+4. ~~Por onde sai o e-mail de confirmação?~~ As duas formas, como no protótipo aprovado: Gmail com `gmail.send` (recomendado) ou SMTP com senha de app.
+
+Respondidas em 12/11/2026, 17:32 UTC: o Financeiro fica com "Não pago", "Pago" e "Gratuito", guardado no evento; o atendimento online grava "Consulta | Online", e o tipo vira uma lista com "Retorno | Consultório" e a opção de digitar.
