@@ -17,6 +17,7 @@
 - Skills externas (instaladas sozinhas no início da sessão por `scripts/instalar-skills.sh`, fixadas por commit em `.claude/skills-externas/`). Use sem esperar pedido:
   - `mattpocock-skills:codebase-design` e `domain-modeling` no plano; `tdd` na implementação; `diagnosing-bugs` em qualquer falha; `code-review` na revisão de QA; `writing-for-agents` ao editar skills, `AGENTS.md` ou `CLAUDE.md`; `handoff` só para alimentar `progresso.md`.
   - `cloudflare-security-audit:security-audit` na auditoria (modo orientação sempre; completo nas etapas 3, 4, 12, 16, 18, 20 e 25).
+  - `differential-review` (todo PR com código), `sharp-edges` (interface nova ou mudada) e `insecure-defaults:audit` (pastas do diff; repositório inteiro no passe completo), da Trail of Bits, na auditoria. Antes do push, `bash scripts/seguranca/semgrep.sh` e `bash scripts/seguranca/gitleaks.sh`. Strix só com autorização do Pablo (`docs/qa/varreduras-de-seguranca.md`).
   - `humanizer:humanizer` na passada final de todo texto para pessoas (PR, changelog, docs, mensagens), sem mudar fatos nem termos técnicos.
   - `ponytail:ponytail` em toda implementação (menor mudança completa; nunca corta teste, validação, segurança, i18n ou docs) e `ponytail:ponytail-review` na revisão de QA.
   - Telas: `frontend-design:frontend-design` no plano de tela nova ou redesenho.

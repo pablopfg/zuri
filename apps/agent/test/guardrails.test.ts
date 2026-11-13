@@ -243,6 +243,23 @@ describe("the fixed checker (CA5, CA6)", () => {
     expect(newContacts("Ligue 98765-4321", ["tel 11 98765-4321"])).toEqual(["987654321"]);
   });
 
+  // SEC-A13-06 (Semgrep detect-redos, 13/11/2026): a flow item or a tool result
+  // is a third party's text, and runs that never end in a contact made every
+  // pattern start again from each letter. 40 KB took seconds of CPU; linear now.
+  it("SEC-A13-06 reads a long hostile text in linear time and still finds the contact at its end", () => {
+    const size = 60_000;
+    const hostile = ["a.".repeat(size / 2), "a-".repeat(size / 2), `a@${"b.".repeat(size / 2)}`, "ab.cd1".repeat(size / 6), `x.${"a".repeat(size)}1`, "a".repeat(size)];
+    const started = performance.now();
+    for (const text of hostile) contactsIn(`${text} `);
+    // The unbounded patterns needed over 20 s for these; a slow runner needs well under 2 s.
+    expect(performance.now() - started).toBeLessThan(2_000);
+    // The bounds never hide a contact: a longer run still matches, by its tail or its first 11 labels.
+    expect(contactsIn(`${"a".repeat(70)}@exemplo.com.br`).size).toBe(1);
+    expect(contactsIn(`${"s".repeat(40)}://evil.ru/x`).has("evil.ru/x")).toBe(true);
+    expect([...contactsIn(`${"a.".repeat(12)}evil.ru`)]).toEqual([`${"a.".repeat(10)}evil`]);
+    expect(newContacts(`${"a.".repeat(12)}evil.ru`, [])).toHaveLength(1);
+  });
+
   it("removes and detects hidden characters, keeping line breaks and the emoji joiner", () => {
     expect(hasHidden("linha\noutra")).toBe(false);
     expect(hasHidden("a​b")).toBe(true);

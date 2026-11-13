@@ -65,6 +65,12 @@
             "context": "lighthouse"
           },
           {
+            "context": "semgrep"
+          },
+          {
+            "context": "gitleaks"
+          },
+          {
             "context": "merge-order"
           },
           {

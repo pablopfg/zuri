@@ -139,6 +139,7 @@ export async function checkHealth(env: NodeJS.ProcessEnv, io: Io, attempts = 6):
   const lines: string[] = [];
   const fail = (line: string): Result => ({ ok: false, lines: [...lines, `::error::${line}`] });
   const domain = (env.ZURI_DOMAIN ?? "").trim().toLowerCase();
+  // nosemgrep: detect-redos -- HOSTNAME's lookahead caps the input at 253 characters
   if (!HOSTNAME.test(domain)) return fail("ZURI_DOMAIN is missing or not a host name");
 
   // A new Custom Domain may still be getting its certificate: a few tries, further apart each time.

@@ -79,9 +79,16 @@ describe("GitHub Actions workflows", () => {
     expect(triggers(wf)).not.toContain("workflow_run");
   });
 
-  it.each(all)("$path gives pull request jobs no secret and no environment", ({ wf, text }) => {
+  it.each(all)("$path gives pull request jobs no secret and no environment", ({ path, wf, text }) => {
     if (!triggers(wf).includes("pull_request")) return;
-    expect(text).not.toMatch(/secrets\./);
+    // The one exception, the owner's choice (13/11/2026): SonarQube Cloud reads
+    // SONAR_TOKEN, and only as the env of a step, never inside a shell line.
+    if (path.endsWith("sonarqube.yml")) {
+      expect(text.match(/secrets\.\w+/g)?.every((use) => use === "secrets.SONAR_TOKEN")).toBe(true);
+      for (const step of steps(wf)) expect(step.run ?? "").not.toMatch(/secrets\./);
+    } else {
+      expect(text).not.toMatch(/secrets\./);
+    }
     for (const [name, job] of Object.entries(wf.jobs)) {
       expect(job.environment, `${name} environment`).toBeUndefined();
     }
@@ -262,5 +269,62 @@ describe("source-branch check", () => {
 
   it("refuses a fork branch named develop", () => {
     expect(run({ HEAD_REF: "develop", HEAD_REPO: "outra-pessoa/zuri", BASE_REPO: repo })).toBe(1);
+  });
+});
+
+describe(".github/workflows/sonarqube.yml", () => {
+  const wf = loadWorkflow(".github/workflows/sonarqube.yml");
+  const job = wf.jobs.sonarqube;
+  const all = job?.steps ?? [];
+
+  it("runs on pull requests and on pushes to develop, read only", () => {
+    expect(wf.on).toEqual({ pull_request: null, push: { branches: ["develop"] } });
+    expect(wf.permissions).toEqual({ contents: "read" });
+    expect(job?.permissions).toBeUndefined();
+  });
+
+  it("hands the token only to the pinned scanner and to the check that it is there", () => {
+    const withToken = all.filter((step) => JSON.stringify(step.env ?? {}).includes("secrets.SONAR_TOKEN"));
+    expect(withToken.map((step) => step.uses ?? step.id)).toEqual(["token", "SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4"]);
+  });
+
+  it("ends green without a scan when the secret does not reach the run (fork, Dependabot)", () => {
+    const check = all.find((step) => step.id === "token");
+    expect(check?.run).toContain('[ -z "$SONAR_TOKEN" ]');
+    expect(check?.run).toContain('echo "run=false" >> "$GITHUB_OUTPUT"');
+    for (const step of all.slice(all.indexOf(check as (typeof all)[number]) + 1)) expect(step.if).toBe("steps.token.outputs.run != 'false'");
+  });
+});
+
+describe("security scans of the CI (docs/qa/varreduras-de-seguranca.md)", () => {
+  const ci = loadWorkflow(".github/workflows/ci.yml");
+
+  it("runs Semgrep in the image pinned by digest, from the pinned script", () => {
+    const job = ci.jobs.semgrep as (typeof ci.jobs)[string] & { container?: { image?: string } };
+    expect(job.container?.image).toMatch(/^semgrep\/semgrep@sha256:[0-9a-f]{64}$/);
+    expect(job.steps?.map((step) => step.run).filter(Boolean)).toContain("bash scripts/seguranca/semgrep.sh");
+    const script = readText("scripts/seguranca/semgrep.sh");
+    expect(script).toMatch(/^RULES_SHA=[0-9a-f]{40}$/m);
+    expect(script).toContain("--metrics=off");
+    expect(script).toContain("--error");
+  });
+
+  it("runs Gitleaks over the whole history, with a binary checked against its SHA-256", () => {
+    const job = ci.jobs.gitleaks;
+    const checkout = job?.steps?.find((step) => step.uses?.startsWith("actions/checkout@"));
+    expect(checkout?.with?.["fetch-depth"]).toBe(0);
+    expect(job?.steps?.map((step) => step.run).filter(Boolean)).toContain("bash scripts/seguranca/gitleaks.sh");
+    const script = readText("scripts/seguranca/gitleaks.sh");
+    expect(script).toMatch(/^SHA256=[0-9a-f]{64}$/m);
+    expect(script).toContain("sha256sum -c");
+    expect(script).toContain("--redact");
+  });
+
+  it("allows only exact test values in .gitleaks.toml, never a path", () => {
+    const config = readText(".gitleaks.toml");
+    expect(config).not.toMatch(/^\s*paths\s*=/m);
+    const values = [...config.matchAll(/'''(.*)'''/g)].map((match) => match[1]);
+    expect(values.length).toBeGreaterThan(0);
+    for (const value of values) expect(value).toMatch(/^\^[^*+?|]+\$$/);
   });
 });

@@ -1,7 +1,7 @@
 # Skills externas do agente
 
 O agente do Zuri usa, além das skills do próprio repositório (`.claude/skills/`),
-o plugin oficial `cloudflare` e seis pacotes de skills de terceiros. Todos se
+o plugin oficial `cloudflare` e sete pacotes de skills de terceiros. Todos se
 instalam sozinhos no início de cada sessão do Claude Code e entram no fluxo das
 etapas sem ninguém precisar chamá-los.
 
@@ -18,6 +18,10 @@ as skills aparecem com prefixo (`mattpocock-skills:tdd`, `humanizer:humanizer`,
 etc.). O prefixo evita choque de nome com as skills do projeto e com os
 comandos nativos (`/code-review`).
 
+Os três plugins da Trail of Bits foram instalados pelo mesmo script no Claude Code
+2.1.323 em 13/11/2026 (`claude plugin list` mostra `differential-review` 1.1.4,
+`sharp-edges` 1.1.3 e `insecure-defaults` 2.0.3).
+
 Em ambiente de nuvem do Claude Code, o hook já resolve. Se quiser ganhar os
 15 s, ponha `bash scripts/instalar-skills.sh` no script de setup do ambiente.
 
@@ -32,9 +36,11 @@ Em ambiente de nuvem do Claude Code, o hook já resolve. Se quiser ganhar os
 | `cloudflare` | `cloudflare/skills` | `86505e44` | Apache-2.0 | `workers-best-practices`, `durable-objects`, `agents-sdk`, `wrangler` e outras, e o servidor MCP `mcp.cloudflare.com` | Plugin oficial da Cloudflare, fixado como os demais desde a etapa 0 (antes seguia o ramo padrão e se atualizava sozinho) |
 | `frontend-design` | `anthropics/skills` (pasta `skills/frontend-design`) | `ca45fc49` | Apache-2.0 | `frontend-design` (direção visual intencional, sem cara de modelo pronto) | Só instruções em Markdown |
 | `ponytail` | `DietrichGebert/ponytail` (pasta `skills`) | `96608e07` | MIT | `ponytail`, `ponytail-review`, `ponytail-audit`, `ponytail-debt` | Só as skills em Markdown. Os hooks do pacote (modo sempre ligado, painel de custos que grava em `~/.config` e webhook opcional) ficam de fora porque a pasta `skills` não os inclui |
+| `differential-review`, `sharp-edges`, `insecure-defaults` | `trailofbits/skills` (pastas `plugins/<nome>`) | `149d7b21` | CC BY-SA 4.0 | Revisão de segurança do diff do PR; interfaces que facilitam erro; configuração insegura por padrão (pedido do Pablo, 13/11/2026) | Instruções em Markdown e agentes só de leitura (`Read`, `Grep`, `Glob`; o `adversarial-modeler` também `Bash`). O `insecure-defaults` 2.x roda como Workflow (`workflows/audit.js`): recon, 6 varreduras, verificação com Opus e relatório, sem rede nem escrita no repositório. O `differential-review` grava um relatório `.md`: sempre numa pasta fora do repositório. Nenhum hook nem servidor MCP |
 
-Nenhum pacote traz hooks, servidores MCP ou agentes (conferido com
-`claude plugin details`).
+Nenhum pacote traz hooks ou servidores MCP (conferido com `claude plugin details`
+e, nos da Trail of Bits, lendo os arquivos do commit fixado). Só os da Trail of
+Bits trazem agentes e comandos, todos de revisão.
 
 ## Quando cada skill entra (uso automático)
 
@@ -49,6 +55,9 @@ Nenhum pacote traz hooks, servidores MCP ou agentes (conferido com
 | Pergunta de UI que pede protótipo (etapa 5 e telas novas) | `mattpocock-skills:prototype` | Protótipo descartável, nunca mesclado |
 | Revisão de QA (`revisao-qa`) | `mattpocock-skills:code-review` | Dois eixos em paralelo: padrões do repositório e aderência à etapa da especificação |
 | Auditoria (`auditoria-seguranca`) | `cloudflare-security-audit:security-audit` | Modo orientação em toda etapa; auditoria completa nas etapas 3, 4, 12, 16, 18, 20 e 25 |
+| Auditoria de todo PR com código | `differential-review:diff-review` | Diff `origin/develop...HEAD` com histórico, raio de impacto e testes que faltam; relatório fora do repositório |
+| Auditoria, quando o PR cria ou muda uma interface | `sharp-edges:sharp-edges` | Rotas, schemas, configurações, ferramentas do agente e exportações de `packages/shared` que facilitam o uso inseguro |
+| Auditoria de todo PR com código e passe completo | `insecure-defaults:audit` | Nas pastas do diff; no passe completo, no repositório inteiro. Usa vários subagentes, por isso o escopo do diff no dia a dia |
 | Texto para pessoas (PR, changelog, docs, mensagens ao Pablo) | `humanizer:humanizer` | Uma passada final no texto em pt-BR, sem mudar fatos, termos técnicos nem nomes do código |
 | Editar `AGENTS.md`, `CLAUDE.md` ou skills | `mattpocock-skills:writing-for-agents` | Instruções curtas e verificáveis |
 | Conversa longa no meio da etapa | `mattpocock-skills:handoff` | O resumo vai para `.claude/memoria/progresso.md`, nunca para um arquivo novo |

@@ -39,11 +39,18 @@ export function copied(text: string, source: string, run = 5): boolean {
   return false;
 }
 
-/** Any scheme ("https://", "ftp://"), a scheme-relative "//host" or "www.", up to a space or a quote. */
-const LINK = /(?:\b[a-z][a-z0-9+.-]*:\/\/|(?<![\p{L}\p{N}:/])\/\/(?=[\p{L}\p{N}])|\bwww\.)[^\s<>"'`)\]]+/giu;
-const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}/giu;
+/**
+ * Any scheme ("https://", "ftp://"), a scheme-relative "//host" or "www.", up to a space or a quote.
+ * The three patterns below read text a third party wrote (flow items, tool results), so every
+ * run that can fail is bounded: the scheme to 32 characters, the e-mail's local part to 64 and
+ * its domain to 253, a domain to 11 labels. Unbounded, a text like "a.a.a.…" made each match
+ * try again from every letter, and 40 KB of it took seconds (Semgrep detect-redos, 13/11/2026).
+ * A longer run still matches, by its tail, so nothing is hidden by the bounds.
+ */
+const LINK = /(?:\b[a-z][a-z0-9+.-]{0,31}:\/\/|(?<![\p{L}\p{N}:/])\/\/(?=[\p{L}\p{N}])|\bwww\.)[^\s<>"'`)\]]+/giu;
+const EMAIL = /[\p{L}\p{N}._%+-]{1,64}@[\p{L}\p{N}.-]{1,253}\.[\p{L}]{2,}/giu;
 /** label.label with a final label of 2 to 24 letters: any top-level domain, not only the common ones. */
-const DOMAIN = /(?<![\p{L}\p{N}-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.\p{L}{2,24}(?![\p{L}\p{N}])(?:\/[^\s<>"'`)\]]*)?/giu;
+const DOMAIN = /(?<![\p{L}\p{N}-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+){0,9}\.\p{L}{2,24}(?![\p{L}\p{N}])(?:\/[^\s<>"'`)\]]*)?/giu;
 /** File names look like domains; these endings are files, not hosts. */
 const FILE_ENDINGS = new Set(["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "txt", "md", "doc", "docx", "xls", "xlsx", "csv", "json", "js", "ts", "html", "zip", "mp3", "mp4"]);
 const IP = /(?<![\d.])\d{1,3}(?:\.\d{1,3}){3}(?![\d.])/gu;
@@ -90,6 +97,7 @@ export function contactsIn(text: string, depth = 0): Set<string> {
   }
   for (const match of plain.match(EMAIL) ?? []) out.add(match.toLowerCase());
   const rest = plain.replace(LINK, " ").replace(EMAIL, " ");
+  // nosemgrep: detect-redos -- anchored at the start of a LINK match, whose scheme is at most 32 characters
   for (const match of rest.match(DOMAIN) ?? []) {
     const host = match.split("/")[0] ?? "";
     if (FILE_ENDINGS.has(host.split(".").at(-1)?.toLowerCase() ?? "")) continue;

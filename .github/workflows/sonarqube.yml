@@ -1,0 +1,53 @@
+name: SonarQube
+
+# SonarQube Cloud on the free plan for open source (Pablo, 13/11/2026): code
+# quality and security hotspots of every pull request and of develop, with the
+# test coverage. The only workflow of a pull request that reads a secret, and
+# only in the scan step: SONAR_TOKEN, a token of a SonarQube Cloud account made
+# only for this analysis (docs/qa/varreduras-de-seguranca.md). GitHub gives no
+# secret to a fork's or a Dependabot pull request: there the job says so and
+# ends green without a scan. Not a required check yet: the quality gate is
+# calibrated on the first analyses first.
+on:
+  pull_request:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sonarqube-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  sonarqube:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The blame of each line tells new code from old.
+          fetch-depth: 0
+      - id: token
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "::notice::SONAR_TOKEN is not available here (fork, Dependabot or not set up yet): no SonarQube analysis."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.token.outputs.run != 'false'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - if: steps.token.outputs.run != 'false'
+        run: npm ci
+      - if: steps.token.outputs.run != 'false'
+        run: npm run test:coverage
+      - if: steps.token.outputs.run != 'false'
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -38,6 +38,7 @@ export interface MicrocopyException {
 }
 
 /** A whole word, letters with accents included: \b only knows ASCII. */
+// nosemgrep: detect-non-literal-regexp -- the bodies are the lint's own constant rules
 const word = (body: string) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${body})(?![\\p{L}\\p{N}])`, "iu");
 
 interface Check {
