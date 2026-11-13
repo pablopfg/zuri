@@ -57,6 +57,7 @@ export const AUTH_EVENT_KINDS = [
   "google_connected",
   "google_calendar_write",
   "reviews_autonomy",
+  "review_link_changed",
   "google_disconnected",
   "setup_failure",
   "setup_locked",

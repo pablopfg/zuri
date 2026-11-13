@@ -1800,6 +1800,97 @@ export const MIGRATIONS: readonly Migration[] = [
       ...areaTriggers("crm", "zur_outbox_state", "OF paused_at"),
     ],
   },
+  {
+    version: 41,
+    name: "review_requests",
+    statements: [
+      // The profile's review link (PR S20): the one Google gives and the one the owner pasted, which wins.
+      `ALTER TABLE zur_review_locations ADD COLUMN review_uri TEXT`,
+      `ALTER TABLE zur_review_locations ADD COLUMN review_uri_manual TEXT`,
+      `ALTER TABLE zur_review_locations ADD COLUMN review_uri_at INTEGER`,
+      // The walk over the reviews read before this migration, a page per check, for their name's prints.
+      `ALTER TABLE zur_review_locations ADD COLUMN names_token TEXT`,
+      `ALTER TABLE zur_review_locations ADD COLUMN names_done INTEGER NOT NULL DEFAULT 0`,
+      // The walk's pages of the day (UTC), at most REVIEW_LIMITS.namesPagesPerDay: a big profile is walked over days.
+      `ALTER TABLE zur_review_locations ADD COLUMN names_day TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE zur_review_locations ADD COLUMN names_pages INTEGER NOT NULL DEFAULT 0`,
+      // Two HMAC prints of the reviewer's name (whole; first and last): the name itself is never kept.
+      `ALTER TABLE zur_reviews ADD COLUMN name_fp TEXT`,
+      `ALTER TABLE zur_reviews ADD COLUMN short_fp TEXT`,
+      `CREATE INDEX IF NOT EXISTS zur_reviews_name_fp ON zur_reviews (name_fp) WHERE name_fp IS NOT NULL`,
+      `CREATE INDEX IF NOT EXISTS zur_reviews_short_fp ON zur_reviews (short_fp) WHERE short_fp IS NOT NULL`,
+      // A review and its contact: linked by itself ("auto"), by the owner ("confirmed"), waiting for the
+      // owner ("twins", "guess", with the candidates) or "none" (the owner said it is nobody's).
+      `CREATE TABLE IF NOT EXISTS zur_review_matches (
+        review_id TEXT PRIMARY KEY,
+        contact_id TEXT,
+        kind TEXT NOT NULL CHECK (kind IN ('auto', 'confirmed', 'twins', 'guess', 'none')),
+        candidates TEXT NOT NULL DEFAULT '[]',
+        at INTEGER NOT NULL
+      ) WITHOUT ROWID`,
+      `CREATE INDEX IF NOT EXISTS zur_review_matches_contact ON zur_review_matches (contact_id) WHERE contact_id IS NOT NULL`,
+      // Avaliações › Pedidos' cards: linked and waiting reviews counted as they change, never with count(*) (P2).
+      `INSERT INTO zur_counts (kind, n) VALUES ('review_matches_linked', 0), ('review_matches_pending', 0) ON CONFLICT (kind) DO NOTHING`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_review_matches_insert AFTER INSERT ON zur_review_matches BEGIN
+        UPDATE zur_counts SET n = n + 1 WHERE kind = CASE WHEN new.kind IN ('auto', 'confirmed') THEN 'review_matches_linked' WHEN new.kind IN ('twins', 'guess') THEN 'review_matches_pending' END;
+      END`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_review_matches_delete AFTER DELETE ON zur_review_matches BEGIN
+        UPDATE zur_counts SET n = n - 1 WHERE kind = CASE WHEN old.kind IN ('auto', 'confirmed') THEN 'review_matches_linked' WHEN old.kind IN ('twins', 'guess') THEN 'review_matches_pending' END;
+      END`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_review_matches_update AFTER UPDATE OF kind ON zur_review_matches WHEN old.kind != new.kind BEGIN
+        UPDATE zur_counts SET n = n - 1 WHERE kind = CASE WHEN old.kind IN ('auto', 'confirmed') THEN 'review_matches_linked' WHEN old.kind IN ('twins', 'guess') THEN 'review_matches_pending' END;
+        UPDATE zur_counts SET n = n + 1 WHERE kind = CASE WHEN new.kind IN ('auto', 'confirmed') THEN 'review_matches_linked' WHEN new.kind IN ('twins', 'guess') THEN 'review_matches_pending' END;
+      END`,
+      // Contact → review still waiting for the owner: the list leaves the person out in one index read.
+      `CREATE TABLE IF NOT EXISTS zur_review_match_candidates (
+        contact_id TEXT NOT NULL,
+        review_id TEXT NOT NULL,
+        PRIMARY KEY (contact_id, review_id)
+      ) WITHOUT ROWID`,
+      `CREATE INDEX IF NOT EXISTS zur_review_match_candidates_review ON zur_review_match_candidates (review_id)`,
+      // One request per contact, ever: the first send and the one reminder. No name, phone or text. `person` is
+      // Google's own name for the contact (people/…): the copy's ids change when it is made again (Google
+      // disconnected and connected), and the request finds its person by it.
+      `CREATE TABLE IF NOT EXISTS zur_review_requests (
+        id TEXT PRIMARY KEY,
+        contact_id TEXT NOT NULL UNIQUE,
+        person TEXT NOT NULL UNIQUE,
+        appointment_day TEXT NOT NULL,
+        due_day TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 2),
+        sent_at INTEGER,
+        reminded_at INTEGER,
+        opened_at INTEGER,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      ) WITHOUT ROWID`,
+      `CREATE INDEX IF NOT EXISTS zur_review_requests_due ON zur_review_requests (due_day DESC, id)`,
+      `CREATE INDEX IF NOT EXISTS zur_review_requests_sent ON zur_review_requests (sent_at) WHERE sent_at IS NOT NULL`,
+      // Each send's short address: a code drawn at random → its request. Out of the backup.
+      `CREATE TABLE IF NOT EXISTS zur_review_links (
+        code TEXT PRIMARY KEY,
+        request_id TEXT NOT NULL,
+        attempt INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        opened_at INTEGER
+      ) WITHOUT ROWID`,
+      `CREATE INDEX IF NOT EXISTS zur_review_links_request ON zur_review_links (request_id, attempt)`,
+      `CREATE INDEX IF NOT EXISTS zur_review_links_expiry ON zur_review_links (expires_at)`,
+      `CREATE INDEX IF NOT EXISTS zur_review_links_opened ON zur_review_links (opened_at) WHERE opened_at IS NOT NULL`,
+      // The owner's message (null: the default text of the owner's language) and "Quando pedir".
+      `ALTER TABLE zur_review_settings ADD COLUMN request_message TEXT`,
+      `ALTER TABLE zur_review_settings ADD COLUMN request_days INTEGER NOT NULL DEFAULT 8`,
+      `ALTER TABLE zur_review_settings ADD COLUMN request_hour TEXT NOT NULL DEFAULT '09:00'`,
+      `ALTER TABLE zur_review_settings ADD COLUMN request_reminder INTEGER NOT NULL DEFAULT 1 CHECK (request_reminder IN (0, 1))`,
+      // The owner's day the list was last made, when, and the day the owner last heard of it.
+      `ALTER TABLE zur_review_settings ADD COLUMN requests_day TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE zur_review_settings ADD COLUMN requests_built_at INTEGER`,
+      `ALTER TABLE zur_review_settings ADD COLUMN requests_told_day TEXT NOT NULL DEFAULT ''`,
+      ...areaTriggers("reviews", "zur_review_requests", "OF contact_id, due_day, sent_at, reminded_at, opened_at"),
+      ...areaTriggers("reviews", "zur_review_matches", "OF kind, contact_id"),
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

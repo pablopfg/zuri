@@ -1,6 +1,7 @@
 import type { ReviewMetrics } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { barHeight, barLabel, countdown, indexMargin, indexZone, mark, overview, percent, ratingZone, replyTime, reviewAddress, stats } from "../src/pages/reviews/numbers.ts";
+import { barHeight, barLabel, countdown, indexMargin, indexZone, mark, overview, percent, ratingZone, replyTime, reviewAddress,
+  whatsAppLink, stats } from "../src/pages/reviews/numbers.ts";
 
 const metrics = (over: Partial<ReviewMetrics> = {}): ReviewMetrics => ({
   period: "30d",
@@ -172,6 +173,14 @@ describe("the addresses under /avaliacoes", () => {
     expect(reviewAddress("ajustes", "responder")).toBeNull();
     expect(reviewAddress("ajustes", "agente")).toBe("/avaliacoes/ajustes");
     expect(reviewAddress("nada", undefined)).toBe("/avaliacoes");
+    // PR S20: Pedidos, with a request open, and Ajustes › Pedidos e link.
+    expect(reviewAddress("pedidos", undefined)).toBeNull();
+    expect(reviewAddress("pedidos", "00000000-0000-4000-8000-000000000001")).toBeNull();
+    expect(reviewAddress("pedidos", "x")).toBe("/avaliacoes/pedidos");
+    expect(reviewAddress("ajustes", "pedidos")).toBeNull();
+    expect(whatsAppLink("+55 (41) 99999-0110", "Oi, Ana! Veja: https://zuri.exemplo.com.br/a/k7Q2mX9pAB & mais")).toBe(
+      "https://wa.me/5541999990110?text=Oi%2C%20Ana!%20Veja%3A%20https%3A%2F%2Fzuri.exemplo.com.br%2Fa%2Fk7Q2mX9pAB%20%26%20mais",
+    );
     expect(reviewAddress("nada", "responder")).toBe("/avaliacoes");
   });
 });

@@ -1158,6 +1158,36 @@ export class GoogleContacts {
       .map((row) => ({ id: row.id, data: parseData(row.data) }));
   }
 
+  /**
+   * The contacts whose folded name (`searchText`, then SEARCH_BREAK and the note) lies in [from, to),
+   * for the reviews' links (PR S20): one index range, at most `limit` rows. `more` says some were
+   * left out, so a caller never takes the rows read for all there are.
+   */
+  inNameRange(from: string, to: string, limit: number): { items: { id: string; name: string }[]; more: boolean } {
+    if (!this.enabled() || !from) return { items: [], more: false };
+    const rows = this.db.all<{ id: string; name: string }>(
+      `SELECT id, display_name AS name FROM zur_contacts WHERE search_name >= ? AND search_name < ? ORDER BY search_name, id LIMIT ?`,
+      from,
+      to,
+      limit + 1,
+    );
+    return { items: rows.slice(0, limit), more: rows.length > limit };
+  }
+
+  /** The phones (E.164 when known) and e-mails of a contact, for "send" and the cards of people with one name. */
+  reach(id: string): { name: string; phones: string[]; emails: string[]; given: string } | null {
+    if (!this.enabled() || !/^[0-9a-f-]{36}$/.test(id)) return null;
+    const row = this.db.one<{ display_name: string; data: string }>(`SELECT display_name, data FROM zur_contacts WHERE id = ?`, id);
+    if (!row) return null;
+    const data = parseData(row.data);
+    return {
+      name: row.display_name,
+      phones: data.phones.map((phone) => phoneKey(phone.value) ?? "").filter((phone) => phone.startsWith("+")),
+      emails: data.emails.map((email) => email.value),
+      given: data.given,
+    };
+  }
+
   /** What the calendar needs of one contact to find its events: the name, what proves who it is, the others with the name. */
   identity(id: string): ContactIdentity | null {
     if (!this.enabled() || !/^[0-9a-f-]{36}$/.test(id)) return null;

@@ -83,7 +83,7 @@ export interface DevReview {
 export interface DevBusiness {
   accounts: { name: string; accountName: string }[];
   /** Each account's locations, as the Business Information API names them ("locations/123"). */
-  locations: Map<string, { name: string; title: string }[]>;
+  locations: Map<string, { name: string; title: string; metadata?: { newReviewUri?: string } }[]>;
   /** Each location's reviews ("accounts/1/locations/2"). */
   reviews: Map<string, DevReview[]>;
   /** Makes every Business Profile call answer this status and body (403 before the access is granted), or null. */
@@ -381,7 +381,9 @@ export function devGoogle(options: { clientId?: string | undefined; clientSecret
           .filter((event) => event.status !== "cancelled" && endOf(event) > from && startOf(event) < to)
           .filter((event) => !q || `${event.summary ?? ""} ${event.description ?? ""} ${event.location ?? ""}`.toLowerCase().includes(q))
           .sort((a, b) => startOf(a) - startOf(b));
-        return json({ items: found.slice(0, max), ...(found.length > max ? { nextPageToken: "more" } : {}) });
+        // Pages as Google's: the token says where the next one starts.
+        const offset = Number(/^e\.(\d+)$/.exec(url.searchParams.get("pageToken") ?? "")?.[1] ?? "0");
+        return json({ items: found.slice(offset, offset + max), ...(found.length > offset + max ? { nextPageToken: `e.${offset + max}` } : {}) });
       }
       if (method === "POST") {
         if (!canWrite) return json({ error: { code: 403 } }, 403);
@@ -562,7 +564,7 @@ export function freshenSamples(google: DevGoogle, now: number): void {
 function seedReviews(google: DevGoogle): void {
   google.business.accounts.push({ name: "accounts/101", accountName: "Exemplo Consultório" });
   google.business.locations.set("accounts/101", [
-    { name: "locations/201", title: "Exemplo Consultório" },
+    { name: "locations/201", title: "Exemplo Consultório", metadata: { newReviewUri: "https://g.page/r/exemplo-consultorio/review" } },
     { name: "locations/202", title: "Exemplo Filial" },
   ]);
   google.business.restart = () => sampleReviews(google);
@@ -574,6 +576,8 @@ function sampleReviews(google: DevGoogle): void {
   const old = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
   google.business.add("accounts/101/locations/201", { id: "r1", rating: 5, name: "Ana Souza", comment: "Atendimento excelente, equipe muito atenciosa.", at: old(30), reply: "Obrigado, Ana! Equipe Exemplo" });
   google.business.add("accounts/101/locations/201", { id: "r2", rating: 4, name: "Bruno Lima", at: old(20) });
+  // Two contacts of this name (PR S20): never linked by itself, the owner picks.
+  google.business.add("accounts/101/locations/201", { id: "r6", rating: 5, name: "Marcos Vieira Lopes", comment: "Gostei muito do retorno.", at: old(10) });
   // Three that arrive after the first read: a positive one to approve, a negative one for the team, a rating without text.
   google.business.add("accounts/101/locations/201", { id: "r3", rating: 5, name: "Carla Mendes", comment: "Adorei o atendimento, equipe muito gentil e lugar aconchegante.", arrives: true });
   google.business.add("accounts/101/locations/201", { id: "r4", rating: 2, name: "Diego Rocha", comment: "Esperei quase uma hora para ser atendido.", arrives: true });

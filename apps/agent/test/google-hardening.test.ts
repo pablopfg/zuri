@@ -660,7 +660,7 @@ describe("the simulated Google refuses what the real one would", () => {
       const search = await world.googleSim.handle(new Request(`${base}/calendars/${encodeURIComponent(PRIMARY)}/events?q=dentista&timeMin=2026-11-01T00:00:00Z&timeMax=2026-11-10T00:00:00Z`, { headers: auth }));
       expect(((await search?.json()) as { items?: unknown[] } | undefined)?.items).toHaveLength(1);
       const page = await world.googleSim.handle(new Request(`${base}/calendars/${encodeURIComponent(PRIMARY)}/events?maxResults=1&timeMin=2026-11-01T00:00:00Z&timeMax=2026-11-10T00:00:00Z`, { headers: auth }));
-      expect(await page?.json()).toMatchObject({ nextPageToken: "more" });
+      expect(await page?.json()).toMatchObject({ nextPageToken: "e.1" });
     }));
 });
 

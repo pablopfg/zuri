@@ -41,6 +41,8 @@ test("no page breaks the Content Security Policy @mobile", async ({ page }) => {
     ["/crm/fluxos", "CRM"],
     ["/crm/envios", "CRM"],
     ["/avaliacoes", "Avaliações"],
+    ["/avaliacoes/pedidos", "Avaliações"],
+    ["/avaliacoes/ajustes/pedidos", "Avaliações"],
     ["/contatos", "Contatos"],
     ["/contatos/clientes", "Contatos"],
     ["/agenda", "Agenda"],

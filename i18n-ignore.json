@@ -76,6 +76,11 @@
       "key": "web.agenda.change.updated",
       "rule": "ponto-final",
       "reason": "Abre um aviso que pode seguir com outras frases (\"Ficou como Reagendado.\", \"Só este dia mudou.\"), como os avisos de mover e de mudar a duração."
+    },
+    {
+      "key": "reviews.request.message",
+      "rule": "exclamacao",
+      "reason": "Mensagem que o dono manda ao paciente pelo WhatsApp dele, na voz do consultório (texto do protótipo aprovado), não texto do sistema."
     }
   ]
 }
