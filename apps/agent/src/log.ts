@@ -82,6 +82,8 @@ export const LOG_EVENTS = [
   "live_notify_failed",
   "chatwoot_owner_failed",
   "chatwoot_owner_undo_failed",
+  "model_catalog_failed",
+  "model_switched",
 ] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
 
@@ -151,6 +153,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "outbox",
   // Review requests and the link (PR S20).
   "requests", "link", "send", "match", "open",
+  // The catalog of models (PR S21).
+  "catalog", "models",
 ]);
 const MAX_SEGMENTS = 8;
 

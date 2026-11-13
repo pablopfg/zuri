@@ -62,7 +62,9 @@ describe("the dated Workers AI price table", () => {
     expect(AI_LIMIT_RANGES.aiNeuronsPerDay.default).toBeLessThan(WORKERS_AI_PRICING.freeNeuronsPerDay);
     // The owner's decision of 31/10/2026: one cap of 9,000, between 1,000 and 9,000.
     expect(AI_LIMIT_RANGES.aiNeuronsPerDay).toEqual({ min: 1_000, max: 9_000, default: 9_000 });
-    expect(settingsSchema.shape.aiModel.safeParse("@cf/openai/gpt-oss-20b").success).toBe(false);
+    // PR S21: a Workers AI id passes the schema; the server takes it only once it is on the owner's list (model-catalog-routes.test.ts).
+    expect(settingsSchema.shape.aiModel.safeParse("@cf/openai/gpt-oss-20b").success).toBe(true);
+    expect(settingsSchema.shape.aiModel.safeParse("openai/gpt-oss-20b").success).toBe(false);
   });
 });
 
@@ -85,7 +87,8 @@ describe("the usage report schema", () => {
     ["a negative count", (r: ReturnType<typeof report>) => ({ ...r, today: { ...r.today, requests: -1 } })],
     ["a fractional request count", (r: ReturnType<typeof report>) => ({ ...r, today: { ...r.today, requests: 1.5 } })],
     ["an unknown provider", (r: ReturnType<typeof report>) => ({ ...r, provider: "google" })],
-    ["a model off the list", (r: ReturnType<typeof report>) => ({ ...r, model: "mock" })],
+    // PR S21: the model may be one of the catalog, so only an empty name is refused.
+    ["a model without a name", (r: ReturnType<typeof report>) => ({ ...r, model: "" })],
     ["a day in another format", (r: ReturnType<typeof report>) => ({ ...r, day: "31/10/2026" })],
     ["an extra field", (r: ReturnType<typeof report>) => ({ ...r, secret: "x" })],
     ["an unknown kind of usage", (r: ReturnType<typeof report>) => ({ ...r, today: { ...r.today, models: [{ model: "m", kind: "image", billable: true, calls: 1, inputTokens: 0, outputTokens: 0, estimatedTokens: 0, audioSeconds: 0, neurons: 0, costUsd: 0 }] } })],
