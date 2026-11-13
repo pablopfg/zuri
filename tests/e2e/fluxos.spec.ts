@@ -230,7 +230,7 @@ test("a Chatwoot credential: account, key, waits checked on the screen, the inbo
   await expectAccessible(page, "editar credencial do chatwoot");
   await editing.getByRole("button", { name: "Salvar" }).click();
   await expect(toast(page, "Credencial salva")).toBeVisible();
-  await expect(item.getByText(/caixa WhatsApp do consultório/)).toBeVisible();
+  await expect(item.getByText(/caixa “WhatsApp do consultório”/)).toBeVisible();
   expect(await page.content()).not.toContain(key);
   expect(await tooSmallControls(page), "every control of Credenciais is a 44 px target").toEqual([]);
   await rowAction(item, page, "Testar");

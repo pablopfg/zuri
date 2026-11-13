@@ -185,6 +185,16 @@ export async function seed(page: Page, base: string): Promise<{ conversationId: 
     headerName: null,
     credential: "token-de-exemplo-123",
   })) as unknown as { connection: { id: string } };
+  // A Chatwoot credential (PR S17), with the inbox the simulated Chatwoot lists picked.
+  const chatwoot = (await post("/api/flows/connections", {
+    kind: "chatwoot",
+    name: "Chatwoot do consultório",
+    origin: "https://chat.exemplo.com.br",
+    accountId: 1,
+    credential: "chave-de-exemplo-4f2a",
+  })) as unknown as { connection: { id: string } };
+  const inbox = await page.request.patch(`${base}/api/flows/connections/${chatwoot.connection.id}`, { headers: CSRF, data: { inboxId: 7 } });
+  if (!inbox.ok()) throw new Error(`/api/flows/connections: ${inbox.status()}`);
   const proposals = (await post("/api/flows", {
     name: "Propostas em aberto",
     definition: {

@@ -2899,6 +2899,7 @@ export const en: Messages = {
   "web.flows.chatwoot.passwordNote": "Zuri asks for your password if you haven't typed it in the last 15 minutes. Changing only the waits doesn't.",
   "web.flows.chatwoot.summary": "Account {account} · inbox {inbox} · bulk sends: {bulkMin} to {bulkMax} s · one person: {oneMin} to {oneMax} s",
   "web.flows.chatwoot.noInbox": "not picked yet",
+  "web.flows.chatwoot.inboxQuoted": "“{name}”",
   "web.crm.settings.title": "CRM",
   "web.crm.settings.body": "What Zuri tells you about your clients, through the channels above.",
   "web.crm.settings.followUps": "When a follow-up is due",

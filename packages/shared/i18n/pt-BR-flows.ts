@@ -311,6 +311,7 @@ export const ptBRFlows = {
   "web.flows.chatwoot.passwordNote": "A Zuri pede a sua senha se você não a digitou nos últimos 15 minutos. Mudar só as esperas não pede.",
   "web.flows.chatwoot.summary": "Conta {account} · caixa {inbox} · envios em massa: {bulkMin} a {bulkMax} s · uma pessoa: {oneMin} a {oneMax} s",
   "web.flows.chatwoot.noInbox": "ainda não escolhida",
+  "web.flows.chatwoot.inboxQuoted": "“{name}”",
   "web.flows.drafts.title": "Sugestões da Zuri",
   "web.flows.drafts.body": "Fluxos que a Zuri sugeriu na conversa. Nada roda até você revisar e salvar; o fluxo salvo começa desligado.",
   "web.flows.drafts.expires": "Some em {when} se você não salvar",

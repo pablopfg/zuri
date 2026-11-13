@@ -394,11 +394,11 @@ function ConnectionRow({ item, onEdit, onDelete }: { item: FlowConnection; onEdi
           </h2>
           <Badge tone="neutral">{t(item.kind === "chatwoot" ? "web.flows.kind.chatwootTag" : "web.flows.kind.httpTag")}</Badge>
         </div>
-        <p className="break-all text-sm text-fg-muted">
+        <p className={cn("text-sm text-fg-muted", chatwoot ? "break-words" : "break-all")}>
           {chatwoot
             ? `${item.origin} · ${t("web.flows.chatwoot.summary", {
                 account: chatwoot.accountId,
-                inbox: chatwoot.inboxName ?? t("web.flows.chatwoot.noInbox"),
+                inbox: chatwoot.inboxName ? t("web.flows.chatwoot.inboxQuoted", { name: chatwoot.inboxName }) : t("web.flows.chatwoot.noInbox"),
                 bulkMin: chatwoot.bulkGap.min,
                 bulkMax: chatwoot.bulkGap.max,
                 oneMin: chatwoot.oneGap.min,
