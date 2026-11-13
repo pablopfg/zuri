@@ -19,6 +19,63 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) até juntar 10 merges, quando o workflow de versão escreve a seção.
 
+## [0.51.0] - 2026-11-13
+
+Mesclada às 00:59 (UTC-3) · commit [`680d9dc`](https://github.com/pablopfg/Zuri/commit/680d9dc51c9897befa86e9b21cc21828756d0cea) · Reúne 10 mudanças (#319, #320, #321, #322, #324, #323, #325, #326, #327, #329)
+
+### Adicionado
+
+- Na Agenda, a situação do atendimento é a cor do evento no Google: Agendado (Pavão), Confirmado (Manjericão), Reagendado (Banana) e Cancelado (Tomate, com o nome riscado). Os detalhes do evento têm os quatro botões de situação e mostram a cor no Google. Mudar a cor no Google Agenda muda a situação na Zuri, e o contrário. Evento sem cor conta como Agendado, e vale só nas agendas abertas para edição.
+- Sábados, domingos e feriados nacionais têm fundo diferente no dia, na semana e no mês, e o feriado mostra o nome. Os feriados são calculados pela data (as datas fixas e a Sexta-feira Santa de cada ano), sem consultar nada na internet.
+- Cada fluxo ganhou **Duplicar** no menu. A cópia começa desligada.
+- As credenciais têm endereço próprio, `/crm/credenciais`, com o botão **Nova credencial** no alto e um resumo de como a chave é guardada.
+- Na Agenda, dá para arrastar um evento da semana para outro dia ou hora, de 15 em 15 minutos, e puxar a borda de baixo para mudar a duração. Pelo teclado, Alt com as setas faz o mesmo (com Shift, muda a duração). No celular a mudança continua pelo "Editar".
+- Cada mudança vai na hora para o Google, e a tela mostra "Salvando no Google…" e "Salvo no Google agora". O aviso diz o que mudou e oferece "Desfazer" por 8 segundos (Ctrl + Z também desfaz). Se o Google recusar ou a conexão cair, o evento volta para onde estava e o aviso oferece "Tentar de novo".
+- Mudar o dia ou a hora de um atendimento Agendado ou Confirmado marca como Reagendado, e o aviso diz isso. Mudar só a duração não troca a situação.
+- O formulário de evento ganhou os campos Dura, Tipo e Situação, e clicar num horário vazio da semana abre "Novo evento" com o dia e a hora. O tipo ("Consulta", "Retorno") aparece no evento, depois da hora.
+- **Configurações › Sobre a Zuri** mostra a versão instalada, confere se a tela e o servidor estão na mesma versão e pede para recarregar a página quando não estão. Também lista as novidades da versão e leva às versões anteriores e ao código. A linha "Versão" do menu da conta e a do Diagnóstico levam até lá.
+- **Configurações › Assistente** junta o que a Zuri faz por conta própria: "A Zuri de olho", as prioridades que ela aprendeu e a revisão de conflitos da memória.
+- O consumo da IA ganhou as visões **Dia**, hora a hora no seu fuso, e **Ano**, mês a mês. Semana e Mês continuam como antes.
+- **Relatar no GitHub**, no Diagnóstico, mostra antes uma prévia de cada campo do formulário, agora com os passos para reproduzir e o resultado esperado.
+- **CRM › Credenciais** ganhou o tipo **Chatwoot**: endereço, número da conta, chave do agente, caixa de entrada e as duas esperas entre mensagens (envios em massa, de 5 a 600 segundos, padrão 30 a 60; mensagem a uma pessoa, de 1 a 30 segundos, padrão 2 a 5, sempre menor que a dos envios em massa). A caixa de entrada sai da lista que a chave salva enxerga. Nenhuma mensagem sai ainda: a fila de envio vem depois.
+- "Nova credencial" pergunta o tipo antes: Chatwoot ou outro serviço (https).
+- **Testar**, no menu de cada credencial, faz só uma leitura: no Chatwoot, conta as caixas que a chave enxerga; num serviço, chama o primeiro caminho com GET. Até 5 testes por minuto por credencial.
+- A linha da credencial mostra o tipo e o fim da chave ("Chave terminada em 4f2a"), só para chaves de 12 caracteres ou mais.
+- A Agenda segue regras para consultas (eventos com tipo na descrição): só nos dias e no horário de atendimento, fora do almoço, de 5 em 5 minutos, de 15 minutos a 4 horas, de agora até um ano à frente e sem sobrepor outra consulta. Reunião e outros compromissos sem tipo continuam livres.
+- Clicar numa hora fechada explica o motivo e oferece o próximo horário livre ou um compromisso pessoal. Arrastar uma consulta para uma hora fechada mostra o motivo no bloco e devolve a consulta ao lugar, com som e o mesmo aviso por cima da tela, que oferece mover para o próximo horário livre. O formulário aponta o campo a corrigir.
+- O servidor confere as mesmas regras antes de chamar o Google, então outra aba ou outro aparelho também não marca consulta no almoço ou num feriado. Se não der para ler o dia inteiro na agenda, ele não grava e pede para tentar de novo.
+- Numa consulta que já começou, dá para puxar o fim quando ela atrasa. Clicar na última meia hora antes do almoço ou do fim do dia abre o formulário com 30 minutos.
+- Configurações › Agenda ganhou o almoço (das 12:00 às 14:00 de fábrica, de meia em meia hora, ou sem almoço), os próximos feriados nacionais com "Atendo" para abrir cada um e os dias sem expediente (recesso, férias), com motivo. Consultas já marcadas que ficam fora do novo horário aparecem listadas no cartão e marcadas na Agenda, sem mudar nada no Google.
+
+### Alterado
+
+- O CRM passou a ter duas partes, **Fluxos** e **Credenciais**, cada uma com a contagem ao lado do nome. Automações e Envios aparecem quando chegarem.
+- Em Fluxos, **Executar** fica à vista em cada linha, e ligar, desligar, editar, duplicar e apagar ficam no menu. As últimas execuções vêm logo abaixo da lista.
+- "Conexão" virou "Credencial" na tela, nos avisos de segurança e na atividade de acesso. O valor secreto de cada uma agora se chama "chave".
+- Os avisos do CRM (retornos e aniversários) saíram da tela do CRM e foram para **Configurações › Avisos**, no grupo **CRM**.
+- Evento de agenda só para leitura não arrasta, e a Zuri avisa que ele só muda no Google Agenda.
+- O menu lateral agora se organiza por áreas: Início e Conversa no topo, depois "Meu dia" (Tarefas, Agenda e Notas), "Relacionamento" (Contatos, Avaliações e CRM) e "Assistente" (Memória e Rotinas). Cada título continua recolhendo o seu grupo. A área "Consultório" entra no menu junto com a primeira tela da Gestão do consultório.
+- No celular, o "Mais" mostra as telas com os mesmos títulos do menu, e Configurações fica em "Sistema".
+- Quem tinha recolhido o grupo "Organizar" vê o menu aberto de novo na primeira visita, porque esse grupo deixou de existir.
+- Configurações tem onze seções em cinco grupos: Você, A Zuri, Seu dia, Conexões e Sistema. No celular, a lista "Seção" troca de seção, e `/configuracoes` abre direto em Conta. Os endereços de antes continuam abrindo a seção certa.
+- A senha foi para o alto de **Segurança**, e o cartão do Telegram foi de Avisos para **Integrações**.
+- A revisão de conflitos saiu da tela de Memória e foi para Configurações › Assistente.
+- A atividade de acesso mostra o endereço IP numa linha própria.
+- O consumo por período deixou de ter a opção de 90 dias: o Ano mostra os 12 meses e, embaixo, os modelos mais usados nos últimos 90 dias.
+- Mudar o endereço de uma credencial (ou o tipo de chave) agora pede a chave de novo, em vez de apagar a guardada sem avisar.
+- Mudar só as esperas do Chatwoot não pede a senha, mas fica na atividade.
+- "Horário de trabalho" e "Dias de trabalho" viraram "Horário de atendimento" e "Dias de atendimento". O almoço aparece riscado na semana e no dia.
+- Eventos de dia inteiro aparecem sempre na Agenda: a opção de escondê-los saiu, e o formulário de evento novo cria só eventos com horário. As preferências guardadas continuam valendo.
+- Um evento novo começa com o tipo "Consulta" que a agenda já usa.
+
+### Segurança
+
+- Cada tipo de credencial cifra a chave com a sua própria derivação: uma chave guardada para o Chatwoot não abre como chave de fluxo, e o contrário também. Um fluxo nunca chama uma credencial do Chatwoot.
+
+### Atualização
+
+- Migration 38: a tabela de credenciais ganha o tipo (`http` para todas as que já existiam), as configurações do tipo e o fim da chave. Nada do que existia muda.
+
 ## [0.50.0] - 2026-11-12
 
 Mesclada às 08:11 (UTC-3) · commit [`57ad75f`](https://github.com/pablopfg/Zuri/commit/57ad75f5c647a2cf0a901ac8ef55972683d64c1a) · Reúne 10 mudanças (#307, #299, #304, #303, #310, #312, #313, #315, #314, #317)
@@ -3339,7 +3396,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.50.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.51.0...develop
+[0.51.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.51.0
 [0.50.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.50.0
 [0.49.6]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.6
 [0.49.5]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.5
