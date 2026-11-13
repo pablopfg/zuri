@@ -169,9 +169,24 @@ compromissos sem tipo ficam livres a qualquer hora.
   interruptor dos sons de aviso) e abre o mesmo aviso do clique, com o motivo,
   o próximo horário livre e **Mover para lá**, que leva a consulta para ele com
   a mesma duração. Pelo teclado (Alt e as setas) é igual.
-- **O formulário** diz o motivo embaixo dos campos e leva o cursor ao campo a
-  corrigir. Uma consulta antiga que você só renomeia ou muda de situação, sem
-  mexer no dia e na hora, salva normalmente.
+- **O formulário** recusa um horário fechado com um aviso por cima dele, com
+  o som de recusa, o motivo e o próximo horário livre. **Usar este horário**
+  troca o dia e o início (a duração fica) e leva o cursor a "Criar evento";
+  **Corrigir** ou Esc fecham só o aviso e levam o cursor ao campo a corrigir.
+  Nada do que foi digitado se perde. Uma consulta antiga que você só renomeia
+  ou muda de situação, sem mexer no dia e na hora, salva normalmente.
+- **Ver no calendário**, embaixo do dia e das horas, abre o mês. Dia que já
+  passou, sem atendimento, feriado, sem expediente ou sem horário livre na
+  duração escolhida fica riscado e não responde ao toque; o leitor de tela diz
+  o motivo. Escolhido um dia, os horários livres aparecem em botões de meia em
+  meia hora, já na duração do formulário. Compromisso pessoal (sem tipo) só
+  risca os dias que passaram.
+- **Escolher na agenda** (só ao criar, no computador) recolhe o formulário e mostra uma faixa
+  "Toque no dia e na hora da consulta". O toque numa hora livre devolve o
+  formulário com tudo o que estava digitado e o horário novo; uma hora fechada
+  avisa como sempre; **Cancelar** devolve o formulário como estava. Se a
+  Agenda estava no mês, ela passa para a semana. No celular o dia é uma lista,
+  sem hora para tocar, e o caminho é **Ver no calendário**.
 - **Consulta que já começou**: o dia e a hora travam. Puxar o fim ou tirar do
   Cancelado conta como "já passou". O título, a descrição e a situação
   continuam editáveis.
