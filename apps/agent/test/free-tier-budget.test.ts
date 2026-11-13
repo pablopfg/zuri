@@ -1446,6 +1446,8 @@ describe("the outbox (PR S19)", () => {
       });
       agent.store.flows.network = network;
       const { outbox } = agent.store;
+      // Only what an automation on for real queued goes out (SEC-A8-04).
+      db.run(`INSERT INTO zur_crm_automations (id, state, updated_at) VALUES ('review-request', 'live', ?) ON CONFLICT (id) DO UPDATE SET state = 'live'`, new Date().toISOString());
       outbox.enqueue({ automationId: "review-request", connectionId: connection, key: "k1", label: "Pessoa", phone: "+5511987654321", text: "Olá", bulk: true });
       // A wake first: the day's pruning, kept in memory, is not this one's.
       await outbox.tick();
@@ -1456,11 +1458,14 @@ describe("the outbox (PR S19)", () => {
       const after = { ...db.usage };
       const done = db.one(`SELECT status FROM zur_outbox WHERE key = 'k2'`);
       for (const table of ["zur_outbox", "zur_outbox_steps", "zur_outbox_queues", "zur_outbox_days"]) db.run(`DELETE FROM ${table}`);
+      db.run(`DELETE FROM zur_crm_automations WHERE id = 'review-request'`);
       db.run(`DELETE FROM zur_flow_connections WHERE id = ?`, connection);
       return { read: after.rowsRead - before.rowsRead, written: after.rowsWritten - before.rowsWritten, done };
     });
     expect(sent.done).toEqual({ status: "sent" });
-    expect(sent.written).toBeLessThanOrEqual(40);
-    expect(sent.read).toBeLessThanOrEqual(30);
+    // Measured 14 written and 20 read: the claim and the status with their indexes and trigger, the step,
+    // the day's count, the queue's clock and the contact's and conversation's ids.
+    expect(sent.written).toBeLessThanOrEqual(16);
+    expect(sent.read).toBeLessThanOrEqual(24);
   });
 });

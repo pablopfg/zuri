@@ -79,8 +79,10 @@ export async function chatwootFindSent(connections: FlowConnections, row: Connec
   const answer = await connections.fixed(row, "chatwoot", { method: "GET", path: `/api/v1/accounts/${accountId}/conversations/${conversationId}/messages` }, deps);
   const parsed = chatwootMessagesSchema.safeParse(answer.body);
   if (!parsed.success) throw new FlowStepError("bad_answer");
+  // Compared without line-ending or edge-space differences: a Chatwoot that tidies the text must still be found.
+  const wanted = sameText(text);
   const found = parsed.data.payload.find(
-    (message) => (message.message_type === 1 || message.message_type === "outgoing") && message.content === text && (message.created_at ?? 0) >= Math.floor(since / 1000) - 60,
+    (message) => (message.message_type === 1 || message.message_type === "outgoing") && typeof message.content === "string" && sameText(message.content) === wanted && (message.created_at ?? 0) >= Math.floor(since / 1000) - 60,
   );
   return found?.id ?? null;
 }
@@ -91,4 +93,8 @@ export async function chatwootSend(connections: FlowConnections, row: Connection
   const parsed = chatwootCreatedSchema.safeParse(answer.body);
   if (!parsed.success) throw new FlowStepError("bad_answer");
   return parsed.data.id;
+}
+
+function sameText(text: string): string {
+  return text.replace(/\r\n?/g, "\n").trim();
 }

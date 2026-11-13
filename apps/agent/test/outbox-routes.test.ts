@@ -41,7 +41,7 @@ beforeEach(async () => {
 
 describe("CRM › Envios routes", () => {
   it("need the session", async () => {
-    for (const [method, path] of [["GET", "/outbox/status"], ["GET", "/outbox"], ["POST", "/outbox/pause"], ["POST", "/outbox/resume"]] as const) {
+    for (const [method, path] of [["GET", "/outbox/status"], ["GET", "/outbox"], ["GET", "/outbox/qualquer"], ["POST", "/outbox/pause"], ["POST", "/outbox/resume"], ["POST", "/outbox/qualquer/retry"]] as const) {
       expect((await api(method, path, false)).status).toBe(401);
     }
   });
@@ -67,6 +67,8 @@ describe("CRM › Envios routes", () => {
     const refused = await api("POST", "/outbox/resume");
     expect(refused.status).toBe(403);
     expect((await errorBody(refused)).code).toBe("RECENT_AUTH_REQUIRED");
+    // Refused, nothing moved: the queue is still stopped.
+    expect(await inOwner((agent) => agent.store.outbox.stopped())).toBe(true);
     await fresh();
     expect((await json<OutboxStatusInfo>(await api("POST", "/outbox/resume"))).state).toBe("running");
   });

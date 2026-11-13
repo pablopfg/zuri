@@ -34,6 +34,8 @@ export const OUTBOX_LIMITS = {
   daysKeepDays: 400,
   /** A failed message keeps its text this long, for "Tentar de novo". */
   failedTextDays: 7,
+  /** A message without its own last hour waits at most this long, so a stopped queue never keeps a phone forever. */
+  maxWaitDays: 7,
 } as const;
 
 /** The order messages leave in when several wait: what can't wait goes first (plano dos módulos, passo 7). */

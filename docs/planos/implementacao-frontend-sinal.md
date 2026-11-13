@@ -451,6 +451,7 @@ Diferenças da S19 (Envios) para o plano e o protótipo, para as PRs seguintes n
 - **A "Automação de exemplo"** (só no ambiente local) agora manda três mensagens pela fila a um Chatwoot simulado pelo próprio Worker. A base "Envio pelo Chatwoot, com fila" passa a "Pronta".
 - **Um envio custa até 8 subrequisições** (6 chamadas e 2 consultas de DNS): achar ou criar o contato, achar ou criar a conversa, conferir quando o envio anterior foi incerto e enviar.
 - **Pausada pelo bloqueio** é um quinto estado da situação, sem botão: só sair do bloqueio volta a enviar.
+- **Prazo de 7 dias** para a mensagem sem hora-limite própria, e o que uma automação pausada ou desligada pôs na fila espera sem sair (auditoria). O contato é procurado de novo a cada tentativa, por causa do `crmBloqueado`.
 - **Os ícones** de Envios são os que nenhuma outra tela sob demanda usa (ou que o CRM já traz): ícone compartilhado vira um arquivo próprio e o nome dele pesa no JS inicial.
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:

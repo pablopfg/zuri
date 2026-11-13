@@ -911,6 +911,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         timeZone: () => settings.field("timeZone"),
         lockdown: () => auth.lockdown.active(),
         notify: (notice) => outboxNotice(alerts, notice, this.locale()),
+        // An automation paused or turned off holds what it queued (SEC-A8-04); it expires in its time.
+        active: (automationId) => crmAutomations.sends(automationId),
       });
       // The CRM's automations (PR S18): the code's catalog; the example only in local development.
       const crmAutomations = new CrmAutomations({

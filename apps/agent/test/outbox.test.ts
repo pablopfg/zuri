@@ -1,6 +1,7 @@
 import { OUTBOX_LIMITS, outboxListQuerySchema } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
 import { phoneVariants } from "../src/flows/chatwoot.ts";
+import { inWake, WAKE_NOTICE_RESERVE, WAKE_SUBREQUESTS, WakeBudget } from "../src/agent/wake-budget.ts";
 import { Outbox, type OutboxInput, type OutboxNotice, OutboxRefused } from "../src/crm/outbox.ts";
 import { type FlowWorld, withFlowWorld } from "./flow-world.ts";
 
@@ -193,6 +194,34 @@ describe("sending", () => {
       expect(world.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_outbox WHERE status = 'queued'`)?.n).toBe(1);
     }));
 
+  it("a second wake that reads the same free time in the middle of the first: the reservation and the claim let only one through", () =>
+    withWorld(async (world) => {
+      world.outbox.enqueue(input(world));
+      world.outbox.enqueue(input(world));
+      let inner: Promise<boolean> | null = null;
+      // The other wake runs right after this one read the queue and before it reserves: both saw the same free time.
+      const racing = new Outbox({
+        db: world.db,
+        connections: {
+          find: (id) => {
+            inner ??= world.other().tick();
+            return world.connections.find(id);
+          },
+          fixed: (...args) => world.connections.fixed(...args),
+        },
+        callDeps: (calls) => world.flows.automationCallDeps(calls),
+        timeZone: () => "America/Sao_Paulo",
+        lockdown: () => false,
+        notify: () => {},
+        clock: () => world.clock.now,
+        random: () => 0,
+      });
+      expect(await racing.tick()).toBe(false);
+      expect(await inner).toBe(true);
+      expect(sends(world)).toHaveLength(1);
+      expect(world.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_outbox WHERE status = 'queued' AND attempts = 0`)?.n).toBe(1);
+    }));
+
   it("doesn't wait the gap when nothing has gone yet, and waits it after a failure too", () =>
     withWorld(async (world) => {
       world.cw.faults.push({ method: "GET", path: /search$/, answer: () => new Response("x", { status: 500 }) });
@@ -334,7 +363,8 @@ describe("failures", () => {
       expect(world.db.one(`SELECT failed FROM zur_outbox_days`)).toEqual({ failed: 1 });
       world.outbox.retry(id);
       expect(world.db.one(`SELECT failed FROM zur_outbox_days`)).toEqual({ failed: 0 });
-      expect(() => world.outbox.retry(id)).toThrow();
+      expect(() => world.outbox.retry(id)).toThrow(expect.objectContaining({ code: "CONFLICT", messageKey: "error.outboxNoRetry" }));
+      expect(world.db.all<{ kind: string }>(`SELECT kind FROM zur_activity WHERE kind = 'crm.outbox_retried'`)).toHaveLength(1);
       world.clock.now += MINUTE;
       await world.outbox.tick();
       expect(job(world, id)?.status).toBe("sent");
@@ -379,7 +409,8 @@ describe("failures", () => {
       await world.outbox.tick();
       expect(only(world)).toMatchObject({ status: "queued", attempts: 0 });
       expect(world.outbox.status()).toMatchObject({ state: "stopped", stopReason: "credential" });
-      expect(world.outbox.nextDue()).toBeNull();
+      // A stopped queue asks no wake but the one its message loses its turn at (7 days on, SEC-A12-01).
+      expect(world.outbox.nextDue()).toBe(new Date(world.clock.now + OUTBOX_LIMITS.maxWaitDays * 86_400_000).toISOString());
     }));
 
   it("an answer out of shape stops the queue (bad_answer)", () =>
@@ -447,7 +478,8 @@ describe("time, pause and lockdown", () => {
       world.outbox.enqueue(input(world));
       world.outbox.pause();
       expect(world.outbox.status()).toMatchObject({ state: "paused", lockdown: false, waiting: 1 });
-      expect(world.outbox.nextDue()).toBeNull();
+      // No wake while paused but the hour the message loses its turn, a week on.
+      expect(world.outbox.nextDue()).toBe(new Date(world.clock.now + OUTBOX_LIMITS.maxWaitDays * 86_400_000).toISOString());
       expect(await world.outbox.tick()).toBe(false);
       expect(world.outbox.stopped()).toBe(false);
       world.outbox.resume();
@@ -455,6 +487,31 @@ describe("time, pause and lockdown", () => {
       await world.outbox.tick();
       expect(sends(world)).toHaveLength(1);
       expect(world.db.all<{ kind: string }>(`SELECT kind FROM zur_activity WHERE kind LIKE 'crm.outbox%' ORDER BY id`).map((row) => row.kind)).toEqual(["crm.outbox_paused", "crm.outbox_resumed"]);
+    }));
+
+  it("S19-CF1: no room left in the wake: no reservation, no claim, nothing written; the next wake sends", () =>
+    withWorld(async (world) => {
+      world.outbox.enqueue(input(world));
+      const before = queue(world).next_free_at ?? null;
+      const tight = new WakeBudget();
+      // Flows and automations went first: fewer than a send's 8 calls are left.
+      tight.take(WAKE_SUBREQUESTS - WAKE_NOTICE_RESERVE - 7);
+      expect(await inWake(tight, () => world.outbox.tick())).toBe(false);
+      expect(only(world)).toMatchObject({ status: "queued", attempts: 0 });
+      expect(queue(world)?.next_free_at ?? null).toBe(before);
+      expect(world.network.requests).toHaveLength(0);
+      expect(await inWake(new WakeBudget(), () => world.outbox.tick())).toBe(true);
+      expect(sends(world)).toHaveLength(1);
+    }));
+
+  it("S19-CF3: 'Retomar envios' with nothing paused or stopped writes nothing and logs nothing", () =>
+    withWorld(async (world) => {
+      world.outbox.enqueue(input(world));
+      await world.outbox.tick();
+      const before = { ...queue(world) };
+      world.outbox.resume();
+      expect(queue(world)).toEqual(before);
+      expect(world.db.one(`SELECT count(*) AS n FROM zur_activity WHERE kind = 'crm.outbox_resumed'`)).toEqual({ n: 0 });
     }));
 
   it("the lockdown holds everything without waking every minute", () =>
@@ -478,6 +535,15 @@ describe("time, pause and lockdown", () => {
       await world.outbox.tick();
       await world.outbox.tick();
       expect(world.told).toEqual([{ kind: "stalled" }]);
+      // It leaves; a new stall later is a new occurrence, told once more.
+      world.db.run(`UPDATE zur_outbox_queues SET next_free_at = NULL`);
+      await world.outbox.tick();
+      expect(sends(world)).toHaveLength(1);
+      world.outbox.enqueue(input(world));
+      world.db.run(`UPDATE zur_outbox_queues SET next_free_at = ?`, new Date(world.clock.now + 40 * MINUTE).toISOString());
+      world.clock.now += 15 * MINUTE;
+      await world.outbox.tick();
+      expect(world.told).toEqual([{ kind: "stalled" }, { kind: "stalled" }]);
     }));
 });
 
@@ -517,6 +583,61 @@ describe("reading", () => {
       expect(world.outbox.list(outboxListQuerySchema.parse({ period: "30d" })).rows).toHaveLength(2);
     }));
 
+  it("7 days are 7 calendar days even across a 23 h day (a time zone with daylight saving)", () =>
+    withWorld((world) => {
+      let now = 0;
+      const ny = new Outbox({
+        db: world.db,
+        connections: world.connections,
+        callDeps: (calls) => world.flows.automationCallDeps(calls),
+        timeZone: () => "America/New_York",
+        lockdown: () => false,
+        notify: () => {},
+        clock: () => now,
+        random: () => 0,
+      });
+      // 09/03 23:30 and 10/03 00:30 in New York; the clocks go forward on 14/03.
+      now = Date.parse("2027-03-10T04:30:00.000Z");
+      ny.enqueue(input(world));
+      now = Date.parse("2027-03-10T05:30:00.000Z");
+      ny.enqueue(input(world));
+      // 16/03 00:30 there: 7 days are 10/03 to 16/03, so only the second.
+      now = Date.parse("2027-03-16T04:30:00.000Z");
+      expect(ny.list(outboxListQuerySchema.parse({ period: "7d" })).rows).toHaveLength(1);
+    }));
+
+  it("the check finds the message even when the Chatwoot tidied its line endings", () =>
+    withWorld(async (world) => {
+      const text = "Olá,\r\nsua consulta é amanhã. ";
+      world.outbox.enqueue(input(world, { text }));
+      world.cw.faults.push({
+        method: "POST",
+        path: /\/messages$/,
+        answer: () => {
+          world.cw.messages.push({ id: 900, conversation: 200, content: "Olá,\nsua consulta é amanhã.", message_type: 1, created_at: Math.floor(world.clock.now / 1000) });
+          return new Response("{}", { status: 502 });
+        },
+      });
+      await world.outbox.tick();
+      world.clock.now += 3 * MINUTE;
+      await world.outbox.tick();
+      expect(only(world)).toMatchObject({ status: "sent" });
+      expect(world.cw.messages).toHaveLength(1);
+    }));
+
+  it("a conversation deleted in the Chatwoot: the 404 forgets it and the next try opens another", () =>
+    withWorld(async (world) => {
+      world.outbox.enqueue(input(world));
+      world.cw.faults.push({ method: "POST", path: /\/messages$/, answer: () => new Response("{}", { status: 404 }) });
+      await world.outbox.tick();
+      expect(only(world)).toMatchObject({ status: "queued", conversation_id: null });
+      // Gone in the Chatwoot too: the next try finds none open and opens one.
+      world.cw.conversations.length = 0;
+      world.clock.now += 3 * MINUTE;
+      await world.outbox.tick();
+      expect(only(world)).toMatchObject({ status: "sent", conversation_id: 200 });
+    }));
+
   it("refuses a cursor or a period out of shape", () => {
     expect(outboxListQuerySchema.safeParse({ cursor: "'; DROP" }).success).toBe(false);
     expect(outboxListQuerySchema.safeParse({ period: "365d" }).success).toBe(false);
@@ -536,5 +657,125 @@ describe("reading", () => {
       await world.outbox.tick();
       expect(job(world, id)).toBeNull();
       expect(world.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_outbox_steps WHERE outbox_id = ?`, id)?.n).toBe(0);
+    }));
+});
+
+describe("security audit (PR S19)", () => {
+  /** A first POST that reaches the Chatwoot but answers 502: the message is there, the queue doesn't know. */
+  const lostAnswer = (world: World) =>
+    world.cw.faults.push({
+      method: "POST",
+      path: /\/messages$/,
+      answer: () => {
+        world.cw.messages.push({ id: 900, conversation: 200, content: only(world).text as string, message_type: 1, created_at: Math.floor(world.clock.now / 1000) });
+        return new Response("{}", { status: 502 });
+      },
+    });
+
+  it("S19-SEC-A8-01: a check that fails before its POST stays a check; the message never goes twice", () =>
+    withWorld(async (world) => {
+      world.outbox.enqueue(input(world));
+      lostAnswer(world);
+      await world.outbox.tick();
+      expect(only(world).status).toBe("checking");
+      world.cw.faults.push({ method: "GET", path: /\/messages$/, answer: () => new Response("{}", { status: 503 }) });
+      world.clock.now += 3 * MINUTE;
+      await world.outbox.tick();
+      expect(only(world).status).toBe("checking");
+      world.clock.now += 5 * MINUTE;
+      await world.outbox.tick();
+      expect(only(world).status).toBe("sent");
+      expect(world.cw.messages).toHaveLength(1);
+      expect(steps(world, only(world).id as string).at(-1)).toBe("found_sent");
+    }));
+
+  it("S19-SEC-A8-01: 'Tentar de novo' after an uncertain POST checks the conversation before sending", () =>
+    withWorld(async (world) => {
+      world.outbox.enqueue(input(world));
+      lostAnswer(world);
+      await world.outbox.tick();
+      const id = only(world).id as string;
+      // The two checks left fail too (each is a try): "Falhou", but it may have left.
+      for (let n = 0; n < 2; n++) {
+        world.cw.faults.push({ method: "GET", path: /\/messages$/, answer: () => new Response("{}", { status: 503 }) });
+        world.clock.now += 5 * MINUTE;
+        await world.outbox.tick();
+      }
+      expect(job(world, id)).toMatchObject({ status: "failed" });
+      world.outbox.retry(id);
+      world.clock.now += 5 * MINUTE;
+      await world.outbox.tick();
+      expect(job(world, id)).toMatchObject({ status: "sent" });
+      expect(world.cw.messages).toHaveLength(1);
+    }));
+
+  it("S19-SEC-A8-02: an object that stops during a check still looks from the first POST's time", () =>
+    withWorld(async (world) => {
+      world.outbox.enqueue(input(world));
+      lostAnswer(world);
+      await world.outbox.tick();
+      const id = only(world).id as string;
+      world.clock.now += 5 * MINUTE;
+      // The wake that took the check died mid-call: 'sending' with a new sending_at.
+      world.db.run(`UPDATE zur_outbox SET status = 'sending', sending_at = ? WHERE id = ?`, new Date(world.clock.now).toISOString(), id);
+      world.clock.now += 3 * MINUTE;
+      await world.outbox.tick();
+      world.clock.now += 5 * MINUTE;
+      await world.outbox.tick();
+      expect(job(world, id)).toMatchObject({ status: "sent" });
+      expect(world.cw.messages).toHaveLength(1);
+    }));
+
+  it("S19-SEC-A8-03: a contact marked crmBloqueado between two tries never gets it", () =>
+    withWorld(async (world) => {
+      const phone = "+5511987654399";
+      world.cw.contacts.push({ id: 77, phone_number: phone });
+      world.outbox.enqueue(input(world, { phone }));
+      world.cw.faults.push({ method: "POST", path: /\/messages$/, answer: () => new Response("{}", { status: 422 }) });
+      await world.outbox.tick();
+      expect(only(world).contact_id).toBe(77);
+      (world.cw.contacts[0] as { custom_attributes?: Record<string, unknown> }).custom_attributes = { crmBloqueado: true };
+      world.clock.now += 3 * MINUTE;
+      await world.outbox.tick();
+      expect(only(world)).toMatchObject({ status: "blocked", phone: null, text: null });
+      expect(world.cw.messages).toHaveLength(0);
+    }));
+
+  it("S19-SEC-A12-01: a message in a stopped queue forgets its phone and text after 7 days", () =>
+    withWorld(async (world) => {
+      world.outbox.enqueue(input(world));
+      world.cw.faults.push({ method: "GET", path: /\/contacts\/search$/, answer: () => new Response("{}", { status: 401 }) });
+      await world.outbox.tick();
+      expect(queue(world).stopped_at).not.toBeNull();
+      world.clock.now += OUTBOX_LIMITS.maxWaitDays * 24 * 60 * MINUTE - 1000;
+      await world.outbox.tick();
+      expect(only(world)).toMatchObject({ grp: "waiting" });
+      world.clock.now += 1000;
+      await world.outbox.tick();
+      expect(only(world)).toMatchObject({ status: "expired", grp: "skipped", phone: null, text: null });
+    }));
+
+  it("S19-SEC-A8-04: what a paused or turned-off automation queued is held, without waking every minute", () =>
+    withWorld(async (world) => {
+      let live = false;
+      const outbox = new Outbox({
+        db: world.db,
+        connections: world.connections,
+        callDeps: (calls) => world.flows.automationCallDeps(calls),
+        timeZone: () => "America/Sao_Paulo",
+        lockdown: () => false,
+        notify: () => {},
+        clock: () => world.clock.now,
+        random: () => 0,
+        active: (automationId) => live && automationId === "review-request",
+      });
+      outbox.enqueue(input(world));
+      expect(await outbox.tick()).toBe(false);
+      expect(sends(world)).toHaveLength(0);
+      // Only the hour it loses its turn, a week on.
+      expect(outbox.nextDue()).toBe(new Date(world.clock.now + OUTBOX_LIMITS.maxWaitDays * 86_400_000).toISOString());
+      live = true;
+      expect(await outbox.tick()).toBe(true);
+      expect(sends(world)).toHaveLength(1);
     }));
 });

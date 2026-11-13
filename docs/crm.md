@@ -156,7 +156,16 @@ Quando algo dá errado:
   dobra e volta ao normal sozinha.
 - A mensagem que perderia a hora não sai e aparece em **Não saíram**.
 - Fila sem andar por 15 minutos com mensagem na hora: um aviso por ocorrência.
-- Contato marcado como bloqueado no Chatwoot (`crmBloqueado`) não recebe.
+- Contato marcado como bloqueado no Chatwoot (`crmBloqueado`) não recebe. A
+  Zuri procura o contato de novo a cada tentativa, então vale mesmo se a
+  marca entrou entre uma tentativa e outra.
+- Uma mensagem sem hora-limite própria espera no máximo 7 dias. Depois vira
+  "Não saiu" e perde o texto e o telefone, mesmo com a fila pausada ou parada.
+- Automação pausada ou desligada segura o que já pôs na fila: só sai o que é
+  de automação ligada de verdade. O resto espera e, passado o prazo, não sai.
+- Um envio que pode ter chegado (sem resposta, erro 5xx ou objeto que parou
+  no meio) é conferido na conversa em toda tentativa seguinte, inclusive
+  depois de **Tentar de novo**, a partir da hora do primeiro envio.
 - Teto geral de 60 mensagens novas por dia e de 1.000 caracteres por
   mensagem; telefone no formato internacional (com e sem o 9º dígito na
   busca do contato).
@@ -207,8 +216,9 @@ próxima pelo índice. Cada execução tem teto de chamadas e de efeitos, e o
 teto de chamadas de cada despertar continua valendo.
 
 A fila de envios também roda no alarme, depois das automações: um envio por
-despertar, até 8 subrequisições (6 chamadas e 2 consultas de DNS) e cerca de
-12 linhas escritas. Pausada, parada ou vazia, ela não faz o alarme voltar a
+despertar, até 8 subrequisições (6 chamadas e 2 consultas de DNS) e 14 linhas
+escritas (medidas). Sem lugar no despertar para as 8 chamadas, a fila não
+reserva nada e espera o próximo. Pausada, parada ou vazia, ela não faz o alarme voltar a
 cada minuto.
 
 ## Modelo de dados

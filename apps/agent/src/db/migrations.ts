@@ -1733,6 +1733,9 @@ export const MIGRATIONS: readonly Migration[] = [
         available_at TEXT NOT NULL,
         expires_at TEXT,
         sending_at TEXT,
+        -- When a POST of it may have reached the Chatwoot (no answer, a 5xx, or an object that stopped):
+        -- every later try, "Tentar de novo" too, looks in the conversation from this time before sending.
+        maybe_at TEXT,
         contact_id INTEGER,
         conversation_id INTEGER,
         message_id INTEGER,
@@ -1741,7 +1744,7 @@ export const MIGRATIONS: readonly Migration[] = [
         updated_at TEXT NOT NULL,
         done_at TEXT,
         UNIQUE (automation_id, key)
-      ) WITHOUT ROWID`,
+      )`,
       // The next one of a credential: by priority, then by its time.
       `CREATE INDEX IF NOT EXISTS zur_outbox_due ON zur_outbox (connection_id, priority, available_at) WHERE status IN ('queued', 'checking')`,
       // Everything still waiting, by time: the screen's queue and the alarm's next time.
@@ -1750,6 +1753,8 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS zur_outbox_expiry ON zur_outbox (expires_at) WHERE status IN ('queued', 'checking') AND expires_at IS NOT NULL`,
       `CREATE INDEX IF NOT EXISTS zur_outbox_history ON zur_outbox (created_at DESC, id DESC)`,
       `CREATE INDEX IF NOT EXISTS zur_outbox_group ON zur_outbox (grp, created_at DESC, id DESC)`,
+      // The failed ones still holding their text (kept 7 days for "Tentar de novo"): the daily pruning reads only these.
+      `CREATE INDEX IF NOT EXISTS zur_outbox_failed_text ON zur_outbox (created_at) WHERE grp = 'failed' AND text IS NOT NULL`,
       // A message's timeline: what happened and when, never its text.
       `CREATE TABLE IF NOT EXISTS zur_outbox_steps (
         id INTEGER PRIMARY KEY,

@@ -121,7 +121,7 @@ describe("the migration list", () => {
       37: "425d8964f18925e8fc347052ae63ac50795b314a3e5f667d78c1bd94662ceba5",
       38: "fea3f660e35b47167ef9b0c63c2097f5b8a6023f97f133f4d8760b5e3d96e219",
       39: "eb7b8cdca5db0f3ccdebd985f3b1f36ee971b54dc7f8d9acb34280ddbd7391b5",
-      40: "e224ecc1c436871b1ea7f685a74f483993533ddb1dad166a6a43ebd98da08010",
+      40: "48fd09cb861232e05be42d724e2d1ec44c9019448a241ff14043a18fa1f33717",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -407,6 +407,7 @@ describe("migrate", () => {
         "table:zur_outbox_days",
         "index:zur_outbox_due",
         "index:zur_outbox_expiry",
+        "index:zur_outbox_failed_text",
         "index:zur_outbox_group",
         "index:zur_outbox_history",
         "table:zur_outbox_queues",

@@ -78,7 +78,7 @@ test("stopped after failures: the credential's test and the resume", async ({ pa
   await page.route("**/api/outbox/status", (route) => route.fulfill(json(resumed ? status() : status({ state: "stopped", stopReason: "failures", since: "2026-11-13T13:04:00.000Z", nextAt: null }))));
   await page.route("**/api/outbox/resume", (route) => {
     resumed = true;
-    return route.fulfill(json({ ok: true }));
+    return route.fulfill(json(status()));
   });
   await page.route("**/api/flows/connections/*/test", (route) => {
     tested = route.request().url();
@@ -164,7 +164,7 @@ test("the history: period, filter, a send's steps and trying again @mobile", asy
   );
   await page.route("**/api/outbox/obx_fail/retry", (route) => {
     retried = route.request().method();
-    return route.fulfill(json({ ok: true }));
+    return route.fulfill(json({ id: "obx_fail", at: "2026-11-13T12:20:00.000Z", label: "Pessoa de exemplo 3", automationId: "review-request", status: "queued", attempts: 0, steps: [], canRetry: false }));
   });
   // "Today" is the page's: the rows of 13/11 show the clock alone, older ones the day too.
   await page.clock.setFixedTime(new Date("2026-11-13T15:00:00.000Z"));

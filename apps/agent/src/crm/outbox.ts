@@ -58,6 +58,8 @@ export interface OutboxDeps {
   clock?: () => number;
   /** A number in [0, 1) for the gap's draw; crypto by default. */
   random?: () => number;
+  /** Whether an automation still sends: one paused or turned off holds what it queued (none given: all do). */
+  active?: (automationId: string) => boolean;
 }
 
 /** What an automation asks the queue to send (crm/automations/service.ts, `ctx.send`). */
@@ -101,6 +103,7 @@ interface Job {
   available_at: string;
   expires_at: string | null;
   sending_at: string | null;
+  maybe_at: string | null;
   contact_id: number | null;
   conversation_id: number | null;
   message_id: number | null;
@@ -165,9 +168,16 @@ export class Outbox {
   }
 
   private count(day: string, column: "queued" | "sent" | "delivered" | "failed" | "skipped", by = 1, ms?: number): void {
-    this.db.run(`INSERT INTO zur_outbox_days (day) VALUES (?) ON CONFLICT (day) DO NOTHING`, day);
-    if (ms === undefined) this.db.run(`UPDATE zur_outbox_days SET ${column} = max(0, ${column} + ?) WHERE day = ?`, by, day);
-    else this.db.run(`UPDATE zur_outbox_days SET ${column} = ${column} + ?, ms_total = ms_total + ?, ms_n = ms_n + 1 WHERE day = ?`, by, ms, day);
+    // One statement: the day's row is made or added to (P4).
+    this.db.run(
+      `INSERT INTO zur_outbox_days (day, ${column}, ms_total, ms_n) VALUES (?, max(0, ?), ?, ?)
+       ON CONFLICT (day) DO UPDATE SET ${column} = max(0, ${column} + ?), ms_total = ms_total + excluded.ms_total, ms_n = ms_n + excluded.ms_n`,
+      day,
+      by,
+      ms ?? 0,
+      ms === undefined ? 0 : 1,
+      by,
+    );
   }
 
   private step(id: string, kind: OutboxStepKind, extra: { attempt?: number; ms?: number; problem?: OutboxProblem } = {}): void {
@@ -212,7 +222,7 @@ export class Outbox {
         input.phone,
         text,
         this.iso(notBefore),
-        notAfter === null ? null : this.iso(notAfter),
+        this.iso(notAfter ?? notBefore + OUTBOX_LIMITS.maxWaitDays * DAY_MS),
         day,
         when,
         when,
@@ -230,18 +240,36 @@ export class Outbox {
   /** The next time the alarm has work here; none while paused or locked down (nothing would happen). */
   nextDue(): string | null {
     // Nothing waiting (most wakes): one indexed row read, nothing else.
-    if (this.deps.lockdown() || !this.anyWaiting() || this.paused()) return null;
+    if (this.deps.lockdown() || !this.anyWaiting()) return null;
+    const expiry = this.db.one<{ at: string | null }>(`SELECT min(expires_at) AS at FROM zur_outbox WHERE ${DUE} AND expires_at IS NOT NULL`)?.at ?? null;
+    // Paused: only the hour a message loses its turn (it becomes "Não saiu" and forgets its phone), never every minute.
+    if (this.paused()) return expiry;
     const times: string[] = [];
     for (const queue of this.queues()) {
       if (queue.stopped_at) continue;
-      const first = this.db.one<{ at: string | null }>(`SELECT min(available_at) AS at FROM zur_outbox WHERE connection_id = ? AND ${DUE}`, queue.connection_id)?.at;
+      // What an automation paused or turned off queued waits without waking anyone.
+      const first = this.dueRows(queue.connection_id, null).reduce<string | null>((min, job) => (min === null || job.available_at < min ? job.available_at : min), null);
       if (first) times.push(queue.next_free_at && queue.next_free_at > first ? queue.next_free_at : first);
     }
     const orphan = this.db.one<{ at: string | null }>(`SELECT min(sending_at) AS at FROM zur_outbox WHERE status = 'sending'`)?.at;
     if (orphan) times.push(this.iso(Date.parse(orphan) + OUTBOX_LIMITS.orphanMinutes * MINUTE));
-    const expiry = this.db.one<{ at: string | null }>(`SELECT min(expires_at) AS at FROM zur_outbox WHERE ${DUE} AND expires_at IS NOT NULL`)?.at;
     if (expiry) times.push(expiry);
     return times.sort()[0] ?? null;
+  }
+
+  /** A credential's due messages, in their order, of automations that still send (at most a few rows by the index). */
+  private dueRows(connectionId: string, now: string | null): Job[] {
+    const rows =
+      now === null
+        ? this.db.all<Job>(`SELECT * FROM zur_outbox WHERE connection_id = ? AND ${DUE} ORDER BY priority, available_at LIMIT ?`, connectionId, 20)
+        : this.db.all<Job>(
+            `SELECT * FROM zur_outbox WHERE connection_id = ? AND ${DUE} AND available_at <= ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY priority, available_at LIMIT ?`,
+            connectionId,
+            now,
+            now,
+            20,
+          );
+    return rows.filter((job) => this.deps.active?.(job.automation_id) ?? true);
   }
 
   private anyWaiting(): boolean {
@@ -256,32 +284,28 @@ export class Outbox {
   async tick(): Promise<boolean> {
     if (this.deps.lockdown()) return false;
     this.prune();
-    if (!this.anyWaiting() || this.paused()) return false;
+    if (!this.anyWaiting()) return false;
     const now = this.now();
     let changed = false;
+    // Past its hour: never late, it becomes "Não saiu" (paused or stopped too, so no phone stays for good).
+    for (const { id } of this.db.all<{ id: string }>(`SELECT id FROM zur_outbox WHERE ${DUE} AND expires_at IS NOT NULL AND expires_at <= ? LIMIT ?`, this.iso(now), 50)) {
+      changed = this.end(id, "expired") || changed;
+    }
+    if (this.paused()) return changed;
     // An object that stopped mid-call: the message may have left, so it is checked before any new try.
     for (const { id } of this.db.all<{ id: string }>(`SELECT id FROM zur_outbox WHERE status = 'sending' AND sending_at < ? LIMIT ?`, this.iso(now - OUTBOX_LIMITS.orphanMinutes * MINUTE), 20)) {
-      if (this.db.run(`UPDATE zur_outbox SET status = 'checking', updated_at = ? WHERE id = ? AND status = 'sending'`, this.iso(now), id).rowsWritten > 0) {
+      if (this.db.run(`UPDATE zur_outbox SET status = 'checking', maybe_at = coalesce(maybe_at, sending_at), updated_at = ? WHERE id = ? AND status = 'sending'`, this.iso(now), id).rowsWritten > 0) {
         this.step(id, "uncertain", { problem: "other" });
         changed = true;
       }
     }
-    // Past its hour: never late, it becomes "Não saiu".
-    for (const { id } of this.db.all<{ id: string }>(`SELECT id FROM zur_outbox WHERE ${DUE} AND expires_at IS NOT NULL AND expires_at <= ? LIMIT ?`, this.iso(now), 50)) {
-      changed = this.end(id, "expired") || changed;
-    }
     this.stalls(now);
     for (const queue of this.queues()) {
       if (queue.stopped_at || (queue.next_free_at && queue.next_free_at > this.iso(now))) continue;
-      const job = this.db.one<Job>(
-        `SELECT * FROM zur_outbox WHERE connection_id = ? AND ${DUE} AND available_at <= ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY priority, available_at LIMIT 1`,
-        queue.connection_id,
-        this.iso(now),
-        this.iso(now),
-      );
+      const job = this.dueRows(queue.connection_id, this.iso(now))[0];
       if (!job) continue;
-      await this.send(queue, job);
-      return true;
+      // One send per wake, tried or not: what found no room or lost the race waits for the next wake.
+      return (await this.send(queue, job)) || changed;
     }
     return changed;
   }
@@ -307,12 +331,15 @@ export class Outbox {
     return seconds * 1000 * (slow ? 2 : 1);
   }
 
-  private async send(queue: Queue, job: Job): Promise<void> {
+  private async send(queue: Queue, job: Job): Promise<boolean> {
     const row = this.deps.connections.find(job.connection_id);
     if (!row || knownKind(row.kind) !== "chatwoot") {
       this.stop(queue.connection_id, row?.name ?? "", "credential");
-      return;
+      return true;
     }
+    // No room left in this wake (flows and automations went first): touch nothing, the next wake tries.
+    const deps = this.deps.callDeps(CALLS_PER_SEND);
+    if (!deps.meter.room(CALLS_PER_SEND)) return false;
     const at = this.now();
     const recent = parseMs(queue.recent_ms);
     const slow = isSlow(recent);
@@ -324,45 +351,46 @@ export class Outbox {
       queue.connection_id,
       queue.next_free_at,
     );
-    if (reserved.rowsWritten === 0) return;
+    if (reserved.rowsWritten === 0) return false;
     const checking = job.status === "checking";
     const taken = this.db.run(`UPDATE zur_outbox SET status = 'sending', attempts = attempts + ?, sending_at = ?, updated_at = ? WHERE id = ? AND status = ?`, checking ? 0 : 1, this.iso(at), this.iso(at), job.id, job.status);
-    if (taken.rowsWritten === 0) return;
+    if (taken.rowsWritten === 0) return false;
     let attempt = checking ? job.attempts : job.attempts + 1;
-    const deps = this.deps.callDeps(CALLS_PER_SEND);
     let posting = false;
     let started = at;
     try {
       if (!job.phone || !job.text) throw new OutboxRefused("gone");
-      let contactId = job.contact_id;
-      if (contactId === null) {
-        const found = await chatwootFindContact(this.deps.connections as FlowConnections, row, deps, job.phone);
-        if (found?.blocked) {
-          this.end(job.id, "blocked");
-          return;
-        }
-        contactId = found?.id ?? (await chatwootCreateContact(this.deps.connections as FlowConnections, row, deps, { name: job.label, e164: job.phone }));
-        this.db.run(`UPDATE zur_outbox SET contact_id = ? WHERE id = ?`, contactId, job.id);
+      // Every try looks the contact up again: one marked crmBloqueado since the last try never gets it.
+      const found = await chatwootFindContact(this.deps.connections as FlowConnections, row, deps, job.phone);
+      if (found?.blocked) {
+        this.end(job.id, "blocked");
+        return true;
       }
+      const contactId = found?.id ?? job.contact_id ?? (await chatwootCreateContact(this.deps.connections as FlowConnections, row, deps, { name: job.label, e164: job.phone }));
+      if (contactId !== job.contact_id) this.db.run(`UPDATE zur_outbox SET contact_id = ? WHERE id = ?`, contactId, job.id);
       let conversationId = job.conversation_id;
       if (conversationId === null) {
         conversationId = await chatwootConversation(this.deps.connections as FlowConnections, row, deps, contactId);
         this.db.run(`UPDATE zur_outbox SET conversation_id = ? WHERE id = ?`, conversationId, job.id);
       }
-      if (checking) {
-        // It may have left on the last try: look before sending again.
-        const found = await chatwootFindSent(this.deps.connections as FlowConnections, row, deps, conversationId, job.text, Date.parse(job.sending_at ?? job.created_at));
-        if (found !== null) {
-          this.sent(job, found, null, "found_sent");
-          return;
+      if (checking || job.maybe_at !== null) {
+        // It may have left on an earlier try (and "Tentar de novo" doesn't change that): look before sending again,
+        // from the time of the first POST that may have arrived, not this try's.
+        const since = Date.parse(job.maybe_at ?? job.sending_at ?? job.created_at);
+        const already = await chatwootFindSent(this.deps.connections as FlowConnections, row, deps, conversationId, job.text, since);
+        if (already !== null) {
+          this.sent(job, already, null, "found_sent");
+          return true;
         }
-        if (attempt >= OUTBOX_LIMITS.attempts) {
-          this.giveUp(job.id, job.automation_id, attempt);
-          return;
+        if (checking) {
+          if (attempt >= OUTBOX_LIMITS.attempts) {
+            this.giveUp(job.id, job.automation_id, attempt);
+            return true;
+          }
+          // Not there: sending it now is a new try.
+          attempt++;
+          this.db.run(`UPDATE zur_outbox SET attempts = ? WHERE id = ?`, attempt, job.id);
         }
-        // Not there: sending it now is a new try.
-        attempt++;
-        this.db.run(`UPDATE zur_outbox SET attempts = ? WHERE id = ?`, attempt, job.id);
       }
       posting = true;
       started = this.now();
@@ -371,6 +399,7 @@ export class Outbox {
     } catch (error) {
       this.failed(queue, row, job, attempt, posting, error, posting ? Math.max(0, this.now() - started) : null);
     }
+    return true;
   }
 
   private sent(job: Job, messageId: number, ms: number | null, kind: "sent" | "found_sent"): void {
@@ -397,13 +426,21 @@ export class Outbox {
     });
   }
 
-  private failed(queue: Queue, row: ConnectionRow, job: Job, attempt: number, posting: boolean, error: unknown, ms: number | null): void {
+  private failed(queue: Queue, row: ConnectionRow, job: Job, tried: number, posting: boolean, error: unknown, ms: number | null): void {
     const at = this.now();
     const problem = problemOf(error);
     const beforeRequest = error instanceof FlowStepError && BEFORE_REQUEST.has(error.problem);
     const refused = error instanceof FlowStepError && error.problem === "http_error" && error.httpStatus !== null && error.httpStatus < 500;
+    // The conversation is gone (deleted in the Chatwoot): the next try finds or opens another.
+    if (posting && error instanceof FlowStepError && error.httpStatus === 404) this.db.run(`UPDATE zur_outbox SET conversation_id = NULL WHERE id = ?`, job.id);
     // Did it maybe leave? Only a POST of the message that didn't come back with a clear "no".
     const uncertain = posting && !beforeRequest && !refused;
+    // When that POST started: the conversation is looked at from here on every later try.
+    const posted = this.iso(at - (ms ?? 0));
+    // A message being checked stays "checking" whatever fails before its POST: losing it would send it twice.
+    const still = uncertain || job.status === "checking" ? "checking" : "queued";
+    // A check that failed before its POST is a try too: otherwise a Chatwoot that keeps failing the look would be asked forever.
+    const attempt = job.status === "checking" && !posting ? job.attempts + 1 : tried;
     // The wake's share ran out before the request: nothing happened, it waits as it was.
     if ((error instanceof FlowStepError && error.problem === "calls_limit") || (error instanceof Error && error.message === "budget")) {
       this.db.run(`UPDATE zur_outbox SET status = ?, attempts = ?, updated_at = ? WHERE id = ? AND status = 'sending'`, job.status, job.attempts, this.iso(at), job.id);
@@ -412,7 +449,15 @@ export class Outbox {
     const stop: OutboxStopReason | null = problem === "credential" ? "credential" : problem === "bad_answer" ? "bad_answer" : null;
     if (stop) {
       // Not the message's fault: the try doesn't count, and the message waits for "Retomar envios".
-      this.db.run(`UPDATE zur_outbox SET status = ?, attempts = ?, updated_at = ? WHERE id = ? AND status = 'sending'`, uncertain ? "checking" : job.status, job.attempts, this.iso(at), job.id);
+      this.db.run(
+        `UPDATE zur_outbox SET status = ?, attempts = ?, maybe_at = CASE WHEN ? THEN coalesce(maybe_at, ?) ELSE maybe_at END, updated_at = ? WHERE id = ? AND status = 'sending'`,
+        uncertain ? "checking" : job.status,
+        job.attempts,
+        uncertain ? 1 : 0,
+        posted,
+        this.iso(at),
+        job.id,
+      );
       this.step(job.id, uncertain ? "uncertain" : "failed_try", { attempt, problem, ...(ms === null ? {} : { ms }) });
       this.stop(queue.connection_id, row.name, stop);
       return;
@@ -423,9 +468,12 @@ export class Outbox {
     } else {
       const wait = OUTBOX_LIMITS.retryMinutes[Math.min(attempt, OUTBOX_LIMITS.retryMinutes.length) - 1] ?? OUTBOX_LIMITS.retryMinutes.at(-1) ?? 4;
       this.db.run(
-        `UPDATE zur_outbox SET status = ?, available_at = ?, updated_at = ? WHERE id = ? AND status = 'sending'`,
-        uncertain ? "checking" : "queued",
+        `UPDATE zur_outbox SET status = ?, attempts = ?, available_at = ?, maybe_at = CASE WHEN ? THEN coalesce(maybe_at, ?) ELSE maybe_at END, updated_at = ? WHERE id = ? AND status = 'sending'`,
+        still,
+        attempt,
         this.iso(at + wait * MINUTE),
+        uncertain ? 1 : 0,
+        posted,
         this.iso(at),
         job.id,
       );
@@ -488,15 +536,22 @@ export class Outbox {
    */
   resume(): void {
     const at = this.now();
+    const paused = this.paused();
     const wasStopped = this.stopped();
+    // Nothing to resume: nothing written, nothing in the activity log (P4).
+    if (!paused && !wasStopped) return;
     this.db.transaction(() => {
       this.db.run(`UPDATE zur_outbox_state SET paused_at = NULL WHERE id = 1 AND paused_at IS NOT NULL`);
       for (const queue of this.queues()) {
+        // A queue that only ran on stays as it is: its stop trigger fires on any write.
+        if (queue.stopped_at === null && !paused) continue;
         const row = this.deps.connections.find(queue.connection_id);
         const first = this.iso(at + (row ? chatwootSettings(row).bulkGap.min : 0) * 1000);
+        const next = queue.next_free_at && queue.next_free_at > first ? queue.next_free_at : first;
+        if (queue.stopped_at === null && queue.next_free_at === next) continue;
         this.db.run(
           `UPDATE zur_outbox_queues SET stopped_at = NULL, stopped_reason = NULL, failed_streak = 0, last_failed_id = NULL, stall_told = 0, next_free_at = ?, updated_at = ? WHERE connection_id = ?`,
-          queue.next_free_at && queue.next_free_at > first ? queue.next_free_at : first,
+          next,
           this.iso(at),
           queue.connection_id,
         );
@@ -512,7 +567,7 @@ export class Outbox {
     if (!this.canRetry(job)) throw new AppError("CONFLICT", "error.outboxNoRetry");
     const at = this.iso();
     const { rowsWritten } = this.db.run(
-      `UPDATE zur_outbox SET status = 'queued', grp = 'waiting', attempts = 0, available_at = ?, done_at = NULL, updated_at = ? WHERE id = ? AND status = 'failed'`,
+      `UPDATE zur_outbox SET status = 'queued', grp = 'waiting', attempts = 0, conversation_id = NULL, available_at = ?, done_at = NULL, updated_at = ? WHERE id = ? AND status = 'failed'`,
       at,
       at,
       id,
@@ -572,7 +627,8 @@ export class Outbox {
   list(input: { period: OutboxPeriod; filter: OutboxFilter; cursor?: string | undefined }): OutboxList {
     const today = this.dayOf(this.now());
     const back = input.period === "today" ? 0 : input.period === "7d" ? 6 : 29;
-    const firstDay = this.dayOf(this.now() - back * DAY_MS);
+    // Calendar days back from the owner's today, never 24 h steps: a 23 h or 25 h day would move the edge.
+    const firstDay = new Date(Date.parse(`${today}T12:00:00Z`) - back * DAY_MS).toISOString().slice(0, 10);
     const from = this.startOf(firstDay);
     const params: (string | number)[] = [from];
     let where = `created_at >= ?`;

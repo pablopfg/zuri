@@ -232,6 +232,11 @@ export class CrmAutomations {
    * The credential's users by id, for "Usada por" and for refusing to remove one in use: the ones on (rehearsal,
    * live or paused). One turned off only remembers the pick; starting it again checks the credential once more.
    */
+  /** Whether what this automation queued may go out: only while it is on for real. */
+  sends(id: string): boolean {
+    return this.db.one<{ state: string }>(`SELECT state FROM zur_crm_automations WHERE id = ?`, id)?.state === "live";
+  }
+
   users(connectionId: string): string[] {
     return this.db.all<{ id: string }>(`SELECT id FROM zur_crm_automations WHERE connection_id = ? AND state != 'off' LIMIT 100`, connectionId).map((row) => row.id);
   }
@@ -611,6 +616,8 @@ export class CrmAutomations {
       send: async (input) => {
         if (!manifest.effects.includes("message") || manifest.connection !== "chatwoot" || !manifest.writesToContacts) throw new ManifestViolation("send");
         if (input.key.length === 0 || input.key.length > CRM_AUTOMATION_LIMITS.key) throw new ManifestViolation("key");
+        // The example writes to made-up numbers: only ever to the Chatwoot the Worker simulates (SEC-A13-01).
+        if (manifest.id === "example" && !(connection && /(^|\.)exemplo\.com\.br$/.test(new URL(connection.origin).hostname))) throw new ManifestViolation("example");
         if (effectsLeft <= 0) throw new CapReached();
         this.stillOn(row.id, row.state);
         const when = this.iso();

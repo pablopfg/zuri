@@ -99,7 +99,7 @@ Nenhuma ferramenta e nenhuma IA. Chamadas só pelos caminhos fixos do Chatwoot, 
 
 ## 8. Custo e cotas do plano Free
 
-Nenhum recurso novo. Um envio custa até 8 subrequisições e cerca de 12 linhas escritas. Sem nada na fila, o despertar lê poucas linhas a mais. Medido em `free-tier-budget.test.ts`.
+Nenhum recurso novo. Um envio custa até 8 subrequisições e 14 linhas escritas (medidas em `free-tier-budget.test.ts`). Sem nada na fila, o despertar lê poucas linhas a mais. Medido em `free-tier-budget.test.ts`.
 
 ## 9. Segurança e privacidade
 
