@@ -135,31 +135,77 @@ agora" ou "Em dia com o Google".
 #### Fins de semana e feriados
 
 Sábados e domingos têm um fundo cinza, e os **feriados nacionais** um fundo
-âmbar com o nome do feriado: na linha "Dia inteiro" da semana, embaixo do número
-no mês e numa faixa em cima da lista do dia. No mês do celular fica só o fundo.
+âmbar com o nome do feriado: embaixo da data na semana e no mês e numa faixa em
+cima da lista do dia. No mês do celular fica só o fundo. Um dia sem expediente
+(veja abaixo) aparece como o fim de semana, com o motivo embaixo da data.
 
 Os feriados são calculados pela data, sem consultar nada: 1/1, Sexta-feira
 Santa (pela Páscoa de cada ano), 21/4, 1/5, 7/9, 12/10, 2/11, 15/11, 20/11
 (desde 2024) e 25/12. Carnaval e Corpus Christi são ponto facultativo e não
 entram; feriados estaduais e municipais também não.
 
+#### Regras do agendamento
+
+Valem para **consultas**: eventos com horário cuja descrição começa pelo tipo
+("Consulta | Consultório") e que não estão cancelados. Reunião, banco e outros
+compromissos sem tipo ficam livres a qualquer hora.
+
+| Regra | Valor |
+| --- | --- |
+| Minutos | De 5 em 5 (14:30, 14:35) |
+| Duração | De 15 minutos a 4 horas |
+| Quando | De agora até um ano à frente |
+| Dia | Dia de atendimento, sem feriado nacional fechado e sem dia sem expediente |
+| Hora | Dentro do horário de atendimento e fora do almoço, nem um minuto a mais |
+| Outra consulta | Não pode sobrepor; encostar (10:00 depois de uma que acaba às 10:00) pode |
+
+- **Clicar numa hora fechada** abre "Consulta não entra neste horário", com o
+  motivo e o próximo horário livre da semana na tela. **Usar o próximo livre**
+  abre o formulário nele; **Criar compromisso pessoal** abre o formulário sem
+  tipo, na hora clicada.
+- **Arrastar** uma consulta para uma hora fechada pinta o bloco de vermelho com
+  o motivo curto ("Almoço", "Feriado", "Ocupado"). Ao soltar, nada vai para o
+  Google: a consulta volta para onde estava, toca um som curto (o mesmo
+  interruptor dos sons de aviso) e abre o mesmo aviso do clique, com o motivo,
+  o próximo horário livre e **Mover para lá**, que leva a consulta para ele com
+  a mesma duração. Pelo teclado (Alt e as setas) é igual.
+- **O formulário** diz o motivo embaixo dos campos e leva o cursor ao campo a
+  corrigir. Uma consulta antiga que você só renomeia ou muda de situação, sem
+  mexer no dia e na hora, salva normalmente.
+- **Consulta que atrasou**: numa consulta que já começou, puxar só o fim (ou
+  tirar do Cancelado uma de hoje) não conta como "já passou". As outras regras
+  continuam: o fim não entra no almoço.
+- Clicar na última meia hora antes do almoço ou do fim do dia abre o
+  formulário com 30 minutos.
+- A Zuri confere tudo de novo no servidor antes de chamar o Google, então outra
+  aba aberta ou outro aparelho também não marca consulta no almoço. As
+  ferramentas da conversa e os fluxos ainda não aplicam essas regras (issue #328).
+
 #### Configurações › Agenda
 
 | Opção | O que faz |
 | --- | --- |
-| **Horário de trabalho** | As horas que a semana e o dia mostram, de hora em hora (padrão 08:00 até 18:00). O "Seu dia" do Início usa o mesmo horário. |
+| **Horário de atendimento** e **Almoço** | As horas em que o consultório atende, de hora em hora (padrão 08:00 até 18:00), e o almoço, de meia em meia hora (padrão 12:00 até 14:00, ou "Sem almoço"). A semana e o dia mostram essas horas, com o almoço riscado; o "Seu dia" do Início usa o mesmo horário. |
 | **Ao abrir, mostrar** | Dia, semana ou mês, no computador. |
 | **A semana começa** | Domingo ou segunda. |
-| **Dias de trabalho** e **Mostrar os dias de folga** | Com os dias de folga desligados, a semana mostra só os dias de trabalho. |
-| **Eventos de dia inteiro** e **Eventos fora do horário** | Mostrar ou esconder no dia e na semana. |
+| **Dias de atendimento** e **Mostrar os dias sem atendimento** | Desligado, a semana mostra só os dias de atendimento. |
+| **Feriados nacionais** | Os próximos 12 que caem num dia de atendimento. Fecham a agenda sozinhos; **Atendo** abre o feriado. |
+| **Dias sem expediente** | Recesso, férias ou feriado da cidade, digitados como dd/mm/aaaa, com motivo opcional (até 100 dias). O dia fecha na agenda e nos agendamentos novos. |
+| **Eventos fora do horário** | Mostrar ou esconder no dia e na semana. Eventos de dia inteiro aparecem sempre. |
+
+Uma consulta já marcada que fica fora do novo horário (ou num dia que fechou)
+não some nem muda no Google: o cartão lista as consultas afetadas com **Abrir a
+Agenda**, e na Agenda o bloco ganha um triângulo de aviso.
 
 Nada some sem aviso: o que uma opção esconde aparece contado embaixo da
 Agenda ("2 eventos fora das 08:00 às 18:00"), com **Mostrar** ao lado. O mês
 mostra tudo. As opções ficam guardadas na Zuri e valem em todos os seus
 aparelhos; elas não mudam nada no Google.
 
-- **Novo evento** (ou Ctrl/⌘ K > Novo evento): título, agenda, dia inteiro ou
-  horário, local e descrição.
+- **Novo evento** (ou Ctrl/⌘ K > Novo evento): título, agenda, dia e
+  horário, tipo (começa como a primeira "Consulta" que a agenda já usa), local
+  e descrição. Evento de dia inteiro se cria no Google; aqui ele aparece e se
+  edita.
 - Toque num evento para ver os detalhes. Em agendas **Ler e editar**, aparecem
   **Editar** e **Apagar** (com confirmação). Em **Só ler**, só os detalhes.
 - Se alguém mudou o evento no Google depois que a tela abriu, a Zuri não

@@ -168,7 +168,7 @@ O Pablo aprovou o protótipo inteiro (v51) e pediu o código de tudo, testado. A
 
 | Entrega | O que entra (seções deste plano) | Migration | Situação |
 | --- | --- | --- | --- |
-| E5. Agenda: agendamento e travas | Formulário 24 h com término, tipo e local (Meet via `conferenceData`), vínculo a Contatos e homônimos, financeiro no evento; horário de atendimento, almoço, feriados com "Atendo" e dias sem expediente só em Configurações › Agenda; regra única `agErro` em `packages/shared` também no servidor; avisos ao tocar ou arrastar para horário fechado; consultas que ficaram fora; sem "Dia todo"; sinais da sincronização (12/11 à tarde, 00:15 itens 2–5, 00:44, 01:04 itens 5–6) | não (ajustes em `zur_settings`, dados do evento em `extendedProperties.private`) | a fazer |
+| E5. Agenda: agendamento e travas (E5a, E5b, E5c) | Formulário 24 h com término, tipo e local (Meet via `conferenceData`), vínculo a Contatos e homônimos, financeiro no evento; horário de atendimento, almoço, feriados com "Atendo" e dias sem expediente só em Configurações › Agenda; regra única `agErro` em `packages/shared` também no servidor; avisos ao tocar ou arrastar para horário fechado; consultas que ficaram fora; sem "Dia todo"; sinais da sincronização (12/11 à tarde, 00:15 itens 2–5, 00:44, 01:04 itens 5–6) | não (ajustes em `zur_settings`, dados do evento em `extendedProperties.private`) | a fazer |
 | E6. Consultório e integrações seguras | Configurações › Consultório (nome, endereço, cidade, WhatsApp); cofre de credenciais (AES-256-GCM, chave por integração, só escrita, senha para mudar, um host https por credencial); credencial fzap; e-mail aos pacientes por Gmail (`gmail.send`) ou SMTP 465/587 (00:37) | a conferir no plano da entrega | a fazer |
 | E7. Link de confirmação do paciente | Página pública `/c/<token>`: confirmar, cancelar com prazo, remarcar em 4 passos (8 dias, só dias livres, de 1 em 1 hora, colado a consulta ou 2 sorteados), WhatsApp com mensagem pronta, sons e transições; envio pelo Chatwoot, pelo botão do WhatsApp e por e-mail; mensagem modelo; token de 128 bits com hash, link único por agendamento, proteção contra enumeração (12/11 noite, 00:15 itens 6–8, 01:04 itens 3–4, 01:32 item 1) | sim (tokens do link) | a fazer |
 | E8. Gestão: Atendimentos e Financeiro | Telas nativas Atendimentos, Financeiro (A receber, Extrato com exportar em planilha, Serviços e despesas), "Enviar Pix" pela fzap, livro-caixa em centavos sem nome nem CPF | sim (livro-caixa, serviços, despesas) | a fazer |
@@ -178,6 +178,21 @@ O Pablo aprovou o protótipo inteiro (v51) e pediu o código de tudo, testado. A
 | E12. Segurança e avisos | País nos acessos (`request.cf.country`), "Todos os acessos" por dia com filtros; sino com número de não vistos (`seen_at`) (01:32 item 3, v38) | sim (`seen_at`) | a fazer |
 
 As migrations seguem a numeração livre da `develop` na hora de cada PR (hoje a próxima é a 38). As três perguntas da Gestão (não guardar nome nem CPF nos lançamentos, só o Pablo registra presença e pagamento, relatórios dentro da Zuri) seguem o que o protótipo aprovado mostra, que é a recomendação de cada uma. A pergunta 4 (e-mail) fica com as duas formas, como no protótipo, com o Gmail recomendado.
+
+#### Encaixe com o cronograma do frontend Sinal (13/11/2026, 01:52 UTC)
+
+O Pablo lembrou que já existe um cronograma em andamento: o plano do frontend Sinal ([implementacao-frontend-sinal.md](implementacao-frontend-sinal.md)), com a S16 (Configurações) em revisão e a S17 (credenciais) em seguida, e o plano da Gestão ([gestao-financeira-e-paineis.md](gestao-financeira-e-paineis.md), PR #311). As entregas E5 a E12 não criam uma segunda fila: cada uma entra depois da PR Sinal que mexe na mesma coisa e reaproveita o que ela trouxe.
+
+| Entrega | Depende de | Ajuste para manter a compatibilidade |
+| --- | --- | --- |
+| E5a, E5b, E5c (Agenda) | nada aberto | Corre junto com a S16 e a S17: mexe só na Agenda, em Configurações › Agenda (`AgendaTab.tsx`) e nas rotas `/google/events`. Não toca em `SettingsPage.tsx`, que é da S16. A E5 se divide em três PRs: E5a regras e travas (horário, almoço, feriados com "Atendo", dias sem expediente, regra única no servidor, avisos ao tocar e arrastar, sem "Dia todo"); E5b formulário (24 h, término, tipo e local com Meet, vínculo a Contatos e homônimos, financeiro, "Agendar" na ficha); E5c sinais da sincronização |
+| E6 (Consultório e integrações) | S16 e S17 mescladas | O cofre de credenciais é o da S17 (tipos `http` e `chatwoot`, chave que nunca volta ao navegador): a E6 acrescenta o tipo da fzap e o SMTP nele, sem cofre novo. O grupo Consultório entra na casca de Configurações que a S16 deixou |
+| E7 (link de confirmação) | E6, S19 (Envios) e S20 (pedido de avaliação e link) | O envio pelo Chatwoot usa a fila da S19 (nada envia duas vezes). A página pública `/c/<token>` divide com a S20 o mesmo desenho de link (token, freio por rede, página sem dado pessoal): a que chegar primeiro cria a base e a outra reaproveita |
+| E8, E9, E10 (Gestão) | PR #311 mesclada | Seguem o plano da Gestão. A área Consultório do menu aparece com a primeira tela, como a entrega 4 já prevê em `nav.ts` |
+| E11 (família nos Contatos) | E5b | Usa o vínculo e o aniversário dos contatos que a E5b traz |
+| E12 (país nos acessos e sino) | S16 mesclada | A S16 mexe em Segurança, na atividade de acesso e em Avisos; a E12 entra depois para não editar as mesmas telas ao mesmo tempo |
+
+Em todas: telas novas carregam sob demanda e o JS inicial não cresce (hoje sobram 11 B no teto de 141.000 B). Se alguma precisar de bytes no primeiro carregamento, a Zuri pergunta ao Pablo antes. As migrations pegam o número livre da `develop` na hora de cada PR, conferindo também as PRs Sinal abertas.
 
 ### Diferenças da entrega 1
 
@@ -584,6 +599,36 @@ Pedido: evitar consulta em horário não permitido (almoço, feriado, fora do ho
 1. **Remarcar pelo link:** cada passo tem barra de progresso, título, a consulta marcada num bloco próprio ("Consulta marcada", dia por extenso), o rótulo "Escolha o novo dia" junto da grade e o contato da equipe separado por uma linha. Os dias mostram o nome inteiro e a data ("Sexta, 13 de nov"). Corrigido um `div` sem fechar que juntava tudo.
 2. **Outras telas:** respiro padrão entre blocos de formulário em Configurações (campo depois de grade, ajuda depois de campos, editor da mensagem). A prévia do Pix ocupa a largura do diálogo. Na página do paciente, o ícone do endereço alinha com a primeira linha e o prazo de cancelamento fica centralizado. Filtros em diálogo não encolhem mais (o grupo de botões ficava como uma linha fina).
 3. **Atividade de acesso e Todos os acessos:** cada acesso mostra ícone e situação, o aparelho, a cidade aproximada e o **país** (nome e sigla, com destaque quando é fora do Brasil) e o IP. O diálogo agrupa por dia e filtra por Todos, Atenção e Fora do Brasil. No sistema, o país vem de `request.cf.country`, que sempre chega; a cidade pode faltar. Ver docs/seguranca.md, que já guarda o IP por 90 dias: o país entra no mesmo registro, sem coluna nova se o campo de localização já existir (conferir na implementação).
+
+### Link do paciente: erros, caminhos e Cloudflare (13/11/2026, 03:08 UTC)
+
+Pergunta do Pablo: como o link único funciona, se precisa de configuração na Cloudflare e se o sistema trata páginas e caminhos que não existem. Entra na E7.
+
+**Cloudflare.** Nada novo. O link usa o mesmo domínio e o mesmo Worker do 1º deploy (`PUBLIC_URL` com HTTPS). Não precisa de KV, D1, regra de WAF, Turnstile nem recurso pago: o freio por rede, o token e as conferências ficam no código. O Turnstile fica fora da página do paciente de propósito (atrapalharia quem abre pelo celular).
+
+**O que já existe hoje (conferido no código em 13/11):**
+
+- O Worker recebe todo pedido primeiro (`run_worker_first`, `apps/agent/wrangler.jsonc`). Caminho de API que não existe responde `NOT_FOUND` em JSON; caminho de tela que não existe abre a página "não encontrada" depois da entrada, e sem sessão leva à tela de entrar.
+- O registro de cada pedido troca todo trecho do endereço que não é palavra de rota por `:id` (`apps/agent/src/log.ts`): o token nunca aparece nos registros.
+
+**O que a E7 acrescenta (critérios de aceite novos):**
+
+| Caso | O que acontece |
+| --- | --- |
+| `/c/<token>` com formato errado (tamanho, caractere fora de base64url) | Página "Link inválido", sem consultar o banco nem o Durable Object (P6) |
+| Token que não existe, revogado, de evento apagado ou movido para outra agenda | A mesma página "Link inválido", com o mesmo tempo de resposta e o mesmo texto: ninguém descobre se um token existiu |
+| `/c/`, `/c/<token>/qualquer-coisa`, `/c/<token>?x=…` | "Link inválido" (só o formato exato vale; parâmetros são ignorados) |
+| Consulta passada, a menos de 1 hora, ou cancelada | "Este link expirou", com o WhatsApp da equipe |
+| Muitas tentativas da mesma rede (força bruta) | 429 com a mesma página e "Tente de novo em alguns minutos"; o freio vale para abrir e para os botões |
+| Botão tocado duas vezes, ou em duas abas | Resposta idempotente: a segunda não faz nada de novo e mostra o estado atual |
+| `POST` vindo de outro site, sem `Origin` igual ao domínio, ou com ação fora de `confirmar`, `cancelar`, `remarcar` | 403 ou 400, sem mudar nada |
+| Google fora do ar ou lento | A página diz "Não deu para carregar agora. Tente de novo em instantes" sem nenhum dado; um botão que falha não muda nada e diz o mesmo |
+| Prévia do WhatsApp ou robô abrindo o link | O `GET` não muda nada; o HTML inicial é o genérico da Zuri, sem nome, data nem consultório |
+| Busca e cache | Cabeçalhos `X-Robots-Tag: noindex`, `Cache-Control: no-store` e `Referrer-Policy: no-referrer` (o token não vaza para o WhatsApp ou o Maps ao tocar nos links da página); o service worker não guarda nada de `/c/` |
+| Página da Zuri aberta pelo paciente (`/`, `/agenda`, `/configuracoes`) | Sem sessão, vai para a tela de entrar; nenhum dado aparece. A página do link não mostra o menu nem links para dentro da Zuri |
+| Dois pacientes remarcando para o mesmo horário ao mesmo tempo (ou o paciente e o Pablo) | A reserva do horário passa por uma trava única no objeto do agente e o dia é lido de novo depois de gravar: só um fica com o horário, o outro vê "Esse horário acabou de ser ocupado" e escolhe outro (achado da auditoria da E5a) |
+
+Testes da E7: um para cada linha acima (unitário do formato, integração das rotas e e2e da página), mais os de "Link único" já listados.
 
 ## 12. Riscos
 

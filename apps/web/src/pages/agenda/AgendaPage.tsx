@@ -2,6 +2,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type AgendaEvent,
   type AgendaPage as AgendaWindow,
+  type AgendaPrefs,
+  type AppointmentProblem,
+  dayClosure,
+  outsideHours,
   EVENT_STATUS_COLOR,
   EVENT_STATUSES,
   type EventStatus,
@@ -13,13 +17,15 @@ import {
   ptBRAgenda,
   type Settings,
 } from "@zuri/shared";
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, CircleCheck, Flag, LoaderCircle, MapPin, Palette, Pencil, RefreshCw, Repeat, Tag, Trash2, Users } from "lucide-react";
+import { CalendarDays, CalendarOff, CalendarPlus, ChevronLeft, ChevronRight, CircleCheck, Flag, LoaderCircle, MapPin, Palette, Pencil, RefreshCw, Repeat, Tag, Trash2, TriangleAlert, Users } from "lucide-react";
 import {
   type CSSProperties,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  createContext,
+  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -29,7 +35,6 @@ import {
   useSyncExternalStore,
 } from "react";
 import { Link } from "react-router";
-import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
 import { Button, cn, Dialog, EmptyState, ErrorNotice, Loading, Notice, PageHeader, SelectField, TextAreaField, TextField } from "../../components/ui.tsx";
 import { SETTINGS_KEY } from "../../hooks/session.tsx";
@@ -65,8 +70,10 @@ import {
   withoutType,
 } from "../../lib/agenda.ts";
 import { applyChanges, clashes, type EventChanges, moveSlot, reschedules, resizeSlot, type Slot, STEP_MIN, slotChanges, slotOf, slotTimes } from "../../lib/agenda-edit.ts";
+import { bookedOn, hhmm, isAppointment, nextFree, slotProblem } from "../../lib/agenda-rules.ts";
 import { ApiError, api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
+import { play } from "../../lib/sounds.ts";
 import { EVENTS_KEY, useEventChanges } from "./changes.ts";
 
 // This screen's pt-BR texts travel with its code, not in the first bundle (rule P11).
@@ -117,6 +124,20 @@ const HOLIDAY_TEXT: Record<NationalHoliday, Parameters<T>[0]> = {
   christmas: "web.agenda.holiday.christmas",
 };
 /** Google's names for its eleven event colors, by number. */
+/** The short name of what refuses a drop, written on the block while it is dragged. */
+const TAG_TEXT: Record<AppointmentProblem["code"], Parameters<T>[0]> = {
+  step: "web.agenda.rule.tag.step",
+  short: "web.agenda.rule.tag.short",
+  long: "web.agenda.rule.tag.long",
+  past: "web.agenda.rule.tag.past",
+  far: "web.agenda.rule.tag.far",
+  weekday: "web.agenda.rule.tag.weekday",
+  holiday: "web.agenda.rule.tag.holiday",
+  closed: "web.agenda.rule.tag.closed",
+  hours: "web.agenda.rule.tag.hours",
+  lunch: "web.agenda.rule.tag.lunch",
+  clash: "web.agenda.rule.tag.clash",
+};
 const COLOR_TEXT: Record<string, Parameters<T>[0]> = {
   "1": "web.agenda.color.1",
   "2": "web.agenda.color.2",
@@ -132,7 +153,91 @@ const COLOR_TEXT: Record<string, Parameters<T>[0]> = {
 };
 
 /** The fill of a day without work: a national holiday first, then Saturday and Sunday. */
-const dayFill = (day: string) => (nationalHoliday(day) ? "bg-holiday" : isWeekend(day) ? "bg-day-off" : undefined);
+/** Configurações › Agenda, for every part of the screen: which days are closed and why (13/11/2026). */
+// Never read outside the provider: the screen draws nothing before the settings arrive. The empty lists close no day.
+const HoursContext = createContext<AgendaPrefs>({ from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: null, openHolidays: [], closed: [] });
+
+/** A closed holiday in its color, any other closed day (and the weekend) in the day-off one. */
+function useDayFill() {
+  const hours = useContext(HoursContext);
+  return (day: string): string | undefined => {
+    // A holiday on a Sunday is a holiday first, even though the weekday alone already closes it.
+    if (nationalHoliday(day) && !hours.openHolidays.includes(day)) return "bg-holiday";
+    return dayClosure(day, hours) || isWeekend(day) ? "bg-day-off" : undefined;
+  };
+}
+
+/** "Sem expediente" (or its reason) for a day off of the settings, or null. */
+function useClosedLabel() {
+  const { t } = useI18n();
+  const hours = useContext(HoursContext);
+  return (day: string): string | null => {
+    const off = hours.closed.find((each) => each.date === day);
+    return off ? off.reason || t("web.agenda.closedDay") : null;
+  };
+}
+
+/**
+ * An appointment from today on that a change of the settings (or a booking made
+ * at Google) left outside the office hours: it stays, marked (13/11/2026, 00:44).
+ */
+function outsideAppointment(event: AgendaEvent, hours: Pick<AgendaPrefs, "from" | "to" | "lunch" | "workDays" | "openHolidays" | "closed">, today: string, timeZone: string): boolean {
+  if (!isAppointment(event)) return false;
+  const slot = slotOf(event, timeZone);
+  if (!slot || slot.day < today) return false;
+  return !!dayClosure(slot.day, hours) || outsideHours(slot.start, slot.end, hours) !== null;
+}
+
+/** Two short low notes when a closed hour refuses a change: quiet, and only with the notice sound on. */
+const REFUSAL_NOTES = [
+  { f: 330, at: 0, dur: 0.14, gain: 0.08, type: "triangle" as const },
+  { f: 247, at: 0.12, dur: 0.2, gain: 0.08, type: "triangle" as const },
+];
+
+/** "sex., 13/11" in the owner's language. */
+function useShortDay() {
+  const { locale } = useI18n();
+  return (day: string) => new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short", day: "2-digit", month: "2-digit" }).format(utcNoon(day)).replace(".", "");
+}
+
+/**
+ * Why an appointment does not fit, in full: what the form, a refused drop and a closed hour say.
+ * `own`: the page itself sits above the context it provides, so it hands its settings in.
+ */
+function useProblemText(own?: AgendaPrefs | undefined) {
+  const { t } = useI18n();
+  const shared = useContext(HoursContext);
+  const hours = own ?? shared;
+  const shortDay = useShortDay();
+  const holidayOf = useHoliday();
+  return (problem: AppointmentProblem, day: string): string => {
+    const date = shortDay(day);
+    switch (problem.code) {
+      case "weekday":
+        return t("web.agenda.rule.weekday", { day: date });
+      case "holiday":
+        return t("web.agenda.rule.holiday", { day: date, name: holidayOf(day) ?? "" });
+      case "closed":
+        return problem.reason ? t("web.agenda.rule.closedReason", { day: date, reason: problem.reason }) : t("web.agenda.rule.closed", { day: date });
+      case "hours":
+        return t("web.agenda.rule.hours", { from: hour(hours.from), to: hour(hours.to) });
+      case "lunch":
+        return t("web.agenda.rule.lunch", { from: hhmm(hours.lunch?.from ?? 0), to: hhmm(hours.lunch?.to ?? 0) });
+      case "clash":
+        return t("web.agenda.rule.clash", { title: problem.title || t("web.agenda.event.untitled"), from: hhmm(problem.start), to: hhmm(Math.min(problem.end, 1_440)) });
+      case "step":
+        return t("web.agenda.rule.step");
+      case "short":
+        return t("web.agenda.rule.short");
+      case "long":
+        return t("web.agenda.rule.long");
+      case "past":
+        return t("web.agenda.rule.past");
+      case "far":
+        return t("web.agenda.rule.far");
+    }
+  };
+}
 
 /** "Tiradentes" for a holiday's day, or null. The days are Brazil's, in the owner's language. */
 function useHoliday() {
@@ -174,13 +279,17 @@ function useNow(): number {
 
 const eventsKey = (from: string, to: string) => [...EVENTS_KEY, from, to] as const;
 
-type Editing = { mode: "new"; day: string; time?: string } | { mode: "edit"; event: AgendaEvent };
+/** `plain`: a personal event, offered when a closed hour refused an appointment: it starts without a type. */
+type Editing = { mode: "new"; day: string; time?: string; minutes?: number; plain?: boolean } | { mode: "edit"; event: AgendaEvent };
+/** An hour that takes no appointment, clicked: why, and the next free one. */
+/** A closed hour clicked, or a drop refused (`moving`: the appointment that stayed, and its length). */
+type ClosedHour = { day: string; minute: number; why: string; next: { day: string; start: number } | null; moving?: { event: AgendaEvent; length: number } };
 /** What a change did, for the words of its notice. */
 type Changed = { kind: "moved" | "resized" | "updated"; rescheduled: boolean };
 type Change = (event: AgendaEvent, changes: EventChanges, changed: Changed) => void;
 type Sync = "idle" | "saving" | "saved";
 /** What the preferences hide and the owner asked to see in this visit. */
-type Reveal = { allDay: boolean; outside: boolean; daysOff: boolean };
+type Reveal = { outside: boolean; daysOff: boolean };
 
 /**
  * Agenda (step 19, redrawn in the Sinal S08): the owner's Google Calendar
@@ -208,7 +317,7 @@ export function AgendaPage() {
   const view = chosen ?? ((wide && prefs?.view) || "day");
   const anchor = picked ?? today;
   const go = (day: string) => setPicked(day === today ? null : day);
-  const [reveal, setReveal] = useState<Reveal>({ allDay: false, outside: false, daysOff: false });
+  const [reveal, setReveal] = useState<Reveal>({ outside: false, daysOff: false });
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const [open, setOpen] = useState<AgendaEvent | null>(null);
   // Counts the openings: each one gets a fresh dialog, and closing keeps it, so the focus goes back to where it came from.
@@ -218,6 +327,8 @@ export function AgendaPage() {
     setOpen(event);
   };
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [closedHour, setClosedHour] = useState<ClosedHour | null>(null);
+  const problemText = useProblemText(prefs);
 
   const ready = !!status.data?.connected && !status.data.problem && status.data.calendars.some((c) => c.mode !== "off");
   // The day reads its whole week: the strip of days changes day without a new request.
@@ -258,9 +369,53 @@ export function AgendaPage() {
       if (clashes(saved, onScreen.current)) said.push(t("web.agenda.change.clash"));
       return said.join(" ");
     });
+  /**
+   * A refused drop opens the same notice as a closed hour, with the sound: a line at the foot of the
+   * screen went unseen (Pablo, 13/11/2026 03:03). It offers to move the appointment to the next free hour.
+   */
+  const refuse = (event: AgendaEvent, slot: Slot, problem: AppointmentProblem) => {
+    if (!prefs) return;
+    if (settings.data?.sounds.notice !== false) play(REFUSAL_NOTES);
+    const length = slot.end - slot.start;
+    const next = nextFree({ prefs, events: events.data?.events ?? [], day: slot.day, minute: slot.start, until: to, now: Date.now(), timeZone, length, except: event });
+    setClosedHour({ day: slot.day, minute: slot.start, why: problemText(problem, slot.day), next, moving: { event, length } });
+  };
+  /**
+   * What stops an appointment from landing on `slot`: nothing for a meeting, or
+   * for one that stays where it was. Pulling only the end of one that already
+   * began (it ran late) is no booking in the past.
+   */
+  const slotCheck = (event: AgendaEvent, slot: Slot): AppointmentProblem | null => {
+    if (!prefs || !isAppointment(event)) return null;
+    const before = slotOf(event, timeZone);
+    if (before && before.day === slot.day && before.start === slot.start && before.end === slot.end) return null;
+    const keepsStart = before?.day === slot.day && before.start === slot.start;
+    return slotProblem({ prefs, events: events.data?.events ?? [], except: event, day: slot.day, start: slot.start, end: slot.end, now: Date.now(), timeZone, keepsStart });
+  };
   const moveTo = (event: AgendaEvent, slot: Slot) => {
+    const problem = slotCheck(event, slot);
+    if (problem) return refuse(event, slot, problem);
     const result = slotChanges(event, slot, eventLook(event, byId.get(event.calendarId)).status, timeZone);
     if (result) change(event, result.changes, { kind: result.moved ? "moved" : "resized", rescheduled: result.rescheduled });
+  };
+  /**
+   * A click on an empty hour opens a new appointment there. An hour that takes
+   * none (lunch, a holiday, the past) says why first, with the next free hour
+   * and a personal event, which may go at any hour (13/11/2026, 01:04 item 5).
+   */
+  const newAt = (day: string, time: string) => {
+    if (!prefs) return;
+    const minute = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+    const all = events.data?.events ?? [];
+    // Over an appointment already there, the hour is the owner's to see: the form tells the clash.
+    const taken = bookedOn(all, day, timeZone).some((slot) => slot.start <= minute && slot.end > minute);
+    // The form starts with an hour; the last half hour before lunch or the end of the day takes half an hour.
+    const check = (length: number) => slotProblem({ prefs, events: all, day, start: minute, end: minute + length, now: Date.now(), timeZone });
+    const problem = taken ? null : check(60);
+    if (!problem) return setEditing({ mode: "new", day, time });
+    if (!taken && !check(30)) return setEditing({ mode: "new", day, time, minutes: 30 });
+    if (settings.data?.sounds.notice !== false) play(REFUSAL_NOTES);
+    setClosedHour({ day, minute, why: problemText(problem, day), next: nextFree({ prefs, events: all, day, minute, until: to, now: Date.now(), timeZone }) });
   };
   // Ctrl or ⌘ + Z takes the last change back while its notice offers "Desfazer"; never over a field or an open dialog.
   useEffect(() => {
@@ -345,15 +500,12 @@ export function AgendaPage() {
   const week = view === "month" ? [] : daysOf(from, to);
   const grid = view === "week" && wide;
   // What the owner asked to see in this visit wins over the preference; the count is always of what the preference hides.
-  const see = { from: prefs.from, to: prefs.to, allDay: prefs.allDay || reveal.allDay, outside: prefs.outside || reveal.outside };
+  const see = { from: prefs.from, to: prefs.to, outside: prefs.outside || reveal.outside };
   const columns = grid ? shownDays(week, { workDays: prefs.workDays, daysOff: prefs.daysOff || reveal.daysOff }) : [anchor];
-  const left = { allDay: new Set<string>(), outside: 0, daysOff: new Set<string>() };
+  const left = { outside: 0, daysOff: new Set<string>() };
   if (view !== "month") {
-    // Counted over the days on screen: a day off just shown brings its own all-day and out-of-hours events to these lines (QA-S08-01).
-    for (const day of columns) {
-      for (const event of eventsOn(shown, day, timeZone)) if (event.allDay && !prefs.allDay) left.allDay.add(eventKey(event));
-      left.outside += dayEvents(shown, day, prefs, timeZone).outside;
-    }
+    // Counted over the days on screen: a day off just shown brings its own out-of-hours events to this line (QA-S08-01).
+    for (const day of columns) left.outside += dayEvents(shown, day, prefs, timeZone).outside;
     if (grid && !prefs.daysOff) {
       const working = new Set(shownDays(week, prefs));
       for (const day of week) if (!working.has(day)) for (const event of eventsOn(shown, day, timeZone)) left.daysOff.add(eventKey(event));
@@ -366,6 +518,7 @@ export function AgendaPage() {
   };
 
   return (
+    <HoursContext.Provider value={prefs}>
     <div className="space-y-6">
       {header}
       <Toolbar
@@ -399,7 +552,9 @@ export function AgendaPage() {
           onDay={openDay}
           movable={!saving}
           onMove={moveTo}
-          onNew={canCreate ? (day, time) => setEditing({ mode: "new", day, time }) : undefined}
+          onNew={canCreate ? newAt : undefined}
+          check={slotCheck}
+          tagOf={(problem) => t(TAG_TEXT[problem.code])}
         />
       ) : (
         <>
@@ -411,7 +566,6 @@ export function AgendaPage() {
       {view !== "month" && events.data && (
         <LeftOut
           rows={[
-            { key: "allDay", count: left.allDay.size, text: "web.agenda.hidden.allDay" },
             { key: "outside", count: left.outside, text: "web.agenda.hidden.outside" },
             { key: "daysOff", count: left.daysOff.size, text: "web.agenda.hidden.daysOff" },
           ]}
@@ -442,8 +596,25 @@ export function AgendaPage() {
           setEditing({ mode: "edit", event });
         }}
       />
-      {editing && <EventFormDialog editing={editing} calendars={writable} types={types} busy={saving} onChange={change} onClose={() => setEditing(null)} />}
+      {editing && <EventFormDialog editing={editing} calendars={writable} types={types} busy={saving} prefs={prefs} events={events.data?.events ?? []} onChange={change} onClose={() => setEditing(null)} />}
+      {closedHour && (
+        <ClosedHourDialog
+          closed={closedHour}
+          onClose={() => setClosedHour(null)}
+          onPlain={() => {
+            setClosedHour(null);
+            setEditing({ mode: "new", day: closedHour.day, time: hhmm(closedHour.minute), plain: true });
+          }}
+          onNext={(next) => {
+            setClosedHour(null);
+            go(next.day);
+            if (closedHour.moving) moveTo(closedHour.moving.event, { day: next.day, start: next.start, end: next.start + closedHour.moving.length });
+            else setEditing({ mode: "new", day: next.day, time: hhmm(next.start) });
+          }}
+        />
+      )}
     </div>
+    </HoursContext.Provider>
   );
 }
 
@@ -578,12 +749,72 @@ function Key({ statuses }: { statuses: boolean }) {
 function HolidayBanner({ day }: { day: string }) {
   const { t } = useI18n();
   const name = useHoliday()(day);
+  const off = useClosedLabel()(day);
+  if (off) {
+    return (
+      <p className="flex items-center gap-2 rounded-xl bg-day-off px-3 py-2 text-sm font-medium text-fg">
+        <CalendarOff className="h-4 w-4 shrink-0" aria-hidden />
+        {off === t("web.agenda.closedDay") ? t("web.agenda.closedDay.banner") : t("web.agenda.closedDay.label", { reason: off })}
+      </p>
+    );
+  }
   if (!name) return null;
   return (
     <p className="flex items-center gap-2 rounded-xl bg-holiday px-3 py-2 text-sm font-medium text-holiday-text">
       <Flag className="h-4 w-4 shrink-0" aria-hidden />
       {t("web.agenda.holiday.label", { name })}
     </p>
+  );
+}
+
+/** A closed hour clicked (13/11/2026, 01:04 item 5): the reason, the next free hour and a personal event, which goes anywhere. */
+function ClosedHourDialog({
+  closed,
+  onClose,
+  onPlain,
+  onNext,
+}: {
+  closed: ClosedHour;
+  onClose: () => void;
+  onPlain: () => void;
+  onNext: (next: { day: string; start: number }) => void;
+}) {
+  const { t } = useI18n();
+  const shortDay = useShortDay();
+  const next = closed.next;
+  return (
+    <Dialog open onClose={onClose} title={t("web.agenda.closedHour.title")}>
+      <div className="space-y-4">
+        <p role="alert" className="text-sm leading-6">
+          {t("web.agenda.closedHour.when", { day: shortDay(closed.day), time: hhmm(closed.minute) })} {closed.why}
+          {closed.moving && ` ${t("web.agenda.closedHour.stayed")}`}
+        </p>
+        {next && <p className="text-sm leading-6">{t("web.agenda.closedHour.next", { day: shortDay(next.day), time: hhmm(next.start) })}</p>}
+        {!closed.moving && <p className="text-sm leading-6 text-fg-muted">{t("web.agenda.closedHour.personal")}</p>}
+        <div className="flex flex-wrap justify-end gap-2">
+          {closed.moving ? (
+            next && (
+              <Button variant="secondary" onClick={onClose}>
+                {t("web.agenda.closedHour.ok")}
+              </Button>
+            )
+          ) : (
+            <Button variant="secondary" onClick={onPlain}>
+              {t("web.agenda.closedHour.plain")}
+            </Button>
+          )}
+          {next ? (
+            <Button onClick={() => onNext(next)}>
+              {t(closed.moving ? "web.agenda.closedHour.moveNext" : "web.agenda.closedHour.useNext")}
+            </Button>
+          ) : (
+            <Button onClick={onClose}>
+              {t("web.agenda.closedHour.ok")}
+            </Button>
+          )}
+        </div>
+      </div>
+    </Dialog>
   );
 }
 
@@ -598,7 +829,7 @@ function LeftOut({
   reveal,
   onFlip,
 }: {
-  rows: { key: keyof Reveal; count: number; text: "web.agenda.hidden.allDay" | "web.agenda.hidden.outside" | "web.agenda.hidden.daysOff" }[];
+  rows: { key: keyof Reveal; count: number; text: "web.agenda.hidden.outside" | "web.agenda.hidden.daysOff" }[];
   hours: { from: string; to: string };
   reveal: Reveal;
   onFlip: (key: keyof Reveal) => void;
@@ -649,6 +880,8 @@ interface BlockHandlers {
   /** Names the keyboard's way of moving it, for a screen reader; only on an event that can move. */
   hint?: string | undefined;
   dragging: boolean;
+  /** The short reason the place it is dragged to refuses it ("Almoço"): the block turns red and says it. */
+  refused?: string | undefined;
   onGrab: (e: ReactPointerEvent, resize: boolean) => void;
   onKey: (e: ReactKeyboardEvent) => void;
   /** A click that ends a drag opens nothing. */
@@ -662,7 +895,16 @@ function EventButton({
   onOpen,
   block,
   chip = false,
-}: { event: AgendaEvent; calendar?: GoogleCalendarInfo | undefined; onOpen: (event: AgendaEvent) => void; block?: BlockHandlers | undefined; chip?: boolean }) {
+  outside = false,
+}: {
+  event: AgendaEvent;
+  calendar?: GoogleCalendarInfo | undefined;
+  onOpen: (event: AgendaEvent) => void;
+  block?: BlockHandlers | undefined;
+  chip?: boolean;
+  /** An appointment left outside the office hours: marked with an alert, never hidden. */
+  outside?: boolean;
+}) {
   const { t } = useI18n();
   const when = useWhen()(event);
   const look = eventLook(event, calendar);
@@ -681,11 +923,20 @@ function EventButton({
         // The event's color (its status, or its calendar's) is the bar on the left and a light wash of the fill.
         "block w-full min-w-0 overflow-hidden rounded-lg border-l-4 border-l-(--event) bg-[color-mix(in_srgb,var(--event)_14%,var(--color-surface))] px-1.5 text-left text-xs hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:hover:brightness-125",
         block ? "h-full py-0.5" : chip ? "min-h-11 py-1" : "min-h-7 py-1",
-        block?.dragging && "cursor-grabbing shadow-lg ring-2 ring-accent",
+        block?.dragging && (block.refused ? "cursor-not-allowed shadow-lg ring-2 ring-danger" : "cursor-grabbing shadow-lg ring-2 ring-accent"),
       )}
       style={{ "--event": look.color ?? "var(--color-accent)" } as CSSProperties}
     >
-      <span className={cn("block truncate font-semibold", look.status === "cancelled" && "line-through")}>{event.title || t("web.agenda.event.untitled")}</span>
+      <span className={cn("flex min-w-0 items-center gap-1 font-semibold", look.status === "cancelled" && "line-through")}>
+        {outside && (
+          <>
+            <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning" aria-hidden />
+            <span className="sr-only">{t("web.agenda.outsideMark")}: </span>
+          </>
+        )}
+        <span className="truncate">{event.title || t("web.agenda.event.untitled")}</span>
+      </span>
+      {block?.refused && <span className="block truncate font-semibold text-danger">{block.refused}</span>}
       {/* The status in words too, never by the color alone: written in a block, where there is room, and spoken in a chip. */}
       {look.status && !block && <span className="sr-only">, {t(STATUS_TEXT[look.status])}</span>}
       {block ? (
@@ -706,6 +957,7 @@ function EventButton({
 function DayStrip({ days, day, today, onDay }: { days: string[]; day: string; today: string; onDay: (day: string) => void }) {
   const { t, locale } = useI18n();
   const holidayOf = useHoliday();
+  const dayFill = useDayFill();
   return (
     <nav aria-label={t("web.agenda.week")}>
       <ol className="grid grid-cols-7 gap-1">
@@ -784,6 +1036,9 @@ function DayHeading({ day, today, onDay }: { day: string; today: string; onDay: 
   const date = utcNoon(day);
   const full = new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(date);
   const holiday = useHoliday()(day);
+  const off = useClosedLabel()(day);
+  // Under the date: the holiday's name or "Sem expediente", where the "Dia todo" row used to say it (13/11/2026).
+  const note = holiday ?? (off ? t("web.agenda.closedDay") : null);
   return (
     <button
       type="button"
@@ -795,10 +1050,16 @@ function DayHeading({ day, today, onDay }: { day: string; today: string; onDay: 
         {new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short" }).format(date).replace(".", "")}
       </span>
       <span className={cn("flex h-8 min-w-8 items-center justify-center rounded-full px-1 text-lg font-semibold", day === today && "bg-accent text-accent-fg")}>{date.getUTCDate()}</span>
+      {note && (
+        <span aria-hidden className={cn("block max-w-full truncate px-1 text-[0.6875rem] leading-4 font-semibold", holiday ? "text-holiday-text" : "text-fg-muted")} title={holiday ?? off ?? undefined}>
+          {note}
+        </span>
+      )}
       {/* The name starts with what is seen (WCAG 2.5.3) and then says where it goes. */}
       <span className="sr-only">
         , {t("web.agenda.openDay", { date: full })}
         {holiday ? `, ${t("web.agenda.holiday.label", { name: holiday })}` : ""}
+        {off ? `, ${t("web.agenda.closedDay.label", { reason: off })}` : ""}
       </span>
     </button>
   );
@@ -826,12 +1087,14 @@ function WeekGrid({
   movable,
   onMove,
   onNew,
+  check,
+  tagOf,
 }: {
   days: string[];
   today: string;
   now: number;
-  hours: { from: number; to: number };
-  see: { allDay: boolean; outside: boolean };
+  hours: Pick<AgendaPrefs, "from" | "to" | "lunch" | "workDays" | "openHolidays" | "closed">;
+  see: { outside: boolean };
   events: AgendaEvent[];
   calendars: Map<string, GoogleCalendarInfo>;
   onOpen: (event: AgendaEvent) => void;
@@ -841,10 +1104,13 @@ function WeekGrid({
   onMove: (event: AgendaEvent, slot: Slot) => void;
   /** An empty hour was clicked; absent when no calendar can be edited. */
   onNew?: ((day: string, time: string) => void) | undefined;
+  /** What stops an appointment from landing there, shown on the block while it moves (13/11/2026, 01:04 item 5). */
+  check: (event: AgendaEvent, slot: Slot) => AppointmentProblem | null;
+  tagOf: (problem: AppointmentProblem) => string;
 }) {
   const { t, locale, timeZone } = useI18n();
   const toast = useToast();
-  const holidayOf = useHoliday();
+  const dayFill = useDayFill();
   const hintId = useId();
   const list = useRef<HTMLOListElement>(null);
   /** Where the event being dragged, or moved by Alt + arrows, would land: drawn there, sent only when let go. */
@@ -949,6 +1215,8 @@ function WeekGrid({
     setPreview({ key: id, slot: next, keyboard: true });
   };
 
+  const previewEvent = preview ? original(preview.key) : undefined;
+  const refused = preview && previewEvent ? check(previewEvent, preview.slot) : null;
   const drawn = preview ? events.map((event) => (eventKey(event) === preview.key ? applyChanges(event, slotTimes(preview.slot), timeZone) : event)) : events;
   const moving =
     preview?.keyboard === true
@@ -956,7 +1224,7 @@ function WeekGrid({
           day: new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(utcNoon(preview.slot.day)),
           from: slotTimes(preview.slot).start.slice(11),
           to: preview.slot.end === 24 * 60 ? "24:00" : slotTimes(preview.slot).end.slice(11),
-        })
+        }) + (refused ? ` ${tagOf(refused)}` : "")
       : "";
   // Alt + Tab with the event half moved: Alt is let go somewhere else, so nothing is sent.
   const byKeyboard = preview?.keyboard === true;
@@ -982,11 +1250,10 @@ function WeekGrid({
     };
   }, [byKeyboard]);
   const plans = days.map((day) => planDay(drawn, day, hours, timeZone));
-  const holidays = days.map(holidayOf);
-  // A holiday's name sits in the all-day row, so the row shows for it even with the all-day events hidden.
-  const allDayEvents = see.allDay && plans.some((plan) => plan.allDay.length > 0);
+  // All-day events sit under the days' names, without a row name of their own: the "Dia todo" line left on 13/11/2026.
+  const allDayEvents = plans.some((plan) => plan.allDay.length > 0);
   const rows = {
-    allDay: allDayEvents || holidays.some(Boolean),
+    allDay: allDayEvents,
     before: see.outside && plans.some((plan) => plan.before.length > 0),
     after: see.outside && plans.some((plan) => plan.after.length > 0),
   };
@@ -1008,7 +1275,7 @@ function WeekGrid({
     <div className="grid grid-cols-[4.75rem_minmax(0,1fr)] grid-rows-[auto_auto_auto_auto_auto] overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
       <div aria-hidden className="row-span-full grid grid-rows-subgrid">
         <div />
-        <div className={cn(rows.allDay && CELL, rows.allDay && side)}>{rows.allDay && t("web.agenda.allDay")}</div>
+        <div className={cn(rows.allDay && CELL)} />
         <div className={cn(rows.before && CELL, rows.before && side, "bg-raised/60")}>{rows.before && t("web.agenda.row.before")}</div>
         <div className={cn(CELL, "relative")} style={{ height }}>
           {Array.from({ length: count }, (_, index) => hours.from + index).map((each) => (
@@ -1035,10 +1302,7 @@ function WeekGrid({
           return (
             <li key={day} className={cn("row-span-full grid min-w-0 grid-rows-subgrid border-l border-border", dayFill(day))}>
               <DayHeading day={day} today={today} onDay={onDay} />
-              <div className={cn(rows.allDay && CELL)}>
-                {holidays[index] && <p className="px-1.5 pt-1.5 pb-1 text-xs leading-4 font-semibold break-words text-holiday-text">{holidays[index]}</p>}
-                {allDayEvents && chips(plan.allDay)}
-              </div>
+              <div className={cn(rows.allDay && CELL)}>{allDayEvents && chips(plan.allDay)}</div>
               <div className={cn(rows.before && CELL, "bg-raised/60")}>{rows.before && chips(plan.before)}</div>
               {/* biome-ignore lint/a11y/noStaticElementInteractions: a shortcut for the mouse; "Novo evento", at the top, does the same for everyone. */}
               {/* biome-ignore lint/a11y/useKeyWithClickEvents: same. */}
@@ -1058,6 +1322,19 @@ function WeekGrid({
                   })
                 }
               >
+                {hours.lunch && !dayClosure(day, hours) && hours.lunch.to > hours.from * 60 && hours.lunch.from < hours.to * 60 && (
+                  // The lunch break as a striped band: no appointment goes there. Drawing only; the rule says it in words.
+                  <span
+                    aria-hidden
+                    data-lunch
+                    title={t("web.agenda.lunch")}
+                    className="pointer-events-none absolute inset-x-0 bg-[repeating-linear-gradient(135deg,var(--color-border)_0_1px,transparent_1px_7px)] opacity-80"
+                    style={{
+                      top: `${((Math.max(hours.lunch.from, hours.from * 60) - hours.from * 60) / (count * 60)) * 100}%`,
+                      height: `${((Math.min(hours.lunch.to, hours.to * 60) - Math.max(hours.lunch.from, hours.from * 60)) / (count * 60)) * 100}%`,
+                    }}
+                  />
+                )}
                 {plan.blocks.length > 0 && (
                   <ul>
                     {plan.blocks.map((each) => {
@@ -1071,7 +1348,16 @@ function WeekGrid({
                             event={each.event}
                             calendar={calendars.get(each.event.calendarId)}
                             onOpen={onOpen}
-                            block={{ hint: moves ? hintId : undefined, dragging, onGrab: (e, resize) => grab(e, id, resize), onKey: (e) => key(e, id), skipClick: () => skipClick.current }}
+                            block={{
+                              hint: moves ? hintId : undefined,
+                              dragging,
+                              refused: dragging && refused ? tagOf(refused) : undefined,
+                              onGrab: (e, resize) => grab(e, id, resize),
+                              onKey: (e) => key(e, id),
+                              skipClick: () => skipClick.current,
+                            }}
+                            // While held, the block says only what the drop would meet.
+                            outside={!dragging && outsideAppointment(each.event, hours, today, timeZone)}
                           />
                           {/* The lower edge pulls the end. Clicked without moving, it opens the event like the rest of the block. */}
                           {moves && (
@@ -1129,6 +1415,7 @@ function MonthView({
 }: { anchor: string; from: string; to: string; today: string; events: AgendaEvent[]; calendars: Map<string, GoogleCalendarInfo>; onOpen: (event: AgendaEvent) => void; onDay: (day: string) => void }) {
   const { t, plural, locale, timeZone } = useI18n();
   const holidayOf = useHoliday();
+  const dayFill = useDayFill();
   const days = daysOf(from, to);
   const month = anchor.slice(0, 7);
   const names = days.slice(0, 7).map((day) => new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short" }).format(utcNoon(day)).replace(".", ""));
@@ -1417,10 +1704,16 @@ function EventFormDialog({
   calendars,
   types,
   busy,
+  prefs,
+  events,
   onChange,
   onClose,
 }: {
   editing: Editing;
+  /** Configurações › Agenda: an appointment is checked against them before it goes (13/11/2026, 00:44). */
+  prefs: AgendaPrefs;
+  /** The events read, for a clash with another appointment. */
+  events: readonly AgendaEvent[];
   /** Another change is on its way to Google: this one waits for its answer. */
   busy: boolean;
   calendars: GoogleCalendarInfo[];
@@ -1434,16 +1727,37 @@ function EventFormDialog({
   const duration = useDuration();
   const toast = useToast();
   const qc = useQueryClient();
-  const initial = useMemo(
-    () => (editing.mode === "edit" ? formOf(editing.event, timeZone) : blankForm(editing.day, (calendars.find((c) => c.primary) ?? calendars[0])?.id ?? "", timeZone, Date.now(), editing.time)),
-    [editing, calendars, timeZone],
-  );
+  const problemText = useProblemText();
+  const initial = useMemo(() => {
+    if (editing.mode === "edit") return formOf(editing.event, timeZone);
+    const blank = blankForm(editing.day, (calendars.find((c) => c.primary) ?? calendars[0])?.id ?? "", timeZone, Date.now(), editing.time, editing.minutes);
+    // A new event is an appointment of the calendar's first "Consulta" type, unless it is a personal one.
+    return editing.plain ? blank : { ...blank, type: types.find((type) => /^consulta\b/i.test(type)) ?? "" };
+  }, [editing, calendars, timeZone, types]);
   const [form, setForm] = useState<EventForm>(initial);
   const [problem, setProblem] = useState<FormProblem | null>(null);
+  /** What the booking rule refused, in words, and the field it points at. */
+  const [rule, setRule] = useState<{ text: string; field: "date" | "start" | "end" } | null>(null);
+  const fields = useRef<HTMLFormElement>(null);
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof EventForm>(key: K, value: EventForm[K]) => {
     setForm((old) => ({ ...old, [key]: value }));
     setProblem(null);
+    setRule(null);
+  };
+
+  /** The rule's verdict on the form as it is, or null: only for an appointment whose day or hours are new. */
+  const ruleProblem = (body: { allDay: boolean; start: string; end: string; description: string }) => {
+    if (body.allDay || !form.type || form.status === "cancelled") return null;
+    const before = editing.mode === "edit" ? formBody(initial) : null;
+    const kept = before && typeof before !== "string" ? before : null;
+    if (kept && kept.start === body.start && kept.end === body.end && initial.type !== "" && initial.status !== "cancelled") return null;
+    // The start stays (only the end moves, or a cancelled one comes back): it may have begun already, which is no booking in the past.
+    const keepsStart = kept?.start === body.start;
+    const day = body.start.slice(0, 10);
+    const minute = (at: string) => Math.round((Date.parse(`${at.slice(0, 10)}T12:00:00Z`) - Date.parse(`${day}T12:00:00Z`)) / 60_000) + Number(at.slice(11, 13)) * 60 + Number(at.slice(14, 16));
+    const found = slotProblem({ prefs, events, except: editing.mode === "edit" ? editing.event : null, day, start: minute(body.start), end: minute(body.end), now: Date.now(), timeZone, keepsStart });
+    return found ? { text: problemText(found, day), field: found.field } : null;
   };
 
   const submit = async (e: FormEvent) => {
@@ -1451,6 +1765,13 @@ function EventFormDialog({
     const body = formBody(form);
     if (typeof body === "string") {
       setProblem(body);
+      return;
+    }
+    const refused = ruleProblem(body);
+    if (refused) {
+      setRule(refused);
+      // The focus goes to the field to fix: the day, the start or the length.
+      fields.current?.querySelector<HTMLElement>(`[data-rule="${refused.field === "end" ? "end" : refused.field === "date" ? "date" : "start"}"]`)?.focus();
       return;
     }
     if (editing.mode === "edit") {
@@ -1484,7 +1805,7 @@ function EventFormDialog({
   const error = problem ? t(PROBLEM_TEXT[problem]) : null;
   return (
     <Dialog open onClose={onClose} title={t(editing.mode === "new" ? "web.agenda.form.newTitle" : "web.agenda.form.editTitle")}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
+      <form ref={fields} onSubmit={submit} className="space-y-4" noValidate>
         <TextField
           label={t("web.agenda.form.title")}
           value={form.title}
@@ -1503,7 +1824,7 @@ function EventFormDialog({
             ))}
           </SelectField>
         )}
-        <Switch label={t("web.agenda.form.allDay")} checked={form.allDay} onChange={(on) => set("allDay", on)} />
+        {/* No "Dia todo" for a new event (13/11/2026): an all-day one from Google keeps its days. */}
         {form.allDay ? (
           <div className="grid grid-cols-2 gap-3">
             <TextField type="date" label={t("web.agenda.form.startDate")} value={form.startDate} required onChange={(e) => set("startDate", e.target.value)} />
@@ -1512,9 +1833,17 @@ function EventFormDialog({
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <TextField type="date" label={t("web.agenda.form.day")} value={form.startDate} required className="col-span-2 sm:col-span-1" onChange={(e) => set("startDate", e.target.value)} />
-              <TextField type="time" label={t("web.agenda.form.startTime")} value={form.startTime} step={STEP_MIN * 60} required onChange={(e) => set("startTime", e.target.value)} />
-              <SelectField label={t("web.agenda.form.duration")} value={form.duration} onChange={(e) => set("duration", e.target.value)}>
+              <TextField
+                type="date"
+                data-rule="date"
+                label={t("web.agenda.form.day")}
+                value={form.startDate}
+                required
+                className="col-span-2 sm:col-span-1"
+                onChange={(e) => set("startDate", e.target.value)}
+              />
+              <TextField type="time" data-rule="start" label={t("web.agenda.form.startTime")} value={form.startTime} step={STEP_MIN * 60} required onChange={(e) => set("startTime", e.target.value)} />
+              <SelectField data-rule="end" label={t("web.agenda.form.duration")} value={form.duration} onChange={(e) => set("duration", e.target.value)}>
                 {DURATIONS.map((minutes) => (
                   <option key={minutes} value={minutes}>
                     {duration(minutes)}
@@ -1535,6 +1864,11 @@ function EventFormDialog({
         {problem && problem !== "title" && (
           <p role="alert" className="text-sm text-danger">
             {error}
+          </p>
+        )}
+        {rule && (
+          <p role="alert" className="text-sm leading-6 text-danger">
+            {rule.text}
           </p>
         )}
         <div className="grid grid-cols-2 gap-3">

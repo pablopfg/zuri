@@ -268,17 +268,17 @@ describe("the Agenda under the owner's preferences (Sinal S08)", () => {
     expect(planDay([night], "2026-11-09", HOURS, SP).after).toEqual([night]);
   });
 
-  it("lists a day with what the preferences hide counted, never lost", () => {
+  it("lists a day with what the preferences hide counted, never lost, all-day events always in", () => {
     const allDay = event({ id: "a", allDay: true, start: DAY, end: "2026-11-10" });
     const events = [allDay, at("07:00", "07:30"), at("09:00", "10:00"), at("19:00", "20:00")];
-    const all = dayEvents(events, DAY, { ...HOURS, allDay: true, outside: true }, SP);
-    expect(all).toMatchObject({ allDay: 0, outside: 0 });
+    const all = dayEvents(events, DAY, { ...HOURS, outside: true }, SP);
+    expect(all.outside).toBe(0);
     expect(all.events).toHaveLength(4);
-    const some = dayEvents(events, DAY, { ...HOURS, allDay: false, outside: false }, SP);
-    expect(some).toMatchObject({ allDay: 1, outside: 2 });
-    expect(some.events.map((e) => e.id)).toEqual(["09:00-10:00"]);
+    const some = dayEvents(events, DAY, { ...HOURS, outside: false }, SP);
+    expect(some.outside).toBe(2);
+    expect(some.events.map((e) => e.id)).toEqual(["a", "09:00-10:00"]);
     // Every event is either listed or counted.
-    expect(some.events.length + some.allDay + some.outside).toBe(events.length);
+    expect(some.events.length + some.outside).toBe(events.length);
   });
 
   it("places each block by its hours and cuts it to the working hours", () => {
@@ -351,7 +351,7 @@ describe("the Agenda under the owner's preferences (Sinal S08)", () => {
     expect(short?.top).toBeCloseTo(90 / 1440);
     expect((short?.top ?? 0) + (short?.height ?? 0)).toBeCloseTo(210 / 1440);
     // Either day still ends at its own midnight: nothing of the next day is counted in it.
-    expect(dayEvents([back, forward], "2026-11-02", { ...HOURS, allDay: true, outside: true }, NY).events).toEqual([]);
+    expect(dayEvents([back, forward], "2026-11-02", { ...HOURS, outside: true }, NY).events).toEqual([]);
   });
 });
 

@@ -147,7 +147,7 @@ test("settings has the eleven sections in five groups, each with its address and
     ["Assistente", "assistente", "Revisão de conflitos"],
     ["Uso da IA", "ia", "Uso de hoje"],
     ["Modelos e limites", "modelos", "Modelo de conversa"],
-    ["Agenda", "agenda", "Horário de trabalho"],
+    ["Agenda", "agenda", "Horário de atendimento"],
     ["Avisos", "avisos", "Resumo do dia"],
     ["Integrações", "integracoes", "Serviços externos (MCP)"],
     ["Dados", "dados", "Exportar e importar"],

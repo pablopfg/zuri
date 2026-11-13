@@ -134,14 +134,8 @@ test("the week paints each event by its status, names it for a screen reader, an
   await expectAccessible(page, "agenda-situacao-semana");
 });
 
-test("the holiday's name shows even with the all-day events hidden, and a week without one has no row for it", async ({ page }) => {
+test("the holiday's name shows under its date, and a week without one has no all-day row", async ({ page }) => {
   await routeAgenda(page, WEEK);
-  await page.route("**/api/settings", async (route) => {
-    if (route.request().method() !== "GET") return route.fallback();
-    const response = await route.fetch();
-    const settings = (await response.json()) as { agenda: object };
-    await route.fulfill({ response, json: { ...settings, agenda: { ...settings.agenda, allDay: false } } });
-  });
   await openAgenda(page);
   await expect(column(page, "20").getByText("Consciência Negra", { exact: true })).toBeVisible();
   // The week before (9 to 15/11): its only holiday is Sunday the 15th.

@@ -1,10 +1,14 @@
-import type { AgendaPrefs, MessageKey } from "@zuri/shared";
+import { useQuery } from "@tanstack/react-query";
+import { AGENDA_RULES, type AgendaEvent, type AgendaPage, type AgendaPrefs, dayClosure, dayPlus, type MessageKey, nationalHoliday, outsideHours } from "@zuri/shared";
+import { TriangleAlert, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
+import { Link } from "react-router";
 import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
-import { Button, Card, cn, ErrorNotice, Loading, SelectField } from "../../components/ui.tsx";
+import { Button, Card, cn, Dialog, ErrorNotice, Loading, SelectField, TextField } from "../../components/ui.tsx";
 import { useSettings, useSettingsMutation } from "../../hooks/settings.ts";
-import { errorMessage } from "../../lib/api.ts";
+import { hhmm, isAppointment, localDate, localTime } from "../../lib/agenda.ts";
+import { api, errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
 
 const hour = (value: number) => `${String(value).padStart(2, "0")}:00`;
@@ -16,6 +20,44 @@ const weekdayName = (locale: string, day: number) => new Intl.DateTimeFormat(loc
 /** The hours a new installation starts with (DEFAULT_AGENDA_PREFS; a test keeps the two the same). */
 export const STANDARD_HOURS = { from: 8, to: 18 };
 const VIEWS = ["day", "week", "month"] as const;
+
+/**
+ * The lunch break moved inside new hours: whole half hours, at most 3 h, with half
+ * an hour of work before and after; none when the hours are too short for one.
+ */
+export function fitLunch(lunch: AgendaPrefs["lunch"], from: number, to: number): AgendaPrefs["lunch"] {
+  if (!lunch) return null;
+  const { lunchStep, lunchMax, lunchMargin } = AGENDA_RULES;
+  const first = from * 60 + lunchMargin;
+  const last = to * 60 - lunchMargin;
+  if (last - first < lunchStep) return null;
+  const start = Math.min(Math.max(lunch.from, first), last - lunchStep);
+  const end = Math.min(Math.max(lunch.to, start + lunchStep), start + lunchMax, last);
+  return { from: start, to: end };
+}
+
+/** The half hours from `from` to `to`, both included. */
+const halfHours = (from: number, to: number) => Array.from({ length: Math.max(0, Math.floor((to - from) / 30) + 1) }, (_, index) => from + index * 30);
+
+/** The next national holidays that fall on an office day: at most 12, within a year. */
+export function nextHolidays(today: string, workDays: readonly number[]): string[] {
+  const out: string[] = [];
+  for (let offset = 0; offset <= 366 && out.length < 12; offset++) {
+    const day = dayPlus(today, offset);
+    if (nationalHoliday(day) && workDays.includes(new Date(`${day}T12:00:00Z`).getUTCDay())) out.push(day);
+  }
+  return out;
+}
+
+/** "24/12/2026" of "2026-12-24", and back; null when it is no real date. */
+const brDate = (day: string) => `${day.slice(8, 10)}/${day.slice(5, 7)}/${day.slice(0, 4)}`;
+export function parseBrDate(text: string): string | null {
+  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text.trim());
+  if (!match) return null;
+  const day = `${match[3]}-${match[2]?.padStart(2, "0")}-${match[1]?.padStart(2, "0")}`;
+  const back = new Date(`${day}T12:00:00Z`);
+  return Number.isNaN(back.getTime()) || back.toISOString().slice(0, 10) !== day ? null : day;
+}
 
 const VIEW_TEXT = { day: "web.agendaPrefs.view.day", week: "web.agendaPrefs.view.week", month: "web.agendaPrefs.view.month" } as const satisfies Record<AgendaPrefs["view"], MessageKey>;
 
@@ -75,9 +117,17 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
   // A change saved in another tab shows up here.
   useEffect(() => setDraft(stored), [stored]);
   const set = (patch: Partial<AgendaPrefs>) => {
-    setDraft((old) => ({ ...old, ...patch }));
+    // New hours carry the lunch break inside them.
+    setDraft((old) => {
+      const next = { ...old, ...patch };
+      return patch.from !== undefined || patch.to !== undefined ? { ...next, lunch: fitLunch(next.lunch, next.from, next.to) } : next;
+    });
     if (save.isError) save.reset();
   };
+  const { timeZone } = useI18n();
+  const today = localDate(Date.now(), timeZone);
+  const [adding, setAdding] = useState(false);
+  const holidays = nextHolidays(today, draft.workDays);
   const hoursId = useId();
   const daysId = useId();
   const offId = useId();
@@ -94,10 +144,13 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (unchanged) return;
-    save.mutate({ agenda: draft }, { onSuccess: () => toast(t("web.agendaPrefs.saved")) });
+    // Days that went by leave the lists: they close nothing any more.
+    const agenda = { ...draft, openHolidays: draft.openHolidays.filter((day) => day >= today), closed: draft.closed.filter((day) => day.date >= today) };
+    save.mutate({ agenda }, { onSuccess: () => toast(t("web.agendaPrefs.saved")) });
   };
 
   return (
+    <>
     <form onSubmit={submit}>
       <div className="space-y-3 pb-4">
         <div className="space-y-1">
@@ -122,6 +175,31 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
               </option>
             ))}
           </SelectField>
+          <SelectField
+            label={t("web.agendaPrefs.lunch.from")}
+            className="w-32"
+            value={draft.lunch?.from ?? ""}
+            onChange={(e) => {
+              const from = e.target.value === "" ? null : Number(e.target.value);
+              set({ lunch: from === null ? null : fitLunch({ from, to: Math.max(draft.lunch?.to ?? from + 60, from + 30) }, draft.from, draft.to) });
+            }}
+          >
+            <option value="">{t("web.agendaPrefs.lunch.none")}</option>
+            {halfHours(draft.from * 60 + AGENDA_RULES.lunchMargin, draft.to * 60 - AGENDA_RULES.lunchMargin - AGENDA_RULES.lunchStep).map((value) => (
+              <option key={value} value={value}>
+                {hhmm(value)}
+              </option>
+            ))}
+          </SelectField>
+          {draft.lunch && (
+            <SelectField label={t("web.agendaPrefs.lunch.to")} className="w-28" value={draft.lunch.to} onChange={(e) => draft.lunch && set({ lunch: { from: draft.lunch.from, to: Number(e.target.value) } })}>
+              {halfHours(draft.lunch.from + AGENDA_RULES.lunchStep, Math.min(draft.lunch.from + AGENDA_RULES.lunchMax, draft.to * 60 - AGENDA_RULES.lunchMargin)).map((value) => (
+                <option key={value} value={value}>
+                  {hhmm(value)}
+                </option>
+              ))}
+            </SelectField>
+          )}
           {!standard && (
             <Button variant="ghost" onClick={() => set(STANDARD_HOURS)}>
               {t("web.agendaPrefs.hours.reset", { from: hour(STANDARD_HOURS.from), to: hour(STANDARD_HOURS.to) })}
@@ -129,13 +207,29 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
           )}
         </fieldset>
         {/* The day as a bar, the working hours filled. */}
-        <div role="img" aria-label={plural("web.agendaPrefs.hours.bar", draft.to - draft.from, range)} className="relative h-9 overflow-hidden rounded-lg border border-border bg-raised">
+        <div
+          role="img"
+          aria-label={[plural("web.agendaPrefs.hours.bar", draft.to - draft.from, range), draft.lunch ? t("web.agendaPrefs.lunch.bar", { from: hhmm(draft.lunch.from), to: hhmm(draft.lunch.to) }) : ""].filter(Boolean).join(". ")} className="relative h-9 overflow-hidden rounded-lg border border-border bg-raised">
           <span
             className="absolute inset-y-0 flex items-center justify-center overflow-hidden rounded-md border border-accent bg-accent-soft text-xs font-semibold whitespace-nowrap text-accent-text tabular-nums"
             style={{ left: `${(draft.from / 24) * 100}%`, width: `${((draft.to - draft.from) / 24) * 100}%` }}
-          >
-            {draft.to - draft.from >= 4 && t("web.agendaPrefs.hours.range", range)}
-          </span>
+          />
+          {draft.lunch && (
+            <span
+              title={t("web.agendaPrefs.lunch.bar", { from: hhmm(draft.lunch.from), to: hhmm(draft.lunch.to) })}
+              className="absolute inset-y-0 bg-[repeating-linear-gradient(135deg,var(--color-border-strong)_0_1px,transparent_1px_6px)] bg-raised"
+              style={{ left: `${(draft.lunch.from / 1440) * 100}%`, width: `${((draft.lunch.to - draft.lunch.from) / 1440) * 100}%` }}
+            />
+          )}
+          {/* The hours in words, over the lunch's stripes, on a fill of their own to stay readable. */}
+          {draft.to - draft.from >= 4 && (
+            <span
+              className="absolute inset-y-0 flex items-center justify-center text-xs font-semibold whitespace-nowrap text-accent-text tabular-nums"
+              style={{ left: `${(draft.from / 24) * 100}%`, width: `${((draft.to - draft.from) / 24) * 100}%` }}
+            >
+              <span className="rounded bg-accent-soft px-1.5">{t("web.agendaPrefs.hours.range", range)}</span>
+            </span>
+          )}
         </div>
         <div aria-hidden className="flex justify-between text-xs text-fg-muted tabular-nums">
           {[0, 6, 12, 18, 24].map((value) => (
@@ -185,7 +279,13 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
           {t("web.agendaPrefs.daysOff.hint")}
         </p>
       </div>
-      <Choice title={t("web.agendaPrefs.allDay.title")} hint={t("web.agendaPrefs.allDay.hint")} value={draft.allDay} options={shown} onChange={(allDay) => set({ allDay })} />
+      <Holidays days={holidays} open={draft.openHolidays} onToggle={(day) => set({ openHolidays: draft.openHolidays.includes(day) ? draft.openHolidays.filter((each) => each !== day) : [...draft.openHolidays, day].sort() })} />
+      <ClosedDays
+        days={draft.closed.filter((day) => day.date >= today)}
+        onRemove={(date) => set({ closed: draft.closed.filter((day) => day.date !== date) })}
+        onAdd={() => setAdding(true)}
+      />
+      <OutsideList hours={stored} today={today} />
       <Choice title={t("web.agendaPrefs.outside.title")} hint={t("web.agendaPrefs.outside.hint")} value={draft.outside} options={shown} onChange={(outside) => set({ outside })} />
       {save.isError && (
         <p role="alert" className="pb-3 text-sm text-danger">
@@ -198,6 +298,226 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
         </Button>
       </div>
     </form>
+      {adding && (
+        <AddClosedDay
+          today={today}
+          taken={draft.closed.map((day) => day.date)}
+          full={draft.closed.filter((day) => day.date >= today).length >= AGENDA_RULES.closedMax}
+          onClose={() => setAdding(false)}
+          onAdd={(day) => {
+            set({ closed: [...draft.closed, day].sort((a, b) => (a.date < b.date ? -1 : 1)) });
+            setAdding(false);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+const HOLIDAY_TEXT = {
+  newYear: "web.agendaPrefs.holiday.newYear",
+  goodFriday: "web.agendaPrefs.holiday.goodFriday",
+  tiradentes: "web.agendaPrefs.holiday.tiradentes",
+  labourDay: "web.agendaPrefs.holiday.labourDay",
+  independence: "web.agendaPrefs.holiday.independence",
+  aparecida: "web.agendaPrefs.holiday.aparecida",
+  allSouls: "web.agendaPrefs.holiday.allSouls",
+  republic: "web.agendaPrefs.holiday.republic",
+  blackAwareness: "web.agendaPrefs.holiday.blackAwareness",
+  christmas: "web.agendaPrefs.holiday.christmas",
+} as const satisfies Record<NonNullable<ReturnType<typeof nationalHoliday>>, MessageKey>;
+
+/** The national holidays of the next 12 months on office days, each with "Atendo" (13/11/2026, 00:44). */
+function Holidays({ days, open, onToggle }: { days: string[]; open: readonly string[]; onToggle: (day: string) => void }) {
+  const { t } = useI18n();
+  const id = useId();
+  return (
+    <Row title={t("web.agendaPrefs.holidays.title")} hint={t("web.agendaPrefs.holidays.hint")} id={id} hintId={`${id}-hint`}>
+      {days.length === 0 ? (
+        <p className="w-full text-sm text-fg-muted">{t("web.agendaPrefs.holidays.none")}</p>
+      ) : (
+        <ul aria-labelledby={id} className="w-full divide-y divide-border/60 rounded-xl border border-border">
+          {days.map((day) => {
+            const holiday = nationalHoliday(day);
+            const name = holiday ? t(HOLIDAY_TEXT[holiday]) : "";
+            const on = open.includes(day);
+            return (
+              <li key={day} className="flex items-center gap-3 px-3 py-1">
+                <span className="w-12 text-sm text-fg-muted tabular-nums">{brDate(day).slice(0, 5)}</span>
+                <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={t("web.agendaPrefs.holidays.openLabel", { name })}
+                  onClick={() => onToggle(day)}
+                  className={cn(
+                    "min-h-11 rounded-xl border px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                    on ? "border-accent bg-accent-soft text-accent-text" : "border-border text-fg-muted hover:text-fg",
+                  )}
+                >
+                  {t("web.agendaPrefs.holidays.open")}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Row>
+  );
+}
+
+/** Days off (a break, a vacation, a holiday of the city): the day closes in the Agenda and for new appointments. */
+function ClosedDays({ days, onRemove, onAdd }: { days: AgendaPrefs["closed"]; onRemove: (date: string) => void; onAdd: () => void }) {
+  const { t } = useI18n();
+  const id = useId();
+  return (
+    <Row title={t("web.agendaPrefs.closed.title")} hint={t("web.agendaPrefs.closed.hint")} id={id} hintId={`${id}-hint`}>
+      <fieldset aria-labelledby={id} className="flex w-full min-w-0 flex-wrap items-center gap-2">
+        {days.map((day) => (
+          <span key={day.date} className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-border bg-raised pl-3 text-sm">
+            <span className="tabular-nums">{brDate(day.date)}</span>
+            {day.reason && <span className="text-fg-muted">· {day.reason}</span>}
+            <button
+              type="button"
+              aria-label={t("web.agendaPrefs.closed.remove", { date: brDate(day.date) })}
+              onClick={() => onRemove(day.date)}
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-fg-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </span>
+        ))}
+        {/* No icon: a "plus" of its own would be one more file on the first load (P11). */}
+        <Button variant="secondary" onClick={onAdd}>
+          {t("web.agendaPrefs.closed.add")}
+        </Button>
+      </fieldset>
+    </Row>
+  );
+}
+
+function AddClosedDay({ today, taken, full, onClose, onAdd }: { today: string; taken: readonly string[]; full: boolean; onClose: () => void; onAdd: (day: { date: string; reason: string }) => void }) {
+  const { t } = useI18n();
+  const [text, setText] = useState("");
+  const [reason, setReason] = useState("");
+  const [problem, setProblem] = useState<string | null>(null);
+  const confirm = () => {
+    const date = parseBrDate(text);
+    if (full) return setProblem(t("web.agendaPrefs.closed.full", { max: AGENDA_RULES.closedMax }));
+    if (!date) return setProblem(t("web.agendaPrefs.closed.badDate"));
+    if (date < today) return setProblem(t("web.agendaPrefs.closed.pastDate"));
+    if (taken.includes(date)) return setProblem(t("web.agendaPrefs.closed.repeated"));
+    onAdd({ date, reason: reason.trim() });
+  };
+  return (
+    <Dialog open onClose={onClose} title={t("web.agendaPrefs.closed.dialog")}>
+      <form
+        className="space-y-4"
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          confirm();
+        }}
+      >
+        <p className="text-sm leading-6 text-fg-muted">{t("web.agendaPrefs.closed.dialogHint")}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TextField
+            label={t("web.agendaPrefs.closed.day")}
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder={t("web.agendaPrefs.closed.datePlaceholder")}
+            maxLength={10}
+            autoFocus
+            value={text}
+            error={problem}
+            onChange={(e) => {
+              setText(e.target.value);
+              setProblem(null);
+            }}
+          />
+          <TextField
+            label={t("web.agendaPrefs.closed.reason")}
+            placeholder={t("web.agendaPrefs.closed.reasonPlaceholder")}
+            maxLength={AGENDA_RULES.closedReasonMax}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>
+            {t("web.cancel")}
+          </Button>
+          <Button type="submit">{t("web.agendaPrefs.closed.confirm")}</Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+type Slot = { day: string; start: number; end: number };
+/** An event of one day as minutes of the owner's clock; null for one that crosses midnight. */
+function slotOn(event: AgendaEvent, timeZone: string): Slot | null {
+  const day = localDate(event.start, timeZone);
+  if (localDate(Date.parse(event.end) - 1, timeZone) !== day) return null;
+  const minute = (at: string) => Number(at.slice(0, 2)) * 60 + Number(at.slice(3, 5));
+  const end = localTime(event.end, timeZone);
+  return { day, start: minute(localTime(event.start, timeZone)), end: end === "00:00" ? 1_440 : minute(end) };
+}
+
+/**
+ * Appointments already booked that the saved settings leave outside (or made at
+ * Google in a closed hour): nothing disappears, the card lists them (13/11/2026, 00:44).
+ */
+function OutsideList({ hours, today }: { hours: AgendaPrefs; today: string }) {
+  const { t, plural, timeZone, locale } = useI18n();
+  const to = dayPlus(today, 42);
+  // The same window the Agenda asks for (six weeks), under its key: a change there refreshes this list.
+  const events = useQuery({
+    queryKey: ["calendar", "events", today, to],
+    queryFn: ({ signal }) => api<AgendaPage>(`/google/events?from=${today}&to=${to}`, { signal }),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const out = (events.data?.events ?? [])
+    .map((event) => ({ event, slot: slotOn(event, timeZone) }))
+    .filter((each): each is { event: AgendaEvent; slot: Slot } => !!each.slot && each.slot.day >= today && isAppointment(each.event))
+    .map((each) => ({ ...each, closure: dayClosure(each.slot.day, hours), when: outsideHours(each.slot.start, each.slot.end, hours) }))
+    .filter((each) => each.closure || each.when)
+    .sort((a, b) => (a.event.start < b.event.start ? -1 : 1));
+  if (out.length === 0) return null;
+  const day = (date: string) => new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short", day: "2-digit", month: "2-digit" }).format(new Date(`${date}T12:00:00Z`)).replace(".", "");
+  return (
+    <div role="status" className="my-3 flex gap-3 rounded-xl border border-warning/40 bg-warning-soft p-3 text-sm">
+      <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
+      <div className="min-w-0 space-y-2">
+        <p>
+          <b>{plural("web.agendaPrefs.outsideList.title", out.length)}</b> {t("web.agendaPrefs.outsideList.hint")}
+        </p>
+        <ul className="space-y-1">
+          {out.slice(0, 5).map(({ event, slot, closure, when }) => {
+            const why =
+              closure?.kind === "weekday"
+                ? t("web.agendaPrefs.outsideList.weekday")
+                : closure?.kind === "holiday"
+                  ? t("web.agendaPrefs.outsideList.holiday", { name: t(HOLIDAY_TEXT[closure.holiday]) })
+                  : closure
+                    ? t("web.agendaPrefs.outsideList.closed")
+                    : when === "lunch"
+                      ? t("web.agendaPrefs.outsideList.lunch")
+                      : t("web.agendaPrefs.outsideList.hours");
+            return (
+              <li key={`${event.calendarId}|${event.id}`}>
+                {t("web.agendaPrefs.outsideList.item", { title: event.title || t("web.agendaPrefs.outsideList.untitled"), when: `${day(slot.day)} ${hhmm(slot.start)}` })} <span className="text-fg-muted">{why}</span>
+              </li>
+            );
+          })}
+          {out.length > 5 && <li className="text-fg-muted">{t("web.agendaPrefs.outsideList.more", { count: out.length - 5 })}</li>}
+        </ul>
+        <Link to="/agenda" className="inline-flex min-h-11 items-center font-semibold text-accent-text hover:underline">
+          {t("web.agendaPrefs.outsideList.open")}
+        </Link>
+      </div>
+    </div>
   );
 }
 
