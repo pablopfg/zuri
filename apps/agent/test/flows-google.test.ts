@@ -411,6 +411,45 @@ describe("creating appointments keeps the Agenda's rule (issue #328)", () => {
     });
   });
 
+  it("refuses two items of the step at the same hour before making either", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      event(world, READER, "i1", "Ana", "2026-11-05T10:00:00-03:00", "2026-11-05T10:30:00-03:00");
+      event(world, READER, "i2", "Bruno", "2026-11-05T10:15:00-03:00", "2026-11-05T10:45:00-03:00");
+      const flow = await world.flows.create({ name: "Mesmo horário", definition: manual([read({ calendar: READER, days: 3 }), create({ description: APPOINTMENT })]) });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "error", problem: "agenda_rule" });
+      expect(posts(world)).toHaveLength(0);
+      // Back to back is no overlap: both are made.
+      world.googleSim.events.set(READER, []);
+      event(world, READER, "i3", "Carla", "2026-11-05T10:00:00-03:00", "2026-11-05T10:30:00-03:00");
+      event(world, READER, "i4", "Davi", "2026-11-05T10:30:00-03:00", "2026-11-05T11:00:00-03:00");
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "success" });
+      expect(posts(world)).toHaveLength(2);
+    });
+  });
+
+  it("goes on after Google made the appointment but answered 503: its own event is no clash", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      const real = world.google.network;
+      let made = 0;
+      world.google.network = {
+        fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+          const request = new Request(input, init);
+          const answer = await real.fetch(request);
+          if (request.method === "POST" && new URL(request.url).pathname.endsWith("/events") && ++made === 1) return Response.json({ error: { code: 503 } }, { status: 503 });
+          return answer;
+        }) as typeof fetch,
+      };
+      const flow = await world.flows.create({ name: "Retomar consulta", definition: manual([one({ quando: "2026-11-05T10:00", id: "p1" }), create({ start: "{{quando}}", description: APPOINTMENT, key: "{{id}}" }), tell("{{event.created}}")]) });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "waiting" });
+      world.clock.now += 60_000;
+      expect(await world.flows.tick()).toBe(1);
+      expect(world.googleSim.events.get(PRIMARY)).toHaveLength(1);
+      expect(titles(world)).toEqual(["false"]);
+    });
+  });
+
   it("runs again over an appointment made with a key without calling it a clash with itself", async () => {
     await withFlowWorld(async (world) => {
       await connect(world);

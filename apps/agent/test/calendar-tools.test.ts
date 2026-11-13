@@ -367,6 +367,34 @@ describe("the Agenda's booking rule in the chat (issue #328)", () => {
       expect(exec.actionFor("p1")).toBeFalsy();
     }));
 
+  it("says the turn ran out of calls when the day's reading doesn't fit, and writes nothing", () =>
+    withChatWorld(async (world) => {
+      // Six open calendars against a Telegram turn's six calls: the day is never read whole.
+      for (let i = 0; i < 4; i++) world.googleSim.calendars.push({ id: `extra${i}@exemplo.com.br`, summary: `Extra ${i}`, accessRole: "reader" });
+      const modes: Record<string, "read" | "write"> = { [PRIMARY]: "write", [READER]: "read" };
+      for (let i = 0; i < 4; i++) modes[`extra${i}@exemplo.com.br`] = "read";
+      await connect(world, modes);
+      const exec = new ToolExecutor(ALL_TOOLS, { ...world.ctx(world.conversations.create("x").id), source: "telegram" }, { maxToolCalls: 12 });
+      const message = await refused(exec.execute("create_calendar_event", { title: "Ana Souza", start: "2026-11-03T10:00", description: APPOINTMENT }, "c1"));
+      expect(message).toMatch(/all the Google Calendar calls/);
+      expect(writes(world)).toEqual([]);
+    }));
+
+  it("refuses on approval a change whose time passed while it waited", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, { id: "s1", summary: "Ana Souza", description: APPOINTMENT, attendees: [{ email: "ana@exemplo.com.br" }], start: { dateTime: "2026-11-03T10:00:00-03:00" }, end: { dateTime: "2026-11-03T11:00:00-03:00" } });
+      const chat = world.conversations.create("x").id;
+      const exec = executor(world, chat);
+      // Saturday 31/10 open, for a change proposed at 09:00 for 09:15 the same morning (a proposal lasts 30 minutes).
+      world.settings.agenda = { ...world.settings.agenda, workDays: [0, 1, 2, 3, 4, 5, 6] };
+      expect(await exec.execute("change_shared_calendar_event", { calendar: PRIMARY, event_id: "s1", start: "2026-10-31T09:15" }, "p1")).toContain("awaiting_owner_approval");
+      // Approved at 09:20, after the time it proposed.
+      world.clock.now += 20 * 60_000;
+      await expect(runApprovedAction(ALL_TOOLS, world.ctx(chat), exec.actionFor("p1") ?? "")).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { problem: "past" } });
+      expect(writes(world)).toEqual([]);
+    }));
+
   it("checks the rule again on approval: another appointment that took the hour meanwhile stops the change", () =>
     withChatWorld(async (world) => {
       await connect(world);

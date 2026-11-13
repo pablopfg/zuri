@@ -211,7 +211,11 @@ export async function createEvents(node: Extract<FlowNode, { type: "calendar_cre
   const shapes = bodies.map((body) => shapeOf(body, NEW_EVENT));
   // An appointment at lunch, on a holiday or out of hours stops the step before its first event (no call to Google).
   const now = calendar.now();
-  if (shapes.slice(partial.done).some((shape) => fixedProblem(shape, google.agendaHours(), zone, now) !== null)) throw new FlowStepError("agenda_rule");
+  const left = shapes.slice(partial.done);
+  if (left.some((shape) => fixedProblem(shape, google.agendaHours(), zone, now) !== null)) throw new FlowStepError("agenda_rule");
+  // Two items of the step at the same hour: the second would be refused after the first was made.
+  const slots = left.filter(bound).map((shape) => [Date.parse(shape.start), Date.parse(shape.end)] as const);
+  if (slots.some(([start, end], i) => slots.some(([s, e], j) => j < i && s < end && start < e))) throw new FlowStepError("agenda_rule");
   state.partial = partial;
   while (partial.done < planned.length) {
     const entry = planned[partial.done] as (typeof planned)[number];

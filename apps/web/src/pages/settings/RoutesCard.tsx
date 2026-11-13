@@ -87,7 +87,7 @@ export function RoutesCard({ settings }: { settings: Settings }) {
                 <tbody key={category} className="border-t border-border">
                   {/* Only on the narrowest room: the name above the boxes, across every column. */}
                   <tr className="@min-[20rem]:hidden">
-                    <th scope="colgroup" colSpan={ALERT_CHANNELS.length + 1} className="pt-2 text-left font-medium">
+                    <th scope="rowgroup" colSpan={ALERT_CHANNELS.length + 1} className="pt-2 text-left font-medium">
                       {name}
                     </th>
                   </tr>

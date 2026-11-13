@@ -182,6 +182,8 @@ async function keepsAgenda(ctx: ToolContext, calendar: GoogleCalendar, after: Bo
     if (!(error instanceof AppError)) forModel(error);
     const problem = error.details?.problem as AppointmentProblemCode | undefined;
     if (problem && problem in RULE) throw new ToolError(`${RULE[problem]} Nothing was ${done}: tell the owner and offer a time inside the Agenda's hours.`);
+    // The turn's calls ran out in the reading: trying again in this turn can't help.
+    if (error.code === "SERVICE_UNAVAILABLE" && !meter(ctx).room(1)) throw new ToolError(`This request already made all the Google Calendar calls it may, so the day couldn't be checked and nothing was ${done}. Tell the owner to ask again in a new message or use the Agenda screen.`);
     if (error.code === "SERVICE_UNAVAILABLE") throw new ToolError(`Couldn't read that whole day to check for another appointment, so nothing was ${done}. Tell the owner to try again or use the Agenda screen.`);
     throw new ToolError("Could not understand a date. Use YYYY-MM-DD for all-day events or YYYY-MM-DDTHH:MM, in the owner's time zone.");
   }
