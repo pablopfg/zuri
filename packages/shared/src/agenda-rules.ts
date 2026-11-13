@@ -123,18 +123,12 @@ export function outsideHours(start: number, end: number, hours: Pick<OpeningHour
  * when it may be booked. `today` and `nowMinute` are the owner's clock; `booked`
  * are the day's other appointments, cancelled ones already left out.
  */
-/**
- * `keepsStart`: a change that keeps the start the event already has in Google
- * (only its end moves, or a cancelled one comes back). It may then have begun:
- * an appointment running late, or one whose real length is set afterwards, is
- * not "in the past". Every other rule still holds.
- */
-export function appointmentProblem(input: { day: string; start: number; end: number; today: string; nowMinute: number; hours: OpeningHours; booked?: readonly BookedSlot[]; keepsStart?: boolean }): AppointmentProblem | null {
+export function appointmentProblem(input: { day: string; start: number; end: number; today: string; nowMinute: number; hours: OpeningHours; booked?: readonly BookedSlot[] }): AppointmentProblem | null {
   const { day, start, end, today, hours } = input;
   if (start % AGENDA_RULES.step !== 0 || end % AGENDA_RULES.step !== 0) return { code: "step", field: "start" };
   if (end - start < AGENDA_RULES.minMinutes) return { code: "short", field: "end" };
   if (end - start > AGENDA_RULES.maxMinutes) return { code: "long", field: "end" };
-  if (!input.keepsStart && (day < today || (day === today && start < input.nowMinute))) return { code: "past", field: "start" };
+  if (day < today || (day === today && start < input.nowMinute)) return { code: "past", field: "start" };
   if (day > dayPlus(today, AGENDA_RULES.aheadDays)) return { code: "far", field: "date" };
   const closure = dayClosure(day, hours);
   if (closure?.kind === "weekday") return { code: "weekday", field: "date" };
