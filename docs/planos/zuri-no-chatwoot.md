@@ -1,6 +1,6 @@
 # Plano · A Zuri dentro do Chatwoot, só para o Pablo
 
-Situação: opção A aprovada pelo Pablo em 13/11/2026, 02:10 UTC, com configuração automática; protótipo esperando aprovação
+Situação: aprovado em 13/11/2026 (opção A às 02:10 UTC; protótipo, recuperação e configuração automática às 02:41 UTC). Código depois da S17
 Origem: pedido do Pablo em 13/11/2026, 01:56 UTC
 Dependências: S17 (cofre de credenciais no servidor, `docs/planos/implementacao-frontend-sinal.md`), onde entra um tipo novo de credencial para este canal. Não depende do envio de pedido de avaliação.
 
@@ -143,7 +143,7 @@ Conferidas em 13/11/2026 no código do Chatwoot (`chatwoot/chatwoot`, branch `de
 | Criar o contato "Zuri" | `POST /public/api/v1/inboxes/{inbox_identifier}/contacts` com `identifier` aleatório, `identifier_hash` = HMAC-SHA256(`hmac_token`, `identifier`) e `name: "Zuri"` → `source_id` | nenhuma (API pública) | `Public::Api::V1::Inboxes::ContactsController#create` |
 | Criar a conversa | `POST /public/api/v1/inboxes/{inbox_identifier}/contacts/{source_id}/conversations` | nenhuma + `identifier_hash` | `Public::Api::V1::InboxesController#ensure_hmac_verified` |
 | A Zuri escreve | `POST …/conversations/{display_id}/messages` com `content` (sai como mensagem do contato) | nenhuma + `identifier_hash` | `Public::Api::V1::Inboxes::MessagesController#create` |
-| Busca de volta | `GET …/conversations/{display_id}/messages` → últimas 20, sem notas privadas nem atividade, com `sender.id` e `sender.type` | nenhuma + `identifier_hash` | `MessageFinder` (`filter_internal_messages`), `public/api/v1/models/_message.json.jbuilder` |
+| Busca de volta | `GET …/conversations/{display_id}/messages?before={id+1}` → 20 até essa mensagem, sem notas privadas nem atividade, com `sender.id` e `sender.type` | nenhuma + `identifier_hash` | `MessageFinder` (`filter_internal_messages`), `public/api/v1/models/_message.json.jbuilder` |
 | Trocar segredos | `POST /api/v1/accounts/{conta}/inboxes/{id}/reset_secret` e `…/rotate_hmac_token` | administrador | `config/routes.rb`, `InboxPolicy#reset_secret?`, `#rotate_hmac_token?` |
 | Desfazer na falha | `DELETE /api/v1/accounts/{conta}/inboxes/{id}` | administrador | `InboxPolicy#destroy?` |
 
@@ -159,7 +159,20 @@ O aviso que chega: o Chatwoot manda ao `webhook_url` da caixa de API os eventos 
 | De **Platform App** (Super Admin da instalação) | Cria contas e usuários em toda a instalação | Nunca |
 | **API pública** da caixa: `inbox_identifier` + `source_id` + `identifier_hash` | Só cria contato, conversa e mensagem como contato, e lê as mensagens não privadas da conversa desse contato, nesta caixa | É o que fica guardado. Com `hmac_mandatory`, sem o `hmac_token` não se lê nem se escreve na conversa |
 
-Um detalhe que fica: quem tiver o `inbox_identifier` pode criar outros contatos na caixa "Zuri" pela API pública (criar contato não pede HMAC). Isso não chega a nada: a Zuri só lê a conversa do vínculo e só aceita mensagem `outgoing` do Pablo.
+Com `hmac_mandatory`, até criar contato pede `identifier` + `identifier_hash` certos (`ContactsController#process_hmac` roda também no `create`). Sem o `hmac_token`, o `inbox_identifier` sozinho não cria nada.
+
+### Detalhes conferidos na revisão (13/11, 02:45 UTC)
+
+- **Ordem obrigatória:** a caixa nasce já com `hmac_mandatory: true`; só depois o contato é criado, com o HMAC.
+- **`identifier` do contato:** 32 caracteres hexadecimais aleatórios. O Chatwoot procura contato pelo `identifier` na conta inteira (`ContactInboxWithContactBuilder#find_contact_by_identifier`) e reaproveitaria um contato existente com o mesmo valor; um valor aleatório impede isso.
+- **Ids da conversa:** no aviso, `conversation.id` é o `display_id` (`Conversations::EventDataPresenter#push_data`), o mesmo número que a API pública usa no caminho. O vínculo guarda o `display_id` e compara com ele; `inbox.id` é o id numérico da caixa.
+- **Tipo da mensagem:** no aviso vem como texto (`"outgoing"`); na API pública vem como número (`1` = saída, `0` = entrada), de `message_type_before_type_cast`. Os dois são conferidos.
+- **Busca de volta exata:** `GET …/messages?before=<id da mensagem + 1>` devolve as 20 anteriores a esse id, incluindo a própria (`MessageFinder#messages_before`). Assim a mensagem é achada mesmo com muitas mensagens seguidas. Se não aparecer, a Zuri não responde.
+- **Mensagens da própria Zuri:** também geram aviso (`incoming`, autor `contact`) e são ignoradas antes de qualquer leitura.
+- **Prazo do Chatwoot:** o aviso espera 5 s (`WEBHOOK_TIMEOUT`) e não é repetido. A Zuri responde 200 antes de chamar a IA e trata a mensagem na fila do objeto, como no Telegram.
+- **Caixa criada já quieta:** no mesmo `POST` vão `greeting_enabled: false`, `csat_survey_enabled: false`, `enable_email_collect: false`, `allow_messages_after_resolved: true` e `lock_to_single_conversation: true` (atributos aceitos em `InboxesController#inbox_attributes`). Sem mensagem de boas-vindas, pesquisa de satisfação ou pedido de e-mail na conversa.
+- **Conta certa:** `GET /api/v1/profile` traz `accounts[]` com `id` e `role`; a Zuri só continua se o número da conta informado estiver ali com `role: "administrator"`.
+- **Administradores:** `User#assigned_inboxes` devolve todas as caixas da conta para administrador. Por isso a lista de membros não esconde a caixa deles, e a tela mostra quem são.
 
 ### Envio da resposta
 
