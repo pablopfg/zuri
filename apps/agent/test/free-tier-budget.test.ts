@@ -1,3 +1,4 @@
+import { localInstant, localToday } from "../src/google/events.ts";
 import { AGENT_INSTANCE_NAME, CONTACT_LIMITS, CRM_LIMITS, FLOW_LIMITS, LIST_LIMIT_DEFAULT, REVIEW_LIMITS } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -1310,8 +1311,12 @@ describe("CRM's automations (PR S18)", () => {
       db.run(`UPDATE zur_crm_automations SET next_run_at = NULL`);
       await automations.tick();
       db.run(`UPDATE zur_crm_automations SET next_run_at = ?`, new Date(now - 1000).toISOString());
-      // Half a year of runs before today's: the count reads only the day's by the index.
-      for (let n = 1; n < 180 * 24; n++) db.run(`INSERT INTO zur_crm_automation_runs (automation_id, started_at, mode, outcome) VALUES ('example', ?, 'rehearsal', 'ok')`, new Date(now - n * 3_600_000).toISOString());
+      // Half a year of runs before today's: the count reads only the day's by the index. They end before
+      // the owner's midnight, so the measure is the same at any hour the suite runs (it read one row
+      // more per hour of the day before).
+      const zone = agent.store.settings.field("timeZone");
+      const midnight = localInstant(localToday(zone, new Date(now)), zone)?.getTime() ?? now;
+      for (let n = 1; n < 180 * 24; n++) db.run(`INSERT INTO zur_crm_automation_runs (automation_id, started_at, mode, outcome) VALUES ('example', ?, 'rehearsal', 'ok')`, new Date(midnight - n * 3_600_000).toISOString());
       const before = { ...db.usage };
       await automations.tick();
       const after = { ...db.usage };
@@ -1324,7 +1329,7 @@ describe("CRM's automations (PR S18)", () => {
     // Each effect: its row, the primary key and 3 indexes (and a read of the state before it, S18-A1);
     // the run: its row and 2 indexes; the next time: the row and the partial index.
     expect(measured.written).toBeLessThanOrEqual(60 * 4 + 3 + 3);
-    // The due row, the day's runs (at most 24 here) and effects, the credential and the 60 state reads.
+    // The due row, the day's effects, the credential and the 60 state reads; no run of an earlier day.
     expect(measured.read).toBeLessThanOrEqual(130);
   });
 

@@ -309,7 +309,7 @@ export const calendarTools = [
   defineTool({
     name: "create_calendar_event",
     description:
-      "Create an event on one of the owner's Google calendars that allow changes. Only when the owner asked for it in this conversation. Guests can't be added and nobody is e-mailed. An appointment (a description line like 'Consulta | Consultório') keeps the Agenda's hours: no lunch break, holiday, day off or overlap with another appointment.",
+      "Create an event on one of the owner's Google calendars that allow changes. Only when the owner asked for it in this conversation. Guests can't be added and nobody is e-mailed. An appointment (a description line like 'Consulta | Consultorio') keeps the Agenda's hours: no lunch break, holiday, day off or overlap with another appointment.",
     permission: "write",
     maxCallsPerTurn: 3,
     offered: writable,
