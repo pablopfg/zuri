@@ -382,15 +382,14 @@ export function AgendaPage() {
   };
   /**
    * What stops an appointment from landing on `slot`: nothing for a meeting, or
-   * for one that stays where it was. Pulling only the end of one that already
-   * began (it ran late) is no booking in the past.
+   * for one that stays where it was. Once an appointment began, its day and
+   * hours are fixed (Pablo, 13/11/2026): pulling its end is "in the past" too.
    */
   const slotCheck = (event: AgendaEvent, slot: Slot): AppointmentProblem | null => {
     if (!prefs || !isAppointment(event)) return null;
     const before = slotOf(event, timeZone);
     if (before && before.day === slot.day && before.start === slot.start && before.end === slot.end) return null;
-    const keepsStart = before?.day === slot.day && before.start === slot.start;
-    return slotProblem({ prefs, events: events.data?.events ?? [], except: event, day: slot.day, start: slot.start, end: slot.end, now: Date.now(), timeZone, keepsStart });
+    return slotProblem({ prefs, events: events.data?.events ?? [], except: event, day: slot.day, start: slot.start, end: slot.end, now: Date.now(), timeZone });
   };
   const moveTo = (event: AgendaEvent, slot: Slot) => {
     const problem = slotCheck(event, slot);
@@ -1752,11 +1751,9 @@ function EventFormDialog({
     const before = editing.mode === "edit" ? formBody(initial) : null;
     const kept = before && typeof before !== "string" ? before : null;
     if (kept && kept.start === body.start && kept.end === body.end && initial.type !== "" && initial.status !== "cancelled") return null;
-    // The start stays (only the end moves, or a cancelled one comes back): it may have begun already, which is no booking in the past.
-    const keepsStart = kept?.start === body.start;
     const day = body.start.slice(0, 10);
     const minute = (at: string) => Math.round((Date.parse(`${at.slice(0, 10)}T12:00:00Z`) - Date.parse(`${day}T12:00:00Z`)) / 60_000) + Number(at.slice(11, 13)) * 60 + Number(at.slice(14, 16));
-    const found = slotProblem({ prefs, events, except: editing.mode === "edit" ? editing.event : null, day, start: minute(body.start), end: minute(body.end), now: Date.now(), timeZone, keepsStart });
+    const found = slotProblem({ prefs, events, except: editing.mode === "edit" ? editing.event : null, day, start: minute(body.start), end: minute(body.end), now: Date.now(), timeZone });
     return found ? { text: problemText(found, day), field: found.field } : null;
   };
 

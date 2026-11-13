@@ -70,12 +70,10 @@ describe("appointmentProblem", () => {
     expect(at("2026-12-24", 7 * 60, undefined, { closed: [{ date: "2026-12-24", reason: "Recesso" }] })).toBe("closed");
   });
 
-  it("lets a change that keeps the start of one already begun go on past now, and nothing else", () => {
-    // 10:00 now: the 9:00 appointment runs late to 10:30.
-    expect(appointmentProblem({ day: "2026-11-13", start: 540, end: 630, ...now, hours, keepsStart: true })).toBeNull();
+  it("fixes an appointment once it began: pulling its end is the past too (Pablo, 13/11/2026)", () => {
+    // 10:00 now: the 9:00 appointment can't run to 10:30.
     expect(appointmentProblem({ day: "2026-11-13", start: 540, end: 630, ...now, hours })?.code).toBe("past");
-    // Into lunch it is still refused.
-    expect(appointmentProblem({ day: "2026-11-13", start: 660, end: 750, ...now, hours, keepsStart: true })?.code).toBe("lunch");
+    expect(appointmentProblem({ day: "2026-11-13", start: 600, end: 660, ...now, hours })).toBeNull();
   });
 
   it("refuses over another appointment and names it, touching edges allowed", () => {
