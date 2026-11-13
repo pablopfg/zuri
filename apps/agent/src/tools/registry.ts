@@ -1,4 +1,4 @@
-import { type DestructiveToolName, type ExternalToolName, MCP_LIMITS, sha256Hex, type ToolName } from "@zuri/shared";
+import { type AgendaPrefs, type DestructiveToolName, type ExternalToolName, MCP_LIMITS, sha256Hex, type ToolName } from "@zuri/shared";
 import type { z } from "zod";
 import { dataLine } from "../agent/data.ts";
 import type { ActionRow, PendingActionRepository } from "../chat/actions.ts";
@@ -73,6 +73,12 @@ export interface ToolContext {
   routineCheck?: (call: { label: string; args: Record<string, unknown> }) => Promise<boolean>;
   /** The Google Calendar (step 19): its tools are offered only with a calendar open to Zuri. */
   calendar?: GoogleCalendar;
+  /**
+   * The Agenda's opening hours, lunch and days off (issue #328): an appointment
+   * the chat books or moves keeps the same rule as the Agenda screen. Absent,
+   * the default hours apply, never none.
+   */
+  agendaHours?: () => AgendaPrefs;
   /** The copy of the Google contacts (step 19b): its tools are offered only with the contacts on. */
   contacts?: GoogleContacts;
   /** This turn's count of calls to Google (rule P9), made on first use. */

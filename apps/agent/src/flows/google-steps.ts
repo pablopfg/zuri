@@ -1,7 +1,9 @@
-import { FLOW_LIMITS, type FlowNode, isValidCalendarDate, sha256Hex } from "@zuri/shared";
+import { type AgendaPrefs, FLOW_LIMITS, type FlowNode, isValidCalendarDate, sha256Hex } from "@zuri/shared";
+import { type BookingShape, bound, checkBooking, fixedProblem, shapeOf } from "../google/booking.ts";
 import type { GoogleContacts } from "../google/contacts.ts";
 import { DATE, DATE_TIME, localInstant, localToday, nextDay } from "../google/events.ts";
 import { type GoogleCalendar, GoogleError, GoogleMeter } from "../google/service.ts";
+import { AppError } from "../http/errors.ts";
 import { FlowStepError, type WakeMeter } from "./connections.ts";
 import type { RunState } from "./engine.ts";
 import { fill, type Item, newItem, plain } from "./paths.ts";
@@ -18,6 +20,8 @@ export interface FlowGoogle {
   calendar: () => GoogleCalendar;
   contacts: () => GoogleContacts;
   timeZone: () => string;
+  /** The Agenda's hours, lunch and days off: an appointment a flow makes keeps them too (issue #328). */
+  agendaHours: () => AgendaPrefs;
 }
 
 /** An ISO instant with its offset ("2026-11-05T14:00:00-03:00", "…Z"). */
@@ -153,6 +157,24 @@ function times(value: string, minutes: number, zone: string): { start: Record<st
   return { start: { dateTime: start.toISOString(), timeZone: zone }, end: { dateTime: end.toISOString(), timeZone: zone }, at: start.toISOString() };
 }
 
+const NEW_EVENT: BookingShape = { allDay: false, start: "", end: "", description: "", colorId: "" };
+
+/**
+ * The Agenda's check of one appointment before it is made (issue #328): the
+ * other appointments of its day are read in every open calendar, an event
+ * made earlier in the run among them, so two items never take the same hour.
+ */
+async function keepsAgenda(after: BookingShape, calendar: GoogleCalendar, google: FlowGoogle, meter: GoogleMeter): Promise<void> {
+  try {
+    await checkBooking({ after, google: calendar, hours: google.agendaHours(), timeZone: google.timeZone(), meter, now: calendar.now() });
+  } catch (error) {
+    if (error instanceof GoogleError) throw problemOf(error);
+    if (error instanceof AppError && error.code === "SERVICE_UNAVAILABLE") throw new FlowStepError("unavailable", true);
+    if (error instanceof AppError) throw new FlowStepError(error.messageKey === "error.googleEventDate" ? "invalid_date" : "agenda_rule");
+    throw error;
+  }
+}
+
 /** A value from an item, with no `<` or `>` (no tag reaches the event). */
 const noMarkup = (value: string) => value.replace(/[<>]/g, "");
 
@@ -182,23 +204,31 @@ export async function createEvents(node: Extract<FlowNode, { type: "calendar_cre
   if (!state.partial && (state.created ?? 0) + planned.length > FLOW_LIMITS.eventsPerRun) throw new FlowStepError("events_limit");
   if (planned.some((entry) => entry.when === null)) throw new FlowStepError("invalid_date");
   const partial = state.partial ?? { done: 0, out: [] };
+  const bodies = planned.map((entry) => {
+    const when = entry.when as NonNullable<typeof entry.when>;
+    return { summary: entry.title, ...(entry.description ? { description: entry.description } : {}), start: when.start, end: when.end };
+  });
+  const shapes = bodies.map((body) => shapeOf(body, NEW_EVENT));
+  // An appointment at lunch, on a holiday or out of hours stops the step before its first event (no call to Google).
+  const now = calendar.now();
+  if (shapes.slice(partial.done).some((shape) => fixedProblem(shape, google.agendaHours(), zone, now) !== null)) throw new FlowStepError("agenda_rule");
   state.partial = partial;
   while (partial.done < planned.length) {
     const entry = planned[partial.done] as (typeof planned)[number];
     const when = entry.when as NonNullable<typeof entry.when>;
-    // The event and maybe a token renewal.
-    const meter = meterFor(2, state, wake, callsPerRun);
+    const shape = shapes[partial.done] as BookingShape;
+    const appointment = bound(shape);
+    // The event and maybe a token renewal; an appointment also reads its day in each open calendar.
+    const meter = meterFor(appointment ? calendar.readable().length + 2 : 2, state, wake, callsPerRun);
     const id = entry.key ? await eventId(flowId, node.calendar, entry.key) : undefined;
     let made: { id: string; created: boolean };
     try {
-      const event = await calendar.createEvent(
-        node.calendar,
-        { summary: entry.title, ...(entry.description ? { description: entry.description } : {}), start: when.start, end: when.end },
-        meter,
-        id,
-      );
+      if (appointment) await keepsAgenda(shape, calendar, google, meter);
+      const event = await calendar.createEvent(node.calendar, bodies[partial.done] as Record<string, unknown>, meter, id);
       made = { id: event.id, created: true };
     } catch (error) {
+      // The Agenda's check refused or couldn't read the day: nothing was made, so a passing failure is tried again.
+      if (error instanceof FlowStepError) throw error;
       // 409: an event with this key is there already (or was, and was deleted): nothing new is made.
       if (id && error instanceof GoogleError && error.status === 409) made = { id, created: false };
       else {

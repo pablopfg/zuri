@@ -1,8 +1,10 @@
-import { GOOGLE_LIMITS, type GoogleCalendarInfo } from "@zuri/shared";
+import { AGENDA_RULES, type AppointmentProblemCode, DEFAULT_AGENDA_PREFS, GOOGLE_LIMITS, type GoogleCalendarInfo } from "@zuri/shared";
 import { z } from "zod";
 import { instantToLocal } from "../chat/local-due.ts";
 import { type CalendarEvent, cleanText, DATE, type EventDraft, eventBody, EventInputError, localInstant, localToday, nextDay } from "../google/events.ts";
+import { type BookingShape, checkBooking, shapeOf } from "../google/booking.ts";
 import { toAppError } from "../google/errors.ts";
+import { AppError } from "../http/errors.ts";
 import { type GoogleCalendar, GoogleError, GoogleMeter } from "../google/service.ts";
 import { type ChangePayload, readChange } from "../google/change.ts";
 import { defineTool, TargetGone, type ToolContext, ToolError } from "./registry.ts";
@@ -152,6 +154,40 @@ function notShared(calendar: GoogleCalendarInfo): GoogleCalendarInfo {
   return calendar;
 }
 
+/** The Agenda's refusals (issue #328), in words the model can pass on to the owner. */
+const RULE: Record<AppointmentProblemCode, string> = {
+  step: `An appointment starts and ends on a multiple of ${AGENDA_RULES.step} minutes.`,
+  short: `An appointment lasts at least ${AGENDA_RULES.minMinutes} minutes.`,
+  long: `An appointment lasts at most ${AGENDA_RULES.maxMinutes / 60} hours.`,
+  past: "That time has already passed.",
+  far: `An appointment is booked at most ${AGENDA_RULES.aheadDays} days ahead.`,
+  weekday: "The owner doesn't see patients on that weekday.",
+  holiday: "That day is a national holiday the owner doesn't work on.",
+  closed: "The owner marked that day as a day off.",
+  hours: "That time is outside the owner's opening hours.",
+  lunch: "That time is in the owner's lunch break.",
+  clash: "Another appointment is already booked at that time.",
+};
+
+/**
+ * The Agenda's booking rule (issue #328): an appointment (an event with a type
+ * such as "Consulta | Consultório") the chat books or moves follows the same
+ * opening hours, lunch, holidays, days off and clashes as the Agenda screen.
+ * A meeting is never bound. The day's reading counts in the turn's calls.
+ */
+async function keepsAgenda(ctx: ToolContext, calendar: GoogleCalendar, after: BookingShape, before: CalendarEvent | undefined, done: "created" | "changed" | "proposed"): Promise<void> {
+  try {
+    await checkBooking({ after, before, google: calendar, hours: ctx.agendaHours?.() ?? DEFAULT_AGENDA_PREFS, timeZone: ctx.timeZone, meter: meter(ctx), now: calendar.now() });
+  } catch (error) {
+    if (!(error instanceof AppError)) forModel(error);
+    const problem = error.details?.problem as AppointmentProblemCode | undefined;
+    if (problem && problem in RULE) throw new ToolError(`${RULE[problem]} Nothing was ${done}: tell the owner and offer a time inside the Agenda's hours.`);
+    if (error.code === "SERVICE_UNAVAILABLE") throw new ToolError(`Couldn't read that whole day to check for another appointment, so nothing was ${done}. Tell the owner to try again or use the Agenda screen.`);
+    throw new ToolError("Could not understand a date. Use YYYY-MM-DD for all-day events or YYYY-MM-DDTHH:MM, in the owner's time zone.");
+  }
+}
+
+const NEW_EVENT: BookingShape = { allDay: false, start: "", end: "", description: "", colorId: "" };
 
 const readable = (ctx: ToolContext) => !!ctx.calendar?.usable() && ctx.calendar.readable().length > 0;
 const writable = (ctx: ToolContext) => ctx.mode === "chat" && !!ctx.calendar?.usable() && ctx.calendar.writable().length > 0;
@@ -271,7 +307,7 @@ export const calendarTools = [
   defineTool({
     name: "create_calendar_event",
     description:
-      "Create an event on one of the owner's Google calendars that allow changes. Only when the owner asked for it in this conversation. Guests can't be added and nobody is e-mailed.",
+      "Create an event on one of the owner's Google calendars that allow changes. Only when the owner asked for it in this conversation. Guests can't be added and nobody is e-mailed. An appointment (a description line like 'Consulta | Consultório') keeps the Agenda's hours: no lunch break, holiday, day off or overlap with another appointment.",
     permission: "write",
     maxCallsPerTurn: 3,
     offered: writable,
@@ -294,7 +330,9 @@ export const calendarTools = [
       if (input.end !== undefined) draft.end = input.end;
       if (input.location !== undefined) draft.location = input.location;
       if (input.description !== undefined) draft.description = input.description;
-      const created = await google(() => calendar.createEvent(chosen.id, body(draft, ctx.timeZone), meter(ctx)));
+      const event = body(draft, ctx.timeZone);
+      await keepsAgenda(ctx, calendar, shapeOf(event, { ...NEW_EVENT, allDay: draft.allDay ?? false }), undefined, "created");
+      const created = await google(() => calendar.createEvent(chosen.id, event, meter(ctx)));
       return { created: true, calendar: chosen.name, event_id: created.id, when: eventWhen(created, ctx.timeZone) };
     },
   }),
@@ -318,6 +356,7 @@ export const calendarTools = [
       }
       const patch = body(draftOf(input), ctx.timeZone, current);
       if (Object.keys(patch).length === 0) throw new ToolError("Say what to change: title, start, end, location or description.");
+      await keepsAgenda(ctx, calendar, shapeOf(patch, current), current, "changed");
       const updated = await google(() => calendar.updateEvent(chosen.id, current.id, patch, current.etag, meter(ctx)));
       // The model renamed or moved it: a deletion proposed later in this turn would show its own words.
       ctx.changed?.add(target(chosen.id, current.id));
@@ -373,6 +412,7 @@ export const calendarTools = [
       if (!event.etag) throw new ToolError("Google didn't give this event's version, so it can't be proposed safely. Tell the owner to do it on the Agenda screen.");
       const patch = body(draftOf(input), ctx.timeZone, event);
       if (Object.keys(patch).length === 0) throw new ToolError("Say what to change: title, start, end, location or description.");
+      await keepsAgenda(ctx, calendar, shapeOf(patch, event), event, "proposed");
       // The card shows the new values as they will be written (the model's words, shown as such) and,
       // as its label, the event as Google has it now.
       const show: Record<string, string> = {};

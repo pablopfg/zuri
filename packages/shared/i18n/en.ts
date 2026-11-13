@@ -2946,6 +2946,7 @@ export const en: Messages = {
   "web.flows.connection.create": "Create credential",
   "web.flows.problem.kind_not_allowed": "a flow doesn't use that kind of credential",
   "web.flows.problem.bad_answer": "the service answered in a format Zuri doesn't know",
+  "web.flows.problem.agenda_rule": "an appointment fell outside the Agenda's rules (hours, lunch, a day off or another appointment), and wasn't created",
   "web.flows.connection.keyAgain": "The address changed: enter the key again.",
   "web.flows.connections.keyEnd": "Key ending in {end}",
   "web.flows.kind.question": "What kind of credential do you want to create?",

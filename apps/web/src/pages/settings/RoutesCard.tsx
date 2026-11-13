@@ -51,13 +51,15 @@ export function RoutesCard({ settings }: { settings: Settings }) {
   return (
     <Card title={t("web.alerts.routes.title")} description={t("web.alerts.routes.description")}>
       <form onSubmit={submit} className="space-y-5">
-        {/* relative: the checkboxes' screen-reader-only parts are absolute, and must scroll with the table instead of widening the page (#259). */}
-        <div className="relative -mx-1 overflow-x-auto px-1">
+        {/* relative: the checkboxes' screen-reader-only parts are absolute, and must scroll with the table instead of widening the page (#259).
+            @container: under 20rem of room (a 320 px phone) the four columns of 44 px boxes and the kind's name don't fit side by side,
+            so each kind's name goes on a line of its own above its boxes (#316). */}
+        <div className="@container relative -mx-1 overflow-x-auto px-1">
           <table className="w-full text-sm">
             <caption className="sr-only">{t("web.alerts.routes.title")}</caption>
             <thead>
               <tr className="text-left text-fg-muted">
-                <th scope="col" className="py-2 pr-3 font-medium">
+                <th scope="col" className="hidden py-2 pr-3 font-medium @min-[20rem]:table-cell">
                   {t("web.alerts.routes.category")}
                 </th>
                 {ALERT_CHANNELS.map((channel) => (
@@ -73,14 +75,25 @@ export function RoutesCard({ settings }: { settings: Settings }) {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {ALERT_CATEGORIES.map((category) => {
-                const locked = category === "security";
-                return (
-                  <tr key={category}>
-                    <th scope="row" className="py-1 pr-3 text-left font-medium">
-                      {t(CATEGORY[category])}
-                      {locked && <span className="block text-xs font-normal text-fg-muted">{t("web.alerts.routes.securityAlways")}</span>}
+            {ALERT_CATEGORIES.map((category) => {
+              const locked = category === "security";
+              const name = (
+                <>
+                  {t(CATEGORY[category])}
+                  {locked && <span className="block text-xs font-normal text-fg-muted">{t("web.alerts.routes.securityAlways")}</span>}
+                </>
+              );
+              return (
+                <tbody key={category} className="border-t border-border">
+                  {/* Only on the narrowest room: the name above the boxes, across every column. */}
+                  <tr className="@min-[20rem]:hidden">
+                    <th scope="colgroup" colSpan={ALERT_CHANNELS.length + 1} className="pt-2 text-left font-medium">
+                      {name}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th scope="row" className="hidden py-1 pr-3 text-left font-medium @min-[20rem]:table-cell">
+                      {name}
                     </th>
                     {ALERT_CHANNELS.map((channel) => (
                       <td key={channel} className="px-1 py-1 text-center sm:px-2">
@@ -100,9 +113,9 @@ export function RoutesCard({ settings }: { settings: Settings }) {
                       />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
+                </tbody>
+              );
+            })}
           </table>
         </div>
         <p className="text-xs text-fg-muted">{t("web.alerts.routes.fullTextHint")}</p>
