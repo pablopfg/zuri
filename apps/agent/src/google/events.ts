@@ -1,4 +1,4 @@
-import { EVENT_PAYMENTS, type EventPayment, GOOGLE_LIMITS, isCountry, isValidCalendarDate, MEET_URL, PATIENT_LIMITS, zonedParts, zonedTimeToUtc } from "@zuri/shared";
+import { EVENT_PAYMENTS, type EventPayment, GOOGLE_LIMITS, HOME_COUNTRY, isCountry, isValidCalendarDate, MEET_URL, PATIENT_EMAIL, PATIENT_LIMITS, validPhone, zonedParts, zonedTimeToUtc } from "@zuri/shared";
 
 /**
  * Dates of the Google Calendar (step 19): what the owner and the model write
@@ -249,8 +249,6 @@ export function readEvent(item: unknown, calendarId: string): CalendarEvent | nu
   };
 }
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /**
  * The private properties Zuri wrote, each one only when it is what Zuri writes: anyone with access to
  * the calendar can set them, so a value out of shape is left out, never shown.
@@ -266,9 +264,10 @@ function privateFields(value: unknown): Pick<CalendarEvent, "country" | "phone" 
   const country = read(PRIVATE_KEYS.country);
   if (isCountry(country)) out.country = country;
   const phone = read(PRIVATE_KEYS.phone);
-  if (/^\d{6,15}$/.test(phone)) out.phone = phone;
+  // SEC-E5e-04: the phone with its country (Brazil when none is kept), as the form checks it.
+  if (validPhone(out.country ?? HOME_COUNTRY, phone)) out.phone = phone;
   const email = read(PRIVATE_KEYS.email);
-  if (email.length <= PATIENT_LIMITS.emailMax && EMAIL.test(email)) out.email = email;
+  if (email.length <= PATIENT_LIMITS.emailMax && PATIENT_EMAIL.test(email)) out.email = email;
   const payment = read(PRIVATE_KEYS.payment);
   if ((EVENT_PAYMENTS as readonly string[]).includes(payment)) out.payment = payment as EventPayment;
   return out;

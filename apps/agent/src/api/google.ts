@@ -294,7 +294,8 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
       if (input.allDay !== undefined) draft.allDay = input.allDay;
       // Only what differs from Google's version: an unchanged field writes nothing (rule P4).
       for (const key of PATIENT_KEYS) if (input[key] !== undefined && input[key] !== (current[key] ?? "")) draft[key] = input[key];
-      if (input.meet !== undefined && input.meet !== (current.meet !== undefined)) draft.meet = input.meet;
+      // SEC-E5e-05: a call that failed counts as none, so Online can ask for it again.
+      if (input.meet !== undefined && input.meet !== (current.meet !== undefined && current.meet !== "failed")) draft.meet = input.meet;
       const base = current.allDay ? { start: { date: current.start }, end: { date: current.end } } : { start: { dateTime: current.start }, end: { dateTime: current.end } };
       const zone = deps().timeZone();
       const patch = eventBody(draft, zone, base);

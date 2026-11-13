@@ -370,6 +370,24 @@ describe("/api/google/events: the Agenda screen", () => {
     const writes = google.seen.filter((r) => r.method === "PATCH").length;
     expect((await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: after.etag, payment: "paid", meet: false })).status).toBe(200);
     expect(google.seen.filter((r) => r.method === "PATCH").length).toBe(writes);
+
+    // SEC-E5e-04: a phone changes with its country, never alone (it would be read as Brazil's).
+    for (const half of [{ phone: "912345678" }, { country: "PT" }]) {
+      expect((await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: after.etag, ...half })).status, JSON.stringify(half)).toBe(400);
+    }
+    const portugal = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: after.etag, country: "PT", phone: "912345678" });
+    expect(portugal.status).toBe(200);
+
+    // SEC-E5e-05: a call Google failed to make counts as none: Online asks for it again.
+    const kept = google.events.get(WORK)?.find((e) => e.id === event.id);
+    if (!kept) throw new Error("the event is not at Google");
+    delete kept.hangoutLink;
+    kept.conferenceData = { createRequest: { requestId: "x", status: { statusCode: "failure" } } };
+    const failedEtag = ((await portugal.json()) as { event: AgendaEvent }).event.etag;
+    const again = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: failedEtag, meet: true });
+    expect(again.status).toBe(200);
+    expect((JSON.parse(google.seen.filter((r) => r.method === "PATCH").at(-1)?.body ?? "{}") as { conferenceData?: { createRequest?: unknown } }).conferenceData?.createRequest).toBeTruthy();
+    expect(((await again.json()) as { event: AgendaEvent }).event.meet).toMatch(/^https:\/\/meet\.google\.com\//);
   });
 
   it("E5e: refuses a country, a phone, an e-mail or a payment out of shape, and any other key", async () => {
@@ -394,7 +412,7 @@ describe("/api/google/events: the Agenda screen", () => {
       { zuriNote: "x" },
     ];
     for (const extra of refused) expect((await api("POST", "/google/events", { ...base, ...extra })).status, JSON.stringify(extra)).toBe(400);
-    for (const extra of [{ country: "BR", phone: "4199990000" }, { country: "BR", phone: "41999990000" }, { country: "PT", phone: "123456" }, { country: "US", phone: "123456789012345" }, { email: `${"a".repeat(242)}@exemplo.com` }]) {
+    for (const extra of [{ country: "BR", phone: "4199990000" }, { country: "BR", phone: "41999990000" }, { country: "PT", phone: "123456" }, { country: "US", phone: "123456789012345" }, { email: `${"a".repeat(242)}@exemplo.com` }, { email: "a@b.c" }]) {
       const res = await api("POST", "/google/events", { ...base, ...extra });
       expect(res.status, JSON.stringify(extra)).toBe(201);
     }

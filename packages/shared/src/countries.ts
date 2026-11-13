@@ -26,3 +26,10 @@ export function validPhone(country: string, digits: string): boolean {
   if (country === HOME_COUNTRY) return /^[1-9]{2}9?\d{8}$/.test(digits);
   return digits.length >= 6 && digits.length <= 15;
 }
+
+/**
+ * A patient's e-mail as the form, the server, the reading of an event and the backup all check it: one
+ * rule in the four places, so nothing the screen takes is refused later (QA-E5e-02). It lives here, with
+ * the phone's rule, out of the first load.
+ */
+export const PATIENT_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

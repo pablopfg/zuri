@@ -2,7 +2,7 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { isCountry, validPhone } from "./countries.ts";
+import { isCountry, PATIENT_EMAIL, validPhone } from "./countries.ts";
 import { CALENDAR_MODES, EVENT_PAYMENTS, EVENT_STATUS_COLOR, GOOGLE_LIMITS, GOOGLE_STATE_PREFIX, PATIENT_LIMITS } from "./google.ts";
 
 /**
@@ -58,7 +58,7 @@ const eventFields = /* @__PURE__ */ (() => ({
 const patientFields = /* @__PURE__ */ (() => ({
   country: z.string().refine((code) => code === "" || isCountry(code)).optional(),
   phone: z.string().regex(/^\d{0,15}$/).optional(),
-  email: z.union([z.literal(""), z.string().max(PATIENT_LIMITS.emailMax).email()]).optional(),
+  email: z.union([z.literal(""), z.string().max(PATIENT_LIMITS.emailMax).regex(PATIENT_EMAIL)]).optional(),
   payment: z.enum([...EVENT_PAYMENTS, ""]).optional(),
   /** Ask Google for a Meet call (true) or take the call off (false). */
   meet: z.boolean().optional(),
@@ -106,7 +106,9 @@ export const googleEventUpdateSchema = /* @__PURE__ */ (() =>
       ...patientFields,
     })
     .strict()
-    .refine(phoneFits, { path: ["phone"] }))();
+    .refine(phoneFits, { path: ["phone"] })
+    // SEC-E5e-04: a phone is read with its country, so a change sends the two together.
+    .refine((value) => (value.phone === undefined) === (value.country === undefined), { path: ["country"] }))();
 export type GoogleEventUpdate = z.input<typeof googleEventUpdateSchema>;
 
 export const googleEventDeleteSchema = /* @__PURE__ */ (() => z.object({ calendarId, eventId, etag: z.string().min(1).max(200) }).strict())();

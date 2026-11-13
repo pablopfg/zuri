@@ -1,6 +1,6 @@
 # Plano · Campos do agendamento (E5e)
 
-Situação: aprovado em 13/11/2026 (protótipo v52–v56, aprovado pelo Pablo às 12:49 UTC). Sem perguntas: tudo coberto pelo protótipo aprovado e pelas decisões de 12/11 e 13/11 de `docs/planos/sons-menu-e-agenda-editavel.md`.
+Situação: implementado (E5e). Aprovado em 13/11/2026 (protótipo v52–v56, aprovado pelo Pablo às 12:49 UTC). Sem perguntas: tudo coberto pelo protótipo aprovado e pelas decisões de 12/11 e 13/11 de `docs/planos/sons-menu-e-agenda-editavel.md`.
 Origem: pedidos do Pablo em 12/11/2026 (itens 1, 2, 3 e 5 de "Ajustes pedidos depois da entrega 3", segunda rodada das 17:32 UTC) e em 13/11/2026 (v52, "Tipo e local separados")
 Dependências: E5a (#329), E5b (#340), E5c (#344) e E5d (#345), todas mescladas
 
@@ -75,7 +75,8 @@ O formulário do evento ainda é o da entrega 3: datas e horas do navegador (que
 - `service.ts`: `conferenceDataVersion=1` no `POST` e no `PATCH`.
 - `record.ts`: a cópia congelada guarda os campos novos.
 - `dev-google.ts`: guarda e devolve `extendedProperties` e cria um link do Meet de mentira.
-- Web: `EventForm` ganha `kind`, `place`, `country`, `phone`, `email`, `payment` e `endTime` direto (sai `duration`); máscaras e conferências puras em `apps/web/src/lib/agenda-fields.ts` (com teste); o formulário vai para `apps/web/src/pages/agenda/EventForm.tsx`, saindo do `AgendaPage.tsx`, que passa de 2.300 linhas.
+- Web: `EventForm` ganha `country`, `phone`, `email` e `payment`; o tipo e o local continuam na linha `type`, e o término é sempre editado (a duração vira "outra" quando ele é digitado). Máscaras e conferências puras em `apps/web/src/lib/agenda-fields.ts` (com teste); os campos com máscara e o DDI em `apps/web/src/pages/agenda/AppointmentFields.tsx`. Na entrega, o formulário ficou no `AgendaPage.tsx`: tirá-lo dali mexeria no estado que o mini calendário e o "Escolher na agenda" dividem, e fica para uma refatoração própria.
+- Os tipos fixos (Consulta, Retorno, Avaliação física) e o local na linha do tipo ("Consultório", "Online") são dado gravado no Google, não texto da tela: ficam em português também com a Zuri em inglês, para que a agenda leia igual nos dois idiomas. Os rótulos Presencial e Online do seletor seguem o idioma.
 
 ## 8. Custo e cotas do plano Free
 
@@ -97,7 +98,7 @@ O formulário do evento ainda é o da entrega 3: datas e horas do navegador (que
 
 - Unitário (`apps/web/test/agenda-fields.test.ts`): máscaras de data, hora e celular (Brasil e outros, "+55" colado), conferência de data (31/02 recusada), hora (24:00 recusada, 23:59 aceita), celular (9, 10, 11 e 12 dígitos no Brasil; 5, 6, 15 e 16 nos outros), e-mail.
 - Unitário (`packages/shared`): schema com cada campo no limite (n−1, n, n+1) e a lista de países.
-- Agente (`apps/agent/test/google-events.test.ts` e rotas): `eventBody` com propriedades e Meet, `readEvent` com propriedades válidas e hostis e com Meet pronto, pendente e falso; o registro do dia guarda os campos.
+- Agente (`apps/agent/test/google-hardening.test.ts`, `google-routes.test.ts` e `backup.test.ts`): `eventBody` com propriedades e Meet, `readEvent` com propriedades válidas e hostis e com Meet pronto, pendente e falso; o registro do dia guarda os campos.
 - e2e (`tests/e2e/agenda-campos.spec.ts`): criar consulta Online com celular e ver o Meet nos detalhes; término acompanha o início e "Voltar para 1 h"; "Sem tipo" esconde os campos; erros de data, hora, término e celular; inglês sem AM e PM; celular; axe.
 - Os specs da Agenda que usam o formulário (`agenda-arrastar`, `agenda-formulario`, `agenda-travas`) passam a usar os campos novos.
 

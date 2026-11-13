@@ -274,6 +274,10 @@ describe("events and calendars other people see", () => {
     for (const key of ["country", "phone", "email", "payment"]) expect(hostile).not.toHaveProperty(key);
     expect(readEvent({ ...base, extendedProperties: "x" }, PRIMARY)).not.toHaveProperty("phone");
     expect(props({ zuriPhone: 41999990000 })).not.toHaveProperty("phone");
+    // SEC-E5e-04: the phone is read with its country: a Portuguese number kept as Brazil's is left out.
+    expect(props({ zuriCountry: "PT", zuriPhone: "912345678" })).toMatchObject({ country: "PT", phone: "912345678" });
+    expect(props({ zuriCountry: "BR", zuriPhone: "912345678" })).not.toHaveProperty("phone");
+    expect(props({ zuriPhone: "4133330000" })).toMatchObject({ phone: "4133330000" });
 
     const meet = (extra: Record<string, unknown>) => readEvent({ ...base, ...extra }, PRIMARY)?.meet;
     expect(meet({ hangoutLink: "https://meet.google.com/abc-defg-hij" })).toBe("https://meet.google.com/abc-defg-hij");

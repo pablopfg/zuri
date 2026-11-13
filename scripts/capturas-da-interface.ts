@@ -301,7 +301,7 @@ for (const [device, options] of [
       if (screen.name === "agenda-editar") {
         await page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ }).click();
         await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("button", { name: "Editar" }).click();
-        await page.getByRole("dialog", { name: "Editar evento" }).getByLabel("Dura").waitFor();
+        await page.getByRole("dialog", { name: "Editar evento" }).getByLabel("Hora do término").waitFor();
       }
       if (screen.name === "agenda-movido") {
         const event = page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ });
@@ -317,8 +317,11 @@ for (const [device, options] of [
           await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("button", { name: "Editar" }).click();
           const form = page.getByRole("dialog", { name: "Editar evento" });
           // Another length than the one it has: the run before (the other theme) already changed it.
-          const length = form.getByLabel("Dura");
-          await length.selectOption((await length.inputValue()) === "90" ? "60" : "90");
+          const [h, m] = (await form.getByLabel("Hora do início").inputValue()).split(":").map(Number);
+          const end = form.getByLabel("Hora do término");
+          const minutes = (await form.getByText("Dura 1 h 30.").count()) > 0 ? 60 : 90;
+          const at = (h ?? 0) * 60 + (m ?? 0) + minutes;
+          await end.fill(`${String(Math.floor(at / 60)).padStart(2, "0")}:${String(at % 60).padStart(2, "0")}`);
           await form.getByRole("button", { name: "Salvar" }).click();
         }
         await page.getByRole("button", { name: "Desfazer" }).waitFor();
