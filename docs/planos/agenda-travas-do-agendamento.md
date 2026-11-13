@@ -38,7 +38,7 @@ formulário completo (E5b) e os sinais de sincronização (E5c) vêm depois.
 | CA9 | Registro antigo (com `allDay`) continua valendo; eventos de dia inteiro aparecem sempre | plano (novo) |
 | CA10 | A tela e o servidor usam a mesma função para dizer o que é consulta (`bindsBooking`) e contam os minutos pelo relógio, também no dia de 23 h e de 25 h | revisão de QA e auditoria |
 | CA11 | Se o servidor não consegue ler o dia inteiro (calendário pulado, página a mais), não grava e pede para tentar de novo | auditoria |
-| CA12 | Uma consulta que já começou pode ter o fim puxado (atrasou), e uma cancelada de hoje volta sem cair em "já passou"; as outras regras continuam | revisão de QA (decisão pedida ao Pablo) |
+| CA12 | Depois que a consulta começa, o dia e a hora travam: puxar o fim ou tirar do Cancelado é "já passou"; título, descrição e situação continuam editáveis | Pablo, 13/11/2026 08:02 UTC ("Nada depois do início") |
 | CA13 | Clicar na última meia hora antes do almoço ou do fim do dia abre o formulário com 30 minutos | revisão de QA |
 
 ## 4. Escopo
@@ -148,7 +148,7 @@ Uma leitura a mais do Google por gravação de consulta que passa nas regras fix
 | CA8 | lista e marca | e2e | `tests/e2e/agenda-travas.spec.ts` |
 | CA9 | registro antigo | integração | `apps/agent/test/settings.test.ts` |
 | CA10, CA11, CA12 | checagem do servidor | unitário | `apps/agent/test/booking.test.ts` |
-| CA12 | `keepsStart` | unitário | `packages/shared/test/agenda-rules.test.ts` |
+| CA12 | consulta que já começou | unitário | `packages/shared/test/agenda-rules.test.ts` |
 | CA13 | clique em 11:30 | e2e | `tests/e2e/agenda-travas.spec.ts` |
 
 ## 11. Entrega
@@ -166,7 +166,7 @@ Uma PR para a `develop`, com capturas da Agenda e de Configurações › Agenda.
 
 - "Consulta" é todo evento com tipo; retorno também conta.
 - O próximo horário livre olha só a semana (ou o mês) já lida, para não fazer outra leitura ao Google.
-- Mudar o fim de uma consulta que já começou, ou tirar do Cancelado uma consulta de hoje, não é "marcar no passado" (CA12). Pergunta feita ao Pablo em 13/11/2026; até a resposta vale assim.
+- Uma consulta que já começou não muda de dia nem de hora (CA12). A E5a saiu com a exceção de puxar o fim; o Pablo escolheu "Nada depois do início" (13/11/2026, 08:02 UTC) e a exceção saiu na PR seguinte.
 
 ## 14. Entrevista com o Pablo
 
