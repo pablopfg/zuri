@@ -5,4 +5,8 @@
 ### Alterado
 
 - Feriado nacional sempre fecha a agenda: o botão "Atendo" saiu de Configurações › Agenda.
-- Dias sem expediente aceitam um período (férias, recesso, viagem), com "De" e "Até", até 90 dias cada.
+- Dias sem expediente aceitam um período (férias, recesso, viagem), com "De" e "Até", até 90 dias cada. Quando o período tem consultas marcadas, a tela diz quantas precisam de outro horário.
+
+### Atualização
+
+- Migration 41 (`agenda_record`) cria as tabelas do registro do dia. Ela só acrescenta tabelas e roda sozinha na próxima inicialização. O registro começa no dia da atualização: nenhum dia anterior é copiado.
