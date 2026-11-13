@@ -199,8 +199,24 @@ export function* exportBackup(deps: ExportDeps): Generator<string> {
         }
       : null,
   )}}`;
+  // The record of the day (13/11/2026): every closed day with the events copied at 0:00, oldest first.
+  yield* section("agendaRecord", backupItemSchemas.agendaDay, recordDays(db));
   yield "}}";
   for (const [kind, count] of Object.entries(skipped)) log("warn", "backup_export_skipped", { kind, count });
+}
+
+/** The closed days of the Agenda's record, PAGE at a time by day (the tables have no rowid), each with its events. */
+function* recordDays(db: Database): Generator<unknown> {
+  let after = "";
+  for (;;) {
+    const days = db.all<{ day: string; closed_at: string }>(`SELECT day, closed_at FROM zur_agenda_closed_days WHERE day > ? ORDER BY day LIMIT ${PAGE}`, after);
+    for (const { day, closed_at } of days) {
+      const events = db.all<{ data: string }>(`SELECT data FROM zur_agenda_record WHERE day = ? ORDER BY calendar_id, event_id`, day).map((row) => json(row.data));
+      yield { day, closedAt: closed_at, events };
+    }
+    if (days.length < PAGE) return;
+    after = days.at(-1)?.day ?? after;
+  }
 }
 
 /** Every row of `select` (which names `rowid AS _r`), PAGE at a time in rowid order, mapped. */

@@ -1,6 +1,6 @@
 import type { AgendaEvent } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, BLOCK_MIN, blankForm, changedFields, DURATIONS, dayEvents, daysOf, EVENT_COLORS, eventDays, eventLook, eventsOn, formBody, formOf, isDate, isTime, isWeekend, later, nowAt, OTHER_DURATION, outsideHours, planDay, shownDays, step, typeLine, typeName, viewRange, withoutType, withType } from "../src/lib/agenda.ts";
+import { addDays, addMonths, BLOCK_MIN, blankForm, changedFields, DURATIONS, dayEvents, daysOf, EVENT_COLORS, eventDays, eventLook, eventsOn, formBody, formOf, isDate, isFrozen, isTime, isWeekend, later, nowAt, OTHER_DURATION, outsideHours, planDay, shownDays, step, typeLine, typeName, viewRange, withoutType, withType } from "../src/lib/agenda.ts";
 
 const SP = "America/Sao_Paulo";
 const NY = "America/New_York";
@@ -386,5 +386,15 @@ describe("the weekend", () => {
   it("is Saturday and Sunday, and no other day", () => {
     // 9/11/2026 is a Monday.
     expect(["2026-11-09", "2026-11-10", "2026-11-11", "2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15"].map(isWeekend)).toEqual([false, false, false, false, false, true, true]);
+  });
+});
+
+describe("isFrozen: the record of the day (13/11/2026)", () => {
+  it("freezes an event whose day, in the owner's clock, is before today", () => {
+    // 02:30 UTC on the 13th is still the 12th in São Paulo.
+    expect(isFrozen({ start: "2026-11-13T02:30:00.000Z", allDay: false }, "2026-11-13", "America/Sao_Paulo")).toBe(true);
+    expect(isFrozen({ start: "2026-11-13T03:00:00.000Z", allDay: false }, "2026-11-13", "America/Sao_Paulo")).toBe(false);
+    expect(isFrozen({ start: "2026-11-12", allDay: true }, "2026-11-13", "America/Sao_Paulo")).toBe(true);
+    expect(isFrozen({ start: "2026-11-13", allDay: true }, "2026-11-13", "America/Sao_Paulo")).toBe(false);
   });
 });

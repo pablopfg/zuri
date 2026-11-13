@@ -21,6 +21,8 @@ export interface ImportDeps {
   crm: CrmService;
   /** The owner's settings, changed after the data is in (its own transaction). */
   applySettings(patch: Backup["data"]["settings"]): number;
+  /** Today in the owner's zone: a day of the record from today on is not a closed day, and is left out. */
+  today: () => string;
 }
 
 /**
@@ -218,6 +220,17 @@ export function importBackup(deps: ImportDeps, backup: Backup): BackupImportSumm
     // What was learned here wins: a backup only fills sources this installation hasn't learned.
     for (const l of d.alertLearning) {
       db.run(`INSERT INTO zur_alert_learning (key, shift, label, changed_at) VALUES (?, ?, ?, ?) ON CONFLICT (key) DO NOTHING`, l.key, l.shift, l.label, l.changedAt);
+    }
+
+    // The record of the day: a day already closed here stays as it is; only days missing here come back.
+    const today = deps.today();
+    for (const closed of d.agendaRecord) {
+      if (closed.day >= today) continue;
+      const added = db.run(`INSERT OR IGNORE INTO zur_agenda_closed_days (day, closed_at, events) VALUES (?, ?, ?)`, closed.day, closed.closedAt, closed.events.length);
+      if (added.rowsWritten === 0) continue;
+      for (const event of closed.events) {
+        db.run(`INSERT OR IGNORE INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES (?, ?, ?, ?, ?)`, closed.day, event.calendarId, event.id, event.etag, JSON.stringify(event));
+      }
     }
 
     let clients = { clients: 0, skipped: 0 };

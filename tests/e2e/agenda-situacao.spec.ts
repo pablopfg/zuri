@@ -11,6 +11,8 @@ test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
 /** Wednesday, 18/11/2026, 10:20 in São Paulo: the week runs from Monday 16 to Sunday 22. */
 const NOW = new Date("2026-11-18T10:20:00-03:00");
+// Monday 16/11, before the first appointment: since the record of the day (E5b) a day before today is frozen, so the tests that change a status open the week on its first day.
+const MONDAY = new Date("2026-11-16T08:00:00-03:00");
 const at = (day: string, time: string) => new Date(`2026-11-${day}T${time}:00-03:00`).toISOString();
 
 type Sample = { title: string; day: string; from: string; to: string; colorId?: string; calendarId?: string; description?: string };
@@ -73,8 +75,8 @@ async function routeAgenda(page: Page, samples: Sample[], change?: (body: Record
   return patches;
 }
 
-async function openAgenda(page: Page) {
-  await page.clock.install({ time: NOW });
+async function openAgenda(page: Page, time = NOW) {
+  await page.clock.install({ time });
   await page.goto("/agenda");
   await signIn(page);
   await expect(page.getByRole("heading", { level: 1, name: "Agenda" })).toBeVisible();
@@ -150,7 +152,7 @@ test("the holiday's name shows under its date, and a week without one has no all
 
 test("the details change the status with one tap, send only the color with the version on screen, and say the color at Google", async ({ page }) => {
   const patches = await routeAgenda(page, WEEK, () => ({ status: 200, json: {} }));
-  await openAgenda(page);
+  await openAgenda(page, MONDAY);
   await event(page, "Marina Teles Barreto").click();
   const details = page.getByRole("dialog", { name: "Marina Teles Barreto" });
   const status = details.getByRole("group", { name: "Situação" });
@@ -197,7 +199,7 @@ test("the details change the status with one tap, send only the color with the v
 test("a status refused because the event changed at Google closes the details and changes nothing; a failure keeps them open", async ({ page }) => {
   let answer = { status: 409, json: { code: "TARGET_CHANGED", message: "O evento mudou no Google enquanto isso. Confira como ele ficou e tente de novo." } };
   const patches = await routeAgenda(page, WEEK, () => answer);
-  await openAgenda(page);
+  await openAgenda(page, MONDAY);
   await event(page, "Helena Duarte Prado").click();
   const details = page.getByRole("dialog", { name: "Helena Duarte Prado" });
   await details.getByRole("group", { name: "Situação" }).getByRole("button", { name: "Cancelado" }).click();
@@ -227,7 +229,7 @@ test("an answer that comes after the details were closed, or opened on another e
   const held = () => new Promise<void>((done) => (release = done));
   let wait = held();
   const patches = await routeAgenda(page, WEEK, () => ({ status: 200, json: {}, wait }));
-  await openAgenda(page);
+  await openAgenda(page, MONDAY);
   // Closed while the change is on its way: the details stay closed, and the week shows the new status.
   await event(page, "Marina Teles Barreto").click();
   const first = page.getByRole("dialog", { name: "Marina Teles Barreto" });
@@ -349,7 +351,7 @@ test("in English the statuses, the colors and the holiday speak English", async 
     const response = await route.fetch();
     await route.fulfill({ response, json: { ...((await response.json()) as object), language: "en" } });
   });
-  await page.clock.install({ time: NOW });
+  await page.clock.install({ time: MONDAY });
   await page.goto("/agenda");
   await signIn(page);
   await expect(event(page, "Helena Duarte Prado")).toHaveAccessibleName(/Confirmed/);

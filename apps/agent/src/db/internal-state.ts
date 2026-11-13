@@ -98,7 +98,10 @@ export type InternalKey =
   // the notices seen, the counters of the hour, of strangers and of recreations, the last events) and the
   // app conversation it writes to. The inbox's secrets are in zur_flow_connections, sealed.
   | "chatwoot_owner"
-  | "chatwoot_conversation";
+  | "chatwoot_conversation"
+  // The record of the day (13/11/2026): the first day copied (the day of this delivery) and the next try after a failed reading.
+  | "agenda_record_from"
+  | "agenda_record_retry_at";
 
 export class InternalState {
   constructor(private readonly db: Database) {}
