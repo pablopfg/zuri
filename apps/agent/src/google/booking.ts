@@ -110,10 +110,14 @@ export function eventDay(event: Pick<BookingShape, "allDay" | "start">, timeZone
  * what it would become. Every event counts, not only appointments.
  */
 export function checkOpenDay(input: { before?: Pick<BookingShape, "allDay" | "start"> | undefined; after?: Pick<BookingShape, "allDay" | "start"> | undefined; timeZone: string; now?: Date | undefined }): void {
-  const today = localToday(input.timeZone, input.now ?? new Date());
   for (const event of [input.before, input.after]) {
-    if (event && frozenDay(eventDay(event, input.timeZone), today)) throw new AppError("VALIDATION_FAILED", "error.agendaRule.frozen", { problem: "frozen" });
+    if (event && onClosedDay(event, input.timeZone, input.now)) throw new AppError("VALIDATION_FAILED", "error.agendaRule.frozen", { problem: "frozen" });
   }
+}
+
+/** Whether the event's day already closed (froze at the owner's midnight): any event, appointment or not. */
+export function onClosedDay(event: Pick<BookingShape, "allDay" | "start">, timeZone: string, now: Date = new Date()): boolean {
+  return frozenDay(eventDay(event, timeZone), localToday(timeZone, now));
 }
 
 /**

@@ -32,8 +32,11 @@ export interface AgendaRecordDeps {
   state: InternalState;
   google: GoogleCalendar;
   timeZone: () => string;
-  /** One notice per event and version changed at Google after its day closed (the day, never the title). */
-  notify: (notice: { day: string; calendarId: string; eventId: string; etag: string }) => void;
+  /**
+   * One notice per closed day and set of changes at Google after it closed (the day, never a title):
+   * `versions` is a fingerprint of what changed (calendars, events and versions), so the same changes never notify twice.
+   */
+  notify: (notice: { day: string; versions: string }) => void;
 }
 
 interface RecordRow {
@@ -55,14 +58,22 @@ export class AgendaRecord {
   private pending(today: string): string | null {
     const from = this.deps.state.get<string>("agenda_record_from");
     if (!from) return null;
-    const last = this.deps.db.one<{ day: string | null }>(`SELECT MAX(day) AS day FROM zur_agenda_closed_days`)?.day ?? null;
+    // Only days before today count: a day of today or later (a forged backup, a time zone moved back) never stops the record.
+    const last = this.deps.db.one<{ day: string | null }>(`SELECT MAX(day) AS day FROM zur_agenda_closed_days WHERE day < ?`, today)?.day ?? null;
     let next = last && last >= from ? dayPlus(last, 1) : from;
     const oldest = dayPlus(today, -RECORD_CATCH_UP_DAYS);
-    if (next < oldest) {
-      log("warn", "agenda_record_skipped", { count: Math.round((Date.parse(oldest) - Date.parse(next)) / 86_400_000) });
-      next = oldest;
-    }
+    if (next < oldest) next = oldest;
     return next < today ? next : null;
+  }
+
+  /** How many days the record will never copy (more than a week behind), or 0. */
+  private skipped(today: string): number {
+    const from = this.deps.state.get<string>("agenda_record_from");
+    if (!from) return 0;
+    const last = this.deps.db.one<{ day: string | null }>(`SELECT MAX(day) AS day FROM zur_agenda_closed_days WHERE day < ?`, today)?.day ?? null;
+    const next = last && last >= from ? dayPlus(last, 1) : from;
+    const oldest = dayPlus(today, -RECORD_CATCH_UP_DAYS);
+    return next < oldest ? Math.round((Date.parse(oldest) - Date.parse(next)) / 86_400_000) : 0;
   }
 
   /** When the alarm must wake for the record: now with a day to close, else the owner's next 0:00; null without Google. */
@@ -92,6 +103,9 @@ export class AgendaRecord {
     if ((state.get<number>("agenda_record_retry_at") ?? 0) > google.now().getTime()) return false;
     const day = this.pending(today);
     if (!day) return false;
+    // Said once, when the oldest day kept is the one closing: the days before it are past copying.
+    const behind = this.skipped(today);
+    if (behind > 0) log("warn", "agenda_record_skipped", { count: behind });
     const zone = this.deps.timeZone();
     const calendars = google.writable();
     let events: CalendarEvent[] = [];
@@ -122,7 +136,7 @@ export class AgendaRecord {
 
   /** The last day closed, when and with how many events: Configurações › Agenda shows it. */
   last(): { day: string; closedAt: string; events: number } | null {
-    const row = this.deps.db.one<{ day: string; closed_at: string; events: number }>(`SELECT day, closed_at, events FROM zur_agenda_closed_days ORDER BY day DESC LIMIT 1`);
+    const row = this.deps.db.one<{ day: string; closed_at: string; events: number }>(`SELECT day, closed_at, events FROM zur_agenda_closed_days WHERE day < ? ORDER BY day DESC LIMIT 1`, this.today());
     return row ? { day: row.day, closedAt: row.closed_at, events: row.events } : null;
   }
 
@@ -130,52 +144,65 @@ export class AgendaRecord {
    * The events Google gave for [fromDay, toDay], with every closed day replaced
    * by its copy, for the calendars in `calendarIds` only. `complete` is false
    * when Google's reading was partial: then an event missing at Google is not
-   * called deleted. A difference raises its notice once per version.
+   * called deleted. `window`, when Google was read for part of a day only
+   * (a listing of some hours): a copy outside it is neither shown nor called
+   * deleted. Only days before today count as closed. The differences of a day
+   * raise one notice, once per set of versions.
    */
-  apply(events: CalendarEvent[], fromDay: string, toDay: string, calendarIds: readonly string[], complete: boolean): RecordedEvent[] {
+  apply(events: CalendarEvent[], fromDay: string, toDay: string, calendarIds: readonly string[], complete: boolean, window?: { from: Date; to: Date }): RecordedEvent[] {
     const { db } = this.deps;
-    const closed = new Set(db.all<{ day: string }>(`SELECT day FROM zur_agenda_closed_days WHERE day BETWEEN ? AND ?`, fromDay, toDay).map((row) => row.day));
+    const today = this.today();
+    const closed = new Set(
+      db
+        .all<{ day: string }>(`SELECT day FROM zur_agenda_closed_days WHERE day BETWEEN ? AND ?`, fromDay, toDay)
+        .map((row) => row.day)
+        .filter((day) => day < today),
+    );
     if (closed.size === 0) return events;
     const zone = this.deps.timeZone();
     const open = new Set(calendarIds);
     const writable = new Set(this.deps.google.writable().map((calendar) => calendar.id));
     const rows = db.all<RecordRow>(`SELECT day, calendar_id, event_id, etag, data FROM zur_agenda_record WHERE day BETWEEN ? AND ?`, fromDay, toDay).filter((row) => open.has(row.calendar_id));
-    const key = (calendarId: string, id: string) => `${calendarId}\n${id}`;
-    const recorded = new Map(rows.map((row) => [key(row.calendar_id, row.event_id), row]));
+    // The day is part of the key: an event moved at Google from one closed day to another has a copy in each.
+    const key = (day: string, calendarId: string, id: string) => `${day}\n${calendarId}\n${id}`;
+    const recorded = new Map(rows.map((row) => [key(row.day, row.calendar_id, row.event_id), row]));
     const out: RecordedEvent[] = [];
     const seen = new Set<string>();
+    const changes = new Map<string, string[]>();
+    const changed = (day: string, calendarId: string, eventId: string, version: string) => changes.set(day, [...(changes.get(day) ?? []), `${calendarId}\n${eventId}\n${version}`]);
     for (const event of events) {
       const day = dayOf(event, zone);
       if (!day || !closed.has(day)) {
         out.push(event);
         continue;
       }
-      const row = recorded.get(key(event.calendarId, event.id));
-      if (row && row.day === day) {
-        seen.add(key(row.calendar_id, row.event_id));
+      const row = recorded.get(key(day, event.calendarId, event.id));
+      if (row) {
+        seen.add(key(row.day, row.calendar_id, row.event_id));
         const copy = parse(row);
         if (!copy) continue;
         if (event.etag !== row.etag) {
           out.push({ ...copy, changedAtGoogle: "changed" });
-          this.deps.notify({ day, calendarId: event.calendarId, eventId: event.id, etag: event.etag });
+          changed(day, event.calendarId, event.id, event.etag);
         } else out.push(copy);
         continue;
       }
       if (writable.has(event.calendarId)) {
         out.push({ ...event, changedAtGoogle: "added" });
-        this.deps.notify({ day, calendarId: event.calendarId, eventId: event.id, etag: event.etag });
+        changed(day, event.calendarId, event.id, event.etag);
       } else out.push(event);
     }
     // Copied and gone at Google (or moved to another day there): the copy stays where it was.
     for (const row of rows) {
-      if (seen.has(key(row.calendar_id, row.event_id))) continue;
+      if (!closed.has(row.day) || seen.has(key(row.day, row.calendar_id, row.event_id))) continue;
       const copy = parse(row);
-      if (!copy) continue;
+      if (!copy || (window && !overlaps(copy, window))) continue;
       if (complete) {
         out.push({ ...copy, changedAtGoogle: "deleted" });
-        this.deps.notify({ day: row.day, calendarId: row.calendar_id, eventId: row.event_id, etag: "deleted" });
+        changed(row.day, row.calendar_id, row.event_id, "deleted");
       } else out.push(copy);
     }
+    for (const [day, list] of changes) this.deps.notify({ day, versions: fingerprint(list.sort().join("\n")) });
     return out.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   }
 }
@@ -186,6 +213,25 @@ function dayOf(event: CalendarEvent, zone: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** A short fingerprint of the day's changes, for the notice's key (FNV-1a twice, with two seeds: 16 hex digits). */
+function fingerprint(text: string): string {
+  let a = 0x811c9dc5;
+  let b = 0x01000193 ^ 0x5bd1e995;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ c, 0x01000193 ^ 0x2f) >>> 0;
+  }
+  return a.toString(16).padStart(8, "0") + b.toString(16).padStart(8, "0");
+}
+
+/** Whether the copy's time meets the window Google was read for (an all-day event spans its days in UTC, near enough). */
+function overlaps(event: CalendarEvent, window: { from: Date; to: Date }): boolean {
+  const start = Date.parse(event.allDay ? `${event.start}T00:00:00Z` : event.start);
+  const end = Date.parse(event.allDay ? `${event.end}T00:00:00Z` : event.end);
+  return start < window.to.getTime() && end > window.from.getTime();
 }
 
 function sameDay(event: CalendarEvent, day: string, zone: string): boolean {

@@ -155,6 +155,19 @@ describe("backupImportParts when the rest alone is too big", () => {
   });
 });
 
+describe("backupImportParts with the record of the day", () => {
+  const head = { format: "zuri-backup", version: 1, schema: 1, exportedAt: "2026-11-09T06:00:00.000Z" };
+
+  it("takes the record's days out first, in batches, so a record that grows for years never fills the first part", () => {
+    const agendaRecord = Array.from({ length: 30 }, (_, i) => ({ day: `2026-10-${String(i + 1).padStart(2, "0")}`, closedAt: "t", events: [{ title: "x".repeat(80) }] }));
+    const tasks = [{ id: "t1" }];
+    const parts = backupImportParts({ ...head, data: { tasks, agendaRecord } }, 1_500);
+    expect(parts[0]?.data).toEqual({ tasks, agendaRecord: [] });
+    expect(parts.slice(1).flatMap((part) => (part.data.agendaRecord as unknown[] | undefined) ?? [])).toEqual(agendaRecord);
+    for (const part of parts) expect(new TextEncoder().encode(JSON.stringify(part)).length).toBeLessThanOrEqual(1_500);
+  });
+});
+
 describe("isBackupEnvelope", () => {
   it("takes the manual backup's envelope and nothing else", () => {
     const ok = { format: "zuri-backup", version: 1, schema: 1, exportedAt: "2026-11-09T06:00:00.000Z", data: {} };

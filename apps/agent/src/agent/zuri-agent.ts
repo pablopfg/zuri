@@ -58,6 +58,7 @@ import { McpService, OAUTH_CALLBACK_PATH } from "../mcp/service.ts";
 import { developmentGoogle, developmentGoogleNetwork } from "../google/dev-google.ts";
 import { GoogleCalendar } from "../google/service.ts";
 import { AgendaRecord } from "../google/record.ts";
+import { localToday } from "../google/events.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
 import { type ReviewNotice, ReviewService } from "../reviews/service.ts";
 import { developmentOwnerNetwork } from "../chatwoot/dev-chatwoot-owner.ts";
@@ -263,6 +264,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           db,
           storage: productivity.storage,
           crm,
+          today: () => localToday(settings.field("timeZone"), new Date()),
           applySettings: (patch) => {
             zoneBefore = settings.field("timeZone");
             settings.update(patch);
@@ -896,10 +898,12 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           alerts.raise({
             kind: "agenda.changed",
             category: "events",
-            priority: "normal",
+            // Low and never learned: the bell only, no push nor Telegram (plan agenda-registro-do-dia.md, assumption 13).
+            priority: "low",
+            source: null,
             params: { day: `${day}/${month}` },
             link: "/agenda",
-            dedupeKey: `agenda-record:${notice.calendarId}:${notice.eventId}:${notice.etag}`,
+            dedupeKey: `agenda-record:${notice.day}:${notice.versions}`,
             dedupeMs: 365 * 86_400_000,
           });
         },

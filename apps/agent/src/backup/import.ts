@@ -21,6 +21,8 @@ export interface ImportDeps {
   crm: CrmService;
   /** The owner's settings, changed after the data is in (its own transaction). */
   applySettings(patch: Backup["data"]["settings"]): number;
+  /** Today in the owner's zone: a day of the record from today on is not a closed day, and is left out. */
+  today: () => string;
 }
 
 /**
@@ -221,7 +223,9 @@ export function importBackup(deps: ImportDeps, backup: Backup): BackupImportSumm
     }
 
     // The record of the day: a day already closed here stays as it is; only days missing here come back.
+    const today = deps.today();
     for (const closed of d.agendaRecord) {
+      if (closed.day >= today) continue;
       const added = db.run(`INSERT OR IGNORE INTO zur_agenda_closed_days (day, closed_at, events) VALUES (?, ?, ?)`, closed.day, closed.closedAt, closed.events.length);
       if (added.rowsWritten === 0) continue;
       for (const event of closed.events) {

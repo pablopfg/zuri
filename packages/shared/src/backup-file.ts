@@ -315,12 +315,13 @@ export function isBackupEnvelope(value: unknown): value is Opened {
 
 /**
  * The lists taken out of the first part, in this order, until it fits: the
+ * record of the day (it only grows, and each day stands alone), the
  * conversations, then memories, notes and tasks. Projects, settings,
  * automations and the CRM always stay in the first part; a task or note sent
  * in a later part arrives without its project, since links only hold within
  * one import.
  */
-const SPLIT_ORDER = ["conversations", "memories", "notes", "tasks"] as const;
+const SPLIT_ORDER = ["agendaRecord", "conversations", "memories", "notes", "tasks"] as const;
 
 /**
  * An opened backup as imports of at most `max` bytes each (the import's 10

@@ -210,8 +210,8 @@ fica congelado:
   situação, **Editar** e **Apagar**. Arrastar toca o som de recusa e avisa.
 - A Agenda mostra a cópia. Se alguém mudar, apagar ou criar um evento daquele
   dia direto no Google Agenda, a cópia fica como estava, o bloco ganha a marca
-  "Mudou no Google depois do fechamento" e chega um aviso, uma vez por mudança.
-  O aviso diz o dia, nunca o título.
+  "Mudou no Google depois do fechamento" e chega um aviso por dia, uma vez para
+  cada conjunto de mudanças. O aviso diz o dia, nunca o título.
 - Se o Google não responder inteiro, o dia não fecha e a Zuri tenta de novo em
   15 minutos. Um dia perdido (o servidor parado) fecha depois, até 7 dias para
   trás, um por vez. O que veio antes desta versão não é copiado.

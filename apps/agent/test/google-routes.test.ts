@@ -609,7 +609,8 @@ describe("/api/google/events: the booking rule, checked again by the server (13/
     expect(google.events.get(WORK)?.find((e) => e.id === id)?.summary).toBe("Ana Souza");
     const record = await api("GET", "/google/record");
     expect(record.status).toBe(200);
-    expect(await record.json()).toHaveProperty("last");
+    // Nothing closed yet in this installation's record (the alarm marks only its first day).
+    expect(await record.json()).toEqual({ last: null });
   });
 });
 

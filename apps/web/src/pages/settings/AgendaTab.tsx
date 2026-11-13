@@ -126,6 +126,8 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
   };
   const { timeZone } = useI18n();
   const today = localDate(Date.now(), timeZone);
+  // The six weeks the "ficaram fora" card reads, from the same cache.
+  const booked = useQuery(sixWeeks(today));
   const [adding, setAdding] = useState(false);
   const holidays = nextHolidays(today, draft.workDays);
   const hoursId = useId();
@@ -308,6 +310,12 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
           onAdd={(period) => {
             set({ closed: [...draft.closed, period].sort((a, b) => (a.from < b.from ? -1 : 1)) });
             setAdding(false);
+            // The appointments already booked inside it, among the six weeks the "ficaram fora" card reads: they need a new time.
+            const inside = (booked.data?.events ?? []).filter((event) => {
+              const slot = slotOn(event, timeZone);
+              return !!slot && isAppointment(event) && slot.day >= period.from && slot.day <= period.to;
+            }).length;
+            if (inside > 0) toast(t("web.agendaPrefs.closed.booked", { period: periodText(period, t("web.agendaPrefs.closed.joiner")), days: plural("web.agendaPrefs.closed.days", periodDays(period)), appointments: plural("web.agendaPrefs.closed.appointments", inside) }));
           }}
         />
       )}
@@ -408,7 +416,8 @@ function DayRecord() {
     retry: false,
   });
   const last = record.data?.last;
-  const when = last ? new Intl.DateTimeFormat(locale, { timeZone, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(last.closedAt)) : "";
+  // The hour it closed (the day after the one closed, at about midnight).
+  const when = last ? new Intl.DateTimeFormat(locale, { timeZone, hour: "2-digit", minute: "2-digit" }).format(new Date(last.closedAt)) : "";
   return (
     <Row title={t("web.agendaPrefs.record.title")} hint={t("web.agendaPrefs.record.hint")} id={id} hintId={`${id}-hint`}>
       <p className="w-full text-sm text-fg-muted" aria-live="polite">
@@ -507,20 +516,24 @@ function slotOn(event: AgendaEvent, timeZone: string): Slot | null {
   return { day, start: minute(localTime(event.start, timeZone)), end: end === "00:00" ? 1_440 : minute(end) };
 }
 
+/** The same window the Agenda asks for (six weeks), under its key: a change there refreshes what reads it here. */
+function sixWeeks(today: string) {
+  const to = dayPlus(today, 42);
+  return {
+    queryKey: ["calendar", "events", today, to],
+    queryFn: ({ signal }: { signal: AbortSignal }) => api<AgendaPage>(`/google/events?from=${today}&to=${to}`, { signal }),
+    staleTime: 60_000,
+    retry: false,
+  };
+}
+
 /**
  * Appointments already booked that the saved settings leave outside (or made at
  * Google in a closed hour): nothing disappears, the card lists them (13/11/2026, 00:44).
  */
 function OutsideList({ hours, today }: { hours: AgendaPrefs; today: string }) {
   const { t, plural, timeZone, locale } = useI18n();
-  const to = dayPlus(today, 42);
-  // The same window the Agenda asks for (six weeks), under its key: a change there refreshes this list.
-  const events = useQuery({
-    queryKey: ["calendar", "events", today, to],
-    queryFn: ({ signal }) => api<AgendaPage>(`/google/events?from=${today}&to=${to}`, { signal }),
-    staleTime: 60_000,
-    retry: false,
-  });
+  const events = useQuery(sixWeeks(today));
   const out = (events.data?.events ?? [])
     .map((event) => ({ event, slot: slotOn(event, timeZone) }))
     .filter((each): each is { event: AgendaEvent; slot: Slot } => !!each.slot && each.slot.day >= today && isAppointment(each.event))

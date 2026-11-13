@@ -372,7 +372,8 @@ describe("import", () => {
     await wipe();
     // Here 30/10 closed with another copy: it stays; 31/10 comes back from the file.
     await close("2026-10-30", "Bruno Lima");
-    await ok(session("POST", "/backup/import", file));
+    // SEC-E5b-03: a day of today or later in the file is no closed day: it is left out.
+    await ok(session("POST", "/backup/import", { ...file, data: { ...file.data, agendaRecord: [...file.data.agendaRecord, { day: "2099-12-31", closedAt: "2026-10-30T03:00:05.000Z", events: [event("Inventado")] }] } }));
     const rows = await inOwner((agent) => ({
       days: agent.store.db.all<{ day: string; events: number }>(`SELECT day, events FROM zur_agenda_closed_days ORDER BY day`),
       titles: agent.store.db.all<{ data: string }>(`SELECT data FROM zur_agenda_record`).map((row) => (JSON.parse(row.data) as { title: string }).title),
@@ -381,6 +382,11 @@ describe("import", () => {
     // A bad day refuses the whole file.
     const bad = { ...file, data: { ...file.data, agendaRecord: [{ day: "30/10/2026", closedAt: "2026-10-30T03:00:05.000Z", events: [] }] } };
     expect((await session("POST", "/backup/import", bad)).status).toBe(400);
+    // SEC-E5b-04: a copy whose time the Agenda can't read refuses the whole file too.
+    for (const start of ["x", "2026-02-30", "2026-10-30T25:00:00.000Z"]) {
+      const broken = { ...file, data: { ...file.data, agendaRecord: [{ day: "2026-10-29", closedAt: "2026-10-30T03:00:05.000Z", events: [{ ...event("Ana Souza"), start }] }] } };
+      expect((await session("POST", "/backup/import", broken)).status, start).toBe(400);
+    }
   });
 
   it("sets only the safe settings", async () => {

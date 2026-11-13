@@ -27,7 +27,7 @@ function seed(world: ChatWorld, calendarId: string, id: string, start: string, e
   world.googleSim.events.set(calendarId, list);
 }
 
-type Notice = { day: string; calendarId: string; eventId: string; etag: string };
+type Notice = { day: string; versions: string };
 
 function record(world: ChatWorld, google: GoogleCalendar = world.google): { record: AgendaRecord; notices: Notice[]; state: InternalState } {
   const notices: Notice[] = [];
@@ -156,8 +156,15 @@ describe("agenda record: the copy on the Agenda", () => {
         ["gone", "gone", "deleted"],
         ["late", "late", "added"],
       ]);
-      expect(notices.map((notice) => `${notice.eventId} ${notice.etag}`)).toEqual(['edit "edit-2"', 'late "late-1"', "gone deleted"]);
-      expect(notices.every((notice) => notice.day === "2026-10-31")).toBe(true);
+      // One notice for the day, whatever number of events changed; its key names this set of versions.
+      expect(notices).toEqual([{ day: "2026-10-31", versions: expect.stringMatching(/^[0-9a-f]{16}$/) }]);
+      // The same changes read again give the same key (the alert keeps it for a year: no second notice).
+      agenda.apply(after.events, "2026-10-31", "2026-10-31", after.ids, true);
+      expect(notices[1]).toEqual(notices[0]);
+      // A newer version at Google is a new set: a new key.
+      if (edit) edit.etag = '"edit-3"';
+      agenda.apply((await read(world)).events, "2026-10-31", "2026-10-31", after.ids, true);
+      expect(notices[2]?.versions).not.toBe(notices[0]?.versions);
     }));
 
   it("never calls an event deleted on a partial reading, and leaves open days and other calendars as Google gives them", () =>
@@ -176,5 +183,80 @@ describe("agenda record: the copy on the Agenda", () => {
       const open = await world.google.events(world.google.readable(), new Date("2026-11-01T03:00:00Z"), new Date("2026-11-02T03:00:00Z"), new GoogleMeter(12), { timeZone: TIME_ZONE });
       expect(agenda.apply(open.events, "2026-11-01", "2026-11-01", [PRIMARY], true)).toBe(open.events);
       expect(notices).toEqual([]);
+    }));
+
+  it("SEC-E5b-02: a listing of some hours of a closed day never calls the copies outside it deleted", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, "morning", "2026-10-31T09:00:00-03:00", "2026-10-31T10:00:00-03:00");
+      seed(world, PRIMARY, "afternoon", "2026-10-31T15:00:00-03:00", "2026-10-31T16:00:00-03:00");
+      const { record: agenda, notices } = record(world);
+      await agenda.tick();
+      world.clock.now = MIDNIGHT_NOV_1 + 1_000;
+      await agenda.tick();
+      const window = { from: new Date("2026-10-31T17:00:00Z"), to: new Date("2026-10-31T19:00:00Z") };
+      const got = await world.google.events(world.google.readable(), window.from, window.to, new GoogleMeter(12), { timeZone: TIME_ZONE });
+      const shown = agenda.apply(got.events, "2026-10-31", "2026-10-31", [PRIMARY, READER], true, window);
+      expect(shown.map((event) => [event.id, event.changedAtGoogle])).toEqual([["afternoon", undefined]]);
+      expect(notices).toEqual([]);
+    }));
+
+  it("SEC-E5b-03: a day of today or later in the record (a forged backup) neither stops the closing nor replaces Google's events", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, "real", "2026-11-05T10:00:00-03:00", "2026-11-05T11:00:00-03:00");
+      const { record: agenda, notices } = record(world);
+      await agenda.tick();
+      world.db.run(`INSERT INTO zur_agenda_closed_days (day, closed_at, events) VALUES ('2099-12-31', 't', 0), ('2026-11-05', 't', 1)`);
+      world.db.run(`INSERT INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES ('2026-11-05', ?, 'fake', '"1"', ?)`, PRIMARY, JSON.stringify({ id: "fake", calendarId: PRIMARY, title: "Inventado", start: "2026-11-05T13:00:00.000Z", end: "2026-11-05T14:00:00.000Z", allDay: false, location: "", description: "", etag: '"1"', recurring: false, guests: 0, colorId: "", shared: false }));
+      expect(agenda.last()).toBeNull();
+      world.clock.now = MIDNIGHT_NOV_1 + 1_000;
+      expect(await agenda.tick()).toBe(true);
+      expect(agenda.last()?.day).toBe("2026-10-31");
+      const got = await world.google.events(world.google.readable(), new Date("2026-11-05T03:00:00Z"), new Date("2026-11-06T03:00:00Z"), new GoogleMeter(12), { timeZone: TIME_ZONE });
+      expect(agenda.apply(got.events, "2026-11-05", "2026-11-05", [PRIMARY], true).map((event) => [event.id, event.changedAtGoogle])).toEqual([["real", undefined]]);
+      expect(notices).toEqual([]);
+    }));
+
+  it("passes the open day of a mixed range as Google gives it and drops a copy it cannot read", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, "kept", "2026-10-31T10:00:00-03:00", "2026-10-31T11:00:00-03:00");
+      seed(world, PRIMARY, "broken", "2026-10-31T14:00:00-03:00", "2026-10-31T15:00:00-03:00");
+      seed(world, PRIMARY, "gone", "2026-10-31T16:00:00-03:00", "2026-10-31T17:00:00-03:00");
+      const { record: agenda, notices } = record(world);
+      await agenda.tick();
+      world.clock.now = MIDNIGHT_NOV_1 + 1_000;
+      await agenda.tick();
+      world.db.run(`UPDATE zur_agenda_record SET data = '{not json' WHERE event_id IN ('broken', 'gone')`);
+      world.googleSim.events.set(PRIMARY, (world.googleSim.events.get(PRIMARY) ?? []).filter((event) => event.id !== "gone"));
+      seed(world, PRIMARY, "tomorrow", "2026-11-01T10:00:00-03:00", "2026-11-01T11:00:00-03:00");
+      const got = await world.google.events(world.google.readable(), new Date("2026-10-31T03:00:00Z"), new Date("2026-11-02T03:00:00Z"), new GoogleMeter(12), { timeZone: TIME_ZONE });
+      const shown = agenda.apply(got.events, "2026-10-31", "2026-11-01", [PRIMARY], true);
+      expect(shown.map((event) => [event.id, event.changedAtGoogle])).toEqual([
+        ["kept", undefined],
+        ["tomorrow", undefined],
+      ]);
+      expect(notices).toEqual([]);
+    }));
+
+  it("keeps the copy of each closed day of an event moved at Google between closed days, and marks the old one deleted", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      const { record: agenda, notices } = record(world);
+      const copy = (day: string) => JSON.stringify({ id: "x", calendarId: PRIMARY, title: "Ana", start: `${day}T13:00:00.000Z`, end: `${day}T14:00:00.000Z`, allDay: false, location: "", description: "", etag: `"${day}"`, recurring: false, guests: 0, colorId: "", shared: false });
+      for (const day of ["2026-10-28", "2026-10-29"]) {
+        world.db.run(`INSERT INTO zur_agenda_closed_days (day, closed_at, events) VALUES (?, 't', 1)`, day);
+        world.db.run(`INSERT INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES (?, ?, 'x', ?, ?)`, day, PRIMARY, `"${day}"`, copy(day));
+      }
+      // Google has it on the 29th now, as the 29th's copy.
+      seed(world, PRIMARY, "x", "2026-10-29T10:00:00-03:00", "2026-10-29T11:00:00-03:00", { etag: '"2026-10-29"' });
+      const got = await world.google.events(world.google.readable(), new Date("2026-10-28T03:00:00Z"), new Date("2026-10-30T03:00:00Z"), new GoogleMeter(12), { timeZone: TIME_ZONE });
+      const shown = agenda.apply(got.events, "2026-10-28", "2026-10-29", [PRIMARY], true);
+      expect(shown.map((event) => [event.start.slice(0, 10), event.changedAtGoogle])).toEqual([
+        ["2026-10-28", "deleted"],
+        ["2026-10-29", undefined],
+      ]);
+      expect(notices.map((notice) => notice.day)).toEqual(["2026-10-28"]);
     }));
 });

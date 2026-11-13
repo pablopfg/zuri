@@ -308,6 +308,13 @@ test("Configurações › Agenda keeps the lunch and the periods off, lists the 
   await confirm.click();
   await expect(add.getByText("Esse período encosta em 24/12/2026 a 03/01/2027, que já está na lista.")).toBeVisible();
   await add.getByRole("button", { name: "Cancelar" }).click();
+  // A day with appointments already booked says how many need a new time.
+  await card.getByRole("button", { name: "Adicionar dia ou período" }).click();
+  await from.fill("19/11/2026");
+  await confirm.click();
+  await expect(page.getByRole("status").filter({ hasText: "19/11/2026: 1 dia sem expediente. 2 consultas marcadas nesse período precisam de outro horário." })).toBeVisible();
+  await card.getByRole("button", { name: "Tirar 19/11/2026" }).click();
+  await expect(periods.getByRole("listitem")).toHaveText(["24/12/2026 a 03/01/2027 · Recesso · 11 dias"]);
   await expectAccessible(page, "configuracoes-agenda-travas");
   expect(await tooSmallControls(page), "every control of the screen is a 44 px target").toEqual([]);
 

@@ -314,7 +314,7 @@ export const calendarTools = [
       // A search is Google's own: the record of the closed days shows only in a plain listing.
       const events: RecordedEvent[] =
         ctx.agendaRecord && !input.query
-          ? ctx.agendaRecord.apply(read.events, localToday(tz, from), localToday(tz, new Date(to.getTime() - 1)), chosen.map((item) => item.id), !more && skipped.length === 0)
+          ? ctx.agendaRecord.apply(read.events, localToday(tz, from), localToday(tz, new Date(to.getTime() - 1)), chosen.map((item) => item.id), !more && skipped.length === 0, { from, to })
           : read.events;
       return {
         window: `${instantToLocal(from.toISOString(), tz)} – ${instantToLocal(to.toISOString(), tz)}`,

@@ -1,5 +1,5 @@
 import { type AgendaPrefs, FLOW_LIMITS, GOOGLE_LIMITS, type FlowNode, isValidCalendarDate, sha256Hex } from "@zuri/shared";
-import { type BookingShape, bound, checkBooking, fixedProblem, shapeOf } from "../google/booking.ts";
+import { type BookingShape, bound, checkBooking, fixedProblem, onClosedDay, shapeOf } from "../google/booking.ts";
 import type { GoogleContacts } from "../google/contacts.ts";
 import { DATE, DATE_TIME, localInstant, localToday, nextDay } from "../google/events.ts";
 import { type GoogleCalendar, GoogleError, GoogleMeter } from "../google/service.ts";
@@ -212,7 +212,8 @@ export async function createEvents(node: Extract<FlowNode, { type: "calendar_cre
   // An appointment at lunch, on a holiday or out of hours stops the step before its first event (no call to Google).
   const now = calendar.now();
   const left = shapes.slice(partial.done);
-  if (left.some((shape) => fixedProblem(shape, google.agendaHours(), zone, now) !== null)) throw new FlowStepError("agenda_rule");
+  // A day that already closed takes no event at all, appointment or not (the record of the day, SEC-E5b-01).
+  if (left.some((shape) => onClosedDay(shape, zone, now) || fixedProblem(shape, google.agendaHours(), zone, now) !== null)) throw new FlowStepError("agenda_rule");
   // Two items of the step at the same hour: the second would be refused after the first was made.
   const slots = left.filter(bound).map((shape) => [Date.parse(shape.start), Date.parse(shape.end)] as const);
   if (slots.some(([start, end], i) => slots.some(([s, e], j) => j < i && s < end && start < e))) throw new FlowStepError("agenda_rule");

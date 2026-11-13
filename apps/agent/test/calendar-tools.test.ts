@@ -234,6 +234,7 @@ describe("delete_calendar_event", () => {
       world.clock.now = Date.parse("2026-11-01T03:00:01Z");
       const error = await runApprovedAction(ALL_TOOLS, world.ctx(chat), actionId).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(AppError);
+      expect((error as AppError).details).toMatchObject({ problem: "frozen" });
       expect(world.googleSim.events.get(PRIMARY)).toHaveLength(2);
       expect(world.googleSim.seen.filter((r) => r.method === "DELETE")).toEqual([]);
       expect(world.actions.view(actionId).status).toBe("failed");

@@ -255,9 +255,15 @@ const crm = /* @__PURE__ */ z
  * One closed day of the Agenda's record (13/11/2026): the events as the Zuri
  * copied them at 0:00. A restore never changes a day already closed here.
  */
+const isDay = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return !!match && isValidCalendarDate(Number(match[1]), Number(match[2]), Number(match[3]));
+};
+/** An event's time as the Agenda reads it: a real day for an all-day event, an instant for the rest (SEC-E5b-04: a bad one broke the screen). */
+const eventTime = (allDay: boolean, value: string) => (allDay ? isDay(value) : /^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(Date.parse(value)));
 const agendaDay = /* @__PURE__ */ z
   .object({
-    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isDay),
     closedAt: at,
     events: z
       .array(
@@ -277,7 +283,8 @@ const agendaDay = /* @__PURE__ */ z
             colorId: short(2),
             shared: z.boolean(),
           })
-          .strict(),
+          .strict()
+          .refine((event) => eventTime(event.allDay, event.start) && eventTime(event.allDay, event.end) && event.start <= event.end),
       )
       .max(AGENDA_RECORD_DAY_MAX),
   })

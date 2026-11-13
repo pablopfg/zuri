@@ -398,6 +398,15 @@ describe("creating appointments keeps the Agenda's rule (issue #328)", () => {
     });
   });
 
+  it("SEC-E5b-01: refuses any event, a meeting with no type too, on a day that already closed", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      const flow = await world.flows.create({ name: "Ontem", definition: manual([one({ quando: "2026-11-02T10:00" }), create({ start: "{{quando}}", title: "Reunião" })]) });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "error", problem: "agenda_rule" });
+      expect(posts(world)).toHaveLength(0);
+    });
+  });
+
   it("books an appointment in a free hour, and a meeting with no type at lunch", async () => {
     await withFlowWorld(async (world) => {
       await connect(world);
