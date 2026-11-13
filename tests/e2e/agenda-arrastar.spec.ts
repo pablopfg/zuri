@@ -406,8 +406,8 @@ test("an empty hour opens Novo evento on that day and hour; the form's Dura, Tip
   const form = page.getByRole("dialog", { name: "Novo evento" });
   await expect(form.getByLabel("Dia", { exact: true })).toHaveValue("2026-11-19");
   await expect(form.getByLabel("Hora de início")).toHaveValue("11:30");
-  await expect(form.getByLabel("Dura")).toHaveValue("60");
-  await expect(form.getByLabel("Dura").getByRole("option")).toHaveText(["15 min", "30 min", "45 min", "1 hora", "1 h 30", "2 horas", "3 horas", "Outra"]);
+  await expect(form.getByLabel("Dura", { exact: true })).toHaveValue("60");
+  await expect(form.getByLabel("Dura", { exact: true }).getByRole("option")).toHaveText(["15 min", "30 min", "45 min", "1 hora", "1 h 30", "2 horas", "3 horas", "Outra"]);
   // The types the calendar already uses, and none.
   await expect(form.getByLabel("Tipo").getByRole("option")).toHaveText(["Sem tipo", "Consulta | Consultório", "Retorno | Consultório"]);
   await expect(form.getByLabel("Situação")).toHaveValue("scheduled");
@@ -416,7 +416,7 @@ test("an empty hour opens Novo evento on that day and hour; the form's Dura, Tip
   await expectAccessible(page, "agenda-arrastar-formulario");
 
   await form.getByRole("textbox", { name: "Título" }).fill("Bruno Macedo Teixeira");
-  await form.getByLabel("Dura").selectOption("30");
+  await form.getByLabel("Dura", { exact: true }).selectOption("30");
   await form.getByLabel("Tipo").selectOption("Retorno | Consultório");
   await form.getByLabel("Situação").selectOption("confirmed");
   await form.getByRole("button", { name: "Criar evento" }).click();
@@ -428,7 +428,7 @@ test("an empty hour opens Novo evento on that day and hour; the form's Dura, Tip
   // "Agendado" is an event without a color: nothing of it is sent. A new event starts as a Consulta.
   await page.getByRole("button", { name: "Novo evento" }).click();
   await form.getByRole("textbox", { name: "Título" }).fill("Clara Nóbrega Dias");
-  await form.getByLabel("Dura").selectOption("other");
+  await form.getByLabel("Dura", { exact: true }).selectOption("other");
   await form.getByLabel("Dia", { exact: true }).fill("2026-11-18");
   await form.getByLabel("Hora de início").fill("15:00");
   await form.getByLabel("Termina em").fill("2026-11-18");
@@ -447,12 +447,12 @@ test("Editar changes the length, the type and the status in one change, with its
   await event(page, "Marina Teles Barreto").click();
   await page.getByRole("dialog", { name: "Marina Teles Barreto" }).getByRole("button", { name: "Editar" }).click();
   const form = page.getByRole("dialog", { name: "Editar evento" });
-  await expect(form.getByLabel("Dura")).toHaveValue("60");
+  await expect(form.getByLabel("Dura", { exact: true })).toHaveValue("60");
   await expect(form.getByLabel("Tipo")).toHaveValue("Retorno | Consultório");
   await expect(form.getByLabel("Situação")).toHaveValue("scheduled");
   // The description shows without its type line.
   await expect(form.getByRole("textbox", { name: "Descrição (opcional)" })).toHaveValue("Levar exames");
-  await form.getByLabel("Dura").selectOption("90");
+  await form.getByLabel("Dura", { exact: true }).selectOption("90");
   await form.getByLabel("Tipo").selectOption("Consulta | Consultório");
   await form.getByLabel("Situação").selectOption("confirmed");
   await form.getByRole("button", { name: "Salvar" }).click();
@@ -512,7 +512,7 @@ test("on a phone the change is by Editar: no dragging, the day's list names the 
   const form = page.getByRole("dialog", { name: "Editar evento" });
   await expectAccessible(page, "agenda-arrastar-formulario-celular");
   await form.getByLabel("Dia", { exact: true }).fill("2026-11-17");
-  await form.getByLabel("Dura").selectOption("30");
+  await form.getByLabel("Dura", { exact: true }).selectOption("30");
   await form.getByRole("button", { name: "Salvar" }).click();
   await expect(notice(page, "“Helena Duarte Prado” atualizado. Ficou como Reagendado.")).toBeVisible();
   expect(sent.patches).toEqual([{ calendarId: "main", eventId: "e0", etag: '"v1-0"', allDay: false, start: "2026-11-17T09:00", end: "2026-11-17T09:30", colorId: "5" }]);

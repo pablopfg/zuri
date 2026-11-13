@@ -1,6 +1,6 @@
 import type { AgendaEvent } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, BLOCK_MIN, blankForm, changedFields, DURATIONS, dayEvents, daysOf, EVENT_COLORS, eventDays, eventLook, eventsOn, formBody, formOf, isDate, isFrozen, isTime, isWeekend, later, nowAt, OTHER_DURATION, outsideHours, planDay, shownDays, step, typeLine, typeName, viewRange, withoutType, withType } from "../src/lib/agenda.ts";
+import { addDays, addMonths, BLOCK_MIN, blankForm, changedFields, DURATIONS, dayEvents, daysOf, EVENT_COLORS, eventDays, eventLook, eventsOn, formAt, formBody, formLength, formOf, isDate, isFrozen, isTime, isWeekend, later, nowAt, OTHER_DURATION, outsideHours, planDay, shownDays, step, typeLine, typeName, viewRange, withoutType, withType } from "../src/lib/agenda.ts";
 
 const SP = "America/Sao_Paulo";
 const NY = "America/New_York";
@@ -396,5 +396,23 @@ describe("isFrozen: the record of the day (13/11/2026)", () => {
     expect(isFrozen({ start: "2026-11-13T03:00:00.000Z", allDay: false }, "2026-11-13", "America/Sao_Paulo")).toBe(false);
     expect(isFrozen({ start: "2026-11-12", allDay: true }, "2026-11-13", "America/Sao_Paulo")).toBe(true);
     expect(isFrozen({ start: "2026-11-13", allDay: true }, "2026-11-13", "America/Sao_Paulo")).toBe(false);
+  });
+});
+
+describe("formLength and formAt (E5c, protótipo v52)", () => {
+  const base = { ...blankForm("2026-11-19", "c", SP, Date.parse("2026-11-13T13:00:00Z")), startTime: "10:00", endDate: "2026-11-19", endTime: "11:00" };
+
+  it("reads the length from the list, or from an Outra end across midnight; 60 when it cannot", () => {
+    expect(formLength({ ...base, duration: "90" })).toBe(90);
+    expect(formLength({ ...base, duration: "" })).toBe(60);
+    expect(formLength({ ...base, duration: OTHER_DURATION, startTime: "22:00", endDate: "2026-11-20", endTime: "01:30" })).toBe(210);
+    // An end before the start, or one not typed yet.
+    expect(formLength({ ...base, duration: OTHER_DURATION, endTime: "09:00" })).toBe(60);
+    expect(formLength({ ...base, duration: OTHER_DURATION, endDate: "" })).toBe(60);
+  });
+
+  it("moves the form keeping its length, an Outra end with it", () => {
+    expect(formAt({ ...base, duration: "60" }, "2026-11-23", "15:00")).toMatchObject({ startDate: "2026-11-23", startTime: "15:00", endDate: "2026-11-23", endTime: "16:00", duration: "60" });
+    expect(formAt({ ...base, duration: OTHER_DURATION, startTime: "22:00", endDate: "2026-11-20", endTime: "01:30" }, "2026-11-23", "23:00")).toMatchObject({ endDate: "2026-11-24", endTime: "02:30" });
   });
 });
