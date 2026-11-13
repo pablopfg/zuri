@@ -46,7 +46,7 @@ describe("default settings", () => {
       alertPerDay: 30,
       alertLearning: true,
       alertFullText: [],
-      agenda: { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, allDay: true, outside: true },
+      agenda: { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: { from: 720, to: 840 }, openHolidays: [], closed: [] },
       sounds: { notice: true, pick: "sino", recording: true },
     });
     expect(DEFAULT_TIME_ZONE).toBe("America/Sao_Paulo");
@@ -87,8 +87,8 @@ describe("default settings", () => {
 
   it("take the Agenda's preferences whole: hours in order, a known view, week days tidied, nothing extra", () => {
     const agenda = DEFAULT_SETTINGS.agenda;
-    const ok = (patch: object) => settingsUpdateSchema.safeParse({ agenda: { ...agenda, ...patch } });
-    // The limits: midnight to 01:00, 23:00 to midnight, the whole day.
+    const ok = (patch: object) => settingsUpdateSchema.safeParse({ agenda: { ...agenda, lunch: null, ...patch } });
+    // The limits: midnight to 01:00, 23:00 to midnight, the whole day (no lunch fits an hour).
     for (const hours of [{ from: 0, to: 1 }, { from: 23, to: 24 }, { from: 0, to: 24 }]) expect(ok(hours).success, JSON.stringify(hours)).toBe(true);
     for (const hours of [{ from: 8, to: 8 }, { from: 18, to: 8 }, { from: -1, to: 8 }, { from: 24, to: 24 }, { from: 0, to: 25 }, { from: 0, to: 0 }, { from: 8.5, to: 18 }, { from: "8", to: 18 }]) {
       expect(ok(hours).success, JSON.stringify(hours)).toBe(false);

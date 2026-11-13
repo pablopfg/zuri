@@ -10,7 +10,7 @@ import { CSRF, expectAccessible, expectFits, navIsPhone, openSettingsSection, si
 test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 
 const SP = "America/Sao_Paulo";
-const DEFAULTS = { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, allDay: true, outside: true };
+const DEFAULTS = { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: { from: 720, to: 840 }, openHolidays: [], closed: [] };
 
 // Every test that reads "today" installs the page's clock on an hour of that same day (`at(0, …)`),
 // so the day the screen marks is the one the samples were made for, even when the run crosses midnight.
@@ -147,18 +147,19 @@ test("what the preferences hide is counted beside “Mostrar”, in the week and
   await page.clock.install({ time: at(0, "10:20") });
   await openAgenda(page);
   // Every day of the week is a working day but the one of the fair.
-  await setPrefs(page, { allDay: false, outside: false, daysOff: false, workDays: [0, 1, 2, 3, 4, 5, 6].filter((day) => day !== DAY_OFF.dow) });
+  await setPrefs(page, { outside: false, daysOff: false, workDays: [0, 1, 2, 3, 4, 5, 6].filter((day) => day !== DAY_OFF.dow) });
   await page.reload();
   await expect(event(page, "Vistoria do apartamento")).toBeVisible();
-  for (const title of ["Corrida no parque", "Aula de fotografia", "Feriado municipal", ...OFF.map((each) => each.title)]) await expect(event(page, title)).toHaveCount(0);
+  // An all-day event is always on screen: there is no preference to hide it any more.
+  await expect(event(page, "Feriado municipal")).toBeVisible();
+  for (const title of ["Corrida no parque", "Aula de fotografia", ...OFF.map((each) => each.title)]) await expect(event(page, title)).toHaveCount(0);
 
   // The days on screen count their own; the day off counts everything it holds.
-  const allDay = leftOut(page, /evento.* de dia inteiro escondido/);
   const outside = leftOut(page, /fora das 08:00 às 18:00/);
   const daysOff = leftOut(page, "3 eventos em dias de folga");
-  await expect(allDay).toContainText("1 evento de dia inteiro escondido");
+  await expect(leftOut(page, /dia inteiro/)).toHaveCount(0);
   await expect(outside).toContainText("2 eventos fora das 08:00 às 18:00");
-  for (const line of [allDay, outside, daysOff]) await expect(line.getByRole("button", { name: /^Mostrar/ })).toBeVisible();
+  for (const line of [outside, daysOff]) await expect(line.getByRole("button", { name: /^Mostrar/ })).toBeVisible();
   // Each "Mostrar" says what it shows.
   await expect(outside.getByRole("button")).toHaveAccessibleName(/^Mostrar ?, 2 eventos fora das 08:00 às 18:00$/);
   await expectAccessible(page, "agenda-escondidos");
@@ -167,19 +168,14 @@ test("what the preferences hide is counted beside “Mostrar”, in the week and
   await daysOff.getByRole("button").click();
   await expect(event(page, "Feira do bairro")).toBeVisible();
   await expect(event(page, "Jantar de folga")).toHaveCount(0);
-  await expect(event(page, "Viagem de folga")).toHaveCount(0);
-  await expect(allDay).toContainText("2 eventos de dia inteiro escondidos");
+  await expect(event(page, "Viagem de folga")).toBeVisible();
   await expect(outside).toContainText("3 eventos fora das 08:00 às 18:00");
 
   // By the keyboard, one at a time; the line stays, to hide again.
   await outside.getByRole("button").focus();
   await page.keyboard.press("Enter");
   for (const title of ["Corrida no parque", "Aula de fotografia", "Jantar de folga"]) await expect(event(page, title)).toBeVisible();
-  await expect(event(page, "Feriado municipal")).toHaveCount(0);
   await expect(outside.getByRole("button", { name: /^Esconder/ })).toBeFocused();
-  await allDay.getByRole("button").click();
-  await expect(event(page, "Feriado municipal")).toBeVisible();
-  await expect(event(page, "Viagem de folga")).toBeVisible();
   await outside.getByRole("button", { name: /^Esconder/ }).click();
   await expect(event(page, "Corrida no parque")).toHaveCount(0);
   // The day off goes away again with all it holds, and the counts go back to the days on screen.
@@ -302,9 +298,8 @@ test("Configurações › Agenda saves the working hours, the week and what stay
   await expect(card.getByRole("img", { name: "Das 07:00 às 20:00, 13 horas" })).toBeVisible();
   await expect(to.locator("option").first()).toHaveText("08:00");
   await card.getByRole("radiogroup", { name: "A semana começa" }).getByText("Domingo", { exact: true }).click();
-  await card.getByRole("radiogroup", { name: "Eventos de dia inteiro" }).getByText("Esconder", { exact: true }).click();
   // The last working day can't be unchecked.
-  const days = card.getByRole("group", { name: "Dias de trabalho" });
+  const days = card.getByRole("group", { name: "Dias de atendimento" });
   await expect(days.getByRole("checkbox").first()).toHaveAccessibleName("dom");
   for (const name of ["seg", "ter", "qua", "qui"]) await days.getByText(name, { exact: true }).click();
   await expect(days.getByRole("checkbox", { name: "sex" })).toHaveAttribute("aria-disabled", "true");
@@ -319,7 +314,7 @@ test("Configurações › Agenda saves the working hours, the week and what stay
   await expect(page.getByRole("status").filter({ hasText: "Agenda salva" })).toBeVisible();
   await expect(save).toBeDisabled();
   const stored = (await (await page.request.get("/api/settings", { headers: CSRF })).json()) as { agenda: object };
-  expect(stored.agenda).toEqual({ ...DEFAULTS, from: 7, to: 20, weekStart: 0, allDay: false });
+  expect(stored.agenda).toEqual({ ...DEFAULTS, from: 7, to: 20, weekStart: 0 });
 
   // "Voltar para 08:00 até 18:00" is there only away from it, and is not saved until asked.
   await card.getByRole("button", { name: "Voltar para 08:00 até 18:00" }).click();
@@ -329,10 +324,10 @@ test("Configurações › Agenda saves the working hours, the week and what stay
   await page.reload();
   await expect(from).toHaveValue("7");
 
-  // The Agenda: 07:00 is inside the hours now, the week starts on Sunday and the all-day event is counted.
+  // The Agenda: 07:00 is inside the hours now, the week starts on Sunday and the all-day event is on screen.
   await page.goto("/agenda");
   await expect(event(page, "Corrida no parque")).toBeVisible();
-  await expect(leftOut(page, "1 evento de dia inteiro escondido")).toBeVisible();
+  await expect(event(page, "Feriado municipal")).toBeVisible();
   if (!navIsPhone(page)) {
     await expect(page.getByRole("main").getByRole("list").first().getByRole("button", { name: /Ver o dia/ }).first()).toHaveAccessibleName(/^dom /i);
     await expect(page.getByText("07:00", { exact: true }).first()).toBeVisible();
@@ -384,7 +379,7 @@ test.describe("in the dark theme", () => {
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(event(page, "Almoço com a Bia")).toBeVisible();
     await expectAccessible(page, "agenda-escuro");
-    await setPrefs(page, { allDay: false, outside: false, daysOff: false });
+    await setPrefs(page, { outside: false, daysOff: false });
     await page.reload();
     await expect(leftOut(page, /fora das 08:00 às 18:00/)).toBeVisible();
     await expectAccessible(page, "agenda-escondidos-escuro");
@@ -399,12 +394,11 @@ test("in English the Agenda and its settings speak English, hours and counts inc
   await page.clock.install({ time: at(0, "10:20") });
   await openAgenda(page);
   try {
-    expect((await page.request.patch("/api/settings", { headers: CSRF, data: { language: "en", agenda: { ...DEFAULTS, allDay: false, outside: false } } })).status()).toBe(200);
+    expect((await page.request.patch("/api/settings", { headers: CSRF, data: { language: "en", agenda: { ...DEFAULTS, outside: false } } })).status()).toBe(200);
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByRole("heading", { level: 1, name: "Calendar" })).toBeVisible();
     await expect(page.getByRole("radio", { name: "Week" })).toBeChecked();
-    await expect(leftOut(page, "1 all-day event hidden").getByRole("button", { name: /^Show/ })).toBeVisible();
     const outside = leftOut(page, "2 events outside 08:00 to 18:00");
     await outside.getByRole("button", { name: /^Show/ }).click();
     await expect(outside.getByRole("button", { name: /^Hide/ })).toBeVisible();

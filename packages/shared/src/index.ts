@@ -47,6 +47,22 @@ export {
   t,
 } from "../i18n/index.ts";
 export { AGENDA_VIEWS, type AgendaPrefs, type AgendaView, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
+export {
+  AGENDA_RULES,
+  type AppointmentProblem,
+  type AppointmentProblemCode,
+  appointmentProblem,
+  type BookedSlot,
+  bindsBooking,
+  type DayClosure,
+  dayClosure,
+  dayPlus,
+  nextFreeSlot,
+  type OpeningHours,
+  outsideHours,
+  typeLine,
+  weekdayOf,
+} from "./agenda-rules.ts";
 export { AGENT_INSTANCE_NAME } from "./constants.ts";
 export { DEFAULT_SOUND_PREFS, NOTICE_SOUND_GAP_MS, NOTICE_SOUNDS, type NoticeSound, type SoundPrefs } from "./sounds.ts";
 export {
