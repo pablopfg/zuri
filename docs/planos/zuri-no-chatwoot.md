@@ -1,6 +1,6 @@
 # Plano · A Zuri dentro do Chatwoot, só para o Pablo
 
-Situação: aprovado em 13/11/2026 (opção A às 02:10 UTC; protótipo, recuperação e configuração automática às 02:41 UTC). Código depois da S17
+Situação: aprovado em 13/11/2026 (opção A às 02:10 UTC; protótipo, recuperação e configuração automática às 02:41 UTC). Código em implementação (seção 15)
 Origem: pedido do Pablo em 13/11/2026, 01:56 UTC
 Dependências: S17 (cofre de credenciais no servidor, `docs/planos/implementacao-frontend-sinal.md`), onde entra um tipo novo de credencial para este canal. Não depende do envio de pedido de avaliação.
 
@@ -240,3 +240,36 @@ Configuração automática (pedido de 13/11), no workerd com o Chatwoot falso: c
 ### Perguntas abertas
 
 Nenhuma. Falta aprovar o protótipo.
+
+## 15. Implementação (13/11/2026)
+
+Plano curto da PR de código, depois da S17 (#327). O resto do desenho continua nas seções acima.
+
+| Parte | Onde | O que faz |
+| --- | --- | --- |
+| Tipo de credencial `chatwoot-dono` | `packages/shared/src/flows.ts`, `apps/agent/src/flows/connections.ts` | Cifra própria (`chatwoot-dono-v1`, id da linha como AAD). Guarda, cifrados juntos, `inbox_identifier`, `secret`, `hmac_token`, `identifier` e `source_id`. A linha não aparece em CRM › Credenciais e nenhum fluxo a chama (`row()`, `rows()` e `find()` a deixam de fora) |
+| Estado do vínculo | `zur_settings`, chave interna `chatwoot_owner` (sem migration) | Situação, conta, caixa, conversa, atendente do Pablo, código (só o HMAC), entregas vistas, contadores de hora, estranhos e recriações, últimas mensagens |
+| Cliente do Chatwoot | `apps/agent/src/chatwoot/owner-client.ts` | Só https público, DNS conferido, sem redirecionamento, 10 s, 256 KB lidos, subrequisições contadas. Chave de administrador só no cabeçalho do pedido, nunca guardada |
+| Configuração, teste, reparo, troca de segredos | `apps/agent/src/chatwoot/owner-setup.ts` | As chamadas da tabela da seção 7, na ordem, desfazendo (apaga a caixa) quando um passo falha |
+| Canal | `apps/agent/src/chatwoot/owner-service.ts` | Retorno, busca de volta, código, conversa com o agente, resposta, recriação, estranhos |
+| Rotas | `apps/agent/src/api/chatwoot.ts` | `GET/PATCH/DELETE /api/chatwoot/owner`, `POST …/check`, `/setup`, `/code`, `/relink`, `/confirm`, `/test`, `/test/full`, `/rotate`, `/repair`; retorno `POST /api/chatwoot/owner/hook/:id/:token` |
+| Tela | `apps/web/src/pages/settings/ChatwootTab.tsx`, sob demanda | Configurações › Chatwoot (grupo Conexões) e o atalho em Integrações |
+
+Ajustes de desenho que a implementação pede, sem mudar o que o Pablo vê:
+
+- **Chave do caminho do retorno:** em vez de 32 bytes guardados, é o HMAC de `SESSION_SECRET` com o id do vínculo, como o token dos avisos do Google Agenda (`gates/google-push.ts`). O Worker confere sem ler o banco (P6) e nada fica guardado. A assinatura `X-Chatwoot-Signature` é conferida no objeto, porque o segredo da caixa está no cofre.
+- **Origem das mensagens:** a coluna `source` de `zur_messages` só aceita `app`, `telegram` e `import` (migration 9). As mensagens do Chatwoot ficam como `app`, numa conversa própria chamada "Chatwoot", para não refazer a tabela. O turno usa os tetos de subrequisição do Telegram.
+- **Aviso assinado no teste:** a rota do teste espera até 30 s pelo aviso da mensagem "Teste da configuração" (o objeto acorda a rota quando o aviso chega), sem `setTimeout` guardado depois do pedido.
+- **Assinatura errada no retorno do dia a dia** responde 401 e não pausa o canal (um pedido forjado não pode desligar a Zuri); quem pausa é o teste, que sabe que o aviso veio do Chatwoot.
+- **Desenvolvimento local:** `chat.exemplo.com.br` simula a instalação inteira (perfil, caixa, membros, API pública, assinatura) e responde ao código como se fosse o Pablo, para o e2e e as capturas.
+
+Correções da revisão de QA, da auditoria de segurança e da revisão Cloudflare (13/11/2026), todas com teste em `apps/agent/test/chatwoot-owner-review.test.ts`:
+
+- **Trava de leitura (SEC-A5-xx-1, alto):** o canal ganhou a trava do bot, com as mesmas horas; destrava no app, com senha recente, por 12 horas (`POST /api/chatwoot/owner/unlock`).
+- **Código só no app (SEC-A5-xx-2):** a conversa recebe só o aviso de que vai chegar um código; quem responde prova que está com a sessão do app, inclusive em "Conectar outra conta".
+- **Uma vez por mensagem (SEC-A5-xx-3):** a repetição usa o id da mensagem, que vai assinado, além da entrega.
+- **Teste (SEC-A5-xx-4):** só o aviso da própria mensagem do teste com outra assinatura pausa; aviso que não volta é "demorou"; um teste por vez.
+- **Gravações depois da rede:** cada gravação relê o vínculo, então desligar ou esquecer durante a busca da mensagem vale.
+- **Outros:** troca de segredos guarda cada um assim que o Chatwoot o cria; HMAC recusada na busca pausa; modo de bloqueio mudo em todos os estados; uma configuração por vez; 30 por hora como no Telegram, com um aviso por hora; o Worker recusa assinatura fora do formato ou do prazo antes de acordar o objeto; desligar e esquecer pede senha recente; o prazo do turno usa `AbortSignal.timeout` com o tempo do Telegram.
+
+Testes: unitários da assinatura, do código e do texto; integração no workerd com o Chatwoot falso para cada passo e cada falha; contrato das rotas; orçamento (P1, P9); e2e da página com axe, claro e escuro, computador e celular.

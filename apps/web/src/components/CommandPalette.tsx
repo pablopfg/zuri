@@ -120,6 +120,7 @@ export function CommandPalette({
       section("agenda", "web.settings.tab.agenda", CalendarDays),
       section("avisos", "web.settings.tab.notifications", Bell),
       section("integracoes", "web.settings.tab.integrations", Plug),
+      section("chatwoot", "web.settings.tab.chatwoot", MessagesSquare),
       section("dados", "web.settings.tab.data", Database),
       section("diagnostico", "web.settings.tab.diagnostics", Activity),
       section("sobre", "web.settings.tab.about", BadgeInfo),

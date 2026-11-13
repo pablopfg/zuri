@@ -783,6 +783,9 @@ const KIND_TEXT: Record<Exclude<NoticeKind, "security">, Text> = {
   "reviews.problem": { title: "notice.reviews.problem.title", body: "notice.reviews.problem.body" },
   "reviews.auto": { title: "notice.reviews.auto.title", body: "notice.reviews.auto.body" },
   "reviews.breaker": { title: "notice.reviews.breaker.title", body: "notice.reviews.breaker.body" },
+  "chatwoot.stranger": { title: "notice.chatwoot.stranger.title", body: "notice.chatwoot.stranger.body" },
+  "chatwoot.recreated": { title: "notice.chatwoot.recreated.title", body: "notice.chatwoot.recreated.body" },
+  "chatwoot.paused": { title: "notice.chatwoot.paused.title", body: "notice.chatwoot.paused.body" },
 };
 
 /** Security alerts: what happened and what to do if it was not the owner, never where it came from (it may show on a locked screen). */
@@ -830,6 +833,9 @@ const SECURITY_TEXT: Record<SecurityAlertEvent, Text> = {
   access_recovered: { title: "notice.security.access_recovered.title", body: "notice.security.access_recovered.body" },
   password_recovered: { title: "notice.security.password_recovered.title", body: "notice.security.password_recovered.body" },
   agent_settings_changed: { title: "notice.security.agent_settings_changed.title", body: "notice.security.agent_settings_changed.body" },
+  chatwoot_owner_linked: { title: "notice.security.chatwoot_owner_linked.title", body: "notice.security.chatwoot_owner_linked.body" },
+  chatwoot_owner_changed: { title: "notice.security.chatwoot_owner_changed.title", body: "notice.security.chatwoot_owner_changed.body" },
+  chatwoot_owner_unlocked: { title: "notice.security.chatwoot_owner_unlocked.title", body: "notice.security.chatwoot_owner_unlocked.body" },
 };
 
 /** Title and body from the catalog; a stored body (the owner's or the agent's text) wins over the catalog's. */

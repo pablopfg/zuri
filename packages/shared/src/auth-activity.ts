@@ -68,6 +68,10 @@ export const AUTH_EVENT_KINDS = [
   "backup_imported",
   "backup_key_set",
   "agent_settings_changed",
+  "chatwoot_owner_linked",
+  "chatwoot_owner_changed",
+  "chatwoot_owner_removed",
+  "chatwoot_owner_unlocked",
 ] as const;
 export type AuthEventKind = (typeof AUTH_EVENT_KINDS)[number];
 

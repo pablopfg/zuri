@@ -30,6 +30,8 @@ import { ptBRBackup } from "./pt-BR-backup.ts";
 import { ptBRMenu } from "./pt-BR-menu.ts";
 import { ptBRVoice } from "./pt-BR-voice.ts";
 import { ptBRSchedule } from "./pt-BR-schedule.ts";
+import { ptBRChatwoot } from "./pt-BR-chatwoot.ts";
+import { ptBRChatwootServer } from "./pt-BR-chatwoot-server.ts";
 
 export type MessageKey = keyof typeof ptBR;
 export type Messages = Record<MessageKey, string>;
@@ -79,6 +81,8 @@ export {
   ptBRMenu,
   ptBRVoice,
   ptBRSchedule,
+  ptBRChatwoot,
+  ptBRChatwootServer,
 };
 
 export type Params = Record<string, string | number>;

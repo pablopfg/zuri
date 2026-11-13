@@ -1328,6 +1328,68 @@ Etapa 12, fundação. O bot obedece a uma conta só, no chat privado
   de áudio (não a nota de voz) e mensagem de bot inline entram como dado de
   terceiros.
 
+## Chatwoot do dono
+
+Conversa com a Zuri por uma caixa só do dono no Chatwoot dele
+(`docs/chatwoot-dono.md`, plano em `docs/planos/zuri-no-chatwoot.md`).
+
+- **Chave de administrador.** Chega no corpo do pedido que a usa (conferir,
+  configurar, teste completo, reparar, trocar os segredos), vai só no cabeçalho
+  `api_access_token` das chamadas desse pedido e nunca é guardada, registrada
+  nem devolvida. Esses pedidos pedem a senha digitada há pouco e valem 5 por
+  minuto. Fica guardado, cifrado em AES-GCM com derivação própria
+  (`chatwoot-dono-v1`, o id da linha como AAD), só o identificador da caixa, o
+  segredo da assinatura, o token da HMAC e o contato "Zuri". Essa linha não
+  aparece nas credenciais dos fluxos e nenhum fluxo a chama.
+- **Quem é respondido.** Só a conta de atendente que respondeu o código de
+  vínculo (8 caracteres, 10 minutos, guardado só como HMAC, 10 tentativas) e
+  que o dono confirmou no app. O código aparece só no app, nunca na conversa:
+  todo administrador da conta lê a conversa, e quem digita o código prova que
+  está com a sessão do app. Outra pessoa, até um administrador que vê todas
+  as caixas, não recebe resposta; o aviso não traz o texto, e três em 24 horas
+  pausam o canal. Trocar de conta pede código novo e senha; até a confirmação,
+  ninguém é respondido.
+- **Retorno.** `POST /api/chatwoot/owner/hook/<id>/<token>`, com o token =
+  HMAC(`SESSION_SECRET`, id do vínculo), conferido no Worker em tempo constante
+  antes de acordar o objeto, junto com o cabeçalho de assinatura, o tipo JSON e
+  o corpo até 64 KB (413 acima). No objeto: `X-Chatwoot-Signature` =
+  `sha256=` HMAC(segredo da caixa, `timestamp.corpo`), até 5 minutos de
+  diferença (o Worker já recusa com 401, sem acordar o objeto, uma assinatura
+  fora desse formato ou desse prazo), a caixa e a conversa do vínculo, só
+  `message_created` público de atendente, e cada mensagem uma vez pelo id dela,
+  que vai assinado (as últimas 100 mensagens e entregas): repetir o mesmo aviso
+  com outro `X-Chatwoot-Delivery`, ou sem ele, não faz nada. Assinatura errada
+  responde 401 e não pausa nada. Só o teste pausa o canal, e só quando o aviso
+  da própria mensagem do teste volta com outra assinatura; aviso que não volta
+  é "demorou", nunca segredo trocado. Um teste por vez. A mensagem é lida de novo pela API pública da caixa
+  (com a HMAC do contato): autor e texto vêm de lá, nunca do corpo do aviso.
+- **Respostas.** O texto do dono passa pelo mesmo agente do app e do Telegram,
+  com os orçamentos do Telegram. O que pede aprovação vira um link para o app;
+  nada se aprova pelo Chatwoot. Links, menções e comandos saem desarmados, em
+  até 3 blocos de 4.000 caracteres. Modo de bloqueio: nada sai e nada chega ao
+  agente, em qualquer estado (nem o código é aceito). Até 30 mensagens por
+  hora, como no Telegram; passou disso, a Zuri avisa uma vez por hora.
+- **Trava de leitura.** A mesma do bot (as mesmas horas sem uso, 12 por
+  padrão): depois delas, a Zuri só responde com o link para destravar em
+  Configurações › Chatwoot, que pede a senha digitada há pouco e abre por 12
+  horas. Mensagem com a trava fechada não conta como uso. A saída do modo de
+  bloqueio fecha a trava de novo.
+- **O que some no Chatwoot.** Conversa ou contato apagados são refeitos até 3
+  vezes por dia (depois, pausa); caixa apagada, segredos trocados ou HMAC
+  desligada pausam até o dono reparar ou trocar os segredos (a busca da
+  mensagem recusada pela HMAC do contato também pausa). Trocar os segredos guarda
+  cada um assim que o Chatwoot o cria, para que uma troca parada no meio não
+  deixe o canal surdo. Confirmar a conta, destravar, reparar e trocar os
+  segredos entram na atividade de acesso com aviso de segurança; desligar e
+  esquecer pede a senha digitada há pouco, como desconectar o bot.
+- **Riscos que ficam.** O que a Zuri responde fica gravado no Chatwoot, legível
+  por qualquer administrador da conta. O endereço de retorno não muda com
+  Reparar nem com novos segredos: um endereço vazado só some com Desligar e
+  esquecer e uma configuração nova (ele só acorda o objeto, que confere a
+  assinatura). Memórias criadas numa conversa pelo Chatwoot aparecem com a
+  origem "app", porque a coluna de origem só aceita app, Telegram e importação
+  e mudar isso pede uma migration.
+
 ## Logs da Cloudflare
 
 Os logs do Worker (`observability` no `wrangler.jsonc`) guardam cada

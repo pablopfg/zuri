@@ -154,7 +154,7 @@ export const ptBRSettings = {
   "web.account.ownerName": "Seu nome",
   "web.account.ownerNameHint": "Aparece nos cumprimentos da tela inicial. Até 40 caracteres, só texto; pode ser um apelido. Em branco, o cumprimento sai sem nome.",
   "web.account.ownerNameSave": "Salvar nome",
-  "web.settings.hint.integrations": "Google, Telegram e outros serviços",
+  "web.settings.hint.integrations": "Google, Telegram, Chatwoot e outros serviços",
   "web.integrations.title": "Serviços externos (MCP)",
   "web.integrations.description": "Conecte servidores MCP para a Zuri consultar outros serviços quando você pedir. Cada ferramenta começa em “Perguntar sempre”.",
   "web.integrations.leaves": "O serviço externo recebe o que a Zuri mandar nas chamadas que você permitir. Ligue só ferramentas de serviços em que você confia.",
@@ -338,4 +338,13 @@ export const ptBRSettings = {
   "web.contacts.problem.scope": "O Google não deixa a Zuri ler os contatos. Ligue os contatos de novo e marque a permissão na página do Google.",
   "web.contacts.problem.too_many": "As etiquetas escolhidas passam de 5.000 contatos. Escolha menos etiquetas para a Zuri continuar.",
   "web.contacts.problem.unavailable": "O Google não respondeu nas últimas tentativas. A Zuri tenta de novo sozinha.",
+  "web.settings.hint.chatwoot": "Converse com a Zuri por uma caixa só sua",
+  // The shortcut in Integrations to Settings › Chatwoot.
+  "web.chatwoot.shortcut.description": "Converse com a Zuri por uma caixa só sua no Chatwoot.",
+  "web.chatwoot.shortcut.on": "Ligado: responde só a {name}",
+  "web.chatwoot.shortcut.paused": "Pausado",
+  "web.chatwoot.shortcut.waiting": "Esperando o código de vínculo",
+  "web.chatwoot.shortcut.off": "Não configurado",
+  "web.chatwoot.shortcut.hint": "Configuração, teste e o que cada chave do Chatwoot pode.",
+  "web.chatwoot.shortcut.open": "Abrir",
 } as const;

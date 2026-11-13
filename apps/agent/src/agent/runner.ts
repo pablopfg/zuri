@@ -53,8 +53,12 @@ export interface TurnInput {
   conversationId?: string | undefined;
   message: string;
   signal: AbortSignal;
-  /** Where the owner wrote from: "telegram" for the bot's conversation (step 14); the app otherwise. */
-  source?: "app" | "telegram";
+  /**
+   * Where the owner wrote from: "telegram" for the bot's conversation (step 14), "chatwoot" for the
+   * owner's inbox in the Chatwoot (stored as "app": zur_messages takes only app, telegram and import);
+   * the app otherwise.
+   */
+  source?: "app" | "telegram" | "chatwoot";
   /** Someone else's text the owner sent along (Telegram): stored with the message, in the prompt only as <data>. */
   quoted?: Quoted;
 }
@@ -133,7 +137,8 @@ export class AgentRunner {
       conversation = conversations.get(input.conversationId);
       conversations.assertRoomForTurn();
     } else conversation = conversations.create(input.message);
-    const source = input.source ?? "app";
+    const channel = input.source ?? "app";
+    const source = channel === "chatwoot" ? "app" : channel;
     const userMessage = conversations.addMessage({
       conversationId: conversation.id,
       role: "user",
@@ -191,7 +196,7 @@ export class AgentRunner {
       // The memories' vector of the message first: the external tools' triage by meaning reuses it (step 18b).
       const meaning = await this.meaning(input.message, input.signal);
       mcp = this.safeExternalTools(conversation.id, input);
-      const ctx: ToolContext = { ...this.deps.tools, exposure, timeZone: settings.timeZone, mode: "chat", conversationId: conversation.id, source, ...(mcp ? { mcp } : {}) };
+      const ctx: ToolContext = { ...this.deps.tools, exposure, timeZone: settings.timeZone, mode: "chat", conversationId: conversation.id, source: channel, ...(mcp ? { mcp } : {}) };
       executor = new ToolExecutor(mcp ? [...registry, ...mcp.tools] : registry, ctx, { maxToolCalls: settings.aiMaxIterations > 1 ? settings.aiMaxToolCalls : 0 });
       const offered = executor.available();
       // The external tools take a fixed share of the prompt (docs/planos/mcp.md): whatever the triage or find_tools offer fits in it.
@@ -403,7 +408,8 @@ export class AgentRunner {
       thirdParty,
       ...(meaning ? { meaning } : {}),
       // The bot's turn also sends its answer through the Telegram API within the same invocation.
-      budget: input.source === "telegram" ? MCP_TELEGRAM_BUDGET : MCP_SUBREQUEST_BUDGET,
+      // The Chatwoot's turn too (its answer goes out through the Chatwoot's API).
+      budget: input.source === "telegram" || input.source === "chatwoot" ? MCP_TELEGRAM_BUDGET : MCP_SUBREQUEST_BUDGET,
     });
   }
 
