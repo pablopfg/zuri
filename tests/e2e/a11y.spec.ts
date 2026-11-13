@@ -49,12 +49,14 @@ for (const scheme of ["light", "dark"] as const) {
       for (const [tab, title] of [
         ["conta", "Conta"],
         ["seguranca", "Segurança"],
+        ["assistente", "Assistente"],
         ["ia", "Uso da IA"],
         ["modelos", "Modelos e limites"],
         ["avisos", "Avisos"],
         ["integracoes", "Integrações"],
         ["dados", "Dados"],
         ["diagnostico", "Diagnóstico"],
+        ["sobre", "Sobre a Zuri"],
       ] as const) {
         await page.goto(`/configuracoes/${tab}`);
         await expect(settingsTitle(page, title)).toBeVisible();

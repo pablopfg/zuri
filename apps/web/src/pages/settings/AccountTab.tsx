@@ -1,6 +1,5 @@
 import { isLocale, LOCALES, normalizeOwnerName } from "@zuri/shared";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { ChangePasswordForm } from "../../components/ChangePasswordForm.tsx";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher.tsx";
 import { Button, Card, ErrorNotice, SelectField, Loading, TextField } from "../../components/ui.tsx";
 import { useSettings, useSettingsMutation } from "../../hooks/settings.ts";
@@ -102,10 +101,6 @@ export function AccountTab() {
 
       <Card title={t("web.theme.title")}>
         <ThemeSwitcher />
-      </Card>
-
-      <Card title={t("web.password.title")} description={t("web.password.hint")}>
-        <ChangePasswordForm onChanged={() => toast(t("web.password.changed"))} />
       </Card>
     </>
   );

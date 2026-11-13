@@ -230,8 +230,10 @@ conversa vem só das palavras do título.
 - a lista agrupada por tipo;
 - o painel da memória escolhida: o texto, **Editar**, o menu "Mais opções"
   (atualizar o fato, nunca enviar para fora, histórico, mudar o estado e
-  apagar) e as ligações em "Ligada a", "Aparece em" e "Memórias próximas";
-- a chave da revisão de conflitos.
+  apagar) e as ligações em "Ligada a", "Aparece em" e "Memórias próximas".
+
+A chave da revisão de conflitos fica em Configurações › Assistente, no cartão
+"Memória", com o caminho de volta para esta tela.
 
 No computador o painel fica ao lado da lista. No celular ele entra no lugar
 dela, com **Voltar**.

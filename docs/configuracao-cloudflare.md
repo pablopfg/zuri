@@ -213,7 +213,7 @@ nunca passa pelo GitHub.
    como **Secret** o `TELEGRAM_BOT_TOKEN` (o token) e o `TELEGRAM_ADMIN_ID` (o
    número). Pelo terminal: `npx wrangler secret put TELEGRAM_BOT_TOKEN` e
    `npx wrangler secret put TELEGRAM_ADMIN_ID` dentro de `apps/agent`.
-5. Na Zuri, em **Configurações > Avisos**, toque em **Conectar** no cartão do
+5. Na Zuri, em **Configurações > Integrações**, toque em **Conectar** no cartão do
    Telegram, abra o link no celular e confirme a conta no app.
 
 O próprio Worker registra o webhook no Telegram quando você toca em Conectar

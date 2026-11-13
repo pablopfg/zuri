@@ -165,7 +165,7 @@ entre −2 e +2 (`zur_alert_learning`, até 200 origens). O aviso pedido como
 crítico nunca muda. Cada mudança gera um aviso baixo ("Menos prioridade para…" ou
 "Mais prioridade para…").
 
-Em Configurações › Avisos, o cartão "Prioridades que a Zuri aprendeu" lista o
+Em Configurações › Assistente, o cartão "Prioridades que a Zuri aprendeu" lista o
 que mudou, com "Desfazer" (`DELETE /api/alerts/learning/:key`, 204 ou 404 para
 chave inválida ou sem mudança). Desfazer volta à prioridade pedida pela origem e
 segura a revisão daquela origem por uma semana. A chave `alertLearning`
@@ -233,11 +233,14 @@ recente ou falha se repetindo) e cada tipo de falha dos últimos 30 dias.
   quando uma página quebra, uma vez por tipo a cada carregamento, até 20 por
   hora no servidor. A rota recusa qualquer outro campo.
 - "Marcar como resolvida" zera a contagem do dia; a próxima falha reabre.
-- "Relatar no GitHub" abre numa aba nova o formulário de erro do repositório
-  já preenchido com o código, a origem, a rota, as contagens, as datas (ao
-  minuto, em UTC) e a referência sem o data center. O dono confere, escolhe
-  onde aconteceu e envia; o servidor não manda nada
-  (`docs/agente/issues.md`).
+- "Relatar no GitHub" mostra antes uma prévia com cada campo como vai chegar
+  (título, contexto, passos para reproduzir, esperado, obtido e código) e só
+  então abre numa aba nova o formulário de erro do repositório já preenchido
+  com o código, a origem, a rota, as contagens, as datas (ao minuto, em UTC) e
+  a referência sem o data center. Os passos saem da origem e da rota da falha,
+  nunca do que o dono escreveu. "Onde aconteceu" e "Impacto" são listas, que o
+  GitHub não preenche pelo link: o dono escolhe lá, confere e envia; o
+  servidor não manda nada (`docs/agente/issues.md`).
 - O "dia" das contagens (hoje, 20 no dia) é o dia UTC, o mesmo do teto de IA:
   em São Paulo ele vira às 21:00.
 - A mesma falha repetida em menos de 5 s é somada na memória e gravada junto
@@ -249,6 +252,18 @@ recente ou falha se repetindo) e cada tipo de falha dos últimos 30 dias.
 - A versão vem do binding `CF_VERSION_METADATA` (grátis). Numa VPS
   (`docs/planos/migracao-vps.md`), ele é trocado por uma variável com o commit
   publicado; sem ele, "falha nova nesta versão" só vale para tipos nunca vistos.
+
+### Sobre a Zuri
+
+Configurações › Sobre a Zuri mostra a versão da tela (`APP_VERSION`) e confere a
+do servidor por `GET /api/version` (sessão + CSRF, só leitura, sem banco, sem
+cache), que devolve só `{ "version": "x.y.z" }` (`serverVersionSchema`), nunca o
+código da publicação. Iguais: "Tudo na mesma versão". Diferentes: a tela pede
+para recarregar a página. "Novidades da versão" são os itens da seção mais nova
+do `CHANGELOG.md`, lidos uma vez no build (`apps/web/src/lib/release-notes.ts`)
+e entregues como texto puro; "Ver todas as versões" e "Ver o código" abrem o
+GitHub em outra aba. A linha "Versão" do menu da conta e a do Diagnóstico
+levam até lá.
 
 ## Logs
 
