@@ -234,7 +234,7 @@ function AutomationRow({ item, open, onToggle, connections, rehearsalDays }: { i
   const [label, tone] = STATE[coming ? item.availability : item.state] ?? STATE.off as [MessageKey, Tone];
   const title = name(item.id);
   return (
-    <li aria-labelledby={titleId} className={cn("zuri-routine flex-wrap", coming && "opacity-90")}>
+    <li aria-labelledby={titleId} className={cn("zuri-routine", coming && "opacity-90")}>
       <span className="zuri-routine-tile" aria-hidden>
         <Icon />
       </span>
@@ -278,7 +278,7 @@ function AutomationRow({ item, open, onToggle, connections, rehearsalDays }: { i
         )}
       </div>
       {open && !coming && (
-        <div id={panelId} className="w-full basis-full">
+        <div id={panelId} className="col-span-full">
           {item.state === "off" ? <SetupPanel item={item} title={title} connections={connections} rehearsalDays={rehearsalDays} onCancel={onToggle} /> : <FollowPanel item={item} />}
         </div>
       )}

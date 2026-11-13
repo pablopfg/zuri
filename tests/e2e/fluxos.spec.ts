@@ -170,7 +170,7 @@ test("a credential keeps its key on the server; a flow calls it, filters and tel
   await expect(item.getByText(`Usada por ${name}`)).toBeVisible();
   await rowAction(item, page, "Apagar");
   await page.getByRole("dialog", { name: `Apagar a credencial ${connection}?` }).getByRole("button", { name: "Apagar" }).click();
-  await expect(toast(page, "Um fluxo usa esta credencial. Tire-a do fluxo antes.")).toBeVisible();
+  await expect(toast(page, "Um fluxo ou uma automação usa esta credencial. Tire-a de lá antes.")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(item).toBeVisible();
   await parts.getByRole("link", { name: /^Fluxos/ }).click();

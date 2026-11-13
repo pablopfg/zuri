@@ -44,6 +44,8 @@
  *   Agenda right after the event moved, with the notice that offers "Desfazer" (both need --exemplos).
  * - `credencial-chatwoot=/crm/credenciais`: the sample Chatwoot credential open in "Editar", with its
  *   inboxes found (needs --exemplos).
+ * - `automacao-ensaio=/crm`: the example automation in rehearsal with the sample Chatwoot credential,
+ *   its follow-up open (needs --exemplos; local development only).
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
  *   page's day and its line of now come out the same at any hour the script runs).
  * - `--exemplos`: fills the empty database with the sample data of
@@ -192,6 +194,17 @@ for (const [device, options] of [
         if (!sample) throw new Error("nota-aberta needs --exemplos");
         path = `/notas/${sample.id}`;
       }
+      if (screen.name === "automacao-ensaio") {
+        // The example automation (local development only) in rehearsal with the sample Chatwoot credential, once.
+        const list = (await (await page.request.get(`${BASE}/api/crm/automations`, { headers: CSRF })).json()) as { automations: { id: string; state: string }[] };
+        if (list.automations.find((item) => item.id === "example")?.state === "off") {
+          const flows = (await (await page.request.get(`${BASE}/api/flows`, { headers: CSRF })).json()) as { connections: { id: string; kind: string }[] };
+          const chatwoot = flows.connections.find((item) => item.kind === "chatwoot");
+          if (!chatwoot) throw new Error("automacao-ensaio needs --exemplos");
+          await page.request.put(`${BASE}/api/crm/automations/example/config`, { headers: CSRF, data: { connectionId: chatwoot.id, options: { perDay: 3 } } });
+          await page.request.post(`${BASE}/api/crm/automations/example/mode`, { headers: CSRF, data: { mode: "rehearsal" } });
+        }
+      }
       if (/^contatos?(-|$)/.test(screen.name)) {
         await seedContacts(page, BASE);
         // "contato-ficha": Beatriz, with the note after her name and her appointments; "contato-homonimo": one of the two Marcos.
@@ -263,6 +276,11 @@ for (const [device, options] of [
         const dialog = page.getByRole("dialog", { name: "Editar credencial" });
         await dialog.getByRole("button", { name: "Buscar caixas" }).click();
         await dialog.getByText("2 caixas encontradas").waitFor();
+      }
+      if (screen.name === "automacao-ensaio") {
+        const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: /^\d+ Automação de exemplo$/ }) });
+        await row.getByRole("button", { name: "Acompanhar" }).click();
+        await row.getByRole("button", { name: "Desligar" }).scrollIntoViewIfNeeded();
       }
       if (screen.name === "agenda-evento") {
         await page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ }).click();

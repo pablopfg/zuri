@@ -1696,7 +1696,7 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS zur_crm_automation_effects_by ON zur_crm_automation_effects (automation_id, created_at DESC)`,
       `CREATE INDEX IF NOT EXISTS zur_crm_automation_effects_day ON zur_crm_automation_effects (automation_id, mode, day)`,
       `CREATE INDEX IF NOT EXISTS zur_crm_automation_effects_at ON zur_crm_automation_effects (created_at)`,
-      // The owner's check of each day of a rehearsal against what the n8n did (no event comes from it: 11/11).
+      // The owner's check of each day of a rehearsal: what the Zuri would have done was right, or wrong and why.
       `CREATE TABLE IF NOT EXISTS zur_crm_automation_days (
         automation_id TEXT NOT NULL,
         day TEXT NOT NULL,

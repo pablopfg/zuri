@@ -88,14 +88,6 @@ test("the example: credential tested, rehearsal, a day checked, on for real taki
   await expect(form.getByLabel("Por dia")).toHaveValue("3");
   await form.getByLabel("Por dia").fill("2");
   await expectAccessible(page, "ligar automação");
-  await form.getByRole("button", { name: "Salvar e começar o ensaio" }).click();
-  await expect(toast(page, "Ensaio começou")).toBeVisible();
-  await expect(example).toContainText("Em ensaio");
-  await expect(example).toContainText("Usa: credencial do Chatwoot");
-  // The credential is now in use by it.
-  const list = (await (await page.request.get("/api/flows", { headers: CSRF })).json()) as { connections: { id: string; usedBy: string[] }[] };
-  expect(list.connections.find((item) => item.id === credential)?.usedBy).toEqual(["Automação de exemplo"]);
-
   // A day of the rehearsal, fixed here: the server's own date may be a weekend.
   let checked: unknown = null;
   await page.route("**/api/crm/automations/example/activity", (route) =>
@@ -112,7 +104,20 @@ test("the example: credential tested, rehearsal, a day checked, on for real taki
     checked = route.request().postDataJSON();
     await route.fulfill({ contentType: "application/json", body: "{}" });
   });
-  await example.getByRole("button", { name: "Acompanhar" }).click();
+  await form.getByRole("button", { name: "Salvar e começar o ensaio" }).click();
+  await expect(toast(page, "Ensaio começou")).toBeVisible();
+  await expect(example).toContainText("Em ensaio");
+  await expect(example).toContainText("Usa: credencial do Chatwoot");
+  // The credential is now in use by it.
+  const list = (await (await page.request.get("/api/flows", { headers: CSRF })).json()) as { connections: { id: string; usedBy: string[] }[] };
+  expect(list.connections.find((item) => item.id === credential)?.usedBy).toEqual(["Automação de exemplo"]);
+
+  // Saved, the panel turns into the follow-up of the rehearsal.
+  await expect(example.getByRole("button", { name: "Acompanhar" })).toHaveAttribute("aria-expanded", "true");
+  // The panel takes the row's whole width, not the tile's column (as it did before the screenshots).
+  const panel = page.locator(`#${await example.getByRole("button", { name: "Acompanhar" }).getAttribute("aria-controls")}`);
+  const [rowBox, panelBox] = [await example.boundingBox(), await panel.boundingBox()];
+  expect(panelBox?.width ?? 0, "the follow-up panel spans the row").toBeGreaterThan((rowBox?.width ?? 0) * 0.8);
   await expect(example.getByText("A Zuri roda tudo, mas não envia nada")).toBeVisible();
   const days = example.getByRole("region", { name: "Confira cada dia" });
   await expect(days).toContainText("05/11");
