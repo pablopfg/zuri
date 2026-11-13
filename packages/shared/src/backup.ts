@@ -7,6 +7,7 @@ import { CONVERSATION_TITLE_MAX } from "./chat.ts";
 import { CRM_HISTORY_KINDS, CRM_LIMITS } from "./crm.ts";
 import { birthdaySchema, crmEmailSchema, crmPhoneSchema, crmTagSchema } from "./crm-schemas.ts";
 import { instantSchema, isValidCalendarDate } from "./dates.ts";
+import { GOOGLE_LIMITS } from "./google.ts";
 import { MEMORY_AUTHORS, MEMORY_CATEGORIES, MEMORY_CONTENT_MAX, MEMORY_ORIGINS, MEMORY_STATUSES } from "./memory.ts";
 import {
   hasControlCharacter,
@@ -70,6 +71,10 @@ export const BACKUP_SETTINGS = [
   "sounds",
 ] as const;
 export type BackupSetting = (typeof BACKUP_SETTINGS)[number];
+
+/** The record of the day in a backup: up to 20 years of days, and the 200 events one day's reading takes. */
+export const AGENDA_RECORD_DAYS_MAX = 7_300;
+export const AGENDA_RECORD_DAY_MAX = 200;
 
 const id = /* @__PURE__ */ z.string().regex(RECORD_ID);
 const at = instantSchema;
@@ -246,8 +251,40 @@ const crm = /* @__PURE__ */ z
   })
   .strict();
 
+/**
+ * One closed day of the Agenda's record (13/11/2026): the events as the Zuri
+ * copied them at 0:00. A restore never changes a day already closed here.
+ */
+const agendaDay = /* @__PURE__ */ z
+  .object({
+    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    closedAt: at,
+    events: z
+      .array(
+        z
+          .object({
+            id: short(1024).refine((value) => value.length > 0),
+            calendarId: short(1024).refine((value) => value.length > 0),
+            title: short(GOOGLE_LIMITS.titleMax),
+            start: short(40),
+            end: short(40),
+            allDay: z.boolean(),
+            location: short(GOOGLE_LIMITS.locationMax),
+            description: z.string().max(GOOGLE_LIMITS.descriptionMax * 2),
+            etag: short(200),
+            recurring: z.boolean(),
+            guests: z.number().int().min(0).max(100_000),
+            colorId: short(2),
+            shared: z.boolean(),
+          })
+          .strict(),
+      )
+      .max(AGENDA_RECORD_DAY_MAX),
+  })
+  .strict();
+
 /** Each record's schema: the export runs every row through it, so what it writes always reads back. */
-export const backupItemSchemas = { project, task, note, memory, conversation, automation, alertLearning, crmStage, crmClient };
+export const backupItemSchemas = { project, task, note, memory, conversation, automation, alertLearning, crmStage, crmClient, agendaDay };
 
 const unique = (items: readonly { id: string }[]) => new Set(items.map((item) => item.id)).size === items.length;
 
@@ -272,6 +309,8 @@ export const backupSchema = /* @__PURE__ */ z
         automations: list(automation, STORAGE_LIMITS.automations),
         alertLearning: list(alertLearning, 500),
         crm: crm.nullable().default(null),
+        // Came later (13/11/2026): a backup of before has none.
+        agendaRecord: list(agendaDay, AGENDA_RECORD_DAYS_MAX),
       })
       .strict()
       .refine((data) => data.conversations.reduce((sum, item) => sum + item.messages.length, 0) <= STORAGE_LIMITS.messages, {

@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, type AgendaPage, type AgendaEvent, type GoogleCalendarInfo, type GoogleStatus, DEFAULT_AGENDA_PREFS, nationalHoliday } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, type AgendaPage, type AgendaEvent, type GoogleCalendarInfo, type GoogleStatus, DEFAULT_AGENDA_PREFS, dayPlus, nationalHoliday } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -257,6 +257,14 @@ describe("/api/google: calendars", () => {
 });
 
 describe("/api/google/events: the Agenda screen", () => {
+  // Days ahead of the real clock: a day before today is frozen (the record of the day, 13/11/2026).
+  const ahead = (plus: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(Date.now() + plus * 86_400_000));
+  const D5 = ahead(30);
+  const D6 = ahead(31);
+  const D20 = ahead(45);
+  const A20 = ahead(60);
+  const A22 = ahead(62);
+  const A23 = ahead(63);
   it("lists the open calendars' events in order and skips hidden calendars", async () => {
     await connect();
     await setMode(PRIMARY, "write");
@@ -283,19 +291,19 @@ describe("/api/google/events: the Agenda screen", () => {
   it("creates, changes and deletes an event, with nobody e-mailed and the version checked", async () => {
     await connect();
     await setMode(WORK, "write");
-    const created = await api("POST", "/google/events", { calendarId: WORK, title: "Revisão", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00" });
+    const created = await api("POST", "/google/events", { calendarId: WORK, title: "Revisão", allDay: false, start: `${D5}T14:00`, end: `${D5}T15:00` });
     expect(created.status).toBe(201);
     const { event } = (await created.json()) as { event: AgendaEvent };
-    expect(event).toMatchObject({ title: "Revisão", allDay: false, start: "2026-11-05T17:00:00.000Z", end: "2026-11-05T18:00:00.000Z" });
+    expect(event).toMatchObject({ title: "Revisão", allDay: false, start: `${D5}T17:00:00.000Z`, end: `${D5}T18:00:00.000Z` });
     const insert = google.seen.find((r) => r.method === "POST" && r.url.includes("/events?"));
     expect(new URL(insert?.url ?? "x:").searchParams.get("sendUpdates")).toBe("none");
     expect(JSON.parse(insert?.body ?? "{}")).not.toHaveProperty("attendees");
 
-    const moved = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: event.etag, start: "2026-11-05T16:00" });
+    const moved = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: event.etag, start: `${D5}T16:00` });
     expect(moved.status).toBe(200);
     const after = ((await moved.json()) as { event: AgendaEvent }).event;
     // Moving the start keeps the length.
-    expect([after.start, after.end]).toEqual(["2026-11-05T19:00:00.000Z", "2026-11-05T20:00:00.000Z"]);
+    expect([after.start, after.end]).toEqual([`${D5}T19:00:00.000Z`, `${D5}T20:00:00.000Z`]);
     expect(google.seen.filter((r) => r.method === "PATCH").at(-1)?.headers["if-match"]).toBe(event.etag);
 
     // The old version: refused, nothing changed.
@@ -312,21 +320,21 @@ describe("/api/google/events: the Agenda screen", () => {
   it("creates an all-day event with an inclusive end", async () => {
     await connect();
     await setMode(PRIMARY, "write");
-    const res = await api("POST", "/google/events", { calendarId: PRIMARY, title: "Viagem", allDay: true, start: "2026-12-20", end: "2026-12-22" });
+    const res = await api("POST", "/google/events", { calendarId: PRIMARY, title: "Viagem", allDay: true, start: `${A20}`, end: `${A22}` });
     expect(res.status).toBe(201);
-    expect(((await res.json()) as { event: AgendaEvent }).event).toMatchObject({ allDay: true, start: "2026-12-20", end: "2026-12-23" });
+    expect(((await res.json()) as { event: AgendaEvent }).event).toMatchObject({ allDay: true, start: `${A20}`, end: `${A23}` });
   });
 
   it("refuses changes in read-only and hidden calendars, bad dates and oversized fields", async () => {
     await connect();
     await setMode(READER, "read");
     await setMode(PRIMARY, "write");
-    const base = { title: "X", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00" };
+    const base = { title: "X", allDay: false, start: `${D5}T14:00`, end: `${D5}T15:00` };
     expect((await api("POST", "/google/events", { ...base, calendarId: READER })).status).toBe(400);
     expect((await api("POST", "/google/events", { ...base, calendarId: WORK })).status).toBe(404);
-    expect((await api("POST", "/google/events", { ...base, calendarId: PRIMARY, end: "2026-11-05T13:00" })).status).toBe(400);
+    expect((await api("POST", "/google/events", { ...base, calendarId: PRIMARY, end: `${D5}T13:00` })).status).toBe(400);
     expect((await api("POST", "/google/events", { ...base, calendarId: PRIMARY, start: "2026-02-30T10:00", end: "2026-03-01T10:00" })).status).toBe(400);
-    expect((await api("POST", "/google/events", { ...base, calendarId: PRIMARY, end: "2026-11-20T15:00" })).status).toBe(400);
+    expect((await api("POST", "/google/events", { ...base, calendarId: PRIMARY, end: `${D20}T15:00` })).status).toBe(400);
     expect((await api("POST", "/google/events", { ...base, calendarId: PRIMARY, title: "x".repeat(201) })).status).toBe(400);
     expect((await api("POST", "/google/events", { ...base, calendarId: PRIMARY, title: "x".repeat(200) })).status).toBe(201);
     expect((await api("POST", "/google/events", { ...base, calendarId: PRIMARY, attendees: [{ email: "a@exemplo.com.br" }] })).status).toBe(400);
@@ -349,7 +357,7 @@ describe("/api/google/events: the Agenda screen", () => {
   it("creates an event already with a status, and with nothing else than one of the four colors (delivery 3)", async () => {
     await connect();
     await setMode(WORK, "write");
-    const base = { calendarId: WORK, title: "Consulta", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00" };
+    const base = { calendarId: WORK, title: "Consulta", allDay: false, start: `${D5}T14:00`, end: `${D5}T15:00` };
     const created = await api("POST", "/google/events", { ...base, colorId: "10" });
     expect(created.status).toBe(201);
     expect(((await created.json()) as { event: AgendaEvent }).event.colorId).toBe("10");
@@ -368,16 +376,16 @@ describe("/api/google/events: the Agenda screen", () => {
   it("CA13: a move that marks Reagendado is undone by the opposite change with the new version, never with the old one", async () => {
     await connect();
     await setMode(WORK, "write");
-    const created = await api("POST", "/google/events", { calendarId: WORK, title: "Consulta", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "10" });
+    const created = await api("POST", "/google/events", { calendarId: WORK, title: "Consulta", allDay: false, start: `${D5}T14:00`, end: `${D5}T15:00`, colorId: "10" });
     const { event } = (await created.json()) as { event: AgendaEvent };
     const target = { calendarId: WORK, eventId: event.id };
-    const move = await api("PATCH", "/google/events", { ...target, etag: event.etag, start: "2026-11-06T09:15", end: "2026-11-06T10:00", colorId: "5" });
+    const move = await api("PATCH", "/google/events", { ...target, etag: event.etag, start: `${D6}T09:15`, end: `${D6}T10:00`, colorId: "5" });
     expect(move.status).toBe(200);
     const moved = ((await move.json()) as { event: AgendaEvent }).event;
-    expect(moved).toMatchObject({ start: "2026-11-06T12:15:00.000Z", end: "2026-11-06T13:00:00.000Z", colorId: "5" });
+    expect(moved).toMatchObject({ start: `${D6}T12:15:00.000Z`, end: `${D6}T13:00:00.000Z`, colorId: "5" });
     expect(moved.etag).not.toBe(event.etag);
 
-    const back = { allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "10" };
+    const back = { allDay: false, start: `${D5}T14:00`, end: `${D5}T15:00`, colorId: "10" };
     // The version the screen had before the move: Google already has another.
     const stale = await api("PATCH", "/google/events", { ...target, etag: event.etag, ...back });
     expect(((await stale.json()) as { code: string }).code).toBe("TARGET_CHANGED");
@@ -391,7 +399,7 @@ describe("/api/google/events: the Agenda screen", () => {
   it("changes the status by the color, with the version checked, and only to one of the four colors", async () => {
     await connect();
     await setMode(WORK, "write");
-    const created = await api("POST", "/google/events", { calendarId: WORK, title: "Consulta", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00" });
+    const created = await api("POST", "/google/events", { calendarId: WORK, title: "Consulta", allDay: false, start: `${D5}T14:00`, end: `${D5}T15:00` });
     const { event } = (await created.json()) as { event: AgendaEvent };
     expect(event.colorId).toBe("");
     const target = { calendarId: WORK, eventId: event.id };
@@ -420,9 +428,9 @@ describe("/api/google/events: the Agenda screen", () => {
     expect(google.seen.filter((r) => r.method === "PATCH").length).toBe(patches);
 
     // The color and the hour in one change.
-    const both = await api("PATCH", "/google/events", { ...target, etag: after.etag, colorId: "5", start: "2026-11-05T16:00" });
+    const both = await api("PATCH", "/google/events", { ...target, etag: after.etag, colorId: "5", start: `${D5}T16:00` });
     const moved = ((await both.json()) as { event: AgendaEvent }).event;
-    expect(moved).toMatchObject({ colorId: "5", start: "2026-11-05T19:00:00.000Z", end: "2026-11-05T20:00:00.000Z" });
+    expect(moved).toMatchObject({ colorId: "5", start: `${D5}T19:00:00.000Z`, end: `${D5}T20:00:00.000Z` });
 
     // A change without a color leaves the color alone, and says nothing of it to Google.
     const renamed = await api("PATCH", "/google/events", { ...target, etag: moved.etag, title: "Retorno" });
@@ -455,8 +463,8 @@ describe("/api/google/events: the Agenda screen", () => {
     expect(google.events.get(READER)?.at(-1)).toEqual(event);
     expect(event.colorId).toBeUndefined();
     // A new event takes a status since delivery 3, in a calendar open for editing only, and never a color outside the four.
-    expect((await api("POST", "/google/events", { calendarId: READER, title: "X", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "10" })).status).toBe(400);
-    expect((await api("POST", "/google/events", { calendarId: PRIMARY, title: "X", allDay: false, start: "2026-11-05T14:00", end: "2026-11-05T15:00", colorId: "3" })).status).toBe(400);
+    expect((await api("POST", "/google/events", { calendarId: READER, title: "X", allDay: false, start: `${D5}T14:00`, end: `${D5}T15:00`, colorId: "10" })).status).toBe(400);
+    expect((await api("POST", "/google/events", { calendarId: PRIMARY, title: "X", allDay: false, start: `${D5}T14:00`, end: `${D5}T15:00`, colorId: "3" })).status).toBe(400);
     expect(google.events.get(PRIMARY) ?? []).toHaveLength(0);
   });
 
@@ -495,7 +503,7 @@ describe("/api/google/events: the booking rule, checked again by the server (13/
   const inserts = () => google.seen.filter((r) => r.method === "POST" && r.url.includes("/events?")).length;
 
   afterEach(async () => {
-    await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, openHolidays: [], closed: [] } }));
+    await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, closed: [] } }));
   });
 
   it("books inside the hours and refuses lunch, the evening, the weekend and the past without asking Google", async () => {
@@ -508,7 +516,9 @@ describe("/api/google/events: the booking rule, checked again by the server (13/
     expect(await problem(await api("POST", "/google/events", appointment(day, "12:30", "13:30")))).toEqual({ status: 400, problem: "lunch" });
     expect(await problem(await api("POST", "/google/events", appointment(day, "17:30", "18:30")))).toEqual({ status: 400, problem: "hours" });
     expect(await problem(await api("POST", "/google/events", appointment(findDay((d) => weekday(d) === 6), "09:00", "10:00")))).toEqual({ status: 400, problem: "weekday" });
-    expect(await problem(await api("POST", "/google/events", appointment(localDay(-2), "09:00", "10:00")))).toEqual({ status: 400, problem: "past" });
+    // A day before today is closed before anything else (the record of the day), a meeting too.
+    expect(await problem(await api("POST", "/google/events", appointment(localDay(-2), "09:00", "10:00")))).toEqual({ status: 400, problem: "frozen" });
+    expect(await problem(await api("POST", "/google/events", { ...appointment(localDay(-1), "09:00", "10:00"), description: "Reunião com o contador" }))).toEqual({ status: 400, problem: "frozen" });
     expect(await problem(await api("POST", "/google/events", appointment(day, "09:02", "10:00")))).toEqual({ status: 400, problem: "step" });
     expect(await problem(await api("POST", "/google/events", appointment(day, "14:00", "14:10")))).toEqual({ status: 400, problem: "short" });
     expect(await problem(await api("POST", "/google/events", appointment(findDay((d) => d > localDay(366) && weekday(d) === 1 && nationalHoliday(d) === null), "09:00", "10:00")))).toEqual({ status: 400, problem: "far" });
@@ -537,15 +547,17 @@ describe("/api/google/events: the booking rule, checked again by the server (13/
     expect((await api("POST", "/google/events", appointment(day, "16:00", "17:00"))).status).toBe(201);
   });
 
-  it("closes a national holiday until it is opened, and a day off of the settings", async () => {
+  it("always closes a national holiday, and every day of a period off of the settings", async () => {
     await connect();
     await setMode(WORK, "write");
     const holiday = findDay((day) => nationalHoliday(day) !== null && weekday(day) >= 1 && weekday(day) <= 5);
     expect(await problem(await api("POST", "/google/events", appointment(holiday, "09:00", "10:00")))).toEqual({ status: 400, problem: "holiday" });
-    await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, openHolidays: [holiday] } }));
-    expect((await api("POST", "/google/events", appointment(holiday, "09:00", "10:00"))).status).toBe(201);
+    // A record saved before 13/11/2026 with the holiday opened: the opening is dropped, the holiday stays closed.
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_settings SET value = ? WHERE key = 'agenda'`, JSON.stringify({ ...agent.store.settings.get().agenda, openHolidays: [holiday] })));
+    expect(await problem(await api("POST", "/google/events", appointment(holiday, "09:00", "10:00")))).toEqual({ status: 400, problem: "holiday" });
     const off = monday();
-    await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, closed: [{ date: off, reason: "Recesso" }] } }));
+    await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, closed: [{ from: off, to: dayPlus(off, 4), reason: "Recesso" }] } }));
+    expect(await problem(await api("POST", "/google/events", appointment(dayPlus(off, 4), "09:00", "10:00")))).toEqual({ status: 400, problem: "closed" });
     const refused = await api("POST", "/google/events", appointment(off, "09:00", "10:00"));
     expect(refused.status).toBe(400);
     const body = (await refused.json()) as { code: string; message: string; details: unknown };
@@ -584,6 +596,20 @@ describe("/api/google/events: the booking rule, checked again by the server (13/
     } finally {
       await inOwner((agent) => agent.store.settings.update({ agenda: { ...agent.store.settings.get().agenda, lunch: DEFAULT_AGENDA_PREFS.lunch } }));
     }
+  });
+  it("refuses to change or delete an event of a day that already closed, and says when the last day closed", async () => {
+    await connect();
+    await setMode(WORK, "write");
+    const id = seedEvent(WORK, "Ana Souza", -48);
+    const deletes = () => google.seen.filter((r) => r.method === "DELETE" && r.url.includes("/events/")).length;
+    const before = deletes();
+    expect(await problem(await api("DELETE", "/google/events", { calendarId: WORK, eventId: id, etag: '"seed"' }))).toEqual({ status: 400, problem: "frozen" });
+    expect(await problem(await api("PATCH", "/google/events", { calendarId: WORK, eventId: id, etag: '"seed"', title: "Outro" }))).toEqual({ status: 400, problem: "frozen" });
+    expect(deletes()).toBe(before);
+    expect(google.events.get(WORK)?.find((e) => e.id === id)?.summary).toBe("Ana Souza");
+    const record = await api("GET", "/google/record");
+    expect(record.status).toBe(200);
+    expect(await record.json()).toHaveProperty("last");
   });
 });
 

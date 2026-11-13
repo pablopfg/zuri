@@ -1,3 +1,4 @@
+import type { AgendaRecord } from "../google/record.ts";
 import { type AgendaPrefs, type DestructiveToolName, type ExternalToolName, MCP_LIMITS, sha256Hex, type ToolName } from "@zuri/shared";
 import type { z } from "zod";
 import { dataLine } from "../agent/data.ts";
@@ -78,6 +79,8 @@ export interface ToolContext {
    * the chat books or moves keeps the same rule as the Agenda screen. Absent,
    * the default hours apply, never none.
    */
+  /** The record of the day (13/11/2026): a closed day is listed as it was copied. */
+  agendaRecord?: Pick<AgendaRecord, "apply">;
   agendaHours?: () => AgendaPrefs;
   /** The copy of the Google contacts (step 19b): its tools are offered only with the contacts on. */
   contacts?: GoogleContacts;

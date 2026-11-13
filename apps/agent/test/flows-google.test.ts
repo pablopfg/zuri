@@ -389,7 +389,7 @@ describe("creating appointments keeps the Agenda's rule (issue #328)", () => {
     await withFlowWorld(async (world) => {
       await connect(world);
       event(world, READER, "o1", "Carla", "2026-11-05T15:00:00-03:00", "2026-11-05T16:00:00-03:00", { description: APPOINTMENT });
-      world.agenda.prefs = { ...world.agenda.prefs, closed: [{ date: "2026-11-06", reason: "" }] };
+      world.agenda.prefs = { ...world.agenda.prefs, closed: [{ from: "2026-11-06", to: "2026-11-06", reason: "" }] };
       for (const at of ["2026-11-05T15:30", "2026-11-02T10:00", "2026-11-07T10:00", "2026-11-06T10:00", "2026-11-05T19:00", "2026-11-03T08:00"]) {
         const flow = await world.flows.create({ name: `Fora ${at}`, definition: manual([one({ quando: at }), create({ start: "{{quando}}", description: APPOINTMENT })]) });
         expect(await world.flows.runNow(flow.id), at).toMatchObject({ status: "error", problem: "agenda_rule" });

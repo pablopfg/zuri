@@ -220,6 +220,15 @@ export function importBackup(deps: ImportDeps, backup: Backup): BackupImportSumm
       db.run(`INSERT INTO zur_alert_learning (key, shift, label, changed_at) VALUES (?, ?, ?, ?) ON CONFLICT (key) DO NOTHING`, l.key, l.shift, l.label, l.changedAt);
     }
 
+    // The record of the day: a day already closed here stays as it is; only days missing here come back.
+    for (const closed of d.agendaRecord) {
+      const added = db.run(`INSERT OR IGNORE INTO zur_agenda_closed_days (day, closed_at, events) VALUES (?, ?, ?)`, closed.day, closed.closedAt, closed.events.length);
+      if (added.rowsWritten === 0) continue;
+      for (const event of closed.events) {
+        db.run(`INSERT OR IGNORE INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES (?, ?, ?, ?, ?)`, closed.day, event.calendarId, event.id, event.etag, JSON.stringify(event));
+      }
+    }
+
     let clients = { clients: 0, skipped: 0 };
     if (d.crm) {
       clients = deps.crm.restore(d.crm);

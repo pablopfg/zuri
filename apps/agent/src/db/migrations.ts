@@ -1800,6 +1800,30 @@ export const MIGRATIONS: readonly Migration[] = [
       ...areaTriggers("crm", "zur_outbox_state", "OF paused_at"),
     ],
   },
+  {
+    version: 41,
+    name: "agenda_record",
+    statements: [
+      // The record of the day (13/11/2026, 10:37 UTC): at 0:00 of the owner's clock the Zuri copies the
+      // day that ended, from the calendars it may change, and nothing of that day changes any more. Never
+      // deleted; it goes in the backup (Google can't give it back as it was). `data` is the event as the
+      // Agenda gets it (CalendarEvent, already cleaned and cut), in JSON.
+      `CREATE TABLE IF NOT EXISTS zur_agenda_record (
+        day TEXT NOT NULL,
+        calendar_id TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        etag TEXT NOT NULL,
+        data TEXT NOT NULL,
+        PRIMARY KEY (day, calendar_id, event_id)
+      ) WITHOUT ROWID`,
+      // One row per day closed, with no event too: a day without a row was never copied.
+      `CREATE TABLE IF NOT EXISTS zur_agenda_closed_days (
+        day TEXT PRIMARY KEY,
+        closed_at TEXT NOT NULL,
+        events INTEGER NOT NULL
+      ) WITHOUT ROWID`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

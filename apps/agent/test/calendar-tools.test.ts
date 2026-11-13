@@ -219,6 +219,26 @@ describe("delete_calendar_event", () => {
       expect(world.googleSim.events.get(PRIMARY)).toHaveLength(1);
     }));
 
+  it("can't be proposed for an event of a day that already closed, nor approved once its day closes", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      seed(world, PRIMARY, { id: "old", summary: "Consulta", start: { dateTime: "2026-10-30T15:00:00-03:00" }, end: { dateTime: "2026-10-30T16:00:00-03:00" } });
+      seed(world, PRIMARY, { id: "d1", summary: "Consulta" });
+      const chat = world.conversations.create("x").id;
+      const exec = executor(world, chat);
+      expect(await refused(exec.execute("delete_calendar_event", { calendar: PRIMARY, event_id: "old" }, "old"))).toMatch(/already closed/);
+      expect(await refused(exec.execute("update_calendar_event", { calendar: PRIMARY, event_id: "old", title: "Outro" }, "u1"))).toMatch(/already closed.*Nothing was changed/s);
+      // Proposed at 23:50 and approved after midnight: the day of the event closed meanwhile.
+      world.clock.now = Date.parse("2026-11-01T02:50:00Z");
+      const actionId = await propose(world, chat);
+      world.clock.now = Date.parse("2026-11-01T03:00:01Z");
+      const error = await runApprovedAction(ALL_TOOLS, world.ctx(chat), actionId).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(AppError);
+      expect(world.googleSim.events.get(PRIMARY)).toHaveLength(2);
+      expect(world.googleSim.seen.filter((r) => r.method === "DELETE")).toEqual([]);
+      expect(world.actions.view(actionId).status).toBe("failed");
+    }));
+
   it("can't be proposed for an event renamed earlier in the same turn", () =>
     withChatWorld(async (world) => {
       await connect(world);
@@ -330,17 +350,18 @@ describe("the Agenda's booking rule in the chat (issue #328)", () => {
       expect(world.googleSim.events.get(PRIMARY)).toHaveLength(1);
     }));
 
-  it("refuses the closed days and hours: weekend, national holiday, a day off, before opening and the past", () =>
+  it("refuses the closed days and hours: weekend, national holiday, a day off, before opening and a closed day", () =>
     withChatWorld(async (world) => {
       await connect(world);
-      world.settings.agenda = { ...world.settings.agenda, closed: [{ date: "2026-11-04", reason: "" }] };
+      world.settings.agenda = { ...world.settings.agenda, closed: [{ from: "2026-11-04", to: "2026-11-04", reason: "" }] };
       const exec = executor(world, world.conversations.create("x").id);
       const at = (start: string, id: string) => refused(exec.execute("create_calendar_event", { title: "Ana Souza", start, description: APPOINTMENT }, id));
       expect(await at("2026-11-07T10:00", "1")).toMatch(/weekday/);
       expect(await at("2026-11-02T10:00", "2")).toMatch(/holiday/);
       expect(await at("2026-11-04T10:00", "3")).toMatch(/day off/);
       expect(await at("2026-11-03T07:00", "4")).toMatch(/opening hours/);
-      expect(await at("2026-10-30T10:00", "5")).toMatch(/already passed/);
+      // A day before today is closed: its record froze at midnight.
+      expect(await at("2026-10-30T10:00", "5")).toMatch(/already closed.*Nothing was created/s);
       expect(writes(world).map((r) => `${r.method} ${r.url}`)).toEqual([]);
     }));
 

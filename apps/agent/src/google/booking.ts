@@ -1,4 +1,4 @@
-import { type AgendaPrefs, type AppointmentProblemCode, appointmentProblem, type BookedSlot, bindsBooking, GOOGLE_LIMITS, type MessageKey, zonedParts } from "@zuri/shared";
+import { type AgendaPrefs, type AppointmentProblemCode, appointmentProblem, type BookedSlot, bindsBooking, frozenDay, GOOGLE_LIMITS, type MessageKey, zonedParts } from "@zuri/shared";
 import { AppError } from "../http/errors.ts";
 import { type CalendarEvent, cleanBlock, localInstant, localToday, nextDay } from "./events.ts";
 import type { GoogleCalendar, GoogleMeter } from "./service.ts";
@@ -90,6 +90,32 @@ function placeOf(after: BookingShape, hours: AgendaPrefs, timeZone: string, now:
   return { day, start: minuteOf(start, day, timeZone), end: minuteOf(end, day, timeZone), today: localToday(timeZone, now), nowMinute: clock.hour * 60 + clock.minute, hours };
 }
 
+/** The owner's day an event belongs to: its start, on the owner's wall clock (an all-day event, its first date). */
+export function eventDay(event: Pick<BookingShape, "allDay" | "start">, timeZone: string): string {
+  if (event.allDay) {
+    // Fail closed, as in placeOf: a day that can't be read is never written.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(event.start)) throw new AppError("VALIDATION_FAILED", "error.googleEventDate");
+    return event.start;
+  }
+  const start = new Date(event.start);
+  if (Number.isNaN(start.getTime())) throw new AppError("VALIDATION_FAILED", "error.googleEventDate");
+  return localToday(timeZone, start);
+}
+
+/**
+ * The record of the day (13/11/2026, 10:37 UTC): at 0:00 of the owner's clock
+ * the day that ended freezes. Any write (create, change, move, delete) that
+ * touches an event of a frozen day is refused here, before Google is asked:
+ * `before` is the event as Google has it (never what the client says), `after`
+ * what it would become. Every event counts, not only appointments.
+ */
+export function checkOpenDay(input: { before?: Pick<BookingShape, "allDay" | "start"> | undefined; after?: Pick<BookingShape, "allDay" | "start"> | undefined; timeZone: string; now?: Date | undefined }): void {
+  const today = localToday(input.timeZone, input.now ?? new Date());
+  for (const event of [input.before, input.after]) {
+    if (event && frozenDay(eventDay(event, input.timeZone), today)) throw new AppError("VALIDATION_FAILED", "error.agendaRule.frozen", { problem: "frozen" });
+  }
+}
+
 /**
  * The rule's refusal of a new appointment that needs no call to Google
  * (everything but a clash), or null: a flow checks all its items with it
@@ -105,7 +131,8 @@ export function fixedProblem(after: BookingShape, hours: AgendaPrefs, timeZone: 
  * event as Google has it, for a change: one that keeps its day and hours is
  * never refused (an old appointment outside today's
  * hours is still editable). Reads the day's other events from the calendars
- * the Agenda shows, with its own meter.
+ * the Agenda shows, with its own meter. Any event of a frozen day is refused
+ * first (`checkOpenDay`).
  */
 export async function checkBooking(input: {
   after: BookingShape;
@@ -119,6 +146,8 @@ export async function checkBooking(input: {
   now?: Date;
 }): Promise<void> {
   const { after, before, timeZone } = input;
+  // A frozen day binds every event, appointment or not: checked before anything else.
+  checkOpenDay({ before, after, timeZone, now: input.now });
   if (!bound(after)) return;
   if (before && bound(before) && Date.parse(before.start) === Date.parse(after.start) && Date.parse(before.end) === Date.parse(after.end)) return;
   const base = placeOf(after, input.hours, timeZone, input.now ?? new Date());

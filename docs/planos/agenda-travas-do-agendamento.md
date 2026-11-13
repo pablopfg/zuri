@@ -14,6 +14,11 @@ e oferece o próximo horário livre; o servidor confere de novo. Configurações
 Agenda ganha almoço, feriados com "Atendo" e dias sem expediente. É a E5a; o
 formulário completo (E5b) e os sinais de sincronização (E5c) vêm depois.
 
+> Atualização de 13/11/2026 (E5b, [agenda-registro-do-dia.md](agenda-registro-do-dia.md)): o
+> "Atendo" dos feriados saiu (feriado nacional sempre fecha) e os dias sem
+> expediente viraram períodos. O que este plano diz sobre os dois vale só como
+> histórico.
+
 ## 2. Contexto no sistema
 
 - Preferências da agenda: `packages/shared/src/agenda-prefs.ts` e `agendaPrefsSchema` em `packages/shared/src/settings.ts`, guardadas em `zur_settings` (chave `agenda`), editadas em `apps/web/src/pages/settings/AgendaTab.tsx`. Um registro inválido volta ao padrão sem aviso, então campo novo entra com `.default()`.

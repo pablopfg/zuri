@@ -84,6 +84,22 @@ export interface AgendaEvent {
   guests: number;
   /** Google's color of the event ("1" to "11"), or "" when it follows its calendar's. */
   colorId: string;
+  /**
+   * An event of a closed day (the record of the day, 13/11/2026) that changed
+   * at Google after the closing: the Agenda shows the copy, marked. Absent
+   * when nothing changed.
+   */
+  changedAtGoogle?: AgendaChange;
+}
+
+/** What happened at Google to an event of a closed day: the copy stays as it was. */
+export type AgendaChange = "changed" | "deleted" | "added";
+
+/** The last day the record closed (Configurações › Agenda), or null before the first. */
+export interface AgendaRecordLast {
+  day: string;
+  closedAt: string;
+  events: number;
 }
 
 /**

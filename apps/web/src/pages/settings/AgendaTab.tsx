@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { AGENDA_RULES, type AgendaEvent, type AgendaPage, type AgendaPrefs, dayClosure, dayPlus, type MessageKey, nationalHoliday, outsideHours } from "@zuri/shared";
+import { AGENDA_RULES, type AgendaEvent, type AgendaPage, type AgendaPrefs, type AgendaRecordLast, dayClosure, dayPlus, type MessageKey, nationalHoliday, outsideHours, periodDays } from "@zuri/shared";
 import { TriangleAlert, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
 import { Link } from "react-router";
@@ -145,7 +145,7 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
     event.preventDefault();
     if (unchanged) return;
     // Days that went by leave the lists: they close nothing any more.
-    const agenda = { ...draft, openHolidays: draft.openHolidays.filter((day) => day >= today), closed: draft.closed.filter((day) => day.date >= today) };
+    const agenda = { ...draft, closed: draft.closed.filter((period) => period.to >= today) };
     save.mutate({ agenda }, { onSuccess: () => toast(t("web.agendaPrefs.saved")) });
   };
 
@@ -279,12 +279,13 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
           {t("web.agendaPrefs.daysOff.hint")}
         </p>
       </div>
-      <Holidays days={holidays} open={draft.openHolidays} onToggle={(day) => set({ openHolidays: draft.openHolidays.includes(day) ? draft.openHolidays.filter((each) => each !== day) : [...draft.openHolidays, day].sort() })} />
+      <Holidays days={holidays} />
       <ClosedDays
-        days={draft.closed.filter((day) => day.date >= today)}
-        onRemove={(date) => set({ closed: draft.closed.filter((day) => day.date !== date) })}
+        periods={draft.closed.filter((period) => period.to >= today)}
+        onRemove={(from) => set({ closed: draft.closed.filter((period) => period.from !== from) })}
         onAdd={() => setAdding(true)}
       />
+      <DayRecord />
       <OutsideList hours={stored} today={today} />
       <Choice title={t("web.agendaPrefs.outside.title")} hint={t("web.agendaPrefs.outside.hint")} value={draft.outside} options={shown} onChange={(outside) => set({ outside })} />
       {save.isError && (
@@ -301,11 +302,11 @@ function AgendaForm({ stored }: { stored: AgendaPrefs }) {
       {adding && (
         <AddClosedDay
           today={today}
-          taken={draft.closed.map((day) => day.date)}
-          full={draft.closed.filter((day) => day.date >= today).length >= AGENDA_RULES.closedMax}
+          taken={draft.closed}
+          full={draft.closed.filter((period) => period.to >= today).length >= AGENDA_RULES.closedMax}
           onClose={() => setAdding(false)}
-          onAdd={(day) => {
-            set({ closed: [...draft.closed, day].sort((a, b) => (a.date < b.date ? -1 : 1)) });
+          onAdd={(period) => {
+            set({ closed: [...draft.closed, period].sort((a, b) => (a.from < b.from ? -1 : 1)) });
             setAdding(false);
           }}
         />
@@ -327,9 +328,9 @@ const HOLIDAY_TEXT = {
   christmas: "web.agendaPrefs.holiday.christmas",
 } as const satisfies Record<NonNullable<ReturnType<typeof nationalHoliday>>, MessageKey>;
 
-/** The national holidays of the next 12 months on office days, each with "Atendo" (13/11/2026, 00:44). */
-function Holidays({ days, open, onToggle }: { days: string[]; open: readonly string[]; onToggle: (day: string) => void }) {
-  const { t } = useI18n();
+/** The national holidays of the next 12 months on office days: they always close the day (13/11/2026, 10:37). */
+function Holidays({ days }: { days: string[] }) {
+  const { t, locale } = useI18n();
   const id = useId();
   return (
     <Row title={t("web.agendaPrefs.holidays.title")} hint={t("web.agendaPrefs.holidays.hint")} id={id} hintId={`${id}-hint`}>
@@ -339,24 +340,11 @@ function Holidays({ days, open, onToggle }: { days: string[]; open: readonly str
         <ul aria-labelledby={id} className="w-full divide-y divide-border/60 rounded-xl border border-border">
           {days.map((day) => {
             const holiday = nationalHoliday(day);
-            const name = holiday ? t(HOLIDAY_TEXT[holiday]) : "";
-            const on = open.includes(day);
             return (
-              <li key={day} className="flex items-center gap-3 px-3 py-1">
+              <li key={day} className="flex min-h-11 items-center gap-3 px-3 py-1">
                 <span className="w-12 text-sm text-fg-muted tabular-nums">{brDate(day).slice(0, 5)}</span>
-                <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
-                <button
-                  type="button"
-                  aria-pressed={on}
-                  aria-label={t("web.agendaPrefs.holidays.openLabel", { name })}
-                  onClick={() => onToggle(day)}
-                  className={cn(
-                    "min-h-11 rounded-xl border px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-                    on ? "border-accent bg-accent-soft text-accent-text" : "border-border text-fg-muted hover:text-fg",
-                  )}
-                >
-                  {t("web.agendaPrefs.holidays.open")}
-                </button>
+                <span className="min-w-0 flex-1 truncate text-sm">{holiday ? t(HOLIDAY_TEXT[holiday]) : ""}</span>
+                <span className="text-sm text-fg-muted">{weekdayName(locale, new Date(`${day}T12:00:00Z`).getUTCDay())}</span>
               </li>
             );
           })}
@@ -366,48 +354,90 @@ function Holidays({ days, open, onToggle }: { days: string[]; open: readonly str
   );
 }
 
-/** Days off (a break, a vacation, a holiday of the city): the day closes in the Agenda and for new appointments. */
-function ClosedDays({ days, onRemove, onAdd }: { days: AgendaPrefs["closed"]; onRemove: (date: string) => void; onAdd: () => void }) {
-  const { t } = useI18n();
+/** "24/12/2026" for one day, "24/12/2026 a 03/01/2027" for a period. */
+const periodText = (period: { from: string; to: string }, joiner: string) => (period.from === period.to ? brDate(period.from) : `${brDate(period.from)} ${joiner} ${brDate(period.to)}`);
+
+/** Days off, one day or a period (a vacation, a break, a trip): every day of it closes in the Agenda and for new appointments. */
+function ClosedDays({ periods, onRemove, onAdd }: { periods: AgendaPrefs["closed"]; onRemove: (from: string) => void; onAdd: () => void }) {
+  const { t, plural } = useI18n();
   const id = useId();
+  const joiner = t("web.agendaPrefs.closed.joiner");
   return (
     <Row title={t("web.agendaPrefs.closed.title")} hint={t("web.agendaPrefs.closed.hint")} id={id} hintId={`${id}-hint`}>
-      <fieldset aria-labelledby={id} className="flex w-full min-w-0 flex-wrap items-center gap-2">
-        {days.map((day) => (
-          <span key={day.date} className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-border bg-raised pl-3 text-sm">
-            <span className="tabular-nums">{brDate(day.date)}</span>
-            {day.reason && <span className="text-fg-muted">· {day.reason}</span>}
-            <button
-              type="button"
-              aria-label={t("web.agendaPrefs.closed.remove", { date: brDate(day.date) })}
-              onClick={() => onRemove(day.date)}
-              className="flex h-11 w-11 items-center justify-center rounded-xl text-fg-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              <X className="h-4 w-4" aria-hidden />
-            </button>
-          </span>
-        ))}
+      <div className="w-full min-w-0 space-y-2">
+        <ul aria-labelledby={id} className="w-full divide-y divide-border/60 rounded-xl border border-border">
+          {periods.length === 0 && <li className="px-3 py-3 text-sm text-fg-muted">{t("web.agendaPrefs.closed.none")}</li>}
+          {periods.map((period) => (
+            <li key={period.from} className="flex items-center gap-2 pl-3 text-sm">
+              <span className="min-w-0 flex-1 py-2">
+                <b className="font-semibold tabular-nums">{periodText(period, joiner)}</b>
+                {period.reason && <span> · {period.reason}</span>}
+                <span className="text-fg-muted"> · {plural("web.agendaPrefs.closed.days", periodDays(period))}</span>
+              </span>
+              <button
+                type="button"
+                aria-label={t("web.agendaPrefs.closed.remove", { date: periodText(period, joiner) })}
+                onClick={() => onRemove(period.from)}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
         {/* No icon: a "plus" of its own would be one more file on the first load (P11). */}
         <Button variant="secondary" onClick={onAdd}>
           {t("web.agendaPrefs.closed.add")}
         </Button>
-      </fieldset>
+      </div>
     </Row>
   );
 }
 
-function AddClosedDay({ today, taken, full, onClose, onAdd }: { today: string; taken: readonly string[]; full: boolean; onClose: () => void; onAdd: (day: { date: string; reason: string }) => void }) {
+/**
+ * The record of the day (13/11/2026, 10:37): at 0:00 the events of the day that
+ * ended freeze. Only shown here; nothing to set.
+ */
+function DayRecord() {
+  const { t, plural, locale, timeZone } = useI18n();
+  const id = useId();
+  const record = useQuery({
+    queryKey: ["google", "record"],
+    queryFn: ({ signal }) => api<{ last: AgendaRecordLast | null }>("/google/record", { signal }),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const last = record.data?.last;
+  const when = last ? new Intl.DateTimeFormat(locale, { timeZone, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(last.closedAt)) : "";
+  return (
+    <Row title={t("web.agendaPrefs.record.title")} hint={t("web.agendaPrefs.record.hint")} id={id} hintId={`${id}-hint`}>
+      <p className="w-full text-sm text-fg-muted" aria-live="polite">
+        {record.isError ? t("web.agendaPrefs.record.unread") : last ? t("web.agendaPrefs.record.last", { day: brDate(last.day).slice(0, 5), when, events: plural("web.agendaPrefs.record.events", last.events) }) : record.isPending ? "" : t("web.agendaPrefs.record.none")}
+      </p>
+    </Row>
+  );
+}
+
+function AddClosedDay({ today, taken, full, onClose, onAdd }: { today: string; taken: AgendaPrefs["closed"]; full: boolean; onClose: () => void; onAdd: (period: AgendaPrefs["closed"][number]) => void }) {
   const { t } = useI18n();
-  const [text, setText] = useState("");
+  const [fromText, setFromText] = useState("");
+  const [toText, setToText] = useState("");
   const [reason, setReason] = useState("");
-  const [problem, setProblem] = useState<string | null>(null);
+  const [problem, setProblem] = useState<{ field: "from" | "to"; text: string } | null>(null);
   const confirm = () => {
-    const date = parseBrDate(text);
-    if (full) return setProblem(t("web.agendaPrefs.closed.full", { max: AGENDA_RULES.closedMax }));
-    if (!date) return setProblem(t("web.agendaPrefs.closed.badDate"));
-    if (date < today) return setProblem(t("web.agendaPrefs.closed.pastDate"));
-    if (taken.includes(date)) return setProblem(t("web.agendaPrefs.closed.repeated"));
-    onAdd({ date, reason: reason.trim() });
+    const from = parseBrDate(fromText);
+    const to = toText.trim() ? parseBrDate(toText) : from;
+    const refuse = (field: "from" | "to", text: string) => setProblem({ field, text });
+    if (full) return refuse("from", t("web.agendaPrefs.closed.full", { max: AGENDA_RULES.closedMax }));
+    if (!from) return refuse("from", t("web.agendaPrefs.closed.badDate"));
+    if (!to) return refuse("to", t("web.agendaPrefs.closed.badEnd"));
+    if (from < today) return refuse("from", t("web.agendaPrefs.closed.pastDate"));
+    if (to < from) return refuse("to", t("web.agendaPrefs.closed.endBefore"));
+    if (to > dayPlus(today, AGENDA_RULES.aheadDays)) return refuse(toText.trim() ? "to" : "from", t("web.agendaPrefs.closed.far"));
+    if (periodDays({ from, to }) > AGENDA_RULES.closedDaysMax) return refuse("to", t("web.agendaPrefs.closed.long", { max: AGENDA_RULES.closedDaysMax }));
+    const hit = taken.find((period) => period.from <= to && from <= period.to);
+    if (hit) return refuse("from", t("web.agendaPrefs.closed.overlap", { period: periodText(hit, t("web.agendaPrefs.closed.joiner")) }));
+    onAdd({ from, to, reason: reason.trim() });
   };
   return (
     <Dialog open onClose={onClose} title={t("web.agendaPrefs.closed.dialog")}>
@@ -422,16 +452,29 @@ function AddClosedDay({ today, taken, full, onClose, onAdd }: { today: string; t
         <p className="text-sm leading-6 text-fg-muted">{t("web.agendaPrefs.closed.dialogHint")}</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <TextField
-            label={t("web.agendaPrefs.closed.day")}
+            label={t("web.agendaPrefs.closed.from")}
             inputMode="numeric"
             autoComplete="off"
             placeholder={t("web.agendaPrefs.closed.datePlaceholder")}
             maxLength={10}
             autoFocus
-            value={text}
-            error={problem}
+            value={fromText}
+            error={problem?.field === "from" ? problem.text : null}
             onChange={(e) => {
-              setText(e.target.value);
+              setFromText(e.target.value);
+              setProblem(null);
+            }}
+          />
+          <TextField
+            label={t("web.agendaPrefs.closed.to")}
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder={t("web.agendaPrefs.closed.datePlaceholder")}
+            maxLength={10}
+            value={toText}
+            error={problem?.field === "to" ? problem.text : null}
+            onChange={(e) => {
+              setToText(e.target.value);
               setProblem(null);
             }}
           />

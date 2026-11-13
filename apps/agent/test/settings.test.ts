@@ -121,7 +121,7 @@ describe("SettingsRepository", () => {
 
   it("saves the Agenda's preferences whole in one row, and reads a stored one that no longer fits as the default", async () => {
     await withRepository("agenda", (settings, db) => {
-      const agenda = { from: 7, to: 20, view: "day" as const, weekStart: 0 as const, workDays: [6, 1, 1], daysOff: false, outside: false, lunch: { from: 720, to: 780 }, openHolidays: [], closed: [] };
+      const agenda = { from: 7, to: 20, view: "day" as const, weekStart: 0 as const, workDays: [6, 1, 1], daysOff: false, outside: false, lunch: { from: 720, to: 780 }, closed: [] };
       expect(settings.update({ agenda }).agenda).toEqual({ ...agenda, workDays: [1, 6] });
       expect(db.all(`SELECT key FROM zur_settings`)).toEqual([{ key: "agenda" }]);
       // The same card saved again writes nothing.
@@ -142,21 +142,21 @@ describe("SettingsRepository", () => {
       const old = { from: 7, to: 20, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, allDay: false, outside: true };
       db.run(`INSERT INTO zur_settings (key, value, updated_at) VALUES ('agenda', ?, 'x')`, JSON.stringify(old));
       const { allDay: _gone, ...rest } = old;
-      expect(settings.get().agenda).toEqual({ ...rest, lunch: null, openHolidays: [], closed: [] });
+      expect(settings.get().agenda).toEqual({ ...rest, lunch: null, closed: [] });
     });
   });
 
-  it("keeps the lunch break inside the hours, holidays that are national, and one reason per day off", async () => {
+  it("keeps the lunch break inside the hours and the periods off in order, none over another", async () => {
     await withRepository("agenda-rules", (settings) => {
       const agenda = { ...DEFAULT_SETTINGS.agenda, from: 8, to: 18 };
-      // Days off and open holidays come back in order, each once.
+      // Periods off come back in order; a record of the old shape (one day, opened holidays) still saves.
       const saved = settings.update({
-        agenda: { ...agenda, openHolidays: ["2026-12-25", "2026-11-20", "2026-12-25"], closed: [{ date: "2026-12-31", reason: "Recesso" }, { date: "2026-12-24", reason: " " }] },
+        agenda: { ...agenda, openHolidays: ["2026-12-25"], closed: [{ from: "2027-01-18", to: "2027-01-29", reason: "Férias" }, { date: "2026-12-24", reason: " " }] } as never,
       }).agenda;
-      expect(saved.openHolidays).toEqual(["2026-11-20", "2026-12-25"]);
+      expect(saved).not.toHaveProperty("openHolidays");
       expect(saved.closed).toEqual([
-        { date: "2026-12-24", reason: "" },
-        { date: "2026-12-31", reason: "Recesso" },
+        { from: "2026-12-24", to: "2026-12-24", reason: "" },
+        { from: "2027-01-18", to: "2027-01-29", reason: "Férias" },
       ]);
       expect(settings.update({ agenda: { ...agenda, lunch: null } }).agenda.lunch).toBeNull();
       for (const patch of [
@@ -166,12 +166,14 @@ describe("SettingsRepository", () => {
         { ...agenda, lunch: { from: 480, to: 540 } },
         { ...agenda, lunch: { from: 1020, to: 1080 } },
         { ...agenda, lunch: { from: 780, to: 720 } },
-        // A day that is no national holiday, an impossible date, a repeated day off, a long reason, too many days.
-        { ...agenda, openHolidays: ["2026-11-19"] },
-        { ...agenda, closed: [{ date: "2026-02-30", reason: "" }] },
+        // An impossible date, a repeated day off, two periods one over the other, an end before the start, 91 days, a long reason, too many periods.
+        { ...agenda, closed: [{ from: "2026-02-30", to: "2026-03-01", reason: "" }] },
         { ...agenda, closed: [{ date: "2026-12-24", reason: "" }, { date: "2026-12-24", reason: "Natal" }] },
-        { ...agenda, closed: [{ date: "2026-12-24", reason: "x".repeat(41) }] },
-        { ...agenda, closed: Array.from({ length: 101 }, (_, index) => ({ date: new Date(Date.UTC(2027, 0, 1 + index)).toISOString().slice(0, 10), reason: "" })) },
+        { ...agenda, closed: [{ from: "2027-01-01", to: "2027-01-10", reason: "" }, { from: "2027-01-10", to: "2027-01-11", reason: "" }] },
+        { ...agenda, closed: [{ from: "2027-01-10", to: "2027-01-09", reason: "" }] },
+        { ...agenda, closed: [{ from: "2027-01-01", to: "2027-04-01", reason: "" }] },
+        { ...agenda, closed: [{ from: "2026-12-24", to: "2026-12-24", reason: "x".repeat(41) }] },
+        { ...agenda, closed: Array.from({ length: 101 }, (_, index) => { const day = new Date(Date.UTC(2027, 0, 1 + index * 2)).toISOString().slice(0, 10); return { from: day, to: day, reason: "" }; }) },
       ]) {
         expect(() => settings.update({ agenda: patch } as never), JSON.stringify(patch).slice(0, 120)).toThrow(AppError);
       }

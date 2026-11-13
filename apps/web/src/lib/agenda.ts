@@ -1,4 +1,4 @@
-import { type AgendaEvent, AGENDA_LIMITS, bindsBooking, typeLine, type AgendaPrefs, type AgendaView, type EventStatus, eventStatus, type GoogleCalendarInfo, zonedParts } from "@zuri/shared";
+import { type AgendaEvent, AGENDA_LIMITS, bindsBooking, typeLine, type AgendaPrefs, type AgendaView, type EventStatus, eventStatus, frozenDay, type GoogleCalendarInfo, zonedParts } from "@zuri/shared";
 
 export { typeLine };
 
@@ -424,6 +424,14 @@ export function eventLook(event: Pick<AgendaEvent, "colorId">, calendar: Pick<Go
   // An event read before the color existed in the answer has none.
   const colorId = event.colorId ?? "";
   return { editable, status: eventStatus(colorId), color: EVENT_COLORS[colorId || NO_COLOR] };
+}
+
+/**
+ * Whether the event's day already closed (the record of the day, 13/11/2026): the
+ * day it starts on, in the owner's clock, is before today. The server says the same.
+ */
+export function isFrozen(event: Pick<AgendaEvent, "start" | "allDay">, today: string, timeZone: string): boolean {
+  return frozenDay(event.allDay ? event.start.slice(0, 10) : localDate(event.start, timeZone), today);
 }
 
 /** Saturday or Sunday, whatever the owner's working days are. */

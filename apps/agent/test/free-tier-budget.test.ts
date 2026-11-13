@@ -602,7 +602,8 @@ describe("the Free plan budget of each route", () => {
     // effects by their date indexes, the checked days by each automation's key) and the pending effects.
     // 69: the outbox (PR S19): whether anything waits, in the wake and in the planning (one indexed look each),
     // and its day's pruning, kept in memory (rows and timelines after 180 days, counts after 400, texts after 7).
-    expect(wake.read).toBeLessThanOrEqual(69);
+    // 70: the record of the day (E5b): whether Google is usable, in the wake and in the planning (one row, read once).
+    expect(wake.read).toBeLessThanOrEqual(70);
     expect(wake.written).toBeLessThanOrEqual(30);
   });
 
@@ -734,7 +735,8 @@ describe("the Free plan budget of each route", () => {
       // 236: and the CRM's next follow-up or birthday notice (step 22b, three indexed looks).
       // 237: and the CRM's next automation run (PR S18, one indexed look).
       // 238: and whether anything waits in the outbox (PR S19, one indexed look).
-      expect(reindex.read).toBeLessThanOrEqual(238);
+      // 239: and whether Google is usable for the record of the day (E5b, one row).
+      expect(reindex.read).toBeLessThanOrEqual(239);
       expect(reindex.written).toBeLessThanOrEqual(4);
       const off = await cost("PATCH", "/semantic", { enabled: false });
       expect(off.status).toBe(200);
@@ -1506,5 +1508,41 @@ describe("the outbox (PR S19)", () => {
     // the day's count, the queue's clock and the contact's and conversation's ids.
     expect(sent.written).toBeLessThanOrEqual(16);
     expect(sent.read).toBeLessThanOrEqual(24);
+  });
+});
+
+describe("the record of the day (E5b)", () => {
+  it("two years of closed days: the settings line, a week of the Agenda and the backup read about what they show", async () => {
+    const measured = await runInDurableObject(owner(), async (agent: ZuriAgent) => {
+      const { db, agendaRecord } = agent.store;
+      for (const table of ["zur_agenda_record", "zur_agenda_closed_days"]) db.run(`DELETE FROM ${table}`);
+      const start = Date.parse("2024-11-01T12:00:00Z");
+      // 730 days of 5 events each.
+      for (let n = 0; n < 730; n++) {
+        const day = new Date(start + n * 86_400_000).toISOString().slice(0, 10);
+        db.run(`INSERT INTO zur_agenda_closed_days (day, closed_at, events) VALUES (?, ?, 5)`, day, `${day}T03:00:05.000Z`);
+        for (let e = 0; e < 5; e++) db.run(`INSERT INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES (?, 'dono@exemplo.com.br', ?, '"1"', '{}')`, day, `ev${n}-${e}`);
+      }
+      const measure = <T>(fn: () => T) => {
+        const before = { ...db.usage };
+        const value = fn();
+        return { value, read: db.usage.rowsRead - before.rowsRead, written: db.usage.rowsWritten - before.rowsWritten };
+      };
+      const last = measure(() => agendaRecord.last());
+      const week = measure(() => agendaRecord.apply([], "2026-10-25", "2026-10-31", ["dono@exemplo.com.br"], false));
+      for (const table of ["zur_agenda_record", "zur_agenda_closed_days"]) db.run(`DELETE FROM ${table}`);
+      return { last: last.read, lastDay: last.value?.day, week: week.read, weekEvents: week.value.length, written: last.written + week.written };
+    });
+    expect(measured.lastDay).toBe("2026-10-31");
+    // The newest row of the primary key, never the 730 days.
+    expect(measured.last).toBeLessThanOrEqual(2);
+    // The week's 7 days and their 35 copies, by the primary key.
+    expect(measured.weekEvents).toBe(35);
+    expect(measured.week).toBeLessThanOrEqual(7 + 35 + 4);
+    // Reading never writes (a notice only when something changed at Google).
+    expect(measured.written).toBe(0);
+    const route = await cost("GET", "/google/record");
+    expect(route.status).toBe(200);
+    expect(route.read).toBeLessThanOrEqual(12);
   });
 });
