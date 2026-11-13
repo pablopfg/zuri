@@ -23,6 +23,8 @@ export const REVIEW_LIMITS = {
   /** Pages of 50 read per check; the rest waits for the next one, from where this one stopped. */
   pagesPerCheck: 3,
   pageSize: 50,
+  /** Pages a day of the walk over the reviews read before PR S20 (their names' prints): about 700 rows written each. */
+  namesPagesPerDay: 20,
   /** Older than this when first read: history, never a notice nor a draft. */
   maxAgeDays: 14,
   /** Locations (profiles) the owner may pick, and listed from Google. */
@@ -279,6 +281,8 @@ export const REVIEW_REQUEST_LIMITS = {
   linkKeepDays: 60,
   /** Openings of /a/ a minute from one network. */
   hitsPerMinute: 30,
+  /** Openings of /a/ a minute from everyone together: a block of addresses changing at each one is held too. */
+  hitsAllPerMinute: 300,
   messageMax: 500,
   linkMax: 300,
   /** The same link is handed again when the owner taps once more within this time (WhatsApp didn't open). */
@@ -289,14 +293,23 @@ export const REVIEW_REQUEST_LIMITS = {
   listMax: 300,
   /** Contacts shown on a review's card of people with the same name. */
   candidatesMax: 5,
-  /** Google calls the daily list may make: a token renewal and a few pages of each calendar. */
+  /** Contacts of one first name read to link a review: past this many, nothing links by itself. */
+  candidatesRead: 300,
+  /** Google calls the daily list may make: token renewals and the calendars' pages (four each at most), until they run out. */
   buildBudget: 12,
-  /** "Buscar no perfil" at most once a minute. */
-  refreshEveryMs: 60_000,
 } as const;
 
 /** The hosts of a Google review page; anything else is refused, whatever the address says. */
 export const REVIEW_LINK_HOSTS = ["g.page", "search.google.com", "www.google.com", "maps.app.goo.gl"] as const;
+
+/**
+ * An address written into the request's message besides {link} (S20-2): a stolen session could
+ * otherwise send every patient elsewhere with the owner's own text. A dot glued to two letters
+ * ("exemplo.com"), "www." or a scheme is enough to refuse; "consulta. Até" is not one.
+ */
+export function messageHasAddress(message: string): boolean {
+  return /https?:|www\.|[\p{L}\p{N}_-]\.[a-z]{2,24}(?![\p{L}\p{N}])/iu.test(message.replaceAll("{link}", " "));
+}
 
 /** Why an address can't be the profile's review link, or null when it can (the screen and the server ask the same). */
 export function reviewLinkProblem(value: string): "invalid" | "host" | null {

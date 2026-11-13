@@ -153,6 +153,8 @@ interface LocationRow {
   enabled_at: number | null;
   names_token: string | null;
   names_done: number;
+  names_day: string;
+  names_pages: number;
 }
 
 export interface ReviewRow {
@@ -720,8 +722,12 @@ export class ReviewService {
   private async walkNames(meter: GoogleMeter, stamp: number, found: Found): Promise<void> {
     if (!this.deps.matches || !this.deps.nameSecret?.()) return;
     const location = this.db.one<LocationRow>(`SELECT * FROM zur_review_locations WHERE selected = 1 AND names_done = 0 ORDER BY google_name LIMIT 1`);
-    // Two calls of room: the page and a token renewal; the check's own reads come first.
-    if (!location || !meter.room(2)) return;
+    // The mark the check's own read left: without one, nothing tells history from a new review yet.
+    const mark = location ? (this.db.one<{ watermark: string | null }>(`SELECT watermark FROM zur_review_locations WHERE google_name = ?`, location.google_name)?.watermark ?? null) : null;
+    const day = new Date(this.clock()).toISOString().slice(0, 10);
+    const pages = location?.names_day === day ? location.names_pages : 0;
+    // Two calls of room: the page and a token renewal; the check's own reads come first. A day's pages at most.
+    if (!location || !mark || pages >= REVIEW_LIMITS.namesPagesPerDay || !meter.room(2)) return;
     const body = await this.deps.google.business(GOOGLE_REVIEWS_API, `/${location.google_name}/reviews`, meter, {
       query: { pageSize: String(REVIEW_LIMITS.pageSize), orderBy: "updateTime desc", ...(location.names_token ? { pageToken: location.names_token } : {}) },
     });
@@ -729,20 +735,25 @@ export class ReviewService {
     const items = Array.isArray(body?.reviews) ? body.reviews.slice(0, REVIEW_LIMITS.pageSize) : [];
     const next = typeof body?.nextPageToken === "string" && body.nextPageToken ? body.nextPageToken.slice(0, 2_000) : null;
     const prints = await this.printsOf(items);
-    // The mark the check's own read left (read again: it moved a moment ago).
-    const mark = this.db.one<{ watermark: string | null }>(`SELECT watermark FROM zur_review_locations WHERE google_name = ?`, location.google_name)?.watermark ?? null;
     this.db.transaction(() => {
       for (const item of items) {
         const parsed = googleReviewSchema.safeParse(item);
         if (!parsed.success || !parsed.data.name.startsWith(`${location.google_name}/reviews/`)) continue;
         // Newer than what the check just read (it arrived meanwhile): the next check's, as a new one, never history.
-        if (!mark || instant(parsed.data.updateTime) > mark) continue;
+        if (instant(parsed.data.updateTime) > mark) continue;
         const row = this.existing(parsed.data.name);
         if (row) this.noteName(parsed.data, prints, row);
         // Kept as history: never a notice, a draft nor a reply.
         else this.store(location, parsed.data, true, found, prints);
       }
-      this.db.run(`UPDATE zur_review_locations SET names_token = ?, names_done = ? WHERE google_name = ?`, next, next ? 0 : 1, location.google_name);
+      this.db.run(
+        `UPDATE zur_review_locations SET names_token = ?, names_done = ?, names_day = ?, names_pages = ? WHERE google_name = ?`,
+        next,
+        next ? 0 : 1,
+        day,
+        pages + 1,
+        location.google_name,
+      );
     });
   }
 

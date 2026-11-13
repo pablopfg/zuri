@@ -1811,6 +1811,9 @@ export const MIGRATIONS: readonly Migration[] = [
       // The walk over the reviews read before this migration, a page per check, for their name's prints.
       `ALTER TABLE zur_review_locations ADD COLUMN names_token TEXT`,
       `ALTER TABLE zur_review_locations ADD COLUMN names_done INTEGER NOT NULL DEFAULT 0`,
+      // The walk's pages of the day (UTC), at most REVIEW_LIMITS.namesPagesPerDay: a big profile is walked over days.
+      `ALTER TABLE zur_review_locations ADD COLUMN names_day TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE zur_review_locations ADD COLUMN names_pages INTEGER NOT NULL DEFAULT 0`,
       // Two HMAC prints of the reviewer's name (whole; first and last): the name itself is never kept.
       `ALTER TABLE zur_reviews ADD COLUMN name_fp TEXT`,
       `ALTER TABLE zur_reviews ADD COLUMN short_fp TEXT`,
@@ -1826,6 +1829,18 @@ export const MIGRATIONS: readonly Migration[] = [
         at INTEGER NOT NULL
       ) WITHOUT ROWID`,
       `CREATE INDEX IF NOT EXISTS zur_review_matches_contact ON zur_review_matches (contact_id) WHERE contact_id IS NOT NULL`,
+      // Avaliações › Pedidos' cards: linked and waiting reviews counted as they change, never with count(*) (P2).
+      `INSERT INTO zur_counts (kind, n) VALUES ('review_matches_linked', 0), ('review_matches_pending', 0) ON CONFLICT (kind) DO NOTHING`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_review_matches_insert AFTER INSERT ON zur_review_matches BEGIN
+        UPDATE zur_counts SET n = n + 1 WHERE kind = CASE WHEN new.kind IN ('auto', 'confirmed') THEN 'review_matches_linked' WHEN new.kind IN ('twins', 'guess') THEN 'review_matches_pending' END;
+      END`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_review_matches_delete AFTER DELETE ON zur_review_matches BEGIN
+        UPDATE zur_counts SET n = n - 1 WHERE kind = CASE WHEN old.kind IN ('auto', 'confirmed') THEN 'review_matches_linked' WHEN old.kind IN ('twins', 'guess') THEN 'review_matches_pending' END;
+      END`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_review_matches_update AFTER UPDATE OF kind ON zur_review_matches WHEN old.kind != new.kind BEGIN
+        UPDATE zur_counts SET n = n - 1 WHERE kind = CASE WHEN old.kind IN ('auto', 'confirmed') THEN 'review_matches_linked' WHEN old.kind IN ('twins', 'guess') THEN 'review_matches_pending' END;
+        UPDATE zur_counts SET n = n + 1 WHERE kind = CASE WHEN new.kind IN ('auto', 'confirmed') THEN 'review_matches_linked' WHEN new.kind IN ('twins', 'guess') THEN 'review_matches_pending' END;
+      END`,
       // Contact → review still waiting for the owner: the list leaves the person out in one index read.
       `CREATE TABLE IF NOT EXISTS zur_review_match_candidates (
         contact_id TEXT NOT NULL,
@@ -1848,7 +1863,7 @@ export const MIGRATIONS: readonly Migration[] = [
         opened_at INTEGER,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
-      )`,
+      ) WITHOUT ROWID`,
       `CREATE INDEX IF NOT EXISTS zur_review_requests_due ON zur_review_requests (due_day DESC, id)`,
       `CREATE INDEX IF NOT EXISTS zur_review_requests_sent ON zur_review_requests (sent_at) WHERE sent_at IS NOT NULL`,
       // Each send's short address: a code drawn at random → its request. Out of the backup.
@@ -1863,14 +1878,6 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS zur_review_links_request ON zur_review_links (request_id, attempt)`,
       `CREATE INDEX IF NOT EXISTS zur_review_links_expiry ON zur_review_links (expires_at)`,
       `CREATE INDEX IF NOT EXISTS zur_review_links_opened ON zur_review_links (opened_at) WHERE opened_at IS NOT NULL`,
-      // Openings of /a/ by network (an HMAC of the address) and minute; gone after two minutes.
-      `CREATE TABLE IF NOT EXISTS zur_review_link_hits (
-        network TEXT NOT NULL,
-        minute INTEGER NOT NULL,
-        n INTEGER NOT NULL,
-        PRIMARY KEY (network, minute)
-      ) WITHOUT ROWID`,
-      `CREATE INDEX IF NOT EXISTS zur_review_link_hits_minute ON zur_review_link_hits (minute)`,
       // The owner's message (null: the default text of the owner's language) and "Quando pedir".
       `ALTER TABLE zur_review_settings ADD COLUMN request_message TEXT`,
       `ALTER TABLE zur_review_settings ADD COLUMN request_days INTEGER NOT NULL DEFAULT 8`,

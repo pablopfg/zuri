@@ -1,7 +1,7 @@
 import { BUSINESS_SCOPE, REVIEW_LIMITS } from "@zuri/shared";
 import { describe, expect, it, vi } from "vitest";
 import { AppError } from "../src/http/errors.ts";
-import { add, draftAnswer, later, LOCATION, OTHER, PATTERN, row, SECOND_NO, SECOND_OK, turnOn, withReviewsWorld, consent, type ReviewsWorld } from "./reviews-world.ts";
+import { add, DAY, draftAnswer, later, LOCATION, OTHER, PATTERN, row, SECOND_NO, SECOND_OK, turnOn, withReviewsWorld, consent, type ReviewsWorld } from "./reviews-world.ts";
 
 // Step 19c: the reviews read from the Business Profile (simulated), triaged by
 // the rating, drafted by an agent without tools, checked by the fixed checker
@@ -112,6 +112,25 @@ describe("reading the reviews", () => {
       world.google.business = business;
       await later(world);
       expect(row(world, "between")?.state).toBe("escalated");
+    }));
+
+  it("walks the older pages for the names' prints at most a day's pages, and goes on the next day (PR S20)", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      const today = () => new Date(world.clock.now).toISOString().slice(0, 10);
+      world.db.run(`UPDATE zur_review_locations SET names_done = 0, names_token = NULL, names_day = ?, names_pages = ?`, today(), REVIEW_LIMITS.namesPagesPerDay);
+      const pages = () => world.sim.seen.filter((call) => new URL(call.url).pathname.endsWith("/reviews")).length;
+      let before = pages();
+      world.clock.now += 16 * 60_000;
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      // Only the check's own page: the walk waits.
+      expect(pages() - before).toBe(1);
+      expect(world.db.one(`SELECT names_done AS done FROM zur_review_locations`)).toEqual({ done: 0 });
+      world.clock.now += DAY;
+      before = pages();
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      expect(pages() - before).toBe(2);
+      expect(world.db.one(`SELECT names_done AS done, names_pages AS pages FROM zur_review_locations`)).toEqual({ done: 1, pages: 1 });
     }));
 
   it("catches a review Google lists late, within an hour of the last one read", () =>

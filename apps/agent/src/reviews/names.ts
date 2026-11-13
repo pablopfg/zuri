@@ -12,6 +12,9 @@ import { searchText } from "../google/contacts.ts";
 
 const TITLE = /^(?:(?:dra?|sra?|srta|prof|profa)\.?(?:\s+|$))+/;
 
+/** The same titles as the contacts keep them folded (`searchText`), one before the first name: the ranges the links read. */
+export const NAME_TITLES = ["dr", "dra", "sr", "sra", "srta", "prof", "profa"].flatMap((title) => [`${title} `, `${title}. `]);
+
 /** The name as the prints are made of it; "" when nothing is left. */
 export function nameKey(raw: string): string {
   const name = searchText(splitName(raw).name)

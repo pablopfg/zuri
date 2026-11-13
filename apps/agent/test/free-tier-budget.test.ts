@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, CONTACT_LIMITS, CRM_LIMITS, FLOW_LIMITS, LIST_LIMIT_DEFAULT, REVIEW_LIMITS } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, CONTACT_LIMITS, CRM_LIMITS, FLOW_LIMITS, LIST_LIMIT_DEFAULT, REVIEW_LIMITS, REVIEW_REQUEST_LIMITS } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -1558,7 +1558,7 @@ describe("Review requests (PR S20)", () => {
       expect(page.items).toHaveLength(300);
       expect(world.db.usage.rowsRead - screen.rowsRead).toBeLessThanOrEqual(300 * 6 + 20);
       expect(world.db.usage.rowsWritten - screen.rowsWritten).toBeLessThanOrEqual(1);
-      // A send: the request and its code; an opening: the network's count, the code and the request.
+      // A send: the request and its code; an opening: the code and the request (the network's count lives in memory).
       const due = page.items.find((item) => item.state === "today");
       const sendStart = { ...world.db.usage };
       const { text } = await world.requests_.send(due?.id as string);
@@ -1569,6 +1569,13 @@ describe("Review requests (PR S20)", () => {
       expect((await world.requests_.open(code, "198.51.100.30", false)).kind).toBe("go");
       expect(world.db.usage.rowsWritten - openStart.rowsWritten).toBeLessThanOrEqual(10);
       expect(world.db.usage.rowsRead - openStart.rowsRead).toBeLessThanOrEqual(10);
+      // A stranger's unknown code and a held network (S20-1): nothing written, one row read at most.
+      const stranger = { ...world.db.usage };
+      expect((await world.requests_.open("BBBBBBBBBB", "198.51.100.31", false)).kind).toBe("missing");
+      for (let i = 0; i < REVIEW_REQUEST_LIMITS.hitsPerMinute; i++) await world.requests_.open("BBBBBBBBBB", "198.51.100.32", false);
+      expect((await world.requests_.open(code, "198.51.100.32", false)).kind).toBe("limited");
+      expect(world.db.usage.rowsWritten - stranger.rowsWritten).toBe(0);
+      expect(world.db.usage.rowsRead - stranger.rowsRead).toBeLessThanOrEqual(REVIEW_REQUEST_LIMITS.hitsPerMinute + 1);
       // The next day: nobody new, nothing written but the day's marks.
       world.clock.now += DAY;
       const again = { ...world.db.usage };

@@ -24,6 +24,7 @@ import { localInstant, localToday } from "../google/events.ts";
 import { type GoogleCalendar, GoogleError, GoogleMeter } from "../google/service.ts";
 import { CODE_PATTERN } from "../gates/review-link.ts";
 import { AppError } from "../http/errors.ts";
+import { currentWake } from "../agent/wake-budget.ts";
 import { log } from "../log.ts";
 import type { ReviewMatches } from "./matches.ts";
 import { namePrints } from "./names.ts";
@@ -248,20 +249,23 @@ export class ReviewRequests {
       reminder: patch.reminder === undefined ? row.request_reminder : patch.reminder ? 1 : 0,
     };
     if (next.message === row.request_message && next.days === row.request_days && next.hour === row.request_hour && next.reminder === row.request_reminder) return this.settings();
-    this.ensureRow();
-    this.db.run(
-      `UPDATE zur_review_settings SET request_message = ?, request_days = ?, request_hour = ?, request_reminder = ? WHERE id = 1`,
-      next.message,
-      next.days,
-      next.hour,
-      next.reminder,
-    );
-    // Rows not sent yet follow the new number of days; a sent one keeps its history.
-    if (next.days !== this.days(row)) {
-      for (const request of this.db.all<{ id: string; appointment_day: string }>(`SELECT id, appointment_day FROM zur_review_requests WHERE attempts = 0`)) {
-        this.db.run(`UPDATE zur_review_requests SET due_day = ?, updated_at = ? WHERE id = ? AND due_day != ?`, dueDay(request.appointment_day, next.days), this.now(), request.id, dueDay(request.appointment_day, next.days));
+    // One transaction: the settings and the rows that follow them, or nothing.
+    this.db.transaction(() => {
+      this.ensureRow();
+      this.db.run(
+        `UPDATE zur_review_settings SET request_message = ?, request_days = ?, request_hour = ?, request_reminder = ? WHERE id = 1`,
+        next.message,
+        next.days,
+        next.hour,
+        next.reminder,
+      );
+      // Rows not sent yet follow the new number of days; a sent one keeps its history.
+      if (next.days !== this.days(row)) {
+        for (const request of this.db.all<{ id: string; appointment_day: string }>(`SELECT id, appointment_day FROM zur_review_requests WHERE attempts = 0`)) {
+          this.db.run(`UPDATE zur_review_requests SET due_day = ?, updated_at = ? WHERE id = ? AND due_day != ?`, dueDay(request.appointment_day, next.days), this.now(), request.id, dueDay(request.appointment_day, next.days));
+        }
       }
-    }
+    });
     this.rebuildSoon();
     return this.settings();
   }
@@ -305,7 +309,7 @@ export class ReviewRequests {
 
   /**
    * The first list, made when Pedidos opens (the owner just turned everything on): no waiting for
-   * tomorrow's hour. Only once; from then on, the alarm's hour. Inside the route's own count of calls.
+   * tomorrow's hour. Only once; from then on, the alarm's hour. With its own count of calls (buildBudget).
    */
   async firstBuild(): Promise<void> {
     if (this.row().requests_built_at !== null || !this.deps.reviewsOn() || this.blocked()) return;
@@ -314,6 +318,8 @@ export class ReviewRequests {
 
   private async run(): Promise<void> {
     const today = this.today();
+    // A wake with too few calls left (a renewal and a page): the next wake tries, the day not marked yet.
+    if (currentWake()?.room(2) === false) return;
     // Marked first: a failure waits for tomorrow's hour (or the owner's next change), never every minute.
     this.ensureRow();
     this.db.run(`UPDATE zur_review_settings SET requests_day = ? WHERE id = 1`, today);
@@ -341,7 +347,6 @@ export class ReviewRequests {
    * of theirs in the event (`readAppointment`'s "certain"). Anything else asks nobody.
    */
   async build(meter: GoogleMeter): Promise<number> {
-    const google = this.deps.google;
     const contacts = this.deps.contacts();
     const timeZone = this.deps.timeZone();
     const row = this.row();
@@ -354,20 +359,42 @@ export class ReviewRequests {
     const idsOf = (key: string): string[] => {
       const cached = byKey.get(key);
       if (cached) return cached;
-      const first = key.split(" ")[0] ?? "";
+      // The name alone, or the name and its note: only this very name, however many share a first name.
       const ids = contacts
-        .startingWith(first)
-        .filter((contact) => searchText(contact.name) === key)
+        .inNameRange(key, `${key}\u0002`, REVIEW_REQUEST_LIMITS.candidatesRead)
+        .items.filter((contact) => searchText(contact.name) === key)
         .map((contact) => contact.id);
       byKey.set(key, ids);
       return ids;
     };
-    const identities = new Map<string, ReturnType<GoogleContacts["identity"]>>();
     const latest = new Map<string, string>();
+    try {
+      await this.read(meter, from, to, idsOf, latest, today);
+    } catch (error) {
+      // What was read before a failure is kept all the same.
+      await this.keep(latest, days, today);
+      throw error;
+    }
+    return this.keep(latest, days, today);
+  }
+
+  private async read(
+    meter: GoogleMeter,
+    from: string,
+    to: string,
+    idsOf: (key: string) => string[],
+    latest: Map<string, string>,
+    today: string,
+  ): Promise<void> {
+    const google = this.deps.google;
+    const contacts = this.deps.contacts();
+    const timeZone = this.deps.timeZone();
+    const identities = new Map<string, ReturnType<GoogleContacts["identity"]>>();
     for (const calendar of google.readable().slice(0, GOOGLE_LIMITS.listCalendars)) {
       let pageToken: string | undefined;
       for (let page = 0; page < 4; page++) {
-        if (!meter.room(1)) return this.keep(latest, days, today);
+        // A page and a token renewal.
+        if (!meter.room(2)) return;
         const body = await google.api(`/calendars/${encodeURIComponent(calendar.id)}/events`, meter, {
           query: { timeMin: from, timeMax: to, singleEvents: "true", orderBy: "startTime", maxResults: "250", ...(pageToken ? { pageToken } : {}) },
         });
@@ -394,7 +421,6 @@ export class ReviewRequests {
         if (!pageToken) break;
       }
     }
-    return this.keep(latest, days, today);
   }
 
   /** The new requests of a read: one per contact, ever; a contact asked before is never asked again. */
@@ -439,12 +465,11 @@ export class ReviewRequests {
     return fresh.length;
   }
 
-  /** Requests never sent long after their day, codes long past their time and the networks' old counts. */
+  /** Requests never sent long after their day and codes long past their time. */
   private prune(): void {
     const now = this.now();
     this.db.run(`DELETE FROM zur_review_requests WHERE attempts = 0 AND due_day < ?`, addDays(this.today(), -REVIEW_REQUEST_LIMITS.unsentDays));
     this.db.run(`DELETE FROM zur_review_links WHERE expires_at < ?`, now - REVIEW_REQUEST_LIMITS.linkKeepDays * DAY_MS);
-    this.db.run(`DELETE FROM zur_review_link_hits WHERE minute < ?`, Math.floor(now / MINUTE) - 2);
   }
 
   private mobile(contactId: string): string | null {
@@ -590,21 +615,31 @@ export class ReviewRequests {
 
   // ---------- /a/<code> ----------
 
+  /** This minute's openings, by network and in all; a new minute starts them again. Lost on a restart, which only lets a few more through. */
+  private hits = { minute: -1, all: 0, networks: new Map<string, number>() };
+
+  /** One more opening this minute: false past a network's limit or everyone's. */
+  private count(network: string, minute: number): boolean {
+    if (this.hits.minute !== minute) this.hits = { minute, all: 0, networks: new Map() };
+    if (this.hits.all >= REVIEW_REQUEST_LIMITS.hitsAllPerMinute) return false;
+    const n = this.hits.networks.get(network) ?? 0;
+    if (n >= REVIEW_REQUEST_LIMITS.hitsPerMinute) return false;
+    this.hits.all += 1;
+    this.hits.networks.set(network, n + 1);
+    return true;
+  }
+
   /**
    * Somebody opened a short address. The destination is only ever the review page kept in the
    * database, never anything in the address asked. A preview robot or a HEAD notes nothing; a code
    * past its 30 days goes to Google without a note; an unknown one is a 404 like any other.
    */
   async open(code: string, network: string, preview: boolean): Promise<LinkAnswer> {
+    // Counted in memory, never in the database: a stranger's openings write nothing (S20-1).
     const now = this.now();
     const minute = Math.floor(now / MINUTE);
     const key = network ? await hmacSha256Hex(this.deps.secret(), `zuri:review-link-network:v1:${network}`) : "none";
-    const hits = this.db.one<{ n: number }>(
-      `INSERT INTO zur_review_link_hits (network, minute, n) VALUES (?, ?, 1) ON CONFLICT (network, minute) DO UPDATE SET n = n + 1 RETURNING n`,
-      key,
-      minute,
-    );
-    if ((hits?.n ?? 0) > REVIEW_REQUEST_LIMITS.hitsPerMinute) return { kind: "limited" };
+    if (!this.count(key, minute)) return { kind: "limited" };
     if (!CODE_PATTERN.test(code)) return { kind: "missing" };
     const row = this.db.one<{ request_id: string; expires_at: number; opened_at: number | null }>(`SELECT request_id, expires_at, opened_at FROM zur_review_links WHERE code = ?`, code);
     const location = row ? this.link() : null;

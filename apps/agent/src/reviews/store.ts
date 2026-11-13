@@ -35,7 +35,6 @@ export function forgetReviews(db: Database): void {
 export function forgetReviewRequests(db: Database): void {
   db.run(`DELETE FROM zur_review_requests`);
   db.run(`DELETE FROM zur_review_links`);
-  db.run(`DELETE FROM zur_review_link_hits`);
   db.run(`DELETE FROM zur_notices WHERE kind = 'reviews.requests'`);
   db.run(`UPDATE zur_review_settings SET requests_day = '', requests_built_at = NULL, requests_told_day = '' WHERE id = 1`);
 }

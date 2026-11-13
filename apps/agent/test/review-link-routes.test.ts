@@ -35,7 +35,7 @@ beforeEach(() =>
 
 afterEach(() =>
   inOwner((agent) => {
-    for (const table of ["zur_review_locations", "zur_review_requests", "zur_review_links", "zur_review_link_hits", "zur_auth_events", "zur_notices"]) agent.store.db.run(`DELETE FROM ${table}`);
+    for (const table of ["zur_review_locations", "zur_review_requests", "zur_review_links", "zur_auth_events", "zur_notices"]) agent.store.db.run(`DELETE FROM ${table}`);
   }),
 );
 
@@ -50,6 +50,15 @@ describe("/a/<code>", () => {
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
     expect(res.headers.get("set-cookie")).toBeNull();
     expect(await openedAt()).not.toBeNull();
+  });
+
+  it("S20-3: answers with HSTS and never inside a frame, the 404 too", async () => {
+    for (const res of [await open(`/a/${CODE}`), await open("/a/BBBBBBBBBB")]) {
+      expect(res.headers.get("strict-transport-security")).toBe("max-age=63072000; includeSubDomains");
+      expect(res.headers.get("x-frame-options")).toBe("DENY");
+      expect(res.headers.get("cross-origin-resource-policy")).toBe("same-origin");
+      await res.arrayBuffer();
+    }
   });
 
   it("lets a preview robot and a HEAD through without noting an opening", async () => {
@@ -77,10 +86,12 @@ describe("/a/<code>", () => {
   });
 
   it("holds a network after 30 openings a minute (429)", async () => {
-    let last = 0;
-    for (let i = 0; i <= REVIEW_REQUEST_LIMITS.hitsPerMinute; i++) last = (await open("/a/BBBBBBBBBB")).status;
-    expect(last).toBe(429);
-    expect((await open(`/a/${CODE}`)).status).toBe(429);
+    // A network of its own: the counts live in the object's memory for the minute, and the other tests use another one.
+    const held = { headers: { "cf-connecting-ip": "198.51.100.77" } };
+    const statuses: number[] = [];
+    for (let i = 0; i < REVIEW_REQUEST_LIMITS.hitsPerMinute; i++) statuses.push((await open("/a/BBBBBBBBBB", held)).status);
+    expect(new Set(statuses)).toEqual(new Set([404]));
+    expect((await open(`/a/${CODE}`, held)).status).toBe(429);
     expect((await open(`/a/${CODE}`, { headers: { "cf-connecting-ip": "198.51.100.21" } })).status).toBe(302);
   });
 
@@ -132,6 +143,19 @@ describe("/api/reviews/requests", () => {
     const res = await api("PATCH", "/reviews/requests/settings", { message: "Oi, {primeiro_nome}.\r\nVeja: {link}  ", days: 3, hour: "21:00", reminder: false });
     expect(await res.json()).toMatchObject({ message: "Oi, {primeiro_nome}.\nVeja: {link}", days: 3, hour: "21:00", reminder: false });
     expect((await api("PATCH", "/reviews/requests/settings", { message: null, days: 8, hour: "09:00", reminder: true })).status).toBe(200);
+  });
+
+  it("S20-2: never keeps an address in the message besides {link}, and takes the limits at their edge", async () => {
+    for (const message of ["Atualize em https://exemplo.com.br {link}", "Veja www.exemplo.com.br {link}", "Entre em exemplo.com.br/cadastro {link}", "golpe.io {link}", "HTTP://X {link}"]) {
+      expect((await errorBody(await api("PATCH", "/reviews/requests/settings", { message }))).code, message).toBe("VALIDATION_FAILED");
+    }
+    // A sentence's full stop is not an address; 500 characters, 30 days and 06:00 are taken.
+    const edge = `Obrigada pela consulta. Até logo, {primeiro_nome}. {link} ${"a".repeat(REVIEW_REQUEST_LIMITS.messageMax - 58)}`;
+    expect([...edge].length).toBe(REVIEW_REQUEST_LIMITS.messageMax);
+    const res = await api("PATCH", "/reviews/requests/settings", { message: edge, days: REVIEW_REQUEST_LIMITS.daysMax, hour: REVIEW_REQUEST_LIMITS.hourMin });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ message: edge, days: 30, hour: "06:00" });
+    expect((await api("PATCH", "/reviews/requests/settings", { message: null, days: 8, hour: "09:00" })).status).toBe(200);
   });
 
   it("refuses a send while stopped, and a choice for an unknown review", async () => {

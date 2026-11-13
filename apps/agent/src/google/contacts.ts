@@ -1159,18 +1159,19 @@ export class GoogleContacts {
   }
 
   /**
-   * The contacts whose name is this word or starts with it and a space (folded as `searchText`), for
-   * the reviews' links (PR S20): "ana" finds "Ana" and "Ana Souza", never "Anabela". One index range.
+   * The contacts whose folded name (`searchText`, then SEARCH_BREAK and the note) lies in [from, to),
+   * for the reviews' links (PR S20): one index range, at most `limit` rows. `more` says some were
+   * left out, so a caller never takes the rows read for all there are.
    */
-  startingWith(word: string, limit = 300): { id: string; name: string }[] {
-    if (!this.enabled() || !word || /\s/.test(word)) return [];
-    // "!" sorts right after the space: the range holds the word alone, its note (SEARCH_BREAK) and the word with more words.
-    return this.db.all<{ id: string; name: string }>(
+  inNameRange(from: string, to: string, limit: number): { items: { id: string; name: string }[]; more: boolean } {
+    if (!this.enabled() || !from) return { items: [], more: false };
+    const rows = this.db.all<{ id: string; name: string }>(
       `SELECT id, display_name AS name FROM zur_contacts WHERE search_name >= ? AND search_name < ? ORDER BY search_name, id LIMIT ?`,
-      word,
-      `${word}!`,
-      limit,
+      from,
+      to,
+      limit + 1,
     );
+    return { items: rows.slice(0, limit), more: rows.length > limit };
   }
 
   /** The phones (E.164 when known) and e-mails of a contact, for "send" and the cards of people with one name. */

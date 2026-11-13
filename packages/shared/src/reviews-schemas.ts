@@ -2,7 +2,7 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { REVIEW_LEVELS, REVIEW_LIMITS, REVIEW_METRIC_PERIODS, REVIEW_REQUEST_LIMITS, REVIEW_TABS, REVIEW_TONES, reviewLinkProblem } from "./reviews.ts";
+import { REVIEW_LEVELS, REVIEW_LIMITS, REVIEW_METRIC_PERIODS, REVIEW_REQUEST_LIMITS, REVIEW_TABS, REVIEW_TONES, messageHasAddress, reviewLinkProblem } from "./reviews.ts";
 
 /**
  * Google reviews (step 19c): the routes' request bodies, what Zuri reads of
@@ -151,7 +151,7 @@ export const reviewRequestSettingsSchema = /* @__PURE__ */ (() =>
             .string()
             .min(1)
             .max(REVIEW_REQUEST_LIMITS.messageMax)
-            .refine((value) => value.includes("{link}") && !/(?!\n)\p{Cc}|\p{Cf}/u.test(value)),
+            .refine((value) => value.includes("{link}") && !messageHasAddress(value) && !/(?!\n)\p{Cc}|\p{Cf}/u.test(value)),
         )
         .nullable()
         .optional(),

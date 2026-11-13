@@ -461,7 +461,11 @@ Diferenças da S20 (pedido de avaliação e link pessoal) para o plano e o prot�
 - **Só o primeiro perfil escolhido** dá o link de avaliação (o primeiro pela identificação do Google). Com mais de um perfil, um link por perfil fica para depois.
 - **Só feriados nacionais** mudam o dia do pedido (os do código, como na Agenda).
 - **A primeira lista sai ao abrir Pedidos**, sem esperar o horário de amanhã. Depois, uma vez por dia, no horário de "Quando pedir".
-- **A leitura dos nomes** das avaliações antigas (para as impressões) lê uma página a mais por conferência até o fim do perfil e guarda o que a primeira leitura não trouxe como histórico. Avaliação mais nova que a leitura daquela conferência fica para a próxima, como nova.
+- **A leitura dos nomes** das avaliações antigas (para as impressões) lê uma página a mais por conferência, no máximo 20 por dia, até o fim do perfil, e guarda o que a primeira leitura não trouxe como histórico. Avaliação mais nova que a leitura daquela conferência fica para a próxima, como nova.
+- **Nunca liga sozinha** também quando um contato tem o mesmo nome com título ("Dra. Ana Souza") ou quando há mais de 300 contatos com o mesmo primeiro nome (o que a Zuri lê por vez).
+- **A mensagem do pedido só aceita o `{link}` como endereço** (achado S20-2 da auditoria): `http`, `www.` e domínios são recusados.
+- **As aberturas do link são contadas na memória do objeto** (30 por rede e 300 no total por minuto), nunca no banco: a tabela `zur_review_link_hits` saiu da migration 41 (achado S20-1).
+- **Pop-up bloqueado:** o WhatsApp abre na própria aba, para o envio contado sempre sair.
 - **Prévia de link** (WhatsApp, Telegram e afins) e `HEAD` levam ao Google sem anotar a abertura (o plano dizia 200 vazio): assim a prévia mostra a página certa.
 - **Textos sem gênero** nos cartões do vínculo: "É essa pessoa", "Nenhuma delas" e, com dois, "Nenhuma das duas" (o protótipo dizia "É ele").
 - **Link do Google só nos caminhos de avaliação**: `search.google.com` só em `/local/…` e `www.google.com` só em `/maps/…`, para não aceitar os redirecionadores do próprio Google.

@@ -13,6 +13,7 @@ import {
   type ReviewsStatus,
   type ReviewItem,
   type ReviewMatchCandidate,
+  messageHasAddress,
   reviewLinkProblem,
 } from "@zuri/shared";
 // Icons only this area uses, or ones that already have a piece of their own: one shared with another screen
@@ -236,7 +237,8 @@ function RequestCard({ item }: { item: ReviewRequestItem }) {
         tab.location.replace(whatsAppLink(answer.phone, answer.text));
         toast(t("web.reviews.req.sent"));
       } else {
-        toast(t("web.reviews.req.popup"));
+        // New windows blocked: WhatsApp opens here instead, so a send counted always goes out.
+        window.location.assign(whatsAppLink(answer.phone, answer.text));
       }
     } catch (failure) {
       tab?.close();
@@ -671,7 +673,8 @@ function MessageForm({ settings }: { settings: ReviewRequestSettings }) {
   const [text, setText] = useState(settings.message ?? fallback);
   const [busy, setBusy] = useState(false);
   const length = [...text.trim()].length;
-  const missing = !text.includes("{link}");
+  const address = messageHasAddress(text);
+  const missing = !text.includes("{link}") || address;
   const save = async (message: string | null) => {
     setBusy(true);
     try {
@@ -694,7 +697,7 @@ function MessageForm({ settings }: { settings: ReviewRequestSettings }) {
     >
       <TextAreaField
         label={t("web.reviews.reqset.message.label")}
-        hint={missing ? t("web.reviews.reqset.message.needsLink") : t("web.reviews.reqset.message.hint", { n: length, max: REVIEW_REQUEST_LIMITS.messageMax })}
+        hint={address ? t("web.reviews.reqset.message.noAddress") : missing ? t("web.reviews.reqset.message.needsLink") : t("web.reviews.reqset.message.hint", { n: length, max: REVIEW_REQUEST_LIMITS.messageMax })}
         rows={5}
         value={text}
         maxLength={REVIEW_REQUEST_LIMITS.messageMax}

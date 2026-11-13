@@ -1,7 +1,9 @@
 import { REVIEW_REQUEST_LIMITS, reviewLinkProblem } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
+import { inWake, WakeBudget } from "../src/agent/wake-budget.ts";
 import { isPreviewAgent, reviewLinkCode } from "../src/gates/review-link.ts";
-import { maskEmail } from "../src/reviews/matches.ts";
+import { GoogleError } from "../src/google/service.ts";
+import { maskEmail, ReviewMatches } from "../src/reviews/matches.ts";
 import { nameKey, namePrints, shortKey } from "../src/reviews/names.ts";
 import { addDays, drawCode, dueDay, fillMessage, firstNameFor, nextWorking, workingDay } from "../src/reviews/requests.ts";
 import { testEnv } from "./helpers.ts";
@@ -79,7 +81,7 @@ describe("names, days and the message", () => {
     expect(reviewLinkProblem("https://search.google.com/url?q=https://exemplo.com.br")).toBe("host");
     expect(reviewLinkProblem("http://g.page/r/exemplo/review")).toBe("invalid");
     expect(reviewLinkProblem("https://g.page.exemplo.com.br/r")).toBe("host");
-    expect(reviewLinkProblem("https://user:pw@g.page/r")).toBe("invalid");
+    expect(reviewLinkProblem(`https://user:pw${"@"}g.page/r`)).toBe("invalid");
     expect(reviewLinkProblem("https://g.page:8443/r")).toBe("invalid");
     expect(reviewLinkProblem("javascript:alert(1)")).toBe("invalid");
     expect(reviewLinkProblem(`https://g.page/${"r".repeat(300)}`)).toBe("invalid");
@@ -119,15 +121,15 @@ describe("which contact left a review", () => {
       ]);
       expect(card?.match?.candidates.some((c) => c.best)).toBe(false);
       expect(world.matches.waiting(one)).toBe(true);
-      expect(() => world.matches.decide(id, "00000000-0000-4000-8000-000000000000")).toThrow();
+      expect(() => world.matches.decide(id, "00000000-0000-4000-8000-000000000000")).toThrow(expect.objectContaining({ code: "VALIDATION_FAILED", messageKey: "error.reviewMatchContact" }));
       world.matches.decide(id, one);
       expect(match(world, id)).toMatchObject({ kind: "confirmed", contact_id: one, candidates: "[]" });
       expect(world.matches.waiting(two)).toBe(false);
       // Decided once: no other choice, and the confirmed link stays.
-      expect(() => world.matches.decide(id, two)).toThrow();
-      expect(() => world.matches.decide(id, null)).toThrow();
+      expect(() => world.matches.decide(id, two)).toThrow(expect.objectContaining({ code: "VALIDATION_FAILED", messageKey: "error.reviewMatchContact" }));
+      expect(() => world.matches.decide(id, null)).toThrow(expect.objectContaining({ code: "CONFLICT", messageKey: "error.reviewMatchGone" }));
       const other = await review(world, "r2", "Marcos Vieira Lopes");
-      expect(() => world.matches.decide(other, one)).toThrow();
+      expect(() => world.matches.decide(other, one)).toThrow(expect.objectContaining({ code: "CONFLICT", messageKey: "error.reviewMatchTaken" }));
       world.matches.decide(other, null);
       expect(match(world, other)?.kind).toBe("none");
       expect(await world.reviews.review(other)).toMatchObject({ match: null });
@@ -141,6 +143,65 @@ describe("which contact left a review", () => {
       // Anonymous, nobody opened a link: nothing.
       expect(match(world, await review(world, "r2", "", 5, { anonymous: true }))).toBeNull();
       expect(match(world, await review(world, "r3", "Fulano Qualquer"))).toBeNull();
+    }));
+
+  it("never links by itself a name another contact shares with a title, or with the same first and last name", () =>
+    withReviewsWorld(async (world) => {
+      await setUp(world, () => {
+        person(world, "c1", "Ana Souza");
+        person(world, "c2", "Dra. Ana Souza");
+        person(world, "c3", "Bruna Lima");
+        person(world, "c4", "Bruna Teixeira Lima");
+      });
+      expect(match(world, await review(world, "r1", "Ana Souza"))?.kind).toBe("twins");
+      const bruna = match(world, await review(world, "r2", "Bruna Lima"));
+      expect(bruna?.kind).toBe("guess");
+      expect((JSON.parse(bruna?.candidates ?? "[]") as string[]).sort()).toEqual([...contactId(world, "Bruna Lima"), ...contactId(world, "Bruna Teixeira Lima")].sort());
+    }));
+
+  it("never links by itself when more contacts share the first name than are read", () =>
+    withReviewsWorld(async (world) => {
+      await setUp(world, () => {
+        // Sorted before her: the read stops before the other Maria of the same first and last name.
+        for (let i = 0; i < REVIEW_REQUEST_LIMITS.candidatesRead - 1; i++) person(world, `m${i}`, `Maria Abreu ${String(i).padStart(3, "0")}`);
+        person(world, "m-souza", "Maria Souza");
+        person(world, "m-teixeira", "Maria Teixeira Souza");
+      });
+      expect(world.db.one(`SELECT count(*) AS n FROM zur_contacts`)).toEqual({ n: REVIEW_REQUEST_LIMITS.candidatesRead + 1 });
+      expect(match(world, await review(world, "r1", "Maria Souza"))).toMatchObject({ kind: "guess", candidates: JSON.stringify(contactId(world, "Maria Souza")) });
+    }));
+
+  it("turns a review of a name nobody had into a guess when that person comes to the contacts, before anyone asks them", () =>
+    withReviewsWorld(async (world) => {
+      await setUp(world, () => person(world, "c1", "Beatriz Novaes", { phoneNumbers: [{ value: "(41) 99999-0110" }] }));
+      const id = await review(world, "r1", "Paula Mendes");
+      expect(match(world, id)).toBeNull();
+      person(world, "c2", "Paula Mendes", { phoneNumbers: [{ value: "(41) 98888-0120" }] });
+      expect(await world.contacts.sync("owner")).toBe("ok");
+      const [paula] = contactId(world, "Paula Mendes") as [string];
+      visit(world, "Paula Mendes", 8);
+      world.clock.now = WEDNESDAY_9;
+      expect(await world.requests_.tick()).toBe(true);
+      expect(match(world, id)).toMatchObject({ kind: "guess", candidates: JSON.stringify([paula]) });
+      expect(world.requests_.list().items.find((item) => item.contactId === paula)?.state).toBe("pending");
+    }));
+
+  it("forgets the links of the reviews of an unticked profile only, and reads a broken list of candidates as none", () =>
+    withReviewsWorld(async (world) => {
+      await setUp(world, () => {
+        person(world, "c1", "Ana Souza");
+        person(world, "c2", "Bruna Lima");
+        person(world, "c3", "Bruna Lima");
+      });
+      const ana = await review(world, "r1", "Ana Souza");
+      const bruna = await review(world, "r2", "Bruna Lima");
+      ReviewMatches.forget(world.db, [ana]);
+      expect(match(world, ana)).toBeNull();
+      expect(match(world, bruna)?.kind).toBe("twins");
+      expect(world.matches.counts()).toMatchObject({ linked: 0, pending: 1 });
+      world.db.run(`UPDATE zur_review_matches SET candidates = 'not json' WHERE review_id = ?`, bruna);
+      expect(world.matches.forReview(bruna, Date.now())).toMatchObject({ kind: "twins", candidates: [] });
+      expect(() => world.matches.decide("00000000-0000-4000-8000-000000000000", null)).toThrow(expect.objectContaining({ code: "CONFLICT", messageKey: "error.reviewMatchGone" }));
     }));
 
   it("forgets the links and candidates of a review that goes, and the owner's undoing of a link sticks", () =>
@@ -258,6 +319,66 @@ describe("the day's requests", () => {
       expect(world.sim.seen.length).toBe(calls);
     }));
 
+  it("waits for a wake with calls to spare, and keeps the day marked when Google fails halfway", () =>
+    withReviewsWorld(async (world) => {
+      await ready(world);
+      world.clock.now = WEDNESDAY_9;
+      // A wake with no calls left: nothing read, the day not marked, the next wake tries.
+      const spent = new WakeBudget(4, 0);
+      spent.take(4);
+      expect(await inWake(spent, () => world.requests_.tick())).toBe(true);
+      expect(world.requests_.nextDue()).toBe(WEDNESDAY_9);
+      // Google fails: the day is marked all the same (tomorrow's hour, never every minute) and nothing is half kept.
+      const api = world.google.api.bind(world.google);
+      world.google.api = (async () => {
+        throw new GoogleError("unavailable", 503);
+      }) as typeof api;
+      expect(await world.requests_.tick()).toBe(true);
+      world.google.api = api;
+      expect(world.requests_.nextDue()).toBe(WEDNESDAY_9 + DAY);
+      expect(world.db.one(`SELECT count(*) AS n FROM zur_review_requests`)).toEqual({ n: 0 });
+    }));
+
+  it("counts two taps at once as one send, with one link", () =>
+    withReviewsWorld(async (world) => {
+      await ready(world);
+      await world.requests_.tick();
+      const beatriz = world.requests_.list().items.find((item) => item.name === "Beatriz Novaes");
+      const both = await Promise.allSettled([world.requests_.send(beatriz?.id as string), world.requests_.send(beatriz?.id as string)]);
+      expect(both.filter((one) => one.status === "fulfilled").length).toBeGreaterThanOrEqual(1);
+      expect(world.db.one(`SELECT attempts FROM zur_review_requests WHERE id = ?`, beatriz?.id as string)).toEqual({ attempts: 1 });
+      expect(world.db.one(`SELECT count(*) AS n FROM zur_review_links`)).toEqual({ n: 1 });
+    }));
+
+  it("takes an anonymous review for a guess when one link alone was opened in the 48 hours before, the clue marked; two say nothing", () =>
+    withReviewsWorld(async (world) => {
+      await ready(world);
+      await world.requests_.tick();
+      const today = world.requests_.list().items.filter((item) => item.state === "today");
+      expect(today.length).toBeGreaterThanOrEqual(2);
+      const [first, second] = today as [(typeof today)[0], (typeof today)[0]];
+      const codeOf = async (id: string) => /\/a\/(\w{10})$/.exec((await world.requests_.send(id)).text)?.[1] as string;
+      expect((await world.requests_.open(await codeOf(first.id), "203.0.113.30", false)).kind).toBe("go");
+      const guessed = await review(world, "anon-1", "", 5, { anonymous: true });
+      expect(match(world, guessed)).toMatchObject({ kind: "guess", candidates: JSON.stringify([first.contactId]) });
+      expect((await world.reviews.review(guessed))?.match?.candidates).toMatchObject([{ id: first.contactId, opened: true, best: true }]);
+      // A second link opened: two people could have written it, so nothing.
+      expect((await world.requests_.open(await codeOf(second.id), "203.0.113.31", false)).kind).toBe("go");
+      expect(match(world, await review(world, "anon-2", "", 5, { anonymous: true }))).toBeNull();
+      // Past the 48 hours, the openings say nothing either.
+      world.clock.now += REVIEW_REQUEST_LIMITS.guessWindowMs;
+      expect(match(world, await review(world, "anon-3", "", 5, { anonymous: true }))).toBeNull();
+    }));
+
+  it("keeps no reviewer's whole name in the database, only the prints and the first name", () =>
+    withReviewsWorld(async (world) => {
+      await setUp(world, () => person(world, "c1", "Ana Souza"));
+      await review(world, "r1", "Ana Teixeira Souza");
+      for (const table of ["zur_reviews", "zur_review_matches", "zur_review_events", "zur_review_match_candidates"]) {
+        expect(JSON.stringify(world.db.all(`SELECT * FROM ${table}`)), table).not.toMatch(/Teixeira|Souza/i);
+      }
+    }));
+
   it("sends through the owner's WhatsApp: the text, the number and a link of the person's own, checked on the server", () =>
     withReviewsWorld(async (world) => {
       await ready(world);
@@ -314,10 +435,25 @@ describe("the day's requests", () => {
       expect((await world.requests_.open(code, "203.0.113.9", false)).kind).toBe("limited");
       // Another network isn't held, and the counts carry only an HMAC of the address.
       expect((await world.requests_.open(code, "203.0.113.10", true)).kind).toBe("go");
-      expect(JSON.stringify(world.db.all(`SELECT network FROM zur_review_link_hits`))).not.toContain("203.0.113");
       world.clock.now += (REVIEW_REQUEST_LIMITS.linkValidDays + 1) * DAY;
       expect((await world.requests_.open(code, "203.0.113.11", false)).kind).toBe("go");
       expect(world.db.one(`SELECT opened_at FROM zur_review_requests WHERE id = ?`, beatriz?.id as string)).toEqual({ opened_at: null });
+    }));
+
+  it("S20-1: a stranger's openings write nothing, and a block of addresses changing at each one is held by everyone's limit", () =>
+    withReviewsWorld(async (world) => {
+      await ready(world);
+      await world.requests_.tick();
+      const before = world.db.usage.rowsWritten;
+      let held = 0;
+      for (let i = 0; i < REVIEW_REQUEST_LIMITS.hitsAllPerMinute + 5; i++) {
+        if ((await world.requests_.open("BBBBBBBBBB", `2001:db8:${i.toString(16)}::1`, false)).kind === "limited") held += 1;
+      }
+      expect(held).toBe(5);
+      expect(world.db.usage.rowsWritten - before).toBe(0);
+      // A new minute starts the counts again.
+      world.clock.now += 60_000;
+      expect((await world.requests_.open("BBBBBBBBBB", "2001:db8:ffff::1", false)).kind).toBe("missing");
     }));
 
   it("leaves out a contact with a review linked or waiting, and a review that arrives after the request", () =>

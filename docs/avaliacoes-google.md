@@ -243,11 +243,15 @@ HMAC (do nome inteiro e do primeiro com o último).
 
 - Nome inteiro igual ao de um contato só: liga sozinha. Na avaliação aberta,
   **Não é** desfaz.
-- Nome igual ao de dois ou mais contatos: **nunca liga sozinha**. O cartão
+- Nome igual ao de dois ou mais contatos (um título como "Dra." não conta), ou
+  mais de 300 contatos com o mesmo primeiro nome: **nunca liga sozinha**. O cartão
   mostra cada um (final do telefone, e-mail escondido, se recebeu ou abriu o
   link) e espera **É esta** ou **Nenhuma das duas**.
 - Só o primeiro e o último nome batem, ou não há nome e um único link foi
   aberto nas 48 horas antes: vira sugestão, com **É essa pessoa** e **Não é**.
+
+A mensagem do pedido só aceita um endereço: o `{link}`. Um texto com `http`,
+`www.` ou um domínio (`exemplo.com.br`) não é salvo.
 
 A Visão geral mostra o funil dos pedidos (receberam, abriram e avaliaram)
 depois do primeiro envio.
@@ -295,8 +299,9 @@ escolher).
   `zur_review_matches` e `zur_review_match_candidates` (avaliação ↔ contato),
   `zur_review_requests` (um por pessoa, achada pelo `resourceName` do Google
   quando a cópia dos contatos é refeita), `zur_review_links` (código → pedido),
-  `zur_review_link_hits` (aberturas por rede e minuto, apagadas em 2 minutos)
-  e a mensagem e "Quando pedir" em `zur_review_settings`. Código em
+  as contagens de ligadas e de esperando em `zur_counts` (por gatilho) e a
+  mensagem e "Quando pedir" em `zur_review_settings`. As aberturas por rede e
+  por minuto ficam só na memória do objeto, nunca no banco. Código em
   `reviews/names.ts`, `matches.ts` e `requests.ts`; o portão de `/a/` em
   `gates/review-link.ts` e `index.ts`.
 - Leitura: `orderBy=updateTime desc`, páginas de 50, até 3 páginas por
@@ -385,7 +390,7 @@ tela **Avaliações › Visão geral** mostra. O código está em
 | Resposta | 40 a 600 caracteres |
 | Auditoria | 180 dias |
 | Pedidos de avaliação | um por pessoa e um lembrete; a lista lê a agenda uma vez por dia, com até 12 chamadas ao Google |
-| Link pessoal (`/a/<código>`) | 10 caracteres, 30 dias; 30 aberturas por minuto por rede (429) |
+| Link pessoal (`/a/<código>`) | 10 caracteres, 30 dias; 30 aberturas por minuto por rede e 300 no total (429), contadas na memória |
 | Visão geral (`GET /api/reviews/metrics`) | 30 dias, 6 ou 12 meses, 2 anos por semestre ou 5 anos por ano; até 5.000 avaliações por período, as mais novas |
 
 Medido no teste de orçamento (`apps/agent/test/free-tier-budget.test.ts`),

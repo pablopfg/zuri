@@ -2,7 +2,7 @@ import { REVIEW_REQUEST_LIMITS, type ReviewMatch, type ReviewMatchCandidate, typ
 import type { Database } from "../db/database.ts";
 import type { GoogleContacts } from "../google/contacts.ts";
 import { AppError } from "../http/errors.ts";
-import { nameKey, shortKey } from "./names.ts";
+import { NAME_TITLES, nameKey, shortKey } from "./names.ts";
 
 /**
  * Which contact left a review (PR S20; docs/planos/sinal-refinado-funcionalidades.md 8.1 and 8.1b).
@@ -41,24 +41,30 @@ export class ReviewMatches {
     return this.deps.clock?.() ?? Date.now();
   }
 
-  /** The contacts whose name, as the prints are made, is this key. */
-  private named(key: string): string[] {
+  /**
+   * The contacts of this name (as the prints are made, a title in the contacts left out too: "Dra.
+   * Ana Souza" is "ana souza") and those of the same first and last name, whatever comes between.
+   * Read by the first name's ranges, at most `candidatesRead` each: `more` says some were left out,
+   * and then nothing links by itself (one of them could share the name).
+   */
+  private people(key: string): { whole: string[]; ends: string[]; more: boolean } {
     const first = key.split(" ")[0] ?? "";
-    return this.deps
-      .contacts()
-      .startingWith(first)
-      .filter((contact) => nameKey(contact.name) === key)
-      .map((contact) => contact.id);
-  }
-
-  /** The contacts of this first and last name, whatever comes between. */
-  private sameEnds(short: string): string[] {
-    const first = short.split(" ")[0] ?? "";
-    return this.deps
-      .contacts()
-      .startingWith(first)
-      .filter((contact) => shortKey(nameKey(contact.name)) === short)
-      .map((contact) => contact.id);
+    const short = shortKey(key);
+    const contacts = this.deps.contacts();
+    const whole = new Set<string>();
+    const ends = new Set<string>();
+    let more = false;
+    for (const title of ["", ...NAME_TITLES]) {
+      // The first name alone, with its note or with more words ("!" sorts right after the space): never "Anabela" for "Ana".
+      const read = contacts.inNameRange(`${title}${first}`, `${title}${first}!`, REVIEW_REQUEST_LIMITS.candidatesRead);
+      more ||= read.more;
+      for (const contact of read.items) {
+        const name = nameKey(contact.name);
+        if (name === key) whole.add(contact.id);
+        else if (short && shortKey(name) === short) ends.add(contact.id);
+      }
+    }
+    return { whole: [...whole], ends: [...ends], more };
   }
 
   private linked(contactId: string): boolean {
@@ -74,13 +80,11 @@ export class ReviewMatches {
     if (!this.deps.contacts().enabled()) return;
     const key = anonymous ? "" : nameKey(rawName);
     if (key) {
-      const whole = this.named(key);
-      const short = shortKey(key);
-      const ends = short ? this.sameEnds(short).filter((id) => !whole.includes(id)) : [];
+      const { whole, ends, more } = this.people(key);
       let kind: ReviewMatchKind | null = null;
-      if (whole.length === 1 && ends.length === 0 && !this.linked(whole[0] as string)) kind = "auto";
+      if (whole.length === 1 && ends.length === 0 && !more && !this.linked(whole[0] as string)) kind = "auto";
       else if (whole.length >= 2) kind = "twins";
-      // One contact of the whole name with another of the same ends, or one already linked to its own review (one review each).
+      // One contact of the whole name with another of the same ends, one already linked to its own review (one review each), or more contacts of the first name than were read.
       else if (whole.length === 1 || ends.length > 0) kind = "guess";
       if (kind) {
         this.write(reviewId, kind, kind === "auto" ? (whole[0] as string) : null, kind === "auto" ? [] : kind === "twins" ? whole : [...whole, ...ends]);
@@ -201,11 +205,11 @@ export class ReviewMatches {
 
   /** The cards' numbers of Avaliações › Pedidos: reviews read, linked, waiting for the owner and without a contact. */
   counts(): { read: number; linked: number; pending: number; none: number } {
-    const read = this.db.one<{ n: number }>(`SELECT n FROM zur_counts WHERE kind = 'reviews'`)?.n ?? 0;
-    const rows = this.db.all<{ kind: string; n: number }>(`SELECT kind, count(*) AS n FROM zur_review_matches GROUP BY kind`);
-    const of = (...kinds: string[]) => rows.filter((row) => kinds.includes(row.kind)).reduce((sum, row) => sum + row.n, 0);
-    const linked = of("auto", "confirmed");
-    const pending = of("twins", "guess");
+    const rows = this.db.all<{ kind: string; n: number }>(`SELECT kind, n FROM zur_counts WHERE kind IN ('reviews', 'review_matches_linked', 'review_matches_pending')`);
+    const of = (kind: string) => Math.max(0, rows.find((row) => row.kind === kind)?.n ?? 0);
+    const read = of("reviews");
+    const linked = of("review_matches_linked");
+    const pending = of("review_matches_pending");
     return { read, linked, pending, none: Math.max(0, read - linked - pending) };
   }
 

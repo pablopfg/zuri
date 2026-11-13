@@ -434,7 +434,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     try {
       if (await this.store.reviewRequests.tick()) await automations.rearm();
     } catch (error) {
-      log("error", "google_alarm_failed", { error });
+      log("error", "review_requests_failed", { error });
     }
     // The flows (step 22a): waiting runs go on, then the ones due; the alarm is set again inside.
     try {

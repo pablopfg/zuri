@@ -17,7 +17,7 @@ import { type Config, readConfig, secretProblems } from "./config.ts";
 import type { WorkerEnv } from "./env.ts";
 import { type AccessConfig, verifyAccessToken } from "./gates/access.ts";
 import { withBodyRead } from "./gates/body.ts";
-import { withApiHeaders, withWebHeaders } from "./gates/headers.ts";
+import { WEB_HEADERS, withApiHeaders, withWebHeaders } from "./gates/headers.ts";
 import { isTelegramWebhookSecret, TELEGRAM_SECRET_HEADER, TELEGRAM_WEBHOOK_PATH } from "./gates/telegram.ts";
 import {
   CHATWOOT_DELIVERY_HEADER,
@@ -261,6 +261,10 @@ function linkAnswer(status: number, location?: string): Response {
     "x-robots-tag": "noindex, nofollow",
     "x-content-type-options": "nosniff",
     "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+    // The patient's first visit to the domain can be this one: it learns HTTPS here too (S20-3).
+    "strict-transport-security": WEB_HEADERS["strict-transport-security"],
+    "x-frame-options": "DENY",
+    "cross-origin-resource-policy": "same-origin",
   });
   if (location) headers.set("location", location);
   else headers.set("content-type", "text/plain; charset=utf-8");
