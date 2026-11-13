@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, isPaidModel, isPasswordHash, isUsableSetupCode, type CrmAutomationPause as AutomationPause, type Locale, type MessageKey, type OutboxStopReason, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
+import { type ChosenFallback, type ChosenModel, DEFAULT_CHAT_MODEL, DEFAULT_LOCALE, isPaidModel, MODEL_CATALOG_LIMITS, NO_FALLBACK_MODEL, isPasswordHash, isUsableSetupCode, type CrmAutomationPause as AutomationPause, type Locale, type MessageKey, type OutboxStopReason, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
 import { Agent } from "agents";
 import { chooseChain, CircuitBreaker, MeteredAI, type PaidKeys, ProviderChain, paidKey, UsageMeter } from "../ai/index.ts";
 import type { AIProvider } from "../ai/provider.ts";
@@ -62,6 +62,8 @@ import { localToday } from "../google/events.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
 import { ReviewMatches } from "../reviews/matches.ts";
 import { ReviewRequests } from "../reviews/requests.ts";
+import { ModelCatalogService } from "../ai/catalog.ts";
+import { developmentCatalog } from "../ai/dev-catalog.ts";
 import { type ReviewNotice, ReviewService } from "../reviews/service.ts";
 import { developmentOwnerNetwork } from "../chatwoot/dev-chatwoot-owner.ts";
 import { ChatwootOwner } from "../chatwoot/owner-service.ts";
@@ -162,6 +164,8 @@ interface Store {
   backupAuto: AutomaticBackup;
   /** The owner's conversation with Zuri in the Chatwoot (docs/planos/zuri-no-chatwoot.md). */
   chatwootOwner: ChatwootOwner;
+  /** The catalog of Workers AI models, checked once a day (PR S21). */
+  modelCatalog: ModelCatalogService;
 }
 
 /**
@@ -199,6 +203,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
   testTranscriber: Transcriber | null = null;
   /** Tests only: a stand-in embedding model (step 17). */
   testEmbedder: Embedder | null = null;
+  /** Tests only: a stand-in for the AI binding's catalog of models (PR S21). */
+  testCatalog: ((page: number) => Promise<unknown>) | null = null;
   /** How often a running chat stream writes a ping (SSE_PING_MS); the tests shorten it. */
   streamPingMs = SSE_PING_MS;
   /** The real-time channel (nova UI, PR 3): WebSockets held while the object hibernates. */
@@ -228,6 +234,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     aiHours: () => this.store.usage.hours(),
     aiMonths: () => this.store.usage.months(),
     paidConfigured: (provider) => this.paidConfigured(provider),
+    modelCatalog: () => this.store.modelCatalog,
     retryPaidProvider: (provider) => this.breaker().reset(provider),
     versions: () => readAreaVersions(this.store.db, this.store.usage.version),
     passwordSecretSet: () => this.passwordSecretSet(),
@@ -472,6 +479,12 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     } catch (error) {
       log("error", "crm_alarm_failed", { error });
     }
+    // The catalog of models (PR S21): once a day, and on the day a model in use leaves.
+    try {
+      if (await this.store.modelCatalog.tick()) await automations.rearm();
+    } catch (error) {
+      log("error", "model_catalog_failed", { error });
+    }
     // The automatic backup (step 23b): the day's copy, then the 30-day warning; last, with what room is left.
     try {
       if (await this.store.backupAuto.tick()) await automations.rearm();
@@ -556,9 +569,25 @@ export class ZuriAgent extends Agent<WorkerEnv> {
   usageReport(): UsageReport {
     const breaker = this.breaker();
     const providers = PAID_PROVIDER_IDS.map((id) => ({ id, configured: this.paidConfigured(id), state: breaker.state(id) }));
-    const model = this.store.settings.field("aiModel");
+    const model = this.chosenModel("aiModel");
     const provider = this.development() ? "mock" : isPaidModel(model) ? paidProviderOf(model) : "workers-ai";
     return this.store.usage.report(this.aiLimits(), provider, model, providers);
+  }
+
+  /**
+   * The model a setting names, as the AI uses it: a paid one as stored, one of
+   * the fixed list while it is in the catalog and its leaving day hasn't come,
+   * one from the catalog only while it is on the owner's list (PR S21). Anything
+   * else (a model an older version allowed, one dropped from the list, a
+   * restored backup) is the default chat model, or no fallback at all: never a
+   * fallback the owner didn't choose.
+   */
+  private chosenModel(field: "aiModel"): ChosenModel;
+  private chosenModel(field: "aiFallbackModel"): ChosenFallback;
+  private chosenModel(field: "aiModel" | "aiFallbackModel"): ChosenModel | ChosenFallback {
+    const stored = this.store.settings.field(field);
+    if (this.store.modelCatalog.usable(stored)) return stored;
+    return field === "aiModel" ? DEFAULT_CHAT_MODEL : NO_FALLBACK_MODEL;
   }
 
   /** The paid companies' keys (Worker secrets, step 21): they never leave this object. */
@@ -583,8 +612,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       : chooseChain({
           development: this.development(),
           binding: this.env.AI,
-          model: this.store.settings.field("aiModel"),
-          fallback: this.store.settings.field("aiFallbackModel"),
+          model: this.chosenModel("aiModel"),
+          fallback: this.chosenModel("aiFallbackModel"),
           locale: () => this.locale(),
           breaker,
           keys: this.paidKeys(),
@@ -845,7 +874,15 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
-          const due = [tries, watch, indexing, tools, channels, people, recordDue, reviewsDue, requestsDue, flowsDue, crmAutomationsDue, outboxDue, crmDue, backupDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
+          // The catalog of models (PR S21), made further down.
+          const catalogDue = (() => {
+            try {
+              return modelCatalog.nextDue();
+            } catch {
+              return null;
+            }
+          })();
+          const due = [tries, watch, indexing, tools, channels, people, recordDue, reviewsDue, requestsDue, flowsDue, crmAutomationsDue, outboxDue, crmDue, backupDue, catalogDue].filter((at): at is string => Boolean(at)).sort()[0] ?? watch;
           // Work already past due is only left there when its step failed on the last
           // alarm (a full disk, say): wait a minute before trying again, never at once,
           // so a step that keeps failing can't spin the alarm through the day's quota.
@@ -1195,7 +1232,25 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         },
         telegram: { chat: () => telegram.ownerChat(), client: (options) => telegram.client(options) },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner };
+      // The catalog of models (PR S21): Cloudflare's list through the AI binding; local development reads a fixed one.
+      const binding = env.AI;
+      const modelCatalog = new ModelCatalogService({
+        state,
+        source: () =>
+          this.testCatalog ??
+          (this.development()
+            ? async () => developmentCatalog()
+            : binding
+              ? (page) => binding.models({ task: "Text Generation", hide_experimental: true, per_page: MODEL_CATALOG_LIMITS.perPage, page })
+              : null),
+        rearm: () => automations.rearm(),
+        settings,
+        locale: () => this.locale(),
+        notify: ({ kind, ...params }) => {
+          alerts.raise({ kind, category: "system", priority: "normal", link: "/configuracoes/modelos", source: null, params });
+        },
+      });
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog };
     }
     return this.#store;
   }

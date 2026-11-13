@@ -244,7 +244,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S17 | mesclada (#327) |
 | S18 | mesclada (#332) |
 | S19 | mesclada (#334) |
-| S20 | em revisão |
+| S20 | mesclada (#339) |
+| S21 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -471,6 +472,18 @@ Diferenças da S20 (pedido de avaliação e link pessoal) para o plano e o prot�
 - **Link do Google só nos caminhos de avaliação**: `search.google.com` só em `/local/…` e `www.google.com` só em `/maps/…`, para não aceitar os redirecionadores do próprio Google.
 - **Os pedidos ficam fora do backup**, como a cópia das avaliações e dos contatos de onde saem (o plano dizia que entravam). Desconectar o Google apaga os pedidos e os códigos já enviados; desligar só os contatos ou só as avaliações mantém os pedidos, e cada um acha a pessoa de novo pelo `resourceName` do Google quando a cópia é refeita.
 - **Os ícones** de Pedidos são os que nenhuma outra tela sob demanda usa. O JS inicial ficou em 140.999 B (teto 141.000).
+
+Diferenças da S21 (catálogo de modelos) para o plano e o protótipo, para as PRs seguintes não as desfazerem (plano em [s21-catalogo-de-modelos.md](s21-catalogo-de-modelos.md)):
+
+- **Sem migration.** O estado do catálogo é uma linha de `zur_settings` (`model_catalog`), como a busca por significado e o backup automático. Assim a S21 não disputa número com a Agenda (#340). A linha não entra no backup: depois de restaurar, um modelo do catálogo escolhido antes vale como o padrão até o dono pôr o modelo na lista de novo.
+- **A conferência é às 06:00 UTC** (03:00 em Brasília, a hora do protótipo), nunca na instalação. "Conferir agora" vale uma vez por minuto.
+- **"Novo" só para o que serve à conversa:** aceita ferramentas, tem 16.000 tokens de contexto ou mais e tem preço publicado (sem preço o teto do dia não tem como ser conferido, P7). Um modelo sem isso não aparece no cartão.
+- **Quando o padrão é o que sai**, o modelo de conversa vai para o primeiro da lista fixa que continua no catálogo; o reserva vai para "Nenhum" (a regra "nunca um modelo que você não escolheu" vale mais para o reserva, que é opcional). O Qwen3 30B A3B, reserva padrão, tem saída marcada para 20/11/2026 no catálogo real: nesse dia o reserva de quem não mexeu vira "Nenhum", com aviso.
+- **O nome de um modelo novo é a última parte do id** (`gemma-3-12b-it`), nunca um texto do catálogo; os da lista fixa mantêm o nome da tabela.
+- **Os preços do catálogo valem para a lista inteira**, inclusive a fixa: a estimativa e a janela de contexto leem primeiro o último preço do catálogo e, sem ele, a tabela datada.
+- **O cartão fica dentro do formulário de "Modelo"**, entre os limites avançados e "Salvar limites", como no protótipo; seus botões não salvam o formulário. A frase "Vai sair" muda quando o modelo está em uso. "Preço" diz "mudou de preço" depois do nome, para o nome vir sempre primeiro nas duas línguas.
+- **Os avisos novos** (`ai.modelLeaving`, `ai.modelSwitched`, `ai.fallbackOff`) levam a `/configuracoes/modelos`, que entrou na lista de links dos avisos.
+- **Revisões (Cloudflare, QA e segurança):** a conferência lê até 3 páginas de 100; um modelo só sai depois de faltar em duas respostas completas seguidas; modelos que raciocinam não aparecem como "Novo"; preço que muda até 1% não é mudança; modelo da lista fixa com preço abaixo de um décimo da tabela fica com o da tabela; falhas seguidas esperam 1, 2, 4… horas; o estado é relido depois da chamada (um "Pôr na lista" no meio não se perde) e dois "Conferir agora" juntos fazem uma chamada; um modelo guardado que não vale mais usa o padrão e, no reserva, "Nenhum".
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 
