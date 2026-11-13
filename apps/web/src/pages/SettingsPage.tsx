@@ -1,7 +1,8 @@
 import { type MessageKey, ptBRSettings, ptBRSettingsTabs } from "@zuri/shared";
-import { Activity, Bell, Bot, CalendarDays, ChevronDown, Database, Gauge, BadgeInfo, Plug, ShieldCheck, Sparkle, User } from "lucide-react";
+import { Activity, Bell, Bot, CalendarDays, ChevronDown, Database, Gauge, BadgeInfo, MessagesSquare, Plug, ShieldCheck, Sparkle, User } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { Navigate, NavLink, useNavigate, useParams } from "react-router";
-import { cn, PageHeader } from "../components/ui.tsx";
+import { cn, Loading, PageHeader } from "../components/ui.tsx";
 import { addMessages, useI18n } from "../lib/i18n.tsx";
 import { AboutTab } from "./settings/AboutTab.tsx";
 import { AccountTab } from "./settings/AccountTab.tsx";
@@ -14,6 +15,9 @@ import { DiagnosticsTab } from "./settings/DiagnosticsTab.tsx";
 import { IntegrationsTab } from "./settings/IntegrationsTab.tsx";
 import { SecurityTab } from "./settings/SecurityTab.tsx";
 
+// Settings › Chatwoot is its own download, with its texts: the settings screen stays as it was (rule P11).
+const ChatwootTab = lazy(() => import("./settings/ChatwootTab.tsx").then((module) => ({ default: module.ChatwootTab })));
+
 // The screen's texts come with its download (rule P11).
 addMessages(ptBRSettings);
 addMessages(ptBRSettingsTabs);
@@ -23,14 +27,14 @@ addMessages(ptBRSettingsTabs);
  * prototype's order and five groups (PR S16). The names of before stay the same: links to them
  * are kept in notices, Telegram messages and device notifications.
  */
-export const SETTINGS_TABS = ["conta", "seguranca", "assistente", "ia", "modelos", "agenda", "avisos", "integracoes", "dados", "diagnostico", "sobre"] as const;
+export const SETTINGS_TABS = ["conta", "seguranca", "assistente", "ia", "modelos", "agenda", "avisos", "integracoes", "chatwoot", "dados", "diagnostico", "sobre"] as const;
 type Tab = (typeof SETTINGS_TABS)[number];
 
 const GROUPS = [
   { label: "web.settings.group.you", tabs: ["conta", "seguranca"] },
   { label: "web.settings.group.zuri", tabs: ["assistente", "ia", "modelos"] },
   { label: "web.settings.group.day", tabs: ["agenda", "avisos"] },
-  { label: "web.settings.group.connections", tabs: ["integracoes"] },
+  { label: "web.settings.group.connections", tabs: ["integracoes", "chatwoot"] },
   { label: "web.settings.group.system", tabs: ["dados", "diagnostico", "sobre"] },
 ] as const satisfies readonly { label: MessageKey; tabs: readonly Tab[] }[];
 
@@ -44,6 +48,7 @@ const SECTION = {
   agenda: { label: "web.settings.tab.agenda", hint: "web.settings.hint.agenda", icon: CalendarDays },
   avisos: { label: "web.settings.tab.notifications", hint: "web.settings.hint.notifications", icon: Bell },
   integracoes: { label: "web.settings.tab.integrations", hint: "web.settings.hint.integrations", icon: Plug },
+  chatwoot: { label: "web.settings.tab.chatwoot", hint: "web.settings.hint.chatwoot", icon: MessagesSquare },
   dados: { label: "web.settings.tab.data", hint: "web.settings.hint.data", icon: Database },
   diagnostico: { label: "web.settings.tab.diagnostics", hint: "web.settings.hint.diagnostics", icon: Activity },
   sobre: { label: "web.settings.tab.about", hint: "web.settings.hint.about", icon: BadgeInfo },
@@ -134,6 +139,11 @@ export function SettingsPage() {
           {tab === "agenda" && <AgendaTab />}
           {tab === "avisos" && <AlertsTab />}
           {tab === "integracoes" && <IntegrationsTab />}
+          {tab === "chatwoot" && (
+            <Suspense fallback={<Loading />}>
+              <ChatwootTab />
+            </Suspense>
+          )}
           {tab === "dados" && <DataTab />}
           {tab === "diagnostico" && <DiagnosticsTab />}
           {tab === "sobre" && <AboutTab />}

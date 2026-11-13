@@ -45,7 +45,7 @@ export interface ToolContext {
   /** The conversation that owns proposals made in this turn. */
   conversationId: string | null;
   /** Where the owner's turn came from: memories saved in a Telegram turn are marked so (step 14). */
-  source?: "app" | "telegram";
+  source?: "app" | "telegram" | "chatwoot";
   /**
    * Ids of existing items a write tool changed in this turn. A destructive
    * proposal on one of them is refused: renaming an item and then proposing to

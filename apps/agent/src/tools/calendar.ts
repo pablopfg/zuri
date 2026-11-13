@@ -30,7 +30,7 @@ function service(ctx: ToolContext): GoogleCalendar {
 }
 
 function meter(ctx: ToolContext): GoogleMeter {
-  ctx.calendarMeter ??= new GoogleMeter(ctx.mode === "scheduled" ? TURN_BUDGET.scheduled : ctx.source === "telegram" ? TURN_BUDGET.telegram : TURN_BUDGET.app);
+  ctx.calendarMeter ??= new GoogleMeter(ctx.mode === "scheduled" ? TURN_BUDGET.scheduled : ctx.source === "telegram" || ctx.source === "chatwoot" ? TURN_BUDGET.telegram : TURN_BUDGET.app);
   return ctx.calendarMeter;
 }
 

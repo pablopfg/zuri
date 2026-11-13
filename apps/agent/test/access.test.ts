@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { type AccessConfig, accessConfig, clearAccessKeys, verifyAccessToken } from "../src/gates/access.ts";
+import { chatwootHookToken } from "../src/gates/chatwoot-owner.ts";
 import { telegramWebhookSecret } from "../src/gates/telegram.ts";
 import { call, errorBody, fakeAssets, ORIGIN, testEnv } from "./helpers.ts";
 
@@ -173,5 +174,26 @@ describe("gate 3: Cloudflare Access in the Worker", () => {
     }
     const get = await call(webhook, { headers: { "x-telegram-bot-api-secret-token": secret } }, env);
     expect(get.status).toBe(403);
+  });
+
+  it("lets only the owner's Chatwoot return through, with the token of its path and no cookie", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(fakeCerts());
+    const linkId = "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b";
+    const token = await chatwootHookToken(testEnv.SESSION_SECRET, linkId);
+    const hook = `${ORIGIN}/api/chatwoot/owner/hook/${linkId}/${token}`;
+    const ts = String(Math.floor(Date.now() / 1000));
+    const notice = { "content-type": "application/json", "x-chatwoot-signature": `sha256=${"0".repeat(64)}`, "x-chatwoot-timestamp": ts };
+    const post = (headers: Record<string, string>, url = hook) => call(url, { method: "POST", headers, body: "{}" }, ACCESS_ENV);
+    // Past Access: no link is kept, so the object answers an empty 200.
+    expect((await post(notice)).status).toBe(200);
+    for (const [label, res] of [
+      ["wrong token", await post(notice, `${ORIGIN}/api/chatwoot/owner/hook/${linkId}/${"0".repeat(64)}`)],
+      ["with cookie", await post({ ...notice, cookie: "a=b" })],
+      ["with authorization", await post({ ...notice, authorization: "Bearer x" })],
+    ] as const) {
+      expect(res.status, label).toBe(403);
+      expect((await errorBody(res)).code, label).toBe("FORBIDDEN");
+    }
+    expect((await call(hook, { headers: notice }, ACCESS_ENV)).status).toBe(403);
   });
 });

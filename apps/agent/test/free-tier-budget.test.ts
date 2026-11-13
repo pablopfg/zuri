@@ -14,6 +14,7 @@ import { CSRF, call, HUMAN_TOKEN, ORIGIN, TEST_EMAIL, TEST_PASSWORD, testEnv, si
 import { mcpFixture } from "./mcp-fixture.ts";
 import { withChatWorld } from "./chat-world.ts";
 import { addConnection, withFlowWorld } from "./flow-world.ts";
+import { withOwnerWorld } from "./chatwoot-owner-world.ts";
 import { add, draftAnswer, LOCATION, PATTERN, SECOND_OK, turnOn, withReviewsWorld } from "./reviews-world.ts";
 import { EXAMPLE_AUTOMATION } from "../src/crm/automations/example.ts";
 import type { AutomationModule } from "../src/crm/automations/manifest.ts";
@@ -1280,6 +1281,43 @@ describe("the CRM (step 22b)", () => {
       });
     }
   });
+});
+
+describe("the owner's Chatwoot (docs/planos/zuri-no-chatwoot.md)", () => {
+  it("the page, a forged notice, a stranger and an answered message read and write a handful of rows", () =>
+    withOwnerWorld(async (world) => {
+      await world.link();
+      const measure = async (fn: () => unknown) => {
+        const before = { ...world.db.usage };
+        await fn();
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      // Measured 13/11/2026: page 3 read; forged 3 read; stranger 8 read, 2 written; answered 18 read, 10 written
+      // (the first answer also opens the app conversation "Chatwoot").
+      // The page: the link (one setting) and the vault's row.
+      const page = await measure(() => world.owner.status());
+      expect(page.written).toBe(0);
+      expect(page.read).toBeLessThanOrEqual(4);
+      // A forged notice: the link and the row read, nothing written (a flood costs no writes).
+      const link = JSON.parse(world.state.get<string>("chatwoot_owner") as string) as { id: string };
+      const forged = await measure(() => world.owner.receive(link.id, "{}", { signature: `sha256=${"0".repeat(64)}`, timestamp: String(Math.floor(Date.now() / 1000)), delivery: "x" }));
+      expect(forged.written).toBe(0);
+      expect(forged.read).toBeLessThanOrEqual(4);
+      // Someone else writes: the delivery seen, the stranger counted (the link's setting, a few times).
+      const stranger = await measure(async () => {
+        await world.chatwoot.agentSays(world.conversationId(), "oi", { id: 9, name: "Rafael Souza" });
+        await world.settle();
+      });
+      expect(stranger.written).toBeLessThanOrEqual(3);
+      expect(stranger.read).toBeLessThanOrEqual(10);
+      // The owner writes and the (fake) agent answers: the link's setting a few times and the app conversation's row.
+      const answered = await measure(async () => {
+        await world.chatwoot.agentSays(world.conversationId(), "oi");
+        await world.settle();
+      });
+      expect(answered.written).toBeLessThanOrEqual(12);
+      expect(answered.read).toBeLessThanOrEqual(20);
+    }));
 });
 
 describe("CRM's automations (PR S18)", () => {
