@@ -30,11 +30,14 @@ log com os mesmos campos, então dá para ir de um ao outro.
    IP, token ou senha, entra no log: isso é conferido por teste.
 
 A versão publicada aparece no Diagnóstico ("Versão da Zuri" e o "Código da
-publicação"). Quando uma falha aparece pela primeira vez numa versão nova, a
+publicação"). Depois de uma atualização, **Configurações › Sobre a Zuri** confere
+se a tela e o servidor estão na mesma versão e, se não estiverem, pede para
+recarregar a página. Quando uma falha aparece pela primeira vez numa versão nova, a
 central de avisos avisa: ela começou no último deploy. Veja [Voltar para a versão anterior](#voltar-para-a-versão-anterior).
 
 Para relatar o problema, use **Relatar no GitHub** no próprio Diagnóstico: ele
-abre o formulário já preenchido, e você confere antes de enviar.
+mostra antes o que vai no formulário, abre o formulário já preenchido, e você
+escolhe onde aconteceu e o impacto e confere antes de enviar.
 
 ## O deploy falhou
 
@@ -98,7 +101,7 @@ segredos e rode o deploy até o Access estar pronto.
 - Com o Access ligado, falta a exceção `api/telegram/webhook`
   ([instalação, parte 5](instalacao-cloudflare.md#cloudflare-access-na-frente-recomendado)).
 - Depois de trocar o token, o domínio ou o `SESSION_SECRET`, toque em
-  **Reconectar** em **Configurações > Avisos**.
+  **Reconectar** em **Configurações > Integrações**.
 - No Workers Logs, filtre `event` igual a `telegram_update_failed` ou
   `telegram_send_failed`.
 

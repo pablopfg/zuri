@@ -90,6 +90,8 @@ test("a credential keeps its key on the server; a flow calls it, filters and tel
   await parts.getByRole("link", { name: /^Credenciais/ }).click();
   await expect(page).toHaveURL(/\/crm\/credenciais$/);
   await page.getByRole("button", { name: "Nova credencial" }).click();
+  // The kind first (PR S17): a service the flows call.
+  await page.getByRole("dialog", { name: "Nova credencial" }).getByRole("button", { name: "Outro serviço (https)" }).click();
   const dialog = page.getByRole("dialog", { name: "Nova credencial" });
   await dialog.getByLabel("Nome").fill(connection);
   await dialog.getByLabel("Endereço do serviço").fill("https://api.exemplo.com.br");
@@ -103,7 +105,9 @@ test("a credential keeps its key on the server; a flow calls it, filters and tel
   await dialog.getByRole("button", { name: "Criar credencial" }).click();
   await expect(toast(page, "Credencial criada")).toBeVisible();
   const item = page.getByRole("list", { name: "Credenciais" }).getByRole("listitem").filter({ hasText: connection });
-  await expect(item.getByText("Com chave")).toBeVisible();
+  // Only the key's last 4 characters come back, and the kind's tag.
+  await expect(item.getByText(`Chave terminada em ${secret.slice(-4)}`)).toBeVisible();
+  await expect(item.getByText("Serviço", { exact: true })).toBeVisible();
   await expect(item.getByText("https://api.exemplo.com.br · GET · /v1/clientes")).toBeVisible();
   await expect(item.getByText("Nenhum fluxo usa ainda")).toBeVisible();
   expect(await tooSmallControls(page), "every control of Credenciais is a 44 px target").toEqual([]);
@@ -113,7 +117,14 @@ test("a credential keeps its key on the server; a flow calls it, filters and tel
   await rowAction(item, page, "Editar");
   const editing = page.getByRole("dialog", { name: "Editar credencial" });
   await expect(editing.getByLabel("Chave", { exact: true })).toHaveValue("");
+  // A new address asks for the key again before saving (PR S17).
+  await editing.getByLabel("Endereço do serviço").fill("https://outra.exemplo.com.br");
+  await expect(editing.getByText("O endereço mudou: digite a chave de novo.")).toBeVisible();
+  await expect(editing.getByRole("button", { name: "Salvar" })).toBeDisabled();
   await editing.getByRole("button", { name: "Cancelar" }).click();
+  // Testar reads the first path once.
+  await rowAction(item, page, "Testar");
+  await expect(toast(page, /^Respondeu em \d+ ms\.$/)).toBeVisible();
   expect(await page.content()).not.toContain(secret);
   await parts.getByRole("link", { name: /^Fluxos/ }).click();
   await expect(page).toHaveURL(/\/crm\/fluxos$/);
@@ -171,6 +182,73 @@ test("a credential keeps its key on the server; a flow calls it, filters and tel
   await page.getByRole("dialog", { name: `Apagar a credencial ${connection}?` }).getByRole("button", { name: "Apagar" }).click();
   await expect(toast(page, "Credencial apagada")).toBeVisible();
   await expect(item).toHaveCount(0);
+});
+
+test("a Chatwoot credential: account, key, waits checked on the screen, the inbox picked from what the key sees @mobile", async ({ page }) => {
+  const id = tag();
+  const name = `Chatwoot ${id}`;
+  const key = `chave-do-agente-${id}`;
+  await page.goto("/crm/credenciais");
+  await signIn(page);
+  await expect(page.getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Nova credencial" }).click();
+  const chooser = page.getByRole("dialog", { name: "Nova credencial" });
+  await expectAccessible(page, "tipo de credencial");
+  await chooser.getByRole("button", { name: "Chatwoot" }).click();
+  const dialog = page.getByRole("dialog", { name: "Nova credencial do Chatwoot" });
+  await dialog.getByLabel("Nome").fill(name);
+  await dialog.getByLabel("Endereço do Chatwoot").fill("https://chat.exemplo.com.br");
+  await expect(dialog.getByLabel("Número da conta")).toHaveValue("1");
+  // No key yet: nothing to save.
+  await expect(dialog.getByRole("button", { name: "Criar credencial" })).toBeDisabled();
+  await dialog.getByLabel("Chave de acesso").fill(key);
+  // One person's wait must stay below the bulk "from": 30 isn't, 29 is.
+  const one = dialog.getByRole("group", { name: "Espera para mensagem a uma pessoa (segundos)" });
+  await one.getByLabel("Até").fill("30");
+  await one.getByLabel("De").fill("1");
+  await expect(dialog.getByRole("alert").filter({ hasText: "menor que o primeiro dos envios em massa" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Criar credencial" })).toBeDisabled();
+  await one.getByLabel("Até").fill("29");
+  await expect(dialog.getByRole("alert")).toHaveCount(0);
+  await expectAccessible(page, "nova credencial do chatwoot");
+  await dialog.getByRole("button", { name: "Criar credencial" }).click();
+  await expect(toast(page, "Credencial criada")).toBeVisible();
+
+  const item = page.getByRole("list", { name: "Credenciais" }).getByRole("listitem").filter({ hasText: name });
+  await expect(item.getByText("Chatwoot", { exact: true })).toBeVisible();
+  await expect(item.getByText(`Chave terminada em ${key.slice(-4)}`)).toBeVisible();
+  await expect(item.getByText(/Conta 1 · caixa ainda não escolhida · envios em massa: 30 a 60 s · uma pessoa: 1 a 29 s/)).toBeVisible();
+
+  // The inbox comes from what the saved key sees.
+  await rowAction(item, page, "Editar");
+  const editing = page.getByRole("dialog", { name: "Editar credencial" });
+  await expect(editing.getByLabel("Chave de acesso")).toHaveValue("");
+  await editing.getByRole("button", { name: "Buscar caixas" }).click();
+  await expect(editing.getByText("2 caixas encontradas")).toBeVisible();
+  await editing.getByLabel("Caixa de entrada").selectOption({ label: "WhatsApp do consultório" });
+  await expect(editing.getByRole("option", { name: "E-mail (não é de API)" })).toHaveCount(1);
+  await expectAccessible(page, "editar credencial do chatwoot");
+  await editing.getByRole("button", { name: "Salvar" }).click();
+  await expect(toast(page, "Credencial salva")).toBeVisible();
+  await expect(item.getByText(/caixa “WhatsApp do consultório”/)).toBeVisible();
+  expect(await page.content()).not.toContain(key);
+  expect(await tooSmallControls(page), "every control of Credenciais is a 44 px target").toEqual([]);
+  await rowAction(item, page, "Testar");
+  await expect(toast(page, "Conectou. A chave enxerga 2 caixas de entrada.")).toBeVisible();
+
+  // A flow never offers it.
+  await page.goto("/crm/fluxos");
+  await page.getByRole("button", { name: "Novo fluxo" }).click();
+  const form = page.getByRole("dialog", { name: "Novo fluxo" });
+  await form.getByLabel("Tipo do passo").selectOption("request");
+  await form.getByRole("button", { name: "Adicionar passo" }).click();
+  await expect(form.getByLabel("Credencial").getByRole("option", { name })).toHaveCount(0);
+  await form.getByRole("button", { name: "Cancelar" }).click();
+
+  await page.goto("/crm/credenciais");
+  await rowAction(item, page, "Apagar");
+  await page.getByRole("dialog", { name: `Apagar a credencial ${name}?` }).getByRole("button", { name: "Apagar" }).click();
+  await expect(toast(page, "Credencial apagada")).toBeVisible();
 });
 
 test("the flows have their own address in the CRM, and the palette opens a new flow from anywhere", async ({ page }) => {

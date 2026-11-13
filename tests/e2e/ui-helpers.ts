@@ -92,21 +92,26 @@ export function tooSmallControls(page: Page) {
   );
 }
 
-/** True where settings shows tabs (a computer); a phone gets a list of sections, each on its own screen. */
+/** True where settings shows its submenu of sections (a computer); a phone gets the "Seção" list that opens (PR S16). */
 export function settingsHasTabs(page: Page) {
   return (page.viewportSize()?.width ?? 0) >= 1024;
 }
 
-/** The page title inside a settings section: "Configurações" beside the tabs on a computer, the section's own name on a phone (stage 26c). */
+/**
+ * A settings section on screen: the page title is "Configurações" on every size since PR S16, so the
+ * section is the one the content area is named after (an unknown name falls back to Conta and fails here).
+ */
 export function settingsTitle(page: Page, section: string) {
-  return page.getByRole("heading", { level: 1, name: settingsHasTabs(page) ? "Configurações" : section, exact: true });
+  return page
+    .getByRole("main")
+    .filter({ has: page.getByRole("heading", { level: 1, name: "Configurações", exact: true }) })
+    .locator(`section[aria-label="${section}"]`);
 }
 
-/** Opens a settings section the way the owner does: the tab on a computer, the list on a phone. */
+/** Opens a settings section the way the owner does: the submenu on a computer, the "Seção" list on a phone. */
 export async function openSettingsSection(page: Page, name: string) {
-  const sections = page.getByRole("navigation", { name: "Seções das configurações" });
-  if (!settingsHasTabs(page) && (await sections.count()) === 0) await page.getByRole("link", { name: "Todas as configurações" }).click();
-  await sections.getByRole("link", { name, exact: true }).click();
+  if (settingsHasTabs(page)) await page.getByRole("navigation", { name: "Seções das configurações" }).getByRole("link", { name, exact: true }).click();
+  else await page.getByRole("combobox", { name: "Seção", exact: true }).selectOption({ label: name });
 }
 
 /** True where the shell is the phone's: a top bar and a bottom bar instead of the side menu (Tailwind's md). */

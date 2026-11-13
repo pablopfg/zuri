@@ -37,7 +37,9 @@ export function ConnectionDialog({ editing, credentialsAvailable, onClose }: { e
     .map((line) => line.trim())
     .filter(Boolean);
   const needsSecret = auth !== "none";
-  const ready = name.trim() !== "" && origin.trim() !== "" && methods.length > 0 && pathList.length > 0 && (auth !== "header" || headerName.trim() !== "");
+  // A kept key never follows the credential to another address or kind of key: the server asks for it again (PR S17).
+  const keyAgain = current !== null && current.hasCredential && needsSecret && !dropCredential && credential.trim() === "" && (origin.trim() !== current.origin || auth !== current.auth);
+  const ready = name.trim() !== "" && origin.trim() !== "" && methods.length > 0 && pathList.length > 0 && (auth !== "header" || headerName.trim() !== "") && !keyAgain;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -121,6 +123,7 @@ export function ConnectionDialog({ editing, credentialsAvailable, onClose }: { e
             spellCheck={false}
             value={credential}
             maxLength={FLOW_LIMITS.credential}
+            error={keyAgain ? t("web.flows.connection.keyAgain") : null}
             onChange={(e) => setCredential(e.target.value)}
           />
         )}

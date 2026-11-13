@@ -180,3 +180,38 @@ test("the access log shows an error with a retry, and loads more pages", async (
   await expect(page.getByRole("button", { name: "Carregar mais" })).toHaveCount(0);
   await expect(page.getByRole("table").locator("tbody tr")).toHaveCount(51);
 });
+
+test("Segurança's access activity shows the address on its own line, apart from the device and the place", async ({ page }) => {
+  await page.route("**/api/auth/activity", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        events: [
+          {
+            id: 1,
+            at: "2026-10-31T12:00:00.000Z",
+            lastAt: "2026-10-31T12:00:00.000Z",
+            kind: "login_success",
+            reason: "",
+            ip: "198.51.100.7",
+            country: "BR",
+            region: "",
+            city: "",
+            asn: null,
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36",
+            knownDevice: true,
+            count: 1,
+          },
+        ],
+        nextCursor: null,
+      }),
+    }),
+  );
+  await page.goto("/configuracoes/seguranca");
+  await signIn(page);
+  const item = page.getByRole("region", { name: "Atividade de acesso" }).getByRole("listitem");
+  await expect(item).toHaveCount(1);
+  await expect(item.getByText("IP 198.51.100.7", { exact: true })).toBeVisible();
+  // The line of the device and the place no longer carries the address.
+  await expect(item.locator("p").filter({ hasText: "Chrome" })).not.toContainText("198.51.100.7");
+});

@@ -113,27 +113,38 @@ test("the notification center opens from the bell and closes with Escape", async
   await expect(bell).toBeFocused();
 });
 
-test("settings has the nine sections, each with its address and content: tabs on a computer, a list on a phone @mobile", async ({ page }) => {
+test("settings has the eleven sections in five groups, each with its address and content: a submenu on a computer, a list on a phone @mobile", async ({ page }) => {
   await page.goto("/configuracoes");
   await signIn(page);
+  // Conta opens at once on every size (PR S16), under one title.
+  await expect(page).toHaveURL(/\/configuracoes\/conta$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Configurações", exact: true })).toBeVisible();
+  await expect(page.getByRole("main")).toContainText("Cada ajuste no seu lugar: você, a Zuri, o seu dia, as conexões e o sistema.");
   const sections = page.getByRole("navigation", { name: "Seções das configurações" });
-  // The version in use, quietly: in the account panel on a computer, also at the foot of the list on a phone.
-  const version = `Versão ${APP_VERSION}`;
+  const select = page.getByRole("combobox", { name: "Seção", exact: true });
   if (settingsHasTabs(page)) {
-    await expect(page).toHaveURL(/\/configuracoes\/conta$/);
-    await expect((await openAccountMenu(page)).getByRole("listitem").filter({ hasText: "Versão" })).toHaveText(`Versão${APP_VERSION}`);
+    await expect(select).toBeHidden();
+    await expect(sections.getByRole("heading")).toHaveText(["Você", "A Zuri", "Seu dia", "Conexões", "Sistema"]);
+    await expect(sections.getByRole("link")).toHaveText(
+      ["Conta", "Segurança", "Assistente", "Uso da IA", "Modelos e limites", "Agenda", "Avisos", "Integrações", "Dados", "Diagnóstico", "Sobre a Zuri"].map((name) => new RegExp(`^${name}`)),
+    );
+    await expect(sections.getByRole("link", { name: "Segurança", exact: true })).toHaveAccessibleDescription("Senha, duas etapas, passkeys e sessões");
+    // The version in the account panel leads to Sobre a Zuri.
+    const version = (await openAccountMenu(page)).getByRole("link", { name: `Versão ${APP_VERSION}` });
+    await expect(version).toHaveAttribute("href", "/configuracoes/sobre");
     await page.keyboard.press("Escape");
   } else {
-    await expect(page.getByRole("main").getByText(version, { exact: true })).toBeVisible();
-    // The list is the page: each section with what it holds, no section open yet.
-    await expect(page).toHaveURL(/\/configuracoes$/);
-    await expect(sections.getByRole("link")).toHaveCount(9);
-        await expect(page.getByRole("link", { name: "Todas as configurações" })).toHaveCount(0);
-    await expect(sections.getByRole("link", { name: "Segurança", exact: true })).toHaveAccessibleDescription("Verificação em duas etapas, passkeys e saída automática");
-    await expectAccessible(page, "configuracoes (lista)");
+    // No strip that scrolls sideways: one list that opens, grouped like the submenu.
+    await expect(sections).toBeHidden();
+    await expect(select).toHaveValue("conta");
+    await expect(select.locator("optgroup")).toHaveCount(5);
+    await expect(select.locator("option")).toHaveCount(11);
+    await expect(select.locator("optgroup").first()).toHaveAttribute("label", "Você");
   }
+  await expectAccessible(page, "configuracoes");
   for (const [name, path, text] of [
     ["Segurança", "seguranca", "Atividade de acesso"],
+    ["Assistente", "assistente", "Revisão de conflitos"],
     ["Uso da IA", "ia", "Uso de hoje"],
     ["Modelos e limites", "modelos", "Modelo de conversa"],
     ["Agenda", "agenda", "Horário de atendimento"],
@@ -141,11 +152,13 @@ test("settings has the nine sections, each with its address and content: tabs on
     ["Integrações", "integracoes", "Serviços externos (MCP)"],
     ["Dados", "dados", "Exportar e importar"],
     ["Diagnóstico", "diagnostico", "Nada do que você escreveu entra neste registro."],
+    ["Sobre a Zuri", "sobre", "Código e licença"],
     ["Conta", "conta", "Nome, idioma e fuso horário"],
   ] as const) {
     await openSettingsSection(page, name);
     await expect(page).toHaveURL(new RegExp(`/configuracoes/${path}$`));
     await expect(page.getByRole("main")).toContainText(text);
+    await expect(page).toHaveTitle(`${name} · Configurações · Zuri`);
     // The AI tab became two (stage 26c): each one holds only its own part.
     if (path === "ia") {
       await expect(page.getByRole("heading", { name: "Uso de hoje" })).toBeVisible();
@@ -155,25 +168,27 @@ test("settings has the nine sections, each with its address and content: tabs on
       await expect(page.getByRole("combobox", { name: "Modelo de conversa" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Uso de hoje" })).toHaveCount(0);
     }
-    if (settingsHasTabs(page)) {
-      await expect(sections.getByRole("link", { name, exact: true })).toHaveAttribute("aria-current", "page");
-    } else {
-      // One section per screen: its name is the page's title, under the way back, no tabs.
-      await expect(page.getByRole("heading", { level: 1, name, exact: true })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Todas as configurações" })).toBeVisible();
-      await expect(sections).toHaveCount(0);
+    // The password moved from Conta to the top of Segurança; the Telegram bot from Avisos to Integrações.
+    if (path === "seguranca") await expect(page.getByRole("region", { name: "Segurança", exact: true }).getByRole("heading", { level: 2 }).first()).toHaveText("Senha");
+    if (path === "conta") await expect(page.getByLabel("Senha atual")).toHaveCount(0);
+    if (path === "integracoes") await expect(page.getByRole("region", { name: "Telegram", exact: true })).toBeVisible();
+    if (path === "avisos") {
+      await expect(page.getByRole("region", { name: "Telegram", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("switch", { name: "Deixar a Zuri avisar por conta própria" })).toHaveCount(0);
+      await expect(page.getByText("Conectar o Telegram fica em Integrações.")).toBeVisible();
     }
+    if (settingsHasTabs(page)) await expect(sections.getByRole("link", { name, exact: true })).toHaveAttribute("aria-current", "page");
+    else await expect(select).toHaveValue(path);
   }
   // These texts arrive with the screen, not with the first download: they must still show, never as raw keys.
-  // On a phone the section's own line shows instead of the settings' one.
-  await expect(page.getByRole("main")).toContainText(settingsHasTabs(page) ? "Sua conta, a segurança e o que a Zuri pode usar." : "Nome, idioma, fuso, tema e senha");
   await openSettingsSection(page, "Segurança");
   await expect(page.getByRole("main")).toContainText("Saída automática");
   await expect(page.getByRole("main")).not.toContainText("web.");
-  if (!settingsHasTabs(page)) {
-    await page.getByRole("link", { name: "Todas as configurações" }).click();
-    await expect(page).toHaveURL(/\/configuracoes$/);
-  }
+  // A name that isn't a section goes back to the first one; the names of before still open theirs.
+  await page.goto("/configuracoes/nao-existe");
+  await expect(page).toHaveURL(/\/configuracoes\/conta$/);
+  await page.goto("/configuracoes/ia");
+  await expect(page.getByRole("heading", { name: "Uso de hoje" })).toBeVisible();
 });
 
 test("changing the language to English changes the interface and the API's errors", async ({ page }) => {

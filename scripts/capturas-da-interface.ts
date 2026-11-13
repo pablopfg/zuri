@@ -46,6 +46,8 @@
  *   (computer only: a phone's day has no grid to click; run it with `--relogio` before noon).
  * - `configuracoes-agenda-feriados=/configuracoes/agenda`: Configurações › Agenda scrolled to the national
  *   holidays and the days off.
+ * - `credencial-chatwoot=/crm/credenciais`: the sample Chatwoot credential open in "Editar", with its
+ *   inboxes found (needs --exemplos).
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
  *   page's day and its line of now come out the same at any hour the script runs).
  * - `--exemplos`: fills the empty database with the sample data of
@@ -257,6 +259,14 @@ for (const [device, options] of [
         const view = screen.name === "agenda-dia" ? "Dia" : "Mês";
         await page.getByRole("group", { name: "Ver por" }).getByText(view, { exact: true }).click();
         await page.getByRole("radio", { name: view }).and(page.locator(":checked")).waitFor({ state: "attached" });
+      }
+      if (screen.name === "credencial-chatwoot") {
+        const row = page.getByRole("list", { name: "Credenciais" }).getByRole("listitem").filter({ hasText: "Chatwoot do consultório" });
+        await row.getByRole("button", { name: /^Mais opções/ }).click();
+        await page.getByRole("menuitem", { name: "Editar" }).click();
+        const dialog = page.getByRole("dialog", { name: "Editar credencial" });
+        await dialog.getByRole("button", { name: "Buscar caixas" }).click();
+        await dialog.getByText("2 caixas encontradas").waitFor();
       }
       if (screen.name === "agenda-evento") {
         await page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ }).click();

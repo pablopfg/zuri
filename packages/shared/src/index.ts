@@ -163,6 +163,7 @@ export * from "./telegram.ts";
 export * from "./email.ts";
 export * from "./semantic.ts";
 export { APP_VERSION } from "./version.ts";
+export { RELEASES_URL, REPOSITORY_URL, type ServerVersion, serverVersionSchema } from "./about.ts";
 export * from "./mcp.ts";
 export * from "./mcp-schemas.ts";
 export * from "./google.ts";

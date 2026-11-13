@@ -239,7 +239,9 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S12 | mesclada (#310) |
 | S13 | mesclada (#313) |
 | S14 | mesclada (#317) |
-| S15 | em revisão |
+| S15 | mesclada (#320) |
+| S16 | mesclada (#325) |
+| S17 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -406,6 +408,30 @@ Diferenças da S15 (CRM) para o protótipo e para as tabelas, para as PRs seguin
 - **A frase do alto de Fluxos diz "Fluxos que você monta passo a passo"**, não "Automações que você monta": pelo glossário, "Automação" fica para as do CRM, que chegam na parte vizinha (S18).
 - **"Criar fluxo" pela paleta, a partir de Credenciais, leva a Fluxos** antes de abrir o editor: o fluxo salvo aparece na lista que está na tela.
 - **Textos:** "conexão" virou "credencial" e o valor secreto virou "chave", na tela, nos erros do servidor, nos avisos de segurança e na atividade de acesso. Os nomes internos (`FlowConnection`, `/api/flows/connections`) não mudaram.
+
+Diferenças da S16 (Configurações) para o protótipo e para as tabelas, para as PRs seguintes não as desfazerem:
+
+- **Onze seções em cinco grupos, com os endereços de antes.** As duas novas são `/configuracoes/assistente` e `/configuracoes/sobre`. Os nomes curtos do protótipo (`seg`, `integ`, `assist`, `diag`) não viraram endereço: os de hoje estão em avisos guardados e mensagens do Telegram. Nome desconhecido volta para Conta.
+- **No celular, a lista "Seção" substitui a página com a lista de seções** (e o "Todas as configurações"), como no protótipo. `/configuracoes` abre Conta nos dois tamanhos, e o título da página é sempre "Configurações"; o nome da seção vai para a aba do navegador.
+- **Assistente sem o cartão "Conversas"**: a conversa nova todo dia é da S05b, que ainda não tem servidor. A linha do menu diz "Iniciativa, prioridades e memória" no lugar de "Conversas, iniciativa e prioridades". O cartão entra com a S05b.
+- **Segurança sem "Acesso pela API"** (saiu por decisão do Pablo): a linha do menu diz "Senha, duas etapas, passkeys e sessões".
+- **Sobre a Zuri sem "Instalada em"**: a data da instalação não é guardada. As novidades são as da seção mais nova do `CHANGELOG.md` no build, até seis, a primeira frase de cada item; o título diz de qual versão são ("Novidades da versão 0.50.0"), porque o build da tag ainda lê a seção anterior. Quando a tela e o servidor estão em versões diferentes, o texto pede para recarregar, sem dizer que a Zuri avisa sozinha (ela não avisa).
+- **Relatar no GitHub com prévia, sem "Impacto" preenchido**: no `erro.yml`, "Onde aconteceu" e "Impacto" são listas, que o GitHub não preenche pelo link. A prévia mostra os seis campos de texto (inclusive Passos e Esperado, novos) e pede para escolher as duas listas lá.
+- **Uso da IA: Dia, Semana, Mês e Ano no lugar de 7, 30 e 90 dias.** Dia não tem a tabela de modelos (o cartão "Uso de hoje" já mostra os de hoje); o Ano mostra a dos últimos 90 dias e diz isso no título. A linha tracejada do teto diário só aparece nas visões por dia. No dia em que o horário de verão começa ou termina num fuso que o tem, duas colunas podem ter a mesma hora (de noites diferentes); São Paulo não tem.
+- **Ícones:** Modelos e limites usa `Sparkle` (uma estrela) e Sobre a Zuri `BadgeInfo`, no lugar de `Sparkles` e `Info` do protótipo. Os dois do protótipo já são usados por outra tela sob demanda e criariam um pedaço comum a mais, que custa bytes ao JS inicial (armadilhas.md). A marca em Sobre a Zuri é o `favicon.svg`, pelo mesmo motivo.
+- **"Agendas da conta" continua só em Integrações › Google**, sem repetir o controle em Configurações › Agenda.
+- **Avisos ganhou uma linha "Conectar o Telegram fica em Integrações." com o botão "Abrir Integrações"** ao lado (um link dentro da frase não chega a 44 px), e a revisão de conflitos ganhou "Abrir a Memória", pelo mesmo motivo.
+- **IP na atividade de acesso** em linha própria, embaixo do aparelho e do lugar. A ordem do protótipo ("Entrada · Chrome no Windows · Curitiba") ficou: o tipo do acesso é o título da linha.
+
+Diferenças da S17 (servidor das credenciais) para o plano e o protótipo, para as PRs seguintes não as desfazerem (plano em [s17-credenciais.md](s17-credenciais.md)):
+
+- **Rotas de antes, sem `/api/connections`.** O tipo entra no corpo de `POST /api/flows/connections` (`kind`, `http` quando falta) e o `PATCH` usa o schema do tipo da linha (o tipo nunca muda). A única rota nova é `POST /api/flows/connections/:id/test`. Não há rota `/secret`: a troca de chave continua no `PATCH`, que já pede a senha.
+- **Registro de tipos** em `apps/agent/src/flows/connections.ts` (`CONNECTION_KINDS`, um `info` de cifra por tipo: `flows-v1`, `chatwoot-v1`) e `FLOW_CONNECTION_KINDS` em `packages/shared/src/flows.ts`. A coluna `kind` não tem `CHECK`: tipo novo (fzap, SMTP da E6, o Chatwoot do dono) é uma linha no registro, schemas e cliente próprio, sem migration de troca. `meta` guarda as configurações do tipo em JSON; o teste é por tipo, e um tipo sem chave de acesso pode ter o seu.
+- **Esperas do Chatwoot em segundos**, como decidido em 12/11: envios em massa de 5 a 600 (30 a 60) e uma pessoa de 1 a 30 (2 a 5), a de uma pessoa sempre menor que o "De" dos envios em massa. Mudar só as esperas não pede a senha. "Próximo envio livre em" fica para a S19, com a fila.
+- **A caixa de entrada é escolhida depois de criar**, em Editar › Buscar caixas, com a chave salva: o servidor confere que a chave enxerga a caixa antes de guardar. Um teste antes de salvar mandaria uma chave digitada a um endereço digitado sem senha.
+- **Mudar o endereço, a conta ou o tipo de chave pede a chave de novo** (`VALIDATION_FAILED`, campo `credential`), em vez de apagar a guardada. O aviso de Credenciais diz isso.
+- **"Testar" fica no menu "Mais opções"**, não como botão na linha. Até 5 por minuto por credencial (buscar caixas também conta, porque usa a mesma chamada). O webhook do Chatwoot, o segredo da assinatura e "Enviar teste para mim" ficam com quem os usa (S19/S20).
+- **Fim da chave** só para chaves de 12 caracteres ou mais; abaixo disso a linha diz "Com chave".
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 

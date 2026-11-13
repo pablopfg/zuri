@@ -125,6 +125,66 @@ export type FlowPriority = (typeof FLOW_PRIORITIES)[number];
 export const FLOW_AUTH_TYPES = ["none", "bearer", "header"] as const;
 export type FlowAuthType = (typeof FLOW_AUTH_TYPES)[number];
 
+/**
+ * The kinds of credential (PR S17). `http` is what flows call; every other kind
+ * is used only by the fixed client written for it in the code (a flow never
+ * calls one). A kind added later goes at the end of the list and gets its
+ * entry in the server's registry (CONNECTION_KINDS in apps/agent/src/flows/connections.ts).
+ */
+export const FLOW_CONNECTION_KINDS = ["http", "chatwoot"] as const;
+export type FlowConnectionKind = (typeof FLOW_CONNECTION_KINDS)[number];
+
+/** A wait drawn between two messages, in seconds. */
+export interface FlowGap {
+  min: number;
+  max: number;
+}
+
+/**
+ * The Chatwoot credential's numbers (decisions of 10/11 and 12/11/2026): the
+ * wait between messages of a bulk send and the shorter one before a message to
+ * one person, both in seconds and drawn at each send.
+ */
+export const CHATWOOT_LIMITS = {
+  accountMax: 999_999_999,
+  bulkGap: { floor: 5, ceiling: 600, min: 30, max: 60 },
+  oneGap: { floor: 1, ceiling: 30, min: 2, max: 5 },
+  /** Inboxes a test shows, and the length of a name kept. */
+  inboxes: 50,
+  inboxName: 80,
+} as const;
+
+/** The waits a Chatwoot credential may keep: each within its range, "from" up to "to", one person's below the bulk "from". */
+export function chatwootGapsProblem(bulk: FlowGap, one: FlowGap): "bulkGap" | "oneGap" | null {
+  const inRange = (gap: FlowGap, floor: number, ceiling: number) =>
+    Number.isInteger(gap.min) && Number.isInteger(gap.max) && gap.min >= floor && gap.max <= ceiling && gap.min <= gap.max;
+  if (!inRange(bulk, CHATWOOT_LIMITS.bulkGap.floor, CHATWOOT_LIMITS.bulkGap.ceiling)) return "bulkGap";
+  if (!inRange(one, CHATWOOT_LIMITS.oneGap.floor, CHATWOOT_LIMITS.oneGap.ceiling) || one.max >= bulk.min) return "oneGap";
+  return null;
+}
+
+/** What a Chatwoot credential keeps besides its address and key. */
+export interface ChatwootSettings {
+  accountId: number;
+  /** The inbox the messages go through, picked after a test; null until then. */
+  inboxId: number | null;
+  inboxName: string | null;
+  bulkGap: FlowGap;
+  oneGap: FlowGap;
+}
+
+/** An inbox the Chatwoot key sees. `api`: the kind of inbox the messages go through (WhatsApp by API). */
+export interface ChatwootInbox {
+  id: number;
+  name: string;
+  api: boolean;
+}
+
+/** What "Testar" found: only reads. A refusal says why, in the flows' words. */
+export type FlowConnectionTest =
+  | { ok: true; ms: number; status: number | null; inboxes: ChatwootInbox[] | null }
+  | { ok: false; problem: FlowRunProblem; status: number | null };
+
 export type FlowNode =
   | {
       type: "request";
@@ -209,6 +269,10 @@ export const FLOW_RUN_PROBLEMS = [
   "events_limit",
   // The fixed check of an AI step's answer (guardrails, 04/11/2026).
   "ai_check",
+  // PR S17: a flow never calls a credential of another kind (a Chatwoot one, say).
+  "kind_not_allowed",
+  // PR S17: a fixed client (the Chatwoot's) got an answer it doesn't know.
+  "bad_answer",
 ] as const;
 export type FlowRunProblem = (typeof FLOW_RUN_PROBLEMS)[number];
 
@@ -244,6 +308,7 @@ export interface Flow {
 
 export interface FlowConnection {
   id: string;
+  kind: FlowConnectionKind;
   name: string;
   origin: string;
   methods: FlowMethod[];
@@ -252,6 +317,10 @@ export interface FlowConnection {
   headerName: string | null;
   /** Whether a credential is kept; the credential itself never leaves the server. */
   hasCredential: boolean;
+  /** Its last 4 characters, only for a key of 12 or more; null otherwise. */
+  keyEnd: string | null;
+  /** The Chatwoot's own settings; null for the other kinds. */
+  chatwoot: ChatwootSettings | null;
   /** Names of the flows that call it. */
   usedBy: string[];
   createdAt: string;

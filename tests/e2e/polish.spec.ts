@@ -91,7 +91,7 @@ test("a revealed password goes out hidden and stays hidden after a refusal", asy
 });
 
 test("the password form in settings has a reveal on each field", async ({ page }) => {
-  await page.goto("/configuracoes/conta");
+  await page.goto("/configuracoes/seguranca");
   await signIn(page);
   const form = page.getByRole("region", { name: "Senha" });
   await expect(form.getByRole("button", { name: "Mostrar senha" })).toHaveCount(3);
