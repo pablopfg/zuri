@@ -1,13 +1,14 @@
-import { APP_VERSION, ptBRSettings, ptBRSettingsTabs } from "@zuri/shared";
-import { Activity, Bell, Bot, CalendarDays, ChevronLeft, ChevronRight, Database, Plug, Shield, SlidersHorizontal, User } from "lucide-react";
-import { useSyncExternalStore } from "react";
-import { Link, NavLink, Navigate, useParams } from "react-router";
+import { type MessageKey, ptBRSettings, ptBRSettingsTabs } from "@zuri/shared";
+import { Activity, Bell, Bot, CalendarDays, ChevronDown, Database, Gauge, BadgeInfo, Plug, ShieldCheck, Sparkle, User } from "lucide-react";
+import { Navigate, NavLink, useNavigate, useParams } from "react-router";
 import { cn, PageHeader } from "../components/ui.tsx";
 import { addMessages, useI18n } from "../lib/i18n.tsx";
+import { AboutTab } from "./settings/AboutTab.tsx";
 import { AccountTab } from "./settings/AccountTab.tsx";
 import { AgendaTab } from "./settings/AgendaTab.tsx";
 import { AiModelsTab, AiUsageTab } from "./settings/AiTab.tsx";
 import { AlertsTab } from "./settings/AlertsTab.tsx";
+import { AssistantTab } from "./settings/AssistantTab.tsx";
 import { DataTab } from "./settings/DataTab.tsx";
 import { DiagnosticsTab } from "./settings/DiagnosticsTab.tsx";
 import { IntegrationsTab } from "./settings/IntegrationsTab.tsx";
@@ -17,131 +18,125 @@ import { SecurityTab } from "./settings/SecurityTab.tsx";
 addMessages(ptBRSettings);
 addMessages(ptBRSettingsTabs);
 
-/** The tabs, by the path segment the address shows ("/configuracoes/seguranca"). */
-export const SETTINGS_TABS = ["conta", "seguranca", "ia", "modelos", "agenda", "avisos", "integracoes", "dados", "diagnostico"] as const;
+/**
+ * The sections, by the path segment the address shows ("/configuracoes/seguranca"), in the
+ * prototype's order and five groups (PR S16). The names of before stay the same: links to them
+ * are kept in notices, Telegram messages and device notifications.
+ */
+export const SETTINGS_TABS = ["conta", "seguranca", "assistente", "ia", "modelos", "agenda", "avisos", "integracoes", "dados", "diagnostico", "sobre"] as const;
 type Tab = (typeof SETTINGS_TABS)[number];
 
-/** Where the submenu fits beside the sidebar (Tailwind's lg): below it, settings is a list of sections, each on its own screen. */
-const WIDE = "(min-width: 64rem)";
+const GROUPS = [
+  { label: "web.settings.group.you", tabs: ["conta", "seguranca"] },
+  { label: "web.settings.group.zuri", tabs: ["assistente", "ia", "modelos"] },
+  { label: "web.settings.group.day", tabs: ["agenda", "avisos"] },
+  { label: "web.settings.group.connections", tabs: ["integracoes"] },
+  { label: "web.settings.group.system", tabs: ["dados", "diagnostico", "sobre"] },
+] as const satisfies readonly { label: MessageKey; tabs: readonly Tab[] }[];
 
-function subscribeWide(change: () => void) {
-  const media = window.matchMedia(WIDE);
-  media.addEventListener("change", change);
-  return () => media.removeEventListener("change", change);
-}
+// One literal key per value, so the i18n lint sees each one.
+const SECTION = {
+  conta: { label: "web.settings.tab.account", hint: "web.settings.hint.account", icon: User },
+  seguranca: { label: "web.settings.tab.security", hint: "web.settings.hint.security", icon: ShieldCheck },
+  assistente: { label: "web.settings.tab.assistant", hint: "web.settings.hint.assistant", icon: Bot },
+  ia: { label: "web.settings.tab.ai", hint: "web.settings.hint.ai", icon: Gauge },
+  modelos: { label: "web.settings.tab.models", hint: "web.settings.hint.models", icon: Sparkle },
+  agenda: { label: "web.settings.tab.agenda", hint: "web.settings.hint.agenda", icon: CalendarDays },
+  avisos: { label: "web.settings.tab.notifications", hint: "web.settings.hint.notifications", icon: Bell },
+  integracoes: { label: "web.settings.tab.integrations", hint: "web.settings.hint.integrations", icon: Plug },
+  dados: { label: "web.settings.tab.data", hint: "web.settings.hint.data", icon: Database },
+  diagnostico: { label: "web.settings.tab.diagnostics", hint: "web.settings.hint.diagnostics", icon: Activity },
+  sobre: { label: "web.settings.tab.about", hint: "web.settings.hint.about", icon: BadgeInfo },
+} as const satisfies Record<Tab, { label: MessageKey; hint: MessageKey; icon: unknown }>;
 
-function useWide() {
-  return useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches);
-}
+const isTab = (value: string): value is Tab => (SETTINGS_TABS as readonly string[]).includes(value);
 
 export function SettingsPage() {
   const { t } = useI18n();
   const { tab } = useParams();
-  const wide = useWide();
+  const navigate = useNavigate();
 
-  const tabs = [
-    { id: "conta", label: t("web.settings.tab.account"), hint: t("web.settings.hint.account"), icon: User },
-    { id: "seguranca", label: t("web.settings.tab.security"), hint: t("web.settings.hint.security"), icon: Shield },
-    { id: "ia", label: t("web.settings.tab.ai"), hint: t("web.settings.hint.ai"), icon: Bot },
-    { id: "modelos", label: t("web.settings.tab.models"), hint: t("web.settings.hint.models"), icon: SlidersHorizontal },
-    { id: "agenda", label: t("web.settings.tab.agenda"), hint: t("web.settings.hint.agenda"), icon: CalendarDays },
-    { id: "avisos", label: t("web.settings.tab.notifications"), hint: t("web.settings.hint.notifications"), icon: Bell },
-    { id: "integracoes", label: t("web.settings.tab.integrations"), hint: t("web.settings.hint.integrations"), icon: Plug },
-    { id: "dados", label: t("web.settings.tab.data"), hint: t("web.settings.hint.data"), icon: Database },
-    { id: "diagnostico", label: t("web.settings.tab.diagnostics"), hint: t("web.settings.hint.diagnostics"), icon: Activity },
-  ] as const satisfies readonly { id: Tab; label: string; hint: string; icon: unknown }[];
+  // The first section opens at once, on a computer and on a phone (the prototype's "Seção: Conta").
+  if (tab === undefined || !isTab(tab)) return <Navigate to="/configuracoes/conta" replace />;
+  const current = SECTION[tab];
+  const label = t(current.label);
 
-  if (tab !== undefined && !(SETTINGS_TABS as readonly string[]).includes(tab)) return <Navigate to="/configuracoes" replace />;
-  if (!tab) {
-    // On a computer the first tab opens at once; on a phone the sections are the page.
-    if (wide) return <Navigate to="/configuracoes/conta" replace />;
-    return (
-      <>
-        <PageHeader title={t("web.settings.title")} description={t("web.settings.description")} />
-        <nav aria-label={t("web.settings.sections")}>
-          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
-            {tabs.map(({ id, label, hint, icon: Icon }) => (
-              <li key={id}>
-                <Link
-                  to={`/configuracoes/${id}`}
-                  aria-describedby={`secao-${id}`}
-                  className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-raised"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-text" aria-hidden>
-                    <Icon className="h-[1.125rem] w-[1.125rem]" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium">{label}</span>
-                    {/* The hint describes the link; its name stays the section's. */}
-                    <span id={`secao-${id}`} className="block text-sm text-fg-muted" aria-hidden>
-                      {hint}
-                    </span>
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        {/* The version in use, also at the foot of the account menu. */}
-        <p className="text-center text-xs text-fg-muted">{t("web.nav.version", { version: APP_VERSION })}</p>
-      </>
-    );
-  }
-  const current = tab as Tab;
-  const active = tabs.find((item) => item.id === current);
-
-  const documentTitle = active ? `${active.label} · ${t("web.settings.title")}` : undefined;
   return (
     <>
-      {wide ? (
-        <PageHeader title={t("web.settings.title")} description={t("web.settings.description")} documentTitle={documentTitle} />
-      ) : (
-        // On a phone the tab is the page: one title, its own, under the way back (stage 26c).
-        <div className="space-y-1">
-          <Link to="/configuracoes" className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-medium text-accent-text hover:bg-raised">
-            <ChevronLeft className="h-4 w-4" aria-hidden />
-            {t("web.settings.back")}
-          </Link>
-          <PageHeader title={active?.label ?? t("web.settings.title")} description={active?.hint} documentTitle={documentTitle} />
-        </div>
-      )}
-      {/* On a computer the sections are a submenu beside the page, each with its line of what it holds. */}
-      <div className={wide ? "grid grid-cols-[14rem_minmax(0,1fr)] items-start gap-8" : undefined}>
-        {wide && (
-          <nav aria-label={t("web.settings.sections")} className="sticky top-20">
-            <ul className="space-y-1">
-              {tabs.map(({ id, label, hint, icon: Icon }) => (
-                <li key={id}>
-                  <NavLink
-                    to={`/configuracoes/${id}`}
-                    className={({ isActive }) =>
-                      cn("flex min-h-11 items-start gap-3 rounded-xl px-3 py-2.5", isActive ? "bg-accent-soft text-accent-text" : "text-fg hover:bg-raised")
-                    }
-                  >
-                    <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold">{label}</span>
-                      <span className="block text-xs leading-5 text-fg-muted" aria-hidden>
-                        {hint}
-                      </span>
-                    </span>
-                  </NavLink>
-                </li>
+      <PageHeader title={t("web.settings.title")} description={t("web.settings.description")} documentTitle={`${label} · ${t("web.settings.title")}`} />
+      {/* On a phone the sections are one list that opens, grouped like the side menu: no strip that scrolls sideways. */}
+      <label className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-surface px-4 shadow-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent lg:hidden">
+        <span className="text-sm text-fg-muted" aria-hidden>
+          {t("web.settings.section")}
+        </span>
+        {/* Named "Seção" alone: the label around it would add the chosen option to the name. */}
+        <select
+          aria-label={t("web.settings.section")}
+          value={tab}
+          onChange={(event) => navigate(`/configuracoes/${event.target.value}`)}
+          className="min-h-11 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent font-semibold text-fg outline-none"
+        >
+          {GROUPS.map((group) => (
+            <optgroup key={group.label} label={t(group.label)}>
+              {group.tabs.map((id) => (
+                <option key={id} value={id}>
+                  {t(SECTION[id].label)}
+                </option>
               ))}
-            </ul>
-          </nav>
-        )}
-        <section aria-label={active?.label} className="min-w-0 space-y-6">
-          {current === "conta" && <AccountTab />}
-          {current === "seguranca" && <SecurityTab />}
-          {current === "ia" && <AiUsageTab />}
-          {current === "modelos" && <AiModelsTab />}
-          {current === "agenda" && <AgendaTab />}
-          {current === "avisos" && <AlertsTab />}
-          {current === "integracoes" && <IntegrationsTab />}
-          {current === "dados" && <DataTab />}
-          {current === "diagnostico" && <DiagnosticsTab />}
+            </optgroup>
+          ))}
+        </select>
+        <ChevronDown className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
+      </label>
+      {/* On a computer the sections are a submenu beside the page, in five groups, each with its line of what it holds. */}
+      <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-8">
+        <nav aria-label={t("web.settings.sections")} className="sticky top-20 hidden lg:block">
+          {GROUPS.map((group) => (
+            <div key={group.label} className="mb-4 last:mb-0">
+              <h2 className="px-3 pb-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">{t(group.label)}</h2>
+              <ul className="space-y-1">
+                {group.tabs.map((id) => {
+                  const { label: name, hint, icon: Icon } = SECTION[id];
+                  return (
+                    <li key={id}>
+                      <NavLink
+                        to={`/configuracoes/${id}`}
+                        aria-describedby={`secao-${id}`}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex min-h-11 items-start gap-3 rounded-2xl border px-3 py-2.5",
+                            isActive ? "border-border bg-surface text-fg shadow-sm" : "border-transparent text-fg hover:bg-raised",
+                          )
+                        }
+                      >
+                        <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium">{t(name)}</span>
+                          {/* The hint describes the link; its name stays the section's. */}
+                          <span id={`secao-${id}`} className="block text-xs leading-5 text-fg-muted" aria-hidden>
+                            {t(hint)}
+                          </span>
+                        </span>
+                      </NavLink>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+        <section aria-label={label} className="min-w-0 space-y-6">
+          {tab === "conta" && <AccountTab />}
+          {tab === "seguranca" && <SecurityTab />}
+          {tab === "assistente" && <AssistantTab />}
+          {tab === "ia" && <AiUsageTab />}
+          {tab === "modelos" && <AiModelsTab />}
+          {tab === "agenda" && <AgendaTab />}
+          {tab === "avisos" && <AlertsTab />}
+          {tab === "integracoes" && <IntegrationsTab />}
+          {tab === "dados" && <DataTab />}
+          {tab === "diagnostico" && <DiagnosticsTab />}
+          {tab === "sobre" && <AboutTab />}
         </section>
       </div>
     </>

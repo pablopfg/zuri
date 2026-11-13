@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, openPlace, signIn, signOutFromMenu, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, openPlace, settingsTitle, signIn, signOutFromMenu, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
 
 // Tasks, notes, folders ("projects" in the code) and the trash against the real Worker (step 6):
 // create, edit, complete, delete and restore. pt-BR, the owner in São Paulo.
@@ -94,8 +94,8 @@ test("a task: create with a deadline and a folder, edit, complete, delete and re
   // From Tasks the trash opens with only the tasks, the way back and "Ver tudo" (stage 26c).
   await expect(page).toHaveURL(/\/configuracoes\/dados\?tipo=tarefas$/);
   await expect(page.getByText("Só as tarefas apagadas.")).toBeVisible();
-  // The trash leads the page, above the storage cards that load after it.
-  await expect(page.getByRole("main").getByRole("heading", { level: 2 }).first()).toHaveText("Lixeira");
+  // The trash leads the section, above the storage cards that load after it (the side menu's group titles come before it in the page).
+  await expect(settingsTitle(page, "Dados").getByRole("heading", { level: 2 }).first()).toHaveText("Lixeira");
   await expect(page.getByRole("link", { name: "Voltar para Tarefas" })).toHaveAttribute("href", "/tarefas");
   // Emptying takes every kind, so it waits for "Ver tudo".
   await expect(page.getByRole("button", { name: "Esvaziar a lixeira" })).toHaveCount(0);

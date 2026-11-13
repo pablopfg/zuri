@@ -139,7 +139,7 @@ test("memories: save, duplicate, review a conflict, history, restore, update and
   await expect(list.getByText(`Eu dirijo uma bicicleta ${tag}`)).toHaveCount(0);
 });
 
-test("memory: search, empty filter, the conflict review switch and keyboard only", async ({ page }) => {
+test("memory: search, empty filter, no conflict review switch here (C2) and keyboard only", async ({ page }) => {
   await openMemory(page);
   const list = page.getByRole("region", { name: "Suas memórias" });
   await page.getByRole("button", { name: /^Incertas/ }).click();
@@ -155,21 +155,8 @@ test("memory: search, empty filter, the conflict review switch and keyboard only
   await expect(list.getByText("<img src=x onerror=alert(1)> **negrito** <script>x</script>")).toBeVisible();
   await expect(page.locator("main img")).toHaveCount(0);
 
-  // The switch, by keyboard.
-  const toggle = page.getByRole("switch", { name: "Revisão de conflitos" });
-  await expect(toggle).toBeChecked();
-  await toggle.focus();
-  const press = async (expected: boolean) => {
-    const patched = page.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PATCH");
-    await page.keyboard.press("Space");
-    expect(((await (await patched).json()) as { memoryConflictReview: boolean }).memoryConflictReview).toBe(expected);
-    await expect(toggle).toBeChecked({ checked: expected });
-    // Saving keeps the focus on the switch.
-    await expect(toggle).toBeFocused();
-    await expect(toggle).not.toHaveAttribute("aria-busy");
-  };
-  await press(false);
-  await press(true);
+  // The conflict review is no longer here: it lives in Settings > Assistente (C2, PR S16).
+  await expect(page.getByRole("switch", { name: "Revisão de conflitos" })).toHaveCount(0);
 
   // A new memory from the keyboard alone: the header button, the dialog's field, then Tipo, Cancelar and Guardar.
   await page.getByRole("button", { name: "Nova memória" }).focus();
@@ -508,4 +495,30 @@ test("memory map: a point can be dragged, a failure offers a retry, and too many
   await expect(panel(page).getByRole("heading", { name: `Mudança ${tag}` })).toBeVisible();
   await expect(page.getByText("O mapa mostra a memória escolhida e o que se liga a ela.")).toBeVisible();
   await expect(folder).toHaveAttribute("aria-pressed", "true");
+});
+
+test("the conflict review lives in Settings > Assistente, by keyboard, and leads back to Memória (C2) @mobile", async ({ page }) => {
+  await page.goto("/configuracoes/assistente");
+  await signIn(page);
+  const card = page.getByRole("region", { name: "Memória", exact: true });
+  const toggle = card.getByRole("switch", { name: "Revisão de conflitos" });
+  await expect(toggle).toBeChecked();
+  await expect(toggle).toHaveAccessibleDescription(/pergunta antes de trocar/);
+  await toggle.focus();
+  const press = async (expected: boolean) => {
+    const patched = page.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PATCH");
+    await page.keyboard.press("Space");
+    expect(((await (await patched).json()) as { memoryConflictReview: boolean }).memoryConflictReview).toBe(expected);
+    await expect(toggle).toBeChecked({ checked: expected });
+    // Saving keeps the focus on the switch.
+    await expect(toggle).toBeFocused();
+    await expect(toggle).not.toHaveAttribute("aria-busy");
+  };
+  await press(false);
+  await page.reload();
+  await expect(card.getByRole("switch", { name: "Revisão de conflitos" })).not.toBeChecked();
+  await card.getByRole("switch", { name: "Revisão de conflitos" }).focus();
+  await press(true);
+  await card.getByRole("link", { name: "Abrir a Memória" }).click();
+  await expect(page).toHaveURL(/\/memoria$/);
 });

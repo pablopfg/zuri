@@ -57,7 +57,7 @@ test("the account panel has the ways into the settings, the version, the theme a
   const panel = await openAccountMenu(page);
   await expect(panel).toBeVisible();
   await expect(account).toHaveAttribute("aria-expanded", "true");
-  await expect(panel.getByRole("link")).toHaveText(["Conta e perfil", "Segurança", "Avisos", "Configurações"]);
+  await expect(panel.getByRole("link")).toHaveText(["Conta e perfil", "Segurança", "Avisos", "Configurações", `Versão${APP_VERSION}`]);
   // Opening puts the focus on the first choice.
   await expect(panel.getByRole("link", { name: "Conta e perfil" })).toBeFocused();
   await expect(panel.getByRole("listitem").filter({ hasText: "Versão" })).toHaveText(`Versão${APP_VERSION}`);
@@ -568,7 +568,7 @@ test("on a phone the account opens as a sheet from the top bar @mobile", async (
   const account = page.getByRole("banner").getByRole("button", { name: /^Menu da conta:/ });
   const sheet = await openAccountMenu(page);
   await expect(sheet).toBeVisible();
-  await expect(sheet.getByRole("link")).toHaveText(["Conta e perfil", "Segurança", "Avisos", "Configurações"]);
+  await expect(sheet.getByRole("link")).toHaveText(["Conta e perfil", "Segurança", "Avisos", "Configurações", `Versão${APP_VERSION}`]);
   await expect(sheet.getByRole("listitem").filter({ hasText: "Versão" })).toHaveText(`Versão${APP_VERSION}`);
   // A sheet: as wide as the screen, resting on its bottom edge.
   const box = await sheet.boundingBox();
@@ -587,7 +587,7 @@ test("on a phone the top bar leaves while the content scrolls down and returns o
   await page.setViewportSize({ width: 390, height: 844 });
   await openHome(page);
   await page.goto("/configuracoes/seguranca");
-  await expect(page.getByRole("heading", { level: 1, name: "Segurança" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
   const main = page.locator("main");
   await expect.poll(() => main.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(900);
   const banner = page.getByRole("banner");

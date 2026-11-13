@@ -9,6 +9,7 @@ import { Button, buttonClass, Card, cn, Dialog, EmptyState, ErrorNotice, Notice,
 import { api, errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
 import { GoogleCard, isGoogleReturn } from "./GoogleCard.tsx";
+import { TelegramCard } from "./TelegramCard.tsx";
 
 /** The query of the whole tab: the servers with their counts (one request, no polling, rule P11). */
 const MCP_KEY = ["mcp"] as const;
@@ -81,6 +82,8 @@ export function IntegrationsTab() {
   return (
     <div className="space-y-6">
       <GoogleCard />
+      {/* The Telegram bot sits with the other connections since PR S16 (it was in Avisos). */}
+      <TelegramCard />
       <Card
         title={t("web.integrations.title")}
         description={t("web.integrations.description")}

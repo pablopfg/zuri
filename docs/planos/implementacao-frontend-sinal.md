@@ -239,7 +239,8 @@ Podem andar ao mesmo tempo depois da S02: S03 a S08, S10, S14 a S16. Os servidor
 | S12 | mesclada (#310) |
 | S13 | mesclada (#313) |
 | S14 | mesclada (#317) |
-| S15 | em revisão |
+| S15 | mesclada (#320) |
+| S16 | em revisão |
 
 (As linhas seguintes entram quando cada PR abre.)
 
@@ -406,6 +407,20 @@ Diferenças da S15 (CRM) para o protótipo e para as tabelas, para as PRs seguin
 - **A frase do alto de Fluxos diz "Fluxos que você monta passo a passo"**, não "Automações que você monta": pelo glossário, "Automação" fica para as do CRM, que chegam na parte vizinha (S18).
 - **"Criar fluxo" pela paleta, a partir de Credenciais, leva a Fluxos** antes de abrir o editor: o fluxo salvo aparece na lista que está na tela.
 - **Textos:** "conexão" virou "credencial" e o valor secreto virou "chave", na tela, nos erros do servidor, nos avisos de segurança e na atividade de acesso. Os nomes internos (`FlowConnection`, `/api/flows/connections`) não mudaram.
+
+Diferenças da S16 (Configurações) para o protótipo e para as tabelas, para as PRs seguintes não as desfazerem:
+
+- **Onze seções em cinco grupos, com os endereços de antes.** As duas novas são `/configuracoes/assistente` e `/configuracoes/sobre`. Os nomes curtos do protótipo (`seg`, `integ`, `assist`, `diag`) não viraram endereço: os de hoje estão em avisos guardados e mensagens do Telegram. Nome desconhecido volta para Conta.
+- **No celular, a lista "Seção" substitui a página com a lista de seções** (e o "Todas as configurações"), como no protótipo. `/configuracoes` abre Conta nos dois tamanhos, e o título da página é sempre "Configurações"; o nome da seção vai para a aba do navegador.
+- **Assistente sem o cartão "Conversas"**: a conversa nova todo dia é da S05b, que ainda não tem servidor. A linha do menu diz "Iniciativa, prioridades e memória" no lugar de "Conversas, iniciativa e prioridades". O cartão entra com a S05b.
+- **Segurança sem "Acesso pela API"** (saiu por decisão do Pablo): a linha do menu diz "Senha, duas etapas, passkeys e sessões".
+- **Sobre a Zuri sem "Instalada em"**: a data da instalação não é guardada. As novidades são as da seção mais nova do `CHANGELOG.md` no build, até seis, a primeira frase de cada item; o título diz de qual versão são ("Novidades da versão 0.50.0"), porque o build da tag ainda lê a seção anterior. Quando a tela e o servidor estão em versões diferentes, o texto pede para recarregar, sem dizer que a Zuri avisa sozinha (ela não avisa).
+- **Relatar no GitHub com prévia, sem "Impacto" preenchido**: no `erro.yml`, "Onde aconteceu" e "Impacto" são listas, que o GitHub não preenche pelo link. A prévia mostra os seis campos de texto (inclusive Passos e Esperado, novos) e pede para escolher as duas listas lá.
+- **Uso da IA: Dia, Semana, Mês e Ano no lugar de 7, 30 e 90 dias.** Dia não tem a tabela de modelos (o cartão "Uso de hoje" já mostra os de hoje); o Ano mostra a dos últimos 90 dias e diz isso no título. A linha tracejada do teto diário só aparece nas visões por dia. No dia em que o horário de verão começa ou termina num fuso que o tem, duas colunas podem ter a mesma hora (de noites diferentes); São Paulo não tem.
+- **Ícones:** Modelos e limites usa `Sparkle` (uma estrela) e Sobre a Zuri `BadgeInfo`, no lugar de `Sparkles` e `Info` do protótipo. Os dois do protótipo já são usados por outra tela sob demanda e criariam um pedaço comum a mais, que custa bytes ao JS inicial (armadilhas.md). A marca em Sobre a Zuri é o `favicon.svg`, pelo mesmo motivo.
+- **"Agendas da conta" continua só em Integrações › Google**, sem repetir o controle em Configurações › Agenda.
+- **Avisos ganhou uma linha "Conectar o Telegram fica em Integrações." com o botão "Abrir Integrações"** ao lado (um link dentro da frase não chega a 44 px), e a revisão de conflitos ganhou "Abrir a Memória", pelo mesmo motivo.
+- **IP na atividade de acesso** em linha própria, embaixo do aparelho e do lugar. A ordem do protótipo ("Entrada · Chrome no Windows · Curitiba") ficou: o tipo do acesso é o título da linha.
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 

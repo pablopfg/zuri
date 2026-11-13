@@ -8,6 +8,8 @@ import { ThemeSwitcher } from "../ThemeSwitcher.tsx";
 // The panel's pt-BR texts arrive with it (rule P11).
 addMessages(ptBRShell);
 
+const ABOUT = "/configuracoes/sobre";
+
 const row = "flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-fg hover:bg-raised";
 
 /**
@@ -65,11 +67,13 @@ export function AccountPanel({
               </a>
             </li>
           ))}
-          {/* The version in use (CHANGELOG.md). A line, not a link, until "Sobre a Zuri" exists in the settings. */}
-          <li className={`${row} hover:bg-transparent`}>
-            <Tag className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
-            <span className="flex-1">{t("web.account.version")}</span>
-            <span className="text-fg-muted tabular-nums">{APP_VERSION}</span>
+          {/* The version in use (CHANGELOG.md), into Settings > Sobre a Zuri (PR S16). */}
+          <li>
+            <a href={ABOUT} onClick={(event) => go(event, ABOUT)} className={row}>
+              <Tag className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
+              <span className="flex-1">{t("web.account.version")}</span>
+              <span className="text-fg-muted tabular-nums">{APP_VERSION}</span>
+            </a>
           </li>
         </ul>
         <div className="border-t border-border px-4 py-3">

@@ -25,7 +25,7 @@ ao navegador ou ao log.
 
 ## Conectar a sua conta
 
-1. Em **Configurações › Avisos**, no cartão **Telegram**, toque em
+1. Em **Configurações › Integrações**, no cartão **Telegram**, toque em
    **Conectar** (a Zuri pede a senha se você não a digitou nos últimos 15
    minutos).
 2. Aparece um código de 8 caracteres, válido por 10 minutos, e o botão
@@ -110,7 +110,7 @@ junto, e tirar o bot do grupo pelo Telegram também desfaz o vínculo.
 
 ## Conversar com a Zuri pelo Telegram
 
-A conversa nasce desligada. Em Configurações › Avisos, no cartão do Telegram,
+A conversa nasce desligada. Em Configurações › Integrações, no cartão do Telegram,
 ligue **Conversar com a Zuri por aqui**. Desligada, o bot responde como ligar
 e não lê nada do que você manda, nem baixa áudio.
 
@@ -142,7 +142,7 @@ Telegram". Se você apagar essa conversa no app, a próxima mensagem abre outra.
 - Até 30 mensagens por hora para a Zuri. Na 31ª o bot avisa uma vez e ignora
   o resto até a hora virar.
 - Depois do tempo da trava de leitura sem usar o bot (12 horas por padrão,
-  de 1 a 72 h em Configurações › Avisos), o bot trava a leitura e pede
+  de 1 a 72 h em Configurações › Integrações), o bot trava a leitura e pede
   `/destravar`. Veja [Trava de leitura](#trava-de-leitura).
 - `/nova_conversa` começa outra conversa. A anterior continua no app.
 - Se a resposta for longa demais para o limite de chamadas de um despertar, a
@@ -357,7 +357,7 @@ Para voltar:
 
 Um segundo `/bloquear` pela mesma conta até 24 horas depois de sair ainda
 bloqueia, mas também suspende o vínculo com o Telegram até você confirmar a
-conta de novo em **Configurações › Avisos**. Assim, quem pegou o seu Telegram
+conta de novo em **Configurações › Integrações**. Assim, quem pegou o seu Telegram
 não deixa você fora indefinidamente.
 
 ### O que nunca é feito pelo bot
