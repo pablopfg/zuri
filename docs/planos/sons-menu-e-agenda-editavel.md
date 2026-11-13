@@ -630,20 +630,6 @@ Pergunta do Pablo: como o link único funciona, se precisa de configuração na 
 
 Testes da E7: um para cada linha acima (unitário do formato, integração das rotas e e2e da página), mais os de "Link único" já listados.
 
-### Protótipo v52: aviso, mini calendário e escolher na agenda (13/11/2026, 02:58 UTC)
-
-Pedido do Pablo: "Ao tentar agendamento em dias sem disponibilidade ou horários ocupados, quero um alerta sonoro de erro e um pop-up explicativo… um mini calendário ou a possibilidade de clicar na agenda para selecionar o dia e horário e já puxar os dados do cliente." O almoço padrão das 12 às 14 e o pop-up ao arrastar já entraram na E5a (#329). O resto está no protótipo v52, esperando aprovação, e entra na E5b:
-
-| O quê | Como fica no protótipo |
-| --- | --- |
-| Aviso com som em toda recusa | Clique, arrastar, teclado e formulário. No formulário o aviso abre por cima, sem perder o que foi digitado, com **Corrigir** (cursor no campo) e **Usar este horário** (preenche dia e horas). Esc fecha só o aviso |
-| Mini calendário | "Ver no calendário" mostra o mês: dia sem atendimento, feriado fechado, dia sem expediente, passado ou sem horário livre fica riscado e não se escolhe. Escolhido o dia, os horários livres viram botões, na duração escolhida |
-| Escolher na agenda | O formulário se recolhe guardando nome, vínculo, celular e e-mail; uma faixa pede o toque no dia e na hora; o formulário volta preenchido. Hora fechada avisa como sempre; **Cancelar** desfaz |
-| Clique na última meia hora | 11:30 ou 17:30 abre o formulário com 30 minutos, igual à E5a |
-| Dados do paciente | A sugestão de contatos no campo do nome (já no v51) continua; o nome digitado acompanha a escolha na agenda |
-
-Erros antecipados: data digitada fora do mês do calendário (o calendário segue a data), duração mudada depois de escolher o horário (os botões se refazem), consulta sendo editada (libera o próprio horário e não mostra "Escolher na agenda"), mês sem nenhum dia livre (mensagem e setas para o próximo).
-
 ## 12. Riscos
 
 - **Som bloqueado pelo navegador** antes do primeiro clique: o aviso chega sem som. Mitigação: o cartão explica e o "Testar" destrava.
