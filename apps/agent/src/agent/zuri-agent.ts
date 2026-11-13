@@ -1,4 +1,4 @@
-import { type ChosenFallback, type ChosenModel, DEFAULT_CHAT_MODEL, DEFAULT_FALLBACK_MODEL, DEFAULT_LOCALE, isChatModel, isPaidModel, NO_FALLBACK_MODEL, isPasswordHash, isUsableSetupCode, type CrmAutomationPause as AutomationPause, type Locale, type MessageKey, type OutboxStopReason, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
+import { type ChosenFallback, type ChosenModel, DEFAULT_CHAT_MODEL, DEFAULT_LOCALE, isPaidModel, MODEL_CATALOG_LIMITS, NO_FALLBACK_MODEL, isPasswordHash, isUsableSetupCode, type CrmAutomationPause as AutomationPause, type Locale, type MessageKey, type OutboxStopReason, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
 import { Agent } from "agents";
 import { chooseChain, CircuitBreaker, MeteredAI, type PaidKeys, ProviderChain, paidKey, UsageMeter } from "../ai/index.ts";
 import type { AIProvider } from "../ai/provider.ts";
@@ -200,7 +200,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
   /** Tests only: a stand-in embedding model (step 17). */
   testEmbedder: Embedder | null = null;
   /** Tests only: a stand-in for the AI binding's catalog of models (PR S21). */
-  testCatalog: (() => Promise<unknown>) | null = null;
+  testCatalog: ((page: number) => Promise<unknown>) | null = null;
   /** How often a running chat stream writes a ping (SSE_PING_MS); the tests shorten it. */
   streamPingMs = SSE_PING_MS;
   /** The real-time channel (nova UI, PR 3): WebSockets held while the object hibernates. */
@@ -563,17 +563,19 @@ export class ZuriAgent extends Agent<WorkerEnv> {
   }
 
   /**
-   * The model a setting names, as the AI uses it: one of the fixed list or a
-   * paid one as stored (the catalog replaces a leaving one on its day), one
-   * from the catalog only while it is on the owner's list (PR S21). Anything
-   * else (a model an older version allowed, one dropped from the list) is the default.
+   * The model a setting names, as the AI uses it: a paid one as stored, one of
+   * the fixed list while it is in the catalog and its leaving day hasn't come,
+   * one from the catalog only while it is on the owner's list (PR S21). Anything
+   * else (a model an older version allowed, one dropped from the list, a
+   * restored backup) is the default chat model, or no fallback at all: never a
+   * fallback the owner didn't choose.
    */
   private chosenModel(field: "aiModel"): ChosenModel;
   private chosenModel(field: "aiFallbackModel"): ChosenFallback;
   private chosenModel(field: "aiModel" | "aiFallbackModel"): ChosenModel | ChosenFallback {
     const stored = this.store.settings.field(field);
-    if (stored === NO_FALLBACK_MODEL || isChatModel(stored) || isPaidModel(stored) || this.store.modelCatalog.usable(stored)) return stored;
-    return field === "aiModel" ? DEFAULT_CHAT_MODEL : DEFAULT_FALLBACK_MODEL;
+    if (this.store.modelCatalog.usable(stored)) return stored;
+    return field === "aiModel" ? DEFAULT_CHAT_MODEL : NO_FALLBACK_MODEL;
   }
 
   /** The paid companies' keys (Worker secrets, step 21): they never leave this object. */
@@ -1192,7 +1194,14 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       const binding = env.AI;
       const modelCatalog = new ModelCatalogService({
         state,
-        source: () => this.testCatalog ?? (this.development() ? async () => developmentCatalog() : binding ? () => binding.models({ task: "Text Generation", hide_experimental: true }) : null),
+        source: () =>
+          this.testCatalog ??
+          (this.development()
+            ? async () => developmentCatalog()
+            : binding
+              ? (page) => binding.models({ task: "Text Generation", hide_experimental: true, per_page: MODEL_CATALOG_LIMITS.perPage, page })
+              : null),
+        rearm: () => automations.rearm(),
         settings,
         locale: () => this.locale(),
         notify: ({ kind, ...params }) => {

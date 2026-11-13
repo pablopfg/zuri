@@ -40,7 +40,7 @@ Em `packages/shared/i18n/pt-BR-ai.ts` (tela) e `pt-BR-server.ts` (erros e avisos
 
 ## 6. Regras de negócio e limites
 
-`MODEL_CATALOG_LIMITS`: contexto mínimo 16.000, até 100 modelos guardados, nova tentativa em 1 h, "Conferir agora" a cada 60 s, prazo de 15 s, aviso de preço por 7 dias, id até 120 caracteres. Preço aceito entre zero e US$ 110 por milhão.
+`MODEL_CATALOG_LIMITS`: contexto mínimo 16.000, até 100 modelos guardados, nova tentativa em 1 h, "Conferir agora" a cada 60 s, prazo de 15 s por página, até 3 páginas de 100, aviso de preço por 7 dias (mudança acima de 1%), id até 125 caracteres. Preço aceito acima de zero e até US$ 110 por milhão.
 
 ## 7. Desenho técnico
 
@@ -66,7 +66,7 @@ Um passo a mais no alarme único, às 06:00 UTC e no dia em que um modelo em uso
 
 ## 8. Custo e cotas do plano Free
 
-Medido: conferência 2 linhas lidas e 2 gravadas, cartão 2 lidas, "Pôr na lista" 5 lidas e 1 gravada. Grava só quando algo mudou (P4).
+Medido: "Conferir agora" 6 linhas lidas e 3 gravadas, cartão 2 lidas, "Pôr na lista" 5 lidas e 1 gravada. Grava só quando algo mudou (P4).
 
 ## 9. Segurança e privacidade
 

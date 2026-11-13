@@ -40,10 +40,16 @@ test("Conferir agora shows the new model and the leaving one; Pôr na lista adds
   // The model without tools is never offered.
   await expect(card.getByText("sem-ferramentas")).toHaveCount(0);
   await expectAccessible(page, "catálogo de modelos");
+  // The pills' colours in the dark theme too.
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expectAccessible(page, "catálogo de modelos, tema escuro");
+  await page.emulateMedia({ colorScheme: "light" });
 
   await fresh.getByRole("button", { name: "Pôr na lista" }).click();
   await expect(page.getByRole("status").filter({ hasText: "gemma-3-12b-it entrou na lista" })).toBeVisible();
   await expect(card.getByRole("listitem").filter({ hasText: "gemma-3-12b-it" })).toHaveCount(0);
+  // Its line is gone: the focus is back on the card's title, not lost.
+  await expect(card.getByRole("heading", { name: "Catálogo de modelos" })).toBeFocused();
   await expect(model.locator(`option[value="${GEMMA}"]`)).toHaveText("gemma-3-12b-it");
   await expect(page.getByLabel("Modelo reserva").locator(`option[value="${GEMMA}"]`)).toHaveCount(1);
 

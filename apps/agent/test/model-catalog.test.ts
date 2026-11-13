@@ -53,9 +53,12 @@ interface World {
   state: InternalState;
   settings: { aiModel: ChosenModel; aiFallbackModel: ChosenFallback };
   notices: ModelNotice[];
-  answer: { value: unknown; fail?: boolean };
+  answer: { value: unknown; fail?: boolean; pages?: unknown[] };
   clock: { now: number };
   calls: number;
+  /** The pages asked for, in order. */
+  asked: number[];
+  rearms: number;
 }
 
 /** A catalog over the object's database, with a clock, settings and an answer the test controls. */
@@ -69,17 +72,23 @@ function world(agent: ZuriAgent, options: { source?: boolean; timeoutMs?: number
     answer: { value: [...fixedItems(), item(GEMMA)] as unknown, fail: false },
     clock: { now: T0 },
     calls: 0,
+    asked: [] as number[],
+    rearms: 0,
   } as World;
   w.catalog = new ModelCatalogService({
     state,
     source: () =>
       options.source === false
         ? null
-        : async () => {
+        : async (page: number) => {
             w.calls++;
+            w.asked.push(page);
             if (w.answer.fail) throw new Error("catalog down");
-            return w.answer.value;
+            return w.answer.pages ? w.answer.pages[page - 1] : w.answer.value;
           },
+    rearm: async () => {
+      w.rearms++;
+    },
     settings: {
       field: ((name: "aiModel" | "aiFallbackModel") => w.settings[name]) as never,
       update: (patch: SettingsUpdate) => {
@@ -276,11 +285,20 @@ describe("the daily check", () => {
       w.state.set("model_catalog", JSON.stringify({ checkedAt: 1 }));
       expect(w.catalog.view().checkedAt).toBeNull();
       await w.catalog.tick();
-      const before = agent.store.db.one<{ updated_at: string }>(`SELECT updated_at FROM zur_settings WHERE key = 'model_catalog'`);
+      const set = w.state.set.bind(w.state);
+      let writes = 0;
+      w.state.set = ((key: never, value: never) => {
+        writes++;
+        return set(key, value);
+      }) as typeof w.state.set;
       w.catalog.add(GEMMA);
       w.catalog.add(GEMMA);
       expect(stored(w).listed).toEqual([GEMMA]);
-      expect(before).toBeTruthy();
+      expect(writes).toBe(1);
+      // The same answer the next day writes only the check's own times.
+      w.clock.now += DAY;
+      await w.catalog.tick();
+      expect(writes).toBe(2);
     });
   });
 });
@@ -337,7 +355,6 @@ describe("a model in use that leaves", () => {
       await w.catalog.tick();
       expect(w.notices).toEqual([{ kind: "ai.modelLeaving", model: "Qwen3 30B A3B", on: "20/11/2026" }]);
       expect(w.catalog.view().notices.map((n) => `${n.kind}:${n.on}:${n.inUse}`)).toEqual(["leaving:2026-11-20:true"]);
-      // The alarm comes back on the day, before the next check.
       // The next day's check tells nothing again.
       w.clock.now = Date.parse("2026-11-14T14:00:00Z");
       expect(await w.catalog.tick()).toBe(true);
@@ -388,6 +405,13 @@ describe("a model in use that leaves", () => {
       w.settings.aiModel = GEMMA;
       w.answer.value = fixedItems();
       w.clock.now += DAY;
+      // Missing once (a model hidden for a day): it stays, with its last numbers.
+      await w.catalog.tick();
+      expect(w.settings.aiModel).toBe(GEMMA);
+      expect(w.catalog.usable(GEMMA)).toBe(true);
+      expect(w.notices).toEqual([]);
+      // Missing from the next complete answer too: gone.
+      w.clock.now += DAY;
       await w.catalog.tick();
       expect(w.settings.aiModel).toBe(GLM);
       expect(stored(w).listed).toEqual([]);
@@ -404,6 +428,198 @@ describe("a model in use that leaves", () => {
       await w.catalog.tick();
       expect(w.settings).toEqual({ aiModel: "anthropic/claude-haiku-5-5", aiFallbackModel: "openai/gpt-6-luna" });
       expect(w.notices).toEqual([]);
+    });
+  });
+});
+
+describe("what the reviews found (PR S21)", () => {
+  /** A promise the test lets go of. */
+  const held = () => {
+    let release: (value: unknown) => void = () => undefined;
+    const promise = new Promise<unknown>((resolve) => {
+      release = resolve;
+    });
+    return { promise, release };
+  };
+
+  it("keeps a model put on the list while a check was waiting for the catalog", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      await w.catalog.tick();
+      const late = held();
+      w.answer.value = late.promise;
+      w.clock.now += DAY;
+      const running = w.catalog.tick();
+      w.catalog.add(GEMMA);
+      late.release([...fixedItems(), item(GEMMA)]);
+      await running;
+      expect(stored(w).listed).toEqual([GEMMA]);
+      expect(w.catalog.usable(GEMMA)).toBe(true);
+    });
+  });
+
+  it("refuses the second of two Conferir agora at the same time, with one call to the catalog", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      const results = await Promise.allSettled([w.catalog.checkNow(), w.catalog.checkNow()]);
+      expect(results.map((r) => r.status)).toEqual(["fulfilled", "rejected"]);
+      expect(results[1]).toMatchObject({ reason: { code: "RATE_LIMITED" } });
+      expect(w.calls).toBe(1);
+      // The alarm and a tap landing together share the same call.
+      w.clock.now += DAY;
+      await Promise.all([w.catalog.tick(), w.catalog.checkNow()]);
+      expect(w.calls).toBe(2);
+    });
+  });
+
+  it("reads the catalog page by page, and removes nothing when the last page is still full", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      const filler = (from: number) => Array.from({ length: MODEL_CATALOG_LIMITS.perPage }, (_, i) => item(`@cf/exemplo/m-${from + i}`, { tools: false }));
+      await w.catalog.tick();
+      w.catalog.add(GEMMA);
+      w.settings.aiModel = GEMMA;
+      // Three full pages, GEMMA on none of them: the answer is cut, so nothing left.
+      w.answer.pages = [[...fixedItems(), ...filler(0).slice(4)], filler(100), filler(200), [item(GEMMA)]];
+      for (let i = 0; i < 2; i++) {
+        w.clock.now += DAY;
+        await w.catalog.tick();
+      }
+      expect(w.asked.slice(1)).toEqual([1, 2, 3, 1, 2, 3]);
+      expect(w.settings.aiModel).toBe(GEMMA);
+      expect(w.catalog.usable(GEMMA)).toBe(true);
+      // A short second page ends the reading: complete, and GEMMA is on it.
+      w.answer.pages = [[...fixedItems(), ...filler(0).slice(4)], [item(GEMMA)]];
+      w.asked = [];
+      w.clock.now += DAY;
+      await w.catalog.tick();
+      expect(w.asked).toEqual([1, 2]);
+      expect(stored(w).listed).toEqual([GEMMA]);
+    });
+  });
+
+  it("stops at the page the wake has no room for", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      w.answer.pages = [[...fixedItems(), ...Array.from({ length: MODEL_CATALOG_LIMITS.perPage - 4 }, (_, i) => item(`@cf/exemplo/m-${i}`, { tools: false }))], [item(GEMMA)]];
+      expect(await inWake(new WakeBudget(1, 0), () => w.catalog.tick())).toBe(true);
+      expect(w.asked).toEqual([1]);
+      expect(w.catalog.view().checkedAt).not.toBeNull();
+    });
+  });
+
+  it("stops offering a model of the fixed list missing from two complete answers, and the settings fall back", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      w.settings = { aiModel: SCOUT, aiFallbackModel: QWEN };
+      w.answer.value = fixedItems().filter((i) => i.name !== SCOUT);
+      await w.catalog.tick();
+      expect(w.catalog.usable(SCOUT)).toBe(true);
+      w.clock.now += DAY;
+      await w.catalog.tick();
+      expect(w.catalog.usable(SCOUT)).toBe(false);
+      expect(w.catalog.view().listed.map((m) => m.id)).not.toContain(SCOUT);
+      expect(w.settings.aiModel).toBe(GLM);
+      // Back in the catalog: offered again.
+      w.answer.value = fixedItems();
+      w.clock.now += DAY;
+      await w.catalog.tick();
+      expect(w.catalog.usable(SCOUT)).toBe(true);
+    });
+  });
+
+  it("gives the fallback back to the default fallback when the chat model became the same model", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      w.settings = { aiModel: LLAMA, aiFallbackModel: GLM };
+      w.answer.value = fixedItems({ [LLAMA]: "2026-11-13" });
+      await w.catalog.tick();
+      expect(w.settings).toEqual({ aiModel: GLM, aiFallbackModel: QWEN });
+      expect(w.notices.at(-1)).toEqual({ kind: "ai.modelSwitched", from: "GLM 4.7 Flash", to: "Qwen3 30B A3B" });
+    });
+  });
+
+  it("never offers a model that reasons before answering, and offers one at exactly the minimum window", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      const min = MODEL_CATALOG_LIMITS.minContext;
+      w.answer.value = [...fixedItems(), item("@cf/x/thinks", { extra: [{ property_id: "reasoning", value: "true" }] }), item("@cf/x/at-min", { context: min }), item("@cf/x/below", { context: min - 1 })];
+      await w.catalog.tick();
+      expect(w.catalog.view().notices.map((n) => n.model.id)).toEqual(["@cf/x/at-min"]);
+    });
+  });
+
+  it("calls a price that moved by 1% or less no change, and keeps the dated price of a fixed model offered at under a tenth", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      const glm = CHAT_MODELS[GLM];
+      w.answer.value = [...fixedItems().filter((i) => i.name !== GLM && i.name !== QWEN), item(GLM, { input: glm.input * 1.01 }), item(QWEN, { input: CHAT_MODELS[QWEN].input / 11 })];
+      await w.catalog.tick();
+      expect(w.catalog.view().notices).toEqual([]);
+      expect(modelRate(QWEN)?.input).toBe(CHAT_MODELS[QWEN].input);
+    });
+  });
+
+  it("takes an answer with a model of the owner's list even when no fixed one is left", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      await w.catalog.tick();
+      w.catalog.add(GEMMA);
+      w.answer.value = [item(GEMMA)];
+      w.clock.now += DAY;
+      await w.catalog.tick();
+      expect(w.catalog.view().failed).toBe(false);
+    });
+  });
+
+  it("waits 1, 2 and 4 hours after failures in a row, never past the daily check", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      w.answer.fail = true;
+      const waits: number[] = [];
+      for (let i = 0; i < 6; i++) {
+        await w.catalog.tick();
+        const next = Date.parse(stored(w).nextAt ?? "");
+        waits.push((next - w.clock.now) / 3_600_000);
+        w.clock.now = next;
+      }
+      expect(waits.slice(0, 4)).toEqual([1, 2, 4, 8]);
+      // 16 h after 15 h of tries would pass 06:00 of the next day: the daily check comes first.
+      expect(waits[4]).toBe(9);
+    });
+  });
+
+  it("sets the alarm again when Conferir agora finds a model in use leaving, and only then", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      await w.catalog.checkNow();
+      expect(w.rearms).toBe(0);
+      // Leaving on a day later than the next check: the alarm already comes back sooner.
+      w.answer.value = fixedItems({ [GLM]: "2026-11-20" });
+      w.clock.now += MODEL_CATALOG_LIMITS.checkNowEveryMs;
+      await w.catalog.checkNow();
+      expect(w.rearms).toBe(0);
+      // Leaving at 00:00 UTC, before the next 06:00 check: the alarm is set again.
+      w.answer.value = fixedItems({ [GLM]: "2026-11-14" });
+      w.clock.now += MODEL_CATALOG_LIMITS.checkNowEveryMs;
+      await w.catalog.checkNow();
+      expect(w.rearms).toBe(1);
+    });
+  });
+
+  it("refuses Conferir agora 1 ms before the minute and tells a price change until the seventh day ends", async () => {
+    await inOwner(async (agent) => {
+      const w = world(agent);
+      await w.catalog.checkNow();
+      w.clock.now += MODEL_CATALOG_LIMITS.checkNowEveryMs - 1;
+      await expect(w.catalog.checkNow()).rejects.toMatchObject({ code: "RATE_LIMITED", details: { retryAfter: 1 } });
+      w.answer.value = [...fixedItems().filter((i) => i.name !== QWEN), item(QWEN, { input: 9_000 })];
+      w.clock.now += 1;
+      await w.catalog.checkNow();
+      w.clock.now += MODEL_CATALOG_LIMITS.priceNoticeMs - 1;
+      expect(w.catalog.view().notices).toHaveLength(1);
+      w.clock.now += 1;
+      expect(w.catalog.view().notices).toHaveLength(0);
     });
   });
 });

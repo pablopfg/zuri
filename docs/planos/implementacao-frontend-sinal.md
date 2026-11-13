@@ -483,6 +483,7 @@ Diferenças da S21 (catálogo de modelos) para o plano e o protótipo, para as P
 - **Os preços do catálogo valem para a lista inteira**, inclusive a fixa: a estimativa e a janela de contexto leem primeiro o último preço do catálogo e, sem ele, a tabela datada.
 - **O cartão fica dentro do formulário de "Modelo"**, entre os limites avançados e "Salvar limites", como no protótipo; seus botões não salvam o formulário. A frase "Vai sair" muda quando o modelo está em uso. "Preço" diz "mudou de preço" depois do nome, para o nome vir sempre primeiro nas duas línguas.
 - **Os avisos novos** (`ai.modelLeaving`, `ai.modelSwitched`, `ai.fallbackOff`) levam a `/configuracoes/modelos`, que entrou na lista de links dos avisos.
+- **Revisões (Cloudflare, QA e segurança):** a conferência lê até 3 páginas de 100; um modelo só sai depois de faltar em duas respostas completas seguidas; modelos que raciocinam não aparecem como "Novo"; preço que muda até 1% não é mudança; modelo da lista fixa com preço abaixo de um décimo da tabela fica com o da tabela; falhas seguidas esperam 1, 2, 4… horas; o estado é relido depois da chamada (um "Pôr na lista" no meio não se perde) e dois "Conferir agora" juntos fazem uma chamada; um modelo guardado que não vale mais usa o padrão e, no reserva, "Nenhum".
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:
 

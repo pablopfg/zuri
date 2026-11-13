@@ -86,6 +86,7 @@ describe("the catalog's routes", () => {
     // Twice within a minute: refused with the wait.
     const again = await session("POST", "/ai/catalog/check");
     expect(again.status).toBe(429);
+    expect(await errorBody(again)).toMatchObject({ code: "RATE_LIMITED" });
     expect(Number(again.headers.get("retry-after"))).toBeGreaterThan(0);
 
     const add = await session("POST", "/ai/catalog/models", { id: GEMMA });
@@ -112,12 +113,14 @@ describe("the catalog's routes", () => {
     for (const body of [{ id: "https://exemplo.com.br/x" }, { id: GEMMA, extra: 1 }, {}]) {
       const res = await session("POST", "/ai/catalog/models", body);
       expect(res.status, JSON.stringify(body)).toBe(400);
+      expect(await errorBody(res)).toMatchObject({ code: "VALIDATION_FAILED" });
     }
     expect((await session("POST", "/ai/catalog/models", { id: "@cf/x/unknown" })).status).toBe(404);
     expect((await session("POST", "/ai/catalog/models", { id: DEFAULT_CHAT_MODEL })).status).toBe(404);
     // A model id that is not on any list, sent straight to the settings.
     const patch = await session("PATCH", "/settings", { aiFallbackModel: "@cf/x/unknown" });
     expect(patch.status).toBe(400);
+    expect(await errorBody(patch)).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["aiFallbackModel"] } });
   });
 
   it("refuses a model of the fixed list that left the catalog", async () => {
@@ -125,6 +128,7 @@ describe("the catalog's routes", () => {
     await session("POST", "/ai/catalog/check");
     const patch = await session("PATCH", "/settings", { aiModel: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" });
     expect(patch.status).toBe(400);
+    expect(await errorBody(patch)).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["aiModel"] } });
   });
 });
 
@@ -135,7 +139,7 @@ describe("the catalog in the shared alarm", () => {
     await inOwner(async (agent) => {
       // The daily check's hour has come.
       const due = new Date(Date.now() - 1_000).toISOString();
-      new InternalState(agent.store.db).set("model_catalog", JSON.stringify({ checkedAt: null, nextAt: due, failed: false, checkNowAt: null, enforcedOn: null, models: [], listed: [], warned: [] }));
+      new InternalState(agent.store.db).set("model_catalog", JSON.stringify({ checkedAt: null, nextAt: due, failed: false, failures: 0, missing: [], absent: [], checkNowAt: null, enforcedOn: null, models: [], listed: [], warned: [] }));
       expect(agent.store.modelCatalog.nextDue()).toBe(due);
       await agent.store.automations.rearm();
       await agent.runAutomations({});
@@ -151,7 +155,7 @@ describe("the catalog in the shared alarm", () => {
       agent.testCatalog = async () => {
         throw new Error("down");
       };
-      new InternalState(agent.store.db).set("model_catalog", JSON.stringify({ checkedAt: null, nextAt: new Date(Date.now() - 1_000).toISOString(), failed: false, checkNowAt: null, enforcedOn: null, models: [], listed: [], warned: [] }));
+      new InternalState(agent.store.db).set("model_catalog", JSON.stringify({ checkedAt: null, nextAt: new Date(Date.now() - 1_000).toISOString(), failed: false, failures: 0, missing: [], absent: [], checkNowAt: null, enforcedOn: null, models: [], listed: [], warned: [] }));
       await agent.runAutomations({});
       expect(agent.store.modelCatalog.view()).toMatchObject({ failed: true, checkedAt: null });
     });

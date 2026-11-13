@@ -1,7 +1,7 @@
 import { type CatalogNotice, formatDateTimeParts, type ModelCatalog, modelCatalogSchema } from "@zuri/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button, cn } from "../../components/ui.tsx";
 import { useToast } from "../../components/Toaster.tsx";
 import { api, errorMessage } from "../../lib/api.ts";
@@ -38,6 +38,8 @@ export function CatalogPanel({ catalog }: { catalog: ModelCatalog }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const compact = new Intl.NumberFormat(locale, { notation: "compact" });
+  // The line of a model put on the list goes away: the keyboard's focus goes back to the card's title.
+  const title = useRef<HTMLHeadingElement>(null);
 
   async function send(key: string, path: string, body: unknown, message: (next: ModelCatalog) => string) {
     setBusy(key);
@@ -46,6 +48,7 @@ export function CatalogPanel({ catalog }: { catalog: ModelCatalog }) {
       const next = modelCatalogSchema.parse(await api<unknown>(path, { method: "POST", body }));
       qc.setQueryData(CATALOG_KEY, next);
       toast(message(next));
+      if (key !== "check") title.current?.focus();
     } catch (failure) {
       setError(failure);
     } finally {
@@ -63,7 +66,7 @@ export function CatalogPanel({ catalog }: { catalog: ModelCatalog }) {
   return (
     <section aria-labelledby="catalog-title" className="space-y-3 rounded-xl border border-border p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id="catalog-title" className="flex items-center gap-2 text-sm font-medium">
+        <h3 id="catalog-title" ref={title} tabIndex={-1} className="flex items-center gap-2 text-sm font-medium">
           <RefreshCw className="h-4 w-4 text-fg-muted" aria-hidden />
           {t("web.ai.catalog.title")}
         </h3>

@@ -1605,9 +1605,11 @@ describe("the catalog of models (PR S21)", () => {
     try {
       const check = await cost("POST", "/ai/catalog/check");
       expect(check.status).toBe(200);
-      // Measured 2 and 2 (the catalog's row, read and written once, and the session's touch): 64 models are one row.
-      expect(check.read).toBeLessThanOrEqual(4);
-      expect(check.written).toBeLessThanOrEqual(2);
+      // Measured 6 and 3: the catalog's row read before and after the call (a tap in between is kept) and
+      // for the view, written when the tap is claimed and after the check, and the session's touch.
+      // 64 models are one row.
+      expect(check.read).toBeLessThanOrEqual(6);
+      expect(check.written).toBeLessThanOrEqual(3);
       const view = await cost("GET", "/ai/catalog");
       expect(view.status).toBe(200);
       expect(view.read).toBeLessThanOrEqual(3);

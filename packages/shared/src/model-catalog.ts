@@ -15,10 +15,13 @@ import { FREE_NEURONS_PER_DAY } from "./ai-limits.ts";
  * paid model, or a model the owner did not put on the list.
  */
 export const MODEL_CATALOG_LIMITS = {
-  /** A model joins the list only with tool calling and at least this window (Llama 3.3 70B, on the list, has 24,000). */
+  /** A model joins the list only with tool calling, no reasoning of its own and at least this window (Llama 3.3 70B, on the list, has 24,000). */
   minContext: 16_000,
   /** Models kept from one check: the text models of the catalog are a few dozen. */
   maxModels: 100,
+  /** Models asked for per page, and pages read at most per check. */
+  perPage: 100,
+  pages: 3,
   /** One check a day at 06:00 UTC (03:00 in Brasília); after a failed one, an hour later. */
   retryMs: 3_600_000,
   /** "Conferir agora" at most once a minute. */
