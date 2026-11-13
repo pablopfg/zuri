@@ -1644,6 +1644,72 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE zur_flow_connections ADD COLUMN key_end TEXT`,
     ],
   },
+  {
+    version: 39,
+    name: "crm_automations",
+    statements: [
+      // The CRM's automations (PR S18): one row per automation the owner set up; none until then. The code's
+      // registry is the list; a row only says how the owner set it. `effects_version` is the manifest's
+      // number of what goes out when it was set: a newer one in the code sends a live one back to rehearsal.
+      `CREATE TABLE IF NOT EXISTS zur_crm_automations (
+        id TEXT PRIMARY KEY,
+        effects_version INTEGER NOT NULL DEFAULT 0,
+        state TEXT NOT NULL DEFAULT 'off' CHECK (state IN ('off', 'rehearsal', 'live', 'paused')),
+        options TEXT NOT NULL DEFAULT '{}',
+        connection_id TEXT,
+        paused_reason TEXT,
+        failures INTEGER NOT NULL DEFAULT 0,
+        rehearsal_since TEXT,
+        live_since TEXT,
+        next_run_at TEXT,
+        watch INTEGER NOT NULL DEFAULT 0 CHECK (watch IN (0, 1)),
+        watch_told INTEGER NOT NULL DEFAULT 0 CHECK (watch_told IN (0, 1)),
+        updated_at TEXT NOT NULL
+      ) WITHOUT ROWID`,
+      // What runs next: the alarm reads one row.
+      `CREATE INDEX IF NOT EXISTS zur_crm_automations_due ON zur_crm_automations (next_run_at) WHERE next_run_at IS NOT NULL`,
+      // Each run, numbers only (no message, no name); removed after 90 days.
+      `CREATE TABLE IF NOT EXISTS zur_crm_automation_runs (
+        id INTEGER PRIMARY KEY,
+        automation_id TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        mode TEXT NOT NULL CHECK (mode IN ('rehearsal', 'live')),
+        outcome TEXT NOT NULL CHECK (outcome IN ('ok', 'failed', 'cap', 'skipped')),
+        calls INTEGER NOT NULL DEFAULT 0,
+        effects INTEGER NOT NULL DEFAULT 0
+      )`,
+      `CREATE INDEX IF NOT EXISTS zur_crm_automation_runs_by ON zur_crm_automation_runs (automation_id, started_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS zur_crm_automation_runs_at ON zur_crm_automation_runs (started_at)`,
+      // Each effect by its unique key ("nunca enviar duas vezes"): 'would' in rehearsal, 'pending' before the
+      // call, 'done' or 'failed' after. The label is short and never a message; removed after 180 days.
+      `CREATE TABLE IF NOT EXISTS zur_crm_automation_effects (
+        automation_id TEXT NOT NULL,
+        key TEXT NOT NULL,
+        mode TEXT NOT NULL CHECK (mode IN ('rehearsal', 'live')),
+        day TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('would', 'pending', 'done', 'failed')),
+        label TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (automation_id, mode, key)
+      ) WITHOUT ROWID`,
+      `CREATE INDEX IF NOT EXISTS zur_crm_automation_effects_by ON zur_crm_automation_effects (automation_id, created_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS zur_crm_automation_effects_day ON zur_crm_automation_effects (automation_id, mode, day)`,
+      `CREATE INDEX IF NOT EXISTS zur_crm_automation_effects_at ON zur_crm_automation_effects (created_at)`,
+      // The owner's check of each day of a rehearsal: what the Zuri would have done was right, or wrong and why.
+      `CREATE TABLE IF NOT EXISTS zur_crm_automation_days (
+        automation_id TEXT NOT NULL,
+        day TEXT NOT NULL,
+        verdict TEXT NOT NULL CHECK (verdict IN ('match', 'differs')),
+        note TEXT,
+        decided_at TEXT NOT NULL,
+        PRIMARY KEY (automation_id, day)
+      ) WITHOUT ROWID`,
+      // The CRM screen follows its automations live; a run's own columns (next_run_at, failures) move nothing.
+      ...areaTriggers("crm", "zur_crm_automations", "OF state, options, connection_id, paused_reason, watch"),
+      ...areaTriggers("crm", "zur_crm_automation_days"),
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

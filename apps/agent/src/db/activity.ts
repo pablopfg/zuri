@@ -15,7 +15,9 @@ export type ActivityKind = "settings.updated" | "trash.restored" | "trash.purged
   | "crm.settings"
   | "flow.connection_added"
   | "flow.connection_changed"
-  | "flow.connection_removed";
+  | "flow.connection_removed"
+  | "crm.automation_config"
+  | "crm.automation_mode";
 
 /**
  * Records one entry of the activity log. `detail` holds names and ids, never

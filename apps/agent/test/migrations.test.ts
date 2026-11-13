@@ -120,6 +120,7 @@ describe("the migration list", () => {
       36: "64fd3437ebdb5d557cfa14e43bd3fba622c72473dcfaea78e40aea871363b8fb",
       37: "425d8964f18925e8fc347052ae63ac50795b314a3e5f667d78c1bd94662ceba5",
       38: "fea3f660e35b47167ef9b0c63c2097f5b8a6023f97f133f4d8760b5e3d96e219",
+      39: "eb7b8cdca5db0f3ccdebd985f3b1f36ee971b54dc7f8d9acb34280ddbd7391b5",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -135,7 +136,7 @@ describe("migrate", () => {
       expect(zurObjects(db)).toEqual([]);
 
       expect(migrate(db)).toBe(LATEST_SCHEMA_VERSION);
-      expect(schemaVersion(db)).toBe(38);
+      expect(schemaVersion(db)).toBe(39);
       // FTS5 keeps shadow tables of its own (zur_notes_fts_data and others): only ours are listed.
       expect(zurObjects(db).filter((name) => !/^table:zur_(notes|memories)_fts_/.test(name))).toEqual([
         "table:zur_activity",
@@ -168,6 +169,12 @@ describe("migrate", () => {
         "trigger:zur_area_conversations_conversations_delete",
         "trigger:zur_area_conversations_conversations_insert",
         "trigger:zur_area_conversations_conversations_update",
+        "trigger:zur_area_crm_crm_automation_days_delete",
+        "trigger:zur_area_crm_crm_automation_days_insert",
+        "trigger:zur_area_crm_crm_automation_days_update",
+        "trigger:zur_area_crm_crm_automations_delete",
+        "trigger:zur_area_crm_crm_automations_insert",
+        "trigger:zur_area_crm_crm_automations_update",
         "trigger:zur_area_crm_crm_clients_delete",
         "trigger:zur_area_crm_crm_clients_insert",
         "trigger:zur_area_crm_crm_clients_update",
@@ -293,6 +300,16 @@ describe("migrate", () => {
         "trigger:zur_counts_unread_insert",
         "trigger:zur_counts_unread_read",
         "trigger:zur_counts_unread_unread",
+        "table:zur_crm_automation_days",
+        "table:zur_crm_automation_effects",
+        "index:zur_crm_automation_effects_at",
+        "index:zur_crm_automation_effects_by",
+        "index:zur_crm_automation_effects_day",
+        "table:zur_crm_automation_runs",
+        "index:zur_crm_automation_runs_at",
+        "index:zur_crm_automation_runs_by",
+        "table:zur_crm_automations",
+        "index:zur_crm_automations_due",
         "table:zur_crm_clients",
         "index:zur_crm_clients_birthday",
         "index:zur_crm_clients_created",
@@ -1299,6 +1316,38 @@ describe("migrate", () => {
     });
   });
 
+  it("upgrades a database at version 38 to 39: the CRM's automations start empty, all off, and only the owner's choices move the screens' numbers", async () => {
+    await withEmptyDatabase("from-38", (db) => {
+      expect(migrate(db, MIGRATIONS.slice(0, 38))).toBe(38);
+      db.run(
+        `INSERT INTO zur_flow_connections (id, name, origin, methods, paths, auth, header_name, credential, created_at, updated_at, kind) VALUES ('c1', 'Chatwoot', 'https://chat.exemplo.com.br', '["GET"]', '["/api"]', 'header', 'api_access_token', 'v1.a.b', 't1', 't2', 'chatwoot')`,
+      );
+      expect(migrate(db)).toBe(39);
+      // Nothing comes on by itself: no row until the owner sets one up.
+      expect(db.all(`SELECT * FROM zur_crm_automations`)).toEqual([]);
+      expect(db.all(`SELECT * FROM zur_crm_automation_runs`)).toEqual([]);
+      expect(db.one(`SELECT kind FROM zur_flow_connections`)).toEqual({ kind: "chatwoot" });
+      db.run(`INSERT INTO zur_crm_automations (id, updated_at) VALUES ('example', 't')`);
+      expect(db.one(`SELECT state, options, watch, failures FROM zur_crm_automations`)).toEqual({ state: "off", options: "{}", watch: 0, failures: 0 });
+      expect(() => db.run(`UPDATE zur_crm_automations SET state = 'on'`)).toThrow();
+      // A run's own columns don't move the screens' numbers; the owner's choices do.
+      const crm = db.one(`SELECT crm FROM zur_area_versions WHERE id = 1`);
+      db.run(`UPDATE zur_crm_automations SET next_run_at = 'x', failures = 1`);
+      expect(db.one(`SELECT crm FROM zur_area_versions WHERE id = 1`)).toEqual(crm);
+      db.run(`UPDATE zur_crm_automations SET state = 'rehearsal'`);
+      expect(db.one(`SELECT crm FROM zur_area_versions WHERE id = 1`)).not.toEqual(crm);
+      // One effect per key and mode ("nunca enviar duas vezes"); one check per day.
+      const effect = `INSERT INTO zur_crm_automation_effects (automation_id, key, mode, day, status, label, created_at, updated_at) VALUES ('example', 'k', 'rehearsal', '2026-11-13', 'would', 'l', 't', 't')`;
+      db.run(effect);
+      expect(() => db.run(effect)).toThrow();
+      db.run(`INSERT INTO zur_crm_automation_days (automation_id, day, verdict, decided_at) VALUES ('example', '2026-11-13', 'match', 't')`);
+      expect(() => db.run(`INSERT INTO zur_crm_automation_days (automation_id, day, verdict, decided_at) VALUES ('example', '2026-11-13', 'differs', 't')`)).toThrow();
+      // Running it again changes nothing.
+      expect(migrate(db)).toBe(39);
+      expect(db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_crm_automation_effects`)?.n).toBe(1);
+    });
+  });
+
   it("upgrades a database at version 37 to 38: every credential of before is an http one, with its key, and nothing else changes", async () => {
     await withEmptyDatabase("from-37", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 37))).toBe(37);
@@ -1306,7 +1355,7 @@ describe("migrate", () => {
         `INSERT INTO zur_flow_connections (id, name, origin, methods, paths, auth, header_name, credential, created_at, updated_at) VALUES ('c1', 'CRM', 'https://api.exemplo.com.br', '["GET"]', '["/v1"]', 'bearer', NULL, 'v1.a.b', 't1', 't2')`,
       );
       const versions = db.one(`SELECT flows FROM zur_area_versions WHERE id = 1`);
-      expect(migrate(db)).toBe(38);
+      expect(migrate(db)).toBe(39);
       expect(db.one(`SELECT * FROM zur_flow_connections`)).toEqual({
         id: "c1",
         name: "CRM",
@@ -1326,7 +1375,7 @@ describe("migrate", () => {
       expect(db.one(`SELECT flows FROM zur_area_versions WHERE id = 1`)).toEqual(versions);
       // A kind the code adds later needs no new table: the column takes any text, the code checks it.
       db.run(`UPDATE zur_flow_connections SET kind = 'fzap'`);
-      expect(migrate(db)).toBe(38);
+      expect(migrate(db)).toBe(39);
     });
   });
 
@@ -1335,7 +1384,7 @@ describe("migrate", () => {
       expect(migrate(db, MIGRATIONS.slice(0, 36))).toBe(36);
       db.run(`INSERT INTO zur_usage_daily (day, ai_requests, neurons) VALUES ('2026-11-10', 7, 70.5)`);
       db.run(`INSERT INTO zur_model_usage_daily (day, model, kind, billable, calls) VALUES ('2026-11-10', 'm', 'chat', 1, 7)`);
-      expect(migrate(db)).toBe(38);
+      expect(migrate(db)).toBe(39);
       expect(db.one(`SELECT day, ai_requests, neurons FROM zur_usage_daily`)).toEqual({ day: "2026-11-10", ai_requests: 7, neurons: 70.5 });
       expect(db.one(`SELECT calls FROM zur_model_usage_daily`)).toEqual({ calls: 7 });
       expect(db.all(`SELECT * FROM zur_usage_hourly`)).toEqual([]);
@@ -1348,7 +1397,7 @@ describe("migrate", () => {
       expect(() => db.run(`INSERT INTO zur_usage_hourly (hour, day) VALUES (23, '2026-11-13')`)).toThrow();
       expect(() => db.run(`INSERT INTO zur_usage_monthly (month, last_day) VALUES ('2026-11', '2026-11-11')`)).toThrow();
       // Running it again changes nothing.
-      expect(migrate(db)).toBe(38);
+      expect(migrate(db)).toBe(39);
       expect(db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_usage_hourly`)?.n).toBe(1);
     });
   });
@@ -1357,7 +1406,7 @@ describe("migrate", () => {
     await withEmptyDatabase("from-35", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 35))).toBe(35);
       db.run(`INSERT INTO zur_sessions (id, created_at, last_seen_at, last_presence_at, expires_at, confirmed_at, user_agent, network) VALUES ('s1', 1, 2, 3, 4, 5, 'ua', '203.0.113.7')`);
-      expect(migrate(db)).toBe(38);
+      expect(migrate(db)).toBe(39);
       expect(db.one(`SELECT * FROM zur_sessions`)).toEqual({
         id: "s1",
         created_at: 1,
@@ -1377,7 +1426,7 @@ describe("migrate", () => {
       );
       expect(db.one(`SELECT device, country, networks, confirmed_network FROM zur_sessions WHERE id = 's2'`)).toEqual({ device: "d", country: "BR", networks: "n", confirmed_network: "n" });
       // Running it again changes nothing.
-      expect(migrate(db)).toBe(38);
+      expect(migrate(db)).toBe(39);
     });
   });
 

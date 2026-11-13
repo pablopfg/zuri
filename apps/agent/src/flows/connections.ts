@@ -410,11 +410,11 @@ export class FlowConnections {
    * the code, never by a flow or the screen, so the row's lists don't apply;
    * every other rule does.
    */
-  async fixed(row: ConnectionRow, kind: FlowConnectionKind, request: { method: FlowMethod; path: string }, deps: CallDeps): Promise<ConnectionAnswer> {
+  async fixed(row: ConnectionRow, kind: FlowConnectionKind, request: { method: FlowMethod; path: string; body?: Json }, deps: CallDeps): Promise<ConnectionAnswer> {
     if (knownKind(row.kind) !== kind) throw new FlowStepError("kind_not_allowed");
     const url = new URL(request.path, `${row.origin}/`);
     if (url.origin !== row.origin) throw new FlowStepError("path_not_allowed");
-    return this.send(row, url, request.method, undefined, deps);
+    return this.send(row, url, request.method, request.body, deps);
   }
 
   private async send(row: ConnectionRow, url: URL, method: FlowMethod, payload: Json | undefined, deps: CallDeps): Promise<ConnectionAnswer> {

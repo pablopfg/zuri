@@ -70,6 +70,7 @@ import { type GoogleRouteDeps, registerGooglePush, registerGoogleRoutes } from "
 import { registerReviewRoutes } from "./reviews.ts";
 import { type FlowRouteDeps, registerFlowRoutes } from "./flows.ts";
 import { type CrmRouteDeps, registerCrmRoutes } from "./crm.ts";
+import { type CrmAutomationRouteDeps, registerCrmAutomationRoutes } from "./crm-automations.ts";
 import { registerTelegramRoutes, registerTelegramWebhook, type TelegramDeps } from "./telegram.ts";
 import { type BackupRouteDeps, registerBackupRoutes } from "./backup.ts";
 import { log, rayOf, routeLabel } from "../log.ts";
@@ -122,6 +123,7 @@ export interface ApiDeps {
   flows?(): FlowRouteDeps;
   /** The internal CRM (step 22b). Absent only in tests of other routes. */
   crm?(): CrmRouteDeps;
+  crmAutomations?(): CrmAutomationRouteDeps;
   /** Storage use, the export and the import (step 23). Absent only in tests of other routes. */
   backup?(): BackupRouteDeps;
   /** Each agent's settings on the AI screen (guardrails, PR 2). Absent only in tests of other routes. */
@@ -546,6 +548,8 @@ export function createApi(deps: ApiDeps) {
   if (flows) registerFlowRoutes(app, () => flows(), client);
   const crm = deps.crm;
   if (crm) registerCrmRoutes(app, () => crm());
+  const crmAutomations = deps.crmAutomations;
+  if (crmAutomations) registerCrmAutomationRoutes(app, () => crmAutomations());
   const backup = deps.backup;
   if (backup) registerBackupRoutes(app, () => backup(), client);
 
