@@ -624,9 +624,23 @@ Pergunta do Pablo: como o link único funciona, se precisa de configuração na 
 
 Testes da E7: um para cada linha acima (unitário do formato, integração das rotas e e2e da página), mais os de "Link único" já listados.
 
+### Protótipo v52: aviso, mini calendário e escolher na agenda (13/11/2026, 02:58 UTC)
+
+Pedido do Pablo: "Ao tentar agendamento em dias sem disponibilidade ou horários ocupados, quero um alerta sonoro de erro e um pop-up explicativo… um mini calendário ou a possibilidade de clicar na agenda para selecionar o dia e horário e já puxar os dados do cliente." O almoço padrão das 12 às 14 e o pop-up ao arrastar já entraram na E5a (#329). O resto está no protótipo v52, aprovado pelo Pablo em 13/11/2026, 12:49 UTC, e entra na E5c:
+
+| O quê | Como fica no protótipo |
+| --- | --- |
+| Aviso com som em toda recusa | Clique, arrastar, teclado e formulário. No formulário o aviso abre por cima, sem perder o que foi digitado, com **Corrigir** (cursor no campo) e **Usar este horário** (preenche dia e horas). Esc fecha só o aviso |
+| Mini calendário | "Ver no calendário" mostra o mês: dia sem atendimento, feriado fechado, dia sem expediente, passado ou sem horário livre fica riscado e não se escolhe. Escolhido o dia, os horários livres viram botões, na duração escolhida |
+| Escolher na agenda | O formulário se recolhe guardando nome, vínculo, celular e e-mail; uma faixa pede o toque no dia e na hora; o formulário volta preenchido. Hora fechada avisa como sempre; **Cancelar** desfaz |
+| Clique na última meia hora | 11:30 ou 17:30 abre o formulário com 30 minutos, igual à E5a |
+| Dados do paciente | A sugestão de contatos no campo do nome (já no v51) continua; o nome digitado acompanha a escolha na agenda |
+
+Erros antecipados: data digitada fora do mês do calendário (o calendário segue a data), duração mudada depois de escolher o horário (os botões se refazem), consulta sendo editada (libera o próprio horário e não mostra "Escolher na agenda"), mês sem nenhum dia livre (mensagem e setas para o próximo).
+
 ### Ajustes de 13/11/2026 (08:42 a 12:35 UTC): e-mail, feriados, períodos, registro do dia e IPCA
 
-Primeiro no protótipo (versões 54 a 56 do artefato), esperando a aprovação do Pablo antes do código.
+No protótipo (versões 54 a 56 do artefato), aprovados pelo Pablo em 13/11/2026, 12:49 UTC. A E5b fica com feriados, períodos e registro do dia (`docs/planos/agenda-registro-do-dia.md`); a E5c com o formulário do v52; a E5d com os sinais da sincronização.
 
 - **E-mail para pacientes (E6):** Gmail ou SMTP em dois cartões; no SMTP, servidor, porta, usuário, senha de app e e-mail do remetente; nas duas formas, nome do remetente e "Responder para". Seção "E-mail de confirmação de consulta" com assunto (até 120 caracteres, uma linha), texto (até 2.000), texto do botão (até 30), variáveis do paciente, prévia com o próximo agendamento, "Voltar ao modelo padrão" e "Copiar o texto do WhatsApp" (sem o link, que vai no botão). O texto não aceita `{link}` nem variável desconhecida.
 - **Feriados (E5):** saiu o "Atendo". Feriado nacional sempre fecha a agenda; a lista dos próximos fica só para consulta. Na `develop` o "Atendo" já existe (`openHolidays`, da E5a): sai na E5b, que também troca `closed` (dias soltos) por períodos e congela o dia à 0h, com a conversão dos ajustes já gravados.

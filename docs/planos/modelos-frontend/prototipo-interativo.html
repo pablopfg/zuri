@@ -3064,14 +3064,51 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .set-sec>.form-grid+.field,.set-sec>.field+.field,.set-sec>.field+.form-grid,.set-sec>.form-grid+.form-grid{margin-top:var(--s4)}
 .set-sec>.form-grid+.hint,.set-sec>.field+.hint{margin-top:var(--s3)}
 .set-sec>p+.ct-grid{margin-top:var(--s4)}.ct-edit{display:grid;gap:8px;align-content:start}
-.hol-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}.hol-list li{display:flex;gap:10px;align-items:center;font-size:var(--t-sm)}.hol-list .num{min-width:44px;color:var(--ink-2)}.off-list{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.tag-x{border:0;background:none;padding:0 0 0 4px;color:inherit;cursor:pointer;display:inline-flex;vertical-align:middle}.hr-fora-l{margin:6px 0 0;padding-left:18px}.hr-fora p{margin:0}.ev .ev-fora{color:var(--warn,currentColor)}
+.hol-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}.hol-list li{display:flex;gap:10px;align-items:center;font-size:var(--t-sm)}.hol-list .num{min-width:44px;color:var(--ink-2)}.off-list{list-style:none;margin:0;padding:0;display:grid;gap:4px}.off-list li{display:flex;gap:8px;align-items:center;font-size:var(--t-sm);min-height:36px}.ev-frozen{display:flex;gap:8px;align-items:flex-start;margin:0;padding:10px 12px;border-radius:var(--r-md);border:1px solid var(--line);color:var(--ink-2);font-size:var(--t-sm)}.ev-frozen .ic{flex:none;margin-top:2px}.tag-x{border:0;background:none;padding:0 0 0 4px;color:inherit;cursor:pointer;display:inline-flex;vertical-align:middle}.hr-fora-l{margin:6px 0 0;padding-left:18px}.hr-fora p{margin:0}.ev .ev-fora{color:var(--warn,currentColor)}
 .cx-warn{display:flex;gap:8px;align-items:flex-start;margin:8px 0 0;padding:10px 12px;border-radius:var(--r-md);background:var(--warn-soft,var(--sunken));font-size:var(--t-sm)}
 .pix-card{display:grid;gap:6px;max-width:420px;width:100%;margin:4px 0 8px;padding:12px 14px;border-radius:12px;background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line)}
 .pix-card p{margin:0}.pix-h{display:flex;gap:6px;align-items:center;font-weight:600;font-size:var(--t-sm)}
 .pix-v{font-size:22px;font-weight:700}
 .pix-l{display:flex;justify-content:space-between;gap:12px;font-size:var(--t-sm)}.pix-l span{color:var(--muted)}.pix-l b{text-align:right;overflow-wrap:anywhere}
 .pix-card .pix-copy{margin-top:4px;padding:8px;border-radius:8px;text-align:center;font-weight:600;font-size:var(--t-sm);background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
-.cwo-steps li{grid-template-columns:24px minmax(0,1fr)}
+/* v52 (13/11, 02:58): aviso por cima do formulário, mini calendário com horários livres e escolher na agenda */
+.ee-alert{position:absolute;inset:0;z-index:5;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--surface) 70%,transparent);border-radius:inherit}
+.ee-al-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line-strong);border-left:4px solid var(--danger,#c0392b);border-radius:var(--r-md,12px);box-shadow:0 12px 32px rgb(0 0 0 / .18);padding:16px;display:grid;gap:10px}
+.ee-al-t{display:flex;gap:8px;align-items:center;font-weight:600;margin:0}
+.ee-al-t svg{color:var(--danger,#c0392b)}
+.ee-al-foot{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.dlg-box.dlg-ee{position:relative}
+.ee-pick{display:grid;gap:8px;margin:2px 0 6px}
+.ee-pick-bar{display:flex;flex-wrap:wrap;gap:8px}
+.ee-cal{border:1px solid var(--line);border-radius:var(--r-md,12px);padding:10px;max-width:360px}
+.ee-cal-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.ee-cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.ee-cal-g .wd{font-size:var(--t-xs);color:var(--muted);padding:2px 0}
+.ee-cal-g button{min-height:44px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--ink);font:inherit;font-variant-numeric:tabular-nums;cursor:pointer}
+.ee-cal-g button:hover:not([disabled]){border-color:var(--line-strong)}
+.ee-cal-g button[disabled]{color:var(--muted);text-decoration:line-through;cursor:not-allowed;opacity:.55}
+.ee-cal-g button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent,#fff);border-color:var(--accent)}
+.ee-cal-g button.today{font-weight:700;box-shadow:inset 0 -2px 0 var(--accent)}
+.ee-slots{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.ee-slots .chip{min-height:44px;font-variant-numeric:tabular-nums}
+.ee-slots .chip[aria-pressed="true"]{background:var(--accent);color:var(--on-accent,#fff);border-color:var(--accent)}
+.ag-pickbar{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;max-width:calc(100% - 32px);padding:10px 12px 10px 16px;border-radius:var(--r-pill,999px);background:var(--ink);color:var(--surface);box-shadow:0 8px 24px rgb(0 0 0 / .2)}
+.ag-pickbar .btn{min-height:36px}
+/* 13/11/2026, 08:42: e-mail para pacientes com todos os campos e o e-mail de confirmação */
+.mail-h{font-size:var(--t-md,16px);margin:var(--s4) 0 var(--s2)}
+.mail-modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:8px;margin-bottom:var(--s3)}
+.mail-mode{display:grid;gap:4px;text-align:left;padding:12px 14px;min-height:44px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
+.mail-mode .t{display:flex;align-items:center;gap:8px;font-weight:600}
+.mail-mode[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.mail-mode[aria-pressed="true"] .t .ic{color:var(--accent)}
+.mail-from{display:flex;gap:8px;align-items:center;margin:var(--s2) 0 0;font-size:var(--t-sm);overflow-wrap:anywhere}
+.mail-prev{display:grid;gap:6px;padding:12px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--line);font-size:var(--t-sm);overflow-wrap:anywhere}
+.mp-h{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;margin:0}
+.mp-h span{color:var(--muted)}
+.mp-body{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:10px;line-height:1.5}
+.mp-body p{margin:0}
+.mp-btn{justify-self:start;padding:10px 16px;border-radius:var(--r-md);background:var(--accent);color:var(--on-accent,#fff);font-weight:600}
+.mp-foot{color:var(--muted);font-size:var(--t-xs,12px)}
 </style>
 </head>
 <body>
@@ -4832,7 +4869,8 @@ const ACT = [
   /* contatos, estados e identidade */
   [(t) => t.matches("[data-x=client-edit]"), (t) => dlgShow({ t: "Editar cliente", body: `<label class="field"><span class="label">Etapa</span><select class="input"><option>Novo contato</option><option selected>Em conversa</option><option>Cliente</option></select></label><label class="field"><span class="label">Retorno</span><input class="input" type="datetime-local" value="2026-11-10T10:00"></label><label class="field"><span class="label">Etiquetas</span><input class="input" value="nutrição, retorno"></label>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar</button>`, ok: () => say("Cliente salvo.") }, t)],
   [(t) => t.matches("[data-x=funil]"), (t) => dlgShow({ t: "Editar funil", sub: "As etapas por onde o cliente passa. Mudar o nome não mexe em quem já está nelas.", body: `<ol class="dlg-steps">${["Novo contato", "Em conversa", "Cliente"].map((s, k) => `<li><span class="num">${k + 1}</span><label class="sr" for="fn-${k}">Etapa ${k + 1}</label><input id="fn-${k}" class="input grow" value="${s}"></li>`).join("")}</ol><p class="hint">Até 12 etapas. Apagar uma etapa pede para escolher para onde vão os clientes dela.</p>`, foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar funil</button>`, ok: () => say("Funil salvo.") }, t)],
-  [(t) => t.matches("[data-x=logo-svg]"), () => { baixar("zuri-marca.svg", "image/svg+xml", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><style>.t{fill:#18181b}.s{fill:#22c55e}.ss{fill:none;stroke:#22c55e}.m{fill:#fff}</style>${LOGO()}</svg>`, "Marca baixada em SVG."); }],
+  [(t) => t.matches("[data-x=logo-svg]"), () => { baixar("zuri-marca.svg", "image/svg+xml", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><style>.t{fill:#18181b}.s{fill:#22c55e}.ss{fill:none;stroke:#22c55e}.m{fill:#fff}
+</style>${LOGO()}</svg>`, "Marca baixada em SVG."); }],
   [(t) => t.matches("[data-x=new-note]"), () => { if (typeof go === "function") go("notas"); else { st.s = "notas"; render(); } setTimeout(() => { const b = document.querySelector("[data-new-note]"); if (b) b.click(); }, 60); }],
   /* grupos de escolha: um só (rádio e modelo) ou vários (dias, etiquetas) */
   [(t) => t.getAttribute("role") === "radio", (t) => { t.parentElement.querySelectorAll('[role="radio"]').forEach((b) => { b.setAttribute("aria-checked", String(b === t)); }); }],
@@ -5824,7 +5862,7 @@ Se não quiser mais receber, é só responder SAIR.</textarea><span class="hint"
         <label class="field"><span class="label">Quem envia</span><select class="input"><option selected>Eu, com um toque no WhatsApp</option><option>A automação “Pedido de avaliação”</option></select></label></div>
        ${swRow("ped-du", "Só em dia útil", "Sábado, domingo e feriado passam para o próximo dia útil. Os feriados nacionais já vêm marcados.", true, true)}
        ${swRow("ped-lb", "Um lembrete, 7 dias depois", "Só se a pessoa não avaliou. Depois disso, a Zuri não sugere de novo.", true)}
-       ${ctlRow("Feriados e dias sem expediente", `Entram na conta como feriado. ${DIAS_OFF.length ? `${DIAS_OFF.length === 1 ? "1 dia sem expediente marcado" : `${DIAS_OFF.length} dias sem expediente marcados`}` : "Nenhum dia sem expediente marcado"}. Ficam num lugar só, em Configurações › Agenda.`, `<button class="btn btn-quiet btn-sm" type="button" data-cfg="agenda">Mudar${ic("chevron-right", "ic-sm")}</button>`)}`, save())}
+       ${ctlRow("Feriados e dias sem expediente", `Entram na conta como feriado. ${DIAS_OFF.length ? `${DIAS_OFF.length === 1 ? "1 período sem expediente marcado" : `${DIAS_OFF.length} períodos sem expediente marcados`}` : "Nenhum dia sem expediente marcado"}. Ficam num lugar só, em Configurações › Agenda.`, `<button class="btn btn-quiet btn-sm" type="button" data-cfg="agenda">Mudar${ic("chevron-right", "ic-sm")}</button>`)}`, save())}
   </div>`;
 }
 
@@ -6652,7 +6690,8 @@ function evMove(e, day, mins, dur, opener) {
   const moved = day !== e.day || mins !== e.h * 60 + e.m;
   if (!moved && dur === e.dur) { render(); refocus(`.ag2 [data-ev="${e.id}"]`); return; }
   const fora = e.tipo && e.s !== "cancelado" ? agErro(e, day, mins, mins + Math.round(dur * 60)) : "";
-  if (fora) { render(); refocus(`.ag2 [data-ev="${e.id}"]`); agSomErro(); say(`${fora} A consulta ficou onde estava.`); return; }
+  /* v52 (13/11, 03:03): o aviso do rodapé não era visto; a recusa abre um aviso por cima da tela, com som. */
+  if (fora) { render(); agRecusaMove(e, day, mins, dur, fora); return; }
   evScope(e, (extra) => evCommit("", () => {
     e.day = day; e.h = Math.floor(mins / 60); e.m = mins % 60; e.dur = dur;
     const re = moved && e.tipo && (e.s === "agendado" || e.s === "confirmado");
@@ -6729,8 +6768,13 @@ const ptLast = (p) => { const l = EV.filter((e) => e.pid === p.id && e.day < dke
 /* Estado do formulário aberto: o contato vinculado e a duração (1 h até a pessoa mudar o término). */
 const FORM = { pid: "", dur: 60, own: false, opt: -1, list: [], note: "" };
 
+/* Registro do dia: à 0h, os eventos do dia que terminou congelam (pedido do Pablo, 13/11). Situação, horário, tipo,
+   observação e vínculo ficam como estavam e não mudam mais por aqui; uma mudança feita depois no Google Agenda não
+   apaga o registro: a Zuri guarda a cópia congelada e avisa. Até a meia-noite, o dia ainda aceita mudar a situação. */
+const evFrozen = (e) => !!e && !e.ro && e.day < dkey(AG_NOW);
+const FROZEN_MSG = "Este evento é de um dia que já fechou. À 0h o registro do dia congela e não muda mais.";
 function evDlg(e, opener) {
-  const d = dOf(e.day);
+  const d = dOf(e.day), fz = evFrozen(e);
   const p = e.pid && pById(e.pid);
   const rows = [["Quando", `${dayLong(d)}, ${evWhen(e)}`], ["Tipo", e.tipo ? kindOf(e.tipo) : "Sem tipo"]];
   if (e.tipo) rows.push(["Local", locOf(e.tipo) === "Online" ? (e.meet ? `${ic("video", "ic-sm")}Google Meet · <a href="https://${escH(e.meet)}" target="_blank" rel="noopener">${escH(e.meet)}</a> <button class="linkbtn" type="button" data-copy="https://${escH(e.meet)}">Copiar</button>` : `${ic("loader-circle", "ic-sm spin")}O Google está criando o link da chamada…`) : `${ic("map-pin", "ic-sm")}${escH(CF_CLINIC.addr)}, ${escH(CF_CLINIC.city)}`]);
@@ -6742,13 +6786,13 @@ function evDlg(e, opener) {
   else if (e.obs) rows.push(["Observação", e.obs]);
   if (e.rec) rows.push(["Repete", "Toda semana"]);
   if (!e.ro) rows.push(["Cor no Google", `${STS[e.s][1]} (${STS[e.s][0]})`]);
-  dlgShow({ t: e.t, sub: e.ro ? "Este evento vem de uma agenda só para leitura. Para mudar, abra o Google Agenda." : "Mude a situação com um toque. Ela vira a cor do evento no Google Agenda.",
-    body: `${e.ro ? "" : `<div class="ev-sts" role="group" aria-label="Situação">${Object.entries(STS).map(([k, [l]]) => `<button type="button" class="st-${k}" data-ev-st="${k}" data-id="${e.id}" aria-pressed="${e.s === k}"><i aria-hidden="true"></i>${l}</button>`).join("")}</div>`}
+  dlgShow({ t: e.t, sub: e.ro ? "Este evento vem de uma agenda só para leitura. Para mudar, abra o Google Agenda." : fz ? `Registro fechado à 0h de ${dayShort(addD(d, 1))}.` : "Mude a situação com um toque. Ela vira a cor do evento no Google Agenda.",
+    body: `${fz ? `<p class="ev-frozen" role="note">${ic("lock", "ic-sm")}<span><b>Congelado.</b> Situação final: ${STS[e.s][0]}. O dia ${p2(d.getDate())}/${p2(d.getMonth() + 1)} fechou à meia-noite, então nada neste evento muda mais. Se alguém mudar no Google Agenda, a Zuri mantém este registro e avisa você.</span></p>` : ""}${e.ro || fz ? "" : `<div class="ev-sts" role="group" aria-label="Situação">${Object.entries(STS).map(([k, [l]]) => `<button type="button" class="st-${k}" data-ev-st="${k}" data-id="${e.id}" aria-pressed="${e.s === k}"><i aria-hidden="true"></i>${l}</button>`).join("")}</div>`}
       ${cfBox(e)}
       <dl class="ev-dl">${rows.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join("")}</dl>
-      ${!e.ro && e.tipo && !p ? `<p class="pt-later">${ic("link", "ic-sm")}<span class="grow">Este agendamento não está ligado a um contato.</span><button class="btn btn-secondary btn-sm" type="button" data-ev-edit="${e.id}" data-ev-link>Vincular</button></p>` : ""}
+      ${!e.ro && !fz && e.tipo && !p ? `<p class="pt-later">${ic("link", "ic-sm")}<span class="grow">Este agendamento não está ligado a um contato.</span><button class="btn btn-secondary btn-sm" type="button" data-ev-edit="${e.id}" data-ev-link>Vincular</button></p>` : ""}
 `,
-    foot: e.ro ? "" : `<button class="btn btn-quiet danger" type="button" data-ev-del="${e.id}">${ic("trash-2", "ic-sm")}Apagar</button><span class="grow"></span><button class="btn btn-primary" type="button" data-ev-edit="${e.id}">${ic("pencil", "ic-sm")}Editar</button>` }, opener);
+    foot: e.ro || fz ? "" : `<button class="btn btn-quiet danger" type="button" data-ev-del="${e.id}">${ic("trash-2", "ic-sm")}Apagar</button><span class="grow"></span><button class="btn btn-primary" type="button" data-ev-edit="${e.id}">${ic("pencil", "ic-sm")}Editar</button>` }, opener);
 }
 
 /* ---------- Confirmação pelo paciente ----------
@@ -6849,7 +6893,7 @@ function cfgConsultorio() {
   + sec("h-cs", "Como a confirmação sai", "Dois jeitos, com a mesma mensagem e o mesmo link. A resposta pelo link muda a situação e a cor na agenda e chega em Avisos.",
     `<div class="set-row"><div class="grow"><p class="t">${WA}Pelo WhatsApp, por você</p><p class="hint">Nos detalhes de cada agendamento, “Enviar pelo WhatsApp” abre o WhatsApp Web com a mensagem pronta para o paciente. Você confere e envia.</p></div><span class="pill on"><i></i>Sempre disponível</span></div>
       ${swRow("cf-auto-t", "Automático, pelo Chatwoot", `Na véspera útil, a Zuri envia a mensagem pela caixa do WhatsApp no Chatwoot para quem tem consulta ou retorno Agendado ou Reagendado e tem celular. Quem já confirmou pelo link, já recebeu pelo WhatsApp ou pelo Chatwoot, cancelou ou tem o link expirado fica de fora: ninguém recebe duas vezes. Uma mensagem por vez, com a espera em segundos da credencial do Chatwoot.`, CFM.auto)}
-      ${swRow("cf-mail-t", "Também por e-mail, na mesma hora", "Para quem tem e-mail no contato ou no agendamento. Sai pelo e-mail de Integrações › E-mail para pacientes, com o mesmo texto e o mesmo link, e o link vira um botão. O que o paciente fizer primeiro vale: nenhum dos dois canais manda de novo. Assunto: “Confirme sua consulta de {dia}”.", CFM.mail)}
+      ${swRow("cf-mail-t", "Também por e-mail, na mesma hora", "Para quem tem e-mail no contato ou no agendamento. Sai pelo e-mail de Integrações › E-mail para pacientes, com o mesmo texto e o mesmo link, e o link vira um botão. O que o paciente fizer primeiro vale: nenhum dos dois canais manda de novo. O assunto, o texto e o botão do e-mail ficam em Integrações › E-mail para pacientes.", CFM.mail)}
       ${ctlRow("Horário do envio automático", `Próximo envio: ${dayShort(nx.d)}, às ${hh2(CFM.hour)}, para ${nx.n} ${nx.n === 1 ? "paciente" : "pacientes"}. Sábado, domingo e feriado não têm envio: a consulta de segunda recebe na sexta.`, `<label class="sr" for="cf-hour">Horário do envio automático</label><select id="cf-hour" class="input input-sm" data-cf-hour>${hours}</select>`)}
       ${ctlRow("Credencial", "A chave do Chatwoot fica no servidor e nunca aparece aqui.", `<button class="btn btn-secondary btn-sm" type="button" data-cf-cred>${ic("key-round", "ic-sm")}Chatwoot · caixa do WhatsApp</button>`)}`);
 }
@@ -6996,8 +7040,8 @@ function eeTimes(from) {
   hint.innerHTML = FORM.own ? `Dura ${durTxt(FORM.dur)}. <button type="button" class="linkbtn" data-ee-dur1>Voltar para 1 h</button>` : "Dura 1 h, o padrão.";
 }
 
-function evEdit(ev, pre, opener) {
-  const e = ev || { day: /^\d{4}-\d{2}-\d{2}$/.test(pre.day || "") ? pre.day : dkey(st.agd), h: Number(pre.h ?? 11), m: Number(pre.m ?? 0), dur: 1, t: esc(pre.t || ""), pid: pre.pid || "", cel: esc(pre.cel || ""), mail: esc(pre.mail || ""), tipo: pre.plain ? "" : TIPOS[0], s: "agendado", fin: "Não pago", ddi: "BR" };
+function evEditBase(ev, pre, opener) {
+  const e = ev || { day: /^\d{4}-\d{2}-\d{2}$/.test(pre.day || "") ? pre.day : dkey(st.agd), h: Number(pre.h ?? 11), m: Number(pre.m ?? 0), dur: pre.dur === 0.5 ? 0.5 : 1, t: esc(pre.t || ""), pid: pre.pid || "", cel: esc(pre.cel || ""), mail: esc(pre.mail || ""), tipo: pre.plain ? "" : TIPOS[0], s: "agendado", fin: "Não pago", ddi: "BR" };
   const p = e.pid && pById(e.pid);
   Object.assign(FORM, { other: !!e.other, note: "", pid: p ? p.id : "", dur: Math.round(e.dur * 60), own: Math.round(e.dur * 60) !== 60, opt: -1, list: [] });
   const s0 = e.h * 60 + e.m;
@@ -7048,7 +7092,7 @@ function evEdit(ev, pre, opener) {
       /* Confere quando o horário muda, quando um compromisso vira consulta ou quando uma consulta cancelada volta. */
       const mudou = !ev || ev.day !== day || ev.h * 60 + ev.m !== mins || evEnd(ev) !== end || !ev.tipo || (ev.s === "cancelado" && s !== "cancelado");
       const fora = tipo && s !== "cancelado" && mudou ? agErro(ev, day, mins, end) : "";
-      if (fora) return fail(fora, `[data-ee-${pick(agErro.campo, ["d", "h", "f"])}]`);
+      if (fora) return eeAlerta(fora, day, mins, end, ev, `[data-ee-${pick(agErro.campo, ["d", "h", "f"])}]`);
       const twins = tipo && !pid ? PEOPLE.filter((x) => x.n && fold(x.n) === fold(t)).length : 0, twin = twins > 1;
       if (twin && !FORM.other) return fail(`Há ${twins} contatos chamados “${t}”. Escolha o certo na lista, pelo telefone e pela data de nascimento, ou toque em “É outra pessoa”.`, "[data-pt-q]");
       if (twin && !cel) return fail("Pessoa nova com o mesmo nome de um contato: o celular é obrigatório, para as automações não confundirem as duas.", "[data-ee-cel]");
@@ -7258,6 +7302,7 @@ document.addEventListener("pointermove", (e) => {
   if (!D.on) {
     if (Math.hypot(e.clientX - D.x, e.clientY - D.y) < 5) return;
     if (D.ev.ro) { D.dead = true; say("Esta agenda é só para leitura. Mude o evento no Google Agenda."); return; }
+    if (evFrozen(D.ev)) { D.dead = true; say(FROZEN_MSG); return; }
     D.on = true;
     D.b.classList.add("drag");
     document.body.classList.add("ag-dragging");
@@ -7573,21 +7618,20 @@ function resultados() {
   const res = inn - out, pres = pin - pout;
   const dif = (a, b, good = 1) => { const r = (a - b) / Math.abs(b || 1), up = r >= 0; return `<span class="cx-delta ${up === good > 0 ? "up" : "down"}">${ic(up ? "trending-up" : "trending-down", "ic-sm")}${Math.round(Math.abs(r) * 100)}%</span> que até ${AG_NOW.getDate()} de ${CX_MESES[CX_MESES.length - 2]}`; };
   const owe = EV.filter((e) => e.tipo && cxOwes(e)).reduce((s, e) => s + servOf(e).c, 0);
-  const RES = st.cxReal ? CX_RES.map(([a, b], i) => [Math.round(a * ipcaF(i)), Math.round(b * ipcaF(i))]) : CX_RES;
+  const RES = CX_RES;
   const mx = Math.max(...RES.flat());
   const bars = RES.map(([a, b], i) => `<li class="cx-g${i === CX_RES.length - 1 ? " last" : ""}"><span class="cx-gb in" style="--v:${(a / mx) * 100}"></span><span class="cx-gb out" style="--v:${(b / mx) * 100}"></span><span class="x">${CX_MESES[i]}</span></li>`).join("");
   const fixas = DESP.filter((d) => d.rep === "mes").reduce((s, d) => s + d.c, 0), ticket = 26000, eq = Math.ceil(fixas / ticket), feitos = CX_PRES[CX_PRES.length - 1][0];
   const SV = [["Consulta", 61], ["Consulta online", 24], ["Avaliação física", 15]];
   const hb = (L, unit = "%") => `<ul class="hbars">${L.map(([k, n]) => `<li><span class="k">${k}</span><span class="track"><span class="fill" style="width:${n}%"></span></span><span class="v num">${n}${unit}</span></li>`).join("")}</ul>`;
-  return `<div class="page page-wide cx-page">${head}<div class="tabs-row cx-tabs-row">${tabs}<div class="seg" role="group" aria-label="Período">${[["semana", "Semana"], ["mes", "Mês"], ["ano", "Ano"]].map(([k, l]) => `<button type="button" data-cx-per="${k}" aria-pressed="${st.cxPer === k}">${l}</button>`).join("")}</div><div class="seg" role="group" aria-label="Valores">${[["0", "Nominal"], ["1", "Real (IPCA)"]].map(([k, l]) => `<button type="button" data-cx-real="${k}" aria-pressed="${String(!!st.cxReal) === String(k === "1")}">${l}</button>`).join("")}</div></div>
+  return `<div class="page page-wide cx-page">${head}<div class="tabs-row cx-tabs-row">${tabs}<div class="seg" role="group" aria-label="Período">${[["semana", "Semana"], ["mes", "Mês"], ["ano", "Ano"]].map(([k, l]) => `<button type="button" data-cx-per="${k}" aria-pressed="${st.cxPer === k}">${l}</button>`).join("")}</div></div>
     ${cxLive(`Ao vivo · ${AG_MESES[AG_NOW.getMonth()]} até hoje. Cada pagamento registrado entra na hora.`)}
     <ul class="kpis" aria-label="Este mês">${cxKpi("Recebido", cxBrl0(inn), dif(inn, pin), "arrow-down-left")}${cxKpi("Despesas", cxBrl0(out), dif(out, pout, -1), "arrow-up-right")}${cxKpi("Resultado", cxBrl0(res), dif(res, pres), "scale", res >= 0 ? "" : "bad")}${cxKpi("A receber", cxBrl0(owe), "atendimentos sem pagamento", "wallet", owe ? "warn" : "")}</ul>
-    <div class="rv-grid"><section class="card p-sec chart-card" aria-labelledby="cx-h-r"><div class="p-sec-h"><h2 id="cx-h-r">Entradas e saídas por mês${st.cxReal ? " <span class=\"hint\">em reais de hoje</span>" : ""}</h2><p class="cx-leg"><span><i class="in"></i>Entradas</span><span><i class="out"></i>Saídas</span></p></div>
+    <div class="rv-grid"><section class="card p-sec chart-card" aria-labelledby="cx-h-r"><div class="p-sec-h"><h2 id="cx-h-r">Entradas e saídas por mês</h2><p class="cx-leg"><span><i class="in"></i>Entradas</span><span><i class="out"></i>Saídas</span></p></div>
         <ol class="cx-gbars" aria-hidden="true" style="--n:${CX_RES.length}">${bars}</ol>
         <details class="as-table"><summary>Ver em tabela</summary><table><thead><tr><th scope="col">Mês</th><th scope="col">Entradas</th><th scope="col">Saídas</th><th scope="col">Resultado</th></tr></thead><tbody>${RES.map(([a, b], i) => `<tr><td>${CX_MESES[i]}</td><td class="num">${cxBrl0(a)}</td><td class="num">${cxBrl0(b)}</td><td class="num">${cxBrl0(a - b)}</td></tr>`).join("")}</tbody></table></details></section>
       <section class="card p-sec" aria-labelledby="cx-h-eq"><div class="p-sec-h"><h2 id="cx-h-eq">Ponto de equilíbrio</h2></div><p class="cx-big num">${Math.min(feitos, eq)} de ${eq}</p><p class="hint">atendimentos para cobrir as despesas fixas do mês (${cxBrl0(fixas)}, com ticket médio de ${cxBrl0(ticket)}).</p>
         <p class="cx-meter" role="img" aria-label="${feitos >= eq ? "Despesas fixas já cobertas" : `${feitos} de ${eq}`}"><i style="width:${Math.min(100, (feitos / eq) * 100)}%"></i></p><p class="hint">${feitos >= eq ? `Coberto no dia ${Math.max(1, Math.ceil((eq / feitos) * AG_NOW.getDate()))}. O que entra agora é resultado.` : `Faltam ${eq - feitos} atendimentos.`}</p></section></div>
-    ${cxRealCard()}
     <div class="cx-grid-3"><section class="card p-sec" aria-labelledby="cx-h-sv2"><div class="p-sec-h"><h2 id="cx-h-sv2">Por serviço</h2></div>${hb(SV)}</section>
       <section class="card p-sec" aria-labelledby="cx-h-fm"><div class="p-sec-h"><h2 id="cx-h-fm">Por forma de pagamento</h2></div>${hb(CX_FORMA)}</section>
       <section class="card p-sec" aria-labelledby="cx-h-ds"><div class="p-sec-h"><h2 id="cx-h-ds">Maiores despesas</h2></div><ul class="hbars">${DESP.filter((d) => d.rep === "mes").sort((a, b) => b.c - a.c).map((d) => `<li><span class="k">${escH(d.n)}</span><span class="track"><span class="fill" style="width:${(d.c / DESP[0].c) * 100}%"></span></span><span class="v num">${cxBrl0(d.c)}</span></li>`).join("")}</ul></section></div></div>`;
@@ -7682,17 +7726,20 @@ ACT.unshift(
    encostar em consultas que já existem, para a agenda não ficar cheia de buracos. */
 /* Horário de atendimento: um lugar só (Configurações › Agenda). A Agenda, o Seu dia, o novo agendamento
    e a remarcação pelo link leem daqui. Início e fim em horas cheias (os mesmos de st.agDef); almoço em minutos. */
-const CF_HRS = { dias: [1, 2, 3, 4, 5], get de() { return st.agDef.de; }, get ate() { return st.agDef.ate; }, alm: [720, 780] };
+const CF_HRS = { dias: [1, 2, 3, 4, 5], get de() { return st.agDef.de; }, get ate() { return st.agDef.ate; }, alm: [720, 840] };
 const CF_RM_DAYS = 8;
 const CF_RM_MAX = 2;
 /* Horários do link de remarcar em horas cheias a partir do início do turno: o padrão de 1 h da agenda e dos serviços. */
 const CF_GRID = 60;
-/* Feriados e dias sem expediente: um lugar só (Configurações › Agenda). Feriado nacional fecha sozinho, menos os
-   que você marcar como "Atendo"; dias sem expediente (recesso, férias, feriado da cidade) fecham o dia inteiro. */
-const DIAS_OFF = [{ k: "2026-12-24", m: "Recesso" }, { k: "2026-12-31", m: "Recesso" }];
-const HOL_OPEN = new Set();
-const diaOff = (d) => DIAS_OFF.find((x) => x.k === dkey(d));
-const holFecha = (d) => !!feriado(d) && !HOL_OPEN.has(dkey(d));
+/* Feriados e dias sem expediente: um lugar só (Configurações › Agenda). Feriado nacional sempre fecha a agenda
+   (o Pablo não atende em feriado, 13/11). Dias sem expediente são períodos de um dia ou mais (férias, recesso,
+   viagem, feriado da cidade): de k até f, os dois inclusos, e fecham cada dia inteiro. */
+const DIAS_OFF = [{ k: "2026-12-24", f: "2027-01-03", m: "Recesso de fim de ano" }];
+const OFF_MAX = 90;
+const diaOff = (d) => { const k = dkey(d); return DIAS_OFF.find((x) => x.k <= k && k <= x.f); };
+const offTxt = (x) => (x.k === x.f ? brDate(x.k) : `${brDate(x.k)} a ${brDate(x.f)}`);
+const offDias = (x) => Math.round((dOf(x.f) - dOf(x.k)) / 864e5) + 1;
+const holFecha = (d) => !!feriado(d);
 const cfOpen = (d) => CF_HRS.dias.includes(d.getDay()) && !holFecha(d) && !diaOff(d);
 /* Janelas do turno, em minutos: manhã do início até a pausa, tarde da pausa até o fim. */
 const cfTurno = (t) => (t === "manha" ? [CF_HRS.de * 60, CF_HRS.alm[0]] : [CF_HRS.alm[1], CF_HRS.ate * 60]);
@@ -7700,9 +7747,9 @@ const cfTurno = (t) => (t === "manha" ? [CF_HRS.de * 60, CF_HRS.alm[0]] : [CF_HR
 function foraDoHorario(day, mins, dur) {
   const d = dOf(day), end = mins + Math.round(dur * 60), [a0, a1] = CF_HRS.alm;
   if (!CF_HRS.dias.includes(d.getDay())) return `${WDL[d.getDay()]} não é dia de atendimento.`;
-  if (holFecha(d)) return `${dayShort(d)} é feriado (${feriado(d)}). Para atender nesse dia, marque “Atendo” no feriado, em Configurações › Agenda.`;
+  if (holFecha(d)) return `${dayShort(d)} é feriado (${feriado(d)}). A agenda não abre em feriado.`;
   const off = diaOff(d);
-  if (off) return `${dayShort(d)} está como dia sem expediente${off.m ? ` (${off.m})` : ""}, em Configurações › Agenda.`;
+  if (off) return `${dayShort(d)} está sem expediente${off.m ? ` (${off.m})` : ""}, de ${offTxt(off).replace(" a ", " até ")}, em Configurações › Agenda.`;
   if (mins < CF_HRS.de * 60 || end > CF_HRS.ate * 60) return `Fora do horário de atendimento, das ${hh2(CF_HRS.de)} às ${hh2(CF_HRS.ate)}.`;
   if (mins < a1 && end > a0) return `No almoço, das ${hmm(a0)} às ${hmm(a1)}, não entra consulta.`;
   return "";
@@ -7763,17 +7810,19 @@ function hrBlock() {
         <label for="hr-a1">até<select id="hr-a1" class="input input-sm" data-hr="a1">${mO(a0 + 30, Math.min(a0 + 180, ate * 60 - 30), a1)}</select></label></div>
       <div class="hours-bar" role="img" aria-label="${hrResumo()}"><span class="on" style="left:${pct(de * 60)};width:${pct((ate - de) * 60)}"><b class="num">${hh2(de)} até ${hh2(ate)}</b></span><span class="lunch" style="left:${pct(a0)};width:${pct(a1 - a0)}" title="Almoço"></span></div>
       <div class="hours-scale num" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
-    ${holBlock()}${agForaAviso()}`;
+    ${holBlock()}
+    <div class="set-row set-col"><div class="grow"><p class="t">${ic("lock", "ic-sm")} Registro do dia</p><p class="hint">Todo dia, à 0h, os eventos do dia que terminou congelam: situação, horário, tipo e observação ficam guardados como estavam e não mudam mais. Até a meia-noite dá para marcar quem veio ou faltou. Se alguém mudar um evento congelado no Google Agenda, a Zuri mantém o registro e avisa você. Último fechamento: hoje, 00:00, ${(() => { const k = dkey(addD(AG_NOW, -1)), n = EV.filter((e) => !e.ro && e.day === k).length; return n === 1 ? "1 evento" : `${n} eventos`; })()}.</p></div></div>${agForaAviso()}`;
 }
-/* Feriados nacionais dos próximos 12 meses (cada um com "Atendo") e os dias sem expediente. */
+/* Feriados nacionais dos próximos 12 meses, só para consulta (fecham sempre), e os períodos sem expediente. */
 function holBlock() {
   const hs = [];
   for (let i = 0; i <= 366 && hs.length < 12; i++) { const d = addD(AG_NOW, i); if (feriado(d) && CF_HRS.dias.includes(d.getDay())) hs.push(d); }
-  const offs = DIAS_OFF.filter((x) => x.k >= dkey(AG_NOW)).sort((a, b) => (a.k < b.k ? -1 : 1));
-  return `<div class="set-row set-col"><div class="grow"><p class="t" id="hol-t">Feriados nacionais</p><p class="hint">Fecham a agenda sozinhos. Marque “Atendo” se for trabalhar no feriado. Feriado em fim de semana ou dia sem atendimento não aparece.</p></div>
-      <ul class="hol-list" aria-labelledby="hol-t">${hs.map((d) => `<li><span class="num">${p2(d.getDate())}/${p2(d.getMonth() + 1)}</span><span class="grow">${feriado(d)}</span><button type="button" class="chip" data-hol="${dkey(d)}" aria-pressed="${HOL_OPEN.has(dkey(d))}" aria-label="Atendo em ${feriado(d)}">Atendo</button></li>`).join("")}</ul></div>
-    <div class="set-row set-col"><div class="grow"><p class="t" id="off-t">Dias sem expediente</p><p class="hint">Recesso, férias ou feriado da cidade. O dia fica fechado na agenda, no link de remarcar e nos envios automáticos.</p></div>
-      <div class="off-list" role="group" aria-labelledby="off-t">${offs.map((x) => `<span class="tag">${brDate(x.k)}${x.m ? ` · ${x.m}` : ""}<button type="button" class="tag-x" data-off-del="${x.k}" aria-label="Tirar ${brDate(x.k)}">${ic("x", "ic-sm")}</button></span>`).join("")}<button class="btn btn-quiet btn-sm" type="button" data-off-add aria-haspopup="dialog">${ic("calendar-plus", "ic-sm")}Adicionar dia</button></div></div>`;
+  const offs = DIAS_OFF.filter((x) => x.f >= dkey(AG_NOW)).sort((a, b) => (a.k < b.k ? -1 : 1));
+  return `<div class="set-row set-col"><div class="grow"><p class="t" id="hol-t">Feriados nacionais</p><p class="hint">A agenda fecha sozinha em todo feriado nacional. Aqui estão os próximos que caem num dia de atendimento.</p></div>
+      <ul class="hol-list" aria-labelledby="hol-t">${hs.map((d) => `<li><span class="num">${p2(d.getDate())}/${p2(d.getMonth() + 1)}</span><span class="grow">${feriado(d)}</span><span class="hint">${WDL[d.getDay()]}</span></li>`).join("")}</ul></div>
+    <div class="set-row set-col"><div class="grow"><p class="t" id="off-t">Dias sem expediente</p><p class="hint">Um dia ou um período: férias, recesso, viagem ou feriado da cidade. Cada dia fica fechado na agenda, no link de remarcar e nos envios automáticos.</p></div>
+      <ul class="off-list" aria-labelledby="off-t">${offs.map((x) => `<li><span class="grow"><b class="num">${offTxt(x)}</b>${x.m ? ` · ${escH(x.m)}` : ""} <span class="hint">· ${offDias(x) === 1 ? "1 dia" : `${offDias(x)} dias`}</span></span><button type="button" class="iconbtn" data-off-del="${x.k}" aria-label="Tirar ${offTxt(x)}">${ic("x", "ic-sm")}</button></li>`).join("")}${offs.length ? "" : `<li class="hint">Nenhum dia marcado.</li>`}</ul>
+      <div><button class="btn btn-quiet btn-sm" type="button" data-off-add aria-haspopup="dialog">${ic("calendar-plus", "ic-sm")}Adicionar dia ou período</button></div></div>`;
 }
 function cfFree(e, k, t) {
   const [a, b] = cfTurno(t), dur = Math.round(e.dur * 60), busy = EV.filter((o) => o !== e && o.day === k && o.s !== "cancelado");
@@ -7903,7 +7952,7 @@ document.addEventListener("change", (ev) => {
   else say("Esse horário não fecha com os outros: o almoço precisa ficar dentro do atendimento, com pelo menos 30 min de cada lado.");
   render(); refocus(`[data-hr="${k}"]`);
 });
-/* ================= 13/11/2026 · pedidos das 21:15: família nos Contatos, extrato em planilha, IPCA e projeções ================= */
+/* ================= 13/11/2026 · pedidos das 21:15: família nos Contatos, extrato em planilha e projeções ================= */
 /* Família: ligações que só a Zuri guarda (o Google Contatos fica só para leitura). Cada ligação diz o papel dos dois lados:
    "a é la de b" e "b é lb de a". Quem tem responsável recebe as mensagens do consultório pelo celular e pelo e-mail dele. */
 const FAM_REL = [["Mãe", "Filha", "Filho"], ["Pai", "Filha", "Filho"], ["Filha", "Mãe", "Pai"], ["Filho", "Mãe", "Pai"], ["Irmã", "Irmã", "Irmão"], ["Irmão", "Irmã", "Irmão"], ["Avó", "Neta", "Neto"], ["Avô", "Neta", "Neto"], ["Neta", "Avó", "Avô"], ["Neto", "Avó", "Avô"], ["Tia", "Sobrinha", "Sobrinho"], ["Tio", "Sobrinha", "Sobrinho"], ["Sobrinha", "Tia", "Tio"], ["Sobrinho", "Tia", "Tio"], ["Prima", "Prima", "Primo"], ["Primo", "Prima", "Primo"], ["Cônjuge", "Cônjuge"], ["Responsável legal", "Dependente"]];
@@ -7971,45 +8020,29 @@ function cxExport() {
 }
 ACT.unshift([(t) => t.matches("[data-cx-exp]"), () => cxExport()]);
 
-/* IPCA (IBGE), lido pelo servidor uma vez por mês da série 433 do Banco Central (endereço fixo, sem chave).
-   Valores de exemplo. O mês corrente ainda não tem IPCA: entra o último conhecido, marcado como prévia. */
-const CX_IPCA = [0.44, 0.38, 0.29, 0.16, 0.22];
-/* Fator para trazer o valor do mês i para o dinheiro de hoje: a inflação dos meses seguintes, acumulada. */
-const ipcaF = (i) => CX_IPCA.slice(i + 1).reduce((f, v) => f * (1 + v / 100), 1);
-const pct1 = (v) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
-function cxRealCard() {
-  const acc = (ipcaF(-1) - 1) * 100, f = 0, l = CX_IPCA.length - 1;
-  const [i0, o0] = CX_RES[f], [i1, o1] = CX_RES[l];
-  const nom = (i1 / i0 - 1) * 100, real = ((i1 * ipcaF(l)) / (i0 * ipcaF(f)) - 1) * 100;
-  const liq = i1 - o1, liq0 = i0 - o0, liqR = ((liq * ipcaF(l)) / (liq0 * ipcaF(f)) - 1) * 100;
-  return `<section class="card p-sec" aria-labelledby="cx-h-real"><div class="p-sec-h"><h2 id="cx-h-real">Desempenho real</h2><span class="hint">descontada a inflação (IPCA)</span></div>
-    <ul class="kpis kpis-3 cx-real">${cxKpi("Inflação no período", pct1(acc), `IPCA de ${CX_MESES[f]} a ${CX_MESES[l]}`, "activity")}${cxKpi("Receita", pct1(real), `real · ${pct1(nom)} sem descontar a inflação`, real >= 0 ? "trending-up" : "trending-down", real >= 0 ? "" : "bad")}${cxKpi("Resultado líquido", pct1(liqR), `real · ${cxBrl0(liq)} em ${CX_MESES[l]}, margem de ${Math.round((liq / i1) * 100)}%`, "scale", liqR >= 0 ? "" : "bad")}</ul>
-    <p class="hint">${CX_MESES[f]} comparado com ${CX_MESES[l]}, os dois em reais de hoje. Resultado líquido é o que entrou menos as despesas. O IPCA vem do IBGE pelo Banco Central, todo mês; o último é de ${CX_MESES[l]} (${CX_IPCA[l].toLocaleString("pt-BR")}%).</p></section>`;
-}
-/* Projeções: os meses fechados em reais de hoje, a tendência deles, o que já está marcado na agenda e os dois botões de "e se". */
+/* Projeções: os meses fechados pelos valores registrados, sem correção pela inflação (pedido do Pablo, 13/11), a tendência deles, o que já está marcado na agenda e os dois botões de "e se". */
 st.pjR = 0; st.pjA = 0;
 function cxProjecoes() {
-  const full = CX_RES.slice(0, CX_IPCA.length), rin = full.map(([a], i) => a * ipcaF(i)), n = rin.length;
+  const rin = CX_RES.slice(0, -1).map(([a]) => a), n = rin.length;
   const mx = (n - 1) / 2, my = rin.reduce((s, v) => s + v, 0) / n, slope = rin.reduce((s, v, i) => s + (i - mx) * (v - my), 0) / rin.reduce((s, _, i) => s + (i - mx) ** 2, 0);
-  const base = rin.slice(-3).reduce((s, v) => s + v, 0) / 3, infl = 0.0035, ticket = 26000, fixas = DESP.filter((d) => d.rep === "mes").reduce((s, d) => s + d.c, 0);
+  const base = rin.slice(-3).reduce((s, v) => s + v, 0) / 3, ticket = 26000, fixas = DESP.filter((d) => d.rep === "mes").reduce((s, d) => s + d.c, 0);
   const nxt = new Date(AG_NOW.getFullYear(), AG_NOW.getMonth() + 1, 1), ymN = ymOf(nxt);
   const booked = EV.filter((e) => e.tipo && e.s !== "cancelado" && e.day.startsWith(ymN) && servOf(e)), bookedC = booked.reduce((s, e) => s + servOf(e).c, 0);
   const rows = [1, 2, 3].map((h) => {
     const d = new Date(AG_NOW.getFullYear(), AG_NOW.getMonth() + h, 1);
-    const rec = Math.max(0, (base + slope * h) * (1 + st.pjR / 100) + st.pjA * 4.3 * ticket) * (1 + infl) ** h, desp = (fixas + 90000) * (1 + infl) ** h;
+    const rec = Math.max(0, (base + slope * h) * (1 + st.pjR / 100) + st.pjA * 4.3 * ticket), desp = fixas + 90000;
     return { m: AG_MESES[d.getMonth()], rec, lo: rec * 0.9, hi: rec * 1.1, desp, res: rec - desp };
   });
   const seg = (lbl, key, L, v) => `<div class="pj-ctl"><p class="t" id="pj-${key}">${lbl}</p><div class="seg" role="group" aria-labelledby="pj-${key}">${L.map(([k, l]) => `<button type="button" data-pj="${key}:${k}" aria-pressed="${v === k}">${l}</button>`).join("")}</div></div>`;
-  return `${cxLive("Atualiza sozinha a cada pagamento, despesa ou agendamento novo. O IPCA esperado vem do boletim Focus do Banco Central.")}
+  return `${cxLive("Atualiza sozinha a cada pagamento, despesa ou agendamento novo.")}
     <section class="card p-sec" aria-labelledby="cx-h-pj"><div class="p-sec-h"><h2 id="cx-h-pj">E se…</h2></div><div class="pj-ctls">
       ${seg("Reajuste dos serviços", "r", [[0, "Sem reajuste"], [5, "+5%"], [10, "+10%"]], st.pjR)}${seg("Atendimentos por semana", "a", [[-2, "−2"], [0, "Como hoje"], [2, "+2"], [4, "+4"]], st.pjA)}</div></section>
     <ul class="kpis" aria-label="Próximos três meses">${rows.map((r, i) => cxKpi(r.m.replace(/^./, (c) => c.toUpperCase()), cxBrl0(r.res), `resultado previsto · receita de ${cxBrl0(r.lo)} a ${cxBrl0(r.hi)}`, i ? "calendar-days" : "calendar-check", r.res >= 0 ? "" : "bad")).join("")}${cxKpi("Já marcado", cxBrl0(bookedC), `${booked.length} ${booked.length === 1 ? "atendimento" : "atendimentos"} com valor em ${AG_MESES[nxt.getMonth()]}`, "calendar-plus")}</ul>
     <section class="card p-sec" aria-labelledby="cx-h-pjt"><div class="p-sec-h"><h2 id="cx-h-pjt">Mês a mês</h2></div>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Mês</th><th scope="col">Receita prevista</th><th scope="col">Despesas previstas</th><th scope="col">Resultado</th></tr></thead><tbody>${rows.map((r) => `<tr><th scope="row">${r.m}</th><td class="num">${cxBrl0(r.rec)}</td><td class="num">${cxBrl0(r.desp)}</td><td class="num">${cxBrl0(r.res)}</td></tr>`).join("")}</tbody></table></div>
-      <details class="as-table"><summary>Como a Zuri calcula</summary><p class="hint">Média dos três últimos meses fechados, em reais de hoje, mais a tendência dos últimos ${n} meses. Por cima entram o reajuste e os atendimentos a mais ou a menos que você escolher (ticket médio de ${cxBrl0(ticket)}). Despesas: as fixas do mês e a média das variáveis, corrigidas pelo IPCA esperado (${(infl * 100).toLocaleString("pt-BR")}% ao mês). A faixa da receita vai de 10% abaixo a 10% acima. É uma estimativa: quanto mais meses no Financeiro, melhor ela fica.</p></details></section>`;
+      <details class="as-table"><summary>Como a Zuri calcula</summary><p class="hint">Média dos três últimos meses fechados, pelos valores registrados, mais a tendência dos últimos ${n} meses. Por cima entram o reajuste e os atendimentos a mais ou a menos que você escolher (ticket médio de ${cxBrl0(ticket)}). Despesas: as fixas do mês e a média das variáveis. A faixa da receita vai de 10% abaixo a 10% acima. É uma estimativa: quanto mais meses no Financeiro, melhor ela fica.</p></details></section>`;
 }
 ACT.unshift(
-  [(t) => t.matches("[data-cx-real]"), (t) => { st.cxReal = t.dataset.cxReal === "1"; render(); refocus(`[data-cx-real="${st.cxReal ? 1 : 0}"]`); }],
   [(t) => t.matches("[data-pj]"), (t) => { const [k, v] = t.dataset.pj.split(":"); const n = Number(v); if (k === "r" && [0, 5, 10].includes(n)) st.pjR = n; else if (k === "a" && [-2, 0, 2, 4].includes(n)) st.pjA = n; else return; render(); refocus(`[data-pj="${k}:${n}"]`); }]
 );
 /* ================= 13/11/2026 · pedidos das 21:37: e-mail (Gmail ou SMTP), Pix pela fzap e segurança das integrações ================= */
@@ -8019,26 +8052,100 @@ Object.assign(ICONS.lucide, {
 /* E-mail para pacientes: Gmail (recomendado, sem senha guardada) ou SMTP de outro provedor. */
 st.mailMode = "gmail";
 const MAIL = { gmail: "ana@exemplo.com.br", smtp: null, sentToday: 3, cap: 100 };
+/* 13/11/2026, 08:42 (pedido do Pablo): a integração mostra todos os campos (remetente, responder para, SMTP completo)
+   e o e-mail de confirmação ganha assunto, texto e botão próprios, com prévia. O texto do WhatsApp continua em Consultório. */
+Object.assign(MAIL, { name: "", replyTo: "", from: "" });
+const MAIL_TPL_DEFAULT = { subj: "Confirme sua consulta de {dia}", body: "Olá, {nome}!\n\nSua {tipo} no {consultorio} está marcada para {dia}, às {hora}.\n{local}\n\nToque no botão abaixo para confirmar sua presença. Se não puder vir, cancele pelo mesmo botão até {prazo}.\n\nPara mudar o dia ou o horário, fale com a nossa equipe pelo WhatsApp {whatsapp}.", btn: "Confirmar presença" };
+MAIL.tpl = { ...MAIL_TPL_DEFAULT };
+const MAIL_SUBJ_MAX = 120, MAIL_BODY_MAX = 2000, MAIL_BTN_MAX = 30;
+const MAIL_SUBJ_VARS = ["nome", "tipo", "dia", "hora", "consultorio"];
+const MAIL_BODY_VARS = CF_VARS.map((v) => v[0]).filter((k) => k !== "link");
+const mailSender = () => (st.mailMode === "gmail" ? MAIL.gmail : MAIL.smtp ? MAIL.from || MAIL.smtp.user : "") || "";
+const mailName = () => MAIL.name || CF_CLINIC.n;
 function mailSec() {
-  const g = st.mailMode === "gmail", seg = `<div class="seg" role="group" aria-label="Como o e-mail sai">${[["gmail", "Gmail (recomendado)"], ["smtp", "Outro provedor (SMTP)"]].map(([k, l]) => `<button type="button" data-mail-mode="${k}" aria-pressed="${st.mailMode === k}">${l}</button>`).join("")}</div>`;
+  const g = st.mailMode === "gmail";
+  const modes = `<div class="mail-modes" role="group" aria-label="Como o e-mail sai">${[["gmail", "Gmail", "Recomendado. Entrega como você e já assina o e-mail (SPF e DKIM), então cai menos no spam. Nenhuma senha fica guardada."], ["smtp", "Outro provedor (SMTP)", "Para o e-mail próprio do consultório em outro provedor, como Hostinger, Locaweb ou Zoho."]].map(([k, l, h]) => `<button type="button" class="mail-mode" data-mail-mode="${k}" aria-pressed="${st.mailMode === k}"><span class="t">${ic(st.mailMode === k ? "circle-check" : "circle", "ic-sm")}${l}</span><span class="hint">${h}</span></button>`).join("")}</div>`;
   const gm = MAIL.gmail
-    ? `<div class="set-row"><div class="grow"><p class="t">${ic("circle-check", "ic-sm")} Gmail conectado: ${escH(MAIL.gmail)}</p><p class="hint">Permissão só de enviar (gmail.send). A Zuri não lê, não apaga e não vê a sua caixa. Nenhuma senha fica guardada: o Google dá um token, cifrado no servidor, e você revoga quando quiser na sua conta Google.</p></div><div class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-mail-test>Enviar teste para você</button><button class="btn btn-quiet btn-sm" type="button" data-mail-off>Desconectar</button></div></div>`
-    : `<div class="set-row"><div class="grow"><p class="t">Gmail não conectado</p><p class="hint">O Google pede para você permitir só o envio. Usa a mesma conexão do Google da Agenda.</p></div><button class="btn btn-primary btn-sm" type="button" data-mail-on>Conectar o Gmail</button></div>`;
-  const s = MAIL.smtp || {};
-  const sm = `<div class="form-grid">
-      <label class="field"><span class="label">Servidor</span><input class="input" data-smtp-host value="${escH(s.host || "")}" placeholder="smtp.exemplo.com.br" autocomplete="off" spellcheck="false" maxlength="120"></label>
-      <label class="field"><span class="label">Porta e segurança</span><select class="input" data-smtp-port><option value="465"${s.port === 587 ? "" : " selected"}>465 · SSL/TLS</option><option value="587"${s.port === 587 ? " selected" : ""}>587 · STARTTLS</option></select></label>
-      <label class="field"><span class="label">Usuário</span><input class="input" data-smtp-user value="${escH(s.user || "")}" placeholder="contato@exemplo.com.br" autocomplete="off" maxlength="120"></label>
-      <label class="field"><span class="label">Senha de app</span><input class="input" type="password" data-smtp-pass placeholder="${s.host ? "Em branco, fica a atual" : ""}" autocomplete="new-password" maxlength="200"><span class="hint">${s.host ? `Guardada, terminada em ${escH(s.last)}. ` : ""}Fica cifrada e nunca volta para a tela.</span></label></div>
-    <p class="hint">Só conexão cifrada (TLS); servidor sem TLS, endereço IP ou de rede interna é recusado. Mudar o servidor ou o usuário pede a senha de novo. Prefira uma senha de app, que você apaga no provedor sem trocar a senha da conta.</p><p class="hint" data-smtp-err role="status"></p>`;
-  return sec("h-mail", "E-mail para pacientes", `Por onde saem a confirmação de consulta, os parabéns e os outros e-mails aos pacientes. Até ${MAIL.cap} por dia; hoje saíram ${MAIL.sentToday}.`,
-    `${ctlRow("Como o e-mail sai", g ? "O Gmail entrega como você e já assina o e-mail (SPF e DKIM), então cai menos no spam." : "Para e-mail próprio do consultório em outro provedor.", seg)}${g ? gm : sm}`,
-    g ? "" : `<button class="btn btn-secondary" type="button" data-mail-test>Enviar teste para você</button><span class="grow"></span><button class="btn btn-primary" type="button" data-smtp-save>Salvar</button>`);
+    ? `<div class="set-row"><div class="grow"><p class="t">${ic("circle-check", "ic-sm")} Gmail conectado: ${escH(MAIL.gmail)}</p><p class="hint">Permissão só de enviar (gmail.send). A Zuri não lê, não apaga e não vê a sua caixa. O Google dá um token, cifrado no servidor, e você revoga quando quiser na sua conta Google.</p></div><button class="btn btn-quiet btn-sm" type="button" data-mail-off>Desconectar</button></div>`
+    : `<div class="set-row"><div class="grow"><p class="t">Gmail não conectado</p><p class="hint">O Google pede para você permitir só o envio. Usa a mesma conta Google da Agenda.</p></div><button class="btn btn-primary btn-sm" type="button" data-mail-on>Conectar o Gmail</button></div>`;
+  const sm = MAIL.smtp || {};
+  const smtp = `<h3 class="mail-h">Servidor de envio</h3><div class="form-grid">
+      <label class="field"><span class="label">Servidor SMTP</span><input class="input" data-smtp-host value="${escH(sm.host || "")}" placeholder="smtp.exemplo.com.br" autocomplete="off" spellcheck="false" maxlength="120"></label>
+      <label class="field"><span class="label">Porta e segurança</span><select class="input" data-smtp-port><option value="465"${sm.port === 587 ? "" : " selected"}>465 · SSL/TLS</option><option value="587"${sm.port === 587 ? " selected" : ""}>587 · STARTTLS</option></select></label>
+      <label class="field"><span class="label">Usuário</span><input class="input" data-smtp-user value="${escH(sm.user || "")}" placeholder="contato@exemplo.com.br" autocomplete="off" spellcheck="false" maxlength="120"><span class="hint">Quase sempre é o próprio e-mail.</span></label>
+      <label class="field"><span class="label">Senha de app</span><input class="input" type="password" data-smtp-pass placeholder="${sm.host ? "Em branco, fica a atual" : ""}" autocomplete="new-password" maxlength="200"><span class="hint">${sm.host ? `Guardada, terminada em ${escH(sm.last)}. ` : ""}Fica cifrada e nunca volta para a tela.</span></label>
+      <label class="field"><span class="label">E-mail do remetente</span><input class="input" type="email" data-mail-from value="${escH(MAIL.from)}" placeholder="${escH(sm.user || "contato@exemplo.com.br")}" autocomplete="off" spellcheck="false" maxlength="120"><span class="hint">Em branco, sai pelo usuário. Precisa ser um endereço que o servidor deixa usar.</span></label></div>
+    <p class="hint">Só conexão cifrada (TLS); servidor sem TLS, endereço IP ou de rede interna é recusado. Mudar o servidor ou o usuário pede a senha de novo.</p>`;
+  const who = `<h3 class="mail-h">Como o paciente vê</h3><div class="form-grid">
+      <label class="field"><span class="label">Nome do remetente</span><input class="input" data-mail-name value="${escH(MAIL.name)}" placeholder="${escH(CF_CLINIC.n)}" maxlength="60"><span class="hint">Em branco, vai o nome do consultório.</span></label>
+      <label class="field"><span class="label">Responder para (opcional)</span><input class="input" type="email" data-mail-reply value="${escH(MAIL.replyTo)}" placeholder="${escH(mailSender() || "contato@exemplo.com.br")}" autocomplete="off" spellcheck="false" maxlength="120"><span class="hint">Se o paciente responder, a resposta vai para cá.</span></label></div>
+    <p class="mail-from">${ic("mail", "ic-sm")}<span>De: <b>${escH(mailName())}</b> &lt;${escH(mailSender() || "conecte o e-mail acima")}&gt;</span></p><p class="hint" data-smtp-err role="status"></p>`;
+  return sec("h-mail", "E-mail para pacientes", `Por onde saem a confirmação de consulta e os outros e-mails aos pacientes. Até ${MAIL.cap} por dia; hoje saíram ${MAIL.sentToday}.`,
+    `<h3 class="mail-h">Como o e-mail sai</h3>${modes}${g ? gm : smtp}${who}`,
+    `<button class="btn btn-secondary" type="button" data-mail-test>Enviar teste para você</button><span class="grow"></span><button class="btn btn-primary" type="button" data-smtp-save>Salvar o e-mail</button>`)
+    + mailTplSec();
 }
+/* O e-mail de confirmação: assunto, texto e botão. O link vai sempre no botão, nunca solto no texto. */
+function mailTplCheck(subj, body, btn) {
+  const unk = (txt, ok) => [...txt.matchAll(/\{([^}]*)\}/g)].map((m) => m[1]).filter((k) => !ok.includes(k));
+  if (!subj.trim()) return ["Escreva o assunto.", "[data-mt-subj]"];
+  if (/[\r\n]/.test(subj) || subj.length > MAIL_SUBJ_MAX) return [`O assunto tem uma linha só, até ${MAIL_SUBJ_MAX} caracteres.`, "[data-mt-subj]"];
+  const bs = unk(subj, MAIL_SUBJ_VARS);
+  if (bs.length) return [`No assunto não dá para usar ${bs.map((k) => `{${k}}`).join(", ")}. Use as variáveis de baixo dele.`, "[data-mt-subj]"];
+  if (!body.trim()) return ["Escreva o texto do e-mail.", "[data-mt-body]"];
+  if (body.length > MAIL_BODY_MAX) return [`O texto passou de ${MAIL_BODY_MAX} caracteres.`, "[data-mt-body]"];
+  if (body.includes("{link}")) return ["O link já vai no botão. Tire o {link} do texto.", "[data-mt-body]"];
+  const bb = unk(body, MAIL_BODY_VARS);
+  if (bb.length) return [`Não conheço ${bb.map((k) => `{${k}}`).join(", ")}. Use só as variáveis da lista.`, "[data-mt-body]"];
+  if (!btn.trim() || btn.length > MAIL_BTN_MAX) return [`Escreva o texto do botão, até ${MAIL_BTN_MAX} caracteres.`, "[data-mt-btn]"];
+  return null;
+}
+function mailTplSec() {
+  const t = MAIL.tpl, ex = cfExample(), v = ex ? cfVars(ex) : {};
+  const chips = (to, keys) => `<div class="ct-vars" role="group" aria-label="Variáveis do ${to === "subj" ? "assunto" : "texto"}">${keys.map((k) => `<button type="button" class="chip" data-mt-var="${k}" data-mt-to="${to}" title="${escH((CF_VARS.find((x) => x[0] === k) || [k, k])[1])}">{${k}}</button>`).join("")}</div>`;
+  const on = CFM.mail;
+  return sec("h-mailtpl", "E-mail de confirmação de consulta", `Vai com a confirmação da véspera útil para quem tem e-mail no contato ou no agendamento. ${on ? "Está ligado" : "Está desligado"} em Configurações › Consultório › Como a confirmação sai.`,
+    `<div class="ct-grid"><div class="ct-edit">
+        <label class="field"><span class="label">Assunto</span><input class="input" data-mt-subj value="${escH(t.subj)}" maxlength="${MAIL_SUBJ_MAX}" autocomplete="off"></label>${chips("subj", MAIL_SUBJ_VARS)}
+        <label class="label" for="mt-body">Texto</label><textarea id="mt-body" class="input ct-ta" rows="10" maxlength="${MAIL_BODY_MAX}" data-mt-body aria-describedby="mt-n mt-err">${escH(t.body)}</textarea>
+        <p class="ct-meta"><span class="hint num" id="mt-n" data-mt-n>${t.body.length} de ${MAIL_BODY_MAX}</span><span class="hint err" id="mt-err" data-mt-err role="status"></span></p>${chips("body", MAIL_BODY_VARS)}
+        <label class="field"><span class="label">Texto do botão</span><input class="input" data-mt-btn value="${escH(t.btn)}" maxlength="${MAIL_BTN_MAX}" autocomplete="off"><span class="hint">O botão leva à página de confirmação do paciente, com o link só daquele agendamento.</span></label></div>
+      <div class="ct-prev"><p class="label">Como chega${ex ? ` para ${escH(cfFirst(ex))}` : ""}</p><div class="mail-prev" data-mt-prev>${ex ? mailPrevHtml(t, v) : ""}</div><p class="hint">Exemplo com o próximo agendamento da agenda. Texto simples, sem imagens: cai menos no spam.</p></div></div>`,
+    `<button class="btn btn-quiet" type="button" data-mt-reset>Voltar ao modelo padrão</button><button class="btn btn-quiet" type="button" data-mt-copy>Copiar o texto do WhatsApp</button><span class="grow"></span><button class="btn btn-secondary" type="button" data-mail-test>Enviar teste para você</button><button class="btn btn-primary" type="button" data-mt-save>Salvar o e-mail</button>`);
+}
+/* Prévia do e-mail: tudo passa por escape; só as quebras de linha viram <br>. */
+function mailPrevHtml(t, v) {
+  const fill = (x) => escH(cfFill(x, v));
+  return `<p class="mp-h"><span>De</span><b>${escH(mailName())}</b></p><p class="mp-h"><span>Assunto</span><b data-mp-subj>${fill(t.subj)}</b></p><div class="mp-body"><p data-mp-body>${fill(t.body).replace(/\n/g, "<br>")}</p><span class="mp-btn" data-mp-btn>${escH(t.btn)}</span><p class="mp-foot">${escH(CF_CLINIC.n)} · ${escH(CF_CLINIC.addr)}<br>Você recebeu este e-mail porque tem uma consulta marcada.</p></div>`;
+}
+/* Prévia ao vivo com nós de texto: o que a pessoa digita nunca vira HTML. */
+function mailTplLive() {
+  const subj = dlgRawIn("[data-mt-subj]"), ta = document.querySelector("[data-mt-body]"), btn = dlgRawIn("[data-mt-btn]"), ex = cfExample();
+  if (!ta) return;
+  const body = ta.value, bad = mailTplCheck(subj, body, btn);
+  const n = document.querySelector("[data-mt-n]"), er = document.querySelector("[data-mt-err]");
+  if (n) n.textContent = `${body.length} de ${MAIL_BODY_MAX}`;
+  if (er) er.textContent = bad ? bad[0] : "";
+  if (!ex) return;
+  const v = cfVars(ex), ps = document.querySelector("[data-mp-subj]"), pb = document.querySelector("[data-mp-body]"), pt = document.querySelector("[data-mp-btn]");
+  if (ps) ps.textContent = cfFill(subj, v);
+  if (pt) pt.textContent = btn;
+  if (pb) { pb.replaceChildren(); cfFill(body, v).split("\n").forEach((line, i) => { if (i) pb.appendChild(document.createElement("br")); if (line) pb.appendChild(document.createTextNode(line)); }); }
+}
+document.addEventListener("input", (ev) => { if (ev.target.matches && ev.target.matches("[data-mt-subj], [data-mt-body], [data-mt-btn]")) mailTplLive(); });
+/* O texto do WhatsApp vira o do e-mail: sai o {link} (vai no botão) e o *negrito*, que no e-mail apareceria com asteriscos. */
+const waToMail = (tpl) => tpl.replace(/\*([^*\n]+)\*/g, "$1").replace(/[^\n]*link:[ \t]*\n+(?=[^\n]*\{link\})/g, "").replace(/[^\n]*\{link\}[^\n]*\n?/g, "").replace(/pelo mesmo link/g, "pelo mesmo botão").replace(/\n{3,}/g, "\n\n").trim();
 const SMTP_HOST = /^(?=.{4,120}$)(?!-)[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i;
 const isIpLike = (h) => /^\d+(\.\d+){3}$/.test(h) || h.includes(":") || /(^|\.)(localhost|local|internal|lan|home|corp)$/i.test(h);
+const MAIL_ADDR = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 function smtpSave(t) {
-  const err = document.querySelector("[data-smtp-err]"), host = dlgRawIn("[data-smtp-host]").toLowerCase(), user = dlgRawIn("[data-smtp-user]"), pass = document.querySelector("[data-smtp-pass]")?.value || "", port = Number(pick(dlgRawIn("[data-smtp-port]"), ["465", "587"]));
+  const err = document.querySelector("[data-smtp-err]"), name = dlgRawIn("[data-mail-name]").slice(0, 60), reply = dlgRawIn("[data-mail-reply]"), from = dlgRawIn("[data-mail-from]");
+  const failW = (m, sel) => { err.textContent = m; err.classList.add("err"); document.querySelector(sel)?.focus(); };
+  if (/[\r\n<>"]/.test(name)) return failW("O nome do remetente não pode ter <, >, aspas nem quebra de linha.", "[data-mail-name]");
+  if (reply && !MAIL_ADDR.test(reply)) return failW("Confira o e-mail de “Responder para”, como contato@exemplo.com.br.", "[data-mail-reply]");
+  if (st.mailMode === "gmail") { Object.assign(MAIL, { name: esc(name), replyTo: esc(reply) }); err.textContent = ""; err.classList.remove("err"); render(); refocus("[data-smtp-save]"); say("E-mail salvo."); return; }
+  if (from && !MAIL_ADDR.test(from)) return failW("Confira o e-mail do remetente, como contato@exemplo.com.br.", "[data-mail-from]");
+  const host = dlgRawIn("[data-smtp-host]").toLowerCase(), user = dlgRawIn("[data-smtp-user]"), pass = document.querySelector("[data-smtp-pass]")?.value || "", port = Number(pick(dlgRawIn("[data-smtp-port]"), ["465", "587"]));
   const fail = (m, sel) => { err.textContent = m; err.classList.add("err"); document.querySelector(sel)?.focus(); };
   if (!SMTP_HOST.test(host) || isIpLike(host)) return fail("Use o nome do servidor, como smtp.exemplo.com.br. IP e rede interna não valem.", "[data-smtp-host]");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user)) return fail("O usuário costuma ser o próprio e-mail, como contato@exemplo.com.br.", "[data-smtp-user]");
@@ -8046,6 +8153,7 @@ function smtpSave(t) {
   if (moved && !pass) return fail(old ? "O servidor ou o usuário mudou: digite a senha de novo." : "Digite a senha de app.", "[data-smtp-pass]");
   senhaDlg("O e-mail guarda uma senha. Confirme para salvar.", () => {
     MAIL.smtp = { host, user, port, last: pass ? pass.slice(-2).replace(/./g, "•") + pass.slice(-2) : old.last };
+    Object.assign(MAIL, { name: esc(name), replyTo: esc(reply), from: esc(from) });
     render(); say("E-mail salvo. A Zuri conectou com TLS e o servidor aceitou o usuário.");
   }, t);
 }
@@ -8148,6 +8256,20 @@ ACT.unshift(
   [(t) => t.matches("[data-pix]"), (t) => { const e = evById(t.dataset.pix); if (!e) return; if (document.querySelector("#dlg-host .dlg-box")) dlgClose(); pixDlg(e, t); }],
   [(t) => t.matches("[data-pix-save]"), (t) => pixSave(t)],
   [(t) => t.matches("[data-fz-test]"), (t) => busy(t, 900, () => { const s = document.querySelector("[data-fz-st]"); if (s) { s.textContent = "Conectada. Modo WhatsApp Web: o Pix funciona."; s.className = "ok"; } })],
+  [(t) => t.matches("[data-mt-var]"), (t) => {
+    const k = t.dataset.mtVar, to = t.dataset.mtTo === "subj" ? "subj" : "body", ok = to === "subj" ? MAIL_SUBJ_VARS : MAIL_BODY_VARS;
+    const f = document.querySelector(to === "subj" ? "[data-mt-subj]" : "[data-mt-body]");
+    if (!f || !ok.includes(k)) return;
+    const a = f.selectionStart ?? f.value.length, b = f.selectionEnd ?? a;
+    f.setRangeText(`{${k}}`, a, b, "end"); f.focus(); mailTplLive();
+  }],
+  [(t) => t.matches("[data-mt-reset]"), () => { const set = (sel, v) => { const f = document.querySelector(sel); if (f) f.value = v; }; set("[data-mt-subj]", MAIL_TPL_DEFAULT.subj); set("[data-mt-body]", MAIL_TPL_DEFAULT.body); set("[data-mt-btn]", MAIL_TPL_DEFAULT.btn); mailTplLive(); document.querySelector("[data-mt-subj]")?.focus(); say("Modelo padrão de volta. Salve para valer."); }],
+  [(t) => t.matches("[data-mt-copy]"), () => { const f = document.querySelector("[data-mt-body]"); if (!f) return; f.value = waToMail(CFM.tpl).slice(0, MAIL_BODY_MAX); mailTplLive(); f.focus(); say("Texto do WhatsApp copiado, sem o link (ele vai no botão) e sem os asteriscos. Salve para valer."); }],
+  [(t) => t.matches("[data-mt-save]"), () => {
+    const subj = dlgRawIn("[data-mt-subj]"), body = document.querySelector("[data-mt-body]")?.value ?? "", btn = dlgRawIn("[data-mt-btn]"), bad = mailTplCheck(subj, body, btn);
+    if (bad) { mailTplLive(); const f = document.querySelector(bad[1]); if (f) { shakeField(f); f.focus(); } return; }
+    MAIL.tpl = { subj, body, btn }; say("E-mail de confirmação salvo. Vale a partir do próximo envio.");
+  }],
   [(t) => t.matches("[data-mail-mode]"), (t) => { st.mailMode = pick(t.dataset.mailMode, ["gmail", "smtp"]); render(); refocus(`[data-mail-mode="${st.mailMode}"]`); }],
   [(t) => t.matches("[data-mail-on]"), () => { MAIL.gmail = "ana@exemplo.com.br"; render(); refocus("[data-mail-test]"); say("Gmail conectado só para enviar."); }],
   [(t) => t.matches("[data-mail-off]"), (t) => confirmDlg("Desconectar o Gmail?", "Os e-mails aos pacientes param até você conectar de novo ou usar SMTP. O WhatsApp continua.", "Desconectar", () => { MAIL.gmail = ""; render(); refocus("[data-mail-on]"); say("Gmail desconectado. O token foi apagado e revogado no Google."); }, t)],
@@ -8452,9 +8574,11 @@ function agNext(day, mins) {
    ou um compromisso pessoal (reunião, banco), que pode ficar em qualquer hora. */
 function agClick(day, mins) {
   const opener = document.querySelector("[data-x=evento]");
-  const busyHere = EV.some((o) => o.day === day && o.tipo && o.s !== "cancelado" && o.h * 60 + o.m <= mins && evEnd(o) > mins);
-  const why = busyHere ? "" : agErro(null, day, mins, mins + 60);
-  if (!why || busyHere) { evEdit(null, { day, h: Math.floor(mins / 60), m: mins % 60 }, opener); return; }
+  /* v52 (13/11, 02:58): um horário ocupado também avisa com som, em vez de abrir o formulário. */
+  /* A última meia hora antes do almoço ou do fim do dia aceita uma consulta de 30 minutos: o formulário abre com ela. */
+  const why = agErro(null, day, mins, mins + 60), half = why && !agErro(null, day, mins, mins + 30), pre = agPickTake();
+  if (!why || half) { evEdit(null, { ...pre, day, h: Math.floor(mins / 60), m: mins % 60, ...(half ? { dur: 0.5 } : {}) }, opener); return; }
+  AG_PICK_PRE = pre;
   agSomErro();
   const nx = agNext(day, mins);
   dlgShow({ t: "Consulta não entra neste horário", sub: `${dayShort(dOf(day))}, às ${hmm(mins)}. ${why}`,
@@ -8469,7 +8593,8 @@ ACT.unshift(
     if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Number.isInteger(m) || m < 0 || m > 1439) return;
     DLG.opener = null; dlgClose();
     if (t.dataset.agNext) st.agd = dOf(k);
-    evEdit(null, { day: k, h: Math.floor(m / 60), m: m % 60, plain: !!t.dataset.agPlain }, document.querySelector("[data-x=evento]"));
+    const pre = AG_PICK_PRE || {}; AG_PICK_PRE = null;
+    evEdit(null, { ...pre, day: k, h: Math.floor(m / 60), m: m % 60, plain: !!t.dataset.agPlain }, document.querySelector("[data-x=evento]"));
   }]
 );
 /* ===== 13/11/2026, 22:04 · link do paciente: WhatsApp com mensagem pronta e sons das respostas ===== */
@@ -8494,207 +8619,201 @@ function cfSom(k) {
 /* ===== 13/11/2026, 21:44 · travas da agenda: feriado, dia sem expediente, passado, duração, consulta no mesmo horário ===== */
 const evFora = (e) => !!(e.tipo && !e.ro && e.s !== "cancelado" && foraDoHorario(e.day, e.h * 60 + e.m, e.dur));
 ACT.unshift(
-  [(t) => t.matches("[data-hol]"), (t) => { const k = t.dataset.hol; if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !feriado(dOf(k))) return; if (HOL_OPEN.has(k)) HOL_OPEN.delete(k); else HOL_OPEN.add(k); say(HOL_OPEN.has(k) ? `${feriado(dOf(k))}: a agenda abre nesse dia.` : `${feriado(dOf(k))}: a agenda fica fechada.`); render(); refocus(`[data-hol="${k}"]`); }],
-  [(t) => t.matches("[data-off-del]"), (t) => { const k = t.dataset.offDel, i = DIAS_OFF.findIndex((x) => x.k === k); if (i < 0) return; DIAS_OFF.splice(i, 1); say(`${brDate(k)} voltou a ser dia de atendimento.`); render(); refocus("[data-off-add]"); }],
+  [(t) => t.matches("[data-off-del]"), (t) => { const k = t.dataset.offDel, i = DIAS_OFF.findIndex((x) => x.k === k); if (i < 0) return; const x = DIAS_OFF[i]; DIAS_OFF.splice(i, 1); say(x.k === x.f ? `${brDate(k)} voltou a ser dia de atendimento.` : `${offTxt(x)} voltou a ter atendimento.`); render(); refocus("[data-off-add]"); }],
   [(t) => t.matches("[data-hr-ev]"), (t) => { const e = evById(t.dataset.hrEv); if (e) evDlg(e, t); }],
-  [(t) => t.matches("[data-off-add]"), (t) => dlgShow({ t: "Dia sem expediente", sub: "O dia fica fechado na agenda, no link de remarcar e nos envios automáticos.",
-    body: `<div class="form-grid"><label class="field"><span class="label">Dia</span><input class="input num" inputmode="numeric" autocomplete="off" data-mask="date" data-off-d placeholder="dd/mm/aaaa" maxlength="10" data-autofocus></label><label class="field"><span class="label">Motivo (opcional)</span><input class="input" data-off-m maxlength="40" placeholder="Por exemplo, recesso"></label></div><p class="hint" data-off-err role="status"></p>`,
+  [(t) => t.matches("[data-off-add]"), (t) => dlgShow({ t: "Dia sem expediente", sub: "Um dia só ou um período, como férias, recesso ou viagem. Cada dia fica fechado na agenda, no link de remarcar e nos envios automáticos.",
+    body: `<div class="form-grid"><label class="field"><span class="label">De</span><input class="input num" inputmode="numeric" autocomplete="off" data-mask="date" data-off-d placeholder="dd/mm/aaaa" maxlength="10" data-autofocus></label><label class="field"><span class="label">Até (vazio para um dia só)</span><input class="input num" inputmode="numeric" autocomplete="off" data-mask="date" data-off-f placeholder="dd/mm/aaaa" maxlength="10"></label><label class="field"><span class="label">Motivo (opcional)</span><input class="input" data-off-m maxlength="40" placeholder="Por exemplo, férias"></label></div><p class="hint" data-off-err role="status"></p>`,
     foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Adicionar</button>`,
     ok: () => {
-      const err = (m) => { const x = document.querySelector("[data-off-err]"); x.textContent = m; x.classList.add("err"); document.querySelector("#dlg-host [data-off-d]").focus(); return false; };
-      const k = isoDate(dlgRaw("[data-off-d]"));
+      const err = (m, sel = "[data-off-d]") => { const x = document.querySelector("[data-off-err]"); x.textContent = m; x.classList.add("err"); document.querySelector(`#dlg-host ${sel}`).focus(); return false; };
+      const k = isoDate(dlgRaw("[data-off-d]")), fr = dlgRaw("[data-off-f]"), f = fr ? isoDate(fr) : k;
       if (!k) return err("Escreva a data como dd/mm/aaaa.");
+      if (!f) return err("Escreva a data final como dd/mm/aaaa.", "[data-off-f]");
       if (k < dkey(AG_NOW)) return err("Esse dia já passou.");
-      if (dOf(k) > addD(AG_NOW, AG_LONGE)) return err("A data passa de um ano a partir de hoje. Confira o ano.");
-      if (DIAS_OFF.some((x) => x.k === k)) return err("Esse dia já está na lista.");
-      DIAS_OFF.push({ k, m: dlgVal("[data-off-m]") });
-      const n = EV.filter((e) => e.day === k && e.tipo && e.s !== "cancelado").length;
-      say(`${brDate(k)} ficou sem expediente.${n ? ` ${n === 1 ? "1 consulta marcada nesse dia precisa" : `${n} consultas marcadas nesse dia precisam`} ser remarcada${n === 1 ? "" : "s"}.` : ""}`);
+      if (f < k) return err("A data final vem antes da primeira. Confira as duas.", "[data-off-f]");
+      if (dOf(f) > addD(AG_NOW, AG_LONGE)) return err("A data passa de um ano a partir de hoje. Confira o ano.", fr ? "[data-off-f]" : "[data-off-d]");
+      if (offDias({ k, f }) > OFF_MAX) return err(`Um período vai até ${OFF_MAX} dias. Para mais, marque em partes.`, "[data-off-f]");
+      const hit = DIAS_OFF.find((x) => x.k <= f && k <= x.f);
+      if (hit) return err(`Esse período encosta em ${offTxt(hit)}, que já está na lista.`);
+      const x = { k, f, m: dlgVal("[data-off-m]") };
+      DIAS_OFF.push(x);
+      const n = EV.filter((e) => e.day >= k && e.day <= f && e.tipo && e.s !== "cancelado").length;
+      say(`${k === f ? `${brDate(k)} ficou` : `De ${offTxt(x).replace(" a ", " até ")}, ${offDias(x)} dias ficaram`} sem expediente.${n ? ` ${n === 1 ? "1 consulta marcada nesse período precisa" : `${n} consultas marcadas nesse período precisam`} ser remarcada${n === 1 ? "" : "s"}.` : ""}`);
       render();
     } }, t)]
 );
-/* ===== 13/11/2026 · Conversar com a Zuri pelo Chatwoot: configuração automática, só o dono, teste ===== */
-/* A Zuri cria no Chatwoot uma caixa só dela e responde só à conta de atendente do dono.
-   A chave de administrador serve só para a configuração e é descartada no fim. */
-const CWO = { st: "off", url: "https://chat.exemplo.com.br", acc: "1", code: "", me: { n: "Ana Martins", id: 7, mail: "ana@exemplo.com.br" }, admins: ["Rafael Souza"], since: "", log: [] };
-CFG.splice(CFG.findIndex((x) => x[0] === "integ") + 1, 0, ["chatwoot", "message-circle", "Chatwoot", "Conexões"]);
-CFG_HINT.chatwoot = "Converse com a Zuri por uma caixa só sua";
-CFG_HINT.integ = "Google, Telegram, Chatwoot e outros serviços";
-const CWO_STEPS = [
-  ["Conferir a chave", "A chave é de administrador da conta e é sua. Quem é você no Chatwoot vem dela."],
-  ["Criar a caixa “Zuri”", "Caixa do tipo API, com o endereço de retorno da Zuri, assinatura e HMAC obrigatória."],
-  ["Deixar só você na caixa", "Você é o único membro. Nenhum outro atendente recebe a caixa."],
-  ["Criar o contato “Zuri” e a conversa", "Pela API pública da caixa, com identificador próprio e HMAC."],
-  ["Mandar o código de vínculo", "Chega na conversa “Zuri”. Você responde com a sua conta."],
-  ["Descartar a chave de administrador", "Nada dela fica guardado. Fica só o que a caixa precisa, cifrado."]
-];
-const CWO_KEYS = [
-  ["Chave de administrador (a sua)", "Cria caixas, muda membros e lê os segredos da caixa.", "Só na configuração, no teste completo e para trocar os segredos. Nunca fica guardada.", "wait", "Só na hora"],
-  ["Chave de atendente", "Só enxerga as caixas em que a pessoa é membro. Não cria caixa nem muda membros.", "Não serve para configurar.", "off", "Não usada"],
-  ["Chave de bot (Agent Bot)", "Só mexe em conversas e envia mensagens. Não lê mensagens nem lista caixas.", "Não é preciso: a Zuri fala como contato da caixa dela.", "off", "Não usada"],
-  ["Chave de plataforma (Super Admin)", "Cria contas e usuários em toda a instalação.", "Nunca. Poder demais para uma conversa.", "bad", "Nunca"],
-  ["Identificador da caixa + HMAC do contato", "Só escreve e lê como o contato “Zuri”, na caixa “Zuri”. Não vê nenhuma outra caixa.", "É o que fica guardado, cifrado, com o segredo da assinatura.", "on", "Guardada"]
-];
-function cwoSteps(done, fail) {
-  return `<ol class="fq-steps cwo-steps">${CWO_STEPS.map(([t, d], k) => {
-    const c = fail === k ? "bad" : k < done ? "on" : "";
-    const i = fail === k ? "circle-x" : k < done ? "circle-check" : k === done ? "loader-circle" : "clock";
-    return `<li class="${c}"><span>${ic(i, `ic-sm${k === done && fail !== k ? " spin" : ""}`)}</span><span><b>${t}</b><br><span class="hint">${d}</span></span></li>`;
-  }).join("")}</ol>`;
-}
-function cfgChatwoot() {
-  const keys = sec("h-cwk", "O que cada chave do Chatwoot pode", "O Chatwoot tem cinco tipos de acesso. A Zuri usa o menor que resolve.",
-    `<div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Chave</th><th scope="col">O que ela pode</th><th scope="col">Uso na Zuri</th></tr></thead><tbody>${CWO_KEYS.map(([n, p, u, s, l]) => `<tr><th scope="row">${n}</th><td>${p}</td><td><span class="pill ${s}"><i></i>${l}</span> ${u}</td></tr>`).join("")}</tbody></table></div>`);
-  if (CWO.st === "off") return sec("h-cwo", "Conversar com a Zuri pelo Chatwoot", "A Zuri cria uma caixa só dela no seu Chatwoot e responde só a você. Paciente e outro atendente nunca recebem resposta.",
-    `<p class="t">O que a Zuri faz sozinha</p>${cwoSteps(-1)}
-     <p class="hint">${ic("shield-check", "ic-sm")} Ela não entra na caixa do WhatsApp dos pacientes e não lê as conversas deles. Ações que apagam ou mudam muita coisa você aprova no app ou no Telegram, nunca pelo Chatwoot.</p>`,
-    `<button class="btn btn-primary" type="button" data-cwo-start aria-haspopup="dialog">${ic("plug", "ic-sm")}Configurar</button>`) + keys;
-  if (CWO.st === "code") return sec("h-cwo", "Conversar com a Zuri pelo Chatwoot", "Falta um passo: responder o código na conversa “Zuri”.",
-    `<div class="set-row"><div class="grow"><p class="t"><span class="pill wait"><i></i>Esperando a sua resposta</span></p><p class="hint">Abra a caixa “Zuri” no Chatwoot e responda <b class="num">${CWO.code}</b> com a sua conta (${escH(CWO.me.n)}). O código vale 10 minutos.</p></div><div class="row-actions"><a class="btn btn-secondary btn-sm" href="${escH(CWO.url)}/app/accounts/${escH(CWO.acc)}/inbox" target="_blank" rel="noopener">${ic("external-link", "ic-sm")}Abrir o Chatwoot</a><button class="btn btn-quiet btn-sm" type="button" data-cwo-reply>Simular a resposta (protótipo)</button><button class="btn btn-quiet btn-sm" type="button" data-cwo-newcode>Mandar outro código</button></div></div>`) + keys;
-  if (CWO.st === "confirm") return sec("h-cwo", "Conversar com a Zuri pelo Chatwoot", "A resposta chegou. Confirme que foi você.",
-    `<div class="set-row"><div class="grow"><p class="t"><span class="pill wait"><i></i>Falta confirmar</span></p><p class="hint">O código veio da conta <b>${escH(CWO.me.n)}</b> (atendente nº <span class="num">${CWO.me.id}</span>). Só depois de confirmar a Zuri passa a responder.</p></div><div class="row-actions"><button class="btn btn-primary btn-sm" type="button" data-cwo-confirm>Confirmar esta conta</button><button class="btn btn-quiet btn-sm" type="button" data-cwo-off>Cancelar</button></div></div>`) + keys;
-  const on = CWO.st === "on";
-  return sec("h-cwo", "Conversar com a Zuri pelo Chatwoot", "Caixa “Zuri”, só para você.",
-    swRow("cwo-sw", "Conversar com a Zuri por aqui", on ? `Ligado desde ${escH(CWO.since)}. Escreva na conversa “Zuri” como no Telegram.` : "Desligado. A Zuri não responde nada na caixa até você ligar.", on)
-    + ctlRow("Responde só a", `${escH(CWO.me.n)} · atendente nº <span class="num">${CWO.me.id}</span> · ${escH(CWO.me.mail)}`, `<span class="pill on"><i></i>Vinculada</span>`)
-    + ctlRow("Membros da caixa", "Só você. Se alguém for incluído, o teste avisa.", `<span class="pill on"><i></i>Só você</span>`)
-    + ctlRow("Também veem a caixa", `${CWO.admins.map(escH).join(", ")}: administrador do Chatwoot vê todas as caixas. Se escrever na conversa, a Zuri não responde e avisa você, sem o texto. Três vezes em 24 h desligam o canal.`, `<span class="pill wait"><i></i>${CWO.admins.length} administrador</span>`)
-    + `<p class="t">Últimas mensagens</p><ul class="runs">${(CWO.log.length ? CWO.log : [["agora", "Você", "Código de vínculo", "on", "Vinculado"]]).map(([h, q, w, s, l]) => `<li><time class="num">${h}</time><span><b>${q}</b> · ${w}</span><span class="pill ${s}"><i></i>${l}</span></li>`).join("")}</ul>`,
-    `<button class="btn btn-secondary" type="button" data-cwo-test aria-haspopup="dialog">${ic("circle-check", "ic-sm")}Testar configuração</button><button class="btn btn-quiet" type="button" data-cwo-rotate aria-haspopup="dialog">${ic("key-round", "ic-sm")}Trocar os segredos</button><button class="btn btn-quiet" type="button" data-cwo-repair aria-haspopup="dialog">${ic("refresh-cw", "ic-sm")}Reparar</button><button class="btn btn-quiet" type="button" data-cwo-relink>${ic("user", "ic-sm")}Vincular outra conta</button><button class="btn btn-quiet" type="button" data-cwo-off>${ic("power", "ic-sm")}Desligar e esquecer</button><button class="btn btn-quiet" type="button" data-cwo-gone>Simular conversa apagada (protótipo)</button>`)
-    + sec("h-cwr", "Quando algo some ou muda", "O que a Zuri resolve sozinha e o que pede você.",
-      `<ul class="runs">${[["Conversa ou contato “Zuri” apagados", "A Zuri cria de novo e avisa você. Até 3 vezes por dia.", "on", "Sozinha"], ["Caixa apagada, endereço mudou", "O canal pausa. Toque em Reparar e cole a chave de administrador.", "wait", "Reparar"], ["Segredos trocados no Chatwoot", "O canal pausa. Toque em Trocar os segredos.", "wait", "Trocar"], ["Você trocou de conta de atendente", "Vincular outra conta: código novo e senha.", "wait", "Vincular"], ["Você trocou o número do celular", "Não muda nada: você conversa pelo Chatwoot logado.", "off", "Nada a fazer"]].map(([n, d, c, l]) => `<li><span><b>${n}</b><br><span class="hint">${d}</span></span><span class="pill ${c}"><i></i>${l}</span></li>`).join("")}</ul>`) + keys;
-}
-CFG_VIEW.chatwoot = cfgChatwoot;
-/* Integrações aponta para a página própria. */
-{
-  const base = CFG_VIEW.integ;
-  CFG_VIEW.integ = () => {
-    const h = base(), i = h.indexOf('<section class="card set-sec" aria-labelledby="h-mcp"');
-    const row = sec("h-cwl", "Chatwoot", "Converse com a Zuri por uma caixa só sua no Chatwoot.",
-      ctlRow(CWO.st === "on" ? `${ic("circle-check", "ic-sm")} Ligado: responde só a ${escH(CWO.me.n)}` : "Não configurado", "Configuração, teste e o que cada chave do Chatwoot pode.", `<button class="btn btn-quiet btn-sm" type="button" data-cfg="chatwoot">Abrir${ic("chevron-right", "ic-sm")}</button>`));
-    return i < 0 ? h + row : h.slice(0, i) + row + h.slice(i);
-  };
-}
-const cwoCode = () => Array.from({ length: 8 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
-/* Passo 1: endereço, conta e a chave de administrador (só nesta hora). */
-function cwoStart(opener, why) {
-  dlgShow({ t: "Configurar o Chatwoot", sub: "A Zuri faz o resto sozinha. A chave de administrador é usada agora e descartada no fim.",
-    body: `<div class="grid-2 grid-url"><label class="field"><span class="label">Endereço do Chatwoot</span><input class="input" data-cwo-url value="${escH(CWO.url)}" inputmode="url" autocomplete="off" spellcheck="false" maxlength="200"></label>
-      <label class="field"><span class="label">Número da conta</span><input class="input num" data-cwo-acc value="${escH(CWO.acc)}" inputmode="numeric" maxlength="9"><span class="hint">Aparece no endereço: /app/accounts/<b>1</b>/…</span></label></div>
-      <label class="field"><span class="label">Sua chave de acesso</span><input class="input" type="password" data-cwo-key autocomplete="off" placeholder="Perfil › Chave de acesso, no Chatwoot"><span class="hint">Precisa ser de administrador. Fica só na memória durante a configuração. Se quiser, gere uma chave nova no seu perfil do Chatwoot depois.</span></label>
-      <label class="field"><span class="label">No protótipo, simular</span><select class="input" data-cwo-sim><option value="ok">Tudo certo</option><option value="agent">Chave de atendente (sem ser administrador)</option><option value="bad">Chave recusada</option><option value="http">Endereço sem https</option><option value="drop">Chatwoot cai no meio da configuração</option></select></label>
-      <p class="hint" data-cwo-err role="status">${why || ""}</p>`,
-    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Continuar</button>`,
-    ok: () => {
-      const err = (m, sel) => { const x = document.querySelector("[data-cwo-err]"); x.textContent = m; x.classList.add("err"); document.querySelector(`#dlg-host ${sel}`).focus(); return false; };
-      const url = dlgRaw("[data-cwo-url]").replace(/\/+$/, ""), acc = dlgRaw("[data-cwo-acc]"), sim = ["ok", "agent", "bad", "http", "drop"].find((x) => x === dlgRaw("[data-cwo-sim]")) || "ok";
-      if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(url) || sim === "http") return err("Use o endereço com https://, só o domínio, sem caminho. A Zuri não chama endereço sem https nem de rede interna.", "[data-cwo-url]");
-      if (!/^\d{1,9}$/.test(acc)) return err("O número da conta tem só algarismos.", "[data-cwo-acc]");
-      if (!dlgRaw("[data-cwo-key]")) return err("Cole a sua chave de acesso.", "[data-cwo-key]");
-      CWO.url = url; CWO.acc = acc; CWO.sim = sim;
-      senhaDlg("A Zuri vai criar uma caixa no seu Chatwoot.", () => setTimeout(() => cwoWho(opener, sim), 300), opener);
-      return false;
-    } }, opener);
-}
-/* Passo 2: quem é o dono da chave. */
-function cwoWho(opener, sim) {
-  dlgShow({ t: "Conferindo a chave…", body: `<p class="dlg-wait" role="status">${ic("loader-circle", "spin")}<span>Perguntando ao Chatwoot quem é o dono desta chave…</span></p>`, foot: "" }, opener);
-  setTimeout(() => {
-    if (!DLG.def) return;
-    if (sim === "bad") { cwoStart(opener, "O Chatwoot recusou a chave (401). Confira se copiou inteira, em Perfil › Chave de acesso."); return; }
-    if (sim === "agent") { cwoStart(opener, `Esta chave é de ${CWO.me.n}, mas com papel de atendente na conta ${CWO.acc}. Para criar a caixa, use a chave de um administrador.`); return; }
-    dlgShow({ t: "Esta conta é você?", sub: "A Zuri vai responder só a esta conta de atendente.",
-      body: `<div class="set-row"><span class="tile tile-sm">${ic("user", "ic-sm")}</span><div class="grow"><p class="t">${escH(CWO.me.n)}</p><p class="hint">${escH(CWO.me.mail)} · atendente nº <span class="num">${CWO.me.id}</span> · administrador da conta <span class="num">${escH(CWO.acc)}</span></p></div></div>
-        <p class="hint">${ic("triangle-alert", "ic-sm")} Se esta chave não for sua, pare aqui: a Zuri responderia ao dono dela.</p>`,
-      foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Não sou eu</button><button class="btn btn-primary" type="button" data-cwo-make data-autofocus>Sou eu, criar a caixa</button>` }, opener);
-  }, 900);
-}
-/* Passo 3: a Zuri cria tudo e mostra cada passo. */
-function cwoMake(opener, fail, repair) {
-  let k = 0;
-  const tick = () => {
-    if (k > 0 && !DLG.def) return;
-    if (k === fail) {
-      dlgShow({ t: "A configuração parou", sub: "Nada ficou pela metade: a Zuri desfez o que tinha criado.", body: `${cwoSteps(k, k)}<p class="hint">O Chatwoot não respondeu em 10 s ao criar o contato. A caixa “Zuri” criada agora foi apagada. Tente de novo em alguns minutos.</p>`,
-        foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Fechar</button><button class="btn btn-primary" type="button" data-cwo-again>Tentar de novo</button>` }, opener);
-      return;
-    }
-    dlgShow({ t: "Configurando…", sub: "Leva alguns segundos. Não feche esta janela.", body: cwoSteps(k), foot: "" }, opener);
-    if (k === CWO_STEPS.length && repair) {
-      CWO.st = "on"; CWO.log.unshift(["agora", "Zuri", "Reparo: caixa, endereço de retorno, membros e conversa conferidos", "on", "Reparado"]);
-      dlgShow({ t: "Reparado", sub: "A caixa estava no lugar. A Zuri refez só o que faltava, e a sua chave foi descartada.", body: cwoSteps(k), foot: `<span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Pronto</button>` }, opener);
-      render();
-      return;
-    }
-    if (k === CWO_STEPS.length) {
-      CWO.code = cwoCode(); CWO.st = "code";
-      dlgShow({ t: "Caixa criada", sub: "Falta você responder o código na conversa “Zuri”.", body: `${cwoSteps(k)}<p class="t">Responda <b class="num">${CWO.code}</b> na conversa “Zuri” do Chatwoot.</p><p class="hint">Use a sua conta (${escH(CWO.me.n)}). Depois, confirme aqui no app com a senha.</p>`,
-        foot: `<span class="grow"></span><button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Entendi</button>` }, opener);
-      render();
-      return;
-    }
-    k += 1; setTimeout(tick, 650);
-  };
-  tick();
-}
-/* Teste da configuração: o rápido não pede chave; o completo pede a de administrador de novo. */
-const CWO_TEST = [
-  ["Chatwoot responde", "https, sem redirecionamento, em 0,4 s.", "on"],
-  ["Caixa “Zuri” existe", "API pública da caixa respondeu.", "on"],
-  ["HMAC obrigatória", "Pedido sem o HMAC do contato foi recusado, como deve ser.", "on"],
-  ["Contato e conversa da Zuri", "A conversa do vínculo continua aberta.", "on"],
-  ["Assinatura do retorno", "A Zuri mandou “Teste da configuração” e o aviso assinado voltou em 1,2 s, com a assinatura certa.", "on"]
-];
-const CWO_FULL = [
-  ["Endereço de retorno da caixa", "É o da Zuri. Ninguém trocou.", "on"],
-  ["Membros da caixa", "Só você.", "on"],
-  ["Você ainda é administrador", "Sim, na conta 1.", "on"],
-  ["Quem mais vê a caixa", `${CWO.admins.join(", ")} é administrador e vê todas as caixas. A Zuri não responde a ele.`, "wait"]
-];
-function cwoTest(opener, full, sim) {
-  const rows = full ? [...CWO_TEST, ...CWO_FULL] : CWO_TEST;
-  const list = (n) => `<ol class="fq-steps cwo-steps">${rows.map(([t, d, s], k) => {
-    const bad = sim === "sig" && k === 4;
-    const c = k < n ? (bad ? "bad" : s === "on" ? "on" : "") : "";
-    const i = k < n ? (bad ? "circle-x" : s === "on" ? "circle-check" : "circle-alert") : k === n ? "loader-circle" : "clock";
-    return `<li class="${c}"><span>${ic(i, `ic-sm${k === n ? " spin" : ""}`)}</span><span><b>${t}</b>${k < n ? `<br><span class="hint">${bad ? "A assinatura não bateu: o segredo foi trocado no Chatwoot. Toque em “Trocar os segredos”." : d}</span>` : ""}</span></li>`;
-  }).join("")}</ol>`;
-  let n = 0;
-  const tick = () => {
-    if (n > 0 && !DLG.def) return;
-    const end = n === rows.length;
-    dlgShow({ t: full ? "Teste completo" : "Teste da configuração", sub: end ? (sim === "sig" ? "Uma conferência falhou. A Zuri desligou o canal até você corrigir." : "Tudo certo. A Zuri só responde a você.") : "Conferindo cada parte…",
-      body: `${list(n)}${end && !full ? `<p class="hint">O teste completo também confere membros, administradores e o endereço de retorno. Pede a sua chave de administrador de novo, só para essa hora.</p>` : ""}`,
-      foot: end ? `<button class="btn btn-quiet" type="button" data-cwo-test-sig>Simular segredo trocado (protótipo)</button><span class="grow"></span>${full ? "" : `<button class="btn btn-secondary" type="button" data-cwo-full>Teste completo</button>`}<button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Pronto</button>` : "" }, opener);
-    if (end) { if (sim === "sig") { CWO.st = "paused"; render(); } return; }
-    n += 1; setTimeout(tick, 420);
-  };
-  tick();
-}
-function cwoAdminKey(opener, title, why, then) {
-  dlgShow({ t: title, sub: why, body: `<label class="field"><span class="label">Sua chave de acesso de administrador</span><input class="input" type="password" data-cwo-key2 autocomplete="off" data-autofocus><span class="hint">Usada só agora e descartada.</span></label><p class="hint" data-cwo-err2 role="status"></p>`,
-    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Continuar</button>`,
-    ok: () => { if (!dlgRaw("[data-cwo-key2]")) { const x = document.querySelector("[data-cwo-err2]"); x.textContent = "Cole a chave para continuar."; x.classList.add("err"); return false; } setTimeout(then, 200); return false; } }, opener);
-}
-ACT.unshift(
-  [(t) => t.matches("[data-cwo-start]"), (t) => cwoStart(t)],
-  [(t) => t.matches("[data-cwo-gone]"), () => { CWO.log.unshift(["agora", "Chatwoot", "A conversa “Zuri” foi apagada. A Zuri abriu outra e avisou você", "wait", "Recriada"]); render(); refocus("[data-cwo-gone]"); say("A conversa “Zuri” sumiu no Chatwoot. A Zuri abriu outra e avisou no app e no Telegram."); }],
-  [(t) => t.matches("[data-cwo-repair]"), (t) => cwoAdminKey(t, "Reparar", "A Zuri confere a caixa, o endereço de retorno, os membros, o contato e a conversa, e refaz só o que faltar.", () => cwoMake(t, -1, true))],
-  [(t) => t.matches("[data-cwo-relink]"), (t) => senhaDlg("Para vincular outra conta de atendente do Chatwoot.", () => { CWO.code = cwoCode(); CWO.st = "code"; render(); refocus("[data-cwo-reply]"); say(`Código novo enviado na conversa “Zuri”. Responda com a conta nova. Até lá, a Zuri não responde a ninguém.`); }, t)],
-  [(t) => t.matches("[data-cwo-make]"), () => cwoMake(DLG.opener, CWO.sim === "drop" ? 3 : -1)],
-  [(t) => t.matches("[data-cwo-again]"), () => cwoMake(DLG.opener, -1)],
-  [(t) => t.matches("[data-cwo-newcode]"), (t) => { CWO.code = cwoCode(); render(); refocus("[data-cwo-newcode]"); say(`Código novo enviado na conversa “Zuri”. O anterior não vale mais.`); }],
-  [(t) => t.matches("[data-cwo-reply]"), () => { CWO.st = "confirm"; render(); refocus("[data-cwo-confirm]"); say(`O código chegou da conta ${CWO.me.n}.`); }],
-  [(t) => t.matches("[data-cwo-confirm]"), (t) => senhaDlg("Para a Zuri responder a esta conta do Chatwoot.", () => { CWO.st = "on"; CWO.since = "hoje, 10:02"; CWO.log = [["10:02", "Você", "Código de vínculo", "on", "Vinculado"]]; render(); refocus("[data-cwo-test]"); say("Pronto. A Zuri responde só a você na conversa “Zuri”."); }, t)],
-  [(t) => t.matches("[data-cwo-test]"), (t) => cwoTest(t, false)],
-  [(t) => t.matches("[data-cwo-test-sig]"), () => cwoTest(DLG.opener, false, "sig")],
-  [(t) => t.matches("[data-cwo-full]"), () => { const o = DLG.opener; cwoAdminKey(o, "Teste completo", "Para ler membros, administradores e o endereço de retorno da caixa.", () => cwoTest(o, true)); }],
-  [(t) => t.matches("[data-cwo-rotate]"), (t) => cwoAdminKey(t, "Trocar os segredos", "A Zuri pede ao Chatwoot um segredo de assinatura e um HMAC novos para a caixa “Zuri”. Os antigos param de valer na hora.", () => senhaDlg("Para trocar os segredos da caixa.", () => { if (CWO.st === "paused") CWO.st = "on"; render(); say("Segredos trocados. O teste passou com os novos."); }, t))],
-  [(t) => t.matches("[data-cwo-off]"), (t) => confirmDlg("Desligar e esquecer o Chatwoot?", "A Zuri apaga o que guardou da caixa e para de responder. A caixa “Zuri” fica no Chatwoot: apague lá se quiser.", "Desligar", () => { CWO.st = "off"; CWO.log = []; render(); refocus("[data-cwo-start]"); say("Chatwoot desligado. Nada da caixa ficou guardado."); }, t)],
-  [(t) => t.matches("[role=switch][aria-labelledby=cwo-sw]"), (t) => { CWO.st = CWO.st === "on" ? "paused" : "on"; if (CWO.st === "on" && !CWO.since) CWO.since = "agora"; render(); refocus("[aria-labelledby=cwo-sw]"); say(CWO.st === "on" ? "A Zuri voltou a responder na conversa “Zuri”." : "Pausado. A Zuri não responde nada na caixa."); }]
-);
+/* O registro congelado também vale para quem chega pelo teclado ou por um botão que ficou na tela. */
+ACT.unshift([(t) => t.matches("[data-ev-st], [data-ev-edit], [data-ev-del]") && evFrozen(evById(t.dataset.id || t.dataset.evEdit || t.dataset.evDel)), () => say(FROZEN_MSG)]);
 /* Primeiro desenho só depois de todos os blocos acima existirem. */
 render();
+
+/* ===== 13/11/2026, 02:58 · v52: almoço das 12h às 14h, aviso com som em toda recusa, mini calendário e escolher na agenda ===== */
+/* Os horários de início livres de um dia para uma consulta de `dur` minutos, de 30 em 30. `skip` é a própria consulta
+   (que libera o lugar dela). Reunião e outros compromissos também ocupam o horário, para a sugestão não cair em cima. */
+function agLivres(day, dur, skip) {
+  const out = [];
+  for (let m = CF_HRS.de * 60; m + dur <= CF_HRS.ate * 60; m += 30) {
+    const busy = EV.some((o) => o !== skip && o.day === day && o.s !== "cancelado" && o.h * 60 + o.m < m + dur && evEnd(o) > m);
+    if (!busy && !agErro(skip, day, m, m + dur)) out.push(m);
+  }
+  return out;
+}
+/* O próximo horário livre a partir do que a pessoa tentou, nos próximos 60 dias. */
+function agProx(day, mins, dur, skip) {
+  const start = day < dkey(AG_NOW) ? dkey(AG_NOW) : day;
+  for (let i = 0; i < 60; i++) {
+    const k = dkey(addD(dOf(start), i));
+    const m = agLivres(k, dur, skip).find((x) => i || x >= Math.floor(mins / 30) * 30);
+    if (m !== undefined) return { day: k, m };
+  }
+  return null;
+}
+/* Arrastar ou mover pelo teclado para um horário fechado: a consulta volta, toca o som de erro e abre o aviso,
+   com o próximo horário livre e "Mover para lá", que leva a consulta para ele com a mesma duração. */
+function agRecusaMove(e, day, mins, dur, why) {
+  agSomErro();
+  const len = Math.round(dur * 60), nx = agProx(day, mins, len, e);
+  dlgShow({ t: "Consulta não entra neste horário", sub: `${dayShort(dOf(day))}, às ${hmm(mins)}. ${why} A consulta ficou onde estava.`,
+    body: nx ? `<p class="hint">Próximo horário livre: <b>${dayShort(dOf(nx.day))}, às ${hmm(nx.m)}</b>.</p>` : `<p class="hint">Nenhum horário livre nos próximos 60 dias com essa duração.</p>`,
+    foot: `<span class="grow"></span>${nx ? `<button class="btn btn-quiet" type="button" data-dlg-x>Entendi</button><button class="btn btn-primary" type="button" data-ag-mv="${e.id}|${nx.day}|${nx.m}" data-autofocus>Mover para lá</button>` : `<button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Entendi</button>`}` },
+    document.querySelector(`.ag2 [data-ev="${e.id}"]`));
+  const box = document.querySelector("#dlg-host .dlg-box");
+  if (box) { box.setAttribute("role", "alertdialog"); box.classList.add("dlg-sm"); }
+}
+/* Salvar o formulário num horário fechado: o aviso abre por cima do formulário, com som, sem perder o que foi digitado.
+   "Usar este horário" preenche a data e as horas; "Corrigir" fecha o aviso e leva o cursor ao campo do problema. */
+function eeAlerta(why, day, mins, end, ev, field) {
+  agSomErro();
+  const box = document.querySelector("#dlg-host .dlg-box");
+  if (!box) return false;
+  box.querySelector(".ee-alert")?.remove();
+  const nx = agProx(day, mins, end - mins, ev || null);
+  box.insertAdjacentHTML("beforeend", `<div class="ee-alert" data-ee-alert data-f="${pick(field, ["[data-ee-d]", "[data-ee-h]", "[data-ee-f]"])}"><div class="ee-al-card" role="alertdialog" aria-modal="true" aria-labelledby="ee-al-t" aria-describedby="ee-al-d">
+    <p class="ee-al-t" id="ee-al-t">${ic("triangle-alert", "ic-sm")}Consulta não entra neste horário</p>
+    <p id="ee-al-d">${dayShort(dOf(day))}, às ${hmm(mins)}. ${why}</p>
+    ${nx ? `<p class="hint">Próximo horário livre: <b>${dayShort(dOf(nx.day))}, às ${hmm(nx.m)}</b>.</p>` : ""}
+    <div class="ee-al-foot"><button class="btn btn-quiet" type="button" data-ee-al-x>Corrigir</button>${nx ? `<button class="btn btn-primary" type="button" data-ee-al-use="${nx.day}|${nx.m}|${end - mins}">Usar este horário</button>` : ""}</div></div></div>`);
+  (box.querySelector("[data-ee-al-use]") || box.querySelector("[data-ee-al-x]")).focus();
+  return false;
+}
+function eeAlertaFecha(focusSel) {
+  const al = document.querySelector("#dlg-host [data-ee-alert]");
+  if (!al) return;
+  const f = focusSel || al.dataset.f;
+  al.remove();
+  const x = document.querySelector(`#dlg-host ${f}`);
+  if (x) { shakeField(x); x.focus(); }
+}
+/* Com o aviso aberto, Esc e Tab ficam nele: Esc fecha só o aviso, e o foco não volta para os campos de trás. */
+window.addEventListener("keydown", (e) => {
+  const al = document.querySelector("#dlg-host [data-ee-alert]");
+  if (!al) return;
+  if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); eeAlertaFecha(); return; }
+  if (e.key === "Tab") {
+    const f = [...al.querySelectorAll("button")];
+    const i = f.indexOf(document.activeElement);
+    e.preventDefault(); e.stopImmediatePropagation();
+    f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+  }
+}, true);
+
+/* Mini calendário do formulário: o mês com os dias que aceitam consulta; dia sem atendimento, feriado, dia sem expediente,
+   passado ou sem nenhum horário livre fica riscado e não se escolhe. Escolhido o dia, os horários livres aparecem em botões. */
+const EE_CAL = { open: false, mes: "" };
+let AG_PICK_PRE = null;
+const eePlainNow = () => !dlgRaw("[data-ee-k]");
+function eeDayWhy(k, dur) {
+  const d = dOf(k);
+  if (k < dkey(AG_NOW)) return "já passou";
+  if (!cfOpen(d)) return holFecha(d) ? `feriado, ${feriado(d)}` : diaOff(d) ? "sem expediente" : "sem atendimento";
+  return agLivres(k, dur, FORM.ev || null).length ? "" : "sem horário livre";
+}
+function eePickRender() {
+  const host = document.querySelector("#dlg-host [data-ee-pick]");
+  if (!host) return;
+  const day = isoDate(dlgRaw("[data-ee-d]")), start = minOf(dlgRaw("[data-ee-h]")), dur = FORM.dur || 60, plain = eePlainNow();
+  if (!EE_CAL.mes) EE_CAL.mes = (day || dkey(AG_NOW)).slice(0, 7);
+  const [y, mo] = EE_CAL.mes.split("-").map(Number), first = new Date(y, mo - 1, 1), skipDays = first.getDay(), n = new Date(y, mo, 0).getDate();
+  const nome0 = first.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }), nome = nome0[0].toUpperCase() + nome0.slice(1);
+  const cells = Array.from({ length: n }, (_, i) => {
+    const k = `${EE_CAL.mes}-${p2(i + 1)}`, why = plain ? (k < dkey(AG_NOW) ? "já passou" : "") : eeDayWhy(k, dur);
+    const label = `${dOf(k).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}${why ? `: ${why}` : ""}`;
+    return `<button type="button" data-ee-day="${k}" aria-label="${label}" aria-pressed="${k === day}"${why ? " disabled" : ""}${k === dkey(AG_NOW) ? ' class="today"' : ""}>${i + 1}</button>`;
+  });
+  const slots = day && !plain ? agLivres(day, dur, FORM.ev || null) : [];
+  const cal = EE_CAL.open ? `<div class="ee-cal" id="ee-cal" role="group" aria-label="Calendário de ${nome}">
+      <div class="ee-cal-h"><button class="iconbtn" type="button" data-ee-mes="-1" aria-label="Mês anterior">${ic("chevron-left")}</button><b aria-live="polite">${nome}</b><button class="iconbtn" type="button" data-ee-mes="1" aria-label="Próximo mês">${ic("chevron-right")}</button></div>
+      <div class="ee-cal-g">${["D", "S", "T", "Q", "Q", "S", "S"].map((w) => `<span class="wd" aria-hidden="true">${w}</span>`).join("")}${"<span></span>".repeat(skipDays)}${cells.join("")}</div></div>` : "";
+  const livres = plain ? "" : !day ? `<p class="hint">Escolha um dia para ver os horários livres.</p>`
+    : slots.length ? `<p class="hint" id="ee-sl-h">Horários livres em ${dayShort(dOf(day))}, com ${durTxt(dur)} de duração:</p><ul class="ee-slots" aria-labelledby="ee-sl-h">${slots.map((m) => `<li><button class="chip" type="button" data-ee-slot="${m}" aria-pressed="${m === start}">${hmm(m)}</button></li>`).join("")}</ul>`
+    : `<p class="hint">${eeDayWhy(day, dur) === "sem horário livre" ? "Nenhum horário livre neste dia." : `Este dia não aceita consulta (${eeDayWhy(day, dur)}).`} Escolha outro no calendário.</p>`;
+  host.innerHTML = `<div class="ee-pick-bar"><button class="btn btn-quiet" type="button" data-ee-cal aria-expanded="${EE_CAL.open}" aria-controls="ee-cal">${ic("calendar-days", "ic-sm")}${EE_CAL.open ? "Fechar o calendário" : "Ver no calendário"}</button>${FORM.ev ? "" : `<button class="btn btn-quiet" type="button" data-ee-agenda>${ic("calendar-clock", "ic-sm")}Escolher na agenda</button>`}</div>${cal}${livres}`;
+}
+/* O formulário do v51 com o calendário e os horários livres por baixo das datas. */
+function evEdit(ev, pre, opener) {
+  evEditBase(ev, pre, opener);
+  FORM.ev = ev || null;
+  EE_CAL.open = false; EE_CAL.mes = "";
+  const grid = document.querySelector("#dlg-host .ee-grid");
+  if (grid) grid.insertAdjacentHTML("afterend", `<div class="ee-pick" data-ee-pick></div>`);
+  eePickRender();
+}
+document.addEventListener("input", (e) => { if (e.target.matches && e.target.matches("#dlg-host [data-ee-d], #dlg-host [data-ee-h], #dlg-host [data-ee-f]")) { const k = isoDate(dlgRaw("[data-ee-d]")); if (k) EE_CAL.mes = k.slice(0, 7); eePickRender(); } });
+document.addEventListener("change", (e) => { if (e.target.matches && e.target.matches("#dlg-host [data-ee-k]")) eePickRender(); });
+
+/* Escolher na agenda: o formulário se recolhe (o nome, o vínculo e o contato ficam guardados), a semana pede um toque
+   no dia e na hora, e o formulário volta preenchido. Um horário fechado avisa como sempre. */
+function agPickTake() { const pre = AG_PICK_PRE; AG_PICK_PRE = null; document.querySelector(".ag-pickbar")?.remove(); return pre || {}; }
+function agPickStart() {
+  const pre = { t: dlgRaw("[data-pt-q]"), pid: FORM.pid, cel: FORM.pid ? "" : dlgRaw("[data-ee-cel]"), mail: FORM.pid ? "" : dlgRaw("[data-ee-mail]"), plain: eePlainNow() };
+  DLG.opener = null; dlgClose();
+  AG_PICK_PRE = pre;
+  if (st.agv === "mes") st.agv = "semana";
+  render();
+  document.body.insertAdjacentHTML("beforeend", `<div class="ag-pickbar" role="status">${ic("calendar-clock", "ic-sm")}<span>Toque no dia e na hora da consulta${pre.t ? ` de ${esc(pre.t)}` : ""}.</span><button class="btn btn-quiet" type="button" data-ag-pick-x>Cancelar</button></div>`);
+  document.querySelector(".ag2 [data-col]")?.focus?.();
+}
+ACT.unshift(
+  [(t) => t.matches("[data-ag-mv]"), (t) => {
+    const [id, k, m0] = t.dataset.agMv.split("|"), m = Number(m0), e = EV.find((x) => x.id === id);
+    if (!e || !/^\d{4}-\d{2}-\d{2}$/.test(k) || !Number.isInteger(m) || m < 0 || m > 1439) return;
+    DLG.opener = null; dlgClose();
+    st.agd = dOf(k);
+    evMove(e, k, m, e.dur, document.querySelector(`.ag2 [data-ev="${e.id}"]`));
+  }],
+  [(t) => t.matches("[data-ee-al-x]"), () => eeAlertaFecha()],
+  [(t) => t.matches("[data-ee-al-use]"), (t) => {
+    const [k, m0, len0] = t.dataset.eeAlUse.split("|"), m = Number(m0), len = Number(len0);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Number.isInteger(m) || !Number.isInteger(len)) return;
+    const set = (sel, v) => { const x = document.querySelector(`#dlg-host ${sel}`); if (x) x.value = v; };
+    set("[data-ee-d]", brDate(k)); set("[data-ee-h]", hmm(m)); set("[data-ee-f]", hmm(m + len));
+    EE_CAL.mes = k.slice(0, 7); eeTimes(""); eePickRender();
+    eeAlertaFecha("[data-dlg-ok]");
+    say(`Horário trocado para ${dayShort(dOf(k))}, às ${hmm(m)}. Confira e toque em Agendar.`);
+  }],
+  [(t) => t.matches("[data-ee-cal]"), () => { EE_CAL.open = !EE_CAL.open; eePickRender(); document.querySelector("#dlg-host [data-ee-cal]")?.focus(); }],
+  [(t) => t.matches("[data-ee-mes]"), (t) => {
+    const [y, mo] = EE_CAL.mes.split("-").map(Number), d = new Date(y, mo - 1 + (t.dataset.eeMes === "1" ? 1 : -1), 1);
+    EE_CAL.mes = `${d.getFullYear()}-${p2(d.getMonth() + 1)}`; eePickRender();
+    document.querySelector(`#dlg-host [data-ee-mes="${t.dataset.eeMes}"]`)?.focus();
+  }],
+  [(t) => t.matches("[data-ee-day]"), (t) => {
+    const k = t.dataset.eeDay;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+    const d = document.querySelector("#dlg-host [data-ee-d]"); if (d) d.value = brDate(k);
+    eePickRender();
+    (document.querySelector("#dlg-host [data-ee-slot]") || document.querySelector(`#dlg-host [data-ee-day="${k}"]`))?.focus();
+  }],
+  [(t) => t.matches("[data-ee-slot]"), (t) => {
+    const m = Number(t.dataset.eeSlot);
+    if (!Number.isInteger(m) || m < 0 || m > 1439) return;
+    const h = document.querySelector("#dlg-host [data-ee-h]"); if (h) h.value = hmm(m);
+    eeTimes("h"); eePickRender();
+    document.querySelector(`#dlg-host [data-ee-slot="${m}"]`)?.focus();
+  }],
+  [(t) => t.matches("[data-ee-agenda]"), () => agPickStart()],
+  [(t) => t.matches("[data-ag-pick-x]"), () => { agPickTake(); say("Escolha na agenda cancelada."); }]
+);
 </script>
 </body>
 </html>
