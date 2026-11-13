@@ -300,6 +300,9 @@ describe("/api/flows/connections", () => {
     const waits = await api("PATCH", `/flows/connections/${connection.id}`, { bulkGap: { min: 40, max: 80 }, oneGap: { min: 3, max: 6 } });
     expect(waits.status).toBe(200);
     expect(((await waits.json()) as { connection: FlowConnection }).connection.chatwoot).toMatchObject({ bulkGap: { min: 40, max: 80 }, oneGap: { min: 3, max: 6 } });
+    // Not a security change: no alert for the waits (the making above was one).
+    const alerts = await inOwner((agent) => agent.store.db.all<{ kind: string }>(`SELECT kind FROM zur_auth_events WHERE kind LIKE 'flow_connection%'`).map((r) => r.kind));
+    expect(alerts).toEqual(["flow_connection_added"]);
     // The waits with anything else, or an empty body, still need the password.
     for (const patch of [{ bulkGap: { min: 40, max: 80 }, name: "X" }, { inboxId: 7 }, {}]) {
       expect((await api("PATCH", `/flows/connections/${connection.id}`, patch)).status).toBe(403);
@@ -310,8 +313,8 @@ describe("/api/flows/connections", () => {
     const res = await api("POST", `/flows/connections/${connection.id}/test`);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ test: { ok: true, inboxes: [{ id: 7, name: "WhatsApp do consultório", api: true }] } });
-    // 5 a minute: the pick of the inbox above didn't count, so 4 more pass and the 6th waits.
-    for (let i = 0; i < 4; i++) expect((await api("POST", `/flows/connections/${connection.id}/test`)).status).toBe(200);
+    // 5 a minute, the pick of the inbox above included: 3 more pass and the 6th waits.
+    for (let i = 0; i < 3; i++) expect((await api("POST", `/flows/connections/${connection.id}/test`)).status).toBe(200);
     const again = await api("POST", `/flows/connections/${connection.id}/test`);
     expect(again.status).toBe(429);
     expect(Number(again.headers.get("retry-after"))).toBeGreaterThan(0);

@@ -430,7 +430,7 @@ Diferenças da S17 (servidor das credenciais) para o plano e o protótipo, para 
 - **Esperas do Chatwoot em segundos**, como decidido em 12/11: envios em massa de 5 a 600 (30 a 60) e uma pessoa de 1 a 30 (2 a 5), a de uma pessoa sempre menor que o "De" dos envios em massa. Mudar só as esperas não pede a senha. "Próximo envio livre em" fica para a S19, com a fila.
 - **A caixa de entrada é escolhida depois de criar**, em Editar › Buscar caixas, com a chave salva: o servidor confere que a chave enxerga a caixa antes de guardar. Um teste antes de salvar mandaria uma chave digitada a um endereço digitado sem senha.
 - **Mudar o endereço, a conta ou o tipo de chave pede a chave de novo** (`VALIDATION_FAILED`, campo `credential`), em vez de apagar a guardada. O aviso de Credenciais diz isso.
-- **"Testar" fica no menu "Mais opções"**, não como botão na linha. Até 5 por minuto por credencial (a escolha da caixa não conta, ela já pede a senha). O webhook do Chatwoot, o segredo da assinatura e "Enviar teste para mim" ficam com quem os usa (S19/S20).
+- **"Testar" fica no menu "Mais opções"**, não como botão na linha. Até 5 por minuto por credencial (buscar caixas também conta, porque usa a mesma chamada). O webhook do Chatwoot, o segredo da assinatura e "Enviar teste para mim" ficam com quem os usa (S19/S20).
 - **Fim da chave** só para chaves de 12 caracteres ou mais; abaixo disso a linha diz "Com chave".
 
 Diferenças da S13 (servidor do consumo), para a S16 não as desfazer:

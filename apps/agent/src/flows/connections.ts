@@ -3,6 +3,7 @@ import {
   type ChatwootSettings,
   chatwootConnectionCreateSchema,
   chatwootConnectionUpdateSchema,
+  CHATWOOT_FREE_FIELDS,
   chatwootGapsProblem,
   FLOW_CONNECTION_KINDS,
   FLOW_LIMITS,
@@ -48,9 +49,10 @@ export interface ConnectionRow {
  * another. A kind added later (fzap, SMTP) gets a line here, its schemas in
  * packages/shared and its fixed client; the routes don't change.
  */
-export const CONNECTION_KINDS: Record<FlowConnectionKind, { info: string }> = {
-  http: { info: "flows-v1" },
-  chatwoot: { info: "chatwoot-v1" },
+export const CONNECTION_KINDS: Record<FlowConnectionKind, { info: string; freeFields: readonly string[] }> = {
+  http: { info: "flows-v1", freeFields: [] },
+  // The waits are not a secret: changing only them asks for no password (it goes to the activity log).
+  chatwoot: { info: "chatwoot-v1", freeFields: CHATWOOT_FREE_FIELDS },
 };
 
 /** The Chatwoot's key goes in this header (its API's own name). */
@@ -93,7 +95,8 @@ export function chatwootSettings(row: Pick<ConnectionRow, "meta">): ChatwootSett
   return {
     accountId: int(raw.accountId, 1, CHATWOOT_LIMITS.accountMax) ?? 1,
     inboxId,
-    inboxName: inboxId !== null && typeof raw.inboxName === "string" ? raw.inboxName.slice(0, CHATWOOT_LIMITS.inboxName) : null,
+    // Cut by characters, not UTF-16 units: half an emoji would show as a broken sign.
+    inboxName: inboxId !== null && typeof raw.inboxName === "string" ? [...raw.inboxName].slice(0, CHATWOOT_LIMITS.inboxName).join("") : null,
     bulkGap,
     oneGap,
   };
@@ -261,8 +264,8 @@ export class FlowConnections {
       credential = await this.seal("http", id, patch.credential);
       end = keyEnd(patch.credential);
     }
-    this.db.run(
-      `UPDATE zur_flow_connections SET name = ?, origin = ?, methods = ?, paths = ?, auth = ?, header_name = ?, credential = ?, key_end = ?, updated_at = ? WHERE id = ?`,
+    const kept = this.db.run(
+      `UPDATE zur_flow_connections SET name = ?, origin = ?, methods = ?, paths = ?, auth = ?, header_name = ?, credential = ?, key_end = ?, updated_at = ? WHERE id = ? AND updated_at = ?`,
       patch.name ?? row.name,
       origin,
       patch.methods ? JSON.stringify(patch.methods) : row.methods,
@@ -271,9 +274,12 @@ export class FlowConnections {
       headerName,
       credential,
       end,
-      new Date(this.clock()).toISOString(),
+      this.nextStamp(row.updated_at),
       id,
+      row.updated_at,
     );
+    // Sealing the key awaits: another change that came in meanwhile is never written over.
+    if (kept.rowsWritten === 0) throw new AppError("CONFLICT");
     const sensitive = moved || patch.credential !== undefined || patch.methods !== undefined || patch.paths !== undefined || patch.headerName !== undefined;
     if (sensitive) recordActivity(this.db, "flow.connection_changed", { auth, kind: "http" });
     return { sensitive };
@@ -319,16 +325,20 @@ export class FlowConnections {
       meta.inboxId = inbox.id;
       meta.inboxName = inbox.name;
     }
-    this.db.run(
-      `UPDATE zur_flow_connections SET name = ?, origin = ?, credential = ?, key_end = ?, meta = ?, updated_at = ? WHERE id = ?`,
+    // Only if nothing changed the row while the inbox was being checked: the network wait lets another
+    // request in, and writing what was read before would undo it (a new key, new waits).
+    const kept = this.db.run(
+      `UPDATE zur_flow_connections SET name = ?, origin = ?, credential = ?, key_end = ?, meta = ?, updated_at = ? WHERE id = ? AND updated_at = ? AND kind = 'chatwoot'`,
       patch.name ?? row.name,
       origin,
       credential,
       end,
       JSON.stringify(meta),
-      new Date(this.clock()).toISOString(),
+      this.nextStamp(row.updated_at),
       row.id,
+      row.updated_at,
     );
+    if (kept.rowsWritten === 0) throw new AppError("CONFLICT");
     const sensitive = moved || patch.credential !== undefined || patch.inboxId !== undefined;
     if (sensitive || patch.bulkGap !== undefined || patch.oneGap !== undefined) recordActivity(this.db, "flow.connection_changed", { auth: "header", kind: "chatwoot" });
     return { sensitive };
@@ -338,6 +348,13 @@ export class FlowConnections {
     this.row(id);
     this.db.run(`DELETE FROM zur_flow_connections WHERE id = ?`, id);
     recordActivity(this.db, "flow.connection_removed", {});
+  }
+
+  /** A change's time, always after the row's: two changes in the same millisecond still tell apart. */
+  private nextStamp(previous: string): string {
+    const now = this.clock();
+    const before = Date.parse(previous);
+    return new Date(Number.isFinite(before) && before >= now ? before + 1 : now).toISOString();
   }
 
   present(row: ConnectionRow, usedBy: string[]): FlowConnection {
@@ -500,7 +517,7 @@ function checkOrigin(origin: string, development: boolean): void {
   if (!endpointUrl(origin, { development })) throw new AppError("VALIDATION_FAILED", "error.flowConnectionOrigin", { fields: ["origin"] });
 }
 
-function parseList(value: string): string[] {
+export function parseList(value: string): string[] {
   try {
     const list: unknown = JSON.parse(value);
     return Array.isArray(list) ? list.filter((entry): entry is string => typeof entry === "string") : [];

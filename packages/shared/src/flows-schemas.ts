@@ -332,11 +332,8 @@ export const flowConnectionUpdateSchema = /* @__PURE__ */ (() =>
     .refine((value) => Object.keys(value).length > 0)
     .superRefine(authShape))();
 
-/** A wait in whole seconds; the ranges and the order between the two waits are checked by chatwootGapsProblem. */
-const gapSchema = /* @__PURE__ */ (() =>
-  z
-    .object({ min: z.number().int().min(0).max(CHATWOOT_LIMITS.bulkGap.ceiling), max: z.number().int().min(0).max(CHATWOOT_LIMITS.bulkGap.ceiling) })
-    .strict())();
+/** A wait in whole seconds; the ranges and the order between the two waits are checked by chatwootGapsProblem, so any wait out of range is refused under one name ("bulkGap" or "oneGap"). */
+const gapSchema = /* @__PURE__ */ (() => z.object({ min: z.number().int().safe(), max: z.number().int().safe() }).strict())();
 
 const chatwootAccount = /* @__PURE__ */ (() => z.number().int().min(1).max(CHATWOOT_LIMITS.accountMax))();
 

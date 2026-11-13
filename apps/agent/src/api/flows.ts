@@ -1,9 +1,9 @@
-import { CHATWOOT_FREE_FIELDS, flowCreateSchema, flowSettingsSchema, flowUpdateSchema, RECORD_ID } from "@zuri/shared";
+import { flowCreateSchema, flowSettingsSchema, flowUpdateSchema, RECORD_ID } from "@zuri/shared";
 import { z } from "zod";
 import type { Context, Hono } from "hono";
 import type { ClientInfo } from "../auth/client.ts";
 import type { AuthService } from "../auth/service.ts";
-import type { FlowConnections } from "../flows/connections.ts";
+import { CONNECTION_KINDS, type FlowConnections, knownKind } from "../flows/connections.ts";
 import type { FlowService } from "../flows/service.ts";
 import { AppError } from "../http/errors.ts";
 import type { ApiEnv } from "./app.ts";
@@ -90,10 +90,11 @@ export function registerFlowRoutes(app: Hono<ApiEnv>, deps: () => FlowRouteDeps,
     const id = connectionId(c.req.param("id"));
     const input = await readJson(c.req.raw, connectionBody, 16 * 1024);
     const { flows, connections, auth, development } = deps();
-    // The Chatwoot's waits alone ask for no password (not a secret; the change goes to the activity log).
+    // A kind's free fields alone (the Chatwoot's waits) ask for no password: not a secret, and the change goes to the activity log.
     const keys = Object.keys(input);
-    const onlyWaits = keys.length > 0 && keys.every((key) => CHATWOOT_FREE_FIELDS.includes(key)) && connections.row(id).kind === "chatwoot";
-    if (!onlyWaits) auth.requireRecentAuth(c.get("session"));
+    const kind = knownKind(connections.row(id).kind);
+    const free = kind ? CONNECTION_KINDS[kind].freeFields : [];
+    if (!(keys.length > 0 && keys.every((key) => free.includes(key)))) auth.requireRecentAuth(c.get("session"));
     const { sensitive } = await connections.update(id, input, { development: development(), inboxes: flows.inboxLookup });
     if (sensitive) auth.events.record("flow_connection_changed", client(c), { alert: true });
     return Response.json({ connection: flows.list().connections.find((entry) => entry.id === id) });

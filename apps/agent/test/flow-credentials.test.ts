@@ -60,8 +60,14 @@ describe("credential kinds", () => {
       // A Chatwoot body with an http field (methods) is refused too: each kind takes only its own fields.
       await expect(addChatwoot(world, { methods: ["GET"] })).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
       await expect(addChatwoot(world, { credential: undefined })).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["credential"] } });
-      await expect(addChatwoot(world, { origin: "http://chat.exemplo.com.br" })).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
-      await expect(addChatwoot(world, { origin: "https://192.168.0.10" })).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+      await expect(addChatwoot(world, { origin: "http://chat.exemplo.com.br" })).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["origin"] } });
+      await expect(addChatwoot(world, { origin: "https://192.168.0.10" })).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["origin"] } });
+      // Nor a private address in a change.
+      const id = await addChatwoot(world);
+      await expect(world.connections.update(id, { origin: "https://10.0.0.1", credential: "chave-nova-de-teste-1234" }, opts(world))).rejects.toMatchObject({
+        code: "VALIDATION_FAILED",
+        details: { fields: ["origin"] },
+      });
     });
   });
 
@@ -126,6 +132,16 @@ describe("the Chatwoot's waits", () => {
     await withFlowWorld(async (world) => {
       await expect(addChatwoot(world, { bulkGap: { min: 4, max: 60 } })).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["bulkGap"] } });
       await expect(addChatwoot(world, { oneGap: { min: 2, max: 30 } })).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["oneGap"] } });
+      // Every out-of-range value under the wait's own name, whichever end it is.
+      for (const [patch, field] of [
+        [{ bulkGap: { min: 30, max: 601 } }, "bulkGap"],
+        [{ bulkGap: { min: -1, max: 60 } }, "bulkGap"],
+        [{ oneGap: { min: 0, max: 5 } }, "oneGap"],
+        [{ oneGap: { min: 1, max: 31 }, bulkGap: { min: 40, max: 60 } }, "oneGap"],
+      ] as const) {
+        await expect(addChatwoot(world, patch)).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { fields: [field] } });
+      }
+      await addChatwoot(world, { name: "Limites", bulkGap: { min: 31, max: 600 }, oneGap: { min: 1, max: 30 } });
       const id = await addChatwoot(world, { bulkGap: { min: 5, max: 600 }, oneGap: { min: 1, max: 4 } });
       expect(world.flows.list().connections[0]?.chatwoot).toMatchObject({ bulkGap: { min: 5, max: 600 }, oneGap: { min: 1, max: 4 } });
       // Merged with what is kept: a new bulk "from" below one person's "to" is refused.
@@ -153,6 +169,57 @@ describe("the Chatwoot's waits", () => {
 });
 
 describe("the Chatwoot's address, account and key", () => {
+  it("can't be made without the installation's key for credentials", async () => {
+    await withFlowWorld(
+      async (world) => {
+        await expect(addChatwoot(world)).rejects.toMatchObject({ code: "NOT_CONFIGURED", messageKey: "error.flowCredentialKey" });
+        expect(world.flows.list().connections).toEqual([]);
+      },
+      { credentialKey: undefined },
+    );
+  });
+
+  it("a change that came in while the inbox was being checked is never written over (CONFLICT, the other change kept)", async () => {
+    await withFlowWorld(async (world) => {
+      const id = await addChatwoot(world);
+      let release: () => void = () => {};
+      const answered = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let asked: () => void = () => {};
+      const reached = new Promise<void>((resolve) => {
+        asked = resolve;
+      });
+      world.network.handlers.set(HOST, async () => {
+        asked();
+        await answered;
+        return Response.json({ payload: [{ id: 7, name: "WhatsApp", channel_type: "Channel::Api" }] });
+      });
+      const pick = world.connections.update(id, { inboxId: 7 }, opts(world));
+      await reached;
+      // Another tab changes the waits meanwhile.
+      await world.connections.update(id, { bulkGap: { min: 45, max: 90 } }, opts(world));
+      release();
+      await expect(pick).rejects.toMatchObject({ code: "CONFLICT" });
+      expect(world.flows.list().connections[0]?.chatwoot).toMatchObject({ inboxId: null, bulkGap: { min: 45, max: 90 } });
+      // Tried again, it goes through.
+      world.network.handlers.set(HOST, inboxes([{ id: 7, name: "WhatsApp", channel_type: "Channel::Api" }]));
+      await world.connections.update(id, { inboxId: 7 }, opts(world));
+      expect(world.flows.list().connections[0]?.chatwoot).toMatchObject({ inboxId: 7, bulkGap: { min: 45, max: 90 } });
+    });
+  });
+
+  it("an inbox name of emoji is cut at 80 characters, never in half of one", async () => {
+    await withFlowWorld(async (world) => {
+      world.network.handlers.set(HOST, inboxes([{ id: 7, name: `a${"😀".repeat(100)}`, channel_type: "Channel::Api" }]));
+      const id = await addChatwoot(world);
+      await world.connections.update(id, { inboxId: 7 }, opts(world));
+      const name = world.flows.list().connections[0]?.chatwoot?.inboxName as string;
+      expect([...name]).toHaveLength(CHATWOOT_LIMITS.inboxName);
+      expect(name.isWellFormed()).toBe(true);
+    });
+  });
+
   it("a new address or account needs the key again, and drops the picked inbox", async () => {
     await withFlowWorld(async (world) => {
       world.network.handlers.set(HOST, inboxes([{ id: 7, name: "WhatsApp do consultório", channel_type: "Channel::Api" }]));
@@ -297,6 +364,38 @@ describe("Testar", () => {
       world.clock.now += 1;
       expect((await world.flows.testConnection(a)).ok).toBe(true);
       await expect(world.flows.testConnection("00000000-0000-4000-8000-000000000000")).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+  });
+
+  it("the pick of an inbox takes a place in the same minute: after 5 tests it waits too", async () => {
+    await withFlowWorld(async (world) => {
+      world.network.handlers.set(HOST, inboxes([{ id: 7, name: "WhatsApp", channel_type: "Channel::Api" }]));
+      const id = await addChatwoot(world);
+      for (let i = 0; i < 5; i++) await world.flows.testConnection(id);
+      const sent = world.network.requests.length;
+      await expect(world.connections.update(id, { inboxId: 7 }, opts(world))).rejects.toMatchObject({ code: "RATE_LIMITED" });
+      expect(world.network.requests).toHaveLength(sent);
+      expect(world.flows.list().connections[0]?.chatwoot?.inboxId).toBeNull();
+    });
+  });
+
+  it("a timeout or an answer over 256 KB is told as such", async () => {
+    await withFlowWorld(async (world) => {
+      const id = await addChatwoot(world);
+      world.network.handlers.set(HOST, () => {
+        throw new DOMException("timed out", "TimeoutError");
+      });
+      expect(await world.flows.testConnection(id)).toEqual({ ok: false, problem: "timeout", status: null });
+      world.network.handlers.set(HOST, () => new Response(`{"payload":[${"0,".repeat(200_000)}0]}`));
+      expect(await world.flows.testConnection(id)).toEqual({ ok: false, problem: "too_large", status: null });
+    });
+  });
+
+  it("an http credential with lists edited by hand out of shape is told, not a server error", async () => {
+    await withFlowWorld(async (world) => {
+      const id = await addConnection(world);
+      world.db.run(`UPDATE zur_flow_connections SET methods = '{', paths = 'x' WHERE id = ?`, id);
+      expect(await world.flows.testConnection(id)).toEqual({ ok: false, problem: "method_not_allowed", status: null });
     });
   });
 });

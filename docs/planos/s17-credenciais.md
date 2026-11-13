@@ -54,7 +54,7 @@ Catálogo `pt-BR-flows`/`en` (chaves `web.flows.connection.*`, `web.flows.connec
 
 ## 6. Regras de negócio e limites
 
-`CHATWOOT_LIMITS` em `packages/shared/src/flows.ts`: conta 1 a 999.999.999; massa 5 a 600 s (30 a 60); uma pessoa 1 a 30 s (2 a 5); até 50 caixas listadas, nome cortado em 80 caracteres; até 5 testes por minuto por credencial (a escolha da caixa não conta: ela já pede a senha). Final da chave: 4 caracteres, só com chave de 12 ou mais.
+`CHATWOOT_LIMITS` em `packages/shared/src/flows.ts`: conta 1 a 999.999.999; massa 5 a 600 s (30 a 60); uma pessoa 1 a 30 s (2 a 5); até 50 caixas listadas, nome cortado em 80 caracteres; até 5 testes por minuto por credencial (buscar caixas também conta, porque usa a mesma chamada). Final da chave: 4 caracteres, só com chave de 12 ou mais.
 
 ## 7. Desenho técnico
 

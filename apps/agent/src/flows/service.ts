@@ -37,7 +37,7 @@ import { log } from "../log.ts";
 import { endpointUrl } from "../mcp/url.ts";
 import { parse } from "../productivity/validate.ts";
 import { chatwootInboxes } from "./chatwoot.ts";
-import { type CallDeps, type ConnectionRow, type FlowConnections, type FlowNetwork, FlowStepError, knownKind } from "./connections.ts";
+import { type CallDeps, type ConnectionRow, type FlowConnections, type FlowNetwork, FlowStepError, knownKind, parseList } from "./connections.ts";
 import { type Advance, advance, type RunState, startState, type Wake } from "./engine.ts";
 import type { FlowGoogle } from "./google-steps.ts";
 import type { SiteChange, SiteStates } from "./monitor.ts";
@@ -110,7 +110,7 @@ interface Stored {
   state: RunState;
 }
 
-/** Tests of one credential a minute (a test and the pick of an inbox count alike), and the calls one may make (2 lookups and 1 request). */
+/** Tests of one credential a minute (a test and the pick of an inbox count alike: each calls the service), and the calls one may make (2 lookups and 1 request). */
 const CONNECTION_TESTS_PER_WINDOW = 5;
 const CONNECTION_TEST_WINDOW_MS = 60_000;
 const CONNECTION_TEST_CALLS = 3;
@@ -453,14 +453,7 @@ export class FlowService {
    */
   async testConnection(id: string): Promise<FlowConnectionTest> {
     const row = this.deps.connections.row(id);
-    const at = this.now();
-    const recent = (this.#tests.get(id) ?? []).filter((when) => at - when < CONNECTION_TEST_WINDOW_MS);
-    if (recent.length >= CONNECTION_TESTS_PER_WINDOW) {
-      const oldest = recent[0] as number;
-      throw new AppError("RATE_LIMITED", undefined, { retryAfter: Math.max(1, Math.ceil((CONNECTION_TEST_WINDOW_MS - (at - oldest)) / 1000)) });
-    }
-    recent.push(at);
-    this.#tests.set(id, recent);
+    const at = this.takeTest(id);
     const kind = knownKind(row.kind);
     try {
       if (kind === "chatwoot") {
@@ -468,9 +461,8 @@ export class FlowService {
         return { ok: true, ms: Math.max(0, this.now() - at), status: null, inboxes };
       }
       if (kind !== "http") throw new FlowStepError("kind_not_allowed");
-      const methods: unknown = JSON.parse(row.methods);
-      const path = (JSON.parse(row.paths) as unknown[]).find((entry): entry is string => typeof entry === "string");
-      if (!Array.isArray(methods) || !methods.includes("GET") || !path) throw new FlowStepError("method_not_allowed");
+      const path = parseList(row.paths)[0];
+      if (!parseList(row.methods).includes("GET") || !path) throw new FlowStepError("method_not_allowed");
       const answer = await this.deps.connections.call(row, { method: "GET", path, body: undefined }, this.callDeps());
       return { ok: true, ms: Math.max(0, this.now() - at), status: answer.status, inboxes: null };
     } catch (error) {
@@ -481,6 +473,7 @@ export class FlowService {
 
   /** The inboxes a Chatwoot row's key sees, for picking one; a failure is the test's problem, as a refusal. */
   inboxLookup = async (row: ConnectionRow) => {
+    this.takeTest(row.id);
     try {
       return await chatwootInboxes(this.deps.connections, row, this.callDeps());
     } catch (error) {
@@ -489,16 +482,33 @@ export class FlowService {
     }
   };
 
-  /** A request's own count: 2 lookups and 1 call, the most a test or a pick needs. */
+  /** A test or a pick of an inbox takes a place in the credential's minute (5 at most); the time it took it. */
+  private takeTest(id: string): number {
+    const at = this.now();
+    const recent = (this.#tests.get(id) ?? []).filter((when) => at - when < CONNECTION_TEST_WINDOW_MS);
+    if (recent.length >= CONNECTION_TESTS_PER_WINDOW) {
+      const oldest = recent[0] as number;
+      throw new AppError("RATE_LIMITED", undefined, { retryAfter: Math.max(1, Math.ceil((CONNECTION_TEST_WINDOW_MS - (at - oldest)) / 1000)) });
+    }
+    recent.push(at);
+    this.#tests.set(id, recent);
+    return at;
+  }
+
+  /**
+   * A request's own count: 2 lookups and 1 call, the most a test or a pick needs. Inside the shared
+   * alarm (the queue of S19 may call the same client), every call also takes a place in the wake's one count.
+   */
   private callDeps(): CallDeps {
     let used = 0;
+    const shared = currentWake();
     return {
       network: this.network,
       development: this.deps.development(),
       meter: {
-        room: (n) => used + n <= CONNECTION_TEST_CALLS,
+        room: (n) => used + n <= CONNECTION_TEST_CALLS && (shared?.room(n) ?? true),
         take: () => {
-          if (used >= CONNECTION_TEST_CALLS) throw new Error("budget");
+          if (used >= CONNECTION_TEST_CALLS || shared?.take() === false) throw new Error("budget");
           used++;
         },
       },

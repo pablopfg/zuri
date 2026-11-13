@@ -214,18 +214,21 @@ function Gap({
 }) {
   const { t } = useI18n();
   const hintId = useId();
+  const errorId = useId();
+  // Both fields point at the range and, when it's wrong, at the error: a screen reader hears it on either.
+  const field = { inputMode: "numeric" as const, maxLength: 3, "aria-invalid": error ? true : undefined, "aria-describedby": error ? `${hintId} ${errorId}` : hintId };
   return (
-    <fieldset className="space-y-1.5" aria-describedby={hintId}>
+    <fieldset className="space-y-1.5">
       <legend className="text-sm font-medium">{legend}</legend>
       <div className="grid grid-cols-2 gap-4">
-        <TextField label={t("web.flows.chatwoot.from")} inputMode="numeric" maxLength={3} value={value.min} onChange={(e) => onChange({ ...value, min: e.target.value })} />
-        <TextField label={t("web.flows.chatwoot.to")} inputMode="numeric" maxLength={3} value={value.max} onChange={(e) => onChange({ ...value, max: e.target.value })} />
+        <TextField label={t("web.flows.chatwoot.from")} {...field} value={value.min} onChange={(e) => onChange({ ...value, min: e.target.value })} />
+        <TextField label={t("web.flows.chatwoot.to")} {...field} value={value.max} onChange={(e) => onChange({ ...value, max: e.target.value })} />
       </div>
       <p id={hintId} className="text-xs leading-5 text-fg-muted">
         {hint}
       </p>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p id={errorId} role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
