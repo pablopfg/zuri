@@ -212,19 +212,6 @@ export class ReviewMatches {
     const pending = of("review_matches_pending");
     return { read, linked, pending, none: Math.max(0, read - linked - pending) };
   }
-
-  /** A review that is gone (an unticked profile, the module off): its link and candidates go too. */
-  static forget(db: Database, reviewIds?: readonly string[]): void {
-    if (!reviewIds) {
-      db.run(`DELETE FROM zur_review_match_candidates`);
-      db.run(`DELETE FROM zur_review_matches`);
-      return;
-    }
-    for (const id of reviewIds) {
-      db.run(`DELETE FROM zur_review_match_candidates WHERE review_id = ?`, id);
-      db.run(`DELETE FROM zur_review_matches WHERE review_id = ?`, id);
-    }
-  }
 }
 
 function parseList(raw: string): string[] {

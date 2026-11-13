@@ -114,6 +114,20 @@ describe("reading the reviews", () => {
       expect(row(world, "between")?.state).toBe("escalated");
     }));
 
+  it("gives the reviews kept before the prints existed their name's prints, and the walk ends at the profile's last page (PR S20)", () =>
+    withReviewsWorld(async (world) => {
+      await turnOn(world);
+      add(world, "older", 5, "Ótimo", { name: "Lúcia Ferraz", at: new Date(world.clock.now - 60_000).toISOString() });
+      await later(world);
+      // As if kept before migration 41: no prints, and the walk not made yet.
+      world.db.run(`UPDATE zur_reviews SET name_fp = NULL, short_fp = NULL`);
+      world.db.run(`UPDATE zur_review_locations SET names_done = 0, names_token = NULL`);
+      world.clock.now += 16 * 60_000;
+      expect(await world.reviews.check("alarm")).toBe("ok");
+      expect(world.db.one<{ fp: string | null }>(`SELECT name_fp AS fp FROM zur_reviews WHERE google_name LIKE '%older'`)?.fp).toMatch(/^[0-9a-f]{64}$/);
+      expect(world.db.one(`SELECT names_done AS done FROM zur_review_locations`)).toEqual({ done: 1 });
+    }));
+
   it("walks the older pages for the names' prints at most a day's pages, and goes on the next day (PR S20)", () =>
     withReviewsWorld(async (world) => {
       await turnOn(world);

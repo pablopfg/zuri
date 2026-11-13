@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { inWake, WakeBudget } from "../src/agent/wake-budget.ts";
 import { isPreviewAgent, reviewLinkCode } from "../src/gates/review-link.ts";
 import { GoogleError } from "../src/google/service.ts";
-import { maskEmail, ReviewMatches } from "../src/reviews/matches.ts";
+import { maskEmail } from "../src/reviews/matches.ts";
 import { nameKey, namePrints, shortKey } from "../src/reviews/names.ts";
 import { addDays, drawCode, dueDay, fillMessage, firstNameFor, nextWorking, workingDay } from "../src/reviews/requests.ts";
 import { testEnv } from "./helpers.ts";
@@ -186,7 +186,7 @@ describe("which contact left a review", () => {
       expect(world.requests_.list().items.find((item) => item.contactId === paula)?.state).toBe("pending");
     }));
 
-  it("forgets the links of the reviews of an unticked profile only, and reads a broken list of candidates as none", () =>
+  it("counts a link gone with its review, and reads a broken list of candidates as none", () =>
     withReviewsWorld(async (world) => {
       await setUp(world, () => {
         person(world, "c1", "Ana Souza");
@@ -195,7 +195,8 @@ describe("which contact left a review", () => {
       });
       const ana = await review(world, "r1", "Ana Souza");
       const bruna = await review(world, "r2", "Bruna Lima");
-      ReviewMatches.forget(world.db, [ana]);
+      // An unticked profile takes its reviews' links with them (configure, in service.ts).
+      world.db.run(`DELETE FROM zur_review_matches WHERE review_id = ?`, ana);
       expect(match(world, ana)).toBeNull();
       expect(match(world, bruna)?.kind).toBe("twins");
       expect(world.matches.counts()).toMatchObject({ linked: 0, pending: 1 });
@@ -337,6 +338,17 @@ describe("the day's requests", () => {
       world.google.api = api;
       expect(world.requests_.nextDue()).toBe(WEDNESDAY_9 + DAY);
       expect(world.db.one(`SELECT count(*) AS n FROM zur_review_requests`)).toEqual({ n: 0 });
+    }));
+
+  it("says what is missing: the contacts off stop the list, and the link needs a chosen profile", () =>
+    withReviewsWorld(async (world) => {
+      await ready(world);
+      expect(world.requests_.blocked()).toBeNull();
+      world.contacts.disable();
+      expect(world.requests_.blocked()).toBe("contacts");
+      expect(world.requests_.nextDue()).toBeNull();
+      world.db.run(`UPDATE zur_review_locations SET selected = 0`);
+      expect(() => world.requests_.setLink("https://g.page/r/outro/review")).toThrow(expect.objectContaining({ code: "CONFLICT", messageKey: "error.reviewRequestsNoProfile" }));
     }));
 
   it("counts two taps at once as one send, with one link", () =>
