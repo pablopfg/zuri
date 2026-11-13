@@ -88,7 +88,8 @@ Sem o Google conectado, o passo mostra onde conectar.
 ### Credenciais
 
 Uma credencial diz **onde** um fluxo pode chamar e guarda a chave desse
-serviço. Em **CRM › Credenciais**, toque em **Nova credencial** e preencha:
+serviço. Em **CRM › Credenciais**, toque em **Nova credencial**, escolha
+**Outro serviço (https)** e preencha:
 
 - **Endereço do serviço**: só o começo, com `https://`, como
   `https://api.exemplo.com.br`.
@@ -99,13 +100,28 @@ serviço. Em **CRM › Credenciais**, toque em **Nova credencial** e preencha:
   `/v10`).
 - **Tipo de chave**: nenhuma, um token no cabeçalho `Authorization` ou um
   cabeçalho com outro nome. A chave fica cifrada e nunca volta para a tela;
-  para trocar, digite a nova.
+  a linha mostra só os 4 últimos caracteres (de chaves com 12 ou mais).
 
-Criar e mudar uma credencial pede a senha recente. Mudar o endereço ou o tipo
-de chave apaga a chave guardada, e você recebe um alerta de segurança quando
-uma credencial é criada ou muda de destino. Uma credencial usada por um fluxo
-não pode ser apagada. **Editar** e **Apagar** ficam no menu **Mais opções** de
-cada credencial.
+**Chatwoot.** O outro tipo é a caixa do WhatsApp por onde as automações do CRM
+vão mandar mensagens. Preencha o endereço do Chatwoot, o número da conta e a
+chave de um agente "Zuri" que só tenha acesso à caixa do WhatsApp. Depois de
+criar, abra **Editar** e toque em **Buscar caixas** para escolher a caixa. Duas
+esperas valem para toda mensagem por essa caixa: **envios em massa** (de 5 a 600
+segundos, padrão 30 a 60, sorteada a cada envio) e **mensagem a uma pessoa** (de
+1 a 30 segundos, padrão 2 a 5, sempre menor que a dos envios em massa). Um fluxo
+nunca usa uma credencial do Chatwoot: mensagem a paciente só sai pelas
+automações, com texto e destino escritos no código.
+
+**Testar**, no menu **Mais opções**, faz só uma leitura: num serviço, chama o
+primeiro caminho com GET (se GET é permitido); no Chatwoot, conta as caixas que
+a chave enxerga. Até 5 testes por minuto por credencial.
+
+Criar e mudar uma credencial pede a senha recente; mudar só as esperas do
+Chatwoot não pede, mas fica na atividade. Mudar o endereço, a conta ou o tipo
+de chave pede a chave de novo, para ela nunca seguir para outro lugar, e você
+recebe um alerta de segurança quando uma credencial é criada ou muda de
+destino. Uma credencial usada por um fluxo não pode ser apagada. **Testar**,
+**Editar** e **Apagar** ficam no menu **Mais opções** de cada credencial.
 
 ### Histórico e falhas
 

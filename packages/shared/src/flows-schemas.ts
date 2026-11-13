@@ -4,6 +4,7 @@ import "./zod-config.ts";
 import { z } from "zod";
 import { AUTOMATION_LIMITS, scheduleSchema } from "./automations.ts";
 import {
+  CHATWOOT_LIMITS,
   FLOW_AUTH_TYPES,
   FLOW_FILTER_OPS,
   FLOW_LIMITS,
@@ -308,9 +309,10 @@ function authShape(value: { auth?: string | undefined; headerName?: string | nul
   if (value.auth !== undefined && value.auth !== "header" && value.headerName) ctx.addIssue({ code: "custom", path: ["headerName"], message: "header" });
 }
 
+/** `kind` left out is `http`: the bodies of before still work. */
 export const flowConnectionCreateSchema = /* @__PURE__ */ (() =>
   z
-    .object({ ...connectionFields, credential: credentialSchema.optional() })
+    .object({ kind: z.literal("http").optional(), ...connectionFields, credential: credentialSchema.optional() })
     .strict()
     .superRefine(authShape))();
 
@@ -329,6 +331,55 @@ export const flowConnectionUpdateSchema = /* @__PURE__ */ (() =>
     .strict()
     .refine((value) => Object.keys(value).length > 0)
     .superRefine(authShape))();
+
+/** A wait in whole seconds; the ranges and the order between the two waits are checked by chatwootGapsProblem, so any wait out of range is refused under one name ("bulkGap" or "oneGap"). */
+const gapSchema = /* @__PURE__ */ (() => z.object({ min: z.number().int().safe(), max: z.number().int().safe() }).strict())();
+
+const chatwootAccount = /* @__PURE__ */ (() => z.number().int().min(1).max(CHATWOOT_LIMITS.accountMax))();
+
+/**
+ * A Chatwoot credential (PR S17): the address, the account and the key of the
+ * "Zuri" agent. The inbox is picked after a test, with PATCH; the waits take
+ * the defaults when left out. No methods or paths: only the fixed client calls it.
+ */
+export const chatwootConnectionCreateSchema = /* @__PURE__ */ (() =>
+  z
+    .object({
+      kind: z.literal("chatwoot"),
+      name: connectionFields.name,
+      origin: connectionOriginSchema,
+      accountId: chatwootAccount,
+      credential: credentialSchema,
+      bulkGap: gapSchema.optional(),
+      oneGap: gapSchema.optional(),
+    })
+    .strict())();
+
+/** `inboxId` is checked against what the key sees before it is kept; null takes the pick away. */
+export const chatwootConnectionUpdateSchema = /* @__PURE__ */ (() =>
+  z
+    .object({
+      name: connectionFields.name.optional(),
+      origin: connectionOriginSchema.optional(),
+      accountId: chatwootAccount.optional(),
+      credential: credentialSchema.optional(),
+      inboxId: z.union([z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), z.null()]).optional(),
+      bulkGap: gapSchema.optional(),
+      oneGap: gapSchema.optional(),
+    })
+    .strict()
+    .refine((value) => Object.keys(value).length > 0))();
+
+/** The two waits are the only change that asks for no password (not a secret; it goes to the activity log). */
+export const CHATWOOT_FREE_FIELDS: readonly string[] = ["bulkGap", "oneGap"];
+
+/** What an inbox list of the Chatwoot API looks like (`GET /api/v1/accounts/{id}/inboxes`); unknown fields are ignored. */
+export const chatwootInboxesSchema = /* @__PURE__ */ (() =>
+  z.object({
+    payload: z
+      .array(z.object({ id: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), name: z.string(), channel_type: z.string().optional() }))
+      .max(1_000),
+  }))();
 
 export const flowRunsQuerySchema = /* @__PURE__ */ (() =>
   z

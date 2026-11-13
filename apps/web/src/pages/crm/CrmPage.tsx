@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Button, ErrorNotice, Loading, PageHeader } from "../../components/ui.tsx";
 import { useI18n } from "../../lib/i18n.tsx";
-import { ConnectionDialog } from "../automations/flows/ConnectionDialog.tsx";
+import { CredentialDialog } from "../automations/flows/CredentialDialog.tsx";
 import { type Editing, FlowEditor } from "../automations/flows/FlowEditor.tsx";
 import { type ConnectionEditing, CredentialsPart, FlowsPart, useFlows } from "../automations/flows/FlowsPanel.tsx";
 
@@ -91,8 +91,8 @@ export function CrmPage() {
       ) : (
         <CredentialsPart data={data} onEdit={setConnection} />
       )}
-      {editing && data && <FlowEditor editing={editing} connections={data.connections} google={data.google} settings={data.settings} onClose={() => setEditing(null)} />}
-      {connection && data && <ConnectionDialog editing={connection} credentialsAvailable={data.credentialsAvailable} onClose={() => setConnection(null)} />}
+      {editing && data && <FlowEditor editing={editing} connections={data.connections.filter((item) => item.kind === "http")} google={data.google} settings={data.settings} onClose={() => setEditing(null)} />}
+      {connection && data && <CredentialDialog editing={connection} credentialsAvailable={data.credentialsAvailable} onClose={() => setConnection(null)} />}
     </>
   );
 }
