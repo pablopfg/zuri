@@ -562,6 +562,12 @@ Pedido: evitar consulta em horário não permitido (almoço, feriado, fora do ho
 5. **Agenda, horário fechado:** tocar num horário que não aceita consulta abre um aviso com o motivo (`agErro`), o próximo horário livre ("Usar o próximo livre") e "Criar compromisso pessoal". Ao arrastar, a consulta fica com borda vermelha e o motivo curto (Almoço, Feriado, Já passou, Ocupado…); soltar ali não muda nada, toca um som discreto e explica. Vale também para a borda de duração e para Alt + setas.
 6. **Sem a linha "Dia todo"** na agenda e sem o ajuste "Eventos de dia inteiro". O feriado aparece embaixo do dia, no cabeçalho, e o dia sem expediente também.
 
+### Ajustes de 13/11/2026 (01:32 UTC): respiro nas telas e país nos acessos
+
+1. **Remarcar pelo link:** cada passo tem barra de progresso, título, a consulta marcada num bloco próprio ("Consulta marcada", dia por extenso), o rótulo "Escolha o novo dia" junto da grade e o contato da equipe separado por uma linha. Os dias mostram o nome inteiro e a data ("Sexta, 13 de nov"). Corrigido um `div` sem fechar que juntava tudo.
+2. **Outras telas:** respiro padrão entre blocos de formulário em Configurações (campo depois de grade, ajuda depois de campos, editor da mensagem). A prévia do Pix ocupa a largura do diálogo. Na página do paciente, o ícone do endereço alinha com a primeira linha e o prazo de cancelamento fica centralizado. Filtros em diálogo não encolhem mais (o grupo de botões ficava como uma linha fina).
+3. **Atividade de acesso e Todos os acessos:** cada acesso mostra ícone e situação, o aparelho, a cidade aproximada e o **país** (nome e sigla, com destaque quando é fora do Brasil) e o IP. O diálogo agrupa por dia e filtra por Todos, Atenção e Fora do Brasil. No sistema, o país vem de `request.cf.country`, que sempre chega; a cidade pode faltar. Ver docs/seguranca.md, que já guarda o IP por 90 dias: o país entra no mesmo registro, sem coluna nova se o campo de localização já existir (conferir na implementação).
+
 ## 12. Riscos
 
 - **Som bloqueado pelo navegador** antes do primeiro clique: o aviso chega sem som. Mitigação: o cartão explica e o "Testar" destrava.
