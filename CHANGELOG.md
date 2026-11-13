@@ -19,6 +19,76 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) até juntar 10 merges, quando o workflow de versão escreve a seção.
 
+## [0.52.0] - 2026-11-13
+
+Mesclada às 14:28 (UTC-3) · commit [`11f4d1e`](https://github.com/pablopfg/Zuri/commit/11f4d1e4ca01290fb166d9c27fd9da0ace3b7166) · Reúne 10 mudanças (#332, #331, #333, #334, #335, #337, #338, #339, #340, #342)
+
+### Adicionado
+
+- **CRM › Automações**, a primeira parte do CRM (em `/crm`): as automações do consultório na ordem em que chegam à Zuri, com o que cada uma faz, se escreve a contatos e a base que todas usam. Nenhuma vem ligada.
+- **Avisar quando chegar**: um sino em cada automação que ainda não chegou manda um aviso quando ela fica pronta.
+- **Ligar** uma automação pede a credencial do tipo certo, testada antes de salvar, e começa sempre em **ensaio**: a Zuri roda tudo, mas não envia nada, só anota o que faria.
+- **Acompanhar** mostra cada dia do ensaio e o que a Zuri fez. Você marca **Está certo** ou **Tem erro**, com o motivo. **Ligar de verdade** pede 3 dias úteis seguidos certos (ou assumir o risco) e a senha.
+- A automação pausa sozinha depois de duas falhas, com a credencial recusada ou apagada, ou com resposta fora do esperado, e avisa você.
+- **Configurações › Chatwoot**: converse com a Zuri por uma caixa só sua no Chatwoot. A Zuri cria sozinha a caixa "Zuri" (tipo API, com assinatura e HMAC obrigatória), deixa só você como membro, cria o contato e a conversa e mostra um código de vínculo no app. Você responde o código na conversa, com a sua conta de atendente, e confirma no app.
+- A Zuri responde só à sua conta. Se outra pessoa escreve na conversa, ela não responde, não lê o texto e avisa você; três vezes em 24 horas desligam o canal.
+- **Testar configuração** confere o endereço, a caixa, a HMAC, a conversa e a assinatura do retorno. O **teste completo** também confere o endereço de retorno, os membros e quem mais é administrador.
+- **Reparar**, **Trocar os segredos**, **Conectar outra conta** e **Desligar e esquecer**. Se a conversa ou o contato somem no Chatwoot, a Zuri abre outra conversa sozinha, até 3 vezes por dia.
+- A página explica o que cada tipo de chave do Chatwoot pode e qual a Zuri usa.
+- Trava de leitura, igual à do bot do Telegram: depois das mesmas horas sem uso, a Zuri só responde com um link para destravar no app, por 12 horas.
+- Integrações mostra o estado do Chatwoot e leva à página dele.
+- **CRM › Envios** (`/crm/envios`): a fila de saída das mensagens que as automações mandam aos contatos pelo Chatwoot. Sai uma por vez, com a espera da credencial entre elas, e nada sai duas vezes.
+- A situação da fila no topo (Enviando, Lenta, Parada, Pausada por você ou pelo bloqueio), com **Pausar envios**, **Retomar envios** e **Testar a credencial**.
+- **Na fila agora**, **Se algo der errado** e o **Histórico** de hoje, 7 ou 30 dias, com a linha do tempo de cada envio e **Tentar de novo** para o que falhou.
+- Avisos no sino e no Telegram quando a fila para, quando uma mensagem falha nas 3 tentativas e quando a fila fica 15 minutos sem andar.
+- Em **Credenciais**, a linha do Chatwoot mostra quantas mensagens esperam e leva a Envios.
+- **Avaliações › Pedidos** (`/avaliacoes/pedidos`): todo dia a Zuri olha a agenda e lista quem teve consulta há 8 dias (no próximo dia útil) e ainda não avaliou. **Enviar link de avaliação** abre o seu WhatsApp com a mensagem e um link só daquela pessoa. Você confere e envia; a Zuri nunca manda nada sozinha.
+- O link pessoal (`/a/<código>`) leva direto à página de avaliação do perfil no Google e anota a primeira abertura. A prévia do WhatsApp não conta.
+- Um lembrete por pessoa, 7 dias depois, se ainda não avaliou, e um aviso nos dias úteis com quantos pedidos estão prontos.
+- **Ajustes › Pedidos e link**: o link de avaliação puxado do perfil (ou colado por você), a mensagem e **Quando pedir**.
+- Cada avaliação é ligada ao contato pelo nome. Um nome que dois contatos têm (mesmo com um título, como "Dra.") nunca liga sozinho: a avaliação mostra as pessoas e espera **É esta** ou **Nenhuma das duas**.
+- A Visão geral mostra o funil dos pedidos: quantos receberam, abriram e avaliaram.
+- Registro do dia na Agenda: à 0h, os eventos do dia que terminou congelam. A ficha mostra "Congelado" com a situação final, e editar, mudar a situação, arrastar ou apagar é recusado na tela, na conversa e nos fluxos. Uma mudança feita depois no Google Agenda aparece marcada na cópia e gera um aviso. A cópia entra na cópia de segurança.
+- **Catálogo de modelos** em Configurações › Modelos e limites: uma vez por dia, às 03:00 de Brasília, a Zuri confere o catálogo de modelos grátis da Cloudflare. Modelo novo que aceita ferramentas aparece como **Novo** e só entra na lista quando você toca em **Pôr na lista**; depois disso ele aparece na escolha do modelo de conversa e do reserva. **Conferir agora** confere na hora.
+- Modelo que vai sair aparece com a data. Se está em uso, a Zuri avisa antes e, no dia, troca para o padrão e avisa de novo. Ela nunca troca sozinha para um modelo pago nem para um que você não pôs na lista.
+- Quando o preço de um modelo da lista muda, o cartão mostra por uma semana, e a estimativa de Neurons por resposta já usa o valor novo.
+
+### Alterado
+
+- `/crm` abre Automações; Fluxos fica em `/crm/fluxos`. "Criar fluxo" na paleta leva até lá.
+- Uma credencial usada por uma automação ligada não pode ser apagada; desligada, pode.
+- Depois que uma consulta começa, o dia e a hora dela não mudam mais: puxar o fim de uma consulta atrasada ou tirar do Cancelado uma consulta que já passou é recusado como horário que já passou. O título, a descrição e a situação continuam editáveis.
+- A base "Envio pelo Chatwoot, com fila" de Automações ficou pronta. A automação de exemplo (só no ambiente local) manda as mensagens dela pela fila.
+- Feriado nacional sempre fecha a agenda: o botão "Atendo" saiu de Configurações › Agenda.
+- Dias sem expediente aceitam um período (férias, recesso, viagem), com "De" e "Até", até 90 dias cada. Quando o período tem consultas marcadas, a tela diz quantas precisam de outro horário.
+
+### Corrigido
+
+- A Zuri não marca nem move mais consulta fora das regras da Agenda pela conversa ou por um fluxo: almoço, feriado, folga, fora do horário e por cima de outra consulta são recusados com o motivo, sem gravar nada no Google. Reunião sem tipo continua livre.
+- Em Configurações › Avisos, a tabela dos canais cabe nos celulares estreitos (como os de 320 px): neles, o nome de cada tipo de aviso fica numa linha própria, acima das caixas.
+
+### Segurança
+
+- A chave de administrador só passa pelo pedido que a usa (configurar, teste completo, reparar e trocar os segredos) e nunca fica guardada. Fica guardado, cifrado com derivação própria, só o identificador da caixa, os segredos dela e o contato.
+- O endereço de retorno leva um token derivado do segredo da sessão, conferido no Worker antes de chegar ao objeto. A assinatura de cada aviso é conferida com o segredo da caixa (até 5 minutos de diferença), cada mensagem vale uma vez (pelo id dela, que vai assinado), e a mensagem é lida de novo no Chatwoot: o corpo do aviso nunca decide quem escreveu nem o que escreveu.
+- O código de vínculo aparece só no app, nunca na conversa, que todo administrador da conta lê.
+- Configurar, confirmar a conta, ligar de novo, destravar, reparar, trocar os segredos e desligar e esquecer pedem a senha digitada há pouco. Confirmar, destravar, reparar e trocar os segredos ficam na atividade de acesso com aviso de segurança.
+- Até 30 mensagens por hora, como no Telegram. No modo de bloqueio, o canal fica mudo em qualquer estado.
+- Retomar a fila depois de uma parada por falha pede a senha recente. Pausar, retomar e tentar de novo entram no registro de atividade.
+- O texto e o telefone de cada mensagem somem quando o envio termina, nunca aparecem na tela nem nas rotas e ficam fora do backup.
+- O link pessoal só leva ao endereço guardado, e só a uma página de avaliação do Google com `https`. Código errado dá 404. Mais de 30 aberturas por minuto da mesma rede, ou 300 no total, dão 429, e quem abre um código errado não grava nada no banco.
+- Trocar o link de avaliação pede a senha digitada há pouco e gera um alerta de segurança.
+- O nome inteiro de quem avaliou não é guardado: só duas impressões HMAC.
+- A mensagem do pedido não aceita outro endereço além do `{link}`, para uma sessão roubada não mandar os pacientes a outro lugar.
+- As respostas do link levam HSTS e não abrem dentro de um quadro.
+
+### Atualização
+
+- Migration 39: quatro tabelas novas para as automações do CRM (configuração, execuções, efeitos e a conferência de cada dia). Começam vazias e nada do que existia muda.
+- Migration 40: cinco tabelas novas para a fila de envios. Começam vazias e nada do que existia muda.
+- Migration 41: quatro tabelas novas (pedidos, códigos e a ligação de cada avaliação ao contato) e colunas novas nas tabelas das avaliações. Começam vazias e nada do que existia muda. A primeira leitura depois da atualização lê, uma página por vez e no máximo 20 por dia, as avaliações antigas para calcular as impressões do nome.
+- Migration 42 (`agenda_record`) cria as tabelas do registro do dia. Ela só acrescenta tabelas e roda sozinha na próxima inicialização. O registro começa no dia da atualização: nenhum dia anterior é copiado.
+
 ## [0.51.0] - 2026-11-13
 
 Mesclada às 00:59 (UTC-3) · commit [`680d9dc`](https://github.com/pablopfg/Zuri/commit/680d9dc51c9897befa86e9b21cc21828756d0cea) · Reúne 10 mudanças (#319, #320, #321, #322, #324, #323, #325, #326, #327, #329)
@@ -3396,7 +3466,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.51.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.52.0...develop
+[0.52.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.52.0
 [0.51.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.51.0
 [0.50.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.50.0
 [0.49.6]: https://github.com/pablopfg/Zuri/releases/tag/v0.49.6

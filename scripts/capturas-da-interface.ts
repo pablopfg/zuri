@@ -44,6 +44,8 @@
  *   Agenda right after the event moved, with the notice that offers "Desfazer" (both need --exemplos).
  * - `agenda-hora-fechada=/agenda`: the notice of a click on today's lunch, "Consulta não entra neste horário"
  *   (computer only: a phone's day has no grid to click; run it with `--relogio` before noon).
+ * - `catalogo-de-modelos=/configuracoes/modelos`: Configurações › Modelos e limites scrolled to the
+ *   "Catálogo de modelos" box, checked once against the local catalog (a new model and one leaving).
  * - `configuracoes-agenda-feriados=/configuracoes/agenda`: Configurações › Agenda scrolled to the national
  *   holidays and the days off.
  * - `credencial-chatwoot=/crm/credenciais`: the sample Chatwoot credential open in "Editar", with its
@@ -328,6 +330,13 @@ for (const [device, options] of [
         if (!box) throw new Error("agenda-hora-fechada needs a working day with lunch in the week");
         await page.mouse.click(box.x + box.width / 2, box.y + box.height / 4);
         await page.getByRole("dialog", { name: "Consulta não entra neste horário" }).waitFor();
+      }
+      if (screen.name === "catalogo-de-modelos") {
+        // The first shot checks the local catalog once (at most once a minute); the others find it checked.
+        const card = page.getByRole("region", { name: "Catálogo de modelos" });
+        if ((await card.getByText(/Última conferência/).count()) === 0) await card.getByRole("button", { name: "Conferir agora" }).click();
+        await card.getByText(/Última conferência/).waitFor();
+        await card.evaluate((box) => box.scrollIntoView({ block: "start" }));
       }
       if (screen.name === "configuracoes-agenda-feriados") {
         await page.getByText("Feriados nacionais", { exact: true }).evaluate((title) => title.scrollIntoView({ block: "start" }));

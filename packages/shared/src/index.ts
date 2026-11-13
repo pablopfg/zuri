@@ -191,3 +191,4 @@ export * from "./agents-schemas.ts";
 export * from "./chatwoot-owner.ts";
 export * from "./chatwoot-owner-schemas.ts";
 export * from "./outbox.ts";
+export * from "./model-catalog.ts";

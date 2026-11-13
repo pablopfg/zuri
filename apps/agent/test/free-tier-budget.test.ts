@@ -1622,3 +1622,46 @@ describe("Review requests (PR S20)", () => {
       expect(world.reviews.metrics("30d").requests).toEqual({ sent: 1, opened: 1, reviewed: 0 });
     }));
 });
+
+describe("the catalog of models (PR S21)", () => {
+  it("reads one row to show the card; a check writes the catalog's one row; putting a model on the list writes one", async () => {
+    const usd = (neurons: number) => (neurons * 0.011) / 1_000;
+    // A catalog of about the real size: the fixed list and 60 other text models.
+    const names = ["@cf/zai-org/glm-4.7-flash", "@cf/qwen/qwen3-30b-a3b-fp8", "@cf/meta/llama-4-scout-17b-16e-instruct", "@cf/meta/llama-3.3-70b-instruct-fp8-fast", ...Array.from({ length: 60 }, (_, i) => `@cf/exemplo/modelo-${i}`)];
+    const items = names.map((name) => ({
+      name,
+      task: { name: "Text Generation" },
+      properties: [
+        { property_id: "context_window", value: "131072" },
+        { property_id: "function_calling", value: "true" },
+        { property_id: "price", value: [{ unit: "per M input tokens", price: usd(5_500), currency: "USD" }, { unit: "per M output tokens", price: usd(36_400), currency: "USD" }] },
+      ],
+    }));
+    await runInDurableObject(owner(), (agent: ZuriAgent) => {
+      agent.testCatalog = async () => items;
+    });
+    try {
+      const check = await cost("POST", "/ai/catalog/check");
+      expect(check.status).toBe(200);
+      // Measured 6 and 3: the catalog's row read before and after the call (a tap in between is kept) and
+      // for the view, written when the tap is claimed and after the check, and the session's touch.
+      // 64 models are one row.
+      expect(check.read).toBeLessThanOrEqual(6);
+      expect(check.written).toBeLessThanOrEqual(3);
+      const view = await cost("GET", "/ai/catalog");
+      expect(view.status).toBe(200);
+      expect(view.read).toBeLessThanOrEqual(3);
+      expect(view.written).toBe(0);
+      const add = await cost("POST", "/ai/catalog/models", { id: "@cf/exemplo/modelo-7" });
+      expect(add.status).toBe(200);
+      // Measured 5 and 1: the row read for the check, the write and the view after it.
+      expect(add.read).toBeLessThanOrEqual(6);
+      expect(add.written).toBeLessThanOrEqual(1);
+    } finally {
+      await runInDurableObject(owner(), (agent: ZuriAgent) => {
+        agent.testCatalog = null;
+        agent.store.db.run(`DELETE FROM zur_settings WHERE key = 'model_catalog'`);
+      });
+    }
+  });
+});

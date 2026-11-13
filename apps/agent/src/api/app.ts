@@ -1,4 +1,5 @@
 import {
+  FALLBACK_MODEL_IDS,
   ACTIVITY_HEADER,
   AUTH_ACTIVITY_LIMIT,
   authActivityQuerySchema,
@@ -78,6 +79,8 @@ import { type BackupRouteDeps, registerBackupRoutes } from "./backup.ts";
 import { log, rayOf, routeLabel } from "../log.ts";
 import type { AgentConfigs } from "../specialists/configs.ts";
 import { registerAgentRoutes } from "./agents.ts";
+import { registerModelCatalogRoutes } from "./model-catalog.ts";
+import type { ModelCatalogService } from "../ai/catalog.ts";
 
 export interface ApiEnv {
   Bindings: WorkerEnv;
@@ -107,6 +110,8 @@ export interface ApiDeps {
   aiMonths?(): UsageMonths;
   /** Whether a paid company's key is set (step 21); absent, none is. */
   paidConfigured?(provider: PaidProviderId): boolean;
+  /** The catalog of models (PR S21): which extra models the settings may name. */
+  modelCatalog?(): ModelCatalogService;
   /** The owner says a paid company may be tried again (topped up, new key). Absent only in tests of other routes. */
   retryPaidProvider?(provider: PaidProviderId): void;
   /** The chat, its proposals and voice input (step 9). */
@@ -470,6 +475,13 @@ export function createApi(deps: ApiDeps) {
     // A paid model (step 21, ⚠️) costs money and sends text out; its ceiling decides how much. Both ask for the password again.
     const paid = [patch.aiModel, patch.aiFallbackModel].filter(isPaidModel);
     for (const model of paid) if (!deps.paidConfigured?.(paidProviderOf(model))) throw new AppError("NOT_CONFIGURED");
+    // PR S21: a model off the fixed list only once the owner put it on the list, and none that has left the catalog.
+    const catalog = deps.modelCatalog?.();
+    const unusable = (["aiModel", "aiFallbackModel"] as const).filter((field) => {
+      const model = patch[field];
+      return model !== undefined && (catalog ? !catalog.usable(model) : !FALLBACK_MODEL_IDS.some((id) => id === model));
+    });
+    if (unusable.length > 0) throw new AppError("VALIDATION_FAILED", undefined, { fields: unusable });
     if (paid.length > 0 || "aiUsdCentsPerDay" in patch) deps.auth().requireRecentAuth(c.get("session"));
     const before = patch.timeZone === undefined ? null : deps.settings().field("timeZone");
     const settings = deps.settings().update(patch);
@@ -569,6 +581,8 @@ export function createApi(deps: ApiDeps) {
 
   // Step 8: what the AI used today and the last 7 days. Read only: the limits change through /settings.
   app.get("/usage", () => Response.json(deps.aiUsage()));
+  const modelCatalog = deps.modelCatalog;
+  if (modelCatalog) registerModelCatalogRoutes(app, () => modelCatalog());
   const agents = deps.agents;
   if (agents) registerAgentRoutes(app, () => agents(), () => deps.auth(), client);
 
