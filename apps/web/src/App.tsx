@@ -69,7 +69,10 @@ function Moved() {
   return to ? <Navigate replace to={{ pathname: to, search, hash }} /> : <NotFoundPage />;
 }
 
-/** The parts of the CRM that exist today; "automacoes" and "envios" get their address when their server arrives. */
+/**
+ * The CRM's parts with an address of their own. Automações (PR S18) is /crm itself: any other address under it,
+ * /crm/automacoes too, goes back there (one name less in the first bundle). "envios" arrives with S19.
+ */
 const CRM_PARTS = ["fluxos", "credenciais"];
 
 /** The address is checked here, so the router stays out of the lazy screen (armadilhas.md, "Pacote da interface"). */

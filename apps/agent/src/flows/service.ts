@@ -178,7 +178,10 @@ export class FlowService {
     const connections = this.deps.connections.rows().map((row) =>
       this.deps.connections.present(
         row,
-        flows.filter((flow) => flow.definition.nodes.some((node) => node.type === "request" && node.connection === row.id)).map((flow) => flow.name),
+        [
+          ...flows.filter((flow) => flow.definition.nodes.some((node) => node.type === "request" && node.connection === row.id)).map((flow) => flow.name),
+          ...this.automationUsers(row.id),
+        ],
       ),
     );
     return {
@@ -516,12 +519,37 @@ export class FlowService {
     };
   }
 
-  /** Connections in use can't go: the flows that call them would fail. */
+  /**
+   * The CRM's automations set up with a credential (PR S18), by their names in the owner's language: set by
+   * the agent once both services exist, so a credential in use by one can't go and shows who uses it.
+   */
+  automationUsers: (connectionId: string) => string[] = () => [];
+
+  /** The calls of a CRM automation's run (PR S18): `calls` at most, inside the wake's one count, as a flow's. */
+  automationCallDeps(calls: number): CallDeps {
+    let used = 0;
+    const shared = currentWake();
+    return {
+      network: this.network,
+      development: this.deps.development(),
+      meter: {
+        room: (n) => used + n <= calls && (shared?.room(n) ?? true),
+        take: () => {
+          if (used >= calls || shared?.take() === false) throw new Error("budget");
+          used++;
+        },
+      },
+      hosts: new Map(),
+    };
+  }
+
+  /** Connections in use can't go: the flows and automations that call them would fail. */
   removeConnection(id: string): void {
     const users = this.db
       .all<{ name: string; definition: string }>(`SELECT name, definition FROM zur_flows LIMIT ?`, FLOW_LIMITS.flows)
       .filter((row) => safeDefinition(row.definition).nodes.some((node) => node.type === "request" && node.connection === id));
-    if (users.length > 0) throw new AppError("CONFLICT", "error.flowConnectionInUse", { flows: users.map((row) => row.name) });
+    const automations = this.automationUsers(id);
+    if (users.length > 0 || automations.length > 0) throw new AppError("CONFLICT", "error.flowConnectionInUse", { flows: [...users.map((row) => row.name), ...automations] });
     this.deps.connections.remove(id);
   }
 
