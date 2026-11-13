@@ -12,7 +12,7 @@ import { type DevGoogle, devGoogle, googleNetwork } from "../src/google/dev-goog
 import { GoogleCalendar } from "../src/google/service.ts";
 import { GoogleContacts } from "../src/google/contacts.ts";
 import { InternalState } from "../src/db/internal-state.ts";
-import { DEFAULT_SETTINGS } from "@zuri/shared";
+import { type AgendaPrefs, DEFAULT_AGENDA_PREFS, DEFAULT_SETTINGS } from "@zuri/shared";
 import { AgentConfigs } from "../src/specialists/configs.ts";
 import { testEnv } from "./helpers.ts";
 
@@ -83,6 +83,8 @@ export interface FlowWorld {
   googleSim: DevGoogle;
   contacts: GoogleContacts;
   googleLockdown: { active: boolean };
+  /** The Agenda's hours the calendar step keeps (issue #328): the defaults, changed by a test as it needs. */
+  agenda: { prefs: AgendaPrefs };
 }
 
 let objects = 0;
@@ -119,6 +121,7 @@ export function withFlowWorld<T>(fn: (world: FlowWorld) => T | Promise<T>, optio
     google.network = googleNetwork(googleSim, { fetch: () => Promise.reject(new Error("no network in tests")) });
     const contacts = new GoogleContacts({ db, google, timeZone: () => TIME_ZONE, notify: () => {}, createTask: () => {}, clock: tick });
     const agents = new AgentConfigs(db);
+    const agenda = { prefs: DEFAULT_AGENDA_PREFS };
     const flows = new FlowService(
       {
         db,
@@ -139,12 +142,12 @@ export function withFlowWorld<T>(fn: (world: FlowWorld) => T | Promise<T>, optio
           rearms.count++;
         },
         notify: (notice) => notices.push(notice),
-        google: { calendar: () => google, contacts: () => contacts, timeZone: () => TIME_ZONE },
+        google: { calendar: () => google, contacts: () => contacts, timeZone: () => TIME_ZONE, agendaHours: () => agenda.prefs },
         clock: tick,
       },
       network,
     );
-    return fn({ db, agents, flows, connections, sites, network, clock, lockdown, notices, rearms, model, meter, google, googleSim, contacts, googleLockdown });
+    return fn({ db, agents, flows, connections, sites, network, clock, lockdown, notices, rearms, model, meter, google, googleSim, contacts, googleLockdown, agenda });
   });
 }
 

@@ -69,7 +69,11 @@ Sem o Google conectado, o passo mostra onde conectar.
 - **Criar evento**: o início sai do item e aceita `AAAA-MM-DD` (dia inteiro),
   `AAAA-MM-DDTHH:mm` (no seu fuso) ou um instante ISO com fuso, como o
   `{{start}}` do passo de leitura. Um item com data que não serve para a
-  execução antes de criar qualquer evento. São no máximo 10 eventos por
+  execução antes de criar qualquer evento. Uma consulta (descrição com uma
+  linha como `Consulta | Consultório`) segue as regras da Agenda: fora do
+  horário, no almoço, em feriado ou folga, nenhum evento do passo é criado; por
+  cima de outra consulta, a execução para nela. Para conferir, o passo lê o dia
+  em cada agenda aberta, e essas leituras contam no limite de chamadas. São no máximo 10 eventos por
   execução; com mais itens, nenhum é criado. A **chave contra repetição**
   (por exemplo `{{id}}`) faz o mesmo item nunca virar um segundo evento,
   mesmo em outra execução. Sem chave, uma falha passageira do Google para a

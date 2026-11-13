@@ -43,6 +43,26 @@ export function bound(event: Pick<BookingShape, "allDay" | "description" | "colo
   return bindsBooking({ allDay: event.allDay, colorId: event.colorId, description: cleanBlock(event.description, GOOGLE_LIMITS.descriptionMax) });
 }
 
+/** An event as it will be at Google once `body` (a create, or a PATCH over `current`) is applied. */
+export function shapeOf(body: Record<string, unknown>, current: BookingShape): BookingShape {
+  const time = (value: unknown): { at?: string; allDay?: boolean } => {
+    if (!value || typeof value !== "object") return {};
+    const { date, dateTime } = value as { date?: unknown; dateTime?: unknown };
+    if (typeof dateTime === "string") return { at: dateTime, allDay: false };
+    if (typeof date === "string") return { at: date, allDay: true };
+    return {};
+  };
+  const start = time(body.start);
+  const end = time(body.end);
+  return {
+    allDay: start.allDay ?? current.allDay,
+    start: start.at ?? current.start,
+    end: end.at ?? current.end,
+    description: typeof body.description === "string" ? body.description : current.description,
+    colorId: body.colorId === null ? "" : typeof body.colorId === "string" ? body.colorId : current.colorId,
+  };
+}
+
 const DAY_MS = 86_400_000;
 
 /**
@@ -59,6 +79,27 @@ export function minuteOf(at: Date, day: string, timeZone: string): number {
 
 const refuse = (code: AppointmentProblemCode) => new AppError("VALIDATION_FAILED", MESSAGE[code], { problem: code });
 
+/** Where an appointment falls on the owner's wall clock, as the rule reads it. */
+function placeOf(after: BookingShape, hours: AgendaPrefs, timeZone: string, now: Date) {
+  const start = new Date(after.start);
+  const end = new Date(after.end);
+  // Fail closed: an appointment whose time can't be read is never written.
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) throw new AppError("VALIDATION_FAILED", "error.googleEventDate");
+  const day = localToday(timeZone, start);
+  const clock = zonedParts(now, timeZone);
+  return { day, start: minuteOf(start, day, timeZone), end: minuteOf(end, day, timeZone), today: localToday(timeZone, now), nowMinute: clock.hour * 60 + clock.minute, hours };
+}
+
+/**
+ * The rule's refusal of a new appointment that needs no call to Google
+ * (everything but a clash), or null: a flow checks all its items with it
+ * before making the first event.
+ */
+export function fixedProblem(after: BookingShape, hours: AgendaPrefs, timeZone: string, now: Date): AppointmentProblemCode | null {
+  if (!bound(after)) return null;
+  return appointmentProblem(placeOf(after, hours, timeZone, now))?.code ?? null;
+}
+
 /**
  * Throws the rule's refusal when `after` may not be booked. `before` is the
  * event as Google has it, for a change: one that keeps its day and hours is
@@ -69,6 +110,8 @@ const refuse = (code: AppointmentProblemCode) => new AppError("VALIDATION_FAILED
 export async function checkBooking(input: {
   after: BookingShape;
   before?: (BookingShape & Pick<CalendarEvent, "id" | "calendarId">) | undefined;
+  /** A new event's own id, when it has one already (a flow's key): a retry never clashes with the event it made. */
+  self?: Pick<CalendarEvent, "id" | "calendarId"> | undefined;
   google: GoogleCalendar;
   hours: AgendaPrefs;
   timeZone: string;
@@ -78,25 +121,22 @@ export async function checkBooking(input: {
   const { after, before, timeZone } = input;
   if (!bound(after)) return;
   if (before && bound(before) && Date.parse(before.start) === Date.parse(after.start) && Date.parse(before.end) === Date.parse(after.end)) return;
-  const start = new Date(after.start);
-  const end = new Date(after.end);
-  // Fail closed: an appointment whose time can't be read is never written.
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) throw new AppError("VALIDATION_FAILED", "error.googleEventDate");
-  const day = localToday(timeZone, start);
-  const now = input.now ?? new Date();
-  const clock = zonedParts(now, timeZone);
-  const base = { day, start: minuteOf(start, day, timeZone), end: minuteOf(end, day, timeZone), today: localToday(timeZone, now), nowMinute: clock.hour * 60 + clock.minute, hours: input.hours };
+  const base = placeOf(after, input.hours, timeZone, input.now ?? new Date());
+  const { day } = base;
   // Everything but a clash first: no call to Google for a lunch hour.
   const fixed = appointmentProblem(base);
   if (fixed) throw refuse(fixed.code);
   const from = localInstant(day, timeZone);
   const to = localInstant(nextDay(day), timeZone);
   if (!from || !to) throw new AppError("VALIDATION_FAILED", "error.googleEventDate");
-  const { events, more, skipped } = await input.google.events(input.google.readable(), from, to, input.meter, { timeZone, perCalendar: 100, max: 200 });
+  const open = input.google.readable();
+  // A listing reads ten calendars at most: an eleventh would go unread and not show as skipped.
+  if (open.length > GOOGLE_LIMITS.listCalendars) throw new AppError("SERVICE_UNAVAILABLE", "error.agendaRule.unread");
+  const { events, more, skipped } = await input.google.events(open, from, to, input.meter, { timeZone, perCalendar: 100, max: 200 });
   // A day read in part could hide the other appointment: no write until the whole day is read.
   if (more || skipped.length > 0) throw new AppError("SERVICE_UNAVAILABLE", "error.agendaRule.unread");
   const booked: BookedSlot[] = events
-    .filter((other) => bound(other) && !(before && other.id === before.id && other.calendarId === before.calendarId))
+    .filter((other) => bound(other) && !(before && other.id === before.id && other.calendarId === before.calendarId) && !(input.self && other.id === input.self.id && other.calendarId === input.self.calendarId))
     .map((other) => ({ start: minuteOf(new Date(other.start), day, timeZone), end: minuteOf(new Date(other.end), day, timeZone), title: "" }));
   const clash = appointmentProblem({ ...base, booked });
   if (clash) throw refuse(clash.code);

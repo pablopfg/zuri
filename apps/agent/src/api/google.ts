@@ -18,7 +18,7 @@ import type { ClientInfo } from "../auth/client.ts";
 import type { AuthService } from "../auth/service.ts";
 import { CHANNEL_ID, GOOGLE_CHANNEL_HEADER, GOOGLE_PUSH_PATH, GOOGLE_STATE_HEADER, GOOGLE_TOKEN_HEADER, isGooglePushToken } from "../gates/google-push.ts";
 import { contactAppointments } from "../google/appointments.ts";
-import { checkBooking } from "../google/booking.ts";
+import { checkBooking, shapeOf } from "../google/booking.ts";
 import type { GoogleContacts } from "../google/contacts.ts";
 import type { ReviewMatches } from "../reviews/matches.ts";
 import type { ReviewRequests } from "../reviews/requests.ts";
@@ -53,26 +53,6 @@ const ACTION_BUDGET = 12;
 /** The card's appointments: what is ahead and the last months of ten calendars, a token renewal and a retry; never near the 45 of rule P9. */
 const APPOINTMENTS_BUDGET = 24;
 const DAY_MS = 86_400_000;
-
-/** An event as it will be at Google once `body` (a create, or a PATCH over `current`) is applied. */
-function shapeOf(body: Record<string, unknown>, current: { allDay: boolean; start: string; end: string; description: string; colorId: string }) {
-  const time = (value: unknown): { at?: string; allDay?: boolean } => {
-    if (!value || typeof value !== "object") return {};
-    const { date, dateTime } = value as { date?: unknown; dateTime?: unknown };
-    if (typeof dateTime === "string") return { at: dateTime, allDay: false };
-    if (typeof date === "string") return { at: date, allDay: true };
-    return {};
-  };
-  const start = time(body.start);
-  const end = time(body.end);
-  return {
-    allDay: start.allDay ?? current.allDay,
-    start: start.at ?? current.start,
-    end: end.at ?? current.end,
-    description: typeof body.description === "string" ? body.description : current.description,
-    colorId: body.colorId === null ? "" : typeof body.colorId === "string" ? body.colorId : current.colorId,
-  };
-}
 
 /** A Google failure in the owner's words. */
 async function owner<T>(work: () => Promise<T>): Promise<T> {

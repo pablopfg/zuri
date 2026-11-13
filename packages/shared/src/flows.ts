@@ -275,6 +275,8 @@ export const FLOW_RUN_PROBLEMS = [
   "kind_not_allowed",
   // PR S17: a fixed client (the Chatwoot's) got an answer it doesn't know.
   "bad_answer",
+  // Issue #328: an appointment out of the Agenda's hours, at lunch, on a day off or over another one.
+  "agenda_rule",
 ] as const;
 export type FlowRunProblem = (typeof FLOW_RUN_PROBLEMS)[number];
 

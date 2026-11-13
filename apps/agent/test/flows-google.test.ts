@@ -353,6 +353,128 @@ describe("creating events", () => {
   });
 });
 
+describe("creating appointments keeps the Agenda's rule (issue #328)", () => {
+  // NOON is Tuesday 03/11/2026, 09:00; the default Agenda works Monday to Friday, 08:00 to 18:00, lunch 12:00 to 14:00.
+  const APPOINTMENT = "Consulta | Consultório";
+
+  it("refuses an appointment at lunch with no call to Google, after the step before made its own", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      const flow = await world.flows.create({
+        name: "Almoço",
+        definition: manual([one({ quando: "2026-11-04T10:00", depois: "2026-11-04T12:30" }), create({ start: "{{quando}}", description: APPOINTMENT }), create({ start: "{{depois}}", description: APPOINTMENT })]),
+      });
+      const before = world.googleSim.seen.length;
+      // The first step makes its event; the second is refused without a call (the fixed rules come first).
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "error", problem: "agenda_rule" });
+      expect(posts(world)).toHaveLength(1);
+      // The first event's day was read once in each open calendar to look for a clash; the refused one read nothing.
+      expect(reads(world)).toHaveLength(2);
+      expect(world.googleSim.seen.length - before).toBe(3);
+    });
+  });
+
+  it("checks every item before the first event: one at lunch stops all of them", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      event(world, READER, "i1", "Ana", "2026-11-04T10:00:00-03:00", "2026-11-04T10:30:00-03:00");
+      event(world, READER, "i2", "Bruno", "2026-11-04T12:30:00-03:00", "2026-11-04T13:00:00-03:00");
+      const flow = await world.flows.create({ name: "Lote", definition: manual([read({ calendar: READER }), create({ calendar: PRIMARY, description: APPOINTMENT })]) });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "error", problem: "agenda_rule" });
+      expect(posts(world)).toHaveLength(0);
+    });
+  });
+
+  it("refuses an appointment over another one in any open calendar, and on a holiday, a weekend or a day off", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      event(world, READER, "o1", "Carla", "2026-11-05T15:00:00-03:00", "2026-11-05T16:00:00-03:00", { description: APPOINTMENT });
+      world.agenda.prefs = { ...world.agenda.prefs, closed: [{ date: "2026-11-06", reason: "" }] };
+      for (const at of ["2026-11-05T15:30", "2026-11-02T10:00", "2026-11-07T10:00", "2026-11-06T10:00", "2026-11-05T19:00", "2026-11-03T08:00"]) {
+        const flow = await world.flows.create({ name: `Fora ${at}`, definition: manual([one({ quando: at }), create({ start: "{{quando}}", description: APPOINTMENT })]) });
+        expect(await world.flows.runNow(flow.id), at).toMatchObject({ status: "error", problem: "agenda_rule" });
+      }
+      expect(posts(world)).toHaveLength(0);
+    });
+  });
+
+  it("books an appointment in a free hour, and a meeting with no type at lunch", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      event(world, READER, "o1", "Carla", "2026-11-05T15:00:00-03:00", "2026-11-05T16:00:00-03:00", { description: APPOINTMENT });
+      const flow = await world.flows.create({
+        name: "Livre",
+        definition: manual([one({ quando: "2026-11-05T16:00", almoco: "2026-11-05T12:30" }), create({ start: "{{quando}}", description: APPOINTMENT }), create({ start: "{{almoco}}", title: "Reunião" })]),
+      });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "success" });
+      expect(posts(world)).toHaveLength(2);
+    });
+  });
+
+  it("refuses two items of the step at the same hour before making either", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      event(world, READER, "i1", "Ana", "2026-11-05T10:00:00-03:00", "2026-11-05T10:30:00-03:00");
+      event(world, READER, "i2", "Bruno", "2026-11-05T10:15:00-03:00", "2026-11-05T10:45:00-03:00");
+      const flow = await world.flows.create({ name: "Mesmo horário", definition: manual([read({ calendar: READER, days: 3 }), create({ description: APPOINTMENT })]) });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "error", problem: "agenda_rule" });
+      expect(posts(world)).toHaveLength(0);
+      // Back to back is no overlap: both are made.
+      world.googleSim.events.set(READER, []);
+      event(world, READER, "i3", "Carla", "2026-11-05T10:00:00-03:00", "2026-11-05T10:30:00-03:00");
+      event(world, READER, "i4", "Davi", "2026-11-05T10:30:00-03:00", "2026-11-05T11:00:00-03:00");
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "success" });
+      expect(posts(world)).toHaveLength(2);
+    });
+  });
+
+  it("goes on after Google made the appointment but answered 503: its own event is no clash", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      const real = world.google.network;
+      let made = 0;
+      world.google.network = {
+        fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+          const request = new Request(input, init);
+          const answer = await real.fetch(request);
+          if (request.method === "POST" && new URL(request.url).pathname.endsWith("/events") && ++made === 1) return Response.json({ error: { code: 503 } }, { status: 503 });
+          return answer;
+        }) as typeof fetch,
+      };
+      const flow = await world.flows.create({ name: "Retomar consulta", definition: manual([one({ quando: "2026-11-05T10:00", id: "p1" }), create({ start: "{{quando}}", description: APPOINTMENT, key: "{{id}}" }), tell("{{event.created}}")]) });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "waiting" });
+      world.clock.now += 60_000;
+      expect(await world.flows.tick()).toBe(1);
+      expect(world.googleSim.events.get(PRIMARY)).toHaveLength(1);
+      expect(titles(world)).toEqual(["false"]);
+    });
+  });
+
+  it("runs again over an appointment made with a key without calling it a clash with itself", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      const flow = await world.flows.create({ name: "Chave", definition: manual([one({ quando: "2026-11-05T10:00", id: "p1" }), create({ start: "{{quando}}", description: APPOINTMENT, key: "{{id}}" }), tell("{{event.created}}")]) });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "success" });
+      expect(await world.flows.runNow(flow.id)).toMatchObject({ status: "success" });
+      expect(titles(world)).toEqual(["true", "false"]);
+      expect(world.googleSim.events.get(PRIMARY)).toHaveLength(1);
+    });
+  });
+
+  it("waits for the next wake when the day's reading doesn't fit in the wake's calls", async () => {
+    await withFlowWorld(async (world) => {
+      await connect(world);
+      const flow = await world.flows.create({ name: "Sem espaço", definition: manual([one({ quando: "2026-11-05T10:00" }), create({ start: "{{quando}}", description: APPOINTMENT })]) });
+      // Two calendars to read, the event and a token renewal need 4; 31 of the 34 the areas may use are gone.
+      const budget = new WakeBudget();
+      expect(budget.take(31)).toBe(true);
+      const before = world.googleSim.seen.length;
+      expect(await inWake(budget, () => world.flows.runNow(flow.id))).toMatchObject({ status: "waiting", calls: 0 });
+      expect(world.googleSim.seen.length).toBe(before);
+    });
+  });
+});
+
 describe("finding contacts", () => {
   /** The calendar and the contacts joined to it, with three people copied from the label "Clientes". */
   async function contactsOn(world: FlowWorld): Promise<void> {
