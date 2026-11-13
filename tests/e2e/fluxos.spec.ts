@@ -497,27 +497,30 @@ test("a flow the chat suggests waits on the tab; saved by the owner, it starts o
   await expect(flowRow(page, name)).toHaveCount(0);
 });
 
-test("the CRM has three parts, Automações at /crm; Envios still waits for its server (S15, S18) @mobile", async ({ page }) => {
+test("the CRM has four parts, Automações at /crm (S15, S18, S19) @mobile", async ({ page }) => {
   await page.goto("/crm/fluxos");
   await signIn(page);
   const parts = page.getByRole("navigation", { name: "Partes do CRM" });
   // The number beside each name is how many it holds.
-  await expect(parts.getByRole("link")).toHaveCount(3);
+  await expect(parts.getByRole("link")).toHaveCount(4);
   await expect(parts.getByRole("link").nth(0)).toHaveAccessibleName(/^Automações \d+$/);
   await expect(parts.getByRole("link").nth(1)).toHaveAccessibleName(/^Fluxos \d+$/);
   await expect(parts.getByRole("link").nth(2)).toHaveAccessibleName(/^Credenciais \d+$/);
+  await expect(parts.getByRole("link").nth(3)).toHaveAccessibleName(/^Envios \d+$/);
   await expect(page.getByText("Fluxos que você monta passo a passo, com hora para rodar e limites.")).toBeVisible();
   await expect(parts.getByRole("link", { name: /^Fluxos/ })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("button", { name: "Novo fluxo" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Nova credencial" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Últimas execuções" })).toBeVisible();
-  // "Envios" waits for its server (S19): no link, and its address goes back to the CRM, as /crm/automacoes does.
-  await expect(page.getByRole("link", { name: /Envios/ })).toHaveCount(0);
-  for (const address of ["/crm/automacoes", "/crm/envios"]) {
+  // An address the CRM doesn't know goes back to it, as /crm/automacoes does; /crm/envios is its own part (S19).
+  for (const address of ["/crm/automacoes", "/crm/outra"]) {
     await page.goto(address);
     await expect(page).toHaveURL(/\/crm$/);
     await expect(parts.getByRole("link", { name: /^Automações/ })).toHaveAttribute("aria-current", "page");
   }
+  await page.goto("/crm/envios");
+  await expect(page).toHaveURL(/\/crm\/envios$/);
+  await expect(parts.getByRole("link", { name: /^Envios/ })).toHaveAttribute("aria-current", "page");
   await page.goto("/crm/fluxos");
   // By the keyboard: the link of the other part, then back by the note under the flows' runs.
   await parts.getByRole("link", { name: /^Credenciais/ }).focus();

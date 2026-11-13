@@ -32,8 +32,8 @@ const PLANNED: Record<(typeof CRM_AUTOMATION_IDS)[number], Omit<CatalogEntry, "i
 /** The modules with code, by id. None yet: the review request is the first (S20). */
 const MODULES: Partial<Record<string, AutomationModule>> = {};
 
-/** What every automation stands on, with its real state (the queue is S19's; the patient's contact comes after it). */
-export const AUTOMATION_BASE: CrmAutomationBase = { calendar: "ready", queue: "coming", identity: "coming" };
+/** What every automation stands on, with its real state (the queue arrived with S19; the patient's contact comes after it). */
+export const AUTOMATION_BASE: CrmAutomationBase = { calendar: "ready", queue: "ready", identity: "coming" };
 
 /** The catalog; `extra` adds modules only the tests and local development register (example.ts). */
 export function buildCatalog(extra: readonly AutomationModule[] = []): CatalogEntry[] {

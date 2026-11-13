@@ -94,6 +94,24 @@ export interface AutomationContext {
     params?: Record<string, string | number>;
     body?: unknown;
   }): Promise<"would" | "done" | "skipped">;
+  /**
+   * A message to a contact, through the outbox (PR S19): the only way an automation writes to a person. Needs
+   * the effect "message", a Chatwoot credential and `writesToContacts`. In rehearsal only a note ("would");
+   * live, it enters the queue under the same key, which never goes out twice ("skipped" when already there).
+   * The key carries the date or the event's id, as an effect's does.
+   */
+  send(input: {
+    key: string;
+    /** The contact's name, as the history shows it. */
+    label: string;
+    /** E.164. */
+    phone: string;
+    text: string;
+    /** A bulk message (most of them) waits the longer gap; a message to one person, the shorter one. */
+    bulk?: boolean;
+    notBefore?: string;
+    notAfter?: string;
+  }): Promise<"would" | "queued" | "skipped">;
 }
 
 export interface AutomationModule {
