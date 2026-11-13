@@ -110,8 +110,9 @@ interface Stored {
   state: RunState;
 }
 
-/** One test of a credential every 5 s at most, and the calls one may make (2 lookups and 1 request). */
-const CONNECTION_TEST_GAP_MS = 5_000;
+/** Tests of one credential a minute (a test and the pick of an inbox count alike), and the calls one may make (2 lookups and 1 request). */
+const CONNECTION_TESTS_PER_WINDOW = 5;
+const CONNECTION_TEST_WINDOW_MS = 60_000;
 const CONNECTION_TEST_CALLS = 3;
 
 /** A run late by more than this after its time is a catch-up (the object was asleep or down). */
@@ -138,8 +139,8 @@ const SETTING_COLUMNS: Record<keyof FlowSettings, string> = {
 export class FlowService {
   /** Runs executing in this instance; a row left "running" without one was cut short. */
   readonly #inFlight = new Set<string>();
-  /** When each credential was last tested (in memory: a restart only lets one more test through). */
-  readonly #tests = new Map<string, number>();
+  /** When each credential was tested in the last minute (in memory: a restart only lets a few more through). */
+  readonly #tests = new Map<string, number[]>();
   network: FlowNetwork;
 
   constructor(
@@ -448,16 +449,18 @@ export class FlowService {
    * "Testar" (PR S17): one read, never a change. An http credential gets a GET
    * of its first path (only when GET is allowed); a Chatwoot one lists the
    * inboxes its key sees. Same rules as a flow's call (public DNS, no redirect,
-   * 10 s, 256 KB); at most one test every 5 s per credential.
+   * 10 s, 256 KB); at most 5 tests a minute per credential.
    */
   async testConnection(id: string): Promise<FlowConnectionTest> {
     const row = this.deps.connections.row(id);
     const at = this.now();
-    const last = this.#tests.get(id);
-    if (last !== undefined && at - last < CONNECTION_TEST_GAP_MS) {
-      throw new AppError("RATE_LIMITED", undefined, { retryAfter: Math.max(1, Math.ceil((CONNECTION_TEST_GAP_MS - (at - last)) / 1000)) });
+    const recent = (this.#tests.get(id) ?? []).filter((when) => at - when < CONNECTION_TEST_WINDOW_MS);
+    if (recent.length >= CONNECTION_TESTS_PER_WINDOW) {
+      const oldest = recent[0] as number;
+      throw new AppError("RATE_LIMITED", undefined, { retryAfter: Math.max(1, Math.ceil((CONNECTION_TEST_WINDOW_MS - (at - oldest)) / 1000)) });
     }
-    this.#tests.set(id, at);
+    recent.push(at);
+    this.#tests.set(id, recent);
     const kind = knownKind(row.kind);
     try {
       if (kind === "chatwoot") {

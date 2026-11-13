@@ -249,7 +249,6 @@ describe("Testar", () => {
       ];
       for (const [arrange, expected] of cases) {
         arrange();
-        world.clock.now += 5_000;
         expect(await world.flows.testConnection(id)).toEqual(expected);
       }
     });
@@ -281,16 +280,20 @@ describe("Testar", () => {
     });
   });
 
-  it("runs at most once every 5 s per credential (4.999 s and 5 s)", async () => {
+  it("runs at most 5 times a minute per credential (the 6th waits until the first is a minute old)", async () => {
     await withFlowWorld(async (world) => {
       world.network.handlers.set(HOST, inboxes([]));
       const a = await addChatwoot(world);
       const b = await addChatwoot(world, { name: "Outra" });
-      await world.flows.testConnection(a);
-      world.clock.now += 4_999;
-      await expect(world.flows.testConnection(a)).rejects.toMatchObject({ code: "RATE_LIMITED", details: { retryAfter: 1 } });
-      // Another credential has its own clock.
+      for (let i = 0; i < 5; i++) {
+        expect((await world.flows.testConnection(a)).ok).toBe(true);
+        world.clock.now += 1_000;
+      }
+      await expect(world.flows.testConnection(a)).rejects.toMatchObject({ code: "RATE_LIMITED", details: { retryAfter: 55 } });
+      // Another credential has its own count.
       expect((await world.flows.testConnection(b)).ok).toBe(true);
+      world.clock.now += 54_999;
+      await expect(world.flows.testConnection(a)).rejects.toMatchObject({ code: "RATE_LIMITED", details: { retryAfter: 1 } });
       world.clock.now += 1;
       expect((await world.flows.testConnection(a)).ok).toBe(true);
       await expect(world.flows.testConnection("00000000-0000-4000-8000-000000000000")).rejects.toMatchObject({ code: "NOT_FOUND" });

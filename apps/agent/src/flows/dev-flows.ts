@@ -5,7 +5,8 @@ import type { FlowNetwork } from "./connections.ts";
  * https address on `*.exemplo.com.br` is answered here, so `npm run dev`, the
  * e2e tests and the screenshots never reach a real site. `fora.exemplo.com.br`
  * is a site that is down; `api.exemplo.com.br` is a small JSON service with
- * clients under `/v1/clientes`. Every other address goes out as in production.
+ * clients under `/v1/clientes`; `chat.exemplo.com.br` is a Chatwoot whose
+ * account 1 has two inboxes (PR S17). Every other address goes out as in production.
  */
 const SIMULATED = /\.exemplo\.com\.br$/;
 
@@ -15,8 +16,19 @@ const CLIENTS = [
   { id: 3, nome: "Carla Dias", etapa: "proposta", valor: 800 },
 ];
 
+const INBOXES = [
+  { id: 7, name: "WhatsApp do consultório", channel_type: "Channel::Api" },
+  { id: 8, name: "E-mail", channel_type: "Channel::Email" },
+];
+
 function answer(request: Request): Response {
   const url = new URL(request.url);
+  if (url.hostname === "chat.exemplo.com.br") {
+    // Any key works here except one that says it's wrong: the screen's "refused" case.
+    if (request.headers.get("api_access_token") === "chave-recusada-exemplo") return Response.json({ error: "unauthorized" }, { status: 401 });
+    if (url.pathname === "/api/v1/accounts/1/inboxes") return Response.json({ payload: INBOXES });
+    return Response.json({ error: "not_found" }, { status: 404 });
+  }
   if (url.hostname === "fora.exemplo.com.br") return new Response("indisponível", { status: 503 });
   if (url.hostname === "api.exemplo.com.br") {
     if (url.pathname === "/v1/clientes") return Response.json({ data: CLIENTS });

@@ -310,6 +310,8 @@ describe("/api/flows/connections", () => {
     const res = await api("POST", `/flows/connections/${connection.id}/test`);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ test: { ok: true, inboxes: [{ id: 7, name: "WhatsApp do consultório", api: true }] } });
+    // 5 a minute: the pick of the inbox above didn't count, so 4 more pass and the 6th waits.
+    for (let i = 0; i < 4; i++) expect((await api("POST", `/flows/connections/${connection.id}/test`)).status).toBe(200);
     const again = await api("POST", `/flows/connections/${connection.id}/test`);
     expect(again.status).toBe(429);
     expect(Number(again.headers.get("retry-after"))).toBeGreaterThan(0);

@@ -29,7 +29,7 @@ As credenciais de CRM › Credenciais ganham um **tipo**. `http` é o que já ex
 | CA6 | Espera dos envios em massa de 5 a 600 s (padrão 30 a 60) e de mensagem a uma pessoa de 1 a 30 s (padrão 2 a 5), "De" ≤ "Até" e a de uma pessoa sempre menor que o "De" dos envios em massa; fora disso, `VALIDATION_FAILED` | decisões 12/11 |
 | CA7 | Mudar só as esperas não pede a senha, mas entra na atividade | modulos-crm.md |
 | CA8 | Escolher a caixa de entrada confere, com a chave guardada, que a caixa existe e guarda o nome dela | modulos-crm.md |
-| CA9 | "Testar" só lê: `http` faz um GET no primeiro caminho (só se GET é permitido); `chatwoot` lista as caixas. Respeita DNS público, sem redirecionamento, 10 s e 256 KB; no máximo um teste a cada 5 s por credencial | modulos.md, regra 8 |
+| CA9 | "Testar" só lê: `http` faz um GET no primeiro caminho (só se GET é permitido); `chatwoot` lista as caixas. Respeita DNS público, sem redirecionamento, 10 s e 256 KB; no máximo 5 testes por minuto por credencial | modulos.md, regra 8 |
 | CA10 | Fluxo não usa credencial `chatwoot`: o servidor recusa salvar e o motor recusa chamar | modulos.md, regra 7 |
 | CA11 | Cada tipo tem a sua chave de cifra (`flows-v1`, `chatwoot-v1`): a chave cifrada de um tipo não abre como outro | modulos.md, regra 2 |
 | CA12 | Tipo novo entra por um registro (tipo → `info` da cifra, schemas, teste), sem mexer nas rotas | coordenador (E6) |
@@ -54,7 +54,7 @@ Catálogo `pt-BR-flows`/`en` (chaves `web.flows.connection.*`, `web.flows.connec
 
 ## 6. Regras de negócio e limites
 
-`CHATWOOT_LIMITS` em `packages/shared/src/flows.ts`: conta 1 a 999.999.999; massa 5 a 600 s (30 a 60); uma pessoa 1 a 30 s (2 a 5); até 50 caixas listadas, nome cortado em 80 caracteres; teste a cada 5 s por credencial. Final da chave: 4 caracteres, só com chave de 12 ou mais.
+`CHATWOOT_LIMITS` em `packages/shared/src/flows.ts`: conta 1 a 999.999.999; massa 5 a 600 s (30 a 60); uma pessoa 1 a 30 s (2 a 5); até 50 caixas listadas, nome cortado em 80 caracteres; até 5 testes por minuto por credencial (a escolha da caixa não conta: ela já pede a senha). Final da chave: 4 caracteres, só com chave de 12 ou mais.
 
 ## 7. Desenho técnico
 
@@ -62,7 +62,7 @@ Catálogo `pt-BR-flows`/`en` (chaves `web.flows.connection.*`, `web.flows.connec
 
 - `POST /api/flows/connections`: corpo com `kind` (`http` quando falta). Senha recente.
 - `PATCH /api/flows/connections/:id`: schema do tipo da linha (o tipo não muda). Senha recente, menos quando o corpo só traz `bulkGap` e `oneGap`.
-- `POST /api/flows/connections/:id/test` (novo): sem corpo, sem senha (só lê, e a chave só vai ao endereço que o dono já cadastrou). `RATE_LIMITED` com `retryAfter` dentro de 5 s.
+- `POST /api/flows/connections/:id/test` (novo): sem corpo, sem senha (só lê, e a chave só vai ao endereço que o dono já cadastrou). `RATE_LIMITED` com `retryAfter` a partir do 6º teste no mesmo minuto.
 
 ### Arquivos
 
