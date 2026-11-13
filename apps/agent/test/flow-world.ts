@@ -8,7 +8,6 @@ import { migrate } from "../src/db/migrations.ts";
 import { FlowConnections, type FlowNetwork } from "../src/flows/connections.ts";
 import { SiteStates } from "../src/flows/monitor.ts";
 import { type FlowNotice, FlowService } from "../src/flows/service.ts";
-import { McpCredentials } from "../src/mcp/credentials.ts";
 import { type DevGoogle, devGoogle, googleNetwork } from "../src/google/dev-google.ts";
 import { GoogleCalendar } from "../src/google/service.ts";
 import { GoogleContacts } from "../src/google/contacts.ts";
@@ -102,7 +101,7 @@ export function withFlowWorld<T>(fn: (world: FlowWorld) => T | Promise<T>, optio
     const meter = new UsageMeter(db, tick);
     const model: { provider: AIProvider } = { provider: new FlowModel() };
     const key = "credentialKey" in options ? options.credentialKey : testEnv.MCP_CREDENTIAL_KEY;
-    const connections = new FlowConnections(db, new McpCredentials(key, "flows-v1"), tick);
+    const connections = new FlowConnections(db, key, tick);
     const sites = new SiteStates(db);
     const googleLockdown = { active: false };
     const googleSim = devGoogle({ clientId: testEnv.GOOGLE_CLIENT_ID, clientSecret: testEnv.GOOGLE_CLIENT_SECRET, clock: tick });
