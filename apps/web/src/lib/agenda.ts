@@ -1,4 +1,4 @@
-import { type AgendaEvent, AGENDA_LIMITS, bindsBooking, typeLine, type AgendaPrefs, type AgendaView, type EventStatus, eventStatus, frozenDay, type GoogleCalendarInfo, zonedParts } from "@zuri/shared";
+import { type AgendaEvent, AGENDA_LIMITS, bindsBooking, typeLine, type AgendaPrefs, type AgendaView, type EventPayment, type EventStatus, eventStatus, frozenDay, type GoogleCalendarInfo, zonedParts } from "@zuri/shared";
 
 export { typeLine };
 
@@ -165,6 +165,11 @@ export interface EventForm {
   location: string;
   /** The description without its type line. */
   description: string;
+  /** The patient's contact (E5e): the country's code, the phone as typed, the e-mail. Only an appointment has them. */
+  country: string;
+  phone: string;
+  email: string;
+  payment: EventPayment;
 }
 
 /**
@@ -189,6 +194,10 @@ export function blankForm(day: string, calendarId: string, timeZone: string, now
     status: "scheduled",
     location: "",
     description: "",
+    country: "BR",
+    phone: "",
+    email: "",
+    payment: "unpaid",
   };
 }
 
@@ -201,6 +210,10 @@ export function formOf(event: AgendaEvent, timeZone: string): EventForm {
     type: typeLine(event.description),
     description: withoutType(event.description),
     status: eventStatus(event.colorId ?? ""),
+    country: event.country ?? "BR",
+    phone: event.phone ?? "",
+    email: event.email ?? "",
+    payment: event.payment ?? "unpaid",
   };
   if (event.allDay) {
     const { first, last } = eventDays(event, timeZone);

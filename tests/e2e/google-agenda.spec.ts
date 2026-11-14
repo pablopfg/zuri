@@ -1,6 +1,10 @@
 import { expect, type Page, test } from "./fixtures.ts";
 import { CSRF, expectAccessible, openPlace, signIn, tooSmallControls } from "./ui-helpers.ts";
 
+/** The form names its fields by what is being booked: an appointment or a plain event (E5e). */
+const NAME = /^(Nome completo do paciente|Título)$/;
+const DAY = /^(Data da consulta|Data)$/;
+
 // Google Calendar (step 19) against the real Worker. Over loopback the Worker
 // answers Google itself (apps/agent/src/google/dev-google.ts), with sample
 // calendars and events; only Google's consent page is played here: it sends
@@ -100,26 +104,26 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   // Create.
   await page.getByRole("button", { name: "Novo evento" }).click();
   const form = page.getByRole("dialog", { name: "Novo evento" });
+  // A plain event: at any hour the test runs, with no office hours to keep (a new one starts as a Consulta).
+  await expect(form.getByLabel("Tipo do evento")).toHaveValue("Consulta");
+  await form.getByLabel("Tipo do evento").selectOption("");
   await form.getByRole("button", { name: "Criar evento" }).click();
   await expect(form.getByText("Dê um título ao evento.")).toBeVisible();
-  await form.getByRole("textbox", { name: "Título" }).fill("Consulta de teste");
-  // The same day at both ends, whatever hour the test runs at.
-  const day = await form.getByLabel("Dia", { exact: true }).inputValue();
-  // Another length than the list's: the end has its own day and hour.
-  await form.getByLabel("Dura", { exact: true }).selectOption("other");
-  await form.getByLabel("Termina em").fill(day);
-  await form.getByLabel("Hora de início").fill("20:00");
-  await form.getByLabel("Hora de fim").fill("19:00");
+  await form.getByLabel(NAME).fill("Consulta de teste");
+  // The day the form opened on, whatever hour the test runs at, as the API reads it.
+  const day = (await form.getByLabel(DAY).inputValue()).split("/").reverse().join("-");
+  // The end is on the same day; one before the start is refused under its field.
+  await form.getByLabel("Hora do início").fill("20:00");
+  await form.getByLabel("Hora do término").fill("19:00");
   await form.getByRole("button", { name: "Criar evento" }).click();
-  await expect(form.getByRole("alert")).toHaveText("O fim precisa ser depois do começo.");
-  await form.getByLabel("Hora de fim").fill("21:00");
-  await form.getByRole("textbox", { name: "Local (opcional)" }).fill("Rua das Flores, 10");
+  await expect(form.getByText("O término precisa ser depois do início, no mesmo dia.")).toBeVisible();
+  await form.getByLabel("Hora do término").fill("21:00");
   await form.getByRole("button", { name: "Criar evento" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Evento criado" })).toBeVisible();
-  await closeToast(page, "Evento criado");
+  await expect(page.getByRole("status").filter({ hasText: /^“Consulta de teste” criado em .+ às 20:00\.$/ })).toBeVisible();
+  await closeToast(page, "“Consulta de teste” criado em");
   const created = page.getByRole("button", { name: /^Consulta de teste/ });
   // The day lists the hour on the left and the end under the title.
-  await expect(created).toContainText("até 21:00 · Rua das Flores, 10");
+  await expect(created).toContainText("até 21:00");
   await expect(created).toContainText("20:00");
 
   // Changed at Google while the form is open: nothing is overwritten, the form closes, the new version shows.
@@ -134,7 +138,7 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
     data: { calendarId: atGoogle?.calendarId, eventId: atGoogle?.id, etag: atGoogle?.etag, location: "Rua Nova, 20" },
   });
   expect(elsewhere.ok()).toBe(true);
-  await stale.getByRole("textbox", { name: "Título" }).fill("Não deve valer");
+  await stale.getByLabel(NAME).fill("Não deve valer");
   await stale.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("status").filter({ hasText: "O evento mudou no Google enquanto isso" })).toBeVisible();
   await closeToast(page, "O evento mudou no Google enquanto isso");
@@ -147,8 +151,8 @@ test("connects Google, opens calendars, and creates, edits and deletes an event 
   const details = page.getByRole("dialog", { name: "Consulta de teste" });
   await details.getByRole("button", { name: "Editar" }).click();
   const edit = page.getByRole("dialog", { name: "Editar evento" });
-  await expect(edit.getByRole("textbox", { name: "Título" })).toHaveValue("Consulta de teste");
-  await edit.getByRole("textbox", { name: "Título" }).fill("Consulta remarcada");
+  await expect(edit.getByLabel(NAME)).toHaveValue("Consulta de teste");
+  await edit.getByLabel(NAME).fill("Consulta remarcada");
   await edit.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("status").filter({ hasText: "“Consulta remarcada” atualizado." })).toBeVisible();
   await closeToast(page, "“Consulta remarcada” atualizado.");

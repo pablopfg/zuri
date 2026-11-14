@@ -1,6 +1,10 @@
 import { expect, type Page, test } from "./fixtures.ts";
 import { CSRF, expectAccessible, listenToSounds, signIn, soundsHeard, tooSmallControls } from "./ui-helpers.ts";
 
+/** The form names its fields by what is being booked: an appointment or a plain event (E5e). */
+const NAME = /^(Nome completo do paciente|Título)$/;
+const DAY = /^(Data da consulta|Data)$/;
+
 // The form of an appointment (docs/planos/agenda-formulario-v52.md, E5c, protótipo v52): "Ver no
 // calendário" strikes through the days that take no appointment and offers the free hours as buttons;
 // "Escolher na agenda" puts the form away while a day and an hour are tapped. Google is answered here;
@@ -106,7 +110,7 @@ test("Ver no calendário strikes through the closed days, offers the free hours 
   // 10:00 of Thursday 19: a new appointment there.
   await clickHour(page, "19", 2);
   const form = page.getByRole("dialog", { name: "Novo evento" });
-  await form.getByLabel("Título").fill("Bruno Macedo Teixeira");
+  await form.getByLabel(NAME).fill("Bruno Macedo Teixeira");
   await form.getByRole("button", { name: "Ver no calendário" }).click();
   await expect(form.getByRole("button", { name: "Fechar o calendário" })).toHaveAttribute("aria-expanded", "true");
   const month = form.getByRole("group", { name: "Calendário de novembro de 2026" });
@@ -122,13 +126,13 @@ test("Ver no calendário strikes through the closed days, offers the free hours 
   await expectAccessible(page, "agenda-formulario-calendario");
   expect(await tooSmallControls(page), "every control of the form is a 44 px target").toEqual([]);
   await hours.getByRole("button", { name: "15:30" }).click();
-  await expect(form.getByLabel("Hora de início")).toHaveValue("15:30");
+  await expect(form.getByLabel("Hora do início")).toHaveValue("15:30");
   // Three hours: only 15:00 is left on Thursday.
-  await form.getByLabel("Dura", { exact: true }).selectOption("180");
+  await form.getByLabel("Hora do término").fill("18:30");
   await expect(form.getByRole("list", { name: "Horários livres em qui, 19/11, com 3 horas de duração:" }).getByRole("button")).toHaveText(["15:00"]);
   // Another day: Monday 23, the morning before lunch and the afternoon.
   await month.getByRole("button", { name: "segunda-feira, 23 de novembro", exact: true }).click();
-  await expect(form.getByLabel("Dia", { exact: true })).toHaveValue("2026-11-23");
+  await expect(form.getByLabel(DAY)).toHaveValue("23/11/2026");
   const monday = form.getByRole("list", { name: "Horários livres em seg, 23/11, com 3 horas de duração:" });
   await expect(monday.getByRole("button")).toHaveText(["08:00", "08:30", "09:00", "14:00", "14:30", "15:00"]);
   await monday.getByRole("button", { name: "09:00" }).click();
@@ -137,9 +141,9 @@ test("Ver no calendário strikes through the closed days, offers the free hours 
   await form.getByRole("button", { name: "Próximo mês" }).click();
   await expect(form.getByRole("group", { name: "Calendário de dezembro de 2026" })).toBeVisible();
   await expect(form.getByRole("group", { name: "Calendário de dezembro de 2026" }).getByRole("button", { name: "sexta-feira, 25 de dezembro: feriado, Natal" })).toBeDisabled();
-  await form.getByLabel("Dia", { exact: true }).fill("2026-11-24");
+  await form.getByLabel(DAY).fill("24/11/2026");
   await expect(form.getByRole("group", { name: "Calendário de novembro de 2026" })).toBeVisible();
-  await form.getByLabel("Dia", { exact: true }).fill("2026-11-23");
+  await form.getByLabel(DAY).fill("23/11/2026");
   await form.getByRole("button", { name: "Criar evento" }).click();
   await expect(form).toHaveCount(0);
   expect(sent.posts).toHaveLength(1);
@@ -151,7 +155,7 @@ test("a personal event is not checked: the calendar strikes through only the day
   await openAgenda(page);
   await clickHour(page, "19", 2);
   const form = page.getByRole("dialog", { name: "Novo evento" });
-  await form.getByLabel("Tipo").selectOption("");
+  await form.getByLabel("Tipo do evento").selectOption("");
   await form.getByRole("button", { name: "Ver no calendário" }).click();
   const month = form.getByRole("group", { name: "Calendário de novembro de 2026" });
   await expect(month.getByRole("button", { name: "segunda-feira, 16 de novembro: já passou" })).toBeDisabled();
@@ -164,8 +168,9 @@ test("Escolher na agenda puts the form away, keeps what was typed and brings it 
   await openAgenda(page);
   await clickHour(page, "19", 2);
   const form = page.getByRole("dialog", { name: "Novo evento" });
-  await form.getByLabel("Título").fill("Bruno Macedo Teixeira");
-  await form.getByLabel(/^Local/).fill("Consultório");
+  await form.getByLabel(NAME).fill("Bruno Macedo Teixeira");
+  await form.getByLabel("Celular com DDD").fill("41999990000");
+  await form.getByLabel("Local", { exact: true }).selectOption("Online");
   await form.getByRole("button", { name: "Escolher na agenda" }).click();
   await expect(form).toHaveCount(0);
   const banner = page.getByRole("status").filter({ hasText: "Toque no dia e na hora da consulta de Bruno Macedo Teixeira." });
@@ -181,17 +186,18 @@ test("Escolher na agenda puts the form away, keeps what was typed and brings it 
   // Wednesday 18 at 11:00: the form comes back with it and with what was typed.
   await clickHour(page, "18", 3);
   await expect(banner).toHaveCount(0);
-  await expect(form.getByLabel("Título")).toHaveValue("Bruno Macedo Teixeira");
-  await expect(form.getByLabel(/^Local/)).toHaveValue("Consultório");
-  await expect(form.getByLabel("Dia", { exact: true })).toHaveValue("2026-11-18");
-  await expect(form.getByLabel("Hora de início")).toHaveValue("11:00");
+  await expect(form.getByLabel(NAME)).toHaveValue("Bruno Macedo Teixeira");
+  await expect(form.getByLabel("Celular com DDD")).toHaveValue("(41) 99999-0000");
+  await expect(form.getByLabel("Local", { exact: true })).toHaveValue("Online");
+  await expect(form.getByLabel(DAY)).toHaveValue("18/11/2026");
+  await expect(form.getByLabel("Hora do início")).toHaveValue("11:00");
   // Cancelar brings the form back as it was.
   await form.getByRole("button", { name: "Escolher na agenda" }).click();
   await page.getByRole("status").filter({ hasText: "Toque no dia e na hora" }).getByRole("button", { name: "Cancelar" }).click();
-  await expect(form.getByLabel("Hora de início")).toHaveValue("11:00");
+  await expect(form.getByLabel("Hora do início")).toHaveValue("11:00");
   await form.getByRole("button", { name: "Criar evento" }).click();
   await expect(form).toHaveCount(0);
-  expect(sent.posts[0]).toMatchObject({ title: "Bruno Macedo Teixeira", location: "Consultório", start: "2026-11-18T11:00", end: "2026-11-18T12:00" });
+  expect(sent.posts[0]).toMatchObject({ title: "Bruno Macedo Teixeira", description: "Consulta | Online", phone: "41999990000", meet: true, start: "2026-11-18T11:00", end: "2026-11-18T12:00" });
 });
 
 test("changing an appointment frees its own hour and offers no Escolher na agenda", async ({ page }) => {
@@ -217,7 +223,7 @@ test("in English the calendar and the notice speak English", async ({ page }) =>
   await signIn(page);
   await clickHour(page, "19", 2);
   const form = page.getByRole("dialog", { name: "New event" });
-  await form.getByLabel("Title", { exact: true }).fill("Helena Duarte Prado");
+  await form.getByLabel("Patient's full name").fill("Helena Duarte Prado");
   await form.getByRole("button", { name: "See on the calendar" }).click();
   await expect(form.getByRole("button", { name: "Saturday, November 21: no appointments" })).toBeDisabled();
   await form.getByLabel("Start time").fill("12:30");
@@ -230,12 +236,12 @@ test("on a phone the calendar fills the form with 44 px targets and is the way t
   await openAgenda(page);
   await page.getByRole("button", { name: "Novo evento" }).click();
   const form = page.getByRole("dialog", { name: "Novo evento" });
-  await form.getByLabel("Título").fill("Bruno Macedo Teixeira");
-  await form.getByLabel("Dia", { exact: true }).fill("2026-11-19");
+  await form.getByLabel(NAME).fill("Bruno Macedo Teixeira");
+  await form.getByLabel(DAY).fill("19/11/2026");
   await form.getByRole("button", { name: "Ver no calendário" }).click();
   const hours = form.getByRole("list", { name: "Horários livres em qui, 19/11, com 1 hora de duração:" });
   await hours.getByRole("button", { name: "15:00" }).click();
-  await expect(form.getByLabel("Hora de início")).toHaveValue("15:00");
+  await expect(form.getByLabel("Hora do início")).toHaveValue("15:00");
   await expectAccessible(page, "agenda-formulario-celular");
   expect(await tooSmallControls(page), "every control of the form is a 44 px target").toEqual([]);
   // The month is as wide as the form: no sideways scroll.
@@ -251,8 +257,8 @@ test("the hours come from the form's own month, never from the month shown, and 
   await openAgenda(page);
   await clickHour(page, "19", 2);
   const form = page.getByRole("dialog", { name: "Novo evento" });
-  await form.getByLabel("Título").fill("Bruno Macedo Teixeira");
-  await form.getByLabel("Dia", { exact: true }).fill("2026-11-26");
+  await form.getByLabel(NAME).fill("Bruno Macedo Teixeira");
+  await form.getByLabel(DAY).fill("26/11/2026");
   await form.getByRole("button", { name: "Ver no calendário" }).click();
   const hours = form.getByRole("list", { name: "Horários livres em qui, 26/11, com 1 hora de duração:" });
   await expect(hours.getByRole("button").first()).toHaveText("09:00");
@@ -261,7 +267,7 @@ test("the hours come from the form's own month, never from the month shown, and 
   await expect(form.getByRole("button", { name: "Tentar de novo" })).toBeVisible();
   await expect(hours.getByRole("button").first()).toHaveText("09:00");
   // A day in the month that failed: no hour is offered from events not read.
-  await form.getByLabel("Dia", { exact: true }).fill("2026-12-02");
+  await form.getByLabel(DAY).fill("02/12/2026");
   await expect(form.getByRole("button", { name: "Tentar de novo" })).toBeVisible();
   await expect(form.getByText(/Horários livres em/)).toHaveCount(0);
 });
@@ -287,8 +293,8 @@ test("the refusal over the form plays the refusal sound", async ({ page }) => {
   await openAgenda(page);
   await clickHour(page, "19", 2);
   const form = page.getByRole("dialog", { name: "Novo evento" });
-  await form.getByLabel("Título").fill("Bruno Macedo Teixeira");
-  await form.getByLabel("Hora de início").fill("12:30");
+  await form.getByLabel(NAME).fill("Bruno Macedo Teixeira");
+  await form.getByLabel("Hora do início").fill("12:30");
   await form.getByRole("button", { name: "Criar evento" }).click();
   await expect(page.getByRole("alertdialog", { name: "Consulta não entra neste horário" })).toBeVisible();
   await expect.poll(() => soundsHeard(page)).toEqual([330, 247]);
@@ -299,13 +305,13 @@ test("while picking, a closed hour's Usar o próximo livre brings the form back 
   await openAgenda(page);
   await clickHour(page, "19", 2);
   const form = page.getByRole("dialog", { name: "Novo evento" });
-  await form.getByLabel("Título").fill("Bruno Macedo Teixeira");
+  await form.getByLabel(NAME).fill("Bruno Macedo Teixeira");
   await form.getByRole("button", { name: "Escolher na agenda" }).click();
   // 12:30 of Thursday 19 is lunch; Renato takes 14:00, so the next free hour is 15:00.
   await clickHour(page, "19", 4.5);
   await page.getByRole("dialog", { name: "Consulta não entra neste horário" }).getByRole("button", { name: "Usar o próximo livre" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Toque no dia" })).toHaveCount(0);
-  await expect(form.getByLabel("Título")).toHaveValue("Bruno Macedo Teixeira");
-  await expect(form.getByLabel("Dia", { exact: true })).toHaveValue("2026-11-19");
-  await expect(form.getByLabel("Hora de início")).toHaveValue("15:00");
+  await expect(form.getByLabel(NAME)).toHaveValue("Bruno Macedo Teixeira");
+  await expect(form.getByLabel(DAY)).toHaveValue("19/11/2026");
+  await expect(form.getByLabel("Hora do início")).toHaveValue("15:00");
 });

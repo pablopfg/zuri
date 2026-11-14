@@ -167,6 +167,23 @@ describe("agenda record: the copy on the Agenda", () => {
       expect(notices[2]?.versions).not.toBe(notices[0]?.versions);
     }));
 
+  it("E5e: the copy of a closed day keeps the patient's contact and the payment, whatever Google says later", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      const props = { zuriCountry: "BR", zuriPhone: "41999990000", zuriEmail: "a@exemplo.com.br", zuriPayment: "unpaid" };
+      seed(world, PRIMARY, "visit", "2026-10-31T10:00:00-03:00", "2026-10-31T11:00:00-03:00", { description: "Consulta | Online", extendedProperties: { private: props }, hangoutLink: "https://meet.google.com/abc-defg-hij" });
+      const { record: agenda } = record(world);
+      await agenda.tick();
+      world.clock.now = MIDNIGHT_NOV_1 + 1_000;
+      await agenda.tick();
+
+      const visit = (world.googleSim.events.get(PRIMARY) ?? []).find((event) => event.id === "visit");
+      if (visit) Object.assign(visit, { etag: '"visit-2"', extendedProperties: { private: { ...props, zuriPhone: "41988880000", zuriPayment: "paid" } } });
+      const after = await read(world);
+      const [shown] = agenda.apply(after.events, "2026-10-31", "2026-10-31", after.ids, true);
+      expect(shown).toMatchObject({ id: "visit", phone: "41999990000", payment: "unpaid", email: "a@exemplo.com.br", meet: "https://meet.google.com/abc-defg-hij", changedAtGoogle: "changed" });
+    }));
+
   it("never calls an event deleted on a partial reading, and leaves open days and other calendars as Google gives them", () =>
     withChatWorld(async (world) => {
       await connect(world);

@@ -192,4 +192,5 @@ export * from "./chatwoot-owner.ts";
 export * from "./chatwoot-owner-schemas.ts";
 export * from "./outbox.ts";
 export * from "./model-catalog.ts";
+export * from "./countries.ts";
 export * from "./home-suggestions.ts";

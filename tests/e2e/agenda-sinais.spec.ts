@@ -1,6 +1,10 @@
 import { expect, type Page, test } from "./fixtures.ts";
 import { expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
 
+/** The form names its fields by what is being booked: an appointment or a plain event (E5e). */
+const NAME = /^(Nome completo do paciente|Título)$/;
+const DAY = /^(Data da consulta|Data)$/;
+
 // The sync signal of the Agenda (docs/planos/agenda-sinais-da-sincronizacao.md, E5d, protótipo v51 item 4):
 // one button says where the Agenda stands with Google, and its panel says what happened, what to do,
 // the visit's last changes and what each signal means. Google is answered here.
@@ -76,7 +80,7 @@ async function rename(page: Page, title: string) {
   await page.getByRole("main").getByRole("button", { name: /^Helena Duarte Prado/ }).click();
   await page.getByRole("dialog", { name: "Helena Duarte Prado" }).getByRole("button", { name: "Editar" }).click();
   const form = page.getByRole("dialog", { name: "Editar evento" });
-  await form.getByLabel("Título").fill(title);
+  await form.getByLabel(NAME).fill(title);
   await form.getByRole("button", { name: "Salvar" }).click();
   await expect(form).toHaveCount(0);
 }

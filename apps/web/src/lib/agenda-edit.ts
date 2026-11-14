@@ -86,7 +86,16 @@ export interface EventChanges {
   location?: string;
   description?: string;
   colorId?: string;
+  /** The patient's contact and the payment (E5e); "" clears one. */
+  country?: string;
+  phone?: string;
+  email?: string;
+  payment?: string;
+  /** Ask Google for a Meet call, or take it off. */
+  meet?: boolean;
 }
+
+const PATIENT = ["country", "phone", "email", "payment"] as const;
 
 /**
  * What moving an event to `slot` sends. A new day or hour marks an appointment
@@ -121,6 +130,16 @@ export function applyChanges(event: AgendaEvent, changes: EventChanges, timeZone
   if (changes.location !== undefined) next.location = changes.location;
   if (changes.description !== undefined) next.description = changes.description;
   if (changes.colorId !== undefined) next.colorId = changes.colorId;
+  for (const key of PATIENT) {
+    const value = changes[key];
+    if (value === undefined) continue;
+    if (value === "") delete next[key];
+    else if (key === "payment") next.payment = value as NonNullable<AgendaEvent["payment"]>;
+    else next[key] = value;
+  }
+  // Google makes the link: until it answers, the call is on its way.
+  if (changes.meet === true) next.meet = "pending";
+  else if (changes.meet === false) delete next.meet;
   if (changes.start === undefined || changes.end === undefined) return next;
   if (changes.allDay ?? event.allDay) return { ...next, allDay: true, start: changes.start.slice(0, 10), end: addDays(changes.end.slice(0, 10), 1) };
   const [start, end] = [instant(changes.start, timeZone), instant(changes.end, timeZone)];
@@ -131,6 +150,8 @@ export function applyChanges(event: AgendaEvent, changes: EventChanges, timeZone
 export function reverseChanges(before: AgendaEvent, changes: EventChanges, timeZone: string): EventChanges {
   const back: EventChanges = {};
   for (const key of ["title", "location", "description", "colorId"] as const) if (changes[key] !== undefined) back[key] = before[key];
+  for (const key of PATIENT) if (changes[key] !== undefined) back[key] = before[key] ?? "";
+  if (changes.meet !== undefined) back.meet = before.meet !== undefined;
   if (changes.start !== undefined || changes.end !== undefined || changes.allDay !== undefined) {
     back.allDay = before.allDay;
     if (before.allDay) {
@@ -149,7 +170,9 @@ export function reverseChanges(before: AgendaEvent, changes: EventChanges, timeZ
  * Whether a change can be taken back. One that put a status over a color outside the four cannot: Zuri
  * only ever writes the four status colors, so the color the event had would not come back.
  */
-export function canUndo(before: Pick<AgendaEvent, "colorId">, changes: EventChanges): boolean {
+export function canUndo(before: Pick<AgendaEvent, "colorId" | "meet">, changes: EventChanges): boolean {
+  // A Meet call taken off cannot come back as it was either: Google would make a new link.
+  if (changes.meet === false && before.meet !== undefined) return false;
   return changes.colorId === undefined || eventStatus(before.colorId) !== null;
 }
 

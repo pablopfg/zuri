@@ -355,7 +355,27 @@ describe("import", () => {
   });
 
   it("the record of the day goes in the file and comes back, and a day already closed here is never changed", async () => {
-    const event = (title: string) => ({ id: "ev1", calendarId: "dono@exemplo.com.br", title, start: "2026-10-30T13:00:00.000Z", end: "2026-10-30T14:00:00.000Z", allDay: false, location: "", description: "Consulta | Consultório", etag: '"ev1-1"', recurring: false, guests: 0, colorId: "", shared: false });
+    // SEC-E5e-01: an appointment with the patient's fields and a Meet call stays in the file (it was left out whole).
+    const event = (title: string) => ({
+      id: "ev1",
+      calendarId: "dono@exemplo.com.br",
+      title,
+      start: "2026-10-30T13:00:00.000Z",
+      end: "2026-10-30T14:00:00.000Z",
+      allDay: false,
+      location: "",
+      description: "Consulta | Online",
+      etag: '"ev1-1"',
+      recurring: false,
+      guests: 0,
+      colorId: "",
+      shared: false,
+      country: "BR",
+      phone: "41999990000",
+      email: "ana@exemplo.com.br",
+      payment: "paid",
+      meet: "https://meet.google.com/abc-defg-hij",
+    });
     const close = (day: string, title: string) =>
       inOwner((agent) => {
         const { db } = agent.store;
@@ -382,6 +402,11 @@ describe("import", () => {
     // A bad day refuses the whole file.
     const bad = { ...file, data: { ...file.data, agendaRecord: [{ day: "30/10/2026", closedAt: "2026-10-30T03:00:05.000Z", events: [] }] } };
     expect((await session("POST", "/backup/import", bad)).status).toBe(400);
+    // SEC-E5e-01: a patient's field out of shape refuses the whole file, as a bad time does.
+    for (const wrong of [{ country: "ZZ" }, { phone: "12" }, { email: "ana@" }, { payment: "owed" }, { meet: "https://meet.exemplo.com.br/x" }]) {
+      const broken = { ...file, data: { ...file.data, agendaRecord: [{ day: "2026-10-29", closedAt: "2026-10-30T03:00:05.000Z", events: [{ ...event("Ana Souza"), ...wrong }] }] } };
+      expect((await session("POST", "/backup/import", broken)).status, JSON.stringify(wrong)).toBe(400);
+    }
     // SEC-E5b-04: a copy whose time the Agenda can't read refuses the whole file too.
     for (const start of ["x", "2026-02-30", "2026-10-30T25:00:00.000Z"]) {
       const broken = { ...file, data: { ...file.data, agendaRecord: [{ day: "2026-10-29", closedAt: "2026-10-30T03:00:05.000Z", events: [{ ...event("Ana Souza"), start }] }] } };
