@@ -1,4 +1,4 @@
-import { type AgendaEvent, type AgendaPrefs, type AppointmentProblem, appointmentProblem, type BookedSlot, type DayClosure, dayClosure, EVENT_STATUS_COLOR, nextFreeSlot, zonedParts } from "@zuri/shared";
+import { type AgendaEvent, type AgendaPrefs, type AppointmentProblem, appointmentProblem, type BookedSlot, type DayClosure, dayClosure, dayPlus, EVENT_STATUS_COLOR, nextFreeSlot, zonedParts } from "@zuri/shared";
 import { eventDays, isAppointment, localDate } from "./agenda.ts";
 
 export { hhmm, isAppointment } from "./agenda.ts";
@@ -94,6 +94,22 @@ export function nextFree(input: {
     bookedOn: (day) => bookedOn(input.events, day, input.timeZone, { all: true, except: input.except ?? null }),
     ...(input.length ? { length: input.length } : {}),
   });
+}
+
+/**
+ * "Agendar" on a contact's card (E5g, protótipo v52): the first free hour from now on, on the half hour,
+ * among the events read up to `until`; with none, the next open day at the start of the day's hours (the
+ * form's own check says why when the owner saves).
+ */
+export function firstBooking(input: { prefs: AgendaPrefs; events: readonly AgendaEvent[]; until: string; now: number; timeZone: string }): { day: string; start: number } {
+  const { today, nowMinute } = clock(input.now, input.timeZone);
+  // From the next half hour after now, never the minute that already began (protótipo v52).
+  const found = nextFree({ ...input, day: today, minute: nowMinute + 1 });
+  if (found) return found;
+  // QA-E5g-07: never a closed day (a weekend, a holiday, a period off): the first open one after today.
+  let day = dayPlus(today, 1);
+  for (let tries = 0; tries < 60 && dayClosure(day, input.prefs); tries++) day = dayPlus(day, 1);
+  return { day, start: input.prefs.from * 60 };
 }
 
 /**
