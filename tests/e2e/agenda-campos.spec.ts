@@ -173,7 +173,7 @@ test("an online appointment with the patient's phone and e-mail goes to Google w
   const details = page.getByRole("dialog", { name: "Helena Duarte Prado" });
   await expect(details.getByRole("link", { name: "meet.google.com/abc-defg-hij" })).toHaveAttribute("href", MEET);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  await details.getByRole("button", { name: "Copiar link" }).click();
+  await details.getByRole("button", { name: "Copiar link", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Link copiado" }).first()).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(MEET);
   await expect(details.getByText("Sem vínculo com Contatos")).toBeVisible();

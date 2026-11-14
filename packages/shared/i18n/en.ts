@@ -2471,7 +2471,7 @@ export const en: Messages = {
   "web.agenda.confirm.cancelled": "Cancelled through the link {when}",
   "web.agenda.confirm.cancelledGone": "Appointment cancelled: the link no longer works.",
   "web.agenda.confirm.expired": "The link expired 1 hour before the appointment.",
-  "web.agenda.confirm.copy": "Copy link",
+  "web.agenda.confirm.copy": "Copy confirmation link",
   "web.agenda.confirm.copied": "Link copied",
   "web.agenda.confirm.see": "See as the patient",
   "web.agenda.confirm.hint": "Send the link to the patient: the answer changes the status and the color here and in Google, and reaches your notices.",

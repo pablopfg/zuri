@@ -313,21 +313,21 @@ test("an appointment's details show the patient's answer and copy the link; a ca
   // Answered for another start: the appointment moved, so it asks again.
   let details = await openDetails(page, "Helena Duarte Prado");
   const box = details.getByRole("region", { name: "Confirmação do paciente" });
-  await expect(box.getByRole("status")).toHaveText("Ainda sem resposta");
+  await expect(box.getByText("Ainda sem resposta", { exact: true })).toBeVisible();
   await expectAccessible(page, "confirmacao-detalhe");
-  await box.getByRole("button", { name: "Copiar link" }).click();
+  await box.getByRole("button", { name: "Copiar link de confirmação" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Link copiado" }).first()).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`https://zuri.exemplo.com.br/c/${TOKEN}`);
   expect(made).toEqual([{ calendarId: "main", eventId: "e1" }]);
   await details.getByRole("button", { name: "Fechar" }).click();
 
   details = await openDetails(page, "Marina Teles Barreto");
-  await expect(details.getByRole("region", { name: "Confirmação do paciente" }).getByRole("status")).toHaveText("Confirmou pelo link 15 de nov., 10:12");
+  await expect(details.getByRole("region", { name: "Confirmação do paciente" }).getByText("Confirmou pelo link 15 de nov., 10:12", { exact: true })).toBeVisible();
   await details.getByRole("button", { name: "Fechar" }).click();
 
   details = await openDetails(page, "Caio Vasques Lima");
   const cancelled = details.getByRole("region", { name: "Confirmação do paciente" });
-  await expect(cancelled.getByRole("status")).toHaveText("Consulta cancelada: o link deixou de valer.");
+  await expect(cancelled.getByText("Consulta cancelada: o link deixou de valer.", { exact: true })).toBeVisible();
   await expect(cancelled.getByRole("button")).toHaveCount(0);
   await details.getByRole("button", { name: "Fechar" }).click();
 

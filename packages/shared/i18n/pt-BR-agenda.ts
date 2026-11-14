@@ -142,7 +142,7 @@ export const ptBRAgenda = {
   "web.agenda.confirm.cancelled": "Cancelou pelo link {when}",
   "web.agenda.confirm.cancelledGone": "Consulta cancelada: o link deixou de valer.",
   "web.agenda.confirm.expired": "O link expirou 1 hora antes da consulta.",
-  "web.agenda.confirm.copy": "Copiar link",
+  "web.agenda.confirm.copy": "Copiar link de confirmação",
   "web.agenda.confirm.copied": "Link copiado",
   "web.agenda.confirm.see": "Ver como o paciente",
   "web.agenda.confirm.hint": "Envie o link ao paciente: a resposta muda a situação e a cor aqui e no Google, e chega em Avisos.",

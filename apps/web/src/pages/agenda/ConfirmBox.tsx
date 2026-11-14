@@ -56,7 +56,8 @@ export function ConfirmBox({ event }: { event: AgendaEvent }) {
         <CalendarDays className="h-4 w-4" aria-hidden />
         {t("web.agenda.confirm.title")}
       </h3>
-      <p className="text-sm" role="status">
+      {/* Polite, without the status role: the details already have one, for "Situação salva". */}
+      <p className="text-sm" aria-live="polite">
         {cancelled ? t("web.agenda.confirm.cancelledGone") : status.isPending ? "" : line}
       </p>
       {!cancelled && expired && <p className="text-sm text-fg-muted">{t("web.agenda.confirm.expired")}</p>}
