@@ -190,7 +190,7 @@ describe("/api/google/contacts", () => {
     const page = (await (await api("GET", "/contacts?q=99999")).json()) as ContactPage;
     expect(page.contacts.map((contact) => contact.name)).toEqual(["Ana Souza"]);
     const one = await api("GET", `/contacts/${page.contacts[0]?.id ?? ""}`);
-    expect(((await one.json()) as { contact: ContactDetail }).contact).toMatchObject({ name: "Ana Souza", labels: ["Clientes"], googleUrl: "https://contacts.google.com/person/c1" });
+    expect(((await one.json()) as { contact: ContactDetail }).contact).toMatchObject({ name: "Ana Souza", labels: ["Clientes"], googleUrl: "https://contacts.google.com/person/c1", resource: "people/c1" });
     expect((await api("GET", "/contacts/00000000-0000-4000-8000-000000000000")).status).toBe(404);
     // The owner's grant at Google now holds the contacts too, and the event is on record.
     const events = await inOwner((agent) => agent.store.db.all<{ kind: string }>(`SELECT kind FROM zur_auth_events WHERE kind = 'google_connected'`));

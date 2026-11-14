@@ -42,6 +42,7 @@
  *   needs --exemplos).
  * - `agenda-editar=/agenda`: the form of that event ("Dura", "Tipo", "Situação"); `agenda-movido=/agenda`: the
  *   Agenda right after the event moved, with the notice that offers "Desfazer" (both need --exemplos).
+ * - `contato-agendar=/contatos`: "Agendar" on Beatriz's card, with the Agenda's form ready (needs --exemplos).
  * - `agenda-vinculo=/agenda`: "Novo evento" with the name of two sample contacts typed and the list of Contacts
  *   open (needs --exemplos).
  * - `agenda-hora-fechada=/agenda`: the notice of a click on today's lunch, "Consulta não entra neste horário"
@@ -222,7 +223,7 @@ for (const [device, options] of [
       if (/^contatos?(-|$)/.test(screen.name) || screen.name === "agenda-vinculo") {
         await seedContacts(page, BASE);
         // "contato-ficha": Beatriz, with the note after her name and her appointments; "contato-homonimo": one of the two Marcos.
-        const who = screen.name === "contato-ficha" ? "Beatriz" : screen.name === "contato-homonimo" ? "Marcos" : "";
+        const who = screen.name === "contato-ficha" || screen.name === "contato-agendar" ? "Beatriz" : screen.name === "contato-homonimo" ? "Marcos" : "";
         if (who) {
           const found = (await (await page.request.get(`${BASE}/api/contacts?q=${who}`, { headers: CSRF })).json()) as { contacts: { id: string }[] };
           if (!found.contacts[0]) throw new Error(`${screen.name} needs --exemplos`);
@@ -304,6 +305,11 @@ for (const [device, options] of [
         await page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ }).click();
         await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("button", { name: "Editar" }).click();
         await page.getByRole("dialog", { name: "Editar evento" }).getByLabel("Hora do término").waitFor();
+      }
+      if (screen.name === "contato-agendar") {
+        // E5g: "Agendar" on Beatriz's card, the Agenda with her appointment ready at the first free hour.
+        await page.getByRole("link", { name: /^Agendar com / }).click();
+        await page.getByRole("dialog", { name: "Novo evento" }).getByText(/^Vinculado a /).waitFor();
       }
       if (screen.name === "agenda-vinculo") {
         // E5f: the name field with the people of Contacts, two of them with the same name.

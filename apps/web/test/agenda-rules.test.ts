@@ -1,6 +1,6 @@
 import { type AgendaEvent, DEFAULT_AGENDA_PREFS } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { bookedOn, clock, dayRefusal, freeStarts, hhmm, isAppointment, nextFree, slotProblem } from "../src/lib/agenda-rules.ts";
+import { bookedOn, clock, dayRefusal, firstBooking, freeStarts, hhmm, isAppointment, nextFree, slotProblem } from "../src/lib/agenda-rules.ts";
 import { fitLunch, nextHolidays, parseBrDate } from "../src/pages/settings/AgendaTab.tsx";
 
 // The Agenda's side of the booking rule (13/11/2026, 00:44 and 01:04): what the form, a drop and a click on an hour ask.
@@ -52,6 +52,51 @@ describe("isAppointment and bookedOn", () => {
     expect(clock(NOW, SP)).toEqual({ today: "2026-11-13", nowMinute: 600 });
     expect(clock(NOW, "Asia/Tokyo")).toEqual({ today: "2026-11-13", nowMinute: 22 * 60 });
     expect(hhmm(845)).toBe("14:05");
+  });
+});
+
+describe("firstBooking (E5g: Agendar on a contact's card)", () => {
+  const at = (iso: string) => Date.parse(iso);
+  const first = (now: number, events: AgendaEvent[] = [], until = "2026-12-31") => firstBooking({ prefs, events, until, now, timeZone: SP });
+  it("starts at the next half hour after now, never the minute that already began", () => {
+    // Friday 10:00, 10:01 and 09:59.
+    expect(first(NOW)).toEqual({ day: "2026-11-13", start: 630 });
+    expect(first(at("2026-11-13T13:01:00.000Z"))).toEqual({ day: "2026-11-13", start: 630 });
+    expect(first(at("2026-11-13T12:59:00.000Z"))).toEqual({ day: "2026-11-13", start: 600 });
+  });
+  it("skips lunch, the end of the day, the weekend and a holiday", () => {
+    // Friday 11:10: 11:30 would end in the lunch break.
+    expect(first(at("2026-11-13T14:10:00.000Z"))).toEqual({ day: "2026-11-13", start: 14 * 60 });
+    // Friday 16:59, 17:00 and 17:01: the last hour that fits starts at 17:00.
+    expect(first(at("2026-11-13T19:59:00.000Z"))).toEqual({ day: "2026-11-13", start: 17 * 60 });
+    expect(first(at("2026-11-13T20:00:00.000Z"))).toEqual({ day: "2026-11-16", start: 480 });
+    // Thursday 19/11 at 17:30: Friday 20/11 is a national holiday, then the weekend.
+    expect(first(at("2026-11-19T20:30:00.000Z"))).toEqual({ day: "2026-11-23", start: 480 });
+  });
+  it("leaves the hours taken, meetings included, and with nothing free offers tomorrow at the start of the day", () => {
+    // Monday 16/11 at 07:00: the appointment at 09:00 takes 08:30 and 09:00 too (an hour each).
+    const monday = at("2026-11-16T10:00:00.000Z");
+    expect(first(monday)).toEqual({ day: "2026-11-16", start: 480 });
+    const morning = [event({ id: "a", start: "2026-11-16T11:00:00.000Z", end: "2026-11-16T12:00:00.000Z" }), event(), event({ id: "m", description: "", start: "2026-11-16T13:00:00.000Z", end: "2026-11-16T14:00:00.000Z" })];
+    expect(first(monday, morning)).toEqual({ day: "2026-11-16", start: 11 * 60 });
+    // Nothing read past today and none left today: the next open day at 08:00 (QA-E5g-07: Friday evening gives
+    // Monday, never Saturday), and the form's check says why when saving.
+    expect(first(at("2026-11-13T20:30:00.000Z"), [], "2026-11-13")).toEqual({ day: "2026-11-16", start: 480 });
+    expect(first(at("2026-11-19T20:30:00.000Z"), [], "2026-11-19")).toEqual({ day: "2026-11-23", start: 480 });
+    // The last free hour of a day taken from 08:00 to 16:00, then none, then one more.
+    const busy = (until: number) => [event({ id: "b1", start: "2026-11-16T11:00:00.000Z", end: "2026-11-16T15:00:00.000Z" }), event({ id: "b2", start: "2026-11-16T17:00:00.000Z", end: `2026-11-16T${String(until + 3).padStart(2, "0")}:00:00.000Z` })];
+    expect(first(monday, busy(16))).toEqual({ day: "2026-11-16", start: 16 * 60 });
+    expect(first(monday, busy(17))).toEqual({ day: "2026-11-16", start: 17 * 60 });
+    expect(first(monday, busy(18))).toEqual({ day: "2026-11-17", start: 480 });
+  });
+  it("turns the day, the month and the year in the owner's zone, daylight saving included", () => {
+    // 23:50 in São Paulo: the next morning.
+    expect(first(at("2026-11-17T02:50:00.000Z"))).toEqual({ day: "2026-11-17", start: 480 });
+    expect(first(at("2026-11-30T20:30:00.000Z"))).toEqual({ day: "2026-12-01", start: 480 });
+    // 31/12 evening: 01/01 is a holiday, then the weekend.
+    expect(first(at("2026-12-31T20:30:00.000Z"))).toEqual({ day: "2027-01-04", start: 480 });
+    // New York, on the morning daylight saving begins (Friday 12/03/2027, 17:10 there).
+    expect(firstBooking({ prefs, events: [], until: "2027-04-30", now: at("2027-03-12T22:10:00.000Z"), timeZone: "America/New_York" })).toEqual({ day: "2027-03-15", start: 480 });
   });
 });
 

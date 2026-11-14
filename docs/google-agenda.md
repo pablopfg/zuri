@@ -311,6 +311,15 @@ aparelhos; elas não mudam nada no Google.
   **Vincular**, que abre o formulário com a lista. Quando o contato saiu de
   Contatos, mudou de nome lá ou Contatos está desligado, aparece "O vínculo
   com Contatos não vale mais", e o formulário abre sem vínculo.
+- **Agendar** na ficha de um contato abre a Agenda com "Novo evento" pronto: o
+  contato já vinculado (mesmo com homônimos, porque foi ele o escolhido) e o
+  primeiro horário livre, de meia em meia hora a partir de agora, num dia
+  aberto, fora do almoço e sem outro evento no horário, até o fim do mês
+  seguinte. Sem horário livre, vem amanhã no começo do expediente. Uma linha
+  diz de onde veio o horário e avisa se o contato já tem consulta marcada daqui
+  para frente. Contato sem nome no Google não se vincula: o celular e o e-mail
+  vêm preenchidos e o nome fica para escrever. **Cancelar** volta para a
+  ficha.
 - Toque num evento para ver os detalhes. Em agendas **Ler e editar**, aparecem
   **Editar** e **Apagar** (com confirmação). Em **Só ler**, só os detalhes.
 - Se alguém mudou o evento no Google depois que a tela abriu, a Zuri não

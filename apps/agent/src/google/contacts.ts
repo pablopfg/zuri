@@ -1313,6 +1313,7 @@ export class GoogleContacts {
       more: data.more,
       sameName: this.sameName(row.id, row.display_name).length,
       googleUrl: `https://contacts.google.com/person/${row.resource_name.slice("people/".length)}`,
+      resource: row.resource_name,
     };
   }
 }

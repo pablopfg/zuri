@@ -26,8 +26,8 @@ import {
   Tags,
   UsersRound,
 } from "lucide-react";
-import { type ReactNode, useCallback } from "react";
-import { Link } from "react-router";
+import { type ReactNode, useCallback, useEffect, useRef } from "react";
+import { Link, useLocation } from "react-router";
 import { useToast } from "../../components/Toaster.tsx";
 import { cn, ErrorNotice, Loading, Notice } from "../../components/ui.tsx";
 import { ApiError, api } from "../../lib/api.ts";
@@ -110,6 +110,12 @@ function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: H
   const email = contact.emails[0]?.value ?? "";
   const role = [contact.jobTitle, contact.organization].filter(Boolean).join(" · ");
   const google = siteHref(contact.googleUrl);
+  // Back from the Agenda's form without booking: the focus returns to "Agendar" (protótipo v52).
+  const book = useRef<HTMLAnchorElement>(null);
+  const back = (useLocation().state as { focus?: string } | null)?.focus === "agendar";
+  useEffect(() => {
+    if (back) book.current?.focus();
+  }, [back]);
   return (
     <>
       <header className="flex items-start gap-4">
@@ -137,13 +143,19 @@ function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: H
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {/* Narrow, "Perguntar" and "Agendar" go on top and the three ways to reach them below (protótipo v52). */}
+      <div className={cn("grid grid-cols-6 gap-2", named ? "sm:grid-cols-5" : "sm:grid-cols-4")}>
         {named && (
-          <Link to="/conversa" state={{ draft: t("web.contacts.ask.message", { nome: contact.name.trim() }) }} className="zuri-contact-door border-transparent bg-accent-soft text-accent-text">
+          <Link to="/conversa" state={{ draft: t("web.contacts.ask.message", { nome: contact.name.trim() }) }} className="zuri-contact-door col-span-3 border-transparent bg-accent-soft text-accent-text sm:col-span-1">
             <BotMessageSquare className="h-5 w-5" aria-hidden />
             {t("web.contacts.ask")}
           </Link>
         )}
+        {/* E5g: the Agenda opens with this contact's appointment ready, at the first free hour. */}
+        <Link ref={book} to={`/agenda?agendar=${encodeURIComponent(contact.id)}`} aria-label={t("web.contacts.bookWith", { nome: name })} className={cn("zuri-contact-door sm:col-span-1", named ? "col-span-3" : "col-span-6")}>
+          <CalendarClock className="h-5 w-5" aria-hidden />
+          {t("web.contacts.book")}
+        </Link>
         <Door href={dial ? `tel:${dial}` : null} icon={PhoneCall} label={t("web.contacts.call")} off={t("web.contacts.noPhone")} />
         <Door href={whatsapp ? `https://wa.me/${whatsapp}` : null} icon={MessageCircle} label={t("web.contacts.whatsapp")} off={t(dial ? "web.contacts.noMobile" : "web.contacts.noPhone")} outside />
         <Door href={email ? `mailto:${encodeURIComponent(email).replace(/%40/g, "@")}` : null} icon={MailOpen} label={t("web.contacts.email")} off={t("web.contacts.noEmail")} />
@@ -267,14 +279,14 @@ function Visit({ icon: Icon, title, item }: { icon: LucideIcon; title: string; i
 function Door({ href, icon: Icon, label, off, outside }: { href: string | null; icon: LucideIcon; label: string; off: string; outside?: boolean }) {
   if (!href) {
     return (
-      <span className="zuri-contact-door" aria-disabled="true">
+      <span className="zuri-contact-door col-span-2 sm:col-span-1" aria-disabled="true">
         <Icon className="h-5 w-5" aria-hidden />
         {off}
       </span>
     );
   }
   return (
-    <a href={href} className="zuri-contact-door" {...(outside ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+    <a href={href} className="zuri-contact-door col-span-2 sm:col-span-1" {...(outside ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
       <Icon className="h-5 w-5" aria-hidden />
       {label}
     </a>

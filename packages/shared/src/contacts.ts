@@ -184,6 +184,8 @@ export interface ContactDetail extends ContactSummary {
   sameName: number;
   /** The contact in Google Contacts. */
   googleUrl: string;
+  /** Its `resourceName` at Google ("people/c1"), which an appointment keeps as its link (E5g). */
+  resource: string;
 }
 
 /** GET /api/contacts */
