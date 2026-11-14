@@ -534,7 +534,7 @@ Pedido do Pablo: ler a skill `ui-ux-pro-max` (commit `6ae86f6`, só leitura, sem
 
 Na mesma versão de teste. O plano do código está em [links-sugestao-genero-etiquetas.md](links-sugestao-genero-etiquetas.md).
 
-- **Textos clicáveis:** links e botões de texto ("Ver em Avaliações", "Mudar", "Definir", "Configurações › Agenda") ficam verdes e sublinhados. Ao passar o mouse, o sublinhado fica cheio e ganha um fundo leve. Menu, abas e botões com borda não mudam.
+- **Textos clicáveis (refeito às 13:05):** o verde sublinhado ficou feio. Agora as ações de texto ("Ver em Avaliações", "Abrir agenda", "Ver em tabela") são botões discretos no jeito do "Ver tudo" do Início: peso 600, cor do texto, fundo bem leve em repouso e o cinza de passar o mouse do resto do sistema, com a seta que anda ou gira. Link no meio da frase continua sublinhado com o traço cinza. Os cartões de modo do e-mail, "Perguntar à Zuri" e os interruptores ganharam o estado de mouse que faltava.
 - **Horário recusado na Agenda:** o título do aviso diz o motivo ("Sábado não tem atendimento", "Horário de almoço", "Fora do horário de atendimento", "Feriado: Consciência Negra"), e o texto abaixo traz o detalhe sem repetir. Abaixo vem "Horários que mantêm a agenda sem buracos", com até 3 opções, nesta ordem:
   - o horário que fecha um intervalo entre duas consultas;
   - o que encosta numa consulta;
@@ -544,3 +544,10 @@ Na mesma versão de teste. O plano do código está em [links-sugestao-genero-et
   A primeira opção leva "Recomendado". Cada opção diz o porquê. Ao escolher, a Zuri confere de novo e avisa "Esse horário acabou de ser ocupado" se outra consulta entrou nesse meio tempo. A mesma lista aparece ao arrastar uma consulta para um horário recusado e no formulário. No formulário, os horários que encostam numa consulta ganham a marca verde "Encosta numa consulta".
 - **Gênero do contato:** a ficha ganha a linha "Gênero", que vem do Google Contatos e pode ser mudada ("Como no Google", Feminino, Masculino, Não informar). Nada é deduzido pelo nome. As listas de parentesco mostram só as formas que combinam, e uma ligação antiga que não combina aparece em âmbar: "Bruno está como masculino, mas a ligação diz “Filha”. Trocar para “Filho”". Os textos de confirmação ficam neutros.
 - **Etiquetas abaixo do nome:** são as do Google Contatos, cada nome uma vez só. "Favorito" vira a estrela, e uma etiqueta igual à observação do nome não se repete. A linha "Etiquetas" dos dados saiu, porque repetia o topo.
+
+#### Pedidos do Pablo de 14/11, 13:05
+
+- **CPF conferido:** a ficha mostra o CPF que está no Google (mascarado) com ✓ "Válido" ou ✗ "Inválido". Um CPF errado traz o alerta e o botão "Corrigir". O campo de CPF põe os pontos e o traço sozinho, mostra o ✓ ou o ✗ dentro do campo e o motivo embaixo ("os dois últimos números não batem com os outros nove", "todos os números são iguais", "Faltam 4 números" ao sair do campo). A chave Pix do tipo CPF usa o mesmo campo.
+- **Gênero e CPF gravados no Google** (escolha do Pablo às 13:12): mudar na ficha grava no Google Contatos primeiro. Se o Google recusar, nada muda e o diálogo diz por quê. Para testar: `?falha=google`, `?falha=permissao` e `?falha=conflito`.
+- **Configurações › Agenda** sem a lista de feriados nacionais (eles continuam fechando a agenda).
+- **E-mail para pacientes:** sem "Até 100 por dia; hoje saíram 3". O SMTP virou "E-mail do domínio", com a Hostinger já preenchida (smtp.hostinger.com, 465 SSL/TLS ou 587 STARTTLS) e "Outro servidor" para o resto, mais "Onde achar esses dados na Hostinger". O Gmail mostra a conta que envia e "Como configurar o Gmail", com os passos no Google Cloud e a situação de cada um.
