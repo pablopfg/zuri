@@ -1,4 +1,4 @@
-import { BUSINESS_SCOPE, CONTACTS_SCOPE, GOOGLE_CALLBACK_PATH, toBase64Url } from "@zuri/shared";
+import { BUSINESS_SCOPE, CONTACTS_SCOPE, GMAIL_SEND_SCOPE, GOOGLE_CALLBACK_PATH, toBase64Url } from "@zuri/shared";
 import type { GoogleNetwork } from "./service.ts";
 
 /**
@@ -152,9 +152,9 @@ async function s256(verifier: string): Promise<string> {
 }
 
 const BUSINESS_HOSTS = new Set(["mybusinessaccountmanagement.googleapis.com", "mybusinessbusinessinformation.googleapis.com", "mybusiness.googleapis.com"]);
-const GOOGLE_HOSTS = new Set(["oauth2.googleapis.com", "www.googleapis.com", "people.googleapis.com", ...BUSINESS_HOSTS]);
-// What the consent page grants by default: the calendar and, joined to it, the contacts (step 19b) and the reviews (step 19c).
-const SCOPES = ["https://www.googleapis.com/auth/calendar.calendarlist.readonly", "https://www.googleapis.com/auth/calendar.events", CONTACTS_SCOPE, BUSINESS_SCOPE];
+const GOOGLE_HOSTS = new Set(["oauth2.googleapis.com", "www.googleapis.com", "people.googleapis.com", "gmail.googleapis.com", ...BUSINESS_HOSTS]);
+// What the consent page grants by default: the calendar and, joined to it, the contacts (step 19b), the reviews (step 19c) and the Gmail's sending (E6c).
+const SCOPES = ["https://www.googleapis.com/auth/calendar.calendarlist.readonly", "https://www.googleapis.com/auth/calendar.events", CONTACTS_SCOPE, BUSINESS_SCOPE, GMAIL_SEND_SCOPE];
 const STARS = ["STAR_RATING_UNSPECIFIED", "ONE", "TWO", "THREE", "FOUR", "FIVE"];
 
 export function devGoogle(options: { clientId?: string | undefined; clientSecret?: string | undefined; calendars?: DevCalendar[]; clock?: () => number } = {}): DevGoogle {
@@ -251,6 +251,12 @@ export function devGoogle(options: { clientId?: string | undefined; clientSecret
       const auth = request.headers.get("authorization") ?? "";
       if (!auth.startsWith("Bearer ") || !google.accessTokens.has(auth.slice(7))) return json({ error: { code: 401 } }, 401);
       if (url.hostname === "people.googleapis.com") return peopleApi(url, request.method);
+      // Gmail (E6c): only the sending; the message is in `seen`.
+      if (url.hostname === "gmail.googleapis.com") {
+        if (request.method !== "POST" || url.pathname !== "/gmail/v1/users/me/messages/send") return json({ error: { code: 404 } }, 404);
+        if (google.grant && !google.grant.includes(GMAIL_SEND_SCOPE)) return json({ error: { code: 403, errors: [{ reason: "insufficientPermissions" }] } }, 403);
+        return json({ id: `dev-mail-${random()}`, threadId: "dev-thread", labelIds: ["SENT"] });
+      }
       if (BUSINESS_HOSTS.has(url.hostname)) return businessApi(url, request.method, body);
       return api(url, request.method, body, request.headers);
     },

@@ -1051,6 +1051,22 @@ quem envia é ele. O que protege:
 - **Fora do backup.** Os links, as aberturas e as impressões ficam fora do
   backup. Desconectar o Google apaga pedidos e links.
 
+## E-mail para pacientes
+
+O cartão de Configurações › Integrações (E6c, [email-para-pacientes.md](email-para-pacientes.md)) decide por onde saem os e-mails aos pacientes. As defesas:
+
+| Ameaça | Defesa | Teste |
+| --- | --- | --- |
+| Sessão roubada troca o servidor, o nome do remetente ou o "Responder para" e passa a receber as respostas dos pacientes | Toda gravação pede a senha recente; a mudança do caminho gera o aviso de segurança `mail_changed` | `mail.test.ts` (senha velha, aviso) |
+| Senha de app lida do banco ou levada para outro servidor | Cofre próprio (`smtp-v1`) com o servidor e o usuário como dado associado; novo servidor ou usuário pede a senha de novo; nunca volta na resposta; fora do backup | `mail.test.ts` (cofre preso, resposta sem a senha) |
+| Senha em texto claro na rede | 465 com TLS desde o primeiro byte; 587 só segue depois de STARTTLS aceito; AUTH só dentro do TLS | `mail-smtp.test.ts` |
+| SSRF por SMTP (IP, rede interna, DNS que muda) | Nome público obrigatório; o DNS é conferido ao salvar e de novo a cada envio | `mail.test.ts` (DNS privado, `blocked`) |
+| Injeção de cabeçalho (Bcc escondido) | Nome, endereços e assunto sem quebra de linha nem controle; nome e assunto com acento em palavras codificadas (RFC 2047); corpo em base64 | `mail-smtp.test.ts`, `packages/shared/test/mail.test.ts` |
+| Servidor hostil (resposta gigante, muitas linhas, silêncio) | Cada resposta até 8 KB e 100 linhas no total, prazo de 15 s, só os códigos são lidos | `mail-smtp.test.ts` |
+| Injeção pelo destinatário (E7 em diante) | `send()` recusa o que não é um endereço simples; `buildMessage` lança antes de pôr um endereço fora do padrão num cabeçalho | `mail.test.ts`, `mail-smtp.test.ts` |
+| Envio durante o bloqueio | `send()` responde `blocked` com `/bloquear` ativo | `mail.test.ts` |
+| Uso do e-mail para spam, ou a sessão roubada gastando o teto do dia com testes | Teto de 100 por dia (contado antes da tentativa); o teste vai só ao dono, 3 a cada 10 min e 10 por dia, guardados no banco | `mail.test.ts` (n−1, n, n+1, envios ao mesmo tempo, teto dos testes) |
+
 ## Sem acesso por token
 
 Decisão do Pablo (11/11/2026): a Zuri não tem API para outros sistemas. O

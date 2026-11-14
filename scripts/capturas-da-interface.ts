@@ -55,6 +55,8 @@
  * - `credencial-chatwoot=/crm/credenciais`: the sample Chatwoot credential open in "Editar", with its
  *   inboxes found (needs --exemplos).
  * - `credencial-fzap=/crm/credenciais`: "Nova credencial da fzap" filled in (E6b).
+ * - `email-gmail=/configuracoes/integracoes>E-mail para pacientes` and `email-smtp=…`: the e-mail to patients
+ *   going out by the Gmail or by the example SMTP server (E6c; email-gmail needs --exemplos, for the Google account).
  * - `credenciais-fzap=/crm/credenciais`: the list with the sample fzap credential just tested (needs --exemplos).
  * - `automacao-ensaio=/crm`: the example automation in rehearsal with the sample Chatwoot credential,
  *   its follow-up open (needs --exemplos; local development only).
@@ -238,6 +240,20 @@ for (const [device, options] of [
         const clinic = { name: "Consultório Exemplo", whatsapp: "4133330000", address: "Rua das Flores, 120, sala 304 · Centro", city: "Curitiba, PR" };
         const saved = await page.request.patch(`${BASE}/api/settings`, { headers: CSRF, data: { clinic } });
         if (!saved.ok()) throw new Error(`/api/settings: ${saved.status()}`);
+      }
+      if (screen.name === "email-gmail" || screen.name === "email-smtp") {
+        // An invented way out (E6c): the Gmail of the sample Google account, or the example SMTP server of local development.
+        const data =
+          screen.name === "email-gmail"
+            ? { mode: "gmail", name: "Consultório Exemplo", replyTo: "equipe@exemplo.com.br" }
+            : {
+                mode: "smtp",
+                name: "Consultório Exemplo",
+                replyTo: "",
+                smtp: { host: "smtp.exemplo.com.br", port: 465, user: "contato@exemplo.com.br", from: "", password: "senha-de-app-exemplo" },
+              };
+        const saved = await page.request.put(`${BASE}/api/mail`, { headers: CSRF, data });
+        if (!saved.ok()) throw new Error(`/api/mail: ${saved.status()} ${await saved.text()}`);
       }
       if (screen.name === "integracoes-sem-etiqueta") {
         // The first setup: the contacts on, the labels read and none chosen yet (shoot it apart: it empties the copy).

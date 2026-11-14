@@ -20,7 +20,8 @@ export type ActivityKind = "settings.updated" | "trash.restored" | "trash.purged
   | "crm.automation_mode"
   | "crm.outbox_paused"
   | "crm.outbox_resumed"
-  | "crm.outbox_retried";
+  | "crm.outbox_retried"
+  | "mail.saved";
 
 /**
  * Records one entry of the activity log. `detail` holds names and ids, never

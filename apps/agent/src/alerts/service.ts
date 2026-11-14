@@ -839,6 +839,7 @@ const SECURITY_TEXT: Record<SecurityAlertEvent, Text> = {
   google_calendar_write: { title: "notice.security.google_calendar_write.title", body: "notice.security.google_calendar_write.body" },
   reviews_autonomy: { title: "notice.security.reviews_autonomy.title", body: "notice.security.reviews_autonomy.body" },
   review_link_changed: { title: "notice.security.review_link_changed.title", body: "notice.security.review_link_changed.body" },
+  mail_changed: { title: "notice.security.mail_changed.title", body: "notice.security.mail_changed.body" },
   setup_failure: { title: "notice.security.setup_failure.title", body: "notice.security.setup_failure.body" },
   setup_locked: { title: "notice.security.setup_locked.title", body: "notice.security.setup_locked.body" },
   owner_created: { title: "notice.security.owner_created.title", body: "notice.security.owner_created.body" },

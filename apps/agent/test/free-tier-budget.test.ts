@@ -19,6 +19,8 @@ import { add, DAY, draftAnswer, LOCATION, PATTERN, person, SECOND_OK, setUp, tur
 import { EXAMPLE_AUTOMATION } from "../src/crm/automations/example.ts";
 import type { AutomationModule } from "../src/crm/automations/manifest.ts";
 import { useCatalog } from "./crm-automations-world.ts";
+import { fakeSmtp } from "../src/mail/dev-mail.ts";
+import { MailService } from "../src/mail/service.ts";
 
 // What each route costs in the units the Free plan bills: rows read and rows
 // written in the object's SQLite (docs/arquitetura/orcamento-free-tier.md). A
@@ -1190,6 +1192,33 @@ describe("flows (step 22a)", () => {
       const list = await measure(async () => world.flows.list());
       expect(list.written).toBe(0);
       expect(list.read).toBeLessThanOrEqual(60);
+    }));
+
+  it("the e-mail to patients (E6c): saving, the status and a send read the one row and write at most three", () =>
+    withFlowWorld(async (world) => {
+      const server = fakeSmtp();
+      const google = { connected: () => false, granted: () => false, accountEmail: () => null, gmailSend: async () => null };
+      const mail = new MailService(
+        { db: world.db, credentialKey: testEnv.MCP_CREDENTIAL_KEY, google: () => google, ownerEmail: () => "dono@exemplo.com.br", timeZone: () => "America/Sao_Paulo", clinicName: () => "Consultório Exemplo", development: () => false, lockdown: () => false },
+        { connect: server.connect, resolve: async () => ["8.8.8.8"] },
+      );
+      const measure = async (fn: () => Promise<unknown>) => {
+        const before = { ...world.db.usage };
+        await fn();
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      const smtp = { host: "smtp.exemplo.com.br", port: 465, user: "contato@exemplo.com.br", from: "", password: "senha-de-app-exemplo" };
+      // The row, the activity and its index: measured 3.
+      const saved = await measure(() => mail.save({ mode: "smtp", name: "", replyTo: "", smtp }, { development: false }));
+      expect(saved.written).toBeLessThanOrEqual(3);
+      expect(saved.read).toBeLessThanOrEqual(2);
+      const status = await measure(async () => mail.status());
+      expect(status).toEqual({ read: 1, written: 0 });
+      // Only the day's counter: nothing else is written for a send.
+      const sent = await measure(() => mail.send({ to: "dono@exemplo.com.br", subject: "s", text: "t" }));
+      expect(sent.written).toBe(1);
+      expect(sent.read).toBeLessThanOrEqual(2);
+      expect(server.log.messages).toHaveLength(1);
     }));
 
   it("a fzap credential (E6b): making, changing and testing it read a few rows, and the test writes nothing", () =>

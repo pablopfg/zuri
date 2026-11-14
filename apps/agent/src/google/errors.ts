@@ -28,6 +28,7 @@ const MESSAGE: Record<GoogleError["kind"], [AppError["code"], MessageKey]> = {
   api_disabled: ["CONFLICT", "error.googleApiDisabled"],
   contacts_scope: ["VALIDATION_FAILED", "error.googleContactsScope"],
   business_scope: ["VALIDATION_FAILED", "error.googleBusinessScope"],
+  gmail_scope: ["VALIDATION_FAILED", "error.googleGmailScope"],
 };
 
 const INPUT: Record<EventInputError["reason"], MessageKey> = {

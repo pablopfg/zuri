@@ -35,6 +35,7 @@ import { ptBRChatwootServer } from "./pt-BR-chatwoot-server.ts";
 import { ptBRCrmAutomations } from "./pt-BR-crm-automations.ts";
 import { ptBRClinic } from "./pt-BR-clinic.ts";
 import { ptBROutbox } from "./pt-BR-outbox.ts";
+import { ptBRMail } from "./pt-BR-mail.ts";
 
 export type MessageKey = keyof typeof ptBR;
 export type Messages = Record<MessageKey, string>;
@@ -89,6 +90,7 @@ export {
   ptBRCrmAutomations,
   ptBROutbox,
   ptBRClinic,
+  ptBRMail,
 };
 
 export type Params = Record<string, string | number>;
