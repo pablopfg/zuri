@@ -81,6 +81,41 @@
       "key": "reviews.request.message",
       "rule": "exclamacao",
       "reason": "Mensagem que o dono manda ao paciente pelo WhatsApp dele, na voz do consultório (texto do protótipo aprovado), não texto do sistema."
+    },
+    {
+      "key": "error.agendaContactGone",
+      "rule": "glossario",
+      "reason": "Vínculo da consulta a uma pessoa de Contatos (E5f): \"Vincular\", \"Vinculado a…\" e \"Remover vínculo\" são os textos do protótipo aprovado pelo Pablo (v52–v56, 13/11/2026). Não é conta: o glossário barra \"Desvincular\" para contas."
+    },
+    {
+      "key": "error.agendaContactName",
+      "rule": "glossario",
+      "reason": "Vínculo da consulta a uma pessoa de Contatos (E5f): \"Vincular\", \"Vinculado a…\" e \"Remover vínculo\" são os textos do protótipo aprovado pelo Pablo (v52–v56, 13/11/2026). Não é conta: o glossário barra \"Desvincular\" para contas."
+    },
+    {
+      "key": "error.agendaSameNamePhone",
+      "rule": "glossario",
+      "reason": "Vínculo da consulta a uma pessoa de Contatos (E5f): \"Vincular\", \"Vinculado a…\" e \"Remover vínculo\" são os textos do protótipo aprovado pelo Pablo (v52–v56, 13/11/2026). Não é conta: o glossário barra \"Desvincular\" para contas."
+    },
+    {
+      "key": "web.agenda.link.linked",
+      "rule": "glossario",
+      "reason": "Vínculo da consulta a uma pessoa de Contatos (E5f): \"Vincular\", \"Vinculado a…\" e \"Remover vínculo\" são os textos do protótipo aprovado pelo Pablo (v52–v56, 13/11/2026). Não é conta: o glossário barra \"Desvincular\" para contas."
+    },
+    {
+      "key": "web.agenda.link.link",
+      "rule": "glossario",
+      "reason": "Vínculo da consulta a uma pessoa de Contatos (E5f): \"Vincular\", \"Vinculado a…\" e \"Remover vínculo\" são os textos do protótipo aprovado pelo Pablo (v52–v56, 13/11/2026). Não é conta: o glossário barra \"Desvincular\" para contas."
+    },
+    {
+      "key": "web.agenda.event.linked",
+      "rule": "glossario",
+      "reason": "Vínculo da consulta a uma pessoa de Contatos (E5f): \"Vincular\", \"Vinculado a…\" e \"Remover vínculo\" são os textos do protótipo aprovado pelo Pablo (v52–v56, 13/11/2026). Não é conta: o glossário barra \"Desvincular\" para contas."
+    },
+    {
+      "key": "web.agenda.event.contactGone",
+      "rule": "glossario",
+      "reason": "Vínculo da consulta a uma pessoa de Contatos (E5f): \"Vincular\", \"Vinculado a…\" e \"Remover vínculo\" são os textos do protótipo aprovado pelo Pablo (v52–v56, 13/11/2026). Não é conta: o glossário barra \"Desvincular\" para contas."
     }
   ]
 }

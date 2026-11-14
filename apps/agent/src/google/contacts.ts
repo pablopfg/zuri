@@ -185,6 +185,20 @@ const RESULTS = new Set<string>(["unchanged", "changed", "failed"]);
 
 class TooMany extends Error {}
 
+/** The matches one search of the Agenda's name field keeps, at most (E5f). */
+const BOOKING_SCAN = 200;
+
+/** A person the Agenda's name field offers (E5f). */
+export interface BookingCandidate {
+  id: string;
+  resource: string;
+  name: string;
+  phone: string;
+  email: string;
+  /** "YYYY-MM-DD", "MM-DD" without the year, or "". */
+  birthday: string;
+}
+
 /**
  * Divides the name from the nickname and the note in `search_name`. It sorts before a space, so every
  * contact called "Ana Paula" (with or without a note) comes together and before "Ana Paula Souza": the
@@ -1156,6 +1170,67 @@ export class GoogleContacts {
       .filter((row) => searchText(row.display_name) === key)
       .slice(0, 20)
       .map((row) => ({ id: row.id, data: parseData(row.data) }));
+  }
+
+  /**
+   * The people an appointment can be linked to (E5f): every word typed starts a word of the name, without
+   * accents ("carla m" finds "Carla Mendes"), and only who has a phone or an e-mail. The name typed
+   * from its start is a range of the index; only when no name starts so does it scan the copy (5,000
+   * contacts at most), for a surname typed first. Keeps BOOKING_SCAN matches; `same` counts the contacts with the very name typed (homonyms).
+   */
+  forBooking(query: string): { people: BookingCandidate[]; same: number } {
+    const folded = searchText(query);
+    if (!this.enabled() || folded.length < 2) return { people: [], same: 0 };
+    const words = folded.split(" ");
+    const keep = (rows: ContactRow[]) => {
+      const people: BookingCandidate[] = [];
+      for (const row of rows) {
+        const name = searchText(row.display_name).split(" ");
+        if (!words.every((word) => name.some((part) => part.startsWith(word)))) continue;
+        const data = parseData(row.data);
+        const phone = data.phones[0]?.value ?? "";
+        const email = data.emails[0]?.value ?? "";
+        if (phone || email) people.push({ id: row.id, resource: row.resource_name, name: row.display_name, phone, email, birthday: data.birthday ?? "" });
+      }
+      return people;
+    };
+    const columns = `SELECT id, resource_name, display_name, birthday_md, data FROM zur_contacts`;
+    // The name as it is typed, from its start ("carla m"): a range of the name's index, a few rows.
+    let people = keep(this.db.all<ContactRow>(`${columns} WHERE search_name >= ? AND search_name < ? ORDER BY search_name, id LIMIT ?`, folded, `${folded}\uffff`, BOOKING_SCAN));
+    if (people.length === 0) {
+      // Nobody's name starts so: each word may start any word of the name ("mendes"), which reads the copy.
+      people = keep(
+        this.db.all<ContactRow>(
+          `${columns} WHERE ${words.map(() => `(search_name LIKE ? ESCAPE '\\' OR search_name LIKE ? ESCAPE '\\')`).join(" AND ")} ORDER BY search_name, id LIMIT ?`,
+          ...words.flatMap((word) => [`${like(word)}%`, `% ${like(word)}%`]),
+          BOOKING_SCAN,
+        ),
+      );
+    }
+    return { people, same: this.homonyms(query) };
+  }
+
+  /** How many contacts have this very name (up to twenty); none while Contacts is off. */
+  homonyms(name: string): number {
+    return this.enabled() ? this.sameName("", name).length : 0;
+  }
+
+  /** The contact of a link (E5f), by its `resourceName`; null when it left the copy. */
+  byResource(resource: string): { id: string; name: string } | null {
+    if (!this.enabled()) return null;
+    return this.db.one<{ id: string; name: string }>(`SELECT id, display_name AS name FROM zur_contacts WHERE resource_name = ?`, resource) ?? null;
+  }
+
+  /** The copy's id of each linked `resourceName` that is still in the copy. */
+  idsOf(resources: readonly string[]): Map<string, string> {
+    const out = new Map<string, string>();
+    if (!this.enabled() || resources.length === 0) return out;
+    for (const row of this.db.all<{ id: string; resource_name: string }>(
+      `SELECT id, resource_name FROM zur_contacts WHERE resource_name IN (${resources.map(() => "?").join(",")})`,
+      ...resources,
+    ))
+      out.set(row.resource_name, row.id);
+    return out;
   }
 
   /**

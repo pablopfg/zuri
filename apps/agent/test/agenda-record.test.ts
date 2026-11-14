@@ -1,3 +1,4 @@
+import { EVENT_STATUS_COLOR } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
 import { InternalState } from "../src/db/internal-state.ts";
 import type { DevEvent } from "../src/google/dev-google.ts";
@@ -275,5 +276,25 @@ describe("agenda record: the copy on the Agenda", () => {
         ["2026-10-29", undefined],
       ]);
       expect(notices.map((notice) => notice.day)).toEqual(["2026-10-28"]);
+    }));
+});
+
+describe("agenda record: the last appointment of a linked contact (E5f)", () => {
+  it("reads the closed days of the last 400 only, before today, cancelled ones left out", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      const { record: kept } = record(world);
+      // The world's today is 31/10/2026: 400 days back is 26/09/2025.
+      const put = (day: string, id: string, contact: string, colorId = "") =>
+        world.db.run(`INSERT INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES (?, ?, ?, '"1"', ?)`, day, PRIMARY, id, JSON.stringify({ title: id, contact, colorId }));
+      put("2025-09-25", "n1", "people/a");
+      put("2025-09-26", "n0", "people/b");
+      put("2025-09-27", "m1", "people/c");
+      put("2026-10-20", "x1", "people/d");
+      put("2026-10-25", "x2", "people/d", EVENT_STATUS_COLOR.cancelled);
+      put("2026-10-31", "t1", "people/e");
+      const visits = kept.lastVisits(["people/a", "people/b", "people/c", "people/d", "people/e", "people/z"]);
+      expect(Object.fromEntries(visits)).toEqual({ "people/b": "2025-09-26", "people/c": "2025-09-27", "people/d": "2026-10-20" });
+      expect(kept.lastVisits([]).size).toBe(0);
     }));
 });

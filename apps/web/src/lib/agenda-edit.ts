@@ -91,11 +91,13 @@ export interface EventChanges {
   phone?: string;
   email?: string;
   payment?: string;
+  /** The linked contact's `resourceName` (E5f); "" takes the link off. */
+  contact?: string;
   /** Ask Google for a Meet call, or take it off. */
   meet?: boolean;
 }
 
-const PATIENT = ["country", "phone", "email", "payment"] as const;
+const PATIENT = ["country", "phone", "email", "payment", "contact"] as const;
 
 /**
  * What moving an event to `slot` sends. A new day or hour marks an appointment
@@ -137,6 +139,8 @@ export function applyChanges(event: AgendaEvent, changes: EventChanges, timeZone
     else if (key === "payment") next.payment = value as NonNullable<AgendaEvent["payment"]>;
     else next[key] = value;
   }
+  // The copy's id comes with the next reading of the Agenda: a link that changed has none until then.
+  if (changes.contact !== undefined) delete next.contactId;
   // Google makes the link: until it answers, the call is on its way.
   if (changes.meet === true) next.meet = "pending";
   else if (changes.meet === false) delete next.meet;

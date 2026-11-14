@@ -933,6 +933,22 @@ describe("Google contacts (step 19b)", () => {
       world.contacts.search({ query: "pessoa 4", limit: 50 });
       expect(world.googleSim.seen.length).toBe(calls);
       expect(world.db.usage.rowsRead - before.rowsRead).toBeLessThanOrEqual(1_000);
+      // E5f: the Agenda's name field (GET /api/contacts?for=booking), a moment after each key, never Google and
+      // nothing written. A name typed from its start reads a range of the name's index; a surname typed first
+      // reads the copy once (measured 20 and 508).
+      const typing = (query: string) => {
+        const at = { ...world.db.usage };
+        const found = world.contacts.forBooking(query);
+        expect(world.db.usage.rowsWritten - at.rowsWritten).toBe(0);
+        return { found, read: world.db.usage.rowsRead - at.rowsRead };
+      };
+      const start = typing("pessoa 42");
+      expect(start.found.people.map((person) => person.name)).toContain("Pessoa 42");
+      expect(start.read).toBeLessThanOrEqual(30);
+      const surname = typing("42");
+      expect(surname.found.people.length).toBeGreaterThan(0);
+      expect(surname.read).toBeLessThanOrEqual(600);
+      expect(world.googleSim.seen.length).toBe(calls);
       // The card (GET /api/contacts/:id) and what the calendar needs of the contact (GET /api/contacts/:id/appointments):
       // the contact, its labels and the others with the very same name, by the name's index. Nothing is written.
       const [someone] = world.contacts.search({ query: "pessoa 4", limit: 1 }).contacts;

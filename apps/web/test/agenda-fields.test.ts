@@ -89,15 +89,24 @@ describe("the patient's phone and e-mail", () => {
   });
 
   it("sends the digits, says the field to fix, and changes the phone with its country", () => {
-    const form = { country: "BR", phone: "(41) 99999-0000", email: " a@exemplo.com.br ", payment: "unpaid" as const };
-    expect(patientBody(form)).toEqual({ country: "BR", phone: "41999990000", email: "a@exemplo.com.br", payment: "unpaid" });
+    const form = { country: "BR", phone: "(41) 99999-0000", email: " a@exemplo.com.br ", payment: "unpaid" as const, contact: "" };
+    expect(patientBody(form)).toEqual({ country: "BR", phone: "41999990000", email: "a@exemplo.com.br", payment: "unpaid", contact: "" });
     expect(patientBody({ ...form, phone: "(41) 9" })).toBe("phone");
     expect(patientBody({ ...form, email: "a@" })).toBe("email");
-    const before = { country: "BR", phone: "41999990000", email: "a@exemplo.com.br", payment: "unpaid" as const };
+    const before = { country: "BR", phone: "41999990000", email: "a@exemplo.com.br", payment: "unpaid" as const, contact: "" };
     expect(patientChanges(before, before)).toEqual({});
     expect(patientChanges(before, { ...before, payment: "paid" })).toEqual({ payment: "paid" });
     expect(patientChanges(before, { ...before, country: "PT" })).toEqual({ country: "PT", phone: "41999990000" });
     expect(patientChanges(before, { ...before, phone: "", email: "" })).toEqual({ country: "BR", phone: "", email: "" });
+  });
+
+  it("E5f: linked, the phone and the e-mail are the contact's: none is checked nor kept in the event", () => {
+    const form = { country: "BR", phone: "(41) 9", email: "a@", payment: "paid" as const, contact: "people/c1001" };
+    expect(patientBody(form)).toEqual({ country: "", phone: "", email: "", payment: "paid", contact: "people/c1001" });
+    const before = { country: "BR", phone: "41999990000", email: "a@exemplo.com.br", payment: "paid" as const, contact: "" };
+    // Linking takes the event's own phone and e-mail off; unlinking sends the link off.
+    expect(patientChanges(before, { country: "", phone: "", email: "", payment: "paid", contact: "people/c1001" })).toEqual({ country: "", phone: "", email: "", contact: "people/c1001" });
+    expect(patientChanges({ ...before, contact: "people/c1001" }, before)).toEqual({ contact: "" });
   });
 });
 

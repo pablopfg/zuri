@@ -123,15 +123,19 @@ export interface PatientBody {
   phone: string;
   email: string;
   payment: "unpaid" | "paid" | "free";
+  /** The linked contact's `resourceName` (E5f), or "". */
+  contact: string;
 }
 
 export type PatientProblem = "phone" | "email";
 
 /** What a form with a type sends of the patient, or the field to fix. */
-export function patientBody(form: { country: string; phone: string; email: string; payment: PatientBody["payment"] }): PatientBody | PatientProblem {
+export function patientBody(form: { country: string; phone: string; email: string; payment: PatientBody["payment"]; contact: string }): PatientBody | PatientProblem {
+  // Linked (E5f): the phone and the e-mail are the contact's, read from Contacts, never kept in the event.
+  if (form.contact) return { country: "", phone: "", email: "", payment: form.payment, contact: form.contact };
   if (!phoneFits(form.country, form.phone)) return "phone";
   if (!emailFits(form.email)) return "email";
-  return { country: form.country, phone: phoneDigits(form.phone), email: form.email.trim(), payment: form.payment };
+  return { country: form.country, phone: phoneDigits(form.phone), email: form.email.trim(), payment: form.payment, contact: "" };
 }
 
 /**
@@ -146,5 +150,6 @@ export function patientChanges(before: PatientBody, after: PatientBody): Partial
   }
   if (before.email !== after.email) out.email = after.email;
   if (before.payment !== after.payment) out.payment = after.payment;
+  if (before.contact !== after.contact) out.contact = after.contact;
   return out;
 }

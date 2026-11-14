@@ -33,3 +33,9 @@ export function validPhone(country: string, digits: string): boolean {
  * the phone's rule, out of the first load.
  */
 export const PATIENT_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * The contact an appointment is linked to (E5f): its `resourceName` at Google ("people/c123"), which
+ * stays the same when Contacts is turned off and on again (the copy's own id does not).
+ */
+export const CONTACT_RESOURCE = /^people\/[A-Za-z0-9_-]{1,40}$/;

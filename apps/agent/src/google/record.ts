@@ -1,4 +1,4 @@
-import { type AgendaChange, dayPlus } from "@zuri/shared";
+import { type AgendaChange, dayPlus, EVENT_STATUS_COLOR } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
 import type { InternalState } from "../db/internal-state.ts";
 import { log } from "../log.ts";
@@ -23,6 +23,8 @@ const RECORD_BUDGET = 12;
 const RETRY_MS = 15 * 60_000;
 const PER_CALENDAR = 100;
 const MAX_EVENTS = 200;
+/** How far back the "last appointment" of a contact is looked for in the record (E5f). */
+export const VISIT_DAYS = 400;
 
 /** An event of a closed day as the Agenda shows it: the copy, with what changed at Google after the closing. */
 export type RecordedEvent = CalendarEvent & { changedAtGoogle?: AgendaChange };
@@ -130,6 +132,29 @@ export class AgendaRecord {
     });
     state.delete("agenda_record_retry_at");
     return true;
+  }
+
+  /**
+   * The last recorded appointment of each linked contact (E5f), by `resourceName`: the closed days of the
+   * last VISIT_DAYS days only, cancelled ones left out, read by the contact's index (migration 43).
+   */
+  lastVisits(resources: readonly string[]): Map<string, string> {
+    const out = new Map<string, string>();
+    if (resources.length === 0) return out;
+    const today = this.today();
+    const rows = this.deps.db.all<{ contact: string; day: string }>(
+      // By the index of migration 43: the same expression, and IS NOT NULL so the partial index applies.
+      `SELECT json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') AS contact, MAX(day) AS day FROM zur_agenda_record
+       WHERE json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IS NOT NULL AND json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IN (${resources.map(() => "?").join(",")})
+         AND day >= ? AND day < ? AND COALESCE(json_extract(data, '$.colorId'), '') != ?
+       GROUP BY contact`,
+      ...resources,
+      dayPlus(today, -VISIT_DAYS),
+      today,
+      EVENT_STATUS_COLOR.cancelled,
+    );
+    for (const row of rows) out.set(row.contact, row.day);
+    return out;
   }
 
   /** The last day closed, when and with how many events: Configurações › Agenda shows it. */

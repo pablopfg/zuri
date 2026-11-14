@@ -7,7 +7,7 @@ import { CONVERSATION_TITLE_MAX } from "./chat.ts";
 import { CRM_HISTORY_KINDS, CRM_LIMITS } from "./crm.ts";
 import { birthdaySchema, crmEmailSchema, crmPhoneSchema, crmTagSchema } from "./crm-schemas.ts";
 import { instantSchema, isValidCalendarDate } from "./dates.ts";
-import { isCountry, PATIENT_EMAIL } from "./countries.ts";
+import { CONTACT_RESOURCE, isCountry, PATIENT_EMAIL } from "./countries.ts";
 import { EVENT_PAYMENTS, GOOGLE_LIMITS, MEET_URL, PATIENT_LIMITS } from "./google.ts";
 import { MEMORY_AUTHORS, MEMORY_CATEGORIES, MEMORY_CONTENT_MAX, MEMORY_ORIGINS, MEMORY_STATUSES } from "./memory.ts";
 import {
@@ -288,6 +288,7 @@ const agendaDay = /* @__PURE__ */ z
             phone: z.string().regex(/^\d{6,15}$/).optional(),
             email: z.string().max(PATIENT_LIMITS.emailMax).regex(PATIENT_EMAIL).optional(),
             payment: z.enum(EVENT_PAYMENTS).optional(),
+            contact: z.string().regex(CONTACT_RESOURCE).optional(),
             meet: z.string().refine((value) => MEET_URL.test(value) || value === "pending" || value === "failed").optional(),
           })
           .strict()

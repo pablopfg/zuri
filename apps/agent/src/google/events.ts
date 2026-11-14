@@ -1,4 +1,4 @@
-import { EVENT_PAYMENTS, type EventPayment, GOOGLE_LIMITS, HOME_COUNTRY, isCountry, isValidCalendarDate, MEET_URL, PATIENT_EMAIL, PATIENT_LIMITS, validPhone, zonedParts, zonedTimeToUtc } from "@zuri/shared";
+import { CONTACT_RESOURCE, EVENT_PAYMENTS, type EventPayment, GOOGLE_LIMITS, HOME_COUNTRY, isCountry, isValidCalendarDate, MEET_URL, PATIENT_EMAIL, PATIENT_LIMITS, validPhone, zonedParts, zonedTimeToUtc } from "@zuri/shared";
 
 /**
  * Dates of the Google Calendar (step 19): what the owner and the model write
@@ -68,6 +68,8 @@ export interface EventDraft {
   phone?: string;
   email?: string;
   payment?: string;
+  /** The linked contact's `resourceName` (E5f); "" takes the link off. */
+  contact?: string;
   /** Ask Google for a Meet call, or take it off. */
   meet?: boolean;
 }
@@ -76,7 +78,7 @@ export interface EventDraft {
  * The event's private properties Zuri writes, and nothing else: a private property shows only on this
  * calendar's copy, never in Google Calendar's screen or to a guest.
  */
-export const PRIVATE_KEYS = { country: "zuriCountry", phone: "zuriPhone", email: "zuriEmail", payment: "zuriPayment" } as const;
+export const PRIVATE_KEYS = { country: "zuriCountry", phone: "zuriPhone", email: "zuriEmail", payment: "zuriPayment", contact: "zuriContact" } as const;
 
 /**
  * The private properties and the Meet request of a draft. A change (PATCH) merges into Google's map, so
@@ -206,6 +208,10 @@ export interface CalendarEvent {
   phone?: string;
   email?: string;
   payment?: EventPayment;
+  /** The linked contact's `resourceName` (E5f). */
+  contact?: string;
+  /** Its id in Zuri's copy of Contacts, when it is still there; added by the Agenda's listing, never kept. */
+  contactId?: string;
   /** The Meet call: Google's address, "pending" while Google makes it, "failed" when it could not. */
   meet?: string;
 }
@@ -253,14 +259,14 @@ export function readEvent(item: unknown, calendarId: string): CalendarEvent | nu
  * The private properties Zuri wrote, each one only when it is what Zuri writes: anyone with access to
  * the calendar can set them, so a value out of shape is left out, never shown.
  */
-function privateFields(value: unknown): Pick<CalendarEvent, "country" | "phone" | "email" | "payment"> {
+function privateFields(value: unknown): Pick<CalendarEvent, "country" | "phone" | "email" | "payment" | "contact"> {
   const props = value && typeof value === "object" ? (value as { private?: unknown }).private : undefined;
   if (!props || typeof props !== "object") return {};
   const read = (key: string) => {
     const item = (props as Record<string, unknown>)[key];
     return typeof item === "string" ? item : "";
   };
-  const out: Pick<CalendarEvent, "country" | "phone" | "email" | "payment"> = {};
+  const out: Pick<CalendarEvent, "country" | "phone" | "email" | "payment" | "contact"> = {};
   const country = read(PRIVATE_KEYS.country);
   if (isCountry(country)) out.country = country;
   const phone = read(PRIVATE_KEYS.phone);
@@ -270,6 +276,8 @@ function privateFields(value: unknown): Pick<CalendarEvent, "country" | "phone" 
   if (email.length <= PATIENT_LIMITS.emailMax && PATIENT_EMAIL.test(email)) out.email = email;
   const payment = read(PRIVATE_KEYS.payment);
   if ((EVENT_PAYMENTS as readonly string[]).includes(payment)) out.payment = payment as EventPayment;
+  const contact = read(PRIVATE_KEYS.contact);
+  if (CONTACT_RESOURCE.test(contact)) out.contact = contact;
   return out;
 }
 

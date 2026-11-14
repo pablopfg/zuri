@@ -375,6 +375,8 @@ describe("import", () => {
       email: "ana@exemplo.com.br",
       payment: "paid",
       meet: "https://meet.google.com/abc-defg-hij",
+      // E5f: the link to a contact is part of the day's record too.
+      contact: "people/c1",
     });
     const close = (day: string, title: string) =>
       inOwner((agent) => {
@@ -403,7 +405,7 @@ describe("import", () => {
     const bad = { ...file, data: { ...file.data, agendaRecord: [{ day: "30/10/2026", closedAt: "2026-10-30T03:00:05.000Z", events: [] }] } };
     expect((await session("POST", "/backup/import", bad)).status).toBe(400);
     // SEC-E5e-01: a patient's field out of shape refuses the whole file, as a bad time does.
-    for (const wrong of [{ country: "ZZ" }, { phone: "12" }, { email: "ana@" }, { payment: "owed" }, { meet: "https://meet.exemplo.com.br/x" }]) {
+    for (const wrong of [{ country: "ZZ" }, { phone: "12" }, { email: "ana@" }, { payment: "owed" }, { meet: "https://meet.exemplo.com.br/x" }, { contact: "people/<b>" }]) {
       const broken = { ...file, data: { ...file.data, agendaRecord: [{ day: "2026-10-29", closedAt: "2026-10-30T03:00:05.000Z", events: [{ ...event("Ana Souza"), ...wrong }] }] } };
       expect((await session("POST", "/backup/import", broken)).status, JSON.stringify(wrong)).toBe(400);
     }
