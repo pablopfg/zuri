@@ -22,7 +22,7 @@ import { log } from "../log.ts";
 import { McpCredentials } from "../mcp/credentials.ts";
 import { forgetReviewRequests, forgetReviews } from "../reviews/store.ts";
 import { forgetContacts } from "./contacts-store.ts";
-import { type CalendarEvent, cleanText, readEvent, startMs } from "./events.ts";
+import { type CalendarEvent, cleanText, PRIVATE_KEYS, readEvent, startMs } from "./events.ts";
 
 export const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 export const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -831,10 +831,11 @@ export class GoogleCalendar {
   async createEvent(calendarId: string, body: Record<string, unknown>, meter: GoogleMeter, id?: string): Promise<CalendarEvent> {
     this.writableRow(calendarId);
     if (id !== undefined && !EVENT_ID.test(id)) throw new GoogleError("invalid");
+    const safe = safeBody(body);
     const created = await this.api(`/calendars/${enc(calendarId)}/events`, meter, {
       method: "POST",
-      query: { sendUpdates: "none" },
-      body: { ...safeBody(body), ...(id === undefined ? {} : { id }) },
+      query: writeQuery(safe),
+      body: { ...safe, ...(id === undefined ? {} : { id }) },
     });
     this.touch(calendarId);
     const event = readEvent(created, calendarId);
@@ -845,10 +846,11 @@ export class GoogleCalendar {
   /** Changes an event only if it is still the version `etag` names (412: changed at Google meanwhile). */
   async updateEvent(calendarId: string, eventId: string, patch: Record<string, unknown>, etag: string, meter: GoogleMeter): Promise<CalendarEvent> {
     this.writableRow(calendarId);
+    const safe = safeBody(patch);
     const updated = await this.api(`/calendars/${enc(calendarId)}/events/${enc(eventId)}`, meter, {
       method: "PATCH",
-      query: { sendUpdates: "none" },
-      body: safeBody(patch),
+      query: writeQuery(safe),
+      body: safe,
       ...(etag ? { ifMatch: etag } : {}),
     });
     this.touch(calendarId);
@@ -1022,7 +1024,30 @@ function safeBody(body: Record<string, unknown>): Record<string, unknown> {
   for (const key of ["summary", "location", "description", "start", "end"]) if (body[key] !== undefined) out[key] = body[key];
   // The color is the appointment's status: one of its four, or null to take it off. Nothing else, whoever asks.
   if (body.colorId === null || STATUS_COLORS.has(body.colorId as string)) out.colorId = body.colorId;
+  // The patient's contact and the payment: only Zuri's own private keys, each a string or null (E5e).
+  const props = (body.extendedProperties as { private?: Record<string, unknown> } | undefined)?.private;
+  if (props) {
+    const kept: Record<string, string | null> = {};
+    for (const key of Object.values(PRIVATE_KEYS)) {
+      const value = props[key];
+      if (value === null || (typeof value === "string" && value.length <= 300)) kept[key] = value;
+    }
+    if (Object.keys(kept).length > 0) out.extendedProperties = { private: kept };
+  }
+  // A Meet call: Google's own kind, or null to take it off. Never anything else.
+  if (body.conferenceData === null) out.conferenceData = null;
+  else {
+    const request = (body.conferenceData as { createRequest?: { requestId?: unknown; conferenceSolutionKey?: { type?: unknown } } } | undefined)?.createRequest;
+    if (request?.conferenceSolutionKey?.type === "hangoutsMeet" && typeof request.requestId === "string" && /^[\w-]{1,64}$/.test(request.requestId)) {
+      out.conferenceData = { createRequest: { requestId: request.requestId, conferenceSolutionKey: { type: "hangoutsMeet" } } };
+    }
+  }
   return out;
+}
+
+/** Google reads `conferenceData` only when asked to (`conferenceDataVersion=1`). */
+function writeQuery(body: Record<string, unknown>): Record<string, string> {
+  return body.conferenceData === undefined ? { sendUpdates: "none" } : { sendUpdates: "none", conferenceDataVersion: "1" };
 }
 
 function apiError(status: number): GoogleError {

@@ -7,7 +7,8 @@ import { CONVERSATION_TITLE_MAX } from "./chat.ts";
 import { CRM_HISTORY_KINDS, CRM_LIMITS } from "./crm.ts";
 import { birthdaySchema, crmEmailSchema, crmPhoneSchema, crmTagSchema } from "./crm-schemas.ts";
 import { instantSchema, isValidCalendarDate } from "./dates.ts";
-import { GOOGLE_LIMITS } from "./google.ts";
+import { isCountry, PATIENT_EMAIL } from "./countries.ts";
+import { EVENT_PAYMENTS, GOOGLE_LIMITS, MEET_URL, PATIENT_LIMITS } from "./google.ts";
 import { MEMORY_AUTHORS, MEMORY_CATEGORIES, MEMORY_CONTENT_MAX, MEMORY_ORIGINS, MEMORY_STATUSES } from "./memory.ts";
 import {
   hasControlCharacter,
@@ -282,6 +283,12 @@ const agendaDay = /* @__PURE__ */ z
             guests: z.number().int().min(0).max(100_000),
             colorId: short(2),
             shared: z.boolean(),
+            // The patient's fields of an appointment (E5e), as readEvent checks them: the record keeps them.
+            country: z.string().refine(isCountry).optional(),
+            phone: z.string().regex(/^\d{6,15}$/).optional(),
+            email: z.string().max(PATIENT_LIMITS.emailMax).regex(PATIENT_EMAIL).optional(),
+            payment: z.enum(EVENT_PAYMENTS).optional(),
+            meet: z.string().refine((value) => MEET_URL.test(value) || value === "pending" || value === "failed").optional(),
           })
           .strict()
           .refine((event) => eventTime(event.allDay, event.start) && eventTime(event.allDay, event.end) && event.start <= event.end),

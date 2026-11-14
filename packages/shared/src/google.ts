@@ -90,7 +90,28 @@ export interface AgendaEvent {
    * when nothing changed.
    */
   changedAtGoogle?: AgendaChange;
+  /**
+   * The patient's contact and the payment of an appointment (E5e), kept in the event's private
+   * properties at Google: never shown in Google Calendar, never seen by a guest. Absent when unset.
+   */
+  country?: string;
+  /** Digits only. */
+  phone?: string;
+  email?: string;
+  payment?: EventPayment;
+  /** The Google Meet call: its address once Google made it, or "pending" while Google makes it. */
+  meet?: string;
 }
+
+/** What an appointment's payment stands at (12/11/2026): "Não pago" is the default. */
+export const EVENT_PAYMENTS = ["unpaid", "paid", "free"] as const;
+export type EventPayment = (typeof EVENT_PAYMENTS)[number];
+
+/** A Meet address Zuri shows as a link: Google's own, and nothing else. */
+export const MEET_URL = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/;
+
+/** The limits of the patient's fields an appointment keeps. */
+export const PATIENT_LIMITS = { emailMax: 254, kindMax: 60 } as const;
 
 /** What happened at Google to an event of a closed day: the copy stays as it was. */
 export type AgendaChange = "changed" | "deleted" | "added";

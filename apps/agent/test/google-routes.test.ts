@@ -325,6 +325,99 @@ describe("/api/google/events: the Agenda screen", () => {
     expect(((await res.json()) as { event: AgendaEvent }).event).toMatchObject({ allDay: true, start: `${A20}`, end: `${A23}` });
   });
 
+  it("E5e: keeps the patient's contact and the payment in the event's private properties, and asks Google for a Meet call", async () => {
+    // An appointment is bound by the hours: a working day (Monday to Friday, no national holiday) from a month on.
+    let day = D5;
+    while ([0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay()) || nationalHoliday(day) !== null) day = dayPlus(day, 1);
+    await connect();
+    await setMode(WORK, "write");
+    const created = await api("POST", "/google/events", {
+      calendarId: WORK,
+      title: "Helena Duarte Prado",
+      allDay: false,
+      start: `${day}T14:00`,
+      end: `${day}T15:00`,
+      description: "Consulta | Online",
+      country: "BR",
+      phone: "41999990000",
+      email: "helena@exemplo.com.br",
+      payment: "unpaid",
+      meet: true,
+    });
+    expect(created.status, JSON.stringify(await created.clone().json())).toBe(201);
+    const { event } = (await created.json()) as { event: AgendaEvent };
+    expect(event).toMatchObject({ country: "BR", phone: "41999990000", email: "helena@exemplo.com.br", payment: "unpaid" });
+    expect(event.meet).toMatch(/^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/);
+    const insert = google.seen.filter((r) => r.method === "POST" && r.url.includes("/events?")).at(-1);
+    const url = new URL(insert?.url ?? "x:");
+    expect([url.searchParams.get("sendUpdates"), url.searchParams.get("conferenceDataVersion")]).toEqual(["none", "1"]);
+    const sent = JSON.parse(insert?.body ?? "{}") as { extendedProperties?: { private?: Record<string, string> }; attendees?: unknown };
+    expect(sent.extendedProperties?.private).toEqual({ zuriCountry: "BR", zuriPhone: "41999990000", zuriEmail: "helena@exemplo.com.br", zuriPayment: "unpaid" });
+    expect(sent).not.toHaveProperty("attendees");
+
+    // Paid, the phone taken off, the call too: a key cleared goes as null, an unchanged one is not sent.
+    const changed = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: event.etag, country: "BR", phone: "", email: "helena@exemplo.com.br", payment: "paid", meet: false });
+    expect(changed.status).toBe(200);
+    const after = ((await changed.json()) as { event: AgendaEvent }).event;
+    expect(after).toMatchObject({ country: "BR", email: "helena@exemplo.com.br", payment: "paid" });
+    expect(after.phone).toBeUndefined();
+    expect(after.meet).toBeUndefined();
+    const patch = JSON.parse(google.seen.filter((r) => r.method === "PATCH").at(-1)?.body ?? "{}") as Record<string, unknown>;
+    expect(patch.extendedProperties).toEqual({ private: { zuriPhone: null, zuriPayment: "paid" } });
+    expect(patch.conferenceData).toBeNull();
+
+    // Nothing differs from Google's version: nothing is written.
+    const writes = google.seen.filter((r) => r.method === "PATCH").length;
+    expect((await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: after.etag, payment: "paid", meet: false })).status).toBe(200);
+    expect(google.seen.filter((r) => r.method === "PATCH").length).toBe(writes);
+
+    // SEC-E5e-04: a phone changes with its country, never alone (it would be read as Brazil's).
+    for (const half of [{ phone: "912345678" }, { country: "PT" }]) {
+      expect((await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: after.etag, ...half })).status, JSON.stringify(half)).toBe(400);
+    }
+    const portugal = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: after.etag, country: "PT", phone: "912345678" });
+    expect(portugal.status).toBe(200);
+
+    // SEC-E5e-05: a call Google failed to make counts as none: Online asks for it again.
+    const kept = google.events.get(WORK)?.find((e) => e.id === event.id);
+    if (!kept) throw new Error("the event is not at Google");
+    delete kept.hangoutLink;
+    kept.conferenceData = { createRequest: { requestId: "x", status: { statusCode: "failure" } } };
+    const failedEtag = ((await portugal.json()) as { event: AgendaEvent }).event.etag;
+    const again = await api("PATCH", "/google/events", { calendarId: WORK, eventId: event.id, etag: failedEtag, meet: true });
+    expect(again.status).toBe(200);
+    expect((JSON.parse(google.seen.filter((r) => r.method === "PATCH").at(-1)?.body ?? "{}") as { conferenceData?: { createRequest?: unknown } }).conferenceData?.createRequest).toBeTruthy();
+    expect(((await again.json()) as { event: AgendaEvent }).event.meet).toMatch(/^https:\/\/meet\.google\.com\//);
+  });
+
+  it("E5e: refuses a country, a phone, an e-mail or a payment out of shape, and any other key", async () => {
+    await connect();
+    await setMode(WORK, "write");
+    const base = { calendarId: WORK, title: "Paciente", allDay: false, start: `${D6}T09:00`, end: `${D6}T10:00` };
+    const refused = [
+      { country: "XX" },
+      { country: "br" },
+      // Brazil: the area code and 8 or 9 digits, never 9 or 12 digits, never an area code with a 0.
+      { country: "BR", phone: "419999000" },
+      { country: "BR", phone: "419999900000" },
+      { country: "BR", phone: "01999990000" },
+      // Elsewhere: 6 to 15 digits.
+      { country: "PT", phone: "12345" },
+      { country: "PT", phone: "1234567890123456" },
+      { phone: "(41) 99999-0000" },
+      { email: "helena" },
+      { email: `${"a".repeat(243)}@exemplo.com` },
+      { payment: "pix" },
+      { meet: "yes" },
+      { zuriNote: "x" },
+    ];
+    for (const extra of refused) expect((await api("POST", "/google/events", { ...base, ...extra })).status, JSON.stringify(extra)).toBe(400);
+    for (const extra of [{ country: "BR", phone: "4199990000" }, { country: "BR", phone: "41999990000" }, { country: "PT", phone: "123456" }, { country: "US", phone: "123456789012345" }, { email: `${"a".repeat(242)}@exemplo.com` }, { email: "a@b.c" }]) {
+      const res = await api("POST", "/google/events", { ...base, ...extra });
+      expect(res.status, JSON.stringify(extra)).toBe(201);
+    }
+  });
+
   it("refuses changes in read-only and hidden calendars, bad dates and oversized fields", async () => {
     await connect();
     await setMode(READER, "read");

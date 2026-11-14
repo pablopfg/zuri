@@ -35,6 +35,31 @@ export interface DevEvent {
   organizer?: { email?: string; self?: boolean };
   recurringEventId?: string;
   colorId?: string;
+  extendedProperties?: { private?: Record<string, string> };
+  conferenceData?: Record<string, unknown>;
+  hangoutLink?: string;
+}
+
+/**
+ * A Meet call, as Google answers a `createRequest` with `conferenceDataVersion=1`: an address with
+ * Google's shape, the same for the same request.
+ */
+function devMeet(event: DevEvent, request: unknown, asked: boolean): void {
+  const create = (request as { createRequest?: { conferenceSolutionKey?: { type?: unknown }; requestId?: unknown } } | null | undefined)?.createRequest;
+  if (!asked || create?.conferenceSolutionKey?.type !== "hangoutsMeet") {
+    delete event.conferenceData;
+    return;
+  }
+  const letters = "abcdefghijkmnopqrstuvwxyz";
+  let hash = 2166136261;
+  let code = "";
+  for (let i = 0; i < 10; i++) {
+    for (const char of `${String(create.requestId)}:${i}`) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0;
+    code += letters[hash % letters.length];
+  }
+  const uri = `https://meet.google.com/${code.slice(0, 3)}-${code.slice(3, 7)}-${code.slice(7)}`;
+  event.hangoutLink = uri;
+  event.conferenceData = { entryPoints: [{ entryPointType: "video", uri }], conferenceSolution: { key: { type: "hangoutsMeet" } }, createRequest: { status: { statusCode: "success" } } };
 }
 
 /** A person as the People API sends it (step 19b); `version` orders the changes for the sync tokens. */
@@ -392,6 +417,7 @@ export function devGoogle(options: { clientId?: string | undefined; clientSecret
         if (input.id !== undefined && !/^[a-v0-9]{5,1024}$/.test(input.id)) return json({ error: { code: 400 } }, 400);
         if (input.id !== undefined && events.some((event) => event.id === input.id)) return json({ error: { code: 409 } }, 409);
         const event: DevEvent = { ...(input as DevEvent), id: input.id ?? `ev${random().replace(/[-_]/g, "").toLowerCase().slice(0, 12)}`, etag: nextEtag() };
+        if (input.conferenceData !== undefined) devMeet(event, input.conferenceData, url.searchParams.get("conferenceDataVersion") === "1");
         events.push(event);
         return json(event);
       }
@@ -419,6 +445,19 @@ export function devGoogle(options: { clientId?: string | undefined; clientSecret
       if (patch.start !== undefined) updated.start = merge(event.start, patch.start);
       if (patch.end !== undefined) updated.end = merge(event.end, patch.end);
       if (patch.colorId === null) delete updated.colorId;
+      if (patch.extendedProperties !== undefined) {
+        // A map merges key by key, and a null removes the key, as Google does.
+        const kept: Record<string, string> = { ...(event.extendedProperties?.private ?? {}) };
+        for (const [key, value] of Object.entries(patch.extendedProperties?.private ?? {})) {
+          if (value === null) delete kept[key];
+          else kept[key] = value;
+        }
+        updated.extendedProperties = { private: kept };
+      }
+      if (patch.conferenceData === null) {
+        delete updated.conferenceData;
+        delete updated.hangoutLink;
+      } else if (patch.conferenceData !== undefined) devMeet(updated, patch.conferenceData, url.searchParams.get("conferenceDataVersion") === "1");
       if ([updated.start, updated.end].some((time) => time?.date !== undefined && time.dateTime !== undefined)) return json({ error: { code: 400 } }, 400);
       events[index] = updated;
       return json(updated);

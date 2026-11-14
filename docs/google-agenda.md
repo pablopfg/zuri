@@ -123,11 +123,10 @@ Agenda troca a tela por "Conectar de novo".
 - **No celular** (e na lista do dia) não há arrastar: a mudança é pelo "Editar".
 - **Clicar num horário vazio** da semana abre "Novo evento" com o dia e a meia
   hora clicada.
-- **Editar** tem os campos Dia, Hora de início, Dura (15 min a 3 horas, ou
-  "Outra", que mostra o dia e a hora do fim), Tipo e Situação. O Tipo é a
-  primeira linha da descrição do evento no Google ("Consulta | Consultório") e
-  a lista traz os tipos que já aparecem nos eventos da tela. O tipo também
-  aparece no bloco do evento, depois da hora.
+- **Editar** tem os mesmos campos do "Novo evento" (abaixo). O tipo e o local
+  formam a primeira linha da observação do evento no Google ("Consulta |
+  Consultório" ou "Consulta | Online"), e o tipo aparece no bloco do evento,
+  depois da hora.
 - **Mover marca Reagendado:** mudar o dia ou a hora de um atendimento (evento
   com tipo) que estava Agendado ou Confirmado troca a situação para Reagendado,
   e o aviso diz isso. Mudar só a duração não troca. No "Editar", uma situação
@@ -261,10 +260,37 @@ Agenda ("2 eventos fora das 08:00 às 18:00"), com **Mostrar** ao lado. O mês
 mostra tudo. As opções ficam guardadas na Zuri e valem em todos os seus
 aparelhos; elas não mudam nada no Google.
 
-- **Novo evento** (ou Ctrl/⌘ K > Novo evento): título, agenda, dia e
-  horário, tipo (começa como a primeira "Consulta" que a agenda já usa), local
-  e descrição. Evento de dia inteiro se cria no Google; aqui ele aparece e se
-  edita.
+- **Novo evento** (ou Ctrl/⌘ K > Novo evento) começa como uma Consulta
+  presencial. Os campos, na ordem:
+  - **Nome completo do paciente**, que vira o título do evento.
+  - **DDI do paciente** (todos os países, Brasil primeiro), **Celular com
+    DDD** e **E-mail de contato**, os dois opcionais. O celular toma a forma
+    enquanto você digita, "(41) 99999-0000" no Brasil e em blocos de três nos
+    outros países; um "+55" colado na frente sai sozinho. A Zuri guarda só os
+    dígitos.
+  - **Data da consulta** (dd/mm/aaaa), **Hora do início** e **Hora do
+    término**, sempre de 00:00 a 23:59, sem AM ou PM, em qualquer idioma do
+    aparelho. O término começa 1 h depois do início e acompanha o início
+    quando ele muda; outro término mostra a duração e **Voltar para 1 h**.
+  - **Tipo do evento**: Consulta, Retorno, Avaliação física, os tipos que a
+    agenda já usa, **Outro, digitar** e **Sem tipo (compromisso comum)**, que
+    é um compromisso pessoal: tira os campos do paciente, o local e o
+    financeiro, e o nome vira **Título**.
+  - **Local**: Presencial ou Online. Online pede ao Google uma chamada do
+    Google Meet ao salvar; voltar para Presencial tira a chamada, e essa
+    mudança não oferece "Desfazer" (o link não volta igual).
+  - **Situação** e **Financeiro** (Não pago, o padrão, Pago ou Gratuito).
+  - **Observação**, que no Google vem depois da linha do tipo.
+
+  Um campo errado recebe o foco, treme uma vez (parado, se o aparelho pede
+  menos movimento) e mostra a mensagem embaixo dele. Ao salvar, o aviso diz
+  quem, o dia e a hora ("“Helena Prado” agendado para qua, 18/11 às 14:30."). Evento de dia
+  inteiro se cria no Google; aqui ele aparece e se edita.
+- Os **detalhes** de uma consulta mostram o tipo, o local (no Online, o link
+  do Meet com **Copiar link**, ou "O Google está criando o link da
+  chamada…"), o paciente com o celular e o e-mail, o financeiro e a
+  observação como está no Google. O vínculo com Contatos chega numa próxima
+  entrega; até lá aparece "Sem vínculo com Contatos".
 - Toque num evento para ver os detalhes. Em agendas **Ler e editar**, aparecem
   **Editar** e **Apagar** (com confirmação). Em **Só ler**, só os detalhes.
 - Se alguém mudou o evento no Google depois que a tela abriu, a Zuri não
@@ -363,6 +389,15 @@ passo a passo está em [avaliacoes-google.md](avaliacoes-google.md#para-quem-ins
   `MCP_CREDENTIAL_KEY` com um `info` próprio (`google-v1`). Nunca voltam para
   o navegador, para o log nem para o backup.
 - Os eventos não ficam guardados aqui: cada leitura vai ao Google.
+- O DDI, o celular, o e-mail e o financeiro do paciente viajam com o evento,
+  nas propriedades privadas dele no Google (`extendedProperties.private`:
+  `zuriCountry`, `zuriPhone`, `zuriEmail`, `zuriPayment`). Quem abre o evento
+  no Google não vê esses campos e não há tabela nova na Zuri. Cada valor
+  lido volta conferido: um celular fora do formato ou um país desconhecido é
+  ignorado. Um campo esvaziado no "Editar" é apagado no Google.
+- O Meet sai por `conferenceData.createRequest` (`hangoutsMeet`) com
+  `conferenceDataVersion=1`. Só um link `https://meet.google.com/xxx-xxxx-xxx`
+  vira link na tela.
 - `GET /api/google/events` devolve o `colorId` de cada evento (de "1" a "11",
   ou vazio). `PATCH /api/google/events` aceita `colorId` só com "5", "7", "10",
   "11" ou vazio (tira a cor), sempre com o `etag` que a tela leu.
