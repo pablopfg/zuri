@@ -79,6 +79,8 @@ import { type BackupRouteDeps, registerBackupRoutes } from "./backup.ts";
 import { log, rayOf, routeLabel } from "../log.ts";
 import type { AgentConfigs } from "../specialists/configs.ts";
 import { registerAgentRoutes } from "./agents.ts";
+import { registerHomeRoutes } from "./home.ts";
+import type { HomeSuggestionService } from "../home/suggestions.ts";
 import { registerModelCatalogRoutes } from "./model-catalog.ts";
 import type { ModelCatalogService } from "../ai/catalog.ts";
 
@@ -112,6 +114,8 @@ export interface ApiDeps {
   paidConfigured?(provider: PaidProviderId): boolean;
   /** The catalog of models (PR S21): which extra models the settings may name. */
   modelCatalog?(): ModelCatalogService;
+  /** The home page's suggestions (PR S22). Absent only in tests of other routes. */
+  home?(): HomeSuggestionService;
   /** The owner says a paid company may be tried again (topped up, new key). Absent only in tests of other routes. */
   retryPaidProvider?(provider: PaidProviderId): void;
   /** The chat, its proposals and voice input (step 9). */
@@ -583,6 +587,8 @@ export function createApi(deps: ApiDeps) {
   app.get("/usage", () => Response.json(deps.aiUsage()));
   const modelCatalog = deps.modelCatalog;
   if (modelCatalog) registerModelCatalogRoutes(app, () => modelCatalog());
+  const home = deps.home;
+  if (home) registerHomeRoutes(app, () => home());
   const agents = deps.agents;
   if (agents) registerAgentRoutes(app, () => agents(), () => deps.auth(), client);
 

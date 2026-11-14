@@ -1665,3 +1665,40 @@ describe("the catalog of models (PR S21)", () => {
     }
   });
 });
+
+describe("the home page's suggestions (PR S22)", () => {
+  it("reads a handful of rows over a long backlog; the day's first reading marks the day, a tap writes one row", async () => {
+    await runInDurableObject(owner(), (agent: ZuriAgent) => {
+      agent.testProvider = new MockAIProvider();
+      agent.store.db.run(`DELETE FROM zur_settings WHERE key IN ('home_suggestion_order', 'home_suggestion_uses')`);
+    });
+    try {
+      // The day's first reading: the rules' reads (late, bills, the review, the taps, the order) and the
+      // AI's settings, the day's mark written before the call, then the call itself in the background:
+      // its counts (capped at 20) and the usage meter's rows, once a day. Measured 43 to 49 and 6: the bill
+      // scan reads the open tasks still due today, so the hour moves it, up to its own LIMIT of 20 (P2).
+      const first = await cost("GET", "/home/suggestions");
+      expect(first.status).toBe(200);
+      expect(first.read).toBeLessThanOrEqual(65);
+      expect(first.written).toBeLessThanOrEqual(6);
+      // Every other reading: measured 9 to 12 with the session's own reads, nothing written; the same
+      // bill scan adds at most 20 rows late in the morning of a busy day.
+      const second = await cost("GET", "/home/suggestions");
+      expect(second.status).toBe(200);
+      expect(second.read).toBeLessThanOrEqual(30);
+      expect(second.written).toBe(0);
+      // A tap: one row (and its index); a second tap within the minute writes nothing.
+      const tap = await cost("POST", "/home/suggestions/today/used");
+      expect(tap.status).toBe(204);
+      expect(tap.read).toBeLessThanOrEqual(2);
+      expect(tap.written).toBeLessThanOrEqual(2);
+      const again = await cost("POST", "/home/suggestions/today/used");
+      expect(again.status).toBe(204);
+      expect(again.written).toBe(0);
+    } finally {
+      await runInDurableObject(owner(), (agent: ZuriAgent) => {
+        agent.testProvider = null;
+      });
+    }
+  });
+});
