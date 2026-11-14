@@ -262,7 +262,22 @@ aparelhos; elas não mudam nada no Google.
 
 - **Novo evento** (ou Ctrl/⌘ K > Novo evento) começa como uma Consulta
   presencial. Os campos, na ordem:
-  - **Nome completo do paciente**, que vira o título do evento.
+  - **Nome completo do paciente**, que vira o título do evento. A partir de
+    duas letras, a Zuri procura em Contatos, sem acento: primeiro os nomes
+    que começam com o que você digitou ("carla m" acha "Carla Mendes"); se
+    nenhum começa assim, cada palavra pode ser o começo de qualquer palavra
+    do nome ("mendes"). Cada pessoa aparece com o celular, a data de
+    nascimento e a última consulta, e quem já tem consulta registrada vem
+    primeiro. A última opção é sempre **Agendar “nome” sem vínculo**. Setas
+    escolhem, Enter vincula e Esc fecha a lista.
+  - Vinculada, a consulta mostra "Vinculado a Carla Mendes, nasc. 02/09/1995"
+    com o celular e o e-mail de Contatos só para leitura e **Remover
+    vínculo**. Para mudar esses dados, edite o contato no Google. Mudar o nome
+    desfaz o vínculo. Nada se vincula sozinho: com um só contato do nome, a
+    tela mostra "“Carla Mendes” está em Contatos." com **Vincular**.
+  - Homônimos: com dois ou mais contatos do mesmo nome, a consulta só é salva
+    com o contato certo da lista ou com **É outra pessoa**, que deixa o
+    celular obrigatório.
   - **DDI do paciente** (todos os países, Brasil primeiro), **Celular com
     DDD** e **E-mail de contato**, os dois opcionais. O celular toma a forma
     enquanto você digita, "(41) 99999-0000" no Brasil e em blocos de três nos
@@ -288,9 +303,14 @@ aparelhos; elas não mudam nada no Google.
   inteiro se cria no Google; aqui ele aparece e se edita.
 - Os **detalhes** de uma consulta mostram o tipo, o local (no Online, o link
   do Meet com **Copiar link**, ou "O Google está criando o link da
-  chamada…"), o paciente com o celular e o e-mail, o financeiro e a
-  observação como está no Google. O vínculo com Contatos chega numa próxima
-  entrega; até lá aparece "Sem vínculo com Contatos".
+  chamada…"), o paciente, o financeiro e a observação como está no
+  Google. O paciente vinculado aparece com a data de nascimento, o celular, o
+  e-mail, **Abrir em Contatos** e a etiqueta **Homônimo** quando outro contato
+  tem o mesmo nome. Sem vínculo, aparece "Sem vínculo com Contatos" (ou
+  "Pessoa nova, com o mesmo nome de N contatos") com o celular, o e-mail e
+  **Vincular**, que abre o formulário com a lista. Quando o contato saiu de
+  Contatos, mudou de nome lá ou Contatos está desligado, aparece "O vínculo
+  com Contatos não vale mais", e o formulário abre sem vínculo.
 - Toque num evento para ver os detalhes. Em agendas **Ler e editar**, aparecem
   **Editar** e **Apagar** (com confirmação). Em **Só ler**, só os detalhes.
 - Se alguém mudou o evento no Google depois que a tela abriu, a Zuri não
@@ -384,6 +404,8 @@ passo a passo está em [avaliacoes-google.md](avaliacoes-google.md#para-quem-ins
 | Tela Agenda e cartão em Integrações | `apps/web/src/pages/agenda/AgendaPage.tsx`, `apps/web/src/pages/settings/GoogleCard.tsx` |
 | Regras de arrastar, duração, "mover marca Reagendado" e desfazer; envio de uma mudança com o aviso | `apps/web/src/lib/agenda-edit.ts`, `apps/web/src/pages/agenda/changes.ts` |
 | Banco (migration 22) | `zur_google_account`, `zur_google_calendars` |
+| Registro do dia e última consulta de um contato (migrations 42 e 43) | `zur_agenda_record` com o índice `zur_agenda_record_contact`, `zur_agenda_closed_days`; `apps/agent/src/google/record.ts` |
+| Busca do nome e vínculo com Contatos | `apps/agent/src/google/contacts.ts` (`forBooking`), `apps/web/src/pages/agenda/PatientLink.tsx` |
 
 - Os tokens ficam cifrados com AES-256-GCM, numa chave derivada do
   `MCP_CREDENTIAL_KEY` com um `info` próprio (`google-v1`). Nunca voltam para
@@ -395,6 +417,18 @@ passo a passo está em [avaliacoes-google.md](avaliacoes-google.md#para-quem-ins
   no Google não vê esses campos e não há tabela nova na Zuri. Cada valor
   lido volta conferido: um celular fora do formato ou um país desconhecido é
   ignorado. Um campo esvaziado no "Editar" é apagado no Google.
+- O vínculo da consulta a um contato fica na mesma lista, em `zuriContact`,
+  com o `resourceName` do contato no Google (`people/c123`). Ele não muda
+  quando Contatos é desligado e ligado de novo. Com vínculo, o servidor exige
+  que o contato esteja na cópia de Contatos e que o título seja o nome dele, e
+  apaga `zuriCountry`, `zuriPhone` e `zuriEmail`: os dados são os de
+  Contatos. Sem vínculo, um nome que dois ou mais contatos têm precisa do
+  celular. Nada se vincula sozinho: só o formulário manda `contact`.
+- `GET /api/contacts?for=booking&q=…` é a busca do nome no formulário: só a
+  cópia de Contatos, nunca o Google, a partir de duas letras e até 6
+  pessoas, com `same` (quantos contatos têm exatamente esse nome). A última
+  consulta de cada pessoa sai do registro do dia, pelo índice
+  `zur_agenda_record_contact` (migration 43).
 - O Meet sai por `conferenceData.createRequest` (`hangoutsMeet`) com
   `conferenceDataVersion=1`. Só um link `https://meet.google.com/xxx-xxxx-xxx`
   vira link na tela.

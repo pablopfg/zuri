@@ -270,6 +270,20 @@ describe("delete_calendar_event", () => {
       await exec.execute("update_calendar_event", { calendar: PRIMARY, event_id: "d1", title: "Clique aqui" }, "u1");
       expect(await refused(exec.execute("delete_calendar_event", { calendar: PRIMARY, event_id: "d1" }, "d1"))).toMatch(/changed this item earlier/);
     }));
+
+  it("SEC-E5f-06: a new title takes the link to a contact off; the same title or another change keeps it", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      const linked = (id: string) => seed(world, PRIMARY, { id, summary: "Carla Mendes", extendedProperties: { private: { zuriContact: "people/c1" } } });
+      linked("l1");
+      linked("l2");
+      const exec = executor(world, world.conversations.create("x").id);
+      const sent = () => JSON.parse(world.googleSim.seen.filter((r) => r.method === "PATCH").at(-1)?.body ?? "{}") as { extendedProperties?: unknown };
+      await exec.execute("update_calendar_event", { calendar: PRIMARY, event_id: "l1", title: "Carla Souza" }, "u1");
+      expect(sent().extendedProperties).toEqual({ private: { zuriContact: null } });
+      await exec.execute("update_calendar_event", { calendar: PRIMARY, event_id: "l2", title: "Carla Mendes", location: "Sala 2" }, "u2");
+      expect(sent().extendedProperties).toBeUndefined();
+    }));
 });
 
 describe("the push channels the alarm keeps", () => {

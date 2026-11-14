@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type AgendaEvent,
+  type BookingPerson,
+  type ContactDetail,
   type AgendaPage as AgendaWindow,
   type AgendaPrefs,
   type AppointmentProblem,
@@ -89,6 +91,7 @@ import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { play } from "../../lib/sounds.ts";
 import { EVENTS_KEY, lostGoogle, useEventChanges } from "./changes.ts";
 import { CountryField, DateField, TimeField } from "./AppointmentFields.tsx";
+import { fold, LinkedPatient, type LinkedPerson, linkedOf, NameHint, PatientLine, PatientNameField, usePeople } from "./PatientLink.tsx";
 import { SyncSignal, syncKind } from "./SyncSignal.tsx";
 
 // This screen's pt-BR texts travel with its code, not in the first bundle (rule P11).
@@ -114,7 +117,7 @@ const NEW_STEP_MIN = 30;
 type T = ReturnType<typeof useI18n>["t"];
 const VIEW_TEXT: Record<AgendaView, Parameters<T>[0]> = { day: "web.agenda.view.day", week: "web.agenda.view.week", month: "web.agenda.view.month" };
 /** What the form asks to fix, each under its field (protótipo v52). */
-type Problem = "title" | "name" | "day" | "start" | "endTime" | "end" | "kind" | "phone" | "email";
+type Problem = "title" | "name" | "day" | "start" | "endTime" | "end" | "kind" | "phone" | "email" | "twins" | "phoneNeeded";
 
 const PROBLEM_TEXT: Record<Problem, Parameters<T>[0]> = {
   title: "web.agenda.form.error.title",
@@ -126,7 +129,12 @@ const PROBLEM_TEXT: Record<Problem, Parameters<T>[0]> = {
   kind: "web.agenda.form.error.kind",
   phone: "web.agenda.form.error.phone",
   email: "web.agenda.form.error.email",
+  twins: "web.agenda.form.error.twins",
+  phoneNeeded: "web.agenda.form.error.phoneNeeded",
 };
+
+/** The field a problem points at, when it is not its own name (E5f). */
+const PROBLEM_FIELD: Partial<Record<Problem, string>> = { twins: "name", phoneNeeded: "phone" };
 
 const PAYMENT_TEXT: Record<EventPayment, Parameters<T>[0]> = {
   unpaid: "web.agenda.payment.unpaid",
@@ -312,7 +320,7 @@ function useNow(): number {
 const eventsKey = (from: string, to: string) => [...EVENTS_KEY, from, to] as const;
 
 /** `plain`: a personal event, offered when a closed hour refused an appointment: it starts without a type. */
-type Editing = { mode: "new"; day: string; time?: string; minutes?: number; plain?: boolean; form?: EventForm } | { mode: "edit"; event: AgendaEvent };
+type Editing = { mode: "new"; day: string; time?: string; minutes?: number; plain?: boolean; form?: EventForm } | { mode: "edit"; event: AgendaEvent; link?: boolean };
 /** "Escolher na agenda" (protótipo v52): the form put away while the owner taps a day and an hour. */
 type Picking = { form: EventForm };
 /** A refusal of the form: why, the field it points at, the hour asked and the next free one. */
@@ -672,9 +680,9 @@ export function AgendaPage() {
         onNote={note}
         // Only while the details still show that event: closed, or on another one, the answer changes nothing here.
         onChange={(saved) => setOpen((old) => (old && eventKey(old) === eventKey(saved) ? saved : old))}
-        onEdit={(event) => {
+        onEdit={(event, link) => {
           setOpen(null);
-          setEditing({ mode: "edit", event });
+          setEditing(link ? { mode: "edit", event, link: true } : { mode: "edit", event });
         }}
       />
       {editing && (
@@ -1664,7 +1672,8 @@ function EventDialog({
   onSend: () => void;
   /** The event as Google answered after a change of status: the dialog stays open on it, with the new version. */
   onChange: (event: AgendaEvent) => void;
-  onEdit: (event: AgendaEvent) => void;
+  /** `link`: "Vincular", which opens the form with the list of Contacts (E5f). */
+  onEdit: (event: AgendaEvent, link?: boolean) => void;
   /** A line in "Últimas mudanças" of the sync signal: what happened, and whether it reached Google. */
   onNote: (text: string, ok: boolean) => void;
 }) {
@@ -1791,9 +1800,7 @@ function EventDialog({
                 </Detail>
                 <AppointmentPlace event={event} place={placeOf(type)} />
                 <Detail icon={<User className="h-4 w-4" />} label={t("web.agenda.event.patient")}>
-                  <span>{t("web.agenda.event.unlinked")}</span>
-                  {event.phone && <span className="block text-fg-muted">{phoneText(event.country ?? HOME_COUNTRY, event.phone)}</span>}
-                  {event.email && <span className="block break-all text-fg-muted">{event.email}</span>}
+                  <PatientLine event={event} onLink={editable && !event.contactId ? () => onEdit(event, true) : undefined} />
                 </Detail>
                 <Detail icon={<Wallet className="h-4 w-4" />} label={t("web.agenda.event.payment")}>
                   {t(PAYMENT_TEXT[event.payment ?? "unpaid"])}
@@ -1996,11 +2003,27 @@ function EventFormDialog({
   // The phone as it is typed: "(41) 99999-0000" in Brazil.
   const [form, setForm] = useState<EventForm>(() => ({ ...initial, phone: maskPhone(initial.phone, initial.country) }));
   const [problem, setProblem] = useState<Problem | null>(null);
+  /** The linked contact as the form shows it (E5f): picked from the list, or read from its card when editing. */
+  const [picked, setPicked] = useState<LinkedPerson | null>(null);
+  /** "É outra pessoa": the name two or more contacts share is someone new, and the phone is required. */
+  const [otherPerson, setOtherPerson] = useState(false);
+  const card = useQuery({
+    queryKey: ["contact", editing.mode === "edit" ? editing.event.contactId : undefined],
+    queryFn: ({ signal }) => api<{ contact: ContactDetail }>(`/contacts/${encodeURIComponent(editing.mode === "edit" ? (editing.event.contactId ?? "") : "")}`, { signal }),
+    enabled: editing.mode === "edit" && !!editing.event.contactId && !!initial.contact,
+    staleTime: 30_000,
+  });
+  const linked: LinkedPerson | null = form.contact ? (picked ?? (card.data && form.contact === initial.contact ? linkedOf(card.data.contact) : null)) : null;
   /** The type picked: a kind of the list, "other" to write one, or "" for a plain event (protótipo v52). */
   const [kindChoice, setKindChoice] = useState(() => kindOf(initial.type));
   const [otherKind, setOtherKind] = useState("");
   const [place, setPlace] = useState<Place>(() => placeOf(initial.type));
   const appointment = kindChoice !== "";
+  /** Contacts with the name typed (E5f); none once linked, or for a plain event. */
+  const people = usePeople(form.title, appointment && !form.contact);
+  const page = form.contact ? undefined : people.data;
+  /** The name is new here: an unchanged name of an event keeps what it was (the server checks the same). */
+  const renamed = editing.mode === "new" || fold(form.title) !== fold(initial.title);
   const kinds = kindList(types, initial.type);
   const listId = useId();
   /** The type line follows the kind and the place: "Consulta | Online". */
@@ -2022,6 +2045,16 @@ function EventFormDialog({
     setRefusal(null);
   };
 
+  /** A contact picked (E5f): its name, and its phone and e-mail only to read; the focus goes to the day. */
+  const link = (person: BookingPerson) => {
+    setForm((old) => ({ ...old, title: person.name, contact: person.resource, country: HOME_COUNTRY, phone: "", email: "" }));
+    setPicked(person);
+    setOtherPerson(false);
+    setProblem(null);
+    setRefusal(null);
+    requestAnimationFrame(() => fields.current?.querySelector<HTMLElement>('[data-field="day"]')?.focus());
+  };
+
   /** The rule's verdict on the form as it is, or null: only for an appointment whose day or hours are new. */
   const ruleProblem = (body: { allDay: boolean; start: string; end: string; description: string }) => {
     if (body.allDay || !form.type || form.status === "cancelled") return null;
@@ -2041,7 +2074,7 @@ function EventFormDialog({
   // A field to fix gets the focus, with its message under it.
   useEffect(() => {
     // An end before the start points at the end's hour; an all-day event has its own message.
-    const field = problem === "end" && !form.allDay ? "endTime" : problem;
+    const field = problem === "end" && !form.allDay ? "endTime" : problem ? (PROBLEM_FIELD[problem] ?? problem) : null;
     const input = field ? fields.current?.querySelector<HTMLElement>(`[data-field="${field}"]`) : null;
     if (!input) return;
     input.focus();
@@ -2054,8 +2087,12 @@ function EventFormDialog({
   /** The first field to fix, in the order of the form. */
   const check = (): Problem | null => {
     if (!form.title.trim()) return appointment ? "name" : "title";
-    if (appointment && !phoneFits(form.country, form.phone)) return "phone";
-    if (appointment && !emailFits(form.email)) return "email";
+    // Homonyms never link on their own (12/11/2026): the right contact, or "É outra pessoa" with a phone.
+    const twins = appointment && !form.contact && renamed && (page?.same ?? 0) >= 2;
+    if (twins && !otherPerson) return "twins";
+    if (appointment && !form.contact && !form.phone.trim() && (twins || (otherPerson && renamed))) return "phoneNeeded";
+    if (appointment && !form.contact && !phoneFits(form.country, form.phone)) return "phone";
+    if (appointment && !form.contact && !emailFits(form.email)) return "email";
     if (!form.allDay) {
       if (!form.startDate) return "day";
       if (!form.startTime) return "start";
@@ -2110,6 +2147,7 @@ function EventFormDialog({
       // SEC-E5e-03: an appointment that becomes a plain event takes the patient's fields off at Google too.
       const kept = editing.event;
       if (!appointment && (kept.country || kept.phone || kept.email || kept.payment)) Object.assign(changes, { country: "", phone: "", email: "", payment: "" });
+      if (!appointment && kept.contact) changes.contact = "";
       // SEC-E5e-02: only the place changed here asks for a call (Online) or takes it off (Presencial). Any other
       // change leaves Google's call as it is: a meeting made at Google keeps its link and its guests' link.
       if (appointment && place !== placeOf(initial.type)) changes.meet = meet;
@@ -2124,7 +2162,9 @@ function EventFormDialog({
     try {
       // Without a color the event counts as "Agendado": only another status is sent.
       const colorId = form.status && form.status !== "scheduled" ? { colorId: EVENT_STATUS_COLOR[form.status] } : {};
-      const made = await api<{ event: AgendaEvent }>("/google/events", { method: "POST", body: { calendarId: form.calendarId, ...body, ...colorId, ...(patient ?? {}), ...(meet ? { meet: true } : {}) } });
+      // A new event has no link to take off: only a contact picked goes.
+      const { contact, ...own } = patient ?? { contact: "" };
+      const made = await api<{ event: AgendaEvent }>("/google/events", { method: "POST", body: { calendarId: form.calendarId, ...body, ...colorId, ...own, ...(contact ? { contact } : {}), ...(meet ? { meet: true } : {}) } });
       // QA-E5e-03: what Google answered about the call, never a link it did not make.
       const call = made.event.meet;
       const meetText = !meet ? "" : call?.startsWith("https://") ? t("web.agenda.meetMade") : call === "pending" ? t("web.agenda.event.meetPending") : t("web.agenda.event.meetFailed");
@@ -2149,18 +2189,48 @@ function EventFormDialog({
   return (
     <Dialog open onClose={onClose} title={t(editing.mode === "new" ? "web.agenda.form.newTitle" : "web.agenda.form.editTitle")}>
       <form ref={fields} onSubmit={submit} className="space-y-4" noValidate>
-        <TextField
-          data-field={appointment ? "name" : "title"}
-          label={t(appointment ? "web.agenda.form.patient" : "web.agenda.form.title")}
-          value={form.title}
-          maxLength={GOOGLE_LIMITS.titleMax}
-          required
-          autoFocus
-          error={error(appointment ? "name" : "title")}
-          onChange={(e) => set("title", e.target.value)}
-        />
-        {/* The patient's contact (12/11/2026): an appointment only; a plain event has none. */}
-        {appointment && (
+        {appointment ? (
+          <PatientNameField
+            label={t("web.agenda.form.patient")}
+            value={form.title}
+            error={error("name") ?? error("twins")}
+            page={page}
+            startOpen={editing.mode === "edit" && !!editing.link}
+            onType={(text) => {
+              // A new name undoes the link and the contact's data with it (item 5): one person's data never stays on another's appointment.
+              setForm((old) => ({ ...old, title: text, contact: "" }));
+              setPicked(null);
+              setOtherPerson(false);
+              setProblem(null);
+              setRefusal(null);
+            }}
+            onPick={link}
+          >
+            <NameHint name={form.title} page={page} other={otherPerson} onLink={link} onOther={() => setOtherPerson(true)} />
+          </PatientNameField>
+        ) : (
+          <TextField
+            data-field="title"
+            label={t("web.agenda.form.title")}
+            value={form.title}
+            maxLength={GOOGLE_LIMITS.titleMax}
+            required
+            autoFocus
+            error={error("title")}
+            onChange={(e) => set("title", e.target.value)}
+          />
+        )}
+        {appointment && linked && (
+          <LinkedPatient
+            person={linked}
+            onRemove={() => {
+              setForm((old) => ({ ...old, contact: "", phone: "", email: "" }));
+              setPicked(null);
+            }}
+          />
+        )}
+        {/* The patient's contact (12/11/2026): an appointment only; a plain event has none. Linked, it is the contact's. */}
+        {appointment && !form.contact && (
           <div className="grid gap-3 sm:grid-cols-2">
             <CountryField
               value={form.country}
@@ -2176,7 +2246,7 @@ function EventFormDialog({
               autoComplete="off"
               value={form.phone}
               placeholder={t(form.country === HOME_COUNTRY ? "web.agenda.form.phonePlaceholder" : "web.agenda.form.phoneAbroad")}
-              error={error("phone")}
+              error={error("phone") ?? error("phoneNeeded")}
               onChange={(e) => set("phone", maskPhone(e.target.value, form.country))}
             />
             <TextField

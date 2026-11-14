@@ -2,7 +2,7 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { isCountry, PATIENT_EMAIL, validPhone } from "./countries.ts";
+import { CONTACT_RESOURCE, isCountry, PATIENT_EMAIL, validPhone } from "./countries.ts";
 import { CALENDAR_MODES, EVENT_PAYMENTS, EVENT_STATUS_COLOR, GOOGLE_LIMITS, GOOGLE_STATE_PREFIX, PATIENT_LIMITS } from "./google.ts";
 
 /**
@@ -60,6 +60,8 @@ const patientFields = /* @__PURE__ */ (() => ({
   phone: z.string().regex(/^\d{0,15}$/).optional(),
   email: z.union([z.literal(""), z.string().max(PATIENT_LIMITS.emailMax).regex(PATIENT_EMAIL)]).optional(),
   payment: z.enum([...EVENT_PAYMENTS, ""]).optional(),
+  /** The contact the appointment is linked to (E5f), by its `resourceName`; "" takes the link off. */
+  contact: z.union([z.literal(""), z.string().regex(CONTACT_RESOURCE)]).optional(),
   /** Ask Google for a Meet call (true) or take the call off (false). */
   meet: z.boolean().optional(),
 }))();

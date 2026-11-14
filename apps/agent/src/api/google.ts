@@ -3,6 +3,7 @@ import {
   type AgendaPrefs,
   type AgendaPage,
   type AgendaRecordLast,
+  type BookingPage,
   calendarModeSchema,
   CONTACT_LIMITS,
   contactLabelsSchema,
@@ -13,6 +14,7 @@ import {
   googleEventDeleteSchema,
   googleEventsQuerySchema,
   googleEventUpdateSchema,
+  typeLine,
 } from "@zuri/shared";
 import type { Context, Hono } from "hono";
 import type { ClientInfo } from "../auth/client.ts";
@@ -20,13 +22,13 @@ import type { AuthService } from "../auth/service.ts";
 import { CHANNEL_ID, GOOGLE_CHANNEL_HEADER, GOOGLE_PUSH_PATH, GOOGLE_STATE_HEADER, GOOGLE_TOKEN_HEADER, isGooglePushToken } from "../gates/google-push.ts";
 import { contactAppointments } from "../google/appointments.ts";
 import { checkBooking, checkOpenDay, shapeOf } from "../google/booking.ts";
-import type { GoogleContacts } from "../google/contacts.ts";
+import { type GoogleContacts, searchText } from "../google/contacts.ts";
 import type { AgendaRecord } from "../google/record.ts";
 import type { ReviewMatches } from "../reviews/matches.ts";
 import type { ReviewRequests } from "../reviews/requests.ts";
 import type { ReviewService } from "../reviews/service.ts";
 import { toAppError } from "../google/errors.ts";
-import { type EventDraft, eventBody, localInstant, nextDay } from "../google/events.ts";
+import { type CalendarEvent, type EventDraft, eventBody, localInstant, nextDay } from "../google/events.ts";
 import { type GoogleCalendar, GoogleError, GoogleMeter } from "../google/service.ts";
 import { AppError } from "../http/errors.ts";
 import type { ApiEnv } from "./app.ts";
@@ -75,7 +77,9 @@ async function owner<T>(work: () => Promise<T>): Promise<T> {
  */
 
 /** The patient's contact and the payment of an appointment, kept in the event's private properties (E5e). */
-const PATIENT_KEYS = ["country", "phone", "email", "payment"] as const;
+const PATIENT_KEYS = ["country", "phone", "email", "payment", "contact"] as const;
+/** What the name field of the Agenda offers at once (E5f). */
+const BOOKING_PEOPLE = 6;
 
 export function registerGooglePush(app: Hono<ApiEnv>, deps: () => GoogleRouteDeps): void {
   app.post(GOOGLE_PUSH_PATH.replace(/^\/api/, ""), async (c) => {
@@ -218,6 +222,7 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     const query = contactsQuerySchema.safeParse({ q: c.req.query("q") || undefined, label: c.req.query("label") || undefined, after: c.req.query("after") || undefined });
     if (!query.success) throw new AppError("VALIDATION_FAILED");
     const { contacts } = deps();
+    if (c.req.query("for") === "booking") return Response.json(bookingPeople(query.data.q ?? ""));
     return Response.json(contacts.search({ query: query.data.q, label: query.data.label, after: query.data.after, limit: CONTACT_LIMITS.screenPage }));
   });
 
@@ -256,7 +261,14 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     );
     const partial = more || skipped.length > 0;
     const shown = deps().record.apply(events, query.data.from, query.data.to, calendars.map((calendar) => calendar.id), !partial);
-    return Response.json({ ...page, events: shown, more: partial } satisfies AgendaPage);
+    // The link's contact in the copy, for the details (E5f). One that left the copy, or whose name is not the
+    // event's title (SEC-E5f-05: a link copied onto another person's event), keeps only its `contact`.
+    const ids = deps().contacts.idsOf([...new Set(shown.flatMap((event) => (event.contact ? [event.contact] : [])))]);
+    const linked = shown.map((event) => {
+      const person = event.contact ? ids.get(event.contact) : undefined;
+      return person && searchText(person.name) === searchText(event.title) ? { ...event, contactId: person.id } : event;
+    });
+    return Response.json({ ...page, events: linked, more: partial } satisfies AgendaPage);
   });
 
   /** The last day the record closed, for Configurações › Agenda. */
@@ -270,6 +282,7 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     if (input.description) draft.description = input.description;
     for (const key of PATIENT_KEYS) if (input[key]) draft[key] = input[key];
     if (input.meet) draft.meet = true;
+    checkPatient(draft, {});
     const event = await owner(async () => {
       const zone = deps().timeZone();
       const body = eventBody(draft, zone);
@@ -296,6 +309,7 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
       for (const key of PATIENT_KEYS) if (input[key] !== undefined && input[key] !== (current[key] ?? "")) draft[key] = input[key];
       // SEC-E5e-05: a call that failed counts as none, so Online can ask for it again.
       if (input.meet !== undefined && input.meet !== (current.meet !== undefined && current.meet !== "failed")) draft.meet = input.meet;
+      checkPatient(draft, current);
       const base = current.allDay ? { start: { date: current.start }, end: { date: current.end } } : { start: { dateTime: current.start }, end: { dateTime: current.end } };
       const zone = deps().timeZone();
       const patch = eventBody(draft, zone, base);
@@ -307,6 +321,69 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     });
     return Response.json({ event });
   });
+
+  /**
+   * The people the Agenda's name field offers (E5f): the very name typed first, then who already has an
+   * appointment recorded, the latest first, then the rest by name. `same` counts the contacts with the very name typed.
+   */
+  function bookingPeople(query: string): BookingPage {
+    const { contacts, record } = deps();
+    const found = contacts.forBooking(query);
+    const visits = record.lastVisits(found.people);
+    // QA-E5f-08: the very name typed comes first, so the form's "Vincular" always finds it in the six.
+    const typed = searchText(query);
+    const exact = (name: string) => (searchText(name) === typed ? 1 : 0);
+    const people = found.people
+      .map((person) => ({ ...person, lastVisit: visits.get(person.resource) ?? "" }))
+      .sort((a, b) => exact(b.name) - exact(a.name) || b.lastVisit.localeCompare(a.lastVisit) || a.name.localeCompare(b.name, "pt-BR"))
+      .slice(0, BOOKING_PEOPLE);
+    return { people, same: found.same };
+  }
+
+  /**
+   * The link of an appointment to a contact (E5f), as it will be after this change. A link needs the
+   * contact in the copy and its name as the title, and then the event keeps no phone nor e-mail of its
+   * own: they are the contact's. Without a link, a name two or more contacts share needs a phone, which is
+   * what tells the people apart. Homonyms never link on their own: only the form sends `contact`. An
+   * event without a type ("Sem tipo") is no appointment and has no link.
+   */
+  function checkPatient(draft: EventDraft, current: Partial<CalendarEvent>): void {
+    const { contacts } = deps();
+    const title = draft.title ?? current.title ?? "";
+    const description = draft.description ?? current.description ?? "";
+    if (typeLine(description) === "") {
+      // QA-E5f-06: a plain event takes no link, and one that stops being an appointment loses it.
+      if (current.contact) draft.contact = "";
+      else delete draft.contact;
+      return;
+    }
+    // SEC-E5f-04: a link kept from before whose contact left the copy, or is no longer this name, counts as
+    // none, as the form shows it; a new name takes it off at Google.
+    const kept = draft.contact === undefined && current.contact ? contacts.byResource(current.contact) : null;
+    if (kept === null && draft.contact === undefined && current.contact) {
+      if (draft.title !== undefined) draft.contact = "";
+    } else if (kept && draft.title !== undefined && searchText(kept.name) !== searchText(title)) {
+      throw new AppError("VALIDATION_FAILED", "error.agendaContactName");
+    }
+    const contact = draft.contact !== undefined ? draft.contact : kept ? (current.contact ?? "") : "";
+    if (contact) {
+      if (draft.contact !== undefined) {
+        const person = contacts.byResource(contact);
+        if (!person) throw new AppError("VALIDATION_FAILED", "error.agendaContactGone");
+        if (searchText(person.name) !== searchText(title)) throw new AppError("VALIDATION_FAILED", "error.agendaContactName");
+      }
+      // SEC-E5f-04: while linked, the event keeps no phone nor e-mail of its own, whatever the change sends.
+      for (const key of ["country", "phone", "email"] as const) {
+        if (current[key]) draft[key] = "";
+        else delete draft[key];
+      }
+      return;
+    }
+    // QA-E5f-07: turning a plain event into an appointment asks for the phone too.
+    if (draft.title === undefined && draft.phone === undefined && draft.contact === undefined && draft.description === undefined) return;
+    const phone = draft.phone !== undefined ? draft.phone : (current.phone ?? "");
+    if (!phone && contacts.homonyms(title) >= 2) throw new AppError("VALIDATION_FAILED", "error.agendaSameNamePhone");
+  }
 
   app.delete("/google/events", async (c) => {
     const input = await readJson(c.req.raw, googleEventDeleteSchema, 4 * 1024);

@@ -111,6 +111,13 @@ describe("the event form", () => {
     expect(formBody(whole)).toMatchObject({ allDay: true, start: "2026-11-03", end: "2026-11-04" });
   });
 
+  it("CA9 (E5f): the form opens with the link only while the contact is in the copy under this name", () => {
+    expect(formOf(event({ contact: "people/c1", contactId: "id-1" }), SP).contact).toBe("people/c1");
+    // Out of the copy, renamed there, or Contacts off: no contactId, and the form shows no link.
+    expect(formOf(event({ contact: "people/c1" }), SP).contact).toBe("");
+    expect(formOf(event({}), SP).contact).toBe("");
+  });
+
   it("refuses an empty title, a bad date and an end not after the start", () => {
     const base = blankForm("2026-11-05", "c", SP, Date.parse("2026-11-03T13:00:00Z"));
     expect(formBody({ ...base, title: "   " })).toBe("title");

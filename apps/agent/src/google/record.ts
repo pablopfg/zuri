@@ -1,7 +1,8 @@
-import { type AgendaChange, dayPlus } from "@zuri/shared";
+import { type AgendaChange, dayPlus, EVENT_STATUS_COLOR } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
 import type { InternalState } from "../db/internal-state.ts";
 import { log } from "../log.ts";
+import { SQL_BATCH, searchText } from "./contacts.ts";
 import { eventDay } from "./booking.ts";
 import { type CalendarEvent, localInstant, localToday } from "./events.ts";
 import { type GoogleCalendar, GoogleMeter } from "./service.ts";
@@ -23,6 +24,8 @@ const RECORD_BUDGET = 12;
 const RETRY_MS = 15 * 60_000;
 const PER_CALENDAR = 100;
 const MAX_EVENTS = 200;
+/** How far back the "last appointment" of a contact is looked for in the record (E5f). */
+export const VISIT_DAYS = 400;
 
 /** An event of a closed day as the Agenda shows it: the copy, with what changed at Google after the closing. */
 export type RecordedEvent = CalendarEvent & { changedAtGoogle?: AgendaChange };
@@ -130,6 +133,38 @@ export class AgendaRecord {
     });
     state.delete("agenda_record_retry_at");
     return true;
+  }
+
+  /**
+   * The last recorded appointment of each linked contact (E5f), by `resourceName`: the closed days of the
+   * last VISIT_DAYS days only, cancelled ones left out, read by the contact's index (migration 43). A copy
+   * whose title is not the contact's name does not count (SEC-E5f-05: a link copied onto another person's
+   * event at a shared calendar).
+   */
+  lastVisits(people: readonly { resource: string; name: string }[]): Map<string, string> {
+    const out = new Map<string, string>();
+    const today = this.today();
+    const names = new Map(people.map((person) => [person.resource, searchText(person.name)]));
+    const resources = [...names.keys()];
+    // SEC-E5f-02: SQLite takes 100 values a query, so the candidates go in batches.
+    for (let at = 0; at < resources.length; at += SQL_BATCH) {
+      const part = resources.slice(at, at + SQL_BATCH);
+      const rows = this.deps.db.all<{ contact: string; day: string; title: unknown }>(
+        // By the index of migration 43: the same expression, and IS NOT NULL so the partial index applies.
+        `SELECT json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') AS contact, day, json_extract(data, '$.title') AS title FROM zur_agenda_record
+         WHERE json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IS NOT NULL AND json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IN (${part.map(() => "?").join(",")})
+           AND day >= ? AND day < ? AND COALESCE(json_extract(data, '$.colorId'), '') != ?`,
+        ...part,
+        dayPlus(today, -VISIT_DAYS),
+        today,
+        EVENT_STATUS_COLOR.cancelled,
+      );
+      for (const row of rows) {
+        if (typeof row.title !== "string" || searchText(row.title) !== names.get(row.contact)) continue;
+        if (row.day > (out.get(row.contact) ?? "")) out.set(row.contact, row.day);
+      }
+    }
+    return out;
   }
 
   /** The last day closed, when and with how many events: Configurações › Agenda shows it. */

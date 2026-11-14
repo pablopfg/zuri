@@ -99,6 +99,10 @@ export interface AgendaEvent {
   phone?: string;
   email?: string;
   payment?: EventPayment;
+  /** The contact the appointment is linked to (E5f): its `resourceName` at Google. */
+  contact?: string;
+  /** The linked contact's id in Zuri's copy of Contacts, when it is still there. */
+  contactId?: string;
   /** The Google Meet call: its address once Google made it, or "pending" while Google makes it. */
   meet?: string;
 }

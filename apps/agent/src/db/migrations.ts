@@ -1915,6 +1915,18 @@ export const MIGRATIONS: readonly Migration[] = [
       ) WITHOUT ROWID`,
     ],
   },
+  {
+    version: 43,
+    name: "agenda_record_contact",
+    statements: [
+      // E5f (plano agenda-vinculo-com-contatos.md): the last appointment of a linked contact, read at every
+      // key of the Agenda's name field. Without it each search reads the whole record; with it, a few rows
+      // of each contact. Only rows with a link are in the index. The expression is the very text of
+      // AgendaRecord.lastVisits, or SQLite would not use it; json_valid keeps a row that is not JSON from
+      // failing the index (and this migration) instead of being left out.
+      `CREATE INDEX IF NOT EXISTS zur_agenda_record_contact ON zur_agenda_record (json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact'), day) WHERE json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IS NOT NULL`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

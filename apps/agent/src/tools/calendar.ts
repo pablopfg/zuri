@@ -379,6 +379,9 @@ export const calendarTools = [
       }
       const patch = body(draftOf(input), ctx.timeZone, current);
       if (Object.keys(patch).length === 0) throw new ToolError("Say what to change: title, start, end, location or description.");
+      // SEC-E5f-06: the title of an appointment linked to a contact is that contact's name; a new one takes the
+      // link off, so one person's appointment never stays tied to another (the Agenda's form does the same).
+      if (input.title !== undefined && current.contact && input.title !== current.title) patch.extendedProperties = { private: { zuriContact: null } };
       await keepsAgenda(ctx, calendar, shapeOf(patch, current), current, "changed");
       const updated = await google(() => calendar.updateEvent(chosen.id, current.id, patch, current.etag, meter(ctx)));
       // The model renamed or moved it: a deletion proposed later in this turn would show its own words.

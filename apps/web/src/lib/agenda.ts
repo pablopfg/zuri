@@ -170,6 +170,8 @@ export interface EventForm {
   phone: string;
   email: string;
   payment: EventPayment;
+  /** The contact the appointment is linked to (E5f), by its `resourceName`; "" for none. */
+  contact: string;
 }
 
 /**
@@ -198,6 +200,7 @@ export function blankForm(day: string, calendarId: string, timeZone: string, now
     phone: "",
     email: "",
     payment: "unpaid",
+    contact: "",
   };
 }
 
@@ -214,6 +217,8 @@ export function formOf(event: AgendaEvent, timeZone: string): EventForm {
     phone: event.phone ?? "",
     email: event.email ?? "",
     payment: event.payment ?? "unpaid",
+    // A link whose contact left the copy opens as none (plano E5f, CA9).
+    contact: event.contact && event.contactId ? event.contact : "",
   };
   if (event.allDay) {
     const { first, last } = eventDays(event, timeZone);
