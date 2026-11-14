@@ -24,4 +24,6 @@ regexes = [
   '''^wOOMmS0NgL81YSjmS0UwAl7PotpIuPUi0q3Z2acC0Gk$''',
   # base64url of "segredo-de-teste", the sample push subscription of the e2e and the demo data.
   '''^c2VncmVkby1kZS10ZXN0ZQ$''',
+  # A made-up SMTP app password of the e-mail tests (E6c), in the history of PR #353 (the test now builds its values).
+  '''^longa1234567$''',
 ]

@@ -109,10 +109,11 @@ describe("E6c: saving how e-mail goes out", () => {
   });
 
   it("keeps a short password's end hidden", async () => {
-    expect((await saveSmtp({}, { password: "curta123456" })).status).toBe(200);
+    // 11 characters keep the end hidden, 12 show its last 4 (built here: never a password-like literal in the repository).
+    expect((await saveSmtp({}, { password: "exemplo".padEnd(11, "-") })).status).toBe(200);
     expect((await status()).smtp?.passwordEnd).toBeNull();
-    expect((await saveSmtp({}, { password: "longa1234567" })).status).toBe(200);
-    expect((await status()).smtp?.passwordEnd).toBe("4567");
+    expect((await saveSmtp({}, { password: "exemplo".padEnd(12, "-") })).status).toBe(200);
+    expect((await status()).smtp?.passwordEnd).toBe("----");
   });
 
   it("asks for the password typed recently: 14:50 ago goes, 15:01 ago is refused and writes nothing", async () => {
