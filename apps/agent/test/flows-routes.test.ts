@@ -272,6 +272,29 @@ describe("/api/flows/connections", () => {
     expect(kinds).toEqual(["flow_connection_changed"]);
   });
 
+  it("a fzap credential (E6b) asks for the password to be made and changed, tells the owner and never answers the token", async () => {
+    const body = { kind: "fzap", name: "fzap do consultório", origin: "https://fzap.exemplo.com.br", credential: "token-da-instancia-de-rota-5e6f" };
+    await stale();
+    expect((await api("POST", "/flows/connections", body)).status).toBe(403);
+    await fresh();
+    const res = await api("POST", "/flows/connections", body);
+    expect(res.status).toBe(201);
+    const text = await res.text();
+    expect(text).not.toContain("token-da-instancia-de-rota-5e6f");
+    const { connection } = JSON.parse(text) as { connection: FlowConnection };
+    expect(connection).toMatchObject({ kind: "fzap", origin: "https://fzap.exemplo.com.br", hasCredential: true, keyEnd: "5e6f" });
+    await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_auth_events`));
+    await stale();
+    expect((await api("PATCH", `/flows/connections/${connection.id}`, { name: "fzap" })).status).toBe(403);
+    await fresh();
+    const moved = await api("PATCH", `/flows/connections/${connection.id}`, { origin: "https://outra.exemplo.com.br" });
+    expect(moved.status).toBe(400);
+    expect(await moved.json()).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["credential"] } });
+    expect((await api("PATCH", `/flows/connections/${connection.id}`, { credential: "token-novo-da-instancia-7a8b" })).status).toBe(200);
+    const kinds = await inOwner((agent) => agent.store.db.all<{ kind: string }>(`SELECT kind FROM zur_auth_events`).map((r) => r.kind));
+    expect(kinds).toEqual(["flow_connection_changed"]);
+  });
+
   it("refuses a dangerous header, a line break in the credential and DELETE", async () => {
     for (const body of [
       { ...connectionBody, auth: "header", headerName: "Cookie" },

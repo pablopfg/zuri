@@ -15,6 +15,8 @@ import {
   type FlowRunProblem,
   flowConnectionCreateSchema,
   flowConnectionUpdateSchema,
+  fzapConnectionCreateSchema,
+  fzapConnectionUpdateSchema,
 } from "@zuri/shared";
 import { recordActivity } from "../db/activity.ts";
 import type { Database } from "../db/database.ts";
@@ -56,6 +58,8 @@ export const CONNECTION_KINDS: Record<FlowConnectionKind, { info: string; freeFi
   // The owner's conversation with Zuri (docs/planos/zuri-no-chatwoot.md): the inbox's public access and its
   // signing secret, sealed together. Only Settings › Chatwoot makes or opens it; no screen edits it here.
   "chatwoot-dono": { info: "chatwoot-dono-v1", freeFields: [] },
+  // E6b: the instance's token; its client reads the session's state and (E8) sends a Pix, nothing else.
+  fzap: { info: "fzap-v1", freeFields: [] },
 };
 
 /** The kind kept apart from CRM › Credentials: never listed, changed or called by a flow. */
@@ -74,6 +78,9 @@ const OWNER_FIELDS = ["inboxIdentifier", "secret", "hmacToken", "identifier", "s
 
 /** The Chatwoot's key goes in this header (its API's own name). */
 export const CHATWOOT_KEY_HEADER = "api_access_token";
+
+/** The fzap's instance token goes in this header (its API's own name; never `Authorization`). */
+export const FZAP_KEY_HEADER = "token";
 
 /** A key shows its end only when it is long enough that 4 characters don't give it away. */
 const KEY_END_FROM = 12;
@@ -251,21 +258,28 @@ export class FlowConnections {
     return this.#vaults[OWNER_KIND].available;
   }
 
+  /** The shared ceiling of credentials, every kind but the owner's inbox. */
+  private room(): void {
+    const count = this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_flow_connections WHERE kind != ?`, OWNER_KIND)?.n ?? 0;
+    if (count >= FLOW_LIMITS.connections) throw new AppError("CONFLICT", "error.flowConnectionLimit", { limit: FLOW_LIMITS.connections });
+  }
+
   /** `kind` picks the schema; left out, it is `http`, as every body of before. */
   async create(input: unknown, opts: { development: boolean }): Promise<string> {
     const kind = kindOfBody(input);
-    const count = this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_flow_connections WHERE kind != ?`, OWNER_KIND)?.n ?? 0;
     const id = crypto.randomUUID();
     const at = new Date(this.clock()).toISOString();
     if (kind === "chatwoot") {
       const data = parse(chatwootConnectionCreateSchema, input);
       checkOrigin(data.origin, opts.development);
-      if (count >= FLOW_LIMITS.connections) throw new AppError("CONFLICT", "error.flowConnectionLimit", { limit: FLOW_LIMITS.connections });
+      this.room();
       const settings = chatwootSettings({ meta: null });
       const meta = { ...settings, accountId: data.accountId, bulkGap: data.bulkGap ?? settings.bulkGap, oneGap: data.oneGap ?? settings.oneGap };
       const gaps = chatwootGapsProblem(meta.bulkGap, meta.oneGap);
       if (gaps) throw new AppError("VALIDATION_FAILED", "error.chatwootGaps", { fields: [gaps] });
       const credential = await this.seal("chatwoot", id, data.credential);
+      // Again after the sealing's await: two saves at once must not both pass the ceiling.
+      this.room();
       this.db.run(
         `INSERT INTO zur_flow_connections (id, name, origin, methods, paths, auth, header_name, credential, kind, meta, key_end, created_at, updated_at) VALUES (?, ?, ?, '[]', '[]', 'header', ?, ?, 'chatwoot', ?, ?, ?, ?)`,
         id,
@@ -281,11 +295,34 @@ export class FlowConnections {
       recordActivity(this.db, "flow.connection_added", { auth: "header", kind });
       return id;
     }
+    if (kind === "fzap") {
+      const data = parse(fzapConnectionCreateSchema, input);
+      checkOrigin(data.origin, opts.development);
+      this.room();
+      const credential = await this.seal("fzap", id, data.credential);
+      // Again after the sealing's await: two saves at once must not both pass the ceiling.
+      this.room();
+      this.db.run(
+        `INSERT INTO zur_flow_connections (id, name, origin, methods, paths, auth, header_name, credential, kind, key_end, created_at, updated_at) VALUES (?, ?, ?, '[]', '[]', 'header', ?, ?, 'fzap', ?, ?, ?)`,
+        id,
+        data.name,
+        data.origin,
+        FZAP_KEY_HEADER,
+        credential,
+        keyEnd(data.credential),
+        at,
+        at,
+      );
+      recordActivity(this.db, "flow.connection_added", { auth: "header", kind });
+      return id;
+    }
     const data = parse(flowConnectionCreateSchema, input);
     checkOrigin(data.origin, opts.development);
-    if (count >= FLOW_LIMITS.connections) throw new AppError("CONFLICT", "error.flowConnectionLimit", { limit: FLOW_LIMITS.connections });
+    this.room();
     const withKey = data.auth !== "none" && data.credential ? data.credential : null;
     const credential = withKey ? await this.seal("http", id, withKey) : null;
+    // Again after the sealing's await: two saves at once must not both pass the ceiling.
+    this.room();
     this.db.run(
       `INSERT INTO zur_flow_connections (id, name, origin, methods, paths, auth, header_name, credential, kind, key_end, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'http', ?, ?, ?)`,
       id,
@@ -314,6 +351,7 @@ export class FlowConnections {
     const row = this.row(id);
     const kind = knownKind(row.kind);
     if (kind === "chatwoot") return this.updateChatwoot(row, input, opts);
+    if (kind === "fzap") return this.updateFzap(row, input, opts);
     if (kind !== "http") throw new AppError("CONFLICT", "error.flowConnectionKind");
     const patch = parse(flowConnectionUpdateSchema, input);
     const origin = patch.origin ?? row.origin;
@@ -411,6 +449,32 @@ export class FlowConnections {
     if (kept.rowsWritten === 0) throw new AppError("CONFLICT");
     const sensitive = moved || patch.credential !== undefined || patch.inboxId !== undefined;
     if (sensitive || patch.bulkGap !== undefined || patch.oneGap !== undefined) recordActivity(this.db, "flow.connection_changed", { auth: "header", kind: "chatwoot" });
+    return { sensitive };
+  }
+
+  /** A fzap change (E6b): a new address needs the token again, since the token belongs to that instance. */
+  private async updateFzap(row: ConnectionRow, input: unknown, opts: { development: boolean }): Promise<{ sensitive: boolean }> {
+    const patch = parse(fzapConnectionUpdateSchema, input);
+    const origin = patch.origin ?? row.origin;
+    if (patch.origin !== undefined) checkOrigin(origin, opts.development);
+    const moved = origin !== row.origin;
+    if (moved && patch.credential === undefined) throw new AppError("VALIDATION_FAILED", "error.flowConnectionKeyAgain", { fields: ["credential"] });
+    const credential = patch.credential !== undefined ? await this.seal("fzap", row.id, patch.credential) : row.credential;
+    const end = patch.credential !== undefined ? keyEnd(patch.credential) : row.key_end;
+    // Only if nothing changed the row while the token was being sealed.
+    const kept = this.db.run(
+      `UPDATE zur_flow_connections SET name = ?, origin = ?, credential = ?, key_end = ?, updated_at = ? WHERE id = ? AND updated_at = ? AND kind = 'fzap'`,
+      patch.name ?? row.name,
+      origin,
+      credential,
+      end,
+      this.nextStamp(row.updated_at),
+      row.id,
+      row.updated_at,
+    );
+    if (kept.rowsWritten === 0) throw new AppError("CONFLICT");
+    const sensitive = moved || patch.credential !== undefined;
+    if (sensitive) recordActivity(this.db, "flow.connection_changed", { auth: "header", kind: "fzap" });
     return { sensitive };
   }
 
