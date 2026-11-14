@@ -46,7 +46,7 @@ const wire = (id: string, title: string, day: string, from: string, extra: Body 
   ...extra,
 });
 
-async function routeAgenda(page: Page) {
+async function routeAgenda(page: Page, sameName = 0) {
   const events: Body[] = [
     wire("e1", "Carla Mendes", "19", "09:00", { contact: "people/c1", contactId: CARLA_ID, payment: "paid" }),
     wire("e2", "Marcos Vieira Lopes", "19", "15:00", { country: "BR", phone: "41955550000" }),
@@ -96,7 +96,7 @@ async function routeAgenda(page: Page) {
           photo: null,
           phones: [{ label: "Celular", value: "(41) 99999-0001" }],
           emails: [{ label: "", value: "carla@exemplo.com.br" }],
-          sameName: 0,
+          sameName,
         },
       },
     }),
@@ -239,6 +239,15 @@ test("the details show the linked contact or the homonyms, and Vincular opens th
   await form.getByRole("button", { name: "Salvar" }).click();
   await expect.poll(() => sent.patches.length).toBe(1);
   expect(sent.patches[0]).toMatchObject({ eventId: "e2", contact: "people/c2", country: "", phone: "" });
+});
+
+test("the details mark a linked contact that shares the name as Homônimo", async ({ page }) => {
+  await routeAgenda(page, 1);
+  await openAgenda(page);
+  await event(page, "Carla Mendes").click();
+  const carla = page.getByRole("dialog", { name: "Carla Mendes" });
+  await expect(carla.getByText("Vinculado a Carla Mendes, nasc. 02/09/1995")).toBeVisible();
+  await expect(carla.getByText("Homônimo", { exact: true })).toBeVisible();
 });
 
 test("on a phone the list of Contacts fits, with 44 px targets @mobile", async ({ page }) => {

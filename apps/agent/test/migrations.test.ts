@@ -1666,13 +1666,12 @@ describe("migrate", () => {
       expect(migrate(db, MIGRATIONS.slice(0, 43))).toBe(43);
       expect(db.all(`SELECT * FROM zur_agenda_record ORDER BY day`)).toEqual(before);
       // The query of AgendaRecord.lastVisits, as it is written there.
-      const sql = `SELECT json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') AS contact, MAX(day) AS day FROM zur_agenda_record
-       WHERE json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IS NOT NULL AND json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IN (?)
-         AND day >= ? AND day < ? AND COALESCE(json_extract(data, '$.colorId'), '') != ?
-       GROUP BY contact`;
+      const sql = `SELECT json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') AS contact, day, json_extract(data, '$.title') AS title FROM zur_agenda_record
+         WHERE json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IS NOT NULL AND json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IN (?)
+           AND day >= ? AND day < ? AND COALESCE(json_extract(data, '$.colorId'), '') != ?`;
       const plan = db.all<{ detail: string }>(`EXPLAIN QUERY PLAN ${sql}`, "people/c1", "2025-10-01", "2026-11-14", "11").map((row) => row.detail).join("\n");
       expect(plan).toContain("zur_agenda_record_contact");
-      expect(db.all(sql, "people/c1", "2025-10-01", "2026-11-14", "11")).toEqual([{ contact: "people/c1", day: "2026-11-02" }]);
+      expect(db.all(sql, "people/c1", "2025-10-01", "2026-11-14", "11")).toEqual([{ contact: "people/c1", day: "2026-11-02", title: "Carla Mendes" }]);
     });
   });
 });

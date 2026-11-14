@@ -308,8 +308,9 @@ aparelhos; elas não mudam nada no Google.
   e-mail, **Abrir em Contatos** e a etiqueta **Homônimo** quando outro contato
   tem o mesmo nome. Sem vínculo, aparece "Sem vínculo com Contatos" (ou
   "Pessoa nova, com o mesmo nome de N contatos") com o celular, o e-mail e
-  **Vincular**, que abre o formulário com a lista. Um contato que saiu de
-  Contatos aparece como "O contato vinculado não está mais em Contatos".
+  **Vincular**, que abre o formulário com a lista. Quando o contato saiu de
+  Contatos, mudou de nome lá ou Contatos está desligado, aparece "O vínculo
+  com Contatos não vale mais", e o formulário abre sem vínculo.
 - Toque num evento para ver os detalhes. Em agendas **Ler e editar**, aparecem
   **Editar** e **Apagar** (com confirmação). Em **Só ler**, só os detalhes.
 - Se alguém mudou o evento no Google depois que a tela abriu, a Zuri não

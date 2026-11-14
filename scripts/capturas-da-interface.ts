@@ -42,6 +42,8 @@
  *   needs --exemplos).
  * - `agenda-editar=/agenda`: the form of that event ("Dura", "Tipo", "Situação"); `agenda-movido=/agenda`: the
  *   Agenda right after the event moved, with the notice that offers "Desfazer" (both need --exemplos).
+ * - `agenda-vinculo=/agenda`: "Novo evento" with the name of two sample contacts typed and the list of Contacts
+ *   open (needs --exemplos).
  * - `agenda-hora-fechada=/agenda`: the notice of a click on today's lunch, "Consulta não entra neste horário"
  *   (computer only: a phone's day has no grid to click; run it with `--relogio` before noon).
  * - `catalogo-de-modelos=/configuracoes/modelos`: Configurações › Modelos e limites scrolled to the
@@ -217,7 +219,7 @@ for (const [device, options] of [
           await page.waitForTimeout(250);
         }
       }
-      if (/^contatos?(-|$)/.test(screen.name)) {
+      if (/^contatos?(-|$)/.test(screen.name) || screen.name === "agenda-vinculo") {
         await seedContacts(page, BASE);
         // "contato-ficha": Beatriz, with the note after her name and her appointments; "contato-homonimo": one of the two Marcos.
         const who = screen.name === "contato-ficha" ? "Beatriz" : screen.name === "contato-homonimo" ? "Marcos" : "";
@@ -302,6 +304,13 @@ for (const [device, options] of [
         await page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ }).click();
         await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("button", { name: "Editar" }).click();
         await page.getByRole("dialog", { name: "Editar evento" }).getByLabel("Hora do término").waitFor();
+      }
+      if (screen.name === "agenda-vinculo") {
+        // E5f: the name field with the people of Contacts, two of them with the same name.
+        await page.getByRole("button", { name: "Novo evento" }).click();
+        const form = page.getByRole("dialog", { name: "Novo evento" });
+        await form.getByRole("combobox", { name: "Nome completo do paciente" }).fill("Marcos Vieira Lopes");
+        await form.getByRole("listbox", { name: "Contatos com este nome" }).getByRole("option").nth(2).waitFor();
       }
       if (screen.name === "agenda-movido") {
         const event = page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ });

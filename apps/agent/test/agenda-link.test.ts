@@ -116,7 +116,7 @@ describe("E5f: the people of the Agenda's name field", () => {
     expect((await api("GET", "/contacts?for=booking&q=ca", undefined, false)).status).toBe(401);
   });
 
-  it("puts who already has an appointment on record first, by the last one, at most six", async () => {
+  it("puts who already has an appointment on record first, the latest first, at most six", async () => {
     await turnOn();
     for (let i = 0; i < 6; i++) google.people.add({ resourceName: `people/m${i}`, names: [{ displayName: `Marina ${i}` }], phoneNumbers: [{ value: `(41) 9999${i}-0000` }], memberships: [{ contactGroupMembership: { contactGroupResourceName: PATIENTS } }] });
     google.people.add({ resourceName: "people/m9", names: [{ displayName: "Mariana Zago" }], phoneNumbers: [{ value: "(41) 98888-0009" }], memberships: [{ contactGroupMembership: { contactGroupResourceName: PATIENTS } }] });
@@ -206,5 +206,129 @@ describe("E5f: an appointment linked to a contact", () => {
     const page = (await (await api("GET", `/google/events?from=${day}&to=${day}`)).json()) as AgendaPage;
     expect(page.events.find((each) => each.id === "h1")?.contact).toBeUndefined();
     expect(page.events.find((each) => each.id === "h2")).toMatchObject({ contact: "people/c1" });
+  });
+});
+
+describe("E5f: what the QA review and the audit found", () => {
+  const member = [{ contactGroupMembership: { contactGroupResourceName: PATIENTS } }];
+  const many = (count: number) => {
+    for (let i = 0; i < count; i++) google.people.add({ resourceName: `people/a${i}`, names: [{ displayName: `Ana ${String(i).padStart(3, "0")}` }], phoneNumbers: [{ value: `(41) 9${String(i).padStart(4, "0")}-0000` }], memberships: member });
+  };
+  const resync = async () => {
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET synced_now_at = synced_now_at - 60000`));
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+  };
+  const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+  const visit = (day: string, title: string, contact: string, id: string) =>
+    inOwner((agent) => agent.store.db.run(`INSERT INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES (?, ?, ?, '"1"', ?)`, day, WORK, id, JSON.stringify({ title, contact, colorId: "" })));
+
+  it("SEC-E5f-01: the search holds 100 and 150 people of the same start, and the listing 150 links", async () => {
+    many(150);
+    await turnOn();
+    for (const [i, day] of [[0, -3], [1, -1]] as const) await visit(dayPlus(today(), day), `Ana 00${i}`, `people/a${i}`, `v${i}`);
+    // "ana 0" finds 100 candidates and "ana" 150: past the 90 of one batch and the old ceiling of 98.
+    for (const q of ["ana 0", "ana", "an"]) {
+      const res = await api("GET", `/contacts?for=booking&q=${encodeURIComponent(q)}`);
+      expect(res.status, q).toBe(200);
+      const page = (await res.json()) as BookingPage;
+      expect(page.people, q).toHaveLength(6);
+      // The latest visit first, then the other, then by name.
+      expect(page.people.slice(0, 3).map((p) => p.name), q).toEqual(["Ana 001", "Ana 000", "Ana 002"]);
+    }
+    const day = workDay();
+    const list = google.events.get(WORK) ?? [];
+    for (let i = 0; i < 150; i++)
+      list.push({ id: `k${i}`, etag: `"k${i}"`, summary: `Ana ${String(i).padStart(3, "0")}`, start: { dateTime: `${day}T08:00:00-03:00` }, end: { dateTime: `${day}T09:00:00-03:00` }, extendedProperties: { private: { zuriContact: `people/a${i}` } } });
+    google.events.set(WORK, list);
+    const res = await api("GET", `/google/events?from=${day}&to=${day}`);
+    expect(res.status).toBe(200);
+    const page = (await res.json()) as AgendaPage;
+    expect(page.events.filter((each) => each.contactId)).toHaveLength(150);
+  });
+
+  it("SEC-E5f-03: long words, many words and wildcards never break the search", async () => {
+    await turnOn();
+    for (const length of [46, 47, 48, 49, 80]) {
+      const res = await api("GET", `/contacts?for=booking&q=${"x".repeat(length)}`);
+      expect(res.status, String(length)).toBe(200);
+    }
+    for (const q of ["%".repeat(60), "_".repeat(60), Array.from({ length: 20 }, (_, i) => `p${i}`).join(" "), "% _ carla"]) {
+      const res = await api("GET", `/contacts?for=booking&q=${encodeURIComponent(q)}`);
+      expect(res.status, q).toBe(200);
+      expect(((await res.json()) as BookingPage).people, q).toEqual([]);
+    }
+  });
+
+  it("SEC-E5f-04: a linked appointment never keeps a phone or e-mail of its own, whatever the change sends", async () => {
+    await turnOn();
+    const made = ((await (await api("POST", "/google/events", booking("Carla Mendes", { contact: "people/c1" }))).json()) as { event: AgendaEvent }).event;
+    const res = await api("PATCH", "/google/events", { calendarId: WORK, eventId: made.id, etag: made.etag, country: "BR", phone: "41955550000", email: "x@exemplo.com.br" });
+    expect(res.status).toBe(200);
+    const sent = lastPrivate() ?? {};
+    expect([sent.zuriPhone, sent.zuriEmail, sent.zuriCountry]).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("SEC-E5f-04: a link whose contact left the copy, or with Contacts off, counts as none and a new name takes it off", async () => {
+    await turnOn();
+    const first = ((await (await api("POST", "/google/events", booking("Carla Mendes", { contact: "people/c1" }))).json()) as { event: AgendaEvent }).event;
+    const second = ((await (await api("POST", "/google/events", booking("Conceição Martins", { contact: "people/c4" }, 16))).json()) as { event: AgendaEvent }).event;
+    // The contact leaves the copy.
+    google.people.remove("people/c1");
+    await resync();
+    const renamed = await api("PATCH", "/google/events", { calendarId: WORK, eventId: first.id, etag: first.etag, title: "Carla Mendes Souza" });
+    expect(renamed.status, JSON.stringify(await renamed.clone().json())).toBe(200);
+    expect(lastPrivate()).toEqual({ zuriContact: null });
+    // Contacts turned off.
+    await inOwner((agent) => agent.store.contacts.disable());
+    expect((await api("PATCH", "/google/events", { calendarId: WORK, eventId: second.id, etag: second.etag, title: "Conceição Souza" })).status).toBe(200);
+    expect(lastPrivate()).toEqual({ zuriContact: null });
+  });
+
+  it("SEC-E5f-05: a link whose contact is now another name shows no contact's id and gives no last visit", async () => {
+    await turnOn();
+    const day = workDay();
+    const list = google.events.get(WORK) ?? [];
+    list.push({ id: "n1", etag: '"n1"', summary: "Ana Souza", start: { dateTime: `${day}T08:00:00-03:00` }, end: { dateTime: `${day}T09:00:00-03:00` }, extendedProperties: { private: { zuriContact: "people/c1" } } });
+    google.events.set(WORK, list);
+    const page = (await (await api("GET", `/google/events?from=${day}&to=${day}`)).json()) as AgendaPage;
+    expect(page.events.find((each) => each.id === "n1")).toMatchObject({ contact: "people/c1" });
+    expect(page.events.find((each) => each.id === "n1")?.contactId).toBeUndefined();
+    await visit(dayPlus(today(), -1), "Ana Souza", "people/c1", "n1");
+    expect((await search("carla mendes")).people[0]?.lastVisit).toBe("");
+  });
+
+  it("QA-E5f-06: an event without a type takes no link, and one that stops being an appointment loses it", async () => {
+    await turnOn();
+    const plain = await api("POST", "/google/events", booking("Carla Mendes", { description: "", contact: "people/c1" }));
+    expect(plain.status).toBe(201);
+    expect(lastPrivate()?.zuriContact).toBeUndefined();
+    const made = ((await (await api("POST", "/google/events", booking("Carla Mendes", { contact: "people/c1" }, 16))).json()) as { event: AgendaEvent }).event;
+    expect((await api("PATCH", "/google/events", { calendarId: WORK, eventId: made.id, etag: made.etag, description: "" })).status).toBe(200);
+    expect(lastPrivate()).toMatchObject({ zuriContact: null });
+  });
+
+  it("QA-E5f-07: a plain event of a shared name that becomes an appointment asks for the phone", async () => {
+    await turnOn();
+    const plain = ((await (await api("POST", "/google/events", booking("Marcos Vieira Lopes", { description: "" }))).json()) as { event: AgendaEvent }).event;
+    const res = await api("PATCH", "/google/events", { calendarId: WORK, eventId: plain.id, etag: plain.etag, description: "Consulta | Consultório" });
+    expect(res.status).toBe(400);
+    expect((await errorBody(res)).message).toMatch(/mais de um contato com este nome/);
+  });
+
+  it("QA-E5f-08: the very name typed comes first, even past six with visits", async () => {
+    many(8);
+    google.people.add({ resourceName: "people/ana", names: [{ displayName: "Ana" }], phoneNumbers: [{ value: "(41) 98888-0000" }], memberships: member });
+    await turnOn();
+    for (let i = 0; i < 7; i++) await visit(dayPlus(today(), -1 - i), `Ana 00${i}`, `people/a${i}`, `w${i}`);
+    const page = await search("ana");
+    expect(page.people[0]?.name).toBe("Ana");
+    expect(page.same).toBe(1);
+  });
+
+  it("refuses a name that is not the linked contact's with its own message", async () => {
+    await turnOn();
+    const res = await api("POST", "/google/events", booking("Ana Souza", { contact: "people/c1" }));
+    expect(res.status).toBe(400);
+    expect((await errorBody(res)).message).toMatch(/precisa ser o do contato vinculado/);
   });
 });

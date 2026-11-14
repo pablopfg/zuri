@@ -111,11 +111,6 @@
       "key": "web.agenda.event.linked",
       "rule": "glossario",
       "reason": "Vínculo da consulta a uma pessoa de Contatos (E5f): \"Vincular\", \"Vinculado a…\" e \"Remover vínculo\" são os textos do protótipo aprovado pelo Pablo (v52–v56, 13/11/2026). Não é conta: o glossário barra \"Desvincular\" para contas."
-    },
-    {
-      "key": "web.agenda.event.contactGone",
-      "rule": "glossario",
-      "reason": "Vínculo da consulta a uma pessoa de Contatos (E5f): \"Vincular\", \"Vinculado a…\" e \"Remover vínculo\" são os textos do protótipo aprovado pelo Pablo (v52–v56, 13/11/2026). Não é conta: o glossário barra \"Desvincular\" para contas."
     }
   ]
 }

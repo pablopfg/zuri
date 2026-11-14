@@ -126,7 +126,7 @@ export const ptBRAgenda = {
   "web.agenda.event.homonym": "Homônimo",
   "web.agenda.event.openContact": "Abrir em Contatos",
   "web.agenda.event.newSameName": "Pessoa nova, com o mesmo nome de {count} contatos",
-  "web.agenda.event.contactGone": "O contato vinculado não está mais em Contatos",
+  "web.agenda.event.contactGone": "O vínculo com Contatos não vale mais",
   "web.agenda.event.payment": "Financeiro",
   "web.agenda.event.googleNote": "Observação no Google",
   "web.agenda.form.error.title": "Dê um título ao evento.",

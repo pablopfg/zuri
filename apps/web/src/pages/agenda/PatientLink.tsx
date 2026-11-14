@@ -145,7 +145,6 @@ export function PatientNameField({
         }}
       />
       {shown && (
-        <>
           <div
             id={listId}
             role="listbox"
@@ -186,11 +185,11 @@ export function PatientNameField({
               {t("web.agenda.link.none", { name: value.trim() })}
             </div>
           </div>
-          <p className="sr-only" aria-live="polite">
-            {plural("web.agenda.link.results", people.length)}
-          </p>
-        </>
       )}
+      {/* Always there, so a screen reader hears the first count too (QA-E5f-09). */}
+      <p className="sr-only" aria-live="polite">
+        {shown ? plural("web.agenda.link.results", people.length) : ""}
+      </p>
       {children}
     </div>
   );

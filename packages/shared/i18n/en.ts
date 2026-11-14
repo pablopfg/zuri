@@ -2415,7 +2415,7 @@ export const en: Messages = {
   "web.agenda.event.homonym": "Same name",
   "web.agenda.event.openContact": "Open in Contacts",
   "web.agenda.event.newSameName": "A new person, with the same name as {count} contacts",
-  "web.agenda.event.contactGone": "The linked contact isn't in Contacts anymore",
+  "web.agenda.event.contactGone": "The link to Contacts no longer applies",
   "web.agenda.event.payment": "Payment",
   "web.agenda.event.googleNote": "Note in Google",
   "web.agenda.form.error.title": "Give the event a title.",

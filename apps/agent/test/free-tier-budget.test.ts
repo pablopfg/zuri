@@ -934,8 +934,8 @@ describe("Google contacts (step 19b)", () => {
       expect(world.googleSim.seen.length).toBe(calls);
       expect(world.db.usage.rowsRead - before.rowsRead).toBeLessThanOrEqual(1_000);
       // E5f: the Agenda's name field (GET /api/contacts?for=booking), a moment after each key, never Google and
-      // nothing written. A name typed from its start reads a range of the name's index; a surname typed first
-      // reads the copy once (measured 20 and 508).
+      // nothing written. A name typed from its start reads a range of the name's index; a word typed first,
+      // from three letters, reads the copy once (measured 20 and 508).
       const typing = (query: string) => {
         const at = { ...world.db.usage };
         const found = world.contacts.forBooking(query);
@@ -945,7 +945,7 @@ describe("Google contacts (step 19b)", () => {
       const start = typing("pessoa 42");
       expect(start.found.people.map((person) => person.name)).toContain("Pessoa 42");
       expect(start.read).toBeLessThanOrEqual(30);
-      const surname = typing("42");
+      const surname = typing("420");
       expect(surname.found.people.length).toBeGreaterThan(0);
       expect(surname.read).toBeLessThanOrEqual(600);
       expect(world.googleSim.seen.length).toBe(calls);
@@ -1569,8 +1569,17 @@ describe("the record of the day (E5b)", () => {
       };
       const last = measure(() => agendaRecord.last());
       const week = measure(() => agendaRecord.apply([], "2026-10-25", "2026-10-31", ["dono@exemplo.com.br"], false));
+      // E5f: the last visit of the 150 people a name field may find, in two batches of the contact's index:
+      // the 730 days of rows without a link are never read; each name probed costs about two reads (measured 319).
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+      for (let n = 1; n <= 20; n++) {
+        const day = new Date(Date.parse(`${today}T12:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10);
+        db.run(`INSERT OR REPLACE INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES (?, 'dono@exemplo.com.br', ?, '"1"', ?)`, day, `link${n}`, JSON.stringify({ title: `Ana ${n}`, contact: `people/a${n}` }));
+      }
+      const people = Array.from({ length: 150 }, (_, i) => ({ resource: `people/a${i}`, name: `Ana ${i}` }));
+      const visits = measure(() => agendaRecord.lastVisits(people));
       for (const table of ["zur_agenda_record", "zur_agenda_closed_days"]) db.run(`DELETE FROM ${table}`);
-      return { last: last.read, lastDay: last.value?.day, week: week.read, weekEvents: week.value.length, written: last.written + week.written };
+      return { last: last.read, lastDay: last.value?.day, week: week.read, weekEvents: week.value.length, visits: visits.read, visited: visits.value.size, written: last.written + week.written + visits.written };
     });
     expect(measured.lastDay).toBe("2026-10-31");
     // The newest row of the primary key, never the 730 days.
@@ -1578,6 +1587,8 @@ describe("the record of the day (E5b)", () => {
     // The week's 7 days and their 35 copies, by the primary key.
     expect(measured.weekEvents).toBe(35);
     expect(measured.week).toBeLessThanOrEqual(7 + 35 + 4);
+    expect(measured.visited).toBe(20);
+    expect(measured.visits).toBeLessThanOrEqual(2 * 150 + 20 + 10);
     // Reading never writes (a notice only when something changed at Google).
     expect(measured.written).toBe(0);
     const route = await cost("GET", "/google/record");

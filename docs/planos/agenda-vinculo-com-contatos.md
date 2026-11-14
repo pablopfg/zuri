@@ -20,8 +20,8 @@ Na E5e, o nome do paciente é só texto: o celular e o e-mail são digitados à 
 
 | Nº | Critério | Origem |
 | --- | --- | --- |
-| CA1 | Com duas letras ou mais no nome, a Zuri procura em Contatos (a cópia, sem chamar o Google), sem acento: primeiro os nomes que começam com o que foi digitado ("carla m" acha "Carla Mendes"); se nenhum começa assim, cada palavra digitada casa com o começo de uma palavra do nome ("mendes" acha "Carla Mendes"). Até 6 pessoas, só quem tem celular ou e-mail | item 5 |
-| CA2 | Cada linha mostra o nome, o celular, a data de nascimento ("sem data de nascimento" quando falta) e a última consulta registrada. Quem já tem consulta registrada vem primeiro. A última linha é sempre "Agendar “nome” sem vínculo" | item 5; 17:32 |
+| CA1 | Com duas letras ou mais no nome, a Zuri procura em Contatos (a cópia, sem chamar o Google), sem acento: primeiro os nomes que começam com o que foi digitado ("carla m" acha "Carla Mendes"); se nenhum começa assim e o texto tem três letras ou mais, cada palavra digitada casa com o começo de uma palavra do nome ("mendes" acha "Carla Mendes"). Até 6 pessoas, só quem tem celular ou e-mail; o nome exato digitado vem primeiro | item 5 |
+| CA2 | Cada linha mostra o nome, o celular, a data de nascimento ("sem data de nascimento" quando falta) e a última consulta registrada. Quem já tem consulta registrada vem primeiro, a mais recente antes. A última linha é sempre "Agendar “nome” sem vínculo" | item 5; 17:32 |
 | CA3 | Escolher um contato preenche nome, DDI, celular e e-mail só para leitura, com "Vinculado a Carla Mendes, nasc. 02/09/1995" e "Remover vínculo" | item 5 |
 | CA4 | Mudar o nome depois de vincular, ou "Remover vínculo", desfaz o vínculo e limpa o celular e o e-mail que vieram do contato | item 5 |
 | CA5 | Nome igual ao de um só contato, sem vínculo: "“Paula Régis Amaral” está em Contatos" com "Vincular". Nunca vincula sozinho | item 5 |
@@ -54,27 +54,28 @@ Na E5e, o nome do paciente é só texto: o celular e o e-mail são digitados à 
 
 ## 6. Regras de negócio e limites
 
-- Busca: de 2 a 80 caracteres; até 6 pessoas; espera 200 ms depois da última tecla; só a cópia local.
+- Busca: de 2 a 100 caracteres (`queryMax`); até 8 palavras de até 40 letras cada; a busca por palavra em toda a cópia só de 3 letras em diante; até 6 pessoas, das 200 primeiras achadas; espera 200 ms depois da última tecla; só a cópia local.
+- Listas para o banco vão em lotes de 90 valores (`SQL_BATCH`): o SQLite do Durable Object aceita 100 por comando.
 - Homônimos: nome igual depois de `searchText`; conta até 20 (`sameName`).
 - `zuriContact`: `people/` seguido de 1 a 40 letras, números, `_` ou `-`; outro valor é recusado (400) e, vindo do Google, descartado.
 - Com vínculo: o título precisa ser o nome do contato (sem acento e sem diferença de maiúsculas); se não for, 400 `VALIDATION_FAILED`. País, celular e e-mail não vão junto (o servidor apaga as três propriedades).
-- Sem vínculo e com 2 ou mais contatos do mesmo nome: o celular é obrigatório no `POST` e no `PATCH` que muda o título ou o celular.
-- Mudar o nome de uma consulta vinculada pelo `PATCH` sem tirar o vínculo é recusado; tirar o vínculo manda `contact: ""`.
-- "Sem tipo" (compromisso comum) não tem vínculo; mudar para "Sem tipo" tira o vínculo.
+- Sem vínculo e com 2 ou mais contatos do mesmo nome: o celular é obrigatório no `POST` e no `PATCH` que muda o título, o tipo ou o celular.
+- Mudar o nome de uma consulta vinculada pelo `PATCH` sem tirar o vínculo é recusado; tirar o vínculo manda `contact: ""`. Um vínculo cujo contato saiu da cópia (ou com Contatos desligado) conta como nenhum: mudar o nome passa e tira o vínculo no Google. A ferramenta `update_calendar_event` também tira o vínculo quando muda o nome.
+- "Sem tipo" (compromisso comum) não tem vínculo; mudar para "Sem tipo" tira o vínculo. O servidor confere isso também.
 
 ## 7. Desenho técnico
 
 - `packages/shared/src/google-schemas.ts`: `contact` opcional no `POST` e no `PATCH` (regex de `resourceName`, `""` para tirar). `CONTACT_RESOURCE` em `packages/shared/src/countries.ts`, junto das outras regras do paciente.
 - `apps/agent/src/google/events.ts`: `privateFields` lê e escreve `zuriContact`; o evento lido ganha `contact`.
 - `apps/agent/src/google/contacts.ts`: `forBooking(query)` (primeiro a faixa do índice do nome com o texto digitado; sem ninguém, o começo de cada palavra em toda a cópia), `homonyms(name)`, `byResource(resourceName)` e `idsOf(resourceNames)`.
-- `apps/agent/src/google/record.ts`: `lastVisits(resourceNames)` devolve o último dia de cada vínculo nos últimos 400 dias, pelo índice `zur_agenda_record_contact` (migration 43, expressão `json_extract` do vínculo, só as linhas com vínculo).
-- `apps/agent/src/api/google.ts`: `GET /api/contacts?q=…&for=booking` devolve `{ people, same }`; o `POST` e o `PATCH` de `/google/events` conferem o vínculo e os homônimos antes de chamar o Google. O evento lido leva `contactId` (o id da cópia) quando o vínculo está na cópia.
+- `apps/agent/src/google/record.ts`: `lastVisits(people)` devolve o último dia de cada vínculo nos últimos 400 dias, só das consultas cujo título é o nome do contato, pelo índice `zur_agenda_record_contact` (migration 43, expressão `json_extract` do vínculo, só as linhas com vínculo).
+- `apps/agent/src/api/google.ts`: `GET /api/contacts?q=…&for=booking` devolve `{ people, same }`; o `POST` e o `PATCH` de `/google/events` conferem o vínculo e os homônimos antes de chamar o Google. O evento lido leva `contactId` (o id da cópia) quando o vínculo está na cópia e o nome do contato ainda é o título.
 - Web: `EventForm` ganha `contact` e `otherPerson`; a busca e a lista em `apps/web/src/pages/agenda/PatientSearch.tsx` (combobox), carregados com a Agenda.
 
 ## 8. Custo e cotas do plano Free
 
 - Nenhum pedido novo ao Google: a busca lê só a cópia de Contatos e o registro do dia.
-- Banco: o nome digitado desde o começo ("carla m") lê uma faixa do índice do nome (20 linhas, medido em `free-tier-budget.test.ts` com 500 contatos). Só quando nenhum nome começa assim, por exemplo um sobrenome digitado primeiro, a busca percorre a cópia (508 linhas com 500 contatos; 5.000 no máximo). A última consulta sai do índice novo do registro (migration 43), algumas linhas por pessoa. Com espera de 200 ms entre teclas, 200 buscas num dia ficam abaixo de 100 mil linhas lidas no caso comum, 2% das 5 milhões por dia do plano gratuito.
+- Banco: o nome digitado desde o começo ("carla m") lê uma faixa do índice do nome (20 linhas, medido em `free-tier-budget.test.ts` com 500 contatos). Só quando nenhum nome começa assim, por exemplo um sobrenome digitado primeiro, a busca percorre a cópia (508 linhas com 500 contatos; 5.000 no máximo). A última consulta sai do índice novo do registro (migration 43): cerca de duas linhas por pessoa achada (319 com 150 pessoas e 20 consultas vinculadas, medido). Com espera de 200 ms entre teclas, 200 buscas num dia ficam abaixo de 100 mil linhas lidas no caso comum, 2% das 5 milhões por dia do plano gratuito.
 - Uma migration só de acréscimo (43): o índice `zur_agenda_record_contact` em `zur_agenda_record`, só com as linhas que têm vínculo. Custa uma linha a mais por consulta vinculada que o registro do dia guarda (umas 10 por dia).
 - JS inicial: a busca fica no pedaço da Agenda. Medir com `npm run size` (teto 141.100 B).
 
@@ -86,7 +87,10 @@ Na E5e, o nome do paciente é só texto: o celular e o e-mail são digitados à 
 | `zuriContact` hostil vindo do Google (agenda compartilhada) | só o formato de `resourceName` passa; o resto some; contato fora da cópia mostra "não está mais em Contatos" | evento com valor hostil volta sem vínculo |
 | Homônimo vinculado sozinho | nenhum caminho vincula sem o toque do Pablo; o servidor só grava o `contact` que veio do formulário | e2e: nome igual a um contato salva sem vínculo |
 | Busca usada para listar Contatos inteiro | mínimo de 2 caracteres, até 6 pessoas, sessão exigida (como `GET /api/contacts`) | rota com 1 caractere devolve vazio |
-| Celular e e-mail do contato copiados para o Google | com vínculo, as três propriedades do paciente saem do evento | rota com vínculo grava sem `zuriPhone` |
+| Celular e e-mail do contato copiados para o Google | com vínculo, as três propriedades do paciente saem do evento, em qualquer `PATCH` | rota com vínculo grava sem `zuriPhone` (SEC-E5f-04) |
+| Busca que derruba a rota (500): listas com mais de 100 valores, `LIKE` com mais de 50 bytes | lotes de 90 (`SQL_BATCH`), `instr` no lugar de `LIKE`, 8 palavras de até 40 letras | SEC-E5f-01 e SEC-E5f-03 |
+| Vínculo forjado num evento de agenda compartilhada aponta para outro contato | `contactId` e a última consulta só valem com o título igual ao nome do contato | SEC-E5f-05 |
+| O agente muda o nome de uma consulta vinculada e o vínculo fica errado | `update_calendar_event` tira o vínculo com o nome novo | SEC-E5f-06 |
 
 ## 10. Testes
 
