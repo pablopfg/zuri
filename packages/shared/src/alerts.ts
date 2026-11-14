@@ -124,6 +124,7 @@ export const SECURITY_ALERT_EVENTS = [
   "google_calendar_write",
   "reviews_autonomy",
   "review_link_changed",
+  "mail_changed",
   "setup_failure",
   "setup_locked",
   "owner_created",

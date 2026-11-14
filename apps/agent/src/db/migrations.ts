@@ -1927,6 +1927,34 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS zur_agenda_record_contact ON zur_agenda_record (json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact'), day) WHERE json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IS NOT NULL`,
     ],
   },
+  {
+    version: 44,
+    name: "mail",
+    statements: [
+      // E6c (plano email-para-pacientes.md): how e-mail to patients goes out, one row. The SMTP password is
+      // sealed with its own key (info "smtp-v1") and the server and user as associated data, so it never
+      // opens for another server; the backup leaves it out. sent_day and sent_count hold the daily cap; the
+      // test_* columns the tests' own limits (3 in 10 minutes, 10 a day), kept here so a restart doesn't reset them.
+      `CREATE TABLE IF NOT EXISTS zur_mail (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        mode TEXT NOT NULL DEFAULT 'off',
+        name TEXT NOT NULL DEFAULT '',
+        reply_to TEXT NOT NULL DEFAULT '',
+        smtp_host TEXT,
+        smtp_port INTEGER,
+        smtp_user TEXT,
+        smtp_from TEXT NOT NULL DEFAULT '',
+        credential TEXT,
+        key_end TEXT,
+        sent_day TEXT,
+        sent_count INTEGER NOT NULL DEFAULT 0,
+        test_day TEXT,
+        test_count INTEGER NOT NULL DEFAULT 0,
+        test_times TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL
+      )`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

@@ -49,6 +49,8 @@ export interface GoogleRouteDeps {
   /** Which contact left a review (PR S20). */
   reviewMatches: ReviewMatches;
   auth: AuthService;
+  /** E6c: Gmail allowed from Integrações › E-mail para pacientes; with no way out chosen yet, it becomes the way out. */
+  gmailGranted?: () => void;
   timeZone: () => string;
   /** Configurações › Agenda: when the office takes appointments (13/11/2026). */
   agendaHours: () => AgendaPrefs;
@@ -154,6 +156,7 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
       await contacts.refreshLabels().catch(() => contacts.labelsFailed());
       await deps().rearm();
     }
+    if (purpose === "gmail") deps().gmailGranted?.();
     return Response.json({ ...google.status(), replaced, purpose });
   });
 

@@ -138,6 +138,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "remote", "search", "semantic", "servers", "session", "settings", "setup", "status", "storage", "sync", "tasks", "telegram", "test", "tokens", "tools", "transcribe", "trash", "usage", "verify", "version", "webhook",
   // The AI screen's agents (guardrails, PR 2).
   "agents", "versions",
+  // E-mail to patients (E6c).
+  "mail", "gmail",
   // The home page's suggestions (PR S22).
   "home", "suggestions", "used",
   // The automatic backup (step 23b).

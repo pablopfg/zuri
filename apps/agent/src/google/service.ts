@@ -4,6 +4,7 @@ import {
   CONTACTS_SCOPE,
   GOOGLE_CALLBACK_PATH,
   GOOGLE_LIMITS,
+  GMAIL_SEND_SCOPE,
   GOOGLE_STATE_PREFIX,
   type GoogleCalendarInfo,
   type GoogleProblem,
@@ -37,10 +38,13 @@ export const GOOGLE_REVIEWS_API = "https://mybusiness.googleapis.com/v4";
 const BUSINESS_APIS: readonly string[] = [GOOGLE_ACCOUNTS_API, GOOGLE_LOCATIONS_API, GOOGLE_REVIEWS_API];
 
 /** What a consent asks for: the calendar (step 19), or the contacts (step 19b) or the reviews (step 19c) joined to the same grant. */
-export type GooglePurpose = "calendar" | "contacts" | "reviews";
+export type GooglePurpose = "calendar" | "contacts" | "reviews" | "gmail";
 
 /** The scope each joined purpose adds to the calendar's grant. */
-const JOINED_SCOPE: Record<Exclude<GooglePurpose, "calendar">, string> = { contacts: CONTACTS_SCOPE, reviews: BUSINESS_SCOPE };
+const JOINED_SCOPE: Record<Exclude<GooglePurpose, "calendar">, string> = { contacts: CONTACTS_SCOPE, reviews: BUSINESS_SCOPE, gmail: GMAIL_SEND_SCOPE };
+
+/** Gmail's API: only `messages/send` is ever called (E6c, scope gmail.send). */
+const GMAIL_API = "https://gmail.googleapis.com/gmail/v1";
 
 /**
  * The narrowest scopes that do the job: the list of calendars (read only) and
@@ -103,7 +107,8 @@ export type GoogleErrorKind =
   | "expired"
   | "api_disabled"
   | "contacts_scope"
-  | "business_scope";
+  | "business_scope"
+  | "gmail_scope";
 
 export class GoogleError extends Error {
   constructor(
@@ -401,13 +406,13 @@ export class GoogleCalendar {
     const refresh = typeof token.refresh_token === "string" ? token.refresh_token : "";
     const granted = typeof token.scope === "string" ? token.scope.split(" ") : [];
     const previous = this.account();
-    const purpose: GooglePurpose = pending.purpose === "contacts" || pending.purpose === "reviews" ? pending.purpose : "calendar";
+    const purpose: GooglePurpose = pending.purpose === "contacts" || pending.purpose === "reviews" || pending.purpose === "gmail" ? pending.purpose : "calendar";
     const required: readonly string[] = purpose === "calendar" ? GOOGLE_CALENDAR_SCOPES : [...GOOGLE_CALENDAR_SCOPES, JOINED_SCOPE[purpose]];
     if (!refresh || !required.every((scope) => granted.includes(scope))) {
       // Unticked permissions on Google's page: give back what was granted and stop. Not while an account is
       // connected: revoking ends the whole grant, which may be that account's.
       if (!previous) await this.revoke(refresh || (typeof token.access_token === "string" ? token.access_token : ""), meter);
-      throw new GoogleError(purpose === "contacts" ? "contacts_scope" : purpose === "reviews" ? "business_scope" : "scopes");
+      throw new GoogleError(purpose === "contacts" ? "contacts_scope" : purpose === "reviews" ? "business_scope" : purpose === "gmail" ? "gmail_scope" : "scopes");
     }
     const access = accessFrom(token, this.clock());
     const list = await this.calendarList(access.token, meter);
@@ -665,6 +670,16 @@ export class GoogleCalendar {
   ): Promise<Record<string, unknown> | null> {
     if (!BUSINESS_APIS.includes(base)) throw new GoogleError("not_found");
     return this.call(base, path, meter, init);
+  }
+
+  /**
+   * Sends one message already built (RFC 5322, as base64url) through the owner's Gmail (E6c). Only
+   * with the gmail.send scope; answers the message's id.
+   */
+  async gmailSend(raw: string, meter: GoogleMeter): Promise<string | null> {
+    if (!this.connected() || !this.granted(GMAIL_SEND_SCOPE)) throw new GoogleError("gmail_scope");
+    const body = await this.call(GMAIL_API, "/users/me/messages/send", meter, { method: "POST", body: { raw }, maxBytes: 64 * 1024 });
+    return typeof body?.id === "string" ? body.id : null;
   }
 
   private async call(

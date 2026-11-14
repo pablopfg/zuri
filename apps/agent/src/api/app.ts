@@ -71,6 +71,7 @@ import { type GoogleRouteDeps, registerGooglePush, registerGoogleRoutes } from "
 import { registerReviewOpen, registerReviewRoutes } from "./reviews.ts";
 import { type ChatwootRouteDeps, registerChatwootHook, registerChatwootRoutes } from "./chatwoot.ts";
 import { type FlowRouteDeps, registerFlowRoutes } from "./flows.ts";
+import { type MailRouteDeps, registerMailRoutes } from "./mail.ts";
 import { type CrmRouteDeps, registerCrmRoutes } from "./crm.ts";
 import { type CrmAutomationRouteDeps, registerCrmAutomationRoutes } from "./crm-automations.ts";
 import { type OutboxRouteDeps, registerOutboxRoutes } from "./outbox.ts";
@@ -132,6 +133,7 @@ export interface ApiDeps {
   google?(): GoogleRouteDeps;
   /** The flows and the site monitor (step 22a). Absent only in tests of other routes. */
   flows?(): FlowRouteDeps;
+  mail?(): MailRouteDeps;
   /** The owner's conversation with Zuri in the Chatwoot (docs/planos/zuri-no-chatwoot.md). Absent only in tests of other routes. */
   chatwoot?(): ChatwootRouteDeps;
   /** The internal CRM (step 22b). Absent only in tests of other routes. */
@@ -573,6 +575,8 @@ export function createApi(deps: ApiDeps) {
   if (google) registerReviewRoutes(app, () => google(), client);
   const flows = deps.flows;
   if (flows) registerFlowRoutes(app, () => flows(), client);
+  const mail = deps.mail;
+  if (mail) registerMailRoutes(app, () => mail(), client);
   if (chatwoot) registerChatwootRoutes(app, () => chatwoot(), client);
   const crm = deps.crm;
   if (crm) registerCrmRoutes(app, () => crm());

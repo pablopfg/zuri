@@ -56,7 +56,7 @@ function useGoogleReturn(): boolean {
     if (code !== null) body.code = code.slice(0, 2_048);
     if (error !== null) body.error = error.slice(0, 200);
     setFinishing(true);
-    api<GoogleStatus & { replaced?: boolean; purpose?: "calendar" | "contacts" | "reviews" }>("/google/callback", { method: "POST", body })
+    api<GoogleStatus & { replaced?: boolean; purpose?: "calendar" | "contacts" | "reviews" | "gmail" }>("/google/callback", { method: "POST", body })
       .then(async ({ replaced, purpose, ...status }) => {
         // The first reading may still be on its way (this page just opened), with the state from before. One still
         // on its way is joined, not restarted, by invalidateQueries: cancel it, then read again.
@@ -68,7 +68,10 @@ function useGoogleReturn(): boolean {
         void qc.invalidateQueries({ queryKey: ["contacts"] });
         // And the reviews (step 19c).
         void qc.invalidateQueries({ queryKey: ["reviews"] });
-        toast(t(replaced ? "web.google.replaced" : purpose === "contacts" ? "web.contacts.card.connected" : purpose === "reviews" ? "web.google.reviewsConnected" : "web.google.connected"));
+        // And the e-mail to patients (E6c): the Gmail's sending, whose first reading is often still on its way.
+        await qc.cancelQueries({ queryKey: ["mail"], exact: true });
+        void qc.invalidateQueries({ queryKey: ["mail"], exact: true });
+        toast(t(replaced ? "web.google.replaced" : purpose === "contacts" ? "web.contacts.card.connected" : purpose === "reviews" ? "web.google.reviewsConnected" : purpose === "gmail" ? "web.google.gmailConnected" : "web.google.connected"));
       })
       .catch((failure: unknown) => toast(errorMessage(failure)))
       .finally(() => setFinishing(false));
