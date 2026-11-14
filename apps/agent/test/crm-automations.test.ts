@@ -118,6 +118,8 @@ describe("manifest", () => {
   it("accepts the example and a full manifest; refuses one that asks for more than it may", () => {
     expect(manifestSchema.safeParse(EXAMPLE_AUTOMATION.manifest).success).toBe(true);
     expect(manifestSchema.safeParse(manifest("fake")).success).toBe(true);
+    // E6b: the fzap's token and the owner's inbox are read only by their own clients, never by an automation.
+    for (const connection of ["fzap", "chatwoot-dono"]) expect(manifestSchema.safeParse({ ...manifest("fake"), connection }).success).toBe(false);
     const bad: Partial<Manifest>[] = [
       { connection: null },
       { calls: [{ name: "x", method: "GET", path: "/a/../b" }] },

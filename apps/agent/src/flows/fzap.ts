@@ -11,5 +11,7 @@ export async function fzapStatus(connections: FlowConnections, row: ConnectionRo
   const parsed = fzapStatusSchema.safeParse(answer.body);
   if (!parsed.success) throw new FlowStepError("bad_answer");
   const { connected, loggedIn, cloudapi } = parsed.data.data;
-  return { connected, loggedIn, cloud: cloudapi !== undefined && cloudapi !== null };
+  // The Cloud API mode answers a block with its number's details; an empty one, false or "" is no mode at all.
+  const cloud = typeof cloudapi === "object" && cloudapi !== null && !Array.isArray(cloudapi) && Object.keys(cloudapi).length > 0;
+  return { connected, loggedIn, cloud };
 }

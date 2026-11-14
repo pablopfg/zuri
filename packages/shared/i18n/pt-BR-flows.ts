@@ -289,6 +289,7 @@ export const ptBRFlows = {
   "web.flows.fzap.keyHint": "O token da instância, não o de administrador nem o de pasta. Fica cifrado e nunca volta para a tela.",
   "web.flows.fzap.keyKeep": "Em branco, fica o atual",
   "web.flows.fzap.keyAgain": "O endereço mudou: cole o token da instância nova.",
+  "web.flows.fzap.passwordNote": "A Zuri pede a sua senha se você não a digitou nos últimos 15 minutos.",
   "web.flows.fzap.summary": "só envia Pix e lê o estado da sessão",
   "web.flows.test.fzapReady": "Conectada. Modo WhatsApp Web: o Pix funciona.",
   "web.flows.test.fzapCloud": "Conectada no modo Cloud API. A fzap não envia Pix por ele: use uma instância no modo WhatsApp Web.",

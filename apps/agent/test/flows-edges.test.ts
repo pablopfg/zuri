@@ -76,6 +76,7 @@ describe("the development network", () => {
     expect(await read("fzap.exemplo.com.br")).toEqual({ code: 200, success: true, data: { connected: true, loggedIn: true } });
     expect(await read("fzap-cloud.exemplo.com.br")).toMatchObject({ data: { connected: true, cloudapi: { phoneNumberId: "100000000000001" } } });
     expect(await read("fzap-fora.exemplo.com.br")).toMatchObject({ data: { connected: false, loggedIn: false } });
+    expect(await read("fzap-sem-login.exemplo.com.br")).toMatchObject({ data: { connected: true, loggedIn: false } });
     expect((await dev.fetch("https://fzap.exemplo.com.br/session/status", { headers: { token: "token-recusado-exemplo" } })).status).toBe(401);
     expect((await dev.fetch("https://fzap.exemplo.com.br/chat/send/pix", { method: "POST" })).status).toBe(404);
   });

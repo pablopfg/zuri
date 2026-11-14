@@ -119,6 +119,13 @@ test("Testar says when the instance is off WhatsApp, and when the token is refus
   await rowAction(credentials(page).getByRole("listitem").filter({ hasText: off }), page, "Testar");
   await expect(toast(page, "A instância respondeu, mas não está conectada ao WhatsApp. Conecte pelo painel da fzap e teste de novo.")).toBeVisible();
 
+  // Connected, but with no WhatsApp account linked: the same "not connected" (QA-E6b-05).
+  const noLogin = `fzap sem login ${id}`;
+  await (await newFzap(page, noLogin, "https://fzap-sem-login.exemplo.com.br", `token-da-instancia-${id}`)).getByRole("button", { name: "Criar credencial" }).click();
+  await expect(toast(page, "Credencial criada")).toBeVisible();
+  await rowAction(credentials(page).getByRole("listitem").filter({ hasText: noLogin }), page, "Testar");
+  await expect(toast(page, "A instância respondeu, mas não está conectada ao WhatsApp. Conecte pelo painel da fzap e teste de novo.").last()).toBeVisible();
+
   const refused = `fzap recusada ${id}`;
   await (await newFzap(page, refused, "https://fzap.exemplo.com.br", "token-recusado-exemplo")).getByRole("button", { name: "Criar credencial" }).click();
   await expect(toast(page, "Credencial criada")).toBeVisible();
@@ -128,10 +135,13 @@ test("Testar says when the instance is off WhatsApp, and when the token is refus
   // An address with a path is refused by the server and said in the dialog.
   const dialog = await newFzap(page, `fzap caminho ${id}`, "https://fzap.exemplo.com.br/session", `token-da-instancia-${id}`);
   await dialog.getByRole("button", { name: "Criar credencial" }).click();
-  await expect(dialog.getByRole("alert")).toBeVisible();
-  await dialog.getByRole("button", { name: "Fechar" }).click();
+  await expect(dialog.getByRole("alert").filter({ hasText: "Alguns dados não estão certos. Confira os campos e tente de novo." })).toBeVisible();
+  // The keyboard closes it: Esc.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
 
   await remove(page, off);
+  await remove(page, noLogin);
   await remove(page, refused);
 });
 
@@ -143,6 +153,24 @@ test("on a phone the dialog fits and every control is a 44 px target @mobile", a
   expect(await tooSmallControls(page), "every control of the dialog is a 44 px target").toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expectAccessible(page, "nova credencial da fzap celular");
+});
+
+test("in the dark theme the dialog passes axe, and the keyboard goes through it in order", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await openCredentials(page);
+  await page.getByRole("button", { name: "Nova credencial" }).click();
+  await page.getByRole("dialog", { name: "Nova credencial" }).getByRole("button", { name: "fzap (Pix pelo WhatsApp)" }).click();
+  const dialog = page.getByRole("dialog", { name: "Nova credencial da fzap" });
+  await expectAccessible(page, "nova credencial da fzap escuro");
+  await dialog.getByLabel("Nome").focus();
+  await page.keyboard.press("Tab");
+  await expect(dialog.getByLabel("Endereço da instância")).toBeFocused();
+  await page.keyboard.type("https://fzap.exemplo.com.br");
+  await page.keyboard.press("Tab");
+  await expect(dialog.getByLabel("Token da instância")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Nova credencial" })).toBeFocused();
 });
 
 test("in English, the kind, the dialog and the test follow the language", async ({ page }) => {
@@ -159,4 +187,26 @@ test("in English, the kind, the dialog and the test follow the language", async 
   await expect(dialog.getByLabel("Instance address")).toBeVisible();
   await expect(dialog.getByLabel("Instance token")).toBeVisible();
   await expect(dialog.getByLabel("Name")).toHaveValue("Office fzap");
+  const name = `fzap en ${tag()}`;
+  await dialog.getByLabel("Name").fill(name);
+  await dialog.getByLabel("Instance address").fill("https://fzap.exemplo.com.br");
+  await dialog.getByLabel("Instance token").fill(`token-da-instancia-${tag()}`);
+  await dialog.getByRole("button", { name: "Create credential" }).click();
+  const item = page.getByRole("list", { name: "Credentials" }).getByRole("listitem").filter({ hasText: name });
+  await expect(item.getByText(/^https:\/\/fzap\.exemplo\.com\.br · /)).toBeVisible();
+  const action = async (label: string) => {
+    await item.getByRole("button", { name: /^More options/ }).click();
+    await page.getByRole("menu").getByRole("menuitem", { name: label, exact: true }).click();
+  };
+  await action("Test");
+  await expect(toast(page, "Connected. WhatsApp Web mode: the Pix works.")).toBeVisible();
+  await action("Edit");
+  const editing = page.getByRole("dialog", { name: "Edit credential" });
+  await expect(editing.getByLabel("Instance token")).toHaveAttribute("placeholder", "Leave blank to keep the current one");
+  await editing.getByLabel("Instance address").fill("https://fzap-cloud.exemplo.com.br");
+  await expect(editing.getByLabel("Instance token")).toHaveAccessibleDescription(/The address changed: paste the new instance’s token\./);
+  await page.keyboard.press("Escape");
+  await action("Delete");
+  await page.getByRole("dialog", { name: `Delete credential ${name}?` }).getByRole("button", { name: "Delete" }).click();
+  await expect(item).toHaveCount(0);
 });

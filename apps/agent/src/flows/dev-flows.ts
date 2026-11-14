@@ -7,7 +7,8 @@ import type { FlowNetwork } from "./connections.ts";
  * is a site that is down; `api.exemplo.com.br` is a small JSON service with
  * clients under `/v1/clientes`; `chat.exemplo.com.br` is a Chatwoot whose
  * account 1 has two inboxes (PR S17) and takes the outbox's messages (PR S19); `fzap.exemplo.com.br` is a fzap
- * instance in WhatsApp Web mode, `fzap-cloud.` one in Cloud API mode and `fzap-fora.` one off WhatsApp (E6b).
+ * instance in WhatsApp Web mode, `fzap-cloud.` one in Cloud API mode and `fzap-fora.` one off WhatsApp and `fzap-sem-login.` one
+ * connected with no WhatsApp account (E6b).
  * Every other address goes out as in production.
  */
 const SIMULATED = /\.exemplo\.com\.br$/;
@@ -27,6 +28,7 @@ const FZAP: Record<string, Record<string, unknown>> = {
   "fzap.exemplo.com.br": { connected: true, loggedIn: true },
   "fzap-cloud.exemplo.com.br": { connected: true, loggedIn: true, cloudapi: { phoneNumberId: "100000000000001" } },
   "fzap-fora.exemplo.com.br": { connected: false, loggedIn: false },
+  "fzap-sem-login.exemplo.com.br": { connected: true, loggedIn: false },
 };
 
 function answer(request: Request): Response {

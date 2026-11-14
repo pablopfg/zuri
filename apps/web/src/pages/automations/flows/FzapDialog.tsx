@@ -8,6 +8,17 @@ import { useI18n } from "../../../lib/i18n.tsx";
 
 const FLOWS_KEY = ["flows"] as const;
 
+/** The address as the server keeps it (lower case, no :443, no trailing slash), so typing it again isn't a move (QA-E6b-06). */
+function sameOrigin(value: string): string {
+  const typed = value.trim();
+  try {
+    const url = new URL(typed);
+    return url.pathname === "/" && !url.search && !url.hash ? url.origin : typed;
+  } catch {
+    return typed;
+  }
+}
+
 /**
  * A fzap credential (E6b, docs/planos/credencial-fzap.md): the instance's https address and its
  * token. The token goes to the server once and never comes back; a new address asks for it again,
@@ -23,7 +34,7 @@ export function FzapDialog({ current, onClose }: { current: FlowConnection | nul
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
 
-  const moved = current !== null && origin.trim().replace(/\/+$/, "") !== current.origin;
+  const moved = current !== null && sameOrigin(origin) !== current.origin;
   const keyMissing = credential.trim() === "" && (current === null || moved);
   const ready = name.trim() !== "" && origin.trim() !== "" && !keyMissing;
 
@@ -83,7 +94,7 @@ export function FzapDialog({ current, onClose }: { current: FlowConnection | nul
           error={moved && credential.trim() === "" ? t("web.flows.fzap.keyAgain") : null}
           onChange={(e) => setCredential(e.target.value)}
         />
-        <p className="text-xs leading-5 text-fg-muted">{t("web.flows.chatwoot.passwordNote")}</p>
+        <p className="text-xs leading-5 text-fg-muted">{t("web.flows.fzap.passwordNote")}</p>
         {error !== null && <ErrorNotice error={error} />}
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>

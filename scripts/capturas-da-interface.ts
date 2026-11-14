@@ -54,6 +54,8 @@
  *   holidays and the days off.
  * - `credencial-chatwoot=/crm/credenciais`: the sample Chatwoot credential open in "Editar", with its
  *   inboxes found (needs --exemplos).
+ * - `credencial-fzap=/crm/credenciais`: "Nova credencial da fzap" filled in (E6b).
+ * - `credenciais-fzap=/crm/credenciais`: the list with the sample fzap credential just tested (needs --exemplos).
  * - `automacao-ensaio=/crm`: the example automation in rehearsal with the sample Chatwoot credential,
  *   its follow-up open (needs --exemplos; local development only).
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
@@ -298,6 +300,19 @@ for (const [device, options] of [
         const dialog = page.getByRole("dialog", { name: "Editar credencial" });
         await dialog.getByRole("button", { name: "Buscar caixas" }).click();
         await dialog.getByText("2 caixas encontradas").waitFor();
+      }
+      if (screen.name === "credencial-fzap") {
+        await page.getByRole("button", { name: "Nova credencial" }).click();
+        await page.getByRole("dialog", { name: "Nova credencial" }).getByRole("button", { name: "fzap (Pix pelo WhatsApp)" }).click();
+        const dialog = page.getByRole("dialog", { name: "Nova credencial da fzap" });
+        await dialog.getByLabel("Endereço da instância").fill("https://fzap.exemplo.com.br");
+        await dialog.getByLabel("Token da instância").fill("token-de-exemplo-0000");
+      }
+      if (screen.name === "credenciais-fzap") {
+        const row = page.getByRole("list", { name: "Credenciais" }).getByRole("listitem").filter({ hasText: "fzap do consultório" });
+        await row.getByRole("button", { name: /^Mais opções/ }).click();
+        await page.getByRole("menuitem", { name: "Testar" }).click();
+        await page.getByRole("status").filter({ hasText: "Conectada. Modo WhatsApp Web" }).waitFor();
       }
       if (screen.name === "automacao-ensaio") {
         const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: /^\d+ Automação de exemplo$/ }) });

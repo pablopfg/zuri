@@ -287,7 +287,9 @@ describe("/api/flows/connections", () => {
     await stale();
     expect((await api("PATCH", `/flows/connections/${connection.id}`, { name: "fzap" })).status).toBe(403);
     await fresh();
-    expect((await api("PATCH", `/flows/connections/${connection.id}`, { origin: "https://outra.exemplo.com.br" })).status).toBe(400);
+    const moved = await api("PATCH", `/flows/connections/${connection.id}`, { origin: "https://outra.exemplo.com.br" });
+    expect(moved.status).toBe(400);
+    expect(await moved.json()).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["credential"] } });
     expect((await api("PATCH", `/flows/connections/${connection.id}`, { credential: "token-novo-da-instancia-7a8b" })).status).toBe(200);
     const kinds = await inOwner((agent) => agent.store.db.all<{ kind: string }>(`SELECT kind FROM zur_auth_events`).map((r) => r.kind));
     expect(kinds).toEqual(["flow_connection_changed"]);

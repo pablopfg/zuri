@@ -43,7 +43,7 @@ describe("the fzap credential", () => {
         [{ credential: "" }, "credential"],
         [{ origin: "http://fzap.exemplo.com.br" }, "origin"],
         [{ origin: "https://fzap.exemplo.com.br/session" }, "origin"],
-        [{ origin: "https://usuario@fzap.exemplo.com.br" }, "origin"],
+        [{ origin: "https://usuario@exemplo.com.br" }, "origin"],
         [{ origin: "https://192.168.0.10" }, "origin"],
         [{ name: "" }, "name"],
       ];
@@ -54,6 +54,15 @@ describe("the fzap credential", () => {
         await expect(addFzap(world, extra)).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
       }
       expect(world.flows.list().connections).toHaveLength(0);
+    });
+  });
+
+  it("takes a name and a token up to their limits (n-1, n, n+1) (QA-E6b-07)", async () => {
+    await withFlowWorld(async (world) => {
+      for (const n of [FLOW_LIMITS.name - 1, FLOW_LIMITS.name]) await addFzap(world, { name: "a".repeat(n) });
+      await expect(addFzap(world, { name: "a".repeat(FLOW_LIMITS.name + 1) })).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["name"] } });
+      for (const n of [FLOW_LIMITS.credential - 1, FLOW_LIMITS.credential]) await addFzap(world, { name: `T${n}`, credential: "t".repeat(n) });
+      await expect(addFzap(world, { name: "T+1", credential: "t".repeat(FLOW_LIMITS.credential + 1) })).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["credential"] } });
     });
   });
 
@@ -98,6 +107,15 @@ describe("the fzap credential", () => {
       await expect(addFzap(world, { name: "Outra" })).rejects.toMatchObject({ code: "CONFLICT", messageKey: "error.flowConnectionLimit" });
     });
   });
+
+  it("two saves at once at the last place: only one passes the ceiling (SEC-E6b-02)", async () => {
+    await withFlowWorld(async (world) => {
+      for (let i = 0; i < FLOW_LIMITS.connections - 1; i++) await addConnection(world, { name: `C${i}` });
+      const results = await Promise.allSettled([addFzap(world, { name: "A" }), addFzap(world, { name: "B" })]);
+      expect(results.map((result) => result.status).sort()).toEqual(["fulfilled", "rejected"]);
+      expect(world.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_flow_connections`)?.n).toBe(FLOW_LIMITS.connections);
+    });
+  });
 });
 
 describe("Testar the fzap", () => {
@@ -109,6 +127,11 @@ describe("Testar the fzap", () => {
         [{ connected: true, loggedIn: true, cloudapi: { phoneNumberId: "1" } }, { connected: true, loggedIn: true, cloud: true }],
         [{ connected: false, loggedIn: false }, { connected: false, loggedIn: false, cloud: false }],
         [{ connected: true, loggedIn: false, cloudapi: null, jid: "x", extra: "<script>" }, { connected: true, loggedIn: false, cloud: false }],
+        // QA-E6b-03: only a block with something in it is the Cloud API mode.
+        [{ connected: true, loggedIn: true, cloudapi: false }, { connected: true, loggedIn: true, cloud: false }],
+        [{ connected: true, loggedIn: true, cloudapi: {} }, { connected: true, loggedIn: true, cloud: false }],
+        [{ connected: true, loggedIn: true, cloudapi: "" }, { connected: true, loggedIn: true, cloud: false }],
+        [{ connected: true, loggedIn: true, cloudapi: [] }, { connected: true, loggedIn: true, cloud: false }],
       ];
       for (const [data, fzap] of cases) {
         world.network.handlers.set(HOST, status(data));

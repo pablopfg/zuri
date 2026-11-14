@@ -3148,6 +3148,7 @@ export const en: Messages = {
   "web.flows.fzap.keyHint": "The instance's token, not the admin's or a folder's. It is encrypted and never comes back to the screen.",
   "web.flows.fzap.keyKeep": "Leave blank to keep the current one",
   "web.flows.fzap.keyAgain": "The address changed: paste the new instance’s token.",
+  "web.flows.fzap.passwordNote": "Zuri asks for your password if you haven't typed it in the last 15 minutes.",
   "web.flows.fzap.summary": "only sends a Pix and reads the session's state",
   "web.flows.test.fzapReady": "Connected. WhatsApp Web mode: the Pix works.",
   "web.flows.test.fzapCloud": "Connected in Cloud API mode. The fzap sends no Pix through it: use an instance in WhatsApp Web mode.",

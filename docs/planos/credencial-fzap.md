@@ -67,7 +67,7 @@ CRM › Credenciais ganha um terceiro tipo, **fzap (Pix pelo WhatsApp)**, ao lad
 | Token de um tipo aberto como outro | `info` próprio (`fzap-v1`) | unitário do cofre |
 | Token mandado a outro servidor (SSRF) | https, DNS público, sem redirecionamento; endereço novo pede o token de novo | rota |
 | Sessão roubada trocando a credencial | senha recente e aviso de segurança | rota |
-| Resposta hostil da instância | só `connected`, `loggedIn` e a presença de `cloudapi` são lidos, com Zod | integração |
+| Resposta hostil da instância | só `connected`, `loggedIn` e um bloco `cloudapi` com conteúdo contam, lidos com Zod | integração |
 | Fluxo usando o token | `call()` recusa todo tipo que não é `http` | integração |
 
 ## 10. Testes

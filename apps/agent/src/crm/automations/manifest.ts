@@ -1,6 +1,9 @@
-import { CRM_AUTOMATION_LIMITS, type CrmAutomationOption, FLOW_CONNECTION_KINDS, FLOW_METHODS } from "@zuri/shared";
+import { CRM_AUTOMATION_LIMITS, type CrmAutomationOption, FLOW_METHODS } from "@zuri/shared";
 import { z } from "zod";
 import { WAKE_NOTICE_RESERVE, WAKE_SUBREQUESTS } from "../../agent/wake-budget.ts";
+
+/** The credential kinds an automation may declare. */
+export const AUTOMATION_CONNECTION_KINDS = ["http", "chatwoot"] as const;
 
 /**
  * The manifest every CRM automation declares (PR S18; docs/planos/modulos.md,
@@ -40,7 +43,9 @@ export const manifestSchema = z
     effectsVersion: z.number().int().min(1),
     /** Runs every so many minutes on the shared alarm; `workingDays` skips weekends and national holidays. */
     trigger: z.object({ kind: z.literal("every"), minutes: z.number().int().min(15).max(1440), workingDays: z.boolean() }).strict(),
-    connection: z.enum(FLOW_CONNECTION_KINDS).nullable(),
+    // Only a Chatwoot (or an http service): the fzap's token is read only by its own fixed client (E6b), and the
+    // owner's inbox by Settings › Chatwoot.
+    connection: z.enum(AUTOMATION_CONNECTION_KINDS).nullable(),
     writesToContacts: z.boolean(),
     /** The closed list of calls: GET ones are reads; any other method is only made inside an effect. */
     calls: z.array(callSchema).max(10),

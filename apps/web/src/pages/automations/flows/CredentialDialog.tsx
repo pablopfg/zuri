@@ -12,8 +12,17 @@ import type { ConnectionEditing } from "./FlowsPanel.tsx";
  * form. A Chatwoot or fzap credential always keeps a key, so it waits for the
  * key's encryption to be set up in the installation.
  */
-export function CredentialDialog({ editing, credentialsAvailable, onClose }: { editing: ConnectionEditing; credentialsAvailable: boolean; onClose: () => void }) {
+export function CredentialDialog({ editing, credentialsAvailable, onClose: close }: { editing: ConnectionEditing; credentialsAvailable: boolean; onClose: () => void }) {
   const { t } = useI18n();
+  // The kind's form replaces the chooser, so the browser would give the focus back to the chooser's
+  // button, gone by then: it goes back to what opened the chooser ("Nova credencial").
+  const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null));
+  const onClose = () => {
+    close();
+    requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus();
+    });
+  };
   const [kind, setKind] = useState<FlowConnectionKind | null>(editing.mode === "edit" ? editing.connection.kind : null);
   if (kind === "chatwoot") return <ChatwootDialog current={editing.mode === "edit" ? editing.connection : null} onClose={onClose} />;
   if (kind === "fzap") return <FzapDialog current={editing.mode === "edit" ? editing.connection : null} onClose={onClose} />;
