@@ -43,6 +43,7 @@
  * - `agenda-editar=/agenda`: the form of that event ("Dura", "Tipo", "Situação"); `agenda-movido=/agenda`: the
  *   Agenda right after the event moved, with the notice that offers "Desfazer" (both need --exemplos).
  * - `contato-agendar=/contatos`: "Agendar" on Beatriz's card, with the Agenda's form ready (needs --exemplos).
+ * - `consultorio=/configuracoes/consultorio`: Configurações › Consultório with the sample office's details.
  * - `agenda-vinculo=/agenda`: "Novo evento" with the name of two sample contacts typed and the list of Contacts
  *   open (needs --exemplos).
  * - `agenda-hora-fechada=/agenda`: the notice of a click on today's lunch, "Consulta não entra neste horário"
@@ -229,6 +230,12 @@ for (const [device, options] of [
           if (!found.contacts[0]) throw new Error(`${screen.name} needs --exemplos`);
           path = `/contatos/${found.contacts[0].id}`;
         }
+      }
+      if (screen.name === "consultorio") {
+        // An invented office (E6a): the details the whole system reads.
+        const clinic = { name: "Consultório Exemplo", whatsapp: "4133330000", address: "Rua das Flores, 120, sala 304 · Centro", city: "Curitiba, PR" };
+        const saved = await page.request.patch(`${BASE}/api/settings`, { headers: CSRF, data: { clinic } });
+        if (!saved.ok()) throw new Error(`/api/settings: ${saved.status()}`);
       }
       if (screen.name === "integracoes-sem-etiqueta") {
         // The first setup: the contacts on, the labels read and none chosen yet (shoot it apart: it empties the copy).

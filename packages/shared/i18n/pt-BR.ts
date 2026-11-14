@@ -31,6 +31,7 @@ import { ptBRSchedule } from "./pt-BR-schedule.ts";
 import { ptBRChatwoot } from "./pt-BR-chatwoot.ts";
 import { ptBRChatwootServer } from "./pt-BR-chatwoot-server.ts";
 import { ptBRCrmAutomations } from "./pt-BR-crm-automations.ts";
+import { ptBRClinic } from "./pt-BR-clinic.ts";
 import { ptBROutbox } from "./pt-BR-outbox.ts";
 
 // Default and fallback catalog. Every key must also exist in en.ts and be used in the code (npm run lint).
@@ -177,4 +178,5 @@ export const ptBR = /* @__PURE__ */ join(
   ptBRChatwootServer,
   ptBRCrmAutomations,
   ptBROutbox,
+  ptBRClinic,
 );

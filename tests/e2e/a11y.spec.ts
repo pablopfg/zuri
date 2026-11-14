@@ -53,6 +53,7 @@ for (const scheme of ["light", "dark"] as const) {
         ["ia", "Uso da IA"],
         ["modelos", "Modelos e limites"],
         ["avisos", "Avisos"],
+        ["consultorio", "Consultório"],
         ["integracoes", "Integrações"],
         ["chatwoot", "Chatwoot"],
         ["dados", "Dados"],

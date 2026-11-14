@@ -1,5 +1,5 @@
 import { type MessageKey, ptBRSettings, ptBRSettingsTabs } from "@zuri/shared";
-import { Activity, Bell, Bot, CalendarDays, ChevronDown, Database, Gauge, BadgeInfo, MessagesSquare, Plug, ShieldCheck, Sparkle, User } from "lucide-react";
+import { Activity, Bell, Bot, Building2, CalendarDays, ChevronDown, Database, Gauge, BadgeInfo, MessagesSquare, Plug, ShieldCheck, Sparkle, User } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Navigate, NavLink, useNavigate, useParams } from "react-router";
 import { cn, Loading, PageHeader } from "../components/ui.tsx";
@@ -16,6 +16,8 @@ import { IntegrationsTab } from "./settings/IntegrationsTab.tsx";
 import { SecurityTab } from "./settings/SecurityTab.tsx";
 
 // Settings › Chatwoot is its own download, with its texts: the settings screen stays as it was (rule P11).
+// Settings › Consultório too (E6a).
+const ClinicTab = lazy(() => import("./settings/ClinicTab.tsx").then((module) => ({ default: module.ClinicTab })));
 const ChatwootTab = lazy(() => import("./settings/ChatwootTab.tsx").then((module) => ({ default: module.ChatwootTab })));
 
 // The screen's texts come with its download (rule P11).
@@ -24,16 +26,17 @@ addMessages(ptBRSettingsTabs);
 
 /**
  * The sections, by the path segment the address shows ("/configuracoes/seguranca"), in the
- * prototype's order and five groups (PR S16). The names of before stay the same: links to them
+ * prototype's order and groups (PR S16; Consultório since E6a). The names of before stay the same: links to them
  * are kept in notices, Telegram messages and device notifications.
  */
-export const SETTINGS_TABS = ["conta", "seguranca", "assistente", "ia", "modelos", "agenda", "avisos", "integracoes", "chatwoot", "dados", "diagnostico", "sobre"] as const;
+export const SETTINGS_TABS = ["conta", "seguranca", "assistente", "ia", "modelos", "agenda", "avisos", "consultorio", "integracoes", "chatwoot", "dados", "diagnostico", "sobre"] as const;
 type Tab = (typeof SETTINGS_TABS)[number];
 
 const GROUPS = [
   { label: "web.settings.group.you", tabs: ["conta", "seguranca"] },
   { label: "web.settings.group.zuri", tabs: ["assistente", "ia", "modelos"] },
   { label: "web.settings.group.day", tabs: ["agenda", "avisos"] },
+  { label: "web.settings.group.clinic", tabs: ["consultorio"] },
   { label: "web.settings.group.connections", tabs: ["integracoes", "chatwoot"] },
   { label: "web.settings.group.system", tabs: ["dados", "diagnostico", "sobre"] },
 ] as const satisfies readonly { label: MessageKey; tabs: readonly Tab[] }[];
@@ -47,6 +50,7 @@ const SECTION = {
   modelos: { label: "web.settings.tab.models", hint: "web.settings.hint.models", icon: Sparkle },
   agenda: { label: "web.settings.tab.agenda", hint: "web.settings.hint.agenda", icon: CalendarDays },
   avisos: { label: "web.settings.tab.notifications", hint: "web.settings.hint.notifications", icon: Bell },
+  consultorio: { label: "web.settings.tab.clinic", hint: "web.settings.hint.clinic", icon: Building2 },
   integracoes: { label: "web.settings.tab.integrations", hint: "web.settings.hint.integrations", icon: Plug },
   chatwoot: { label: "web.settings.tab.chatwoot", hint: "web.settings.hint.chatwoot", icon: MessagesSquare },
   dados: { label: "web.settings.tab.data", hint: "web.settings.hint.data", icon: Database },
@@ -93,7 +97,7 @@ export function SettingsPage() {
         </select>
         <ChevronDown className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
       </label>
-      {/* On a computer the sections are a submenu beside the page, in five groups, each with its line of what it holds. */}
+      {/* On a computer the sections are a submenu beside the page, in groups, each with its line of what it holds. */}
       <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-8">
         <nav aria-label={t("web.settings.sections")} className="sticky top-20 hidden lg:block">
           {GROUPS.map((group) => (
@@ -138,6 +142,11 @@ export function SettingsPage() {
           {tab === "modelos" && <AiModelsTab />}
           {tab === "agenda" && <AgendaTab />}
           {tab === "avisos" && <AlertsTab />}
+          {tab === "consultorio" && (
+            <Suspense fallback={<Loading />}>
+              <ClinicTab />
+            </Suspense>
+          )}
           {tab === "integracoes" && <IntegrationsTab />}
           {tab === "chatwoot" && (
             <Suspense fallback={<Loading />}>

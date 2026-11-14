@@ -189,6 +189,21 @@ describe("the Free plan budget of each route", () => {
     }
   });
 
+  it("E6a: saving the office's details writes its one row and the activity, and the same details again write nothing", async () => {
+    const clinic = { name: "Consultório Exemplo", whatsapp: "4133330000", address: "Rua das Flores, 120", city: "Curitiba, PR" };
+    const saved = await cost("PATCH", "/settings", { clinic });
+    expect(saved.status).toBe(200);
+    // The row of zur_settings and the activity line, each with its index.
+    expect(saved.written).toBeLessThanOrEqual(6);
+    const again = await cost("PATCH", "/settings", { clinic });
+    expect(again.status).toBe(200);
+    expect(again.written).toBe(0);
+    // The session check and one row per setting the owner changed: here only this one.
+    const read = await cost("GET", "/settings");
+    expect(read.read).toBeLessThanOrEqual(3);
+    await runInDurableObject(owner(), (agent: ZuriAgent) => agent.store.db.run(`DELETE FROM zur_settings WHERE key = 'clinic'`));
+  });
+
   it("keeps a push device alive from its browser's session check with one index probe, writing once a day", async () => {
     const id = await runInDurableObject(owner(), async (agent: ZuriAgent) => {
       const browser = await agent.store.auth.browserId(deviceCookie.split("=")[1] ?? null);
