@@ -29,7 +29,9 @@ const browser = await chromium.launch(
 const page = await browser.newPage();
 for (const icon of ICONS) {
   await page.setViewportSize({ width: icon.size, height: icon.size });
+  // nosemgrep: html-in-template-string -- the icons are constant SVG from this repository, rendered in a local browser
   const svg = icon.svg.replace("<svg ", `<svg width="${icon.size}" height="${icon.size}" `);
+  // nosemgrep: html-in-template-string -- the icons are constant SVG from this repository, rendered in a local browser
   await page.setContent(`<html><body style="margin:0;background:transparent">${svg}</body></html>`);
   await page.screenshot({ path: join(PUBLIC, icon.file), omitBackground: true, clip: { x: 0, y: 0, width: icon.size, height: icon.size } });
 }

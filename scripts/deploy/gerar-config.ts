@@ -109,10 +109,12 @@ function exact(raw: string | undefined, name: string, lower: boolean): string {
 export function renderDeployConfig(base: Config, vars: DeployVars): Config {
   const domain = exact(vars.ZURI_DOMAIN, "ZURI_DOMAIN", true);
   if (!domain) throw new ConfigError("ZURI_DOMAIN is required (secret of the production environment)");
+  // nosemgrep: detect-redos -- HOSTNAME's lookahead caps the input at 253 characters
   if (!HOSTNAME.test(domain) || SHARED_HOST.test(domain)) {
     throw new ConfigError("ZURI_DOMAIN must be the host alone, on your own domain, without https:// or a path");
   }
   const email = exact(vars.ZURI_ALERT_EMAIL_TO, "ZURI_ALERT_EMAIL_TO", false);
+  // nosemgrep: detect-redos -- EMAIL's parts are capped at 64 and 253 characters
   if (email && !EMAIL.test(email)) throw new ConfigError("ZURI_ALERT_EMAIL_TO is not an e-mail address");
   const bucket = exact(vars.ZURI_BACKUP_BUCKET, "ZURI_BACKUP_BUCKET", false);
   if (bucket && (!BUCKET.test(bucket) || bucket.includes("--"))) {

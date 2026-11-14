@@ -173,6 +173,7 @@ O bot e a interface passam pelos mesmos portões e chegam ao mesmo agente, aos m
 - **Conteúdo é dado, nunca instrução.** Notas, memórias, mensagens e resultados de ferramentas entram no modelo em blocos `<data>` neutralizados, testados contra injeção de prompt.
 - **Segredos só no Worker.** Nada sensível no navegador, no repositório ou nos logs.
 - **Sem telemetria.** Nenhuma chamada a serviços dos desenvolvedores.
+- **Código varrido em todo PR.** CodeQL, Semgrep, Gitleaks (chaves em todo o histórico) e SonarQube Cloud, além do pentest de cada ajuste ([varreduras](https://github.com/pablopfg/Zuri/blob/develop/docs/qa/varreduras-de-seguranca.md)).
 
 Detalhes em [docs/seguranca.md](docs/seguranca.md). Para relatar uma vulnerabilidade, siga o [SECURITY.md](SECURITY.md) e não abra issue pública.
 
