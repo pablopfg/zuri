@@ -379,7 +379,9 @@ test.describe("in the dark theme", () => {
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(event(page, "Almoço com a Bia")).toBeVisible();
     await expectAccessible(page, "agenda-escuro");
-    await setPrefs(page, { outside: false, daysOff: false });
+    // On a Saturday or a Sunday today is itself a day off: hiding the days off would hide today's column
+    // and the line about its hours with it, so the weekend keeps them (the run fell on 14/11/2026, a Saturday).
+    await setPrefs(page, { outside: false, daysOff: DOW === 0 || DOW === 6 });
     await page.reload();
     await expect(leftOut(page, /fora das 08:00 às 18:00/)).toBeVisible();
     await expectAccessible(page, "agenda-escondidos-escuro");
