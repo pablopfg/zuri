@@ -529,3 +529,18 @@ Pedido do Pablo: ler a skill `ui-ux-pro-max` (commit `6ae86f6`, só leitura, sem
 
 **O que ficou de fora, e por quê:** o "design system" que a busca da skill sugere para um assistente pessoal (verde-azulado com laranja, letra Inter, estilo "flat" de página de vendas) troca a identidade do Sinal já aprovada; a skill diz que as recomendações não vencem o usuário. O aviso continua com 8 s, e não 3 a 5 s, porque tem "Desfazer". As skills vizinhas do pacote (`design`, `brand`, `banner-design`) geram imagem por serviço pago e continuam fora; o GSAP não cabe no teto de JavaScript do primeiro carregamento. O mapa da Memória mantém nós menores que 44 px no celular porque a lista ao lado faz o mesmo com alvos grandes.
 
+
+### Pedidos do Pablo de 14/11 (links, horário recusado, gênero e etiquetas)
+
+Na mesma versão de teste. O plano do código está em [links-sugestao-genero-etiquetas.md](links-sugestao-genero-etiquetas.md).
+
+- **Textos clicáveis:** links e botões de texto ("Ver em Avaliações", "Mudar", "Definir", "Configurações › Agenda") ficam verdes e sublinhados. Ao passar o mouse, o sublinhado fica cheio e ganha um fundo leve. Menu, abas e botões com borda não mudam.
+- **Horário recusado na Agenda:** o título do aviso diz o motivo ("Sábado não tem atendimento", "Horário de almoço", "Fora do horário de atendimento", "Feriado: Consciência Negra"), e o texto abaixo traz o detalhe sem repetir. Abaixo vem "Horários que mantêm a agenda sem buracos", com até 3 opções, nesta ordem:
+  - o horário que fecha um intervalo entre duas consultas;
+  - o que encosta numa consulta;
+  - o começo ou o fim do expediente ou do almoço;
+  - por último, o primeiro horário livre.
+
+  A primeira opção leva "Recomendado". Cada opção diz o porquê. Ao escolher, a Zuri confere de novo e avisa "Esse horário acabou de ser ocupado" se outra consulta entrou nesse meio tempo. A mesma lista aparece ao arrastar uma consulta para um horário recusado e no formulário. No formulário, os horários que encostam numa consulta ganham a marca verde "Encosta numa consulta".
+- **Gênero do contato:** a ficha ganha a linha "Gênero", que vem do Google Contatos e pode ser mudada ("Como no Google", Feminino, Masculino, Não informar). Nada é deduzido pelo nome. As listas de parentesco mostram só as formas que combinam, e uma ligação antiga que não combina aparece em âmbar: "Bruno está como masculino, mas a ligação diz “Filha”. Trocar para “Filho”". Os textos de confirmação ficam neutros.
+- **Etiquetas abaixo do nome:** são as do Google Contatos, cada nome uma vez só. "Favorito" vira a estrela, e uma etiqueta igual à observação do nome não se repete. A linha "Etiquetas" dos dados saiu, porque repetia o topo.

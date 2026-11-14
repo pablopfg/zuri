@@ -3110,6 +3110,56 @@ ol.pk-list{list-style:none;margin:0;padding:0}
 .mp-btn{justify-self:start;padding:10px 16px;border-radius:var(--r-md);background:var(--accent);color:var(--on-accent,#fff);font-weight:600}
 .mp-foot{color:var(--muted);font-size:var(--t-xs,12px)}
 
+
+/* ================= 14/11/2026 · pedidos do Pablo =================
+   1. Texto clicável com cara de clicável: verde de link (o mesmo do foco, 7:1 no claro) e sublinhado sempre visível;
+      ao passar o mouse, o sublinhado engrossa e ganha fundo. Vale para link no meio do texto, "Ver mais" e botão em forma
+      de link. Menus, abas e botões não mudam: já têm forma de controle. */
+:root{--link:var(--accent-ink);--link-line:color-mix(in srgb,var(--accent-ink) 55%,transparent);--link-bg:color-mix(in srgb,var(--accent) 12%,transparent)}
+:where(#conteudo,#dlg-host,.pop,.sheet) a:not([class]):not(nav a),.linkbtn,.more,.ag-sug-none a{color:var(--link);text-decoration:underline;text-decoration-color:var(--link-line);text-decoration-thickness:1.5px;text-underline-offset:3px;border-radius:4px;transition:text-decoration-color var(--dur-1) var(--ease-out),background-color var(--dur-1) var(--ease-out)}
+:where(#conteudo,#dlg-host,.pop,.sheet) a:not([class]):not(nav a):hover,.linkbtn:hover,.more:hover,.ag-sug-none a:hover{text-decoration-color:currentColor;text-decoration-thickness:2px;background:var(--link-bg)}
+.more{font-weight:600}
+.more .ic{transition:transform var(--dur-1) var(--ease-out)}
+.more:hover .ic{transform:translateX(2px)}
+.linkbtn:disabled{color:var(--muted);text-decoration-color:var(--line-strong);cursor:not-allowed;background:none}
+/* títulos que abrem uma ficha (linhas inteiras clicáveis) seguem com a cor do texto, mas sublinham no mouse e no foco */
+.rowlink:hover,.rowlink:focus-visible{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
+@media (prefers-reduced-motion:reduce){.more:hover .ic{transform:none}}
+
+/* 2. Aviso de horário fechado: as sugestões que encostam nas consultas, a primeira recomendada */
+.ag-sug-h{font-size:var(--t-sm);font-weight:600;color:var(--ink);margin:var(--s2) 0}
+.ag-sug{list-style:none;margin:0 0 var(--s3);padding:0;display:grid;gap:6px}
+.ag-sug-b{display:grid;gap:2px;width:100%;min-height:44px;padding:10px 12px;text-align:left;border:1px solid var(--line-strong);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;transition:border-color var(--dur-1) var(--ease-out),background-color var(--dur-1) var(--ease-out)}
+.ag-sug-b:hover{border-color:var(--accent);background:var(--hover)}
+.ag-sug-b.rec{border-color:var(--accent);background:var(--accent-soft)}
+.ag-sug-b.rec:hover{background:color-mix(in srgb,var(--accent) 22%,var(--surface))}
+.ag-sug-q{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ag-sug-q b{font-variant-numeric:tabular-nums}
+.ag-sug-tag{font-size:12px;font-weight:600;color:var(--accent-soft-ink);background:var(--surface);border:1px solid var(--accent);border-radius:var(--r-pill);padding:0 8px;line-height:20px}
+.ag-sug-w{font-size:var(--t-sm);color:var(--muted)}
+.ag-sug-b.rec .ag-sug-w{color:var(--accent-soft-ink)}
+.ag-sug-none{display:flex;gap:8px;align-items:flex-start;font-size:var(--t-sm);color:var(--ink-2)}
+.ee-al-card .ag-sug{margin-top:var(--s2)}
+.ee-slots .chip.junto{position:relative;padding-left:22px}
+.ee-slots .chip.junto::after{content:"";position:absolute;left:10px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--accent)}
+.ee-slots .chip.junto[aria-pressed="true"]::after{background:var(--on-accent,#fff)}
+.ee-sl-j{display:flex;align-items:center;gap:6px;margin-top:6px}
+.ee-sl-j i{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none}
+
+/* 3. Gênero do contato e aviso de papel que não combina */
+.gen-row{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;justify-content:space-between}
+.gen-set{border:0;margin:0;padding:0;display:grid;gap:6px}
+.gen-opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line-strong);border-radius:var(--r-md);cursor:pointer;min-height:44px}
+.gen-opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.gen-opt input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--accent);flex:none}
+.gen-opt span{display:grid;gap:2px}
+.fam-warn{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:var(--t-sm);color:var(--warn-ink);margin-top:2px}
+.fam-warn .ic{flex:none}
+[data-fam-g]:empty{display:none}
+[data-fam-g] .linkbtn{font-size:inherit}
+
+/* 4. Etiquetas embaixo do nome, uma vez cada */
+.p-tags{list-style:none;padding:0}
 /* ================= Revisão ui-ux-pro-max (14/11) =================
    Só toque, leitura e acessibilidade: cores, letras, ícones e desenho das telas continuam os aprovados. */
 /* toque sem o atraso de 300 ms do navegador */
@@ -3997,7 +4047,7 @@ function person(p) {
     ["briefcase", "Empresa e cargo", p.org || ""],
     ["globe", "Site", pairs(p.site)],
     ["at-sign", "Chat", pairs(p.chat)],
-    ["tags", "Etiquetas", (p.tags || []).map((t) => `<span class="tag">${t}</span>`).join(" ")],
+    ["user", "Gênero", genRow(p)],
     ["list-todo", "Campos personalizados", pairs(p.custom)],
     ["notebook", "Observações", p.notes || ""]
   ];
@@ -4007,7 +4057,7 @@ function person(p) {
   const rvLink = p.nps ? `<button class="linkbtn" type="button" data-go-ped="${p.id}">Ver em Avaliações${ic("chevron-right", "ic-sm")}</button>` : "";
   return `<article class="person" aria-labelledby="h-p">${back()}
       <header class="person-head">${pav(p, "pav-xl")}<div><h2 id="h-p">${name}</h2>${p.sub ? `<p class="role">${p.sub}</p>` : p.n ? "" : `<p class="role">Sem nome no Google. A Zuri mostra o ${phones.length ? "telefone" : "e-mail"}.</p>`}
-        <p class="meta">${(p.tags || []).map((t) => `<span class="tag">${t}</span>`).join("")}${p.fav ? `<span class="tag">${ic("star", "fav")}Favorito</span>` : ""}</p></div></header>
+        ${tagsHead(p)}</div></header>
       ${qa}
       <div class="person-cols"><div class="pc-main">
         ${p.nps ? npsBlock(p, rvLink) : ""}
@@ -8003,12 +8053,100 @@ document.addEventListener("change", (ev) => {
   else say("Esse horário não fecha com os outros: o almoço precisa ficar dentro do atendimento, com pelo menos 30 min de cada lado.");
   render(); refocus(`[data-hr="${k}"]`);
 });
+
+/* ===== 14/11/2026 · pedido do Pablo: gênero do contato e etiquetas do Google sem repetir ===== */
+/* Gênero: o do Google Contatos (campo "Gênero" do contato, só leitura) ou o que o dono escolhe na Zuri, que vale mais.
+   Sem nenhum dos dois, os textos ficam neutros e os parentes aparecem nas duas formas, para o dono escolher.
+   Nada é adivinhado pelo nome: "Bruno" não vira masculino sozinho. Funções declaradas (não const) para valerem
+   desde o primeiro desenho da tela. */
+function genOf(p) {
+  if (!genOf.g) {
+    genOf.g = { bia: "f", carla: "f", carlos: "m", helena: "f", julia: "f", luciana: "f", mae: "f", marcos: "m", marina: "f", pedro: "m", rafael: "m", sofia: "f", thiago: "m", renata: "f", bruno: "m", "helena-p": "f", paula: "f", diego: "m", carla2: "f" };
+    genOf.z = {};
+  }
+  if (!p || !p.n || p.org === p.n) return { g: "", src: "" };
+  if (genOf.z[p.id] !== undefined) return { g: genOf.z[p.id], src: "zuri", google: genOf.g[p.id] || "" };
+  return genOf.g[p.id] ? { g: genOf.g[p.id], src: "google", google: genOf.g[p.id] } : { g: "", src: "", google: "" };
+}
+const GEN_NOME = { f: "Feminino", m: "Masculino", "": "Não informado" };
+function genRow(p) {
+  if (!p.n || p.org === p.n) return "";
+  const x = genOf(p), first = escH(p.n.split(" ")[0]);
+  const de = x.src === "zuri" ? (x.google && x.google !== x.g ? `definido na Zuri (no Google: ${GEN_NOME[x.google].toLowerCase()})` : "definido na Zuri") : x.src === "google" ? "do Google Contatos" : "os textos ficam neutros";
+  return `<span class="gen-row"><span>${GEN_NOME[x.g]}<span class="hint"> · ${de}</span></span><button class="btn btn-quiet btn-sm" type="button" data-gen-set="${escH(p.id)}" aria-label="${x.g ? "Mudar" : "Definir"} o gênero de ${first}">${ic("pencil", "ic-sm")}${x.g ? "Mudar" : "Definir"}</button></span>`;
+}
+function genDlg(p, opener) {
+  const x = genOf(p), first = escH(p.n.split(" ")[0]);
+  const opt = (v, t, d) => `<label class="gen-opt"><input type="radio" name="gen" value="${v}"${(x.src === "zuri" ? x.g : x.src === "google" ? "google" : "") === v ? " checked" : ""}><span><b>${t}</b>${d ? `<span class="hint">${d}</span>` : ""}</span></label>`;
+  dlgShow({ t: `Gênero de ${first}`, sub: "Ajusta os textos da Zuri, como “filho” ou “filha” na família. Fica só na Zuri: o Google Contatos não muda.",
+    body: `<fieldset class="gen-set"><legend class="sr">Gênero</legend>${x.google ? opt("google", `Como no Google Contatos (${GEN_NOME[x.google].toLowerCase()})`, "Se mudar lá, muda aqui também.") : ""}${opt("f", "Feminino")}${opt("m", "Masculino")}${opt("", "Não informar", "Os textos ficam neutros e a família mostra as duas formas.")}</fieldset>`,
+    foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Salvar</button>`,
+    ok: () => {
+      const v = pick(document.querySelector("#dlg-host input[name=gen]:checked")?.value ?? "", ["", "f", "m", "google"]);
+      if (v === "google") delete genOf.z[p.id]; else genOf.z[p.id] = v;
+      render(); refocus(`[data-gen-set="${p.id}"]`);
+      const ruins = famOf(p.id).filter((y) => !famFits(y.role, genOf(p).g)).length;
+      say(`Gênero de ${first} salvo na Zuri.${ruins ? ` ${ruins === 1 ? "Uma ligação de família não combina" : `${ruins} ligações de família não combinam`} mais: confira em Família.` : ""}`);
+    } }, opener);
+}
+/* Etiquetas embaixo do nome: as do Google Contatos, uma vez cada. Nomes iguais com maiúsculas, acentos ou espaços diferentes
+   ("Família", "familia ") contam como uma só, e a que repete o que já está escrito embaixo do nome não aparece de novo.
+   "Favorito" vem da estrela do Google e fica como estrela, não como etiqueta. */
+function tagsOf(p) {
+  const seen = new Set(p.sub ? [fold(p.sub.trim().replace(/\s+/g, " "))] : []), out = [];
+  for (const t of p.tags || []) { const k = fold(String(t).trim().replace(/\s+/g, " ")); if (!k || seen.has(k)) continue; seen.add(k); out.push(String(t).trim().replace(/\s+/g, " ")); }
+  return out;
+}
+function tagsHead(p) {
+  const T = tagsOf(p);
+  if (!T.length && !p.fav) return "";
+  return `<ul class="meta p-tags" aria-label="Etiquetas do Google Contatos">${T.map((t) => `<li class="tag" title="Etiqueta do Google Contatos">${escH(t)}</li>`).join("")}${p.fav ? `<li class="tag" title="Com estrela no Google Contatos">${ic("star", "fav")}Favorito</li>` : ""}</ul>`;
+}
+/* Família com gênero: cada papel tem o seu ("Filha" é feminino). Só aparecem os que combinam com o gênero de cada pessoa. */
+const ROLE_G = { Mãe: "f", Pai: "m", Filha: "f", Filho: "m", Irmã: "f", Irmão: "m", Avó: "f", Avô: "m", Neta: "f", Neto: "m", Tia: "f", Tio: "m", Sobrinha: "f", Sobrinho: "m", Prima: "f", Primo: "m" };
+const ROLE_PAR = { Mãe: "Pai", Pai: "Mãe", Filha: "Filho", Filho: "Filha", Irmã: "Irmão", Irmão: "Irmã", Avó: "Avô", Avô: "Avó", Neta: "Neto", Neto: "Neta", Tia: "Tio", Tio: "Tia", Sobrinha: "Sobrinho", Sobrinho: "Sobrinha", Prima: "Primo", Primo: "Prima" };
+function famFits(role, g) { const r = ROLE_G[role] || ""; return !g || !r || r === g; }
+/* O papel do próprio contato numa ligação: "a é la de b" e "b é lb de a". */
+function famRoleSelf(pid, x) { const r = FAM[x.i]; return r ? (r.a === pid ? r.la : r.lb) : ""; }
+/* Troca o papel pela outra forma (Filha ↔ Filho), do parente ou do próprio contato, só se a troca combinar. */
+function famTrocar(i, pid, eu) {
+  const r = FAM[i];
+  if (!r || (r.a !== pid && r.b !== pid)) return;
+  const k = (r.a === pid) === eu ? "la" : "lb", novo = ROLE_PAR[r[k]];
+  if (!novo) return;
+  const quem = pById(k === "la" ? r.a : r.b);
+  if (!famFits(novo, genOf(quem).g)) return;
+  r[k] = novo;
+  render(); refocus("[data-fam-add]"); say(`Ligação corrigida: ${quem.n} agora é ${novo.toLowerCase()}.`);
+}
+/* Redesenha as duas listas do diálogo quando muda o parente ou o papel dele. */
+function famOpts() {
+  const h = document.querySelector("#dlg-host"), p = pById(famOpts.pid);
+  if (!h || !p) return;
+  const oSel = h.querySelector("[data-fam-o]"), laSel = h.querySelector("[data-fam-la]"), lbSel = h.querySelector("[data-fam-lb]"), hint = h.querySelector("[data-fam-g]"), resp = h.querySelector("[data-fam-resp]");
+  const o = pById(oSel?.value), go = genOf(o).g, gp = genOf(p).g;
+  const las = FAM_REL.map((r) => r[0]).filter((r) => famFits(r, go));
+  const la = las.includes(laSel.value) ? laSel.value : las[0];
+  const fill = (sel, L, v) => sel.replaceChildren(...L.map((x) => { const e = document.createElement("option"); e.textContent = x; if (x === v) e.selected = true; return e; }));
+  fill(laSel, las, la);
+  const lbs = (FAM_REL.find((r) => r[0] === la) || FAM_REL[0]).slice(1).filter((r) => famFits(r, gp));
+  fill(lbSel, lbs, lbs.includes(lbSel.value) ? lbSel.value : lbs[0]);
+  const sem = [o, p].filter((x) => x && !genOf(x).g);
+  hint.replaceChildren();
+  if (sem.length) {
+    hint.append(`${sem.map((x) => x.n.split(" ")[0]).join(" e ")} sem gênero definido: as duas formas aparecem. `);
+    for (const x of sem) { const b = document.createElement("button"); b.type = "button"; b.className = "linkbtn"; b.dataset.genSet = x.id; b.textContent = `Definir o de ${x.n.split(" ")[0]}`; hint.append(b, " "); }
+  }
+  if (resp) { resp.disabled = !FAM_RESP.includes(la); if (resp.disabled) resp.checked = false; }
+}
 /* ================= 13/11/2026 · pedidos das 21:15: família nos Contatos, extrato em planilha e projeções ================= */
 /* Família: ligações que só a Zuri guarda (o Google Contatos fica só para leitura). Cada ligação diz o papel dos dois lados:
    "a é la de b" e "b é lb de a". Quem tem responsável recebe as mensagens do consultório pelo celular e pelo e-mail dele. */
 const FAM_REL = [["Mãe", "Filha", "Filho"], ["Pai", "Filha", "Filho"], ["Filha", "Mãe", "Pai"], ["Filho", "Mãe", "Pai"], ["Irmã", "Irmã", "Irmão"], ["Irmão", "Irmã", "Irmão"], ["Avó", "Neta", "Neto"], ["Avô", "Neta", "Neto"], ["Neta", "Avó", "Avô"], ["Neto", "Avó", "Avô"], ["Tia", "Sobrinha", "Sobrinho"], ["Tio", "Sobrinha", "Sobrinho"], ["Sobrinha", "Tia", "Tio"], ["Sobrinho", "Tia", "Tio"], ["Prima", "Prima", "Primo"], ["Primo", "Prima", "Primo"], ["Cônjuge", "Cônjuge"], ["Responsável legal", "Dependente"]];
 const FAM_RESP = ["Mãe", "Pai", "Avó", "Avô", "Tia", "Tio", "Irmã", "Irmão", "Responsável legal"];
-const FAM = [{ a: "helena-p", b: "lucas-p", la: "Mãe", lb: "Filho" }, { a: "diego", b: "helena-p", la: "Irmão", lb: "Irmã" }];
+const FAM = [{ a: "helena-p", b: "lucas-p", la: "Mãe", lb: "Filho" }, { a: "diego", b: "helena-p", la: "Irmão", lb: "Irmã" },
+  /* Exemplo de 14/11: ligação antiga, feita antes do gênero, em que o Bruno ficou como "Filha". A ficha avisa e corrige com um toque. */
+  { a: "carla", b: "bruno", la: "Mãe", lb: "Filha" }];
 const RESP = { "lucas-p": "helena-p" };
 const famOf = (id) => FAM.map((r, i) => (r.a === id ? { o: r.b, role: r.lb, i } : r.b === id ? { o: r.a, role: r.la, i } : null)).filter(Boolean);
 const famRole = (id, other) => (famOf(id).find((x) => x.o === other) || { role: "família" }).role.toLowerCase();
@@ -8022,7 +8160,7 @@ function famCard(p) {
   if (!p.n) return "";
   const L = famOf(p.id), g = famGroup(p.id).filter((x) => x !== p.id && !L.some((y) => y.o === x)), via = RESP[p.id] && pById(RESP[p.id]);
   const who = (id) => { const o = pById(id); return o ? `${pav(o)}<span class="grow"><button class="linkbtn" type="button" data-goto-p="${escH(o.id)}">${escH(o.n)}</button>` : ""; };
-  const list = L.length ? `<ul class="fam-list">${L.map((x) => `<li>${who(x.o)}<span class="hint">${escH(x.role)}${PEOPLE.filter((y) => y.n && fold(y.n) === fold(pById(x.o)?.n || "")).length > 1 ? ` · ${nascTxt(pById(x.o))}` : ""}${RESP[p.id] === x.o ? " · recebe as mensagens" : ""}</span></span><button class="iconbtn" type="button" data-fam-del="${x.i}" aria-label="Tirar a ligação com ${escH(pById(x.o)?.n || "")}">${ic("x", "ic-sm")}</button></li>`).join("")}</ul>` : `<p class="p-empty">Nenhum parente ligado. Ligue pais e filhos, irmãos, avós e tios para a Zuri saber que são da mesma família.</p>`;
+  const list = L.length ? `<ul class="fam-list">${L.map((x) => `<li>${who(x.o)}<span class="hint">${escH(x.role)}${PEOPLE.filter((y) => y.n && fold(y.n) === fold(pById(x.o)?.n || "")).length > 1 ? ` · ${nascTxt(pById(x.o))}` : ""}${RESP[p.id] === x.o ? " · recebe as mensagens" : ""}</span>${famFits(x.role, genOf(pById(x.o)).g) ? "" : `<span class="fam-warn">${ic("triangle-alert", "ic-sm")}<span>“${escH(x.role)}” não combina com o gênero de ${escH((pById(x.o)?.n || "").split(" ")[0])} (${GEN_NOME[genOf(pById(x.o)).g].toLowerCase()}).</span><button class="linkbtn" type="button" data-fam-fix="${x.i}|${escH(p.id)}">Trocar para “${escH(ROLE_PAR[x.role] || x.role)}”</button></span>`}${famFits(famRoleSelf(p.id, x), genOf(p).g) ? "" : `<span class="fam-warn">${ic("triangle-alert", "ic-sm")}<span>${escH(p.n.split(" ")[0])} está como ${GEN_NOME[genOf(p).g].toLowerCase()}, mas a ligação diz “${escH(famRoleSelf(p.id, x))}”.</span><button class="linkbtn" type="button" data-fam-fix-self="${x.i}|${escH(p.id)}">Trocar para “${escH(ROLE_PAR[famRoleSelf(p.id, x)] || "")}”</button></span>`}</span><button class="iconbtn" type="button" data-fam-del="${x.i}" aria-label="Tirar a ligação com ${escH(pById(x.o)?.n || "")}">${ic("x", "ic-sm")}</button></li>`).join("")}</ul>` : `<p class="p-empty">Nenhum parente ligado. Ligue pais e filhos, irmãos, avós e tios para a Zuri saber que são da mesma família.</p>`;
   const more = g.length ? `<p class="hint">Também no grupo familiar: ${g.map((x) => escH(pById(x)?.n || "")).join(", ")}.</p>` : "";
   const resp = via ? `<p class="fam-resp">${ic("send-horizontal", "ic-sm")}<span>As mensagens do consultório para ${escH(p.n.split(" ")[0])} vão para ${escH(via.n)}.</span></p>` : "";
   return `<section class="card p-sec" aria-labelledby="h-fam"><div class="p-sec-h"><h3 id="h-fam">Família</h3><button class="btn btn-quiet btn-sm" type="button" data-fam-add="${escH(p.id)}">${ic("plus", "ic-sm")}Ligar parente</button></div>${list}${more}${resp}</section>`;
@@ -8034,28 +8172,33 @@ function famDlg(p, opener) {
   const inv = (la) => (FAM_REL.find((r) => r[0] === la) || FAM_REL[0]).slice(1);
   dlgShow({ t: `Ligar um parente de ${first}`, sub: "A ligação fica só na Zuri. O Google Contatos não muda. Nomes iguais são pessoas diferentes: escolha pelo telefone e pela data de nascimento.",
     body: `<label class="field"><span class="label">Parente</span><select class="input" data-fam-o>${cand.map((x) => `<option value="${escH(x.id)}">${escH(x.n)} · ${escH(cellOf(x) || mailOf(x))} · ${nascTxt(x)}</option>`).join("")}</select></label>
-      <div class="grid-2"><label class="field"><span class="label">Essa pessoa é</span><select class="input" data-fam-la>${FAM_REL.map((r) => `<option>${r[0]}</option>`).join("")}</select></label>
-      <label class="field"><span class="label">E ${first} é</span><select class="input" data-fam-lb>${inv(FAM_REL[0][0]).map((x) => `<option>${x}</option>`).join("")}</select></label></div>
+      <div class="grid-2"><label class="field"><span class="label">Essa pessoa é</span><select class="input" data-fam-la></select></label>
+      <label class="field"><span class="label">E ${first} é</span><select class="input" data-fam-lb></select></label></div>
+      <p class="hint" data-fam-g></p>
       <label class="fam-chk"><input type="checkbox" data-fam-resp><span>As mensagens do consultório para ${first} vão para essa pessoa (criança ou quem não usa o celular)</span></label>
       <p class="hint err" data-fam-err role="status"></p>`,
     foot: `<span class="grow"></span><button class="btn btn-quiet" type="button" data-dlg-x>Cancelar</button><button class="btn btn-primary" type="button" data-dlg-ok>Ligar</button>`,
     ok: () => {
       const o = cand.find((x) => x.id === dlgRawIn("[data-fam-o]")), la = pick(dlgRawIn("[data-fam-la]"), FAM_REL.map((r) => r[0])), lb = pick(dlgRawIn("[data-fam-lb]"), inv(la));
-      if (!o) { document.querySelector("[data-fam-err]").textContent = "Escolha o parente na lista."; return false; }
+      const err = (m) => { document.querySelector("[data-fam-err]").textContent = m; return false; };
+      if (!o) return err("Escolha o parente na lista.");
+      /* A lista já só mostra o que combina; a conferência de novo pega a troca de gênero feita com o diálogo aberto. */
+      if (!famFits(la, genOf(o).g)) return err(`${o.n.split(" ")[0]} está como ${GEN_NOME[genOf(o).g].toLowerCase()}: “${la}” não combina. Escolha “${ROLE_PAR[la]}”.`);
+      if (!famFits(lb, genOf(p).g)) return err(`${p.n.split(" ")[0]} está como ${GEN_NOME[genOf(p).g].toLowerCase()}: “${lb}” não combina. Escolha “${ROLE_PAR[lb]}”.`);
       FAM.push({ a: o.id, b: p.id, la, lb });
       if (document.querySelector("#dlg-host [data-fam-resp]")?.checked && FAM_RESP.includes(la)) RESP[p.id] = o.id;
-      render(); refocus("[data-fam-add]"); say(`${o.n} ligada como ${la.toLowerCase()} de ${p.n}.${RESP[p.id] === o.id ? " As mensagens do consultório vão para ela." : ""}`);
+      render(); refocus("[data-fam-add]"); say(`Ligação feita: ${o.n} é ${la.toLowerCase()} de ${p.n}.${RESP[p.id] === o.id ? ` As mensagens do consultório para ${p.n.split(" ")[0]} vão para ${o.n.split(" ")[0]}.` : ""}`);
     } }, opener);
+  famOpts.pid = p.id; famOpts();
 }
 document.addEventListener("change", (ev) => {
   const t = ev.target;
-  if (!t.matches || !t.matches("#dlg-host [data-fam-la]")) return;
-  const r = FAM_REL.find((x) => x[0] === t.value) || FAM_REL[0], lb = document.querySelector("#dlg-host [data-fam-lb]"), resp = document.querySelector("#dlg-host [data-fam-resp]");
-  lb.replaceChildren(...r.slice(1).map((x) => { const o = document.createElement("option"); o.textContent = x; return o; }));
-  if (resp) { resp.disabled = !FAM_RESP.includes(r[0]); if (resp.disabled) resp.checked = false; }
+  if (t.matches && t.matches("#dlg-host [data-fam-la], #dlg-host [data-fam-o]")) famOpts();
 });
 ACT.unshift(
   [(t) => t.matches("[data-fam-add]"), (t) => { const p = pById(t.dataset.famAdd); if (p) famDlg(p, t); }],
+  [(t) => t.matches("[data-gen-set]"), (t) => { const p = pById(t.dataset.genSet); if (p && p.n) genDlg(p, t); }],
+  [(t) => t.matches("[data-fam-fix], [data-fam-fix-self]"), (t) => { const [i, pid] = (t.dataset.famFix || t.dataset.famFixSelf).split("|"); famTrocar(Number(i), pid, !!t.dataset.famFixSelf); }],
   [(t) => t.matches("[data-fam-del]"), (t) => { const i = Number(t.dataset.famDel), r = FAM[i]; if (!r) return; FAM.splice(i, 1); for (const k of [r.a, r.b]) if (RESP[k] && !famOf(k).some((x) => x.o === RESP[k])) delete RESP[k]; render(); refocus("[data-fam-add]"); say("Ligação tirada. Os dois contatos continuam como estavam."); }]
 );
 
@@ -8610,16 +8753,113 @@ function agMotivo(m) {
   return (R.find(([r]) => r.test(m)) || [0, "Não pode"])[1];
 }
 const agSomErro = () => { if (!st.snd.on) return; const a = sndCtx(); if (a) { tone(a, 330, 0, 0.14, { type: "triangle", g: 0.08 }); tone(a, 247, 0.12, 0.2, { type: "triangle", g: 0.08 }); } };
-/* O próximo horário de 1 h que aceita consulta, a partir do que a pessoa tocou. */
-function agNext(day, mins) {
-  const busy = (k, m) => EV.some((o) => o.day === k && o.s !== "cancelado" && o.h * 60 + o.m < m + 60 && evEnd(o) > m);
-  const start = day < dkey(AG_NOW) ? dkey(AG_NOW) : day;
-  for (let i = 0; i < 60; i++) {
-    const k = dkey(addD(dOf(start), i));
-    const from = i ? CF_HRS.de * 60 : Math.max(CF_HRS.de * 60, Math.ceil(mins / 30) * 30);
-    for (let m = from; m + 60 <= CF_HRS.ate * 60; m += 30) if (!busy(k, m) && !agErro(null, k, m, m + 60)) return { day: k, m };
+/* ===== 14/11/2026 · pedido do Pablo: motivo direto e sugestão que encosta nas consultas ===== */
+/* Título do aviso: o motivo em poucas palavras, para a pessoa saber na hora o que impede. O detalhe vem do agErro. */
+function agTitulo(skip, day, mins, end) {
+  const d = dOf(day), today = dkey(AG_NOW), [a0, a1] = CF_HRS.alm;
+  if (mins % AG_PASSO || end % AG_PASSO) return "Use minutos de 5 em 5";
+  if (end - mins < AG_MIN) return "Consulta curta demais";
+  if (end - mins > AG_MAX) return "Consulta longa demais";
+  if (day < today || (day === today && mins < nowMin())) return "Esse horário já passou";
+  if (dOf(day) > addD(AG_NOW, AG_LONGE)) return "Data a mais de um ano";
+  if (!CF_HRS.dias.includes(d.getDay())) return `${WDL[d.getDay()]} não tem atendimento`;
+  if (holFecha(d)) return `Feriado: ${feriado(d)}`;
+  const off = diaOff(d);
+  if (off) return off.m ? `Sem expediente: ${off.m}` : "Dia sem expediente";
+  if (mins < CF_HRS.de * 60 || end > CF_HRS.ate * 60) return "Fora do horário de atendimento";
+  if (mins < a1 && end > a0) return "Horário de almoço";
+  const o = EV.find((x) => x !== skip && x.day === day && x.tipo && x.s !== "cancelado" && x.h * 60 + x.m < end && evEnd(x) > mins);
+  if (o) return "Horário já ocupado";
+  return "Consulta não entra neste horário";
+}
+/* O detalhe completa o título sem repetir: o que vale e o quanto a tentativa passou, para não precisar fazer conta. */
+function agDetalhe(skip, day, mins, end) {
+  const d = dOf(day), today = dkey(AG_NOW), [a0, a1] = CF_HRS.alm, why = agErro(skip, day, mins, end);
+  if (!why) return "";
+  if (mins % AG_PASSO || end % AG_PASSO || end - mins < AG_MIN || end - mins > AG_MAX) return why;
+  if (day < today || (day === today && mins < nowMin())) return `Agora são ${hmm(nowMin())}${day < today ? ` de ${dayShort(AG_NOW)}` : ""}. Escolha um horário daqui para frente.`;
+  if (d > addD(AG_NOW, AG_LONGE)) return "A agenda aceita até um ano à frente. Confira o ano.";
+  if (!CF_HRS.dias.includes(d.getDay())) return `A agenda atende ${diasTxt()}. Dá para mudar em Configurações › Agenda.`;
+  if (holFecha(d)) return "A agenda não abre em feriado nacional.";
+  const off = diaOff(d);
+  if (off) return off.k === off.f ? "Marcado em Configurações › Agenda." : `O período vai de ${offTxt(off).replace(" a ", " até ")}, em Configurações › Agenda.`;
+  if (mins < CF_HRS.de * 60) return `O atendimento começa às ${hh2(CF_HRS.de)}, e a consulta começaria às ${hmm(mins)}.`;
+  if (end > CF_HRS.ate * 60) return `O atendimento vai até as ${hh2(CF_HRS.ate)}, e a consulta terminaria às ${hmm(end)}.`;
+  if (mins < a1 && end > a0) return `O almoço vai das ${hmm(a0)} às ${hmm(a1)}, e a consulta iria das ${hmm(mins)} às ${hmm(end)}.`;
+  const o = EV.find((x) => x !== skip && x.day === day && x.tipo && x.s !== "cancelado" && x.h * 60 + x.m < end && evEnd(x) > mins);
+  if (o) return `Consulta de ${escH(o.t)} das ${hmm(o.h * 60 + o.m)} às ${hmm(evEnd(o))}.`;
+  return why;
+}
+/* "de segunda a sexta" ou a lista dos dias, como está nos ajustes. */
+function diasTxt() {
+  const L = [...CF_HRS.dias].sort((a, b) => a - b), N = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+  const seguidos = L.every((x, i) => !i || x === L[i - 1] + 1);
+  if (L.length > 2 && seguidos) return `de ${N[L[0]]} a ${N[L[L.length - 1]]}`;
+  return L.length ? `${L.slice(0, -1).map((x) => N[x]).join(", ")}${L.length > 1 ? " e " : ""}${N[L[L.length - 1]]}` : "em nenhum dia";
+}
+/* Regra interna do consultório (Pablo, 14/11): sugerir primeiro os horários colados (antes ou depois) às consultas
+   já marcadas, para a semana não ficar com buracos soltos. Ordem:
+   0. fecha um intervalo inteiro entre duas consultas;
+   1. encosta numa consulta (logo antes ou logo depois);
+   2. num dia com consulta, encosta no começo do expediente, no almoço ou no fim do dia;
+   3. num dia ainda vazio, começa na abertura, logo depois do almoço ou termina no fechamento (não parte o dia ao meio);
+   4. o resto, pelo menor espaço até uma consulta.
+   Olha os próximos 7 dias com atendimento a partir do que a pessoa tentou (no próprio dia, antes ou depois da hora);
+   dentro da mesma faixa, vence o mais perto do horário tentado. Sem nada em 7 dias, vale o primeiro livre em 60 dias.
+   Reunião e compromisso pessoal também ocupam o horário (a pessoa está ocupada), mas só consulta conta para "encostar". */
+const AG_SUG_DIAS = 7, AG_SUG_MAX = 3;
+function agSugestoes(day, mins, len, skip) {
+  const today = dkey(AG_NOW), first = day < today ? today : day, [a0, a1] = CF_HRS.alm, de = CF_HRS.de * 60, ate = CF_HRS.ate * 60;
+  const out = [];
+  if (!Number.isInteger(len) || len < AG_MIN || len > AG_MAX) return out;
+  let dias = 0;
+  for (let i = 0; i < 60 && dias < AG_SUG_DIAS; i++) {
+    const k = dkey(addD(dOf(first), i));
+    if (!cfOpen(dOf(k))) continue;
+    const ev = EV.filter((o) => o !== skip && o.day === k && o.s !== "cancelado");
+    const cons = ev.filter((o) => o.tipo);
+    const pts = new Set();
+    for (let m = de; m + len <= ate; m += 30) pts.add(m);
+    for (const o of cons) { pts.add(evEnd(o)); pts.add(o.h * 60 + o.m - len); }
+    for (const m of [de, a1, a0 - len, ate - len]) pts.add(m);
+    let achou = false;
+    for (const m of pts) {
+      if (m < de || m + len > ate || m % AG_PASSO) continue;
+      if (ev.some((o) => o.h * 60 + o.m < m + len && evEnd(o) > m)) continue;
+      if (agErro(skip, k, m, m + len)) continue;
+      achou = true;
+      const antes = cons.find((o) => evEnd(o) === m), depois = cons.find((o) => o.h * 60 + o.m === m + len);
+      const borda = m === de ? "abre" : m === a1 ? "almoco-fim" : m + len === a0 ? "almoco-ini" : m + len === ate ? "fecha" : "";
+      const gap = cons.length ? Math.min(...cons.map((o) => Math.min(Math.abs(o.h * 60 + o.m - (m + len)), Math.abs(m - evEnd(o))))) : 600;
+      const tier = antes && depois ? 0 : antes || depois ? 1 : borda && cons.length ? 2 : borda ? 3 : 4;
+      const dist = k === day ? Math.abs(m - mins) : i * 1440 + Math.abs(m - mins) / 10;
+      out.push({ day: k, m, tier, gap, dist, antes, depois, borda });
+    }
+    if (achou) dias++;
   }
-  return null;
+  out.sort((x, y) => x.tier - y.tier || (x.tier === 4 ? x.gap - y.gap : 0) || x.dist - y.dist || (x.day < y.day ? -1 : x.day > y.day ? 1 : x.m - y.m));
+  const top = out.slice(0, AG_SUG_MAX);
+  if (!top.length) { const nx = agProx(day, mins, len, skip); if (nx) top.push({ day: nx.day, m: nx.m, tier: 5 }); }
+  return top;
+}
+/* Por que a sugestão é boa, em palavras. */
+function agSugPorque(x, len) {
+  if (x.tier === 0) return `Fecha o intervalo entre as consultas das ${hmm(x.antes.h * 60 + x.antes.m)} e das ${hmm(x.depois.h * 60 + x.depois.m)}`;
+  if (x.antes) return `Logo depois da consulta das ${hmm(x.antes.h * 60 + x.antes.m)}`;
+  if (x.depois) return `Logo antes da consulta das ${hmm(x.depois.h * 60 + x.depois.m)}`;
+  const B = { abre: "No começo do expediente", "almoco-fim": "Logo depois do almoço", "almoco-ini": "Termina no começo do almoço", fecha: "Termina no fim do expediente" };
+  if (x.borda) return B[x.borda];
+  if (x.tier === 5) return "Primeiro horário livre (nada colado nos próximos 7 dias)";
+  return `${durTxt(len)} sem encostar em outra consulta`;
+}
+/* As sugestões como botões: a primeira é a recomendada. `attr` diz o que o botão faz (abrir, mover ou preencher). */
+function agSugLista(sug, len, attr) {
+  if (!sug.length) return `<p class="ag-sug-none">${ic("calendar-x", "ic-sm")}<span>Nenhum horário livre nos próximos 60 dias com ${durTxt(len)} de duração. Confira os dias e o horário de atendimento em <a href="${href("configuracoes")}" data-cfg-go="agenda">Configurações › Agenda</a>.</span></p>`;
+  return `<p class="ag-sug-h" id="ag-sug-h">Horários que mantêm a agenda sem buracos</p><ul class="ag-sug" aria-labelledby="ag-sug-h">${sug.map((x, i) => `<li><button type="button" class="ag-sug-b${i ? "" : " rec"}" ${attr(x)}${i ? "" : " data-autofocus"}><span class="ag-sug-q"><b>${dayShort(dOf(x.day))}, às ${hmm(x.m)}</b>${i ? "" : `<span class="ag-sug-tag">Recomendado</span>`}</span><span class="ag-sug-w">${agSugPorque(x, len)}</span></button></li>`).join("")}</ul>`;
+}
+/* Antes de usar uma sugestão, confere de novo: alguém pode ter ocupado o horário desde que o aviso abriu. */
+function agSugAinda(day, m, len, skip) {
+  return !agErro(skip, day, m, m + len) && !EV.some((o) => o !== skip && o.day === day && o.s !== "cancelado" && o.h * 60 + o.m < m + len && evEnd(o) > m);
 }
 /* Tocar num horário livre abre o novo agendamento. Num horário fechado, a Zuri explica o porquê e oferece o próximo livre
    ou um compromisso pessoal (reunião, banco), que pode ficar em qualquer hora. */
@@ -8631,10 +8871,14 @@ function agClick(day, mins) {
   if (!why || half) { evEdit(null, { ...pre, day, h: Math.floor(mins / 60), m: mins % 60, ...(half ? { dur: 0.5 } : {}) }, opener); return; }
   AG_PICK_PRE = pre;
   agSomErro();
-  const nx = agNext(day, mins);
-  dlgShow({ t: "Consulta não entra neste horário", sub: `${dayShort(dOf(day))}, às ${hmm(mins)}. ${why}`,
-    body: `${nx ? `<p class="hint">Próximo horário livre: <b>${dayShort(dOf(nx.day))}, às ${hmm(nx.m)}</b>.</p>` : ""}<p class="hint">Compromisso pessoal, como reunião ou banco, pode ficar em qualquer hora. Dias e horário de atendimento ficam em Configurações › Agenda.</p>`,
-    foot: `<button class="btn btn-quiet" type="button" data-ag-plain="${day}|${mins}">Criar compromisso pessoal</button><span class="grow"></span>${nx ? `<button class="btn btn-primary" type="button" data-ag-next="${nx.day}|${nx.m}" data-autofocus>Usar o próximo livre</button>` : `<button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Entendi</button>`}` }, opener);
+  agAvisoClique(day, mins, opener);
+}
+/* O aviso do clique, também usado quando a sugestão escolhida deixou de valer (ocupada enquanto o aviso estava aberto). */
+function agAvisoClique(day, mins, opener, ocupou) {
+  const sug = agSugestoes(day, mins, 60, null);
+  dlgShow({ t: ocupou ? "Esse horário acabou de ser ocupado" : agTitulo(null, day, mins, mins + 60), sub: ocupou ? "Outra consulta entrou nele enquanto o aviso estava aberto. As opções abaixo são as de agora." : `${dayShort(dOf(day))}, às ${hmm(mins)}. ${agDetalhe(null, day, mins, mins + 60)}`,
+    body: `${agSugLista(sug, 60, (x) => `data-ag-next="${x.day}|${x.m}"`)}<p class="hint">Compromisso pessoal, como reunião ou banco, pode ficar em qualquer hora.</p>`,
+    foot: `<button class="btn btn-quiet" type="button" data-ag-plain="${day}|${mins}">Criar compromisso pessoal</button><span class="grow"></span><button class="btn btn-secondary" type="button" data-dlg-x${sug.length ? "" : " data-autofocus"}>Entendi</button>` }, opener);
   const box = document.querySelector("#dlg-host .dlg-box");
   if (box) { box.setAttribute("role", "alertdialog"); box.classList.add("dlg-sm"); }
 }
@@ -8642,6 +8886,7 @@ ACT.unshift(
   [(t) => t.matches("[data-ag-next], [data-ag-plain]"), (t) => {
     const [k, m0] = (t.dataset.agNext || t.dataset.agPlain).split("|"), m = Number(m0);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Number.isInteger(m) || m < 0 || m > 1439) return;
+    if (t.dataset.agNext && !agSugAinda(k, m, 60, null)) { agSomErro(); agAvisoClique(k, m, document.querySelector("[data-x=evento]"), true); return; }
     DLG.opener = null; dlgClose();
     if (t.dataset.agNext) st.agd = dOf(k);
     const pre = AG_PICK_PRE || {}; AG_PICK_PRE = null;
@@ -8709,6 +8954,15 @@ function agLivres(day, dur, skip) {
   }
   return out;
 }
+/* Os livres do dia de 30 em 30 min mais os horários colados às consultas (que podem cair fora da meia hora, como 09:45). */
+function agColado(day, m, dur, skip) {
+  return EV.some((o) => o !== skip && o.day === day && o.tipo && o.s !== "cancelado" && (evEnd(o) === m || o.h * 60 + o.m === m + dur));
+}
+function agLivresJunto(day, dur, skip) {
+  const set = new Set(agLivres(day, dur, skip));
+  for (const o of EV) if (o !== skip && o.day === day && o.tipo && o.s !== "cancelado") for (const m of [evEnd(o), o.h * 60 + o.m - dur]) if (m >= 0 && agSugAinda(day, m, dur, skip)) set.add(m);
+  return [...set].sort((a, b) => a - b);
+}
 /* O próximo horário livre a partir do que a pessoa tentou, nos próximos 60 dias. */
 function agProx(day, mins, dur, skip) {
   const start = day < dkey(AG_NOW) ? dkey(AG_NOW) : day;
@@ -8723,10 +8977,10 @@ function agProx(day, mins, dur, skip) {
    com o próximo horário livre e "Mover para lá", que leva a consulta para ele com a mesma duração. */
 function agRecusaMove(e, day, mins, dur, why) {
   agSomErro();
-  const len = Math.round(dur * 60), nx = agProx(day, mins, len, e);
-  dlgShow({ t: "Consulta não entra neste horário", sub: `${dayShort(dOf(day))}, às ${hmm(mins)}. ${why} A consulta ficou onde estava.`,
-    body: nx ? `<p class="hint">Próximo horário livre: <b>${dayShort(dOf(nx.day))}, às ${hmm(nx.m)}</b>.</p>` : `<p class="hint">Nenhum horário livre nos próximos 60 dias com essa duração.</p>`,
-    foot: `<span class="grow"></span>${nx ? `<button class="btn btn-quiet" type="button" data-dlg-x>Entendi</button><button class="btn btn-primary" type="button" data-ag-mv="${e.id}|${nx.day}|${nx.m}" data-autofocus>Mover para lá</button>` : `<button class="btn btn-primary" type="button" data-dlg-x data-autofocus>Entendi</button>`}` },
+  const len = Math.round(dur * 60), sug = agSugestoes(day, mins, len, e);
+  dlgShow({ t: agTitulo(e, day, mins, mins + len), sub: `${dayShort(dOf(day))}, às ${hmm(mins)}. ${agDetalhe(e, day, mins, mins + len) || why} A consulta ficou onde estava.`,
+    body: agSugLista(sug, len, (x) => `data-ag-mv="${e.id}|${x.day}|${x.m}"`),
+    foot: `<span class="grow"></span><button class="btn btn-secondary" type="button" data-dlg-x${sug.length ? "" : " data-autofocus"}>Entendi</button>` },
     document.querySelector(`.ag2 [data-ev="${e.id}"]`));
   const box = document.querySelector("#dlg-host .dlg-box");
   if (box) { box.setAttribute("role", "alertdialog"); box.classList.add("dlg-sm"); }
@@ -8738,12 +8992,13 @@ function eeAlerta(why, day, mins, end, ev, field) {
   const box = document.querySelector("#dlg-host .dlg-box");
   if (!box) return false;
   box.querySelector(".ee-alert")?.remove();
-  const nx = agProx(day, mins, end - mins, ev || null);
+  const len = end - mins, valido = Number.isInteger(len) && len >= AG_MIN && len <= AG_MAX;
+  const sug = valido && agErro.campo !== "f" ? agSugestoes(day, mins, len, ev || null) : [];
   box.insertAdjacentHTML("beforeend", `<div class="ee-alert" data-ee-alert data-f="${pick(field, ["[data-ee-d]", "[data-ee-h]", "[data-ee-f]"])}"><div class="ee-al-card" role="alertdialog" aria-modal="true" aria-labelledby="ee-al-t" aria-describedby="ee-al-d">
-    <p class="ee-al-t" id="ee-al-t">${ic("triangle-alert", "ic-sm")}Consulta não entra neste horário</p>
-    <p id="ee-al-d">${dayShort(dOf(day))}, às ${hmm(mins)}. ${why}</p>
-    ${nx ? `<p class="hint">Próximo horário livre: <b>${dayShort(dOf(nx.day))}, às ${hmm(nx.m)}</b>.</p>` : ""}
-    <div class="ee-al-foot"><button class="btn btn-quiet" type="button" data-ee-al-x>Corrigir</button>${nx ? `<button class="btn btn-primary" type="button" data-ee-al-use="${nx.day}|${nx.m}|${end - mins}">Usar este horário</button>` : ""}</div></div></div>`);
+    <p class="ee-al-t" id="ee-al-t">${ic("triangle-alert", "ic-sm")}${valido ? agTitulo(ev || null, day, mins, end) : "Confira a duração"}</p>
+    <p id="ee-al-d">${dayShort(dOf(day))}, às ${hmm(mins)}. ${valido ? agDetalhe(ev || null, day, mins, end) || why : why}</p>
+    ${sug.length ? agSugLista(sug, len, (x) => `data-ee-al-use="${x.day}|${x.m}|${len}"`) : ""}
+    <div class="ee-al-foot"><button class="btn btn-quiet" type="button" data-ee-al-x>Corrigir</button></div></div></div>`);
   (box.querySelector("[data-ee-al-use]") || box.querySelector("[data-ee-al-x]")).focus();
   return false;
 }
@@ -8791,12 +9046,12 @@ function eePickRender() {
     const label = `${dOf(k).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}${why ? `: ${why}` : ""}`;
     return `<button type="button" data-ee-day="${k}" aria-label="${label}" aria-pressed="${k === day}"${why ? " disabled" : ""}${k === dkey(AG_NOW) ? ' class="today"' : ""}>${i + 1}</button>`;
   });
-  const slots = day && !plain ? agLivres(day, dur, FORM.ev || null) : [];
+  const slots = day && !plain ? agLivresJunto(day, dur, FORM.ev || null) : [];
   const cal = EE_CAL.open ? `<div class="ee-cal" id="ee-cal" role="group" aria-label="Calendário de ${nome}">
       <div class="ee-cal-h"><button class="iconbtn" type="button" data-ee-mes="-1" aria-label="Mês anterior">${ic("chevron-left")}</button><b aria-live="polite">${nome}</b><button class="iconbtn" type="button" data-ee-mes="1" aria-label="Próximo mês">${ic("chevron-right")}</button></div>
       <div class="ee-cal-g">${["D", "S", "T", "Q", "Q", "S", "S"].map((w) => `<span class="wd" aria-hidden="true">${w}</span>`).join("")}${"<span></span>".repeat(skipDays)}${cells.join("")}</div></div>` : "";
   const livres = plain ? "" : !day ? `<p class="hint">Escolha um dia para ver os horários livres.</p>`
-    : slots.length ? `<p class="hint" id="ee-sl-h">Horários livres em ${dayShort(dOf(day))}, com ${durTxt(dur)} de duração:</p><ul class="ee-slots" aria-labelledby="ee-sl-h">${slots.map((m) => `<li><button class="chip" type="button" data-ee-slot="${m}" aria-pressed="${m === start}">${hmm(m)}</button></li>`).join("")}</ul>`
+    : slots.length ? `<p class="hint" id="ee-sl-h">Horários livres em ${dayShort(dOf(day))}, com ${durTxt(dur)} de duração:</p><ul class="ee-slots" aria-labelledby="ee-sl-h">${slots.map((m) => `<li><button class="chip${agColado(day, m, dur, FORM.ev || null) ? " junto" : ""}" type="button" data-ee-slot="${m}" aria-pressed="${m === start}"${agColado(day, m, dur, FORM.ev || null) ? ` aria-describedby="ee-sl-j"` : ""}>${hmm(m)}</button></li>`).join("")}</ul>${slots.some((m) => agColado(day, m, dur, FORM.ev || null)) ? `<p class="hint ee-sl-j" id="ee-sl-j"><i aria-hidden="true"></i>Encosta numa consulta: deixa a agenda sem buracos</p>` : ""}`
     : `<p class="hint">${eeDayWhy(day, dur) === "sem horário livre" ? "Nenhum horário livre neste dia." : `Este dia não aceita consulta (${eeDayWhy(day, dur)}).`} Escolha outro no calendário.</p>`;
   host.innerHTML = `<div class="ee-pick-bar"><button class="btn btn-quiet" type="button" data-ee-cal aria-expanded="${EE_CAL.open}" aria-controls="ee-cal">${ic("calendar-days", "ic-sm")}${EE_CAL.open ? "Fechar o calendário" : "Ver no calendário"}</button>${FORM.ev ? "" : `<button class="btn btn-quiet" type="button" data-ee-agenda>${ic("calendar-clock", "ic-sm")}Escolher na agenda</button>`}</div>${cal}${livres}`;
 }
@@ -8828,6 +9083,7 @@ ACT.unshift(
   [(t) => t.matches("[data-ag-mv]"), (t) => {
     const [id, k, m0] = t.dataset.agMv.split("|"), m = Number(m0), e = EV.find((x) => x.id === id);
     if (!e || !/^\d{4}-\d{2}-\d{2}$/.test(k) || !Number.isInteger(m) || m < 0 || m > 1439) return;
+    if (!agSugAinda(k, m, Math.round(e.dur * 60), e)) { DLG.opener = null; dlgClose(); agRecusaMove(e, k, m, e.dur, "Outra consulta entrou nele enquanto o aviso estava aberto."); return; }
     DLG.opener = null; dlgClose();
     st.agd = dOf(k);
     evMove(e, k, m, e.dur, document.querySelector(`.ag2 [data-ev="${e.id}"]`));
@@ -8835,7 +9091,9 @@ ACT.unshift(
   [(t) => t.matches("[data-ee-al-x]"), () => eeAlertaFecha()],
   [(t) => t.matches("[data-ee-al-use]"), (t) => {
     const [k, m0, len0] = t.dataset.eeAlUse.split("|"), m = Number(m0), len = Number(len0);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Number.isInteger(m) || !Number.isInteger(len)) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Number.isInteger(m) || !Number.isInteger(len) || m < 0 || m > 1439 || len < AG_MIN || len > AG_MAX) return;
+    const evAtual = FORM.ev || null;
+    if (!agSugAinda(k, m, len, evAtual)) { eeAlerta("Outra consulta entrou nele enquanto o aviso estava aberto.", k, m, m + len, evAtual, "[data-ee-h]"); return; }
     const set = (sel, v) => { const x = document.querySelector(`#dlg-host ${sel}`); if (x) x.value = v; };
     set("[data-ee-d]", brDate(k)); set("[data-ee-h]", hmm(m)); set("[data-ee-f]", hmm(m + len));
     EE_CAL.mes = k.slice(0, 7); eeTimes(""); eePickRender();
