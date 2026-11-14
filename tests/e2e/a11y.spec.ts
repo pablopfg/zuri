@@ -27,6 +27,11 @@ for (const scheme of ["light", "dark"] as const) {
       await expect(page.getByRole("heading", { name: "Este link não serve mais" })).toBeVisible();
       await expectAccessible(page, "aprovar");
       expect(await tooSmallControls(page)).toEqual([]);
+      // The patient's confirmation page (E7a), with a token out of shape: nothing is asked of the server.
+      await page.goto("/c/curto");
+      await expect(page.getByRole("heading", { level: 1, name: "Este link não vale mais" })).toBeVisible();
+      await expectAccessible(page, "confirmacao");
+      expect(await tooSmallControls(page)).toEqual([]);
     });
 
     test(`home and the notices panel have no serious violation (${scheme}) @mobile`, async ({ page }) => {

@@ -430,6 +430,8 @@ export class GoogleCalendar {
         forgetContacts(this.deps.db);
         forgetReviews(this.deps.db);
         forgetReviewRequests(this.deps.db);
+        // The patients' confirmation links (E7a) were for the other account's events.
+        this.deps.db.run(`DELETE FROM zur_appointment_links`);
       }
       this.deps.db.run(
         `INSERT INTO zur_google_account (id, email, refresh_token, access_token, access_expires_at, scopes, status, problem, problem_noticed_at, connected_at, checked_at)
@@ -524,6 +526,8 @@ export class GoogleCalendar {
       forgetContacts(this.deps.db);
       forgetReviews(this.deps.db);
       forgetReviewRequests(this.deps.db);
+      // The patients' confirmation links (E7a) go too: from then on they answer "not found".
+      this.deps.db.run(`DELETE FROM zur_appointment_links`);
       this.deps.state.delete("google_oauth_pending");
     });
     this.#due = undefined;

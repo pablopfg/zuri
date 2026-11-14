@@ -354,6 +354,22 @@ describe("import", () => {
     }
   });
 
+  it("SEC-E7a-01: a backup that changes the team's WhatsApp raises the same security alert as the screen; the same number raises none", async () => {
+    const before = await inOwner((agent) => agent.store.settings.get().clinic);
+    const clinic = { name: "Consultório Exemplo", whatsapp: "41988887777", address: "Rua das Flores, 120", city: "Curitiba, PR" };
+    const alerts = () => inOwner((agent) => agent.store.db.all(`SELECT id FROM zur_auth_events WHERE kind = 'clinic_whatsapp_changed'`).length);
+    try {
+      await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_auth_events WHERE kind = 'clinic_whatsapp_changed'`));
+      await ok(session("POST", "/backup/import", backup({ settings: { clinic } })));
+      expect(await inOwner((agent) => agent.store.settings.get().clinic.whatsapp)).toBe("41988887777");
+      expect(await alerts()).toBe(1);
+      await ok(session("POST", "/backup/import", backup({ settings: { clinic: { ...clinic, name: "Outro nome" } } })));
+      expect(await alerts()).toBe(1);
+    } finally {
+      await inOwner((agent) => agent.store.settings.update({ clinic: before }));
+    }
+  });
+
   it("the record of the day goes in the file and comes back, and a day already closed here is never changed", async () => {
     // SEC-E5e-01: an appointment with the patient's fields and a Meet call stays in the file (it was left out whole).
     const event = (title: string) => ({

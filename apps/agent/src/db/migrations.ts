@@ -1955,6 +1955,33 @@ export const MIGRATIONS: readonly Migration[] = [
       )`,
     ],
   },
+  {
+    version: 45,
+    name: "appointment_links",
+    statements: [
+      // E7a (plano link-de-confirmacao.md): the patient's confirmation link, one per appointment for its
+      // whole life. Only the token's SHA-256 finds it; the token itself is sealed (info "confirm-link-v1",
+      // the row's id as associated data) so the same address can be sent again. `answer` is the last tap
+      // and `answer_start` the start it answered, so a moved appointment asks again. A cancellation sets
+      // `revoked_at` for good. answer_day and answer_count cap the taps that change something. Out of the
+      // backup: a sealed token only opens with this installation's key.
+      `CREATE TABLE IF NOT EXISTS zur_appointment_links (
+        id TEXT PRIMARY KEY,
+        calendar_id TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        token_sealed TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        answer TEXT,
+        answer_start TEXT,
+        answered_at INTEGER,
+        revoked_at INTEGER,
+        answer_day TEXT,
+        answer_count INTEGER NOT NULL DEFAULT 0,
+        UNIQUE (calendar_id, event_id)
+      )`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

@@ -110,6 +110,15 @@ export function App() {
           </Suspense>
         }
       />
+      {/* The patient's confirmation link (E7a): no session, the token in the address is the key. The same download as /aprovar. */}
+      <Route
+        path="c/*"
+        element={
+          <Suspense fallback={<SessionChecking />}>
+            <ApprovePage />
+          </Suspense>
+        }
+      />
       <Route
         element={
           <RequireSession>

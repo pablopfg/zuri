@@ -25,6 +25,7 @@ import { CHANNEL_ID, GOOGLE_CHANNEL_HEADER, GOOGLE_PUSH_PATH, GOOGLE_STATE_HEADE
 import { contactAppointments } from "../google/appointments.ts";
 import { checkBooking, checkOpenDay, shapeOf } from "../google/booking.ts";
 import { type GoogleContacts, searchText } from "../google/contacts.ts";
+import type { ConfirmLinks } from "../google/confirm-links.ts";
 import type { AgendaRecord } from "../google/record.ts";
 import type { ReviewMatches } from "../reviews/matches.ts";
 import type { ReviewRequests } from "../reviews/requests.ts";
@@ -48,6 +49,8 @@ export interface GoogleRouteDeps {
   reviewRequests: ReviewRequests;
   /** Which contact left a review (PR S20). */
   reviewMatches: ReviewMatches;
+  /** The patient's confirmation link (E7a). */
+  confirmLinks: ConfirmLinks;
   auth: AuthService;
   /** E6c: Gmail allowed from Integrações › E-mail para pacientes; with no way out chosen yet, it becomes the way out. */
   gmailGranted?: () => void;

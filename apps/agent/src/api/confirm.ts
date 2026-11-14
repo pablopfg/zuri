@@ -1,0 +1,43 @@
+import { confirmAnswerSchema, confirmLinkRequestSchema, confirmViewSchema } from "@zuri/shared";
+import type { Context, Hono } from "hono";
+import type { ClientInfo } from "../auth/client.ts";
+import { AppError } from "../http/errors.ts";
+import type { ApiEnv } from "./app.ts";
+import type { GoogleRouteDeps } from "./google.ts";
+import { toAppError } from "../google/errors.ts";
+import { readJson } from "./http.ts";
+
+/**
+ * The patient's confirmation link (E7a, docs/planos/link-de-confirmacao.md). No session: the token,
+ * in the JSON body (never in an address or a log), is the key. Registered after the CSRF check, so
+ * only the Zuri's own page can post, and before the session one.
+ */
+export function registerConfirmPublic(app: Hono<ApiEnv>, deps: () => GoogleRouteDeps, client: (c: Context<ApiEnv>) => ClientInfo): void {
+  app.post("/c/view", async (c) => {
+    const { token } = await readJson(c.req.raw, confirmViewSchema, 1024);
+    return Response.json(await deps().confirmLinks.view(token, client(c).network));
+  });
+
+  app.post("/c/answer", async (c) => {
+    const { token, action } = await readJson(c.req.raw, confirmAnswerSchema, 1024);
+    return Response.json(await deps().confirmLinks.answer(token, action, client(c).network));
+  });
+}
+
+/** The owner's side, in the Agenda's details: the state of a link, and the link itself (made the first time). */
+export function registerConfirmOwner(app: Hono<ApiEnv>, deps: () => GoogleRouteDeps): void {
+  app.get("/google/events/link", (c) => {
+    const query = confirmLinkRequestSchema.safeParse({ calendarId: c.req.query("calendarId"), eventId: c.req.query("eventId") });
+    if (!query.success) throw new AppError("VALIDATION_FAILED");
+    return Response.json(deps().confirmLinks.status(query.data.calendarId, query.data.eventId));
+  });
+
+  app.post("/google/events/link", async (c) => {
+    const input = await readJson(c.req.raw, confirmLinkRequestSchema, 4 * 1024);
+    try {
+      return Response.json(await deps().confirmLinks.link(input.calendarId, input.eventId));
+    } catch (error) {
+      throw toAppError(error);
+    }
+  });
+}

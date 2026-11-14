@@ -1,6 +1,7 @@
 import {
   AGENT_INSTANCE_NAME,
   CHATWOOT_OWNER_LIMITS,
+  CONFIRM_LINK_PREFIX,
   GOOGLE_CALLBACK_PATH,
   GOOGLE_RETURN_PAGE,
   LIVE_PATH,
@@ -28,6 +29,7 @@ import {
   plausibleChatwootNotice,
 } from "./gates/chatwoot-owner.ts";
 import { GOOGLE_CHANNEL_HEADER, GOOGLE_PUSH_PATH, GOOGLE_STATE_HEADER, GOOGLE_TOKEN_HEADER, isGooglePushToken } from "./gates/google-push.ts";
+import { confirmPassesAccess } from "./gates/confirm-link.ts";
 import { isPreviewAgent, REVIEW_LINK_PREFIX, REVIEW_OPEN_HEADER, REVIEW_OPEN_PATH, reviewLinkCode } from "./gates/review-link.ts";
 import { AppError, errorResponse } from "./http/errors.ts";
 import { log } from "./log.ts";
@@ -79,6 +81,9 @@ async function handle(request: Request, env: WorkerEnv): Promise<Response> {
 
   // A review request's short address (PR S20): opened by patients, who never sign in to Access.
   if (url.pathname.startsWith(REVIEW_LINK_PREFIX)) return reviewLink(request, url, config.secretsReady, env);
+
+  // The patient's confirmation page (E7a): the app's own shell, before Access, with the link's headers.
+  if (url.pathname === "/c" || url.pathname.startsWith(CONFIRM_LINK_PREFIX)) return confirmPage(request, url, env);
 
   // Gate 3.
   if (config.access && !(await passesAccess(request, url, config.access, config.secretsReady, env))) {
@@ -318,6 +323,23 @@ function googleReturn(url: URL): Response {
   return new Response(null, { status: 303, headers: { location: `${GOOGLE_RETURN_PAGE}${query ? `?${query}` : ""}`, "cache-control": "no-store" } });
 }
 
+/**
+ * /c/<token>, the patient's confirmation page (E7a): GET or HEAD only, always the app's shell (the
+ * HTML is the same for every link, with no name, day nor office: a preview robot learns nothing). The
+ * page asks for its data by POST with the token in the body. No cache, no referrer (the token is in
+ * the address), no indexing. The shape is checked by the page, which never asks for a wrong one.
+ */
+async function confirmPage(request: Request, url: URL, env: WorkerEnv): Promise<Response> {
+  await request.body?.cancel();
+  if (request.method !== "GET" && request.method !== "HEAD") return refuse(new AppError("NOT_FOUND"));
+  const shell = await env.ASSETS.fetch(new Request(new URL("/", url.origin), { method: request.method }));
+  const page = withWebHeaders(shell, "/");
+  page.headers.set("cache-control", "no-store");
+  page.headers.set("referrer-policy", "no-referrer");
+  page.headers.set("x-robots-tag", "noindex, nofollow");
+  return page;
+}
+
 function isApiPath(pathname: string): boolean {
   return pathname === "/api" || pathname.startsWith("/api/");
 }
@@ -381,6 +403,7 @@ async function passesAccess(
   // The owner's inbox in the Chatwoot can't sign in to Access either: the token in its path proves it.
   const hook = request.method === "POST" && secretsReady && !request.headers.has("cookie") && !request.headers.has("authorization") ? chatwootHookPath(url.pathname) : null;
   if (hook && (await isChatwootHookToken(hook.linkId, hook.token, env.SESSION_SECRET))) return true;
+  if (confirmPassesAccess(request.method, url.pathname)) return true;
   return verifyAccessToken(request.headers.get("cf-access-jwt-assertion"), access);
 }
 

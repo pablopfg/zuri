@@ -59,6 +59,7 @@ export const AUTH_EVENT_KINDS = [
   "reviews_autonomy",
   "review_link_changed",
   "mail_changed",
+  "clinic_whatsapp_changed",
   "google_disconnected",
   "setup_failure",
   "setup_locked",

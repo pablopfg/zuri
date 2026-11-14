@@ -160,6 +160,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "requests", "link", "send", "match", "open",
   // The catalog of models (PR S21).
   "catalog", "models",
+  // The patient's confirmation link (E7a): /c/<token> and its two routes; the token stays ":id".
+  "c", "view", "answer",
 ]);
 const MAX_SEGMENTS = 8;
 

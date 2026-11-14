@@ -58,6 +58,7 @@ import { McpMeaning } from "../mcp/meaning.ts";
 import { McpService, OAUTH_CALLBACK_PATH } from "../mcp/service.ts";
 import { developmentGoogle, developmentGoogleNetwork } from "../google/dev-google.ts";
 import { GoogleCalendar } from "../google/service.ts";
+import { ConfirmLinks } from "../google/confirm-links.ts";
 import { AgendaRecord } from "../google/record.ts";
 import { localToday } from "../google/events.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
@@ -154,6 +155,8 @@ interface Store {
   reviewMatches: ReviewMatches;
   /** Review requests and the link (PR S20). */
   reviewRequests: ReviewRequests;
+  /** The patient's confirmation link (E7a). */
+  confirmLinks: ConfirmLinks;
   /** The flows and the site monitor (step 22a). */
   flows: FlowService;
   /** E-mail to patients (E6c). */
@@ -296,7 +299,10 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           today: () => localToday(settings.field("timeZone"), new Date()),
           applySettings: (patch) => {
             zoneBefore = settings.field("timeZone");
+            // The team's WhatsApp reaches patients (E7a): a backup that changes it alerts like PATCH /settings.
+            const whatsapp = patch.clinic !== undefined && patch.clinic.whatsapp !== settings.field("clinic").whatsapp;
             settings.update(patch);
+            if (whatsapp) auth.events.record("clinic_whatsapp_changed", null, { alert: true });
             return Object.keys(patch).length;
           },
         },
@@ -317,6 +323,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       reviews: this.store.reviews,
       record: this.store.agendaRecord,
       reviewRequests: this.store.reviewRequests,
+      confirmLinks: this.store.confirmLinks,
       reviewMatches: this.store.reviewMatches,
       auth: this.store.auth,
       gmailGranted: () => this.store.mail.useGmailIfNone(),
@@ -1023,6 +1030,20 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         secret: () => env.PASSWORD_PEPPER,
         notify: (notice) => alerts.raise({ kind: notice.kind, category: "system", priority: "normal", link: "/avaliacoes/pedidos", source: null, params: { count: notice.count } }),
       });
+      // The patient's confirmation link (E7a): the answer changes the event's color and reaches the bell.
+      const confirmLinks = new ConfirmLinks({
+        db,
+        google: () => google,
+        timeZone: () => settings.field("timeZone"),
+        locale: () => this.locale(),
+        clinic: () => settings.field("clinic"),
+        publicUrl: () => this.publicUrl(),
+        credentialKey: env.MCP_CREDENTIAL_KEY,
+        secret: () => env.PASSWORD_PEPPER,
+        lockdown: () => auth.lockdown.active(),
+        notify: (notice) =>
+          alerts.raise({ kind: `agenda.${notice.kind}`, category: "events", priority: "normal", link: "/agenda", source: null, params: { name: notice.name, when: notice.when } }),
+      });
       // The flows (step 22a): only the screen changes them; their calls go only to the connections the owner registered.
       const flowFetch = ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init)) as typeof fetch;
       const flows = new FlowService(
@@ -1305,7 +1326,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         settings: () => agents.settings("home_order"),
         background: (work) => void this.keepAliveWhile(work),
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, flows, mail, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog, home };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, confirmLinks, flows, mail, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog, home };
     }
     return this.#store;
   }

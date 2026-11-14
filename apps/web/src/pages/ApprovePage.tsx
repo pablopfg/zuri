@@ -8,8 +8,10 @@ import { Button, ErrorNotice, Notice, Loading, useDocumentTitle } from "../compo
 import { ApiError, api } from "../lib/api.ts";
 import { addMessages, useI18n } from "../lib/i18n.tsx";
 import { APPROVE_PATH } from "../lib/next.ts";
+import { ConfirmPage } from "./confirm/ConfirmPage.tsx";
 
 addMessages(ptBRApprove);
+
 
 type Options = Parameters<typeof startAuthenticationFn>[0]["optionsJSON"];
 
@@ -124,7 +126,16 @@ function Preview({ preview }: { preview: ApprovalPreview }) {
  * holds every rule, and the answer only unlocks the bot's reading or runs the
  * one proposal the owner sees here.
  */
+/**
+ * The two pages a link opens without a session: the bot's confirmation (/aprovar) and the patient's
+ * confirmation link (/c/<token>, E7a). One download and one entry in App.tsx: a route of its own would
+ * cost the first load bytes it doesn't have (P11).
+ */
 export function ApprovePage() {
+  return window.location.pathname.startsWith("/c") ? <ConfirmPage /> : <ApproveScreen />;
+}
+
+function ApproveScreen() {
   const { t, locale } = useI18n();
   useDocumentTitle(t("web.approve.pageTitle"));
   const [token] = useState(readToken);

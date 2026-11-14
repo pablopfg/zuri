@@ -65,6 +65,7 @@ import { registerMemoryRoutes } from "./memory.ts";
 import { type NoticeDeps, registerNoticeRoutes } from "./notices.ts";
 import { registerProductivityRoutes } from "./productivity.ts";
 import { registerApprovalRoutes } from "./approvals.ts";
+import { registerConfirmOwner, registerConfirmPublic } from "./confirm.ts";
 import { registerSemanticRoutes, type SemanticDeps } from "./semantic.ts";
 import { type McpRouteDeps, registerMcpRoutes } from "./mcp.ts";
 import { type GoogleRouteDeps, registerGooglePush, registerGoogleRoutes } from "./google.ts";
@@ -381,6 +382,8 @@ export function createApi(deps: ApiDeps) {
   // ---------- The bot's confirmation page, /aprovar (step 15, no session) ----------
 
   if (telegram) registerApprovalRoutes(app, () => telegram(), client);
+  // The patient's confirmation link (E7a, no session): the token in the body is the key.
+  if (google) registerConfirmPublic(app, () => google(), client);
 
   app.use("*", async (c, next) => {
     const token = readSessionCookie(c.req.raw);
@@ -489,8 +492,12 @@ export function createApi(deps: ApiDeps) {
     });
     if (unusable.length > 0) throw new AppError("VALIDATION_FAILED", undefined, { fields: unusable });
     if (paid.length > 0 || "aiUsdCentsPerDay" in patch) deps.auth().requireRecentAuth(c.get("session"));
+    // E7a: the team's WhatsApp goes to patients on the confirmation page, so changing it is sensitive.
+    const whatsapp = patch.clinic !== undefined && patch.clinic.whatsapp !== deps.settings().field("clinic").whatsapp;
+    if (whatsapp) deps.auth().requireRecentAuth(c.get("session"));
     const before = patch.timeZone === undefined ? null : deps.settings().field("timeZone");
     const settings = deps.settings().update(patch);
+    if (whatsapp) deps.auth().events.record("clinic_whatsapp_changed", client(c), { alert: true });
     // A new zone moves every wall-clock time: each automation's next run is computed again.
     if (before !== null && settings.timeZone !== before) await deps.automations().service.rescheduleAll();
     return Response.json(settings);
@@ -573,6 +580,7 @@ export function createApi(deps: ApiDeps) {
   if (mcp) registerMcpRoutes(app, () => mcp(), client);
   if (google) registerGoogleRoutes(app, () => google(), client);
   if (google) registerReviewRoutes(app, () => google(), client);
+  if (google) registerConfirmOwner(app, () => google());
   const flows = deps.flows;
   if (flows) registerFlowRoutes(app, () => flows(), client);
   const mail = deps.mail;
