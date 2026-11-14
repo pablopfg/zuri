@@ -49,6 +49,7 @@ test("no page breaks the Content Security Policy @mobile", async ({ page }) => {
     ["/acessos", "Acessos"],
     ["/configuracoes/conta", "Configurações"],
     ["/configuracoes/integracoes", "Configurações"],
+    ["/configuracoes/consultorio", "Configurações"],
     ["/configuracoes/chatwoot", "Configurações"],
     ["/configuracoes/seguranca", "Configurações"],
     ["/configuracoes/ia", "Configurações"],

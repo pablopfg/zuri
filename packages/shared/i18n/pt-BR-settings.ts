@@ -161,7 +161,7 @@ export const ptBRSettings = {
   "web.unit.minutes.other": "{count} minutos",
   "web.unit.hours.one": "{count} hora",
   "web.unit.hours.other": "{count} horas",
-  "web.settings.description": "Cada ajuste no seu lugar: você, a Zuri, o seu dia, as conexões e o sistema.",
+  "web.settings.description": "Cada ajuste no seu lugar: você, a Zuri, o seu dia, o consultório, as conexões e o sistema.",
   "web.passwordNow.mfaTitle": "Antes de ligar, confirme que é você",
   "web.passwordNow.mfaBody": "Digite a sua senha para continuar. Mesmo que você tenha entrado agora há pouco, ela é pedida de novo, para que só você consiga ligar a verificação.",
   "web.passwordNow.passkeyTitle": "Antes de criar a passkey, confirme que é você",
@@ -207,6 +207,8 @@ export const ptBRSettings = {
   "web.settings.group.day": "Seu dia",
   "web.settings.group.connections": "Conexões",
   "web.settings.group.system": "Sistema",
+  "web.settings.group.clinic": "Consultório",
+  "web.settings.hint.clinic": "Nome, WhatsApp e endereço",
   // Shown by the passkeys card in Settings › Security, so it travels with that screen (rule P11).
   "auth.passkey.needsMfa": "Ligue antes a verificação em duas etapas com um aplicativo autenticador. Os códigos de recuperação dele são o caminho de volta se você perder as passkeys.",
   // Only the Settings screen shows these, so they travel with it (rule P11).

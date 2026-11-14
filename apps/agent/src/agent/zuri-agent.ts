@@ -309,6 +309,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       auth: this.store.auth,
       timeZone: () => this.store.settings.field("timeZone"),
       agendaHours: () => this.store.settings.field("agenda"),
+      clinic: () => this.store.settings.field("clinic"),
       rearm: () => this.store.automations.rearm(),
     }),
     telegram: () => ({

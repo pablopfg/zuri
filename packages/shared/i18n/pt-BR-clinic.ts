@@ -1,0 +1,23 @@
+// Configurações › Consultório (E6a), in pt-BR. The section loads on demand, with these texts (rule P11).
+export const ptBRClinic = {
+  "web.clinic.title": "Dados do consultório",
+  "web.clinic.description": "Um lugar só: mudou aqui, muda em todo o sistema.",
+  "web.clinic.name": "Nome do consultório",
+  "web.clinic.whatsapp": "WhatsApp da equipe",
+  "web.clinic.whatsappError": "Confira o WhatsApp da equipe: DDD e número, por exemplo (41) 3333-0000.",
+  "web.clinic.address": "Endereço",
+  "web.clinic.addressPlaceholder": "Rua, número, sala · Bairro",
+  "web.clinic.city": "Cidade e estado",
+  "web.clinic.cityPlaceholder": "Curitiba, PR",
+  "web.clinic.where": "O endereço vai no local das consultas presenciais na Agenda. As mensagens aos pacientes também vão usar estes dados.",
+  "web.clinic.save": "Salvar os dados",
+  "web.clinic.saved": "Dados salvos",
+  "web.clinic.hours": "Horário de atendimento",
+  "web.clinic.hoursHint": "{summary}. Ele fica num lugar só, em Configurações › Agenda.",
+  "web.clinic.change": "Mudar",
+  "web.clinic.changeHours": "Mudar o horário de atendimento",
+  "web.clinic.days.range": "{from} a {to}",
+  "web.clinic.summary": "{days}, das {from} às {to}",
+  "web.clinic.summaryLunch": "{days}, das {from} às {to}, almoço das {lunchFrom} às {lunchTo}",
+  "web.clinic.noDays": "Nenhum dia de atendimento",
+} as const;

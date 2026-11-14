@@ -1,6 +1,8 @@
 import {
   AGENDA_LIMITS,
   type AgendaPrefs,
+  type Clinic,
+  clinicLocation,
   type AgendaPage,
   type AgendaRecordLast,
   type BookingPage,
@@ -50,8 +52,37 @@ export interface GoogleRouteDeps {
   timeZone: () => string;
   /** Configurações › Agenda: when the office takes appointments (13/11/2026). */
   agendaHours: () => AgendaPrefs;
+  /** Configurações › Consultório (E6a): the address an in-person appointment takes as its location. */
+  clinic: () => Clinic;
   /** Sets the shared alarm again (a sync or a notice became due). */
   rearm: () => Promise<void>;
+}
+
+/**
+ * Where an appointment happens, by its type line: "office" only for "… | Consultório", "online" for
+ * "… | Online", null otherwise. SEC-E6a-02: a line such as "Reunião | Diretoria" is no appointment at the office.
+ */
+function placeOfLine(description: string | undefined): "office" | "online" | null {
+  const line = typeLine(description ?? "");
+  if (/\|\s*Consult[oó]rio\s*$/i.test(line)) return "office";
+  if (/\|\s*Online\s*$/i.test(line)) return "online";
+  return null;
+}
+
+/**
+ * E6a: an in-person appointment with no location takes the office's address (Configurações ›
+ * Consultório); one that goes online drops it when it is that address. Only a change of place
+ * moves the location: one written at Google by hand is never replaced.
+ */
+function officePlace(draft: EventDraft, current: { description?: string; location?: string }, clinic: Clinic): void {
+  const where = clinicLocation(clinic);
+  if (where === "" || draft.description === undefined) return;
+  const before = current.description === undefined ? null : placeOfLine(current.description);
+  const after = placeOfLine(draft.description);
+  if (after === before) return;
+  const location = draft.location ?? current.location ?? "";
+  if (after === "office" && location === "") draft.location = where;
+  else if (after !== "office" && before === "office" && location === where) draft.location = "";
 }
 
 /** Calls to Google one owner action may make (rule P9): ten calendars, a token renewal and a retry. */
@@ -283,6 +314,7 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     for (const key of PATIENT_KEYS) if (input[key]) draft[key] = input[key];
     if (input.meet) draft.meet = true;
     checkPatient(draft, {});
+    officePlace(draft, {}, deps().clinic());
     const event = await owner(async () => {
       const zone = deps().timeZone();
       const body = eventBody(draft, zone);
@@ -310,6 +342,7 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
       // SEC-E5e-05: a call that failed counts as none, so Online can ask for it again.
       if (input.meet !== undefined && input.meet !== (current.meet !== undefined && current.meet !== "failed")) draft.meet = input.meet;
       checkPatient(draft, current);
+      officePlace(draft, current, deps().clinic());
       const base = current.allDay ? { start: { date: current.start }, end: { date: current.end } } : { start: { dateTime: current.start }, end: { dateTime: current.end } };
       const zone = deps().timeZone();
       const patch = eventBody(draft, zone, base);

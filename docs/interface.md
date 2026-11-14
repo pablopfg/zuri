@@ -136,9 +136,10 @@ menus nunca saem da tela.
 - **Páginas:** começam com `PageHeader` (título, uma linha de contexto e ações
   à direita), numa coluna de até 5xl. No celular, ações só de ícone ficam ao
   lado do título; as largas descem para a linha de baixo.
-- **Configurações:** onze seções em cinco grupos, na ordem do protótipo: Você
+- **Configurações:** seções em seis grupos, na ordem do protótipo: Você
   (Conta, Segurança), A Zuri (Assistente, Uso da IA, Modelos e limites), Seu
-  dia (Agenda, Avisos), Conexões (Integrações) e Sistema (Dados, Diagnóstico,
+  dia (Agenda, Avisos), Consultório (Consultório), Conexões (Integrações,
+  Chatwoot) e Sistema (Dados, Diagnóstico,
   Sobre a Zuri). No computador, um menu ao lado com a linha do que cada seção
   guarda; no celular, a lista "Seção", com os mesmos grupos. `/configuracoes`
   abre Conta nos dois tamanhos, e os nomes de seção de antes continuam

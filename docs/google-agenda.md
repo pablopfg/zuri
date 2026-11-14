@@ -293,7 +293,11 @@ aparelhos; elas não mudam nada no Google.
     financeiro, e o nome vira **Título**.
   - **Local**: Presencial ou Online. Online pede ao Google uma chamada do
     Google Meet ao salvar; voltar para Presencial tira a chamada, e essa
-    mudança não oferece "Desfazer" (o link não volta igual).
+    mudança não oferece "Desfazer" (o link não volta igual). Presencial leva
+    ao campo Local do evento o endereço de Configurações › Consultório
+    ("endereço, cidade e estado"), quando a consulta ainda não tem local;
+    passar para Online tira esse endereço. Um local escrito à mão no Google
+    não é trocado.
   - **Situação** e **Financeiro** (Não pago, o padrão, Pago ou Gratuito).
   - **Observação**, que no Google vem depois da linha do tipo.
 
