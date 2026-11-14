@@ -340,14 +340,14 @@ test("Configurações › Agenda saves the working hours, the week and what stay
   // "Seu dia" on the home page uses the same hours: the run at 07:00 is listed, not counted as outside them.
   await page.goto("/");
   await expect(page.getByRole("main").getByText("07:00 às 20:00").first()).toBeVisible();
-  await expect(page.getByRole("main").getByText("Corrida no parque")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Corrida no parque", { exact: true })).toBeVisible();
   // Back to the standard hours, the same run is outside them.
   await setPrefs(page, {});
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByRole("main").getByText("Vistoria do apartamento")).toBeVisible();
-  await expect(page.getByRole("main").getByText("Aula de fotografia")).toHaveCount(0);
-  await expect(page.getByRole("main").getByText("Corrida no parque")).toHaveCount(0);
+  await expect(page.getByRole("main").getByText("Vistoria do apartamento", { exact: true })).toBeVisible();
+  await expect(page.getByRole("main").getByText("Aula de fotografia", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("main").getByText("Corrida no parque", { exact: true })).toHaveCount(0);
 });
 
 test("the Agenda opens on the view the owner saved, and a week that starts on Sunday turns on Sunday", async ({ page }) => {
@@ -379,7 +379,8 @@ test.describe("in the dark theme", () => {
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(event(page, "Almoço com a Bia")).toBeVisible();
     await expectAccessible(page, "agenda-escuro");
-    await setPrefs(page, { outside: false, daysOff: false });
+    // Today is a working day whatever day the run falls on: on a Saturday the default week would count its events as a day off.
+    await setPrefs(page, { outside: false, daysOff: false, workDays: [0, 1, 2, 3, 4, 5, 6].filter((day) => day !== DAY_OFF.dow) });
     await page.reload();
     await expect(leftOut(page, /fora das 08:00 às 18:00/)).toBeVisible();
     await expectAccessible(page, "agenda-escondidos-escuro");

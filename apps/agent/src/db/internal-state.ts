@@ -104,7 +104,10 @@ export type InternalKey =
   | "agenda_record_retry_at"
   // PR S21, the catalog of models: one JSON object (the last check, the next, the models it kept with their
   // price, window and leaving day, the ones the owner put on the list and the leaving dates already told).
-  | "model_catalog";
+  | "model_catalog"
+  // PR S22, the home page's suggestions: the taps per kind (JSON, never a text) and today's order from the AI (JSON, ids only).
+  | "home_suggestion_uses"
+  | "home_suggestion_order";
 
 export class InternalState {
   constructor(private readonly db: Database) {}

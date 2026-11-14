@@ -17,6 +17,8 @@ export const ptBRAgents = {
   "web.agents.about.review_check": "Relê a resposta antes de ela ser publicada.",
   "web.agents.name.routine_check": "Conferência das rotinas",
   "web.agents.about.routine_check": "Confere a chamada a um serviço de fora antes de uma rotina fazer sozinha.",
+  "web.agents.name.home_order": "Sugestões do Início",
+  "web.agents.about.home_order": "Uma vez por dia, põe em ordem as sugestões embaixo do campo do Início. Nunca escreve o texto delas.",
   "web.agents.default": "Padrão",
   "web.agents.custom": "Ajustado, versão {version}",
   "web.agents.summary.temperature": "Temperatura {value}",
