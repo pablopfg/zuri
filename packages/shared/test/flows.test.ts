@@ -10,6 +10,9 @@ import {
   fieldPathSchema,
   flowConnectionCreateSchema,
   flowConnectionUpdateSchema,
+  fzapConnectionCreateSchema,
+  fzapConnectionUpdateSchema,
+  fzapStatusSchema,
   flowCreateSchema,
   flowDefinitionSchema,
   flowRunsQuerySchema,
@@ -396,5 +399,31 @@ describe("the Google steps (step 22c)", () => {
     expect(flow(contacts({ label: "contactGroups/clientes", birthday: "week", query: "{{telefone}}", each: true }))).toBe(true);
     expect(flow(contacts({ label: "clientes" }))).toBe(false);
     expect(flow(contacts({ birthday: "month" }))).toBe(false);
+  });
+});
+
+describe("the fzap credential (E6b)", () => {
+  const body = { kind: "fzap", name: "fzap do consultório", origin: "https://fzap.exemplo.com.br", credential: "token-da-instancia-1234" };
+
+  it("takes a name, an https origin and a token, and nothing else", () => {
+    expect(fzapConnectionCreateSchema.safeParse(body).success).toBe(true);
+    for (const patch of [{ kind: "http" }, { credential: undefined }, { origin: "http://fzap.exemplo.com.br" }, { origin: "https://fzap.exemplo.com.br/x" }, { methods: ["GET"] }, { headerName: "authorization" }]) {
+      expect(fzapConnectionCreateSchema.safeParse({ ...body, ...patch }).success).toBe(false);
+    }
+  });
+
+  it("a change takes any of the three and refuses an empty body or another field", () => {
+    expect(fzapConnectionUpdateSchema.safeParse({ name: "fzap" }).success).toBe(true);
+    expect(fzapConnectionUpdateSchema.safeParse({ origin: "https://outra.exemplo.com.br", credential: "token-novo-1234" }).success).toBe(true);
+    expect(fzapConnectionUpdateSchema.safeParse({}).success).toBe(false);
+    expect(fzapConnectionUpdateSchema.safeParse({ inboxId: 7 }).success).toBe(false);
+  });
+
+  it("reads the session's state inside the envelope, ignoring anything else", () => {
+    expect(fzapStatusSchema.parse({ code: 200, success: true, data: { connected: true, loggedIn: false, jid: "x" } }).data).toEqual({ connected: true, loggedIn: false });
+    expect(fzapStatusSchema.parse({ data: { connected: true, loggedIn: true, cloudapi: { phoneNumberId: "1" } } }).data.cloudapi).toEqual({ phoneNumberId: "1" });
+    for (const answer of [{ connected: true, loggedIn: true }, { data: { connected: "true", loggedIn: true } }, { data: { connected: true } }, null, "ok"]) {
+      expect(fzapStatusSchema.safeParse(answer).success).toBe(false);
+    }
   });
 });

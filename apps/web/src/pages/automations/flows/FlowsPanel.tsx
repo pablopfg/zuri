@@ -373,6 +373,8 @@ export function CredentialsPart({ data, onEdit }: { data: FlowList; onEdit: (edi
 function testMessage(test: FlowConnectionTest, { t, plural }: ReturnType<typeof useI18n>): string {
   if (!test.ok) return t("web.flows.test.failed", { problem: t(PROBLEM_LABEL[test.problem]) });
   if (test.inboxes) return plural("web.flows.test.inboxes", test.inboxes.length);
+  // E6b: the Pix works only in the WhatsApp Web mode of a linked instance.
+  if (test.fzap) return t(!test.fzap.connected || !test.fzap.loggedIn ? "web.flows.test.fzapOffline" : test.fzap.cloud ? "web.flows.test.fzapCloud" : "web.flows.test.fzapReady");
   return t("web.flows.test.answered", { ms: test.ms });
 }
 
@@ -393,7 +395,7 @@ function ConnectionRow({ item, onEdit, onDelete }: { item: FlowConnection; onEdi
           <h2 id={titleId} className="min-w-0 truncate font-semibold">
             {item.name}
           </h2>
-          <Badge tone="neutral">{t(item.kind === "chatwoot" ? "web.flows.kind.chatwootTag" : "web.flows.kind.httpTag")}</Badge>
+          <Badge tone="neutral">{t(item.kind === "chatwoot" ? "web.flows.kind.chatwootTag" : item.kind === "fzap" ? "web.flows.kind.fzapTag" : "web.flows.kind.httpTag")}</Badge>
         </div>
         <p className={cn("text-sm text-fg-muted", chatwoot ? "break-words" : "break-all")}>
           {chatwoot
@@ -405,7 +407,9 @@ function ConnectionRow({ item, onEdit, onDelete }: { item: FlowConnection; onEdi
                 oneMin: chatwoot.oneGap.min,
                 oneMax: chatwoot.oneGap.max,
               })}`
-            : `${item.origin} · ${item.methods.join(", ")} · ${item.paths.join(", ")}`}
+            : item.kind === "fzap"
+              ? `${item.origin} · ${t("web.flows.fzap.summary")}`
+              : `${item.origin} · ${item.methods.join(", ")} · ${item.paths.join(", ")}`}
         </p>
         {chatwoot && <OutboxSummary connectionId={item.id} gap={chatwoot.bulkGap} />}
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">

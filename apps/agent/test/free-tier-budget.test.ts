@@ -1192,6 +1192,30 @@ describe("flows (step 22a)", () => {
       expect(list.read).toBeLessThanOrEqual(60);
     }));
 
+  it("a fzap credential (E6b): making, changing and testing it read a few rows, and the test writes nothing", () =>
+    withFlowWorld(async (world) => {
+      world.network.handlers.set("fzap.exemplo.com.br", () => Response.json({ code: 200, success: true, data: { connected: true, loggedIn: true } }));
+      const measure = async (fn: () => Promise<unknown>) => {
+        const before = { ...world.db.usage };
+        await fn();
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      let id = "";
+      const made = await measure(async () => {
+        id = await world.connections.create({ kind: "fzap", name: "fzap", origin: "https://fzap.exemplo.com.br", credential: "token-da-instancia-zuri-4f2a" }, { development: false });
+      });
+      // The row (with its index), its area's version (trigger) and the activity: measured 5.
+      expect(made.written).toBeLessThanOrEqual(5);
+      expect(made.read).toBeLessThanOrEqual(4);
+      const changed = await measure(() => world.connections.update(id, { credential: "token-novo-da-instancia-9b3c" }, { development: false }));
+      expect(changed.written).toBeLessThanOrEqual(4);
+      expect(changed.read).toBeLessThanOrEqual(4);
+      const test = await measure(() => world.flows.testConnection(id));
+      expect(test.written).toBe(0);
+      expect(test.read).toBeLessThanOrEqual(2);
+      expect(world.network.requests).toHaveLength(1);
+    }));
+
   it("the Flows tab, a page of the history, a monitor run of 10 sites and an idle wake read and write about one page, out of 20 flows and 2,000 runs", () =>
     withFlowWorld(async (world) => {
       const sites = Array.from({ length: FLOW_LIMITS.sites }, (_, i) => `https://s${i}.exemplo.com.br/`);

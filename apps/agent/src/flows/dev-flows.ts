@@ -6,7 +6,9 @@ import type { FlowNetwork } from "./connections.ts";
  * e2e tests and the screenshots never reach a real site. `fora.exemplo.com.br`
  * is a site that is down; `api.exemplo.com.br` is a small JSON service with
  * clients under `/v1/clientes`; `chat.exemplo.com.br` is a Chatwoot whose
- * account 1 has two inboxes (PR S17) and takes the outbox's messages (PR S19). Every other address goes out as in production.
+ * account 1 has two inboxes (PR S17) and takes the outbox's messages (PR S19); `fzap.exemplo.com.br` is a fzap
+ * instance in WhatsApp Web mode, `fzap-cloud.` one in Cloud API mode and `fzap-fora.` one off WhatsApp (E6b).
+ * Every other address goes out as in production.
  */
 const SIMULATED = /\.exemplo\.com\.br$/;
 
@@ -20,6 +22,12 @@ const INBOXES = [
   { id: 7, name: "WhatsApp do consultório", channel_type: "Channel::Api" },
   { id: 8, name: "E-mail", channel_type: "Channel::Email" },
 ];
+
+const FZAP: Record<string, Record<string, unknown>> = {
+  "fzap.exemplo.com.br": { connected: true, loggedIn: true },
+  "fzap-cloud.exemplo.com.br": { connected: true, loggedIn: true, cloudapi: { phoneNumberId: "100000000000001" } },
+  "fzap-fora.exemplo.com.br": { connected: false, loggedIn: false },
+};
 
 function answer(request: Request): Response {
   const url = new URL(request.url);
@@ -35,6 +43,12 @@ function answer(request: Request): Response {
     if (url.pathname === "/api/v1/accounts/1/conversations" && request.method === "POST") return Response.json({ id: 51 });
     if (/^\/api\/v1\/accounts\/1\/conversations\/\d+\/messages$/.test(url.pathname)) return request.method === "POST" ? Response.json({ id: 61 }) : Response.json({ payload: [] });
     return Response.json({ error: "not_found" }, { status: 404 });
+  }
+  const fzap = FZAP[url.hostname];
+  if (fzap) {
+    if (request.headers.get("token") === "token-recusado-exemplo") return Response.json({ code: 401, success: false, error: "unauthorized" }, { status: 401 });
+    if (url.pathname === "/session/status" && request.method === "GET") return Response.json({ code: 200, success: true, data: fzap });
+    return Response.json({ code: 404, success: false, error: "not_found" }, { status: 404 });
   }
   if (url.hostname === "fora.exemplo.com.br") return new Response("indisponível", { status: 503 });
   if (url.hostname === "api.exemplo.com.br") {

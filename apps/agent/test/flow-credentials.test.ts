@@ -54,7 +54,7 @@ describe("credential kinds", () => {
       expect(world.flows.list().connections.map((item) => item.kind)).toEqual(["http", "http"]);
       expect(world.connections.row(a).kind).toBe("http");
       expect(world.connections.row(b).kind).toBe("http");
-      for (const kind of ["fzap", "", 1, null, "HTTP"]) {
+      for (const kind of ["outro", "", 1, null, "HTTP"]) {
         await expect(addConnection(world, { kind })).rejects.toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["kind"] } });
       }
       // A Chatwoot body with an http field (methods) is refused too: each kind takes only its own fields.
@@ -97,8 +97,8 @@ describe("credential kinds", () => {
     await withFlowWorld(async (world) => {
       const id = await addConnection(world);
       const flow = await world.flows.create({ name: "X", definition: manual([get(id, "/v1/a")]) });
-      world.db.run(`UPDATE zur_flow_connections SET kind = 'fzap' WHERE id = ?`, id);
-      expect(world.flows.list().connections[0]?.kind).toBe("fzap");
+      world.db.run(`UPDATE zur_flow_connections SET kind = 'outro' WHERE id = ?`, id);
+      expect(world.flows.list().connections[0]?.kind).toBe("outro");
       expect((await world.flows.runNow(flow.id)).problem).toBe("kind_not_allowed");
       await expect(world.connections.update(id, { name: "Y" }, { development: false })).rejects.toMatchObject({ code: "CONFLICT" });
       expect(await world.flows.testConnection(id)).toEqual({ ok: false, problem: "kind_not_allowed", status: null });

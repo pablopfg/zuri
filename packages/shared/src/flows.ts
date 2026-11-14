@@ -131,9 +131,11 @@ export type FlowAuthType = (typeof FLOW_AUTH_TYPES)[number];
  * calls one). A kind added later goes at the end of the list and gets its
  * entry in the server's registry (CONNECTION_KINDS in apps/agent/src/flows/connections.ts).
  * `chatwoot-dono` is the owner's own conversation with Zuri (docs/planos/zuri-no-chatwoot.md):
- * made only by Settings › Chatwoot, never listed in CRM › Credentials.
+ * made only by Settings › Chatwoot, never listed in CRM › Credentials. `fzap` (E6b,
+ * docs/planos/credencial-fzap.md) sends a Pix by WhatsApp: its client reads the session's state and,
+ * from the E8, sends a Pix; nothing else.
  */
-export const FLOW_CONNECTION_KINDS = ["http", "chatwoot", "chatwoot-dono"] as const;
+export const FLOW_CONNECTION_KINDS = ["http", "chatwoot", "chatwoot-dono", "fzap"] as const;
 export type FlowConnectionKind = (typeof FLOW_CONNECTION_KINDS)[number];
 
 /** A wait drawn between two messages, in seconds. */
@@ -182,9 +184,19 @@ export interface ChatwootInbox {
   api: boolean;
 }
 
+/**
+ * A fzap instance's session (E6b): linked to WhatsApp, signed in, and whether it runs on the official
+ * Cloud API, where the fzap sends no Pix (only the WhatsApp Web mode does).
+ */
+export interface FzapStatus {
+  connected: boolean;
+  loggedIn: boolean;
+  cloud: boolean;
+}
+
 /** What "Testar" found: only reads. A refusal says why, in the flows' words. */
 export type FlowConnectionTest =
-  | { ok: true; ms: number; status: number | null; inboxes: ChatwootInbox[] | null }
+  | { ok: true; ms: number; status: number | null; inboxes: ChatwootInbox[] | null; fzap?: FzapStatus }
   | { ok: false; problem: FlowRunProblem; status: number | null };
 
 export type FlowNode =
