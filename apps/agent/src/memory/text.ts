@@ -25,6 +25,7 @@ export function fold(text: string): string {
  * \b only knows ASCII, so word edges are letters and digits of any script.
  */
 export function words(source: string, flags = ""): RegExp {
+  // nosemgrep: detect-non-literal-regexp -- every caller passes a constant pattern written in this repository
   return new RegExp(`(?<![\\p{L}\\p{N}])(?:${source})(?![\\p{L}\\p{N}])`, `u${flags}`);
 }
 

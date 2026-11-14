@@ -53,6 +53,7 @@ Tela alterada: mostre antes e depois. Sem mudança visível: escreva "Sem mudan�
 - **Tentativas:** <!-- ataque → teste (arquivo › nome), resultado -->
 - **Achados:** <!-- SEC-<área>-<nn>, gravidade, correção, prova do vermelho; ou "nenhum achado" só se o passe rodou -->
 - **Revisão independente:** <!-- auditor-seguranca, revisor-cloudflare, /security-review -->
+- **Varreduras e skills:** <!-- semgrep e gitleaks (local e CI), SonarQube no PR, differential-review, sharp-edges, insecure-defaults (docs/qa/varreduras-de-seguranca.md): o que acharam e o que virou correção ou falso positivo com motivo -->
 - **Riscos aceitos pelo Pablo:** <!-- ou "nenhum" -->
 
 ## Custo no plano Free
