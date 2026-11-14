@@ -64,5 +64,6 @@ export function dataLine(source: DataSource, id: string, text: string, extra: Re
   const attrs = Object.entries({ source, id, ...extra })
     .map(([key, value]) => `${key.replace(/[^a-z_]/g, "")}="${attribute(value)}"`)
     .join(" ");
+  // nosemgrep: html-in-template-string -- not HTML: the prompt's data line, attribute() and neutralize() escape every value
   return `<data ${attrs}>${neutralize(text)}</data>`;
 }

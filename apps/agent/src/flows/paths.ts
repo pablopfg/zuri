@@ -19,9 +19,11 @@ export function readPath(item: Json, path: string): Json | undefined {
     if (FORBIDDEN_KEYS.has(part) || current === null || typeof current !== "object") return undefined;
     if (Array.isArray(current)) {
       if (!/^\d{1,4}$/.test(part)) return undefined;
+      // nosemgrep: prototype-pollution-loop -- read only, and FORBIDDEN_KEYS and Object.hasOwn stop __proto__ and inherited keys
       current = current[Number(part)];
     } else {
       if (!Object.hasOwn(current, part)) return undefined;
+      // nosemgrep: prototype-pollution-loop -- read only, and FORBIDDEN_KEYS and Object.hasOwn stop __proto__ and inherited keys
       current = current[part];
     }
   }

@@ -274,6 +274,7 @@ export function devGoogle(options: { clientId?: string | undefined; clientSecret
     const form = new URLSearchParams(body);
     if (form.get("client_id") !== google.clientId || form.get("client_secret") !== google.clientSecret) return json({ error: "invalid_client" }, 401);
     const issue = (refresh?: string) => {
+      // nosemgrep: detected-google-oauth-access-token -- the local fake Google server makes up this token
       const access = `ya29.dev-${random()}`;
       google.accessTokens.add(access);
       return json({

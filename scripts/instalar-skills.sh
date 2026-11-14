@@ -15,6 +15,9 @@ PLUGINS=(
   "humanizer@$MK"
   "frontend-design@$MK"
   "ponytail@$MK"
+  "differential-review@$MK"
+  "sharp-edges@$MK"
+  "insecure-defaults@$MK"
 )
 
 markets="$(claude plugin marketplace list 2>/dev/null || true)"
