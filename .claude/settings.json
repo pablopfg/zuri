@@ -68,7 +68,10 @@
     "cloudflare-security-audit@zuri-skills-externas": true,
     "humanizer@zuri-skills-externas": true,
     "frontend-design@zuri-skills-externas": true,
-    "ponytail@zuri-skills-externas": true
+    "ponytail@zuri-skills-externas": true,
+    "differential-review@zuri-skills-externas": true,
+    "sharp-edges@zuri-skills-externas": true,
+    "insecure-defaults@zuri-skills-externas": true
   },
   "extraKnownMarketplaces": {
     "zuri-skills-externas": {

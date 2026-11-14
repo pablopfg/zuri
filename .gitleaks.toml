@@ -1,0 +1,27 @@
+# Gitleaks (scripts/seguranca/gitleaks.sh, job "gitleaks" of the CI): the
+# default rules, and the few values that look like keys but are made up or
+# published as test vectors. Each one is listed exactly, never by path, so a
+# real key pasted into a test still fails. A new test value goes here with
+# where it comes from (docs/qa/varreduras-de-seguranca.md).
+title = "Zuri"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Test values: canaries, RFC examples and the published VAPID test key"
+regexTarget = "secret"
+regexes = [
+  # Canaries the prompt tests look for in the model's input (apps/agent/test).
+  '''^CANARIO-segredo-de-sessao-0123456789$''',
+  '''^CANARIO-credencial-do-fluxo-0123456789$''',
+  # RFC 6455 section 1.3, the sample Sec-WebSocket-Key.
+  '''^dGhlIHNhbXBsZSBub25jZQ==$''',
+  # A made-up personal access token in a log redaction test.
+  '''^zur_pat_abc123$''',
+  # RFC 8291 section 5, the sample auth secret and the published test VAPID private key.
+  '''^BTBZMqHH6r4Tts7J_aSIgg$''',
+  '''^wOOMmS0NgL81YSjmS0UwAl7PotpIuPUi0q3Z2acC0Gk$''',
+  # base64url of "segredo-de-teste", the sample push subscription of the e2e and the demo data.
+  '''^c2VncmVkby1kZS10ZXN0ZQ$''',
+]

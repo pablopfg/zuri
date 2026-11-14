@@ -55,6 +55,7 @@ export function isPushEndpoint(value: string): boolean {
   return PUSH_HOSTS.some((host) => host.test(url.hostname));
 }
 
+// nosemgrep: detect-non-literal-regexp -- min and max are number literals at each call
 const base64Url = (min: number, max: number) => z.string().regex(new RegExp(`^[A-Za-z0-9_-]{${min},${max}}$`));
 
 /**
