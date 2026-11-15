@@ -150,7 +150,7 @@ Uma leitura do evento no Google por abertura (`events.get`) e um `PATCH` com eta
 | E7b. Remarcar pelo link | a fazer |
 | E7c. Envio da confirmação | a fazer |
 
-Cada PR traz changelog, README, capturas lado a lado com o protótipo e o teto do JS inicial (141.100 B): a página do paciente e o bloco dos detalhes carregam sob demanda.
+Cada PR traz changelog, README, capturas lado a lado com o protótipo e o teto do JS inicial (141.200 B, OK do Pablo em 15/11/2026): a página do paciente e o bloco dos detalhes carregam sob demanda.
 
 ## 12. Riscos
 
