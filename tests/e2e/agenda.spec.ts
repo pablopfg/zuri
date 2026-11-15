@@ -96,8 +96,9 @@ test("the week is a grid of the working hours, with what is outside them in its 
   const period = page.getByRole("heading", { level: 2 });
   await expect(period).toHaveClass(/sr-only/);
   await expect(period).toHaveText(new RegExp(String(new Date().getFullYear())));
-  // Today by the owner's zone, marked in the week's header.
-  await expect(page.locator('[aria-current="date"]')).toHaveText(new RegExp(`^\\S+\\s*${dayNumber(0)}, Ver o dia`));
+  // Today by the owner's zone, marked in the week's header. By its name, not its text: on a holiday the
+  // cell also shows the holiday's name, hidden from the screen reader, which hears it after the date.
+  await expect(page.locator('[aria-current="date"]')).toHaveAccessibleName(new RegExp(`^\\S+\\s*${dayNumber(0)}\\s*, Ver o dia`));
 
   for (const title of ["Corrida no parque", "Vistoria do apartamento", "Almoço com a Bia", "Aula de fotografia", "Feriado municipal"]) await expect(event(page, title)).toBeVisible();
   // Each block sits at its hour: 09:00 is one hour under the first line, and one hour tall.
