@@ -2048,6 +2048,22 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS zur_auth_events_abroad ON zur_auth_events (at) WHERE country <> '' AND country <> 'BR'`,
     ],
   },
+  {
+    version: 50,
+    name: "notices_seen",
+    statements: [
+      // E12b (plano acessos-e-sino.md): the bell counts the notices the owner hasn't seen yet, apart from the
+      // unread ones. Seen = shown in the open panel for 0.6 s, or read. Every notice already there counts as seen,
+      // so the update doesn't light the bell with old news.
+      `ALTER TABLE zur_notices ADD COLUMN seen_at TEXT`,
+      `UPDATE zur_notices SET seen_at = coalesce(read_at, created_at) WHERE seen_at IS NULL`,
+      // The count the bell reads on every heartbeat: one row kept by triggers, never a count(*) (rule P2).
+      `INSERT INTO zur_counts (kind, n) SELECT 'notices_unseen', count(*) FROM zur_notices WHERE seen_at IS NULL ON CONFLICT (kind) DO UPDATE SET n = excluded.n`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_unseen_insert AFTER INSERT ON zur_notices WHEN NEW.seen_at IS NULL BEGIN UPDATE zur_counts SET n = n + 1 WHERE kind = 'notices_unseen'; END`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_unseen_seen AFTER UPDATE OF seen_at ON zur_notices WHEN OLD.seen_at IS NULL AND NEW.seen_at IS NOT NULL BEGIN UPDATE zur_counts SET n = n - 1 WHERE kind = 'notices_unseen'; END`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_unseen_delete AFTER DELETE ON zur_notices WHEN OLD.seen_at IS NULL BEGIN UPDATE zur_counts SET n = n - 1 WHERE kind = 'notices_unseen'; END`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

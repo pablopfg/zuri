@@ -70,6 +70,8 @@ interface NoticeRow {
   origin: NoticeOrigin;
   created_at: string;
   read_at: string | null;
+  /** E12b: shown in the open panel (or read there); absent on a row built before the insert. */
+  seen_at?: string | null;
   escalation: EscalationState | null;
   attempts: number;
   next_attempt_at: string | null;
@@ -549,28 +551,46 @@ export class AlertService {
    * Marks one notice as read, or all of them. Reading answers an insisting
    * notice, except a security alert: inside the app it stays insisting.
    */
-  markRead(id?: string): { unread: number } {
+  markRead(id?: string): { unread: number; unseen: number } {
     const at = iso(this.now());
+    // Read in the app is also seen (E12b): "Marcar como lidos" clears the bell too.
     if (id) {
       this.row(id);
       this.db.run(
-        `UPDATE zur_notices SET read_at = coalesce(read_at, ?),
+        `UPDATE zur_notices SET read_at = coalesce(read_at, ?1), seen_at = coalesce(seen_at, ?1),
            escalation = CASE WHEN escalation = 'active' AND category != 'security' THEN 'acknowledged' ELSE escalation END,
            next_attempt_at = CASE WHEN escalation = 'active' AND category != 'security' THEN NULL ELSE next_attempt_at END
-         WHERE id = ?`,
+         WHERE id = ?2`,
         at,
         id,
       );
     } else {
       this.db.run(
-        `UPDATE zur_notices SET read_at = ?,
-           escalation = CASE WHEN escalation = 'active' AND category != 'security' THEN 'acknowledged' ELSE escalation END,
-           next_attempt_at = CASE WHEN escalation = 'active' AND category != 'security' THEN NULL ELSE next_attempt_at END
-         WHERE read_at IS NULL`,
+        // A notice read earlier (on Telegram) but not seen only becomes seen: its insisting was settled when it was read.
+        `UPDATE zur_notices SET read_at = coalesce(read_at, ?1), seen_at = coalesce(seen_at, ?1),
+           escalation = CASE WHEN read_at IS NULL AND escalation = 'active' AND category != 'security' THEN 'acknowledged' ELSE escalation END,
+           next_attempt_at = CASE WHEN read_at IS NULL AND escalation = 'active' AND category != 'security' THEN NULL ELSE next_attempt_at END
+         WHERE read_at IS NULL OR seen_at IS NULL`,
         at,
       );
     }
-    return { unread: this.unreadCount() };
+    return { unread: this.unreadCount(), unseen: this.unseenCount() };
+  }
+
+  /**
+   * The notices the owner saw in the open panel (E12b): each one shown for
+   * 0.6 s, sent by the panel in batches. Only the ones still unseen change, so
+   * a repeat writes nothing; an id that isn't a notice is just left out.
+   */
+  markSeen(ids: readonly string[]): { unseen: number } {
+    if (ids.length > 0) {
+      this.db.run(
+        `UPDATE zur_notices SET seen_at = ? WHERE seen_at IS NULL AND id IN (${ids.map(() => "?").join(", ")})`,
+        iso(this.now()),
+        ...ids,
+      );
+    }
+    return { unseen: this.unseenCount() };
   }
 
   /**
@@ -582,10 +602,10 @@ export class AlertService {
     const row = this.row(id);
     if (row.category !== "security" || row.origin !== "bot") throw new AppError("CONFLICT", "error.noticeAckBotOnly");
     this.db.run(
-      `UPDATE zur_notices SET read_at = coalesce(read_at, ?),
+      `UPDATE zur_notices SET read_at = coalesce(read_at, ?1), seen_at = coalesce(seen_at, ?1),
          escalation = CASE WHEN escalation IN ('active', 'unacknowledged') THEN 'acknowledged' ELSE escalation END,
          next_attempt_at = NULL
-       WHERE id = ?`,
+       WHERE id = ?2`,
       iso(this.now()),
       id,
     );
@@ -623,6 +643,11 @@ export class AlertService {
     return Math.max(0, this.storage.count("notices_unread"));
   }
 
+  /** The bell's number (E12b): the notices not yet seen in the open panel, from the counter the triggers keep. */
+  unseenCount(): number {
+    return Math.max(0, this.storage.count("notices_unseen"));
+  }
+
   /** The newest first, a page at a time; the cursor is the last notice's time and id. */
   page(cursor?: string): NoticePage {
     let rows: NoticeRow[];
@@ -647,6 +672,7 @@ export class AlertService {
     return {
       notices: shown.map((row) => this.present(row, locale)),
       unread: this.unreadCount(),
+      unseen: this.unseenCount(),
       nextCursor: more && last ? `${last.created_at}|${last.id}` : null,
     };
   }
@@ -714,6 +740,7 @@ export class AlertService {
       link: noticePage(row.link),
       createdAt: row.created_at,
       readAt: row.read_at,
+      seen: row.seen_at != null,
       escalation: row.escalation,
       attempts: row.attempts,
       nextAttemptAt: row.next_attempt_at,

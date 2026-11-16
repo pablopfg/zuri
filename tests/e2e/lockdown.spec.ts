@@ -1,6 +1,6 @@
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
-import { expectAccessible, expectFits, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { expectAccessible, expectFits, signIn, tooSmallControls, BELL_NAME } from "./ui-helpers.ts";
 
 // "Sair do bloqueio" and the bot's alerts acknowledged in the app (step 16b).
 // A real lockdown would end every session of the shared e2e Worker and refuse
@@ -21,7 +21,7 @@ const toast = (page: Page, text: string | RegExp) => page.getByRole("status").fi
 async function sessionSays(page: Page, extra: () => Record<string, unknown>) {
   await page.goto("/");
   await signIn(page);
-  await expect(page.getByRole("button", { name: /^Abrir avisos/ }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: BELL_NAME }).first()).toBeVisible();
   await page.route("**/api/auth/session", async (route) => {
     const res = await route.fetch();
     if (!res.ok()) return route.fulfill({ response: res });
@@ -52,7 +52,7 @@ test("the app opens on Sair do bloqueio, asks for the code and opens again once 
   await expect(page.getByText("Ligado pelo Telegram em 02/11/2026", { exact: false })).toBeVisible();
   await expect(page.getByText("Foi o segundo bloqueio em 24 horas", { exact: false })).toBeVisible();
   // No menu, no other screen: the shell stays closed while it lasts.
-  await expect(page.getByRole("button", { name: /^Abrir avisos/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: BELL_NAME })).toHaveCount(0);
   await expectAccessible(page, "modo de bloqueio");
   expect(await tooSmallControls(page), "every control of the lockdown screen is a 44 px target").toEqual([]);
 
@@ -69,7 +69,7 @@ test("the app opens on Sair do bloqueio, asks for the code and opens again once 
   await page.getByRole("button", { name: "Usar um código de recuperação" }).click();
   await page.getByLabel("Código de recuperação").fill("ABCD-EFGH-JKLM-NPQR");
   await page.getByRole("button", { name: "Sair do bloqueio" }).click();
-  await expect(page.getByRole("button", { name: /^Abrir avisos/ }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: BELL_NAME }).first()).toBeVisible();
   expect(exits).toEqual([{ totp: "123456" }, { recoveryCode: "ABCD-EFGH-JKLM-NPQR" }]);
 });
 
@@ -138,7 +138,7 @@ test("a security alert the bot caused is confirmed in the app; the others have n
 
   await page.goto("/");
   await signIn(page);
-  await page.getByRole("button", { name: /^Abrir avisos/ }).first().click();
+  await page.getByRole("button", { name: BELL_NAME }).first().click();
   const panel = page.getByRole("dialog", { name: "Avisos" });
   const bot = panel.getByRole("listitem").filter({ hasText: "Modo de bloqueio ligado pelo Telegram" });
   const web = panel.getByRole("listitem").filter({ hasText: "Entrada de outra rede" });

@@ -166,6 +166,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "c", "view", "answer",
   // Rescheduling by the link (E7b): /api/c/days, /api/c/offer, /api/c/reschedule.
   "offer", "reschedule", "sent",
+  // The notices seen in the open panel (E12b).
+  "seen",
 ]);
 const MAX_SEGMENTS = 8;
 

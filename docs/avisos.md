@@ -1,7 +1,7 @@
 # Avisos e Diagnóstico
 
 A etapa 11 junta num lugar só tudo o que a Zuri tem a dizer ao dono: o sino da
-barra (com o número de avisos sem ler) abre a central de avisos. Ela chega em
+barra (com o número de avisos que o dono ainda não viu) abre a central de avisos. Ela chega em
 quatro partes:
 
 | Parte | O que entrega | Situação |
@@ -25,6 +25,7 @@ quatro partes:
 - `apps/agent/src/diagnostics/service.ts`: o registro próprio de falhas.
 - `apps/agent/src/api/notices.ts`: as rotas `/api/notices*`, `/api/alerts` e `/api/diagnostics*`.
 - `apps/web/src/components/NotificationCenter.tsx` (sino, no pacote inicial) e `NoticesPanel.tsx` (painel, sob demanda); `pages/settings/AlertsTab.tsx` (com `SoundsCard.tsx`, `PushCard.tsx` e `RoutesCard.tsx`); `lib/sounds.ts` (os sons, feitos na hora pelo navegador) e `DiagnosticsTab.tsx`; `public/sw.js` mostra a notificação.
+- Migration 50 (E12b): coluna `seen_at` em `zur_notices` e o contador `notices_unseen`, com os gatilhos. Os avisos antigos entram como vistos.
 - Migration 13: coluna `learn_key` em `zur_notices` (com índice), tabela `zur_alert_learning` e coluna `priority` em `zur_automations` (padrão `normal`).
 - Migration 12: `zur_push_devices`.
 - Migration 11: `zur_notices`, `zur_alert_keys`, `zur_alert_deliveries`, `zur_diagnostics` e os contadores `notices`, `security_notices`, `notices_unread` e `alert_deliveries`.
@@ -269,3 +270,25 @@ levam até lá.
 Erros dos canais, das rodadas e do próprio Diagnóstico saem pelo módulo único de
 log (`alert_delivery_failed`, `alert_tick_failed`, `diagnostics_failed`,
 `push_refused` com o status HTTP, `push_failed`), só com nomes e códigos. Gravar uma falha nunca lança erro.
+
+## Visto e lido (E12b)
+
+O número do sino conta os avisos **não vistos**, não os não lidos. Visto é
+diferente de lido: o aviso continua "Novo" e a insistência segue até o dono
+marcar como lido ou responder.
+
+- Um aviso conta como visto quando fica 0,6 s no painel aberto, com mais da
+  metade na tela, com a aba à mostra. Abrir e fechar na hora não conta, e um
+  painel aberto numa aba escondida não marca nada.
+- O painel manda os ids em lotes de até 50 (`NOTICE_SEEN_MAX`) para
+  `POST /api/notices/seen`, que grava `seen_at` só onde está vazio e devolve o
+  número novo. Repetir o mesmo lote não grava nada.
+- "Marcar como lido", "Marcar tudo como lido" e a resposta ao alerta de
+  segurança no app também marcam como visto. "Feito" e "Adiar" no Telegram,
+  e-mail e notificação do aparelho não marcam: o dono não viu o aviso no app.
+- O número chega com a conferência da sessão e o heartbeat. Num outro aparelho
+  aberto, o sino muda no próximo heartbeat (até 1 minuto).
+- O título da aba ganha "(3)" na frente, até "(99+)", e o ícone do app
+  instalado mostra o mesmo número onde o navegador deixa
+  (`navigator.setAppBadge`). As duas coisas ficam em `lib/sounds.ts`, que roda
+  depois da primeira tela.

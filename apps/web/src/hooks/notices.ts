@@ -27,7 +27,7 @@ export function useDiagnostics() {
   return useQuery({ queryKey: DIAGNOSTICS_KEY, queryFn: ({ signal }) => api<DiagnosticsReport>("/diagnostics", { signal }) });
 }
 
-/** The bell reads its count from the session: a change made here shows on it at once, before the next heartbeat. */
-export function setUnread(qc: QueryClient, unread: number): void {
-  qc.setQueryData<SessionState | null>(SESSION_KEY, (session) => (session ? { ...session, unreadNotices: unread } : session));
+/** The bell reads its number from the session: a change made here shows on it at once, before the next heartbeat. */
+export function setUnseen(qc: QueryClient, unseen: number): void {
+  qc.setQueryData<SessionState | null>(SESSION_KEY, (session) => (session ? { ...session, unseenNotices: unseen } : session));
 }

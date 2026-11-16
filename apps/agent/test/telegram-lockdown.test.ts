@@ -633,6 +633,8 @@ describe("the bot's security alerts", () => {
     const done = await json<Notice>(await api("POST", `/notices/${alert?.id}/acknowledge`, undefined, fresh), 200);
     expect(done).toMatchObject({ escalation: "acknowledged", ackInApp: true });
     expect(done.readAt).not.toBeNull();
+    // Answered in the app, so seen too: it leaves the bell's number (E12b).
+    expect(done.seen).toBe(true);
   });
 
   it("an alert caused on the web can't be acknowledged in the app", async () => {
