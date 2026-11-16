@@ -100,7 +100,7 @@ Chatwoot, contato de cada consulta), com o que já está pronto.
 
 A primeira automação é a **Confirmação de consulta**: no dia útil antes da
 consulta, no horário escolhido, ela manda ao paciente a mensagem de
-confirmação com o link. Detalhes em
+confirmação com o link, e também por e-mail se você deixar ligado. Detalhes em
 [google-agenda.md](google-agenda.md#confirmação-automática-na-véspera).
 
 Cada automação declara no código os caminhos que chama, os limites por

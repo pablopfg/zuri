@@ -150,8 +150,8 @@ Uma leitura do evento no Google por abertura (`events.get`) e um `PATCH` com eta
 | E7b. Remarcar pelo link | mesclada (#356) |
 | E7c1. Mensagem modelo e envio pelo WhatsApp | mesclada (#357) |
 | E7c2. E-mail de confirmação | mesclada (#358) |
-| E7c3a. Confirmação automática pelo Chatwoot | em andamento |
-| E7c3b. Também por e-mail, na mesma hora | a fazer |
+| E7c3a. Confirmação automática pelo Chatwoot | mesclada (#360) |
+| E7c3b. Também por e-mail, na mesma hora | em andamento |
 
 Cada PR traz changelog, README, capturas lado a lado com o protótipo e o teto do JS inicial (141.200 B, OK do Pablo em 15/11/2026): a página do paciente e o bloco dos detalhes carregam sob demanda.
 
@@ -360,4 +360,25 @@ A aprovação vem da decisão de 12/11/2026, 21:37 UTC (a confirmação sai sozi
 - Quem pode editar uma agenda compartilhada que a Zuri escreve consegue gravar o celular do paciente num evento pela API do Google (auditoria SEC-E7c3a-05, informativo). As agendas em que a Zuri escreve são escolha do Pablo em Integrações › Google; fica registrado como risco conhecido.
 - A automação lê no máximo 250 eventos por agenda e 1.000 no total na véspera; acima disso o resto fica para os botões (o consultório tem bem menos).
 - Achados da auditoria corrigidos: SEC-E7c3a-01 (médio; mudar o texto da confirmação com a automação ligada pede senha e alerta, escolha do Pablo em 16/11, às 11:52 UTC), SEC-E7c3a-02 (uma mensagem recusada não para as outras), SEC-E7c3a-03 (só o primeiro nome vai ao Chatwoot) e SEC-E7c3a-06 (links só até o teto do dia).
+
+### Critérios de aceite (E7c3b)
+
+- **CA-B1.** "Confirmação de consulta" ganha a opção "Também por e-mail, na mesma hora", um interruptor no painel de ligar em CRM › Automações, ligado por padrão, com a explicação embaixo. O servidor só aceita 0 ou 1; outro valor é recusado como as outras opções.
+- **CA-B2.** Ligado e ao vivo, na mesma rodada em que a mensagem entra na fila do Chatwoot, sai o e-mail da E7c2 (forma de envio e modelo de Integrações › E-mail para pacientes, com o link no botão) para quem tem e-mail válido no agendamento. Quem tem só o e-mail, ou tem uma mensagem longa demais para a fila, recebe só por e-mail.
+- **CA-B3.** Um e-mail por horário: a mesma reserva do botão "Enviar por e-mail" (`zur_confirm_sends`, canal `email`). Se o Pablo já mandou por WhatsApp ou e-mail, o automático não repete. O primeiro e-mail que não sai encerra os e-mails da rodada; a reserva é desfeita e a rodada seguinte tenta de novo. Endereço que a forma de envio recusa fica marcado (`email-refused`) e o automático não tenta mais, mas o botão continua tentando e a tela não o mostra como enviado (SEC-E7c3b-02).
+- **CA-B4.** No ensaio, nenhum e-mail sai. Desligado o interruptor, só o Chatwoot, como na E7c3a.
+- **CA-B5.** No máximo 10 e-mails por rodada, e cada um só sai com 5 lugares livres no despertar (o SMTP gasta 2 consultas de DNS e o socket fora de qualquer medidor; o Gmail, 2 pelo medidor dele): sem lugar, a rodada seguinte tenta (P9, SEC-E7c3b-01). Valem também os tetos do e-mail para pacientes (100 por dia) e o bloqueio. Desligada ou pausada no meio da rodada, nenhum e-mail sai depois (SEC-E7c3b-04).
+- **CA-B6.** Configurações › Consultório, em "Como a confirmação sai", diz se o e-mail vai junto ou se é só pelo Chatwoot.
+- **CA-B7.** Celular, tema escuro, teclado, leitor de tela, 44 px e inglês.
+
+### Suposições (E7c3b)
+
+- Mudar a automação para versão 2 (opção nova e e-mail como efeito) a faz voltar ao ensaio, como toda mudança de efeitos: o Pablo liga de novo depois de conferir.
+- O ensaio não anota quem receberia só por e-mail: as anotações continuam sendo as da fila do Chatwoot (auditoria SEC-E7c3b-03, baixo, aceito nesta PR). O interruptor e a explicação dele dizem que no ensaio nenhum e-mail sai.
+- Com o e-mail para pacientes desligado em Integrações, o interruptor ligado não envia nada (cada rodada para no primeiro `not_configured`, sem rede) e o Consultório ainda diz "Também por e-mail". Mostrar a forma de envio no Consultório exigiria mais uma leitura na tela; fica para a E8 se o Pablo quiser.
+- Um e-mail que falhou por motivo passageiro volta a ser tentado nas rodadas seguintes mesmo depois que a mensagem do Chatwoot saiu, no máximo um por rodada (até 28 no dia).
+- O e-mail não conta no teto de 30 mensagens por dia da automação, só nos tetos do e-mail para pacientes.
+- Achados corrigidos: SEC-E7c3b-01 (médio, e-mails fora do orçamento do despertar), SEC-E7c3b-02 (médio, novas tentativas gastando o teto de 100 por dia), SEC-E7c3b-04 (baixo, e-mail depois de desligar no meio da rodada) e o canal `email` na documentação.
+- A dica "Sai sozinho pelo Chatwoot" nos detalhes da consulta continua só para quem tem celular.
+- Sem pergunta nova ao Pablo: o interruptor e o texto saíram do protótipo v56, aprovado em 13/11 às 12:49 UTC, e o lugar (CRM › Automações) foi a escolha dele em 16/11 às 11:52 UTC.
 

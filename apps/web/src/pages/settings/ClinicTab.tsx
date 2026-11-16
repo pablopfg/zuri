@@ -148,6 +148,8 @@ function AutoRow() {
       <div className="min-w-0 flex-1 basis-64 space-y-1">
         <p className="text-sm font-semibold">{t("web.clinic.send.auto")}</p>
         <p className="text-sm text-fg-muted">{t("web.clinic.send.autoHint")}</p>
+        {/* E7c3b: whether the e-mail goes along, set in the same place. */}
+        {state && state !== "off" && <p className="text-sm text-fg-muted">{t(item?.options.mail === 0 ? "web.clinic.send.mailOff" : "web.clinic.send.mailOn")}</p>}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {state && (

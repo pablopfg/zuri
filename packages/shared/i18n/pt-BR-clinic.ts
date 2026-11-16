@@ -60,6 +60,8 @@ export const ptBRClinic = {
   "web.clinic.send.state.rehearsal": "Em ensaio",
   "web.clinic.send.state.live": "Ligado, às {hour}",
   "web.clinic.send.state.paused": "Pausado",
+  "web.clinic.send.mailOn": "Também por e-mail, na mesma hora, para quem tem e-mail no agendamento.",
+  "web.clinic.send.mailOff": "Só pelo Chatwoot: o e-mail junto está desligado.",
   "web.clinic.send.changeAuto": "Mudar a confirmação automática em CRM › Automações",
   "confirm.message.default": "Olá, {nome}! Sua *{tipo}* no *{consultorio}* está marcada para *{dia}, às {hora}*.\n{local}\n\nConfirme sua presença por este link:\n{link}\n\nSe não puder vir, cancele pelo mesmo link até {prazo}. Para mudar o dia ou o horário, fale com a nossa equipe: {whatsapp}.",
   "confirm.message.address": "Endereço: {place}.",
