@@ -1,11 +1,13 @@
 import {
   AUTH_ACTIVITY_GROUPS,
+  AUTH_ATTENTION_KINDS,
   AUTH_EVENT_KINDS,
   AUTH_EVENT_DETAIL_DAYS,
   type AuthActivity,
   type AuthActivityQuery,
   AUTH_EVENT_SUMMARY_DAYS,
   type AuthEventKind,
+  HOME_COUNTRY,
   LOGIN_WINDOW_MS,
   MAX_AUTH_EVENTS,
   MAX_DEVICES,
@@ -219,9 +221,17 @@ export class AuthEvents {
     }
     // Always by kind: a row of a kind that no longer exists (the remote tokens', removed on 11/11/2026,
     // kept for 90 days) would fail the screen's schema and take the whole page with it.
-    const kinds = query.group !== undefined ? AUTH_ACTIVITY_GROUPS[query.group] : AUTH_EVENT_KINDS;
+    const grouped = query.group !== undefined ? AUTH_ACTIVITY_GROUPS[query.group] : AUTH_EVENT_KINDS;
+    // "Attention" narrows the kinds further: a group outside it leaves nothing, so the page is empty without a read.
+    const kinds = query.show === "attention" ? grouped.filter((kind) => AUTH_ATTENTION_KINDS.includes(kind)) : grouped;
+    if (kinds.length === 0) return { events: [], nextCursor: null };
     where.push(`kind IN (${kinds.map(() => "?").join(", ")})`);
     params.push(...kinds);
+    if (query.show === "abroad") {
+      // Empty is a request the edge didn't place (local runs): not known to be from abroad.
+      where.push("country <> '' AND country <> ?");
+      params.push(HOME_COUNTRY);
+    }
     if (query.ip !== undefined) {
       // A prefix compared as text: no LIKE, so "%" or "_" in the input mean nothing (CF-6-01 also caps LIKE patterns).
       where.push("substr(lower(ip), 1, ?) = ?");

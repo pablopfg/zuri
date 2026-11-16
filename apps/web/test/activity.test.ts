@@ -1,6 +1,6 @@
 import { AUTH_EVENT_KINDS, type AuthActivityEvent } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { deviceText, groupOf, isWarning, KIND_LABEL, placeText, reasonLabels } from "../src/components/security/activity.ts";
+import { deviceText, groupOf, isWarning, KIND_LABEL, placeParts, reasonLabels } from "../src/components/security/activity.ts";
 
 const event = (over: Partial<AuthActivityEvent> = {}): AuthActivityEvent => ({
   id: 1,
@@ -44,11 +44,18 @@ describe("the access log's helpers", () => {
     expect(isWarning("logout")).toBe(false);
   });
 
-  it("names the country in the owner's language, and keeps what isn't a country code", () => {
-    expect(placeText(event(), "pt-BR")).toBe("Campinas, São Paulo, Brasil");
-    expect(placeText(event(), "en")).toBe("Campinas, São Paulo, Brazil");
-    expect(placeText(event({ city: "", region: "", country: "T1" }), "pt-BR")).toBe("T1");
-    expect(placeText(event({ city: "", region: "", country: "" }), "pt-BR")).toBe("");
+  it("names the country in the owner's language, with its code and whether it is outside Brazil (E12a)", () => {
+    const t = (key: string) => `<${key}>`;
+    expect(placeParts(event(), "pt-BR", t)).toEqual({ city: "Campinas, São Paulo", country: "Brasil", code: "BR", abroad: false });
+    expect(placeParts(event(), "en", t)).toEqual({ city: "Campinas, São Paulo", country: "Brazil", code: "BR", abroad: false });
+    expect(placeParts(event({ city: "", region: "", country: "PT" }), "pt-BR", t)).toEqual({ city: "", country: "Portugal", code: "PT", abroad: true });
+    // The edge's two codes that name no country: still not known to be home.
+    expect(placeParts(event({ country: "XX" }), "pt-BR", t)).toMatchObject({ country: "<web.activity.countryUnknown>", code: "XX", abroad: true });
+    expect(placeParts(event({ country: "T1" }), "pt-BR", t)).toMatchObject({ country: "<web.activity.tor>", code: "T1", abroad: true });
+    // No country (a local run) or something that isn't a code: nothing to name, nothing to flag.
+    expect(placeParts(event({ city: "", region: "", country: "" }), "pt-BR", t)).toEqual({ city: "", country: "", code: "", abroad: false });
+    expect(placeParts(event({ country: "<b>" }), "pt-BR", t)).toEqual({ city: "Campinas, São Paulo", country: "", code: "", abroad: false });
+    expect(placeParts(event({ country: "br" }), "pt-BR", t)).toMatchObject({ code: "", abroad: false });
   });
 
   it("describes the browser, or only the half it knows, or nothing", () => {

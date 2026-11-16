@@ -1,5 +1,5 @@
 import type { AuthActivityEvent, AuthActivityGroup, AuthEventKind, MessageKey } from "@zuri/shared";
-import { AUTH_ACTIVITY_GROUPS, ptBRSecurity } from "@zuri/shared";
+import { AUTH_ACTIVITY_GROUPS, AUTH_ATTENTION_KINDS, HOME_COUNTRY, ptBRSecurity } from "@zuri/shared";
 import { addMessages } from "../../lib/i18n.tsx";
 import { describeUserAgent } from "@zuri/shared";
 
@@ -126,10 +126,9 @@ export function groupOf(kind: AuthEventKind): AuthActivityGroup {
   return GROUP_OF.get(kind) ?? "account";
 }
 
-/** Refusals and attacks stand out from the owner's own events. */
+/** Refusals and attacks stand out from the owner's own events (the same list as the "Attention" filter). */
 export function isWarning(kind: AuthEventKind): boolean {
-  const group = groupOf(kind);
-  return group === "failure" || group === "blocked" || group === "robot" || kind === "credentials_reset";
+  return AUTH_ATTENTION_KINDS.includes(kind);
 }
 
 /** "Chrome on Android", or whichever half is known. */
@@ -138,15 +137,34 @@ export function deviceText(event: AuthActivityEvent, format: (browser: string, s
   return browser && system ? format(browser, system) : (browser ?? system ?? "");
 }
 
-/** "São Paulo, SP, Brasil": the edge's guess of the place, with the country's name in the owner's language. */
-export function placeText(event: AuthActivityEvent, locale: string): string {
-  let country = event.country;
-  if (/^[A-Z]{2}$/.test(country)) {
+/** Where an access came from, as the row shows it: "Curitiba, PR · Brasil BR", or "· fora do Brasil" when it isn't home. */
+export interface PlaceParts {
+  /** City and state, empty when the edge didn't know them. */
+  city: string;
+  /** The country's name in the owner's language ("Unknown country" and "Tor network" for the edge's two codes that name none). */
+  country: string;
+  /** The two letters as recorded, empty without a country. */
+  code: string;
+  abroad: boolean;
+}
+
+/** The edge's codes that are not a country: an unknown place and the Tor network. */
+const NOT_A_COUNTRY: Record<string, MessageKey> = { XX: "web.activity.countryUnknown", T1: "web.activity.tor" };
+
+/** The pieces of the place line (E12a). Only two capital letters go to DisplayNames: anything else stays as it came. */
+export function placeParts(event: Pick<AuthActivityEvent, "city" | "region" | "country">, locale: string, t: (key: MessageKey) => string): PlaceParts {
+  const code = /^[A-Z0-9]{2}$/.test(event.country) ? event.country : "";
+  const city = [event.city, event.region].filter(Boolean).join(", ");
+  if (!code) return { city, country: "", code: "", abroad: false };
+  const abroad = code !== HOME_COUNTRY;
+  if (Object.hasOwn(NOT_A_COUNTRY, code)) return { city, country: t(NOT_A_COUNTRY[code] as MessageKey), code, abroad };
+  let country = code;
+  if (/^[A-Z]{2}$/.test(code)) {
     try {
-      country = new Intl.DisplayNames([locale], { type: "region" }).of(country) ?? country;
+      country = new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
     } catch {
       // An old browser without DisplayNames: the two-letter code still says it.
     }
   }
-  return [event.city, event.region, country].filter(Boolean).join(", ");
+  return { city, country, code, abroad };
 }

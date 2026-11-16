@@ -203,6 +203,58 @@ describe("the access log's pages and filters", () => {
       expect(ips({ ip: "203.0.113.6", group: "failure" })).toEqual(["203.0.113.6"]);
     });
   });
+
+  it("shows what needs attention (E12a): the refusals and what the guard stopped, crossed with the group", async () => {
+    await withAuth("log-attention", async (h) => {
+      const now = h.clock.now();
+      insert(h, [
+        { at: now - 1, kind: "login_success", ip: "203.0.113.1" },
+        { at: now - 2, kind: "login_failure", ip: "203.0.113.2" },
+        { at: now - 3, kind: "login_rate_limited", ip: "203.0.113.3" },
+        { at: now - 4, kind: "login_turnstile", ip: "203.0.113.4" },
+        { at: now - 5, kind: "credentials_reset", ip: "203.0.113.5" },
+        { at: now - 6, kind: "logout", ip: "203.0.113.6" },
+      ]);
+      const ips = (query: Parameters<Harness["service"]["events"]["page"]>[0]) =>
+        h.service.events.page(query, AUTH_ACTIVITY_LIMIT).events.map((e) => e.ip);
+      expect(ips({ show: "attention" })).toEqual(["203.0.113.2", "203.0.113.3", "203.0.113.4", "203.0.113.5"]);
+      expect(ips({ show: "attention", group: "blocked" })).toEqual(["203.0.113.3"]);
+      // A group with nothing to attend to: an empty page, never everything.
+      expect(h.service.events.page({ show: "attention", group: "success" }, AUTH_ACTIVITY_LIMIT)).toEqual({ events: [], nextCursor: null });
+    });
+  });
+
+  it("shows the accesses from abroad (E12a): any country but Brazil, never a row the edge didn't place", async () => {
+    await withAuth("log-abroad", async (h) => {
+      const now = h.clock.now();
+      insert(h, [
+        { at: now - 1, kind: "login_success", ip: "203.0.113.1", country: "BR" },
+        { at: now - 2, kind: "login_failure", ip: "198.51.100.2", country: "PT" },
+        { at: now - 3, kind: "login_failure", ip: "198.51.100.3", country: "" },
+        { at: now - 4, kind: "login_attack", ip: "198.51.100.4", country: "T1" },
+        { at: now - 5, kind: "logout", ip: "198.51.100.5", country: "XX" },
+      ]);
+      const ips = (query: Parameters<Harness["service"]["events"]["page"]>[0]) =>
+        h.service.events.page(query, AUTH_ACTIVITY_LIMIT).events.map((e) => e.ip);
+      expect(ips({ show: "abroad" })).toEqual(["198.51.100.2", "198.51.100.4", "198.51.100.5"]);
+      expect(ips({ show: "abroad", group: "failure" })).toEqual(["198.51.100.2"]);
+      expect(ips({ show: "abroad", ip: "198.51.100.4" })).toEqual(["198.51.100.4"]);
+    });
+  });
+
+  it("pages the accesses from abroad with the cursor, without repeating any", async () => {
+    await withAuth("log-abroad-cursor", async (h) => {
+      const now = h.clock.now();
+      insert(h, Array.from({ length: 130 }, (_, i) => ({ at: now - i, kind: "logout", ip: `198.51.100.${i}`, country: i % 2 ? "AR" : "BR" })));
+      const first = h.service.events.page({ show: "abroad" }, AUTH_ACTIVITY_LIMIT);
+      expect(first.events).toHaveLength(AUTH_ACTIVITY_LIMIT);
+      const second = h.service.events.page({ show: "abroad", before: first.nextCursor ?? "" }, AUTH_ACTIVITY_LIMIT);
+      expect(second.events).toHaveLength(15);
+      expect(second.nextCursor).toBeNull();
+      expect(new Set([...first.events, ...second.events].map((e) => e.id)).size).toBe(65);
+      expect([...first.events, ...second.events].every((e) => e.country === "AR")).toBe(true);
+    });
+  });
 });
 
 describe("GET /api/auth/activity's query", () => {
@@ -212,6 +264,8 @@ describe("GET /api/auth/activity's query", () => {
   it.each([
     ["an unknown period", "?days=2"],
     ["an unknown group", "?group=everything"],
+    ["an unknown show filter", "?show=everything"],
+    ["a show filter in other case", "?show=Abroad"],
     ["a LIKE wildcard in the IP", "?ip=203.0.%25"],
     ["SQL in the IP", "?ip=1'%20OR%201=1--"],
     ["an IP longer than any address", `?ip=${"1".repeat(46)}`],

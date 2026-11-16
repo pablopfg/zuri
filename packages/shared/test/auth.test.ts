@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authActivityQuerySchema, authActivitySchema } from "../src/auth-activity.ts";
+import { AUTH_ACTIVITY_GROUPS, AUTH_ATTENTION_KINDS, AUTH_EVENT_KINDS, authActivityQuerySchema, authActivitySchema } from "../src/auth-activity.ts";
 
 const event = {
   id: 1,
@@ -42,6 +42,8 @@ describe("authActivityQuerySchema", () => {
     ["a period that isn't offered", { days: "365" }],
     ["a negative period", { days: "-1" }],
     ["an unknown group", { group: "all" }],
+    ["an unknown show filter", { show: "all" }],
+    ["a show filter in other case", { show: "ABROAD" }],
     ["a LIKE wildcard", { ip: "10.%" }],
     ["an underscore", { ip: "10._" }],
     ["a quote", { ip: "1'" }],
@@ -57,5 +59,21 @@ describe("authActivityQuerySchema", () => {
 
   it("accepts an IP of exactly 45 characters (n)", () => {
     expect(authActivityQuerySchema.safeParse({ ip: "1".repeat(45) }).success).toBe(true);
+  });
+});
+
+describe("the access log's show filter (E12a)", () => {
+  it("reads attention and abroad", () => {
+    expect(authActivityQuerySchema.parse({ show: "attention" })).toEqual({ show: "attention" });
+    expect(authActivityQuerySchema.parse({ show: "abroad", days: "90" })).toEqual({ show: "abroad", days: 90 });
+  });
+
+  it("calls for attention on every refusal and block, the reset of the credentials, and nothing of the owner's own", () => {
+    expect([...AUTH_ATTENTION_KINDS].sort()).toEqual(
+      [...AUTH_ACTIVITY_GROUPS.failure, ...AUTH_ACTIVITY_GROUPS.blocked, ...AUTH_ACTIVITY_GROUPS.robot, "credentials_reset"].sort(),
+    );
+    expect(new Set(AUTH_ATTENTION_KINDS).size).toBe(AUTH_ATTENTION_KINDS.length);
+    expect(AUTH_ATTENTION_KINDS.every((kind) => AUTH_EVENT_KINDS.includes(kind))).toBe(true);
+    expect(AUTH_ATTENTION_KINDS).not.toContain("login_success");
   });
 });

@@ -515,7 +515,17 @@ senha ou código errado, bloqueio, verificação contra robôs recusada, eventos
 conta), IP, cidade, região, país, rede (ASN) e navegador. Filtros: período (24
 h, 7, 30 ou 90 dias), tipo e o começo do IP (só dígitos, `a` a `f`, pontos e
 dois-pontos; comparado como texto, sem `LIKE`). Os filtros ficam na URL. A aba
-Segurança mostra os 8 mais recentes e leva à página. A API é
+Segurança mostra os 8 mais recentes e leva à página.
+
+Desde a E12a, cada acesso mostra a cidade aproximada (ou "Cidade
+desconhecida"), o nome do país e a sigla, e "fora do Brasil" em destaque quando
+o país não é BR (os códigos `XX` e `T1` da borda viram "País desconhecido" e
+"Rede Tor" e também contam como fora). A página agrupa por dia, no fuso do dono,
+e tem o filtro **Mostrar**: Todos, Atenção (recusas, bloqueios e a troca das
+credenciais, a lista `AUTH_ATTENTION_KINDS`) e Fora do Brasil (`show=attention`
+ou `show=abroad` na API; acesso sem país, como numa execução local, não entra).
+Os botões não mostram a contagem de cada filtro: isso pediria um `count(*)` no
+registro a cada abertura (regra P2). A API é
 `GET /api/auth/activity` (sessão e CSRF), com cursor `at:id` para não repetir
 nem pular linhas quando chegam acessos novos. A resposta nunca leva o id da
 sessão, a chave de rede nem a marca de alerta.
