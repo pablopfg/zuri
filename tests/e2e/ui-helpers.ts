@@ -188,3 +188,11 @@ export const SOUND_NOTES = {
   start: [620, 930],
   stop: [930, 620],
 } as const;
+
+/** The bell's accessible name, with or without notices waiting unseen (E12b: "Abrir avisos" or "Avisos não vistos: 3"). */
+export const BELL_NAME = /^(Abrir avisos|Avisos não vistos)/;
+
+/** A signed-in page's tab title, with or without the bell's number in front (E12b: "(3) Início · Zuri"). */
+export function tabTitle(name: string): RegExp {
+  return new RegExp(`^(\\(\\d+\\+?\\) )?${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+}

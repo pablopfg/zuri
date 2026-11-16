@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { NoticeSound, SoundPrefs } from "@zuri/shared";
+import { setTitleBadge } from "./title.ts";
 
 /**
  * The sounds of the open app (12/11/2026): one when a notice arrives and two
@@ -174,11 +175,20 @@ export function watchNotices(qc: QueryClient): void {
   channel?.addEventListener("message", (event: MessageEvent<unknown>) => {
     if (typeof event.data === "number" && Number.isSafeInteger(event.data) && event.data >= 0) ear.told(event.data);
   });
+  let badge = 0;
   const read = () => {
-    const session = qc.getQueryData<{ unreadNotices?: number } | null>(["session"]);
+    const session = qc.getQueryData<{ unseenNotices?: number } | null>(["session"]);
     // A session answer without the count (no notice center) says nothing.
-    if (session && session.unreadNotices === undefined) return;
-    const unread = session ? (session.unreadNotices ?? null) : null;
+    if (session && session.unseenNotices === undefined) return;
+    const unread = session ? (session.unseenNotices ?? null) : null;
+    // The tab's title and the installed app's icon carry the bell's number too (E12b), even when another tab
+    // already told this one the count: its sound base moved, its title did not.
+    const n = unread ?? 0;
+    if (n !== badge) {
+      badge = n;
+      if (typeof document !== "undefined") setTitleBadge(n ? `(${n > 99 ? "99+" : n}) ` : "");
+      navigator.setAppBadge?.(n)?.catch(Boolean);
+    }
     if (unread === ear.base()) return;
     const due = ear.heard(unread, Date.now());
     if (unread !== null) channel?.postMessage(unread);

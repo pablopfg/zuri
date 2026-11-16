@@ -315,13 +315,13 @@ test("the bell over 99 unread says 99+ in its name, and shows the dot @mobile", 
   await page.route("**/api/auth/session", async (route) => {
     const res = await route.fetch();
     if (!res.ok()) return route.fulfill({ response: res });
-    return route.fulfill({ response: res, json: { ...(await res.json()), unreadNotices: 150 } });
+    return route.fulfill({ response: res, json: { ...(await res.json()), unseenNotices: 150 } });
   });
   await page.reload();
   // The greeting fades in after the reload: axe checks it once it has arrived.
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)/ })).toBeVisible();
-  const bell = page.getByRole("button", { name: "Abrir avisos, 99+ sem ler" });
+  const bell = page.getByRole("button", { name: "Avisos não vistos: 99+" });
   await expect(bell).toBeVisible();
-  await expect(bell.locator("[data-unread]")).toBeVisible();
+  await expect(bell.locator("[data-unseen]")).toBeVisible();
   await expectAccessible(page, "sino-99");
 });

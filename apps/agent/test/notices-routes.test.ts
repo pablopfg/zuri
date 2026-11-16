@@ -51,6 +51,7 @@ describe("the notice routes", () => {
   const routes = [
     ["GET", "/notices"],
     ["POST", "/notices/read"],
+    ["POST", "/notices/seen"],
     ["POST", `/notices/${MISSING}/mute`],
     ["DELETE", `/notices/${MISSING}`],
     ["GET", "/alerts"],
@@ -80,11 +81,12 @@ describe("the notice routes", () => {
     const water = page.notices.find((n) => n.id === ids[0]);
     expect(water).toMatchObject({ title: "Água", body: "Beber água", category: "reminders" });
 
-    // The bell's count rides on the session check and the heartbeat.
+    // The bell's number (the unseen ones, E12b) rides on the session check and the heartbeat.
+    expect(page.unseen).toBeGreaterThanOrEqual(2);
     const session = sessionStateSchema.parse(await json(await api("GET", "/auth/session"), 200));
-    expect(session.unreadNotices).toBe(page.unread);
+    expect(session.unseenNotices).toBe(page.unseen);
     const beat = sessionStateSchema.parse(await json(await api("POST", "/auth/heartbeat", { active: false }), 200));
-    expect(beat.unreadNotices).toBe(page.unread);
+    expect(beat.unseenNotices).toBe(page.unseen);
 
     expect((await json<{ unread: number }>(await api("POST", "/notices/read", { id: ids[0] }), 200)).unread).toBe(page.unread - 1);
     expect((await json<Notice>(await api("POST", `/notices/${ids[1]}/mute`), 200)).id).toBe(ids[1]);
@@ -117,6 +119,91 @@ describe("the notice routes", () => {
     // Push has its keys in the tests but no device yet; e-mail and Telegram come later.
     // The bot is set up in the tests but no account is linked (step 13: Telegram is a channel).
     expect(overview.channels).toEqual({ push: "no_target", telegram: "no_target", email: "not_configured" });
+  });
+});
+
+describe("the notices seen in the open panel (E12b)", () => {
+  const raise = (n: number) =>
+    inOwner((agent) => Array.from({ length: n }, (_, i) => agent.store.alerts.raise({ kind: "automation.result", category: "reminders", priority: "normal", params: { name: `Aviso ${i}` } })?.id ?? ""));
+  const unseen = async () => (await json<NoticePage>(await api("GET", "/notices"), 200)).unseen;
+
+  it("counts down only for notices still unseen, never twice, and leaves them unread", async () => {
+    await api("POST", "/notices/read", {});
+    const [a, b] = await raise(2);
+    const before = await unseen();
+    expect(before).toBe(2);
+    const page = await json<NoticePage>(await api("GET", "/notices"), 200);
+    expect(page.notices.find((n) => n.id === a)).toMatchObject({ seen: false, readAt: null });
+    expect(await json(await api("POST", "/notices/seen", { ids: [a] }), 200)).toEqual({ unseen: 1 });
+    // The same id again, and one that isn't a notice: nothing more changes.
+    expect(await json(await api("POST", "/notices/seen", { ids: [a, MISSING] }), 200)).toEqual({ unseen: 1 });
+    const after = await json<NoticePage>(await api("GET", "/notices"), 200);
+    expect(after.notices.find((n) => n.id === a)).toMatchObject({ seen: true, readAt: null });
+    expect(after.unread).toBe(page.unread);
+    expect(sessionStateSchema.parse(await json(await api("POST", "/auth/heartbeat", { active: false }), 200)).unseenNotices).toBe(1);
+    // Deleting an unseen notice takes it off the bell.
+    expect((await api("DELETE", `/notices/${b}`)).status).toBe(204);
+    expect(await unseen()).toBe(0);
+  });
+
+  it("marks as seen what is read in the app, one notice or all of them", async () => {
+    await api("POST", "/notices/read", {});
+    const [a] = await raise(3);
+    expect(await json(await api("POST", "/notices/read", { id: a }), 200)).toMatchObject({ unseen: 2 });
+    expect(await json(await api("POST", "/notices/read", {}), 200)).toEqual({ unread: 0, unseen: 0 });
+  });
+
+  it("does not count a notice read outside the app (Telegram) as seen, until the panel shows it or it is read here", async () => {
+    await api("POST", "/notices/read", {});
+    const [a] = await raise(1);
+    expect(await inOwner((agent) => agent.store.alerts.respondOutOfBand(a ?? "", "done"))).toBe("done");
+    expect(await unseen()).toBe(1);
+    expect(await json(await api("POST", "/notices/read", {}), 200)).toEqual({ unread: 0, unseen: 0 });
+  });
+
+  it("seen never stops an alert that insists: its escalation and next attempt stay as they were", async () => {
+    await api("POST", "/notices/read", {});
+    const id = crypto.randomUUID();
+    const next = new Date(Date.now() + 5 * 60_000).toISOString();
+    const row = () =>
+      inOwner((agent) => agent.store.db.one<{ escalation: string; next_attempt_at: string; read_at: string | null }>(`SELECT escalation, next_attempt_at, read_at FROM zur_notices WHERE id = ?`, id));
+    await inOwner((agent) =>
+      agent.store.db.run(
+        `INSERT INTO zur_notices (id, kind, category, priority, params, created_at, escalation, next_attempt_at) VALUES (?, 'security', 'security', 'critical', '{"event":"passkey_added"}', ?, 'active', ?)`,
+        id,
+        new Date().toISOString(),
+        next,
+      ),
+    );
+    expect(await json(await api("POST", "/notices/seen", { ids: [id] }), 200)).toEqual({ unseen: 0 });
+    expect(await row()).toEqual({ escalation: "active", next_attempt_at: next, read_at: null });
+    // Out again, so no later test meets an alert still insisting.
+    await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_notices WHERE id = ?`, id));
+  });
+
+  it("two batches at once with ids in common count each notice once", async () => {
+    await api("POST", "/notices/read", {});
+    const ids = await raise(4);
+    const [first, second] = await Promise.all([api("POST", "/notices/seen", { ids: ids.slice(0, 3) }), api("POST", "/notices/seen", { ids: ids.slice(1, 4) })]);
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(await unseen()).toBe(0);
+    expect(await inOwner((agent) => agent.store.alerts.unseenCount())).toBe(0);
+    // The counter never went below zero: one more notice makes it exactly 1.
+    await raise(1);
+    expect(await unseen()).toBe(1);
+    await api("POST", "/notices/read", {});
+  });
+
+  it("takes 1 to 50 distinct notice ids and nothing else, naming only the field", async () => {
+    const ids = (n: number) => Array.from({ length: n }, () => crypto.randomUUID());
+    expect((await api("POST", "/notices/seen", { ids: ids(50) })).status).toBe(200);
+    for (const body of [{ ids: ids(51) }, { ids: [] }, { ids: [MISSING, MISSING] }, { ids: ["1; DROP TABLE zur_notices"] }, { ids: [MISSING], extra: 1 }, {}]) {
+      const res = await refusal(await api("POST", "/notices/seen", body), 400);
+      expect(res.code, JSON.stringify(body).slice(0, 60)).toBe("VALIDATION_FAILED");
+      expect(JSON.stringify(res)).not.toContain("DROP");
+    }
+    expect((await refusal(await api("POST", "/notices/seen", "x".repeat(5000)), 400)).code).toBe("VALIDATION_FAILED");
   });
 });
 

@@ -268,7 +268,7 @@ export const en: Messages = {
   "web.confirm.usePassword": "Use the password",
   "web.notifications.open": "Open notifications",
   "web.notifications.title": "Notifications",
-  "web.notifications.openUnread": "Open notifications, {count} unread",
+  "web.notifications.unseen": "Unseen notifications: {n}",
   "web.notFound.title": "Page not found",
   "web.notFound.body": "This address doesn't exist in Zuri.",
   "web.notFound.home": "Back to home",

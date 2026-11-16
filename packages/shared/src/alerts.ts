@@ -315,6 +315,8 @@ export interface Notice {
   link: string | null;
   createdAt: string;
   readAt: string | null;
+  /** E12b: shown in the open panel for 0.6 s, or read in the app. Only the bell's number cares. */
+  seen: boolean;
   escalation: EscalationState | null;
   attempts: number;
   nextAttemptAt: string | null;
@@ -327,6 +329,8 @@ export interface Notice {
 export interface NoticePage {
   notices: Notice[];
   unread: number;
+  /** The bell's number (E12b). */
+  unseen: number;
   nextCursor: string | null;
 }
 
@@ -358,6 +362,15 @@ export type NoticeLink = (typeof NOTICE_LINKS)[number];
 export const noticeCursorSchema = /* @__PURE__ */ z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\|[0-9a-f-]{36}$/);
 
 export const noticeReadSchema = /* @__PURE__ */ z.object({ id: z.uuid().optional() }).strict();
+
+/** The most notices the panel reports as seen in one request (E12b): a page of the list fits. */
+export const NOTICE_SEEN_MAX = 50;
+
+/** POST /api/notices/seen (E12b): the notices the open panel showed for 0.6 s, without repeats. */
+export const noticeSeenSchema = /* @__PURE__ */ z
+  .object({ ids: z.array(z.uuid()).min(1).max(NOTICE_SEEN_MAX) })
+  .strict()
+  .refine((value) => new Set(value.ids).size === value.ids.length, { path: ["ids"] });
 
 // ---------- Diagnostics (docs/planos/observabilidade.md) ----------
 

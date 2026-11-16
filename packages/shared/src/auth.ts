@@ -189,8 +189,8 @@ export const sessionStateSchema = /* @__PURE__ */ mini.strictObject({
   /** Until when sensitive actions work without typing the password again. */
   recentAuthUntil: mini.nullable(isoInstant),
   deadlines: sessionDeadlinesSchema,
-  /** Notices not read yet (step 11): the bell's count, sent with the session check and the heartbeat. */
-  unreadNotices: mini.optional(mini.number()),
+  /** Notices not seen yet in the open panel (E12b): the bell's number, sent with the session check and the heartbeat. */
+  unseenNotices: mini.optional(mini.number()),
   /** A number per screen area (AreaVersions) that goes up with each change: the open screens fetch again only what moved. Checked by the interface where it is used (lib/versions.ts, cleanVersions), so the first load carries no parser for it. */
   versions: mini.optional(mini.unknown()),
 });

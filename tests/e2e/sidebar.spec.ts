@@ -1,6 +1,6 @@
 import { APP_VERSION } from "@zuri/shared";
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, openAccountMenu, signIn, tooSmallControls } from "./ui-helpers.ts";
+import { expectAccessible, openAccountMenu, signIn, tooSmallControls, BELL_NAME } from "./ui-helpers.ts";
 
 // The shell of the Sinal interface (docs/planos/implementacao-frontend-sinal.md, S02).
 // On a computer: the side menu with the mark, the bell and the toggle on top,
@@ -33,7 +33,7 @@ test("the side menu holds Nova conversa, the search, the ten places in four area
   const aside = sidebar(page);
   await expect(aside.getByRole("link", { name: "Nova conversa" })).toHaveAttribute("href", "/conversa");
   await expect(aside.getByRole("button", { name: "Buscar" })).toBeVisible();
-  await expect(aside.getByRole("button", { name: /^Abrir avisos/ })).toBeVisible();
+  await expect(aside.getByRole("button", { name: BELL_NAME })).toBeVisible();
   const nav = aside.getByRole("navigation", { name: "Navegação principal" });
   await expect(nav.getByRole("link")).toHaveText(PLACES.map(asLink));
   // Four areas: the first has no title, the others are lists named by theirs.
@@ -120,7 +120,7 @@ test("Ctrl Shift O opens a new conversation from anywhere, never over another di
   await page.keyboard.press("Control+Shift+O");
   await expect(page).toHaveURL(/\/conversa$/);
   await page.goto("/tarefas");
-  await page.getByRole("button", { name: /^Abrir avisos/ }).click();
+  await page.getByRole("button", { name: BELL_NAME }).click();
   await page.keyboard.press("Control+Shift+O");
   await expect(page).toHaveURL(/\/tarefas$/);
 });
@@ -168,7 +168,7 @@ test("collapsing keeps every control named, remembers the choice and expands aga
   for (const place of PLACES) await expect(aside.getByRole("link", { name: asLink(place), exact: true })).toBeVisible();
   await expect(aside.getByRole("link", { name: "Nova conversa" })).toBeVisible();
   await expect(aside.getByRole("button", { name: "Buscar" })).toBeVisible();
-  await expect(aside.getByRole("button", { name: /^Abrir avisos/ })).toBeVisible();
+  await expect(aside.getByRole("button", { name: BELL_NAME })).toBeVisible();
   await expect(aside.getByRole("button", { name: /^Menu da conta:/ })).toBeVisible();
   await expect(aside.getByRole("link", { name: "Início" }).getByText("Início", { exact: true })).toHaveClass(/sr-only/);
   await expect(page.locator("main")).toBeInViewport();
@@ -179,7 +179,7 @@ test("collapsing keeps every control named, remembers the choice and expands aga
   expect((await panel.boundingBox())?.x).toBeGreaterThanOrEqual(72);
   await page.keyboard.press("Escape");
   // So do the notices.
-  await aside.getByRole("button", { name: /^Abrir avisos/ }).click();
+  await aside.getByRole("button", { name: BELL_NAME }).click();
   const notices = page.getByRole("dialog", { name: "Avisos" });
   await expect(notices).toBeInViewport({ ratio: 1 });
   expect((await notices.boundingBox())?.x).toBeGreaterThanOrEqual(72);
@@ -470,14 +470,14 @@ for (const scheme of ["light", "dark"] as const) {
     await sidebar(page).getByRole("button", { name: "Recolher menu" }).click();
     await sidebar(page).getByRole("link", { name: asLink("Tarefas") }).hover();
     await expectAccessible(page, `menu recolhido (${scheme})`);
-    await sidebar(page).getByRole("button", { name: /^Abrir avisos/ }).click();
+    await sidebar(page).getByRole("button", { name: BELL_NAME }).click();
     await expect(page.getByRole("dialog", { name: "Avisos" }).getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
     await expectAccessible(page, `avisos ao lado do menu recolhido (${scheme})`);
     expect(await tooSmallControls(page)).toEqual([]);
     // The browser's back closes the panel with the page it was opened on.
     await page.keyboard.press("Escape");
     await page.goto("/tarefas");
-    await sidebar(page).getByRole("button", { name: /^Abrir avisos/ }).click();
+    await sidebar(page).getByRole("button", { name: BELL_NAME }).click();
     await expect(page.getByRole("dialog", { name: "Avisos" })).toBeVisible();
     await page.goBack();
     await expect(page.getByRole("dialog", { name: "Avisos" })).toHaveCount(0);
@@ -498,7 +498,7 @@ for (const scheme of ["light", "dark"] as const) {
     await expectAccessible(page, `folha da conta (${scheme})`);
     expect(await tooSmallControls(page)).toEqual([]);
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: /^Abrir avisos/ }).click();
+    await page.getByRole("button", { name: BELL_NAME }).click();
     await expect(page.getByRole("dialog", { name: "Avisos" }).getByRole("status").filter({ hasText: "Carregando" })).toHaveCount(0);
     await expectAccessible(page, `folha de avisos (${scheme})`);
     expect(await tooSmallControls(page)).toEqual([]);
@@ -514,7 +514,7 @@ test("on a phone: a top bar, a bottom bar with four places and Mais, and no side
   const banner = page.getByRole("banner");
   await expect(banner.getByText("Zuri", { exact: true })).toBeVisible();
   await expect(banner.getByRole("button", { name: "Buscar" })).toBeVisible();
-  await expect(banner.getByRole("button", { name: /^Abrir avisos/ })).toBeVisible();
+  await expect(banner.getByRole("button", { name: BELL_NAME })).toBeVisible();
   await expect(banner.getByRole("button", { name: /^Menu da conta:/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^(Recolher|Expandir) menu$/ })).toHaveCount(0);
 

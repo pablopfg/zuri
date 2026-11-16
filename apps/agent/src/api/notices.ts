@@ -1,4 +1,4 @@
-import { clientErrorSchema, diagnosticResolveSchema, learningKeySchema, noticeReadSchema, pushSubscribeSchema, RECORD_ID } from "@zuri/shared";
+import { clientErrorSchema, diagnosticResolveSchema, learningKeySchema, noticeReadSchema, noticeSeenSchema, pushSubscribeSchema, RECORD_ID } from "@zuri/shared";
 import type { Context, Hono } from "hono";
 import type { AlertService } from "../alerts/service.ts";
 import type { ClientInfo } from "../auth/client.ts";
@@ -38,6 +38,12 @@ export function registerNoticeRoutes(app: Hono<ApiEnv>, deps: () => NoticeDeps, 
   app.post("/notices/read", async (c) => {
     const { id } = await readJson(c.req.raw, noticeReadSchema, 1024);
     return Response.json(deps().alerts.markRead(id));
+  });
+
+  // The panel's notices shown for 0.6 s (E12b): only the bell's number changes, nothing is read or stopped.
+  app.post("/notices/seen", async (c) => {
+    const { ids } = await readJson(c.req.raw, noticeSeenSchema, 4 * 1024);
+    return Response.json(deps().alerts.markSeen(ids));
   });
 
   // A security alert the bot caused stops only here, with the password typed recently (step 16, "Reconhecimento cruzado").

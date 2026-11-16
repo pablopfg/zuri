@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, signIn, tooSmallControls, uniqueTag, tabTitle } from "./ui-helpers.ts";
 
 // The chat against the real Worker (step 9), with the simulated model of local
 // development: it echoes the message, and `call <tool> {json}` runs a real tool
@@ -53,7 +53,7 @@ test("a new conversation streams the answer, gets its own address and shows up i
   await expect(log(page).getByText(`Olá ${word}`, { exact: true })).toBeVisible();
   await expect(log(page).getByText(`(IA simulada) Você disse: “Olá ${word}”.`, { exact: false })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: `Olá ${word}` })).toBeVisible();
-  await expect(page).toHaveTitle(`Olá ${word} · Zuri`);
+  await expect(page).toHaveTitle(tabTitle(`Olá ${word} · Zuri`));
 
   if (isMobile) await page.getByRole("button", { name: "Ver conversas" }).click();
   // On a phone the list takes the conversation's place (conversa.spec.ts); Esc brings the conversation back.

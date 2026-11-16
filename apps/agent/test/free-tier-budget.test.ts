@@ -239,7 +239,8 @@ describe("the Free plan budget of each route", () => {
     const whatsapp = await cost("PATCH", "/settings", { clinic: { ...clinic, whatsapp: "4133330000" } });
     expect(whatsapp.status).toBe(200);
     // Rare (the owner changes the number), and the alert's notice with its indexes is most of it: measured 27.
-    expect(whatsapp.written).toBeLessThanOrEqual(27);
+    // E12b: a new notice also moves the bell's unseen counter (its trigger), and the session check reads that row: measured 28.
+    expect(whatsapp.written).toBeLessThanOrEqual(28);
     await runInDurableObject(owner(), (agent: ZuriAgent) => agent.store.db.run(`DELETE FROM zur_settings WHERE key = 'clinic'`));
   });
 
@@ -263,7 +264,8 @@ describe("the Free plan budget of each route", () => {
       const first = await cost("GET", "/auth/session");
       expect(first.status).toBe(200);
       // Two days quiet: the device's row is updated (with its index), once.
-      expect(first.read).toBeLessThanOrEqual(4);
+      // E12b: a new notice also moves the bell's unseen counter (its trigger), and the session check reads that row: measured 6.
+      expect(first.read).toBeLessThanOrEqual(6);
       expect(first.written).toBeLessThanOrEqual(3);
       const again = await cost("GET", "/auth/session");
       expect(again.read).toBeLessThanOrEqual(4);
@@ -406,7 +408,8 @@ describe("the Free plan budget of each route", () => {
     const duplicate = await cost("POST", "/memories", { content: "moro em curitiba desde 2024" });
     expect(duplicate.status).toBe(200);
     // The memories' number (nova UI, PR 2) reads its one row and writes it.
-    expect(duplicate.read).toBeLessThanOrEqual(6);
+    // E12b: a new notice also moves the bell's unseen counter (its trigger), and the session check reads that row: measured 7.
+    expect(duplicate.read).toBeLessThanOrEqual(7);
     // The row and its four indexes on updated_at, plus the memories' number.
     expect(duplicate.written).toBeLessThanOrEqual(6);
     // A new fact on the same topic: one review more (row, index and counter).
@@ -480,7 +483,8 @@ describe("the Free plan budget of each route", () => {
     const hours = await cost("GET", "/usage/hours");
     expect(hours.status).toBe(200);
     // The session's row and the 24 hours.
-    expect(hours.read).toBeLessThanOrEqual(25);
+    // E12b: a new notice also moves the bell's unseen counter (its trigger), and the session check reads that row: measured 26.
+    expect(hours.read).toBeLessThanOrEqual(26);
     expect(hours.written).toBe(0);
     const months = await cost("GET", "/usage/months");
     expect(months.status).toBe(200);
@@ -631,7 +635,8 @@ describe("the Free plan budget of each route", () => {
     // The reminder's notice also asks the push channel whether any device is there (one count)
     // and the Telegram channel whether an account is linked (its one-row table, step 13).
     // Each of the three writes (the run, its result, the automation) moves the automations' number: one row each (nova UI, PR 2).
-    expect(ran.read).toBeLessThanOrEqual(25);
+    // E12b: a new notice also moves the bell's unseen counter (its trigger), and the session check reads that row: measured 30.
+    expect(ran.read).toBeLessThanOrEqual(30);
     expect(ran.written).toBeLessThanOrEqual(25);
 
     // The alarm: one due automation costs a handful of rows, whatever the size of the history.
@@ -731,6 +736,36 @@ describe("the Free plan budget of each route", () => {
     await runInDurableObject(owner(), (agent: ZuriAgent) => {
       agent.store.db.run(`DELETE FROM zur_notices`);
       agent.store.db.run(`DELETE FROM zur_settings WHERE key LIKE 'lockdown_%'`);
+    });
+  });
+  it("the notices seen in the open panel (E12b): 50 at once cost rows by the batch, not the backlog; again they write nothing; the bell's count is its counter", async () => {
+    const ids = Array.from({ length: 500 }, () => crypto.randomUUID());
+    await runInDurableObject(owner(), (agent: ZuriAgent) => {
+      agent.store.db.run(`DELETE FROM zur_notices`);
+      const at = new Date().toISOString();
+      // The kept ceiling, all unseen.
+      for (const id of ids) {
+        agent.store.db.run(`INSERT INTO zur_notices (id, kind, category, priority, params, created_at) VALUES (?, 'automation.result', 'routines', 'normal', '{"name":"R"}', ?)`, id, at);
+      }
+    });
+    const batch = ids.slice(0, 50);
+    const seen = await cost("POST", "/notices/seen", { ids: batch });
+    expect(seen.status).toBe(200);
+    // About 5 rows read per id (the key's index, the row, its trigger's counter row) and the session: it grows with
+    // the batch, which stops at 50 (NOTICE_SEEN_MAX), never with the 450 others. Measured 252.
+    expect(seen.read).toBeLessThanOrEqual(260);
+    // Each row and the counter its trigger moves. Measured 100.
+    expect(seen.written).toBeLessThanOrEqual(100);
+    const again = await cost("POST", "/notices/seen", { ids: batch });
+    expect(again.status).toBe(200);
+    // Already seen: 2 rows per id are looked at (measured 103) and nothing is written twice (P4).
+    expect(again.read).toBeLessThanOrEqual(110);
+    expect(again.written).toBe(0);
+    const beat = await cost("POST", "/auth/heartbeat", { active: true });
+    expect(beat.read).toBeLessThanOrEqual(6);
+    await runInDurableObject(owner(), (agent: ZuriAgent) => {
+      expect(agent.store.alerts.unseenCount()).toBe(450);
+      agent.store.db.run(`DELETE FROM zur_notices`);
     });
   });
   it("storage use (step 23): the Data tab's card reads one counter row per kind and writes nothing, whatever the backlog", async () => {
@@ -872,7 +907,8 @@ describe("the Free plan budget of each route", () => {
       expect(turn.read).toBeLessThanOrEqual(82);
       expect(turn.written).toBeLessThanOrEqual(30);
       const proposal = await cost("POST", "/chat", { conversationId, message: "call mcp_leve_file_ticket {}" });
-      expect(proposal.read).toBeLessThanOrEqual(82);
+      // E12b: a new notice also moves the bell's unseen counter (its trigger), and the session check reads that row: measured 83.
+      expect(proposal.read).toBeLessThanOrEqual(83);
       expect(proposal.written).toBeLessThanOrEqual(30);
       const actionId = await runInDurableObject(owner(), (agent: ZuriAgent) => agent.store.db.one<{ id: string }>(`SELECT id FROM zur_pending_actions WHERE substr(tool, 1, 4) = 'mcp_'`)?.id ?? "");
       const approve = await cost("POST", `/actions/${actionId}/approve`);
@@ -1926,7 +1962,8 @@ describe("the catalog of models (PR S21)", () => {
       // Measured 6 and 3: the catalog's row read before and after the call (a tap in between is kept) and
       // for the view, written when the tap is claimed and after the check, and the session's touch.
       // 64 models are one row.
-      expect(check.read).toBeLessThanOrEqual(6);
+      // E12b: a new notice also moves the bell's unseen counter (its trigger), and the session check reads that row: measured 7.
+      expect(check.read).toBeLessThanOrEqual(7);
       expect(check.written).toBeLessThanOrEqual(3);
       const view = await cost("GET", "/ai/catalog");
       expect(view.status).toBe(200);

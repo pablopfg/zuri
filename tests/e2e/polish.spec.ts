@@ -1,6 +1,6 @@
 import type { Response } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
-import { openAccountMenu, openSettingsSection, PASSWORD, signIn } from "./ui-helpers.ts";
+import { openAccountMenu, openSettingsSection, PASSWORD, signIn, tabTitle } from "./ui-helpers.ts";
 
 // Details from the design review (docs/qa/revisao-de-design.md): tab names,
 // the password reveal and the theme choice on a phone.
@@ -11,13 +11,13 @@ test("each page names the browser tab after itself @mobile", async ({ page }) =>
   await page.goto("/entrar");
   await expect(page).toHaveTitle("Entrar · Zuri");
   await signIn(page);
-  await expect(page).toHaveTitle("Início · Zuri");
+  await expect(page).toHaveTitle(tabTitle("Início · Zuri"));
   await page.goto("/configuracoes/seguranca");
-  await expect(page).toHaveTitle("Segurança · Configurações · Zuri");
+  await expect(page).toHaveTitle(tabTitle("Segurança · Configurações · Zuri"));
   await openSettingsSection(page, "Conta");
-  await expect(page).toHaveTitle("Conta · Configurações · Zuri");
+  await expect(page).toHaveTitle(tabTitle("Conta · Configurações · Zuri"));
   await page.goto("/nao-existe");
-  await expect(page).toHaveTitle("Página não encontrada · Zuri");
+  await expect(page).toHaveTitle(tabTitle("Página não encontrada · Zuri"));
 });
 
 test("the password can be shown and hidden again, by keyboard too", async ({ page }) => {
@@ -63,7 +63,7 @@ test("the home page's first bundle carries no settings code", async ({ page }) =
   page.on("response", onResponse);
   await page.goto("/");
   await signIn(page);
-  await expect(page).toHaveTitle("Início · Zuri");
+  await expect(page).toHaveTitle(tabTitle("Início · Zuri"));
   await page.waitForLoadState("networkidle");
   page.off("response", onResponse);
   const scripts = await Promise.all(reads);
@@ -107,7 +107,7 @@ test.describe("on a phone-wide screen", () => {
   test("sign-out sits two taps away, in the account sheet, never in the top bar", async ({ page }) => {
     await page.goto("/");
     await signIn(page);
-    await expect(page).toHaveTitle("Início · Zuri");
+    await expect(page).toHaveTitle(tabTitle("Início · Zuri"));
     await expect(page.getByRole("banner").getByRole("button", { name: "Sair" })).toHaveCount(0);
     const sheet = await openAccountMenu(page);
     await expect(sheet.getByRole("button", { name: "Sair", exact: true })).toBeVisible();
@@ -178,7 +178,7 @@ test("the sign-in page breaks no rule of the content security policy", async ({ 
   });
   await page.goto("/entrar");
   await signIn(page);
-  await expect(page).toHaveTitle("Início · Zuri");
+  await expect(page).toHaveTitle(tabTitle("Início · Zuri"));
   expect(await page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations)).toEqual([]);
 });
 
@@ -207,7 +207,7 @@ test.describe("only the language in use is downloaded", () => {
     });
     await page.goto("/entrar");
     await signIn(page);
-    await expect(page).toHaveTitle("Início · Zuri");
+    await expect(page).toHaveTitle(tabTitle("Início · Zuri"));
     await page.goto("/configuracoes/conta");
     await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
     expect(english).toEqual([]);
