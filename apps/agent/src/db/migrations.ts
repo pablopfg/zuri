@@ -1982,6 +1982,17 @@ export const MIGRATIONS: readonly Migration[] = [
       )`,
     ],
   },
+  {
+    version: 46,
+    name: "appointment_link_reschedules",
+    statements: [
+      // E7b (plano link-de-confirmacao.md, seção 15): the patient may move the appointment by the link
+      // twice, for its whole life, so the count can't be the per-day answer_count. `previous_start` is the
+      // start before the last move, for the Agenda's details ("Remarcou pelo link. Antes: ...").
+      `ALTER TABLE zur_appointment_links ADD COLUMN reschedules INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE zur_appointment_links ADD COLUMN previous_start TEXT`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

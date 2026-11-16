@@ -256,7 +256,7 @@ e-mail. É gratuito para até 50 pessoas.
    | `api/google/push` | o Google (agenda em tempo real) | token do canal derivado do `SESSION_SECRET`, sem cookie |
    | `a/*` | o paciente (link do pedido de avaliação) | só GET e HEAD, código de 10 caracteres, destino guardado no banco, sem cookie |
    | `c/*` | o paciente (link de confirmação da consulta) | só GET e HEAD, devolve só a casca da página, sem cookie e sem dado |
-   | `api/c/*` | a página de confirmação | só `POST /api/c/view` e `POST /api/c/answer`, token de 22 caracteres no corpo, limite por rede; as duas rotas nunca leem a sessão |
+   | `api/c/*` | a página de confirmação | só os `POST` de `/api/c/view`, `answer`, `days`, `offer` e `reschedule`, token de 22 caracteres no corpo, limite por rede; as rotas nunca leem a sessão |
    | `assets/*` | a página de confirmação | só GET e HEAD dos arquivos da interface (o código do repositório público, sem dado) |
 
    O caminho mais específico vence: o resto da Zuri continua atrás do Access.

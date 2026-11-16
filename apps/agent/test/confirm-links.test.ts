@@ -106,7 +106,7 @@ describe("E7a: the owner's link", () => {
   it("says the state without making a link, and refuses a plain event, a cancelled one and one that already expired", async () => {
     const event = seed(30 * 24 * HOUR);
     const status = await api("GET", `/google/events/link?calendarId=${encodeURIComponent(WORK)}&eventId=${event.id}`);
-    expect(await status.json()).toEqual({ made: false, answer: "none", answeredAt: "", answerStart: "" });
+    expect(await status.json()).toEqual({ made: false, answer: "none", answeredAt: "", answerStart: "", previousStart: "" });
     expect(await inOwner((agent) => agent.store.db.all(`SELECT id FROM zur_appointment_links`))).toEqual([]);
     const plain = seed(30 * 24 * HOUR, { description: "Reunião do condomínio" });
     expect((await api("POST", "/google/events/link", { calendarId: WORK, eventId: plain.id })).status).toBe(400);
@@ -470,6 +470,7 @@ describe("E7a: the edges, on a clock of the test's own", () => {
       publicUrl: () => new URL(ORIGIN),
       credentialKey: testEnv.MCP_CREDENTIAL_KEY,
       secret: () => "segredo-de-teste",
+      hours: () => agent.store.settings.field("agenda"),
       notify: () => {},
       lockdown: () => false,
       clock: () => at,
@@ -561,5 +562,249 @@ describe("firstName", () => {
     expect(firstName("Ana")).toBe("Ana");
     expect(firstName("")).toBe("");
     expect([...firstName("a".repeat(50))]).toHaveLength(40);
+  });
+});
+
+describe("E7b: rescheduling by the link", () => {
+  // Tuesday 01/12/2026, 09:00 in São Paulo: the window is Wed 02 to Wed 09, the weekend closed.
+  const T = Date.parse("2026-12-01T12:00:00Z");
+  const OFFICE = "consultorio@exemplo.com.br";
+  const local = (day: string, time: string) => new Date(`${day}T${time}:00-03:00`).toISOString();
+  /** An event at Google on the owner's wall clock. */
+  const put = (calendar: string, day: string, from: string, to: string, extra: Partial<DevEvent> = {}): DevEvent => {
+    const event: DevEvent = { id: `rm${n++}`, etag: `"r${n}"`, summary: "Carla Mendes Rocha", description: "Consulta | Consultório", start: { dateTime: local(day, from) }, end: { dateTime: local(day, to) }, ...extra };
+    const list = google.events.get(calendar) ?? [];
+    list.push(event);
+    google.events.set(calendar, list);
+    return event;
+  };
+  const links = (agent: ZuriAgent, clock = T, zone = "America/Sao_Paulo") =>
+    new ConfirmLinks({
+      db: agent.store.db,
+      google: () => agent.store.google,
+      timeZone: () => zone,
+      locale: () => "pt-BR",
+      clinic: () => CLINIC,
+      publicUrl: () => new URL(ORIGIN),
+      credentialKey: testEnv.MCP_CREDENTIAL_KEY,
+      secret: () => "segredo-de-teste",
+      hours: () => agent.store.settings.field("agenda"),
+      notify: (notice) => notices.push(notice),
+      lockdown: () => false,
+      clock: () => clock,
+    });
+  let notices: { kind: string; from: string; when: string }[] = [];
+  const codeOf = (error: unknown) => (error as { code?: string }).code ?? String(error);
+  const keyOf = (error: unknown) => (error as { messageKey?: string }).messageKey ?? "";
+  const fail = async (work: Promise<unknown>) => {
+    try {
+      await work;
+    } catch (error) {
+      return error;
+    }
+    throw new Error("expected a refusal");
+  };
+
+  beforeEach(async () => {
+    notices = [];
+    expect((await api("PATCH", `/google/calendars/${encodeURIComponent(OFFICE)}`, { mode: "read" })).status).toBe(200);
+  });
+
+  it("lists only the next 8 days with a free hour and their halves with one; meetings and calendars only read take time too", async () => {
+    const mine = put(WORK, "2026-12-03", "10:00", "11:00");
+    const { token } = await linkOf(mine);
+    // Friday full with a meeting of a calendar the Zuri only reads; Monday's afternoon taken by an errand.
+    put(OFFICE, "2026-12-04", "08:00", "18:00", { summary: "Congresso de nutrição", description: "" });
+    put(WORK, "2026-12-07", "14:00", "18:00", { summary: "Dentista", description: "" });
+    // Cancelled ones and all-day ones take nothing.
+    put(WORK, "2026-12-08", "08:00", "18:00", { colorId: EVENT_STATUS_COLOR.cancelled });
+    put(WORK, "2026-12-09", "08:00", "09:00", { start: { date: "2026-12-09" }, end: { date: "2026-12-10" }, description: "" });
+    const days = await inOwner((agent) => links(agent).days(token, "net-a"));
+    expect(days.length).toBe(60);
+    expect(days.days.map((each) => each.day)).toEqual(["2026-12-02", "2026-12-03", "2026-12-07", "2026-12-08", "2026-12-09"]);
+    expect(days.days.find((each) => each.day === "2026-12-07")?.turns.map((each) => each.turn)).toEqual(["morning"]);
+    expect(days.days[0]?.turns).toEqual([
+      { turn: "morning", from: 480, to: 720, hours: [480, 540, 600, 660] },
+      { turn: "afternoon", from: 840, to: 1080, hours: [840, 900, 960, 1020] },
+    ]);
+    // Only days, halves and minutes: never a title, a type or how many.
+    const text = JSON.stringify(days);
+    for (const word of ["Congresso", "Dentista", "Carla", "Consulta"]) expect(text).not.toContain(word);
+  });
+
+  it("an event of centuries takes only the days asked, without a loop per day it lasts (security audit E7b-1)", async () => {
+    const mine = put(WORK, "2026-12-03", "10:00", "11:00");
+    const { token } = await linkOf(mine);
+    // A stranger's invitation from year 100 to 9000: walked day by day, it would hold the object for minutes.
+    put(OFFICE, "2026-12-01", "08:00", "18:00", { summary: "Convite", description: "", start: { dateTime: "0100-01-01T08:00:00-03:00" }, end: { dateTime: "9000-01-01T18:00:00-03:00" } });
+    const started = performance.now();
+    const days = await inOwner((agent) => links(agent).days(token, "net-z"));
+    expect(days.days).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+
+  it("offers the hours next to an appointment, the same draw on a half without one, and never the appointment's own hour", async () => {
+    const mine = put(WORK, "2026-12-03", "10:00", "11:00");
+    const { token } = await linkOf(mine);
+    put(WORK, "2026-12-07", "10:00", "11:00", { summary: "Diego Farias Lopes" });
+    await inOwner(async (agent) => {
+      const at = links(agent);
+      expect(await at.offer({ token, day: "2026-12-07", turn: "morning", pref: 480 }, "net-b")).toEqual({ slots: [540, 660] });
+      expect(await at.offer({ token, day: "2026-12-07", turn: "morning", pref: 660 }, "net-b")).toEqual({ slots: [660, 540] });
+      // Its own day: 10:00 is no new hour; nothing else there, so a draw of 2, the same on every ask.
+      const own = await at.offer({ token, day: "2026-12-03", turn: "morning", pref: 480 }, "net-b");
+      expect(own.slots).toHaveLength(2);
+      expect(own.slots).not.toContain(600);
+      expect(await at.offer({ token, day: "2026-12-03", turn: "morning", pref: 660 }, "net-b")).toEqual(own);
+      // Out of the window, or a half that doesn't exist that day: refused.
+      for (const day of ["2026-12-01", "2026-12-10"]) expect(keyOf(await fail(at.offer({ token, day, turn: "morning", pref: 480 }, "net-b")))).toBe("error.rescheduleTaken");
+    });
+  });
+
+  it("moves the same event, marks it Reagendado, keeps the link, rings the bell; twice at most", async () => {
+    const mine = put(WORK, "2026-12-03", "10:00", "11:00");
+    const { token } = await linkOf(mine);
+    put(WORK, "2026-12-07", "10:00", "11:00", { summary: "Diego Farias Lopes" });
+    const view = await inOwner((agent) => links(agent).reschedule({ token, day: "2026-12-07", turn: "morning", pref: 480, start: 540 }, "net-c"));
+    expect(view).toMatchObject({ state: "rescheduled", start: local("2026-12-07", "09:00"), end: local("2026-12-07", "10:00"), canReschedule: true, canCancel: true });
+    expect(atGoogle(mine.id)).toMatchObject({ colorId: EVENT_STATUS_COLOR.rescheduled, start: { dateTime: local("2026-12-07", "09:00") }, end: { dateTime: local("2026-12-07", "10:00") } });
+    expect(google.events.get(WORK)?.filter((event) => event.summary === mine.summary)).toHaveLength(1);
+    expect(notices).toEqual([expect.objectContaining({ kind: "rescheduled", from: expect.stringContaining("03/12"), when: expect.stringContaining("07/12") })]);
+    const status = await api("GET", `/google/events/link?calendarId=${encodeURIComponent(WORK)}&eventId=${mine.id}`);
+    expect(await status.json()).toMatchObject({ answer: "rescheduled", answerStart: local("2026-12-07", "09:00"), previousStart: local("2026-12-03", "10:00") });
+    // Opened again, the same link says it moved; a second move, and then no more.
+    expect(await inOwner((agent) => links(agent).view(token, "net-c"))).toMatchObject({ state: "rescheduled", canReschedule: true });
+    const second = await inOwner(async (agent) => {
+      const slot = (await links(agent).offer({ token, day: "2026-12-08", turn: "afternoon", pref: 840 }, "net-c")).slots[0] ?? 0;
+      return links(agent).reschedule({ token, day: "2026-12-08", turn: "afternoon", pref: 840, start: slot }, "net-c");
+    });
+    expect(second).toMatchObject({ state: "rescheduled", canReschedule: false });
+    const third = await inOwner((agent) => fail(links(agent).days(token, "net-c")));
+    expect([codeOf(third), keyOf(third)]).toEqual(["CONFLICT", "error.rescheduleClosed"]);
+    // The move itself, not only the listing: the third is refused and the event stays put.
+    const thirdMove = await inOwner((agent) => fail(links(agent).reschedule({ token, day: "2026-12-09", turn: "morning", pref: 480, start: 480 }, "net-c")));
+    expect([codeOf(thirdMove), keyOf(thirdMove)]).toEqual(["CONFLICT", "error.rescheduleClosed"]);
+    expect(atGoogle(mine.id)?.start.dateTime).not.toContain("2026-12-09");
+    expect(await inOwner((agent) => agent.store.db.one(`SELECT reschedules, answer_count FROM zur_appointment_links`))).toEqual({ reschedules: 2, answer_count: 2 });
+  });
+
+  it("refuses an hour the page never offered, and one taken since: the event stays where it was", async () => {
+    const mine = put(WORK, "2026-12-03", "10:00", "11:00");
+    const { token } = await linkOf(mine);
+    put(WORK, "2026-12-07", "10:00", "11:00", { summary: "Diego Farias Lopes" });
+    await inOwner(async (agent) => {
+      // 08:00 is free but not offered (not next to Diego's appointment).
+      expect(keyOf(await fail(links(agent).reschedule({ token, day: "2026-12-07", turn: "morning", pref: 480, start: 480 }, "net-d")))).toBe("error.rescheduleTaken");
+    });
+    put(OFFICE, "2026-12-07", "09:00", "10:00", { summary: "Ligação", description: "" });
+    const taken = await inOwner((agent) => fail(links(agent).reschedule({ token, day: "2026-12-07", turn: "morning", pref: 480, start: 540 }, "net-d")));
+    expect([codeOf(taken), keyOf(taken)]).toEqual(["CONFLICT", "error.rescheduleTaken"]);
+    expect(atGoogle(mine.id)?.start.dateTime).toBe(local("2026-12-03", "10:00"));
+    expect(atGoogle(mine.id)?.colorId).toBeUndefined();
+    expect(notices).toEqual([]);
+  });
+
+  it("two patients after the same hour at once: one gets it, the other hears it was just taken", async () => {
+    const first = put(WORK, "2026-12-03", "10:00", "11:00");
+    const other = put(WORK, "2026-12-04", "15:00", "16:00", { summary: "Elisa Prado Campos" });
+    const a = (await linkOf(first)).token;
+    const b = (await linkOf(other)).token;
+    put(WORK, "2026-12-07", "10:00", "11:00", { summary: "Diego Farias Lopes" });
+    const results = await inOwner((agent) => {
+      const shared = links(agent);
+      return Promise.allSettled([
+        shared.reschedule({ token: a, day: "2026-12-07", turn: "morning", pref: 480, start: 540 }, "net-e"),
+        shared.reschedule({ token: b, day: "2026-12-07", turn: "morning", pref: 480, start: 540 }, "net-f"),
+      ]);
+    });
+    expect(results.map((result) => result.status).sort()).toEqual(["fulfilled", "rejected"]);
+    const refused = results.find((result) => result.status === "rejected") as PromiseRejectedResult;
+    expect(keyOf(refused.reason)).toBe("error.rescheduleTaken");
+    const nine = google.events.get(WORK)?.filter((event) => event.start.dateTime === local("2026-12-07", "09:00"));
+    expect(nine).toHaveLength(1);
+  });
+
+  it("past the cancel deadline, a cancelled or an expired appointment: no rescheduling, and the page says so", async () => {
+    const mine = put(WORK, "2026-12-03", "10:00", "11:00");
+    const { token } = await linkOf(mine);
+    // 12 hours before 10:00 comes before 23:59 of the day before: 22:00 is the deadline, a minute later closed.
+    const deadline = Date.parse(local("2026-12-02", "22:00"));
+    await inOwner(async (agent) => {
+      expect(await links(agent, deadline).view(token, "net-g")).toMatchObject({ canReschedule: true });
+      const late = await links(agent, deadline + 60_000).view(token, "net-g");
+      expect(late).toMatchObject({ canReschedule: false, canCancel: false });
+      expect(keyOf(await fail(links(agent, deadline + 60_000).days(token, "net-g")))).toBe("error.rescheduleClosed");
+    });
+    const gone = put(WORK, "2026-12-04", "10:00", "11:00");
+    const goneToken = (await linkOf(gone)).token;
+    gone.colorId = EVENT_STATUS_COLOR.cancelled;
+    expect(keyOf(await inOwner((agent) => fail(links(agent).days(goneToken, "net-g"))))).toBe("error.rescheduleClosed");
+  });
+
+  it("shares the network's limits: the days and the offer count as openings, the move as an answer", async () => {
+    const mine = put(WORK, "2026-12-03", "10:00", "11:00");
+    const { token } = await linkOf(mine);
+    await inOwner(async (agent) => {
+      const at = links(agent);
+      for (let i = 0; i < CONFIRM_LINK_LIMITS.viewsPerWindow; i++) await at.view(token, "net-h");
+      expect(codeOf(await fail(at.days(token, "net-h")))).toBe("RATE_LIMITED");
+      expect(codeOf(await fail(at.offer({ token, day: "2026-12-07", turn: "morning", pref: 480 }, "net-h")))).toBe("RATE_LIMITED");
+      // An unknown token in the days counts as a guess, as on the page.
+      expect(codeOf(await fail(at.days("x".repeat(22), "net-i")))).toBe("NOT_FOUND");
+      // The move is an answer: the network's answers spent, it is refused before reading Google.
+      for (let i = 0; i < CONFIRM_LINK_LIMITS.answersPerWindow; i++) await at.answer(token, "confirm", "net-j");
+      expect(codeOf(await fail(at.reschedule({ token, day: "2026-12-07", turn: "morning", pref: 480, start: 480 }, "net-j")))).toBe("RATE_LIMITED");
+      // And the link's answers of the day, confirmations and moves together: the 11th is refused.
+      agent.store.db.run(`UPDATE zur_appointment_links SET answer_day = ?, answer_count = ?`, "2026-12-01", CONFIRM_LINK_LIMITS.answersPerDay);
+      const tooMany = await fail(at.reschedule({ token, day: "2026-12-07", turn: "morning", pref: 480, start: 480 }, "net-k"));
+      expect([codeOf(tooMany), keyOf(tooMany)]).toEqual(["RATE_LIMITED", "error.confirmTooMany"]);
+    });
+    expect(atGoogle(mine.id)?.start.dateTime).toBe(local("2026-12-03", "10:00"));
+  });
+
+  it("only an appointment of 15 minutes to 4 hours moves by the link: 14, 15, 240 and 241 minutes", async () => {
+    const lengths: [string, boolean][] = [
+      ["10:14", false],
+      ["10:15", true],
+      ["14:00", true],
+      ["14:01", false],
+    ];
+    for (const [end, can] of lengths) {
+      const mine = put(WORK, "2026-12-03", "10:00", end);
+      const { token } = await linkOf(mine);
+      expect(await inOwner((agent) => links(agent).view(token, `net-l${end}`)), end).toMatchObject({ canReschedule: can });
+    }
+  });
+
+  it("across the change to summer time in another zone: the days, the hours and the move keep the wall clock", async () => {
+    // New York moves its clocks on Sunday 14/03/2027: Monday 15/03 is on −04:00, the days before on −05:00.
+    const zone = "America/New_York";
+    const ny = (day: string, time: string, offset: string) => new Date(`${day}T${time}:00${offset}`).toISOString();
+    const clock = Date.parse(ny("2027-03-12", "09:00", "-05:00"));
+    const at = (calendar: string, start: string, end: string, extra: Partial<DevEvent> = {}) => put(calendar, "2027-03-12", "10:00", "11:00", { start: { dateTime: start }, end: { dateTime: end }, ...extra });
+    const mine = at(WORK, ny("2027-03-16", "15:00", "-04:00"), ny("2027-03-16", "16:00", "-04:00"));
+    const { token } = await linkOf(mine);
+    at(WORK, ny("2027-03-15", "10:00", "-04:00"), ny("2027-03-15", "11:00", "-04:00"), { summary: "Diego Farias Lopes" });
+    // A meeting of a calendar only read, over the night of the change: Saturday 22:00 to Sunday 02:00.
+    at(OFFICE, ny("2027-03-13", "22:00", "-05:00"), ny("2027-03-14", "03:00", "-04:00"), { summary: "Plantão", description: "" });
+    const days = await inOwner((agent) => links(agent, clock, zone).days(token, "net-m"));
+    expect(days.length).toBe(60);
+    expect(days.days.map((each) => each.day)).toEqual(["2027-03-15", "2027-03-16", "2027-03-17", "2027-03-18", "2027-03-19"]);
+    expect(days.days[0]?.turns[0]?.hours).toEqual([480, 540, 600, 660]);
+    const offer = await inOwner((agent) => links(agent, clock, zone).offer({ token, day: "2027-03-15", turn: "morning", pref: 480 }, "net-m"));
+    expect(offer.slots).toEqual([540, 660]);
+    const moved = await inOwner((agent) => links(agent, clock, zone).reschedule({ token, day: "2027-03-15", turn: "morning", pref: 480, start: 540 }, "net-m"));
+    expect(moved).toMatchObject({ state: "rescheduled", start: ny("2027-03-15", "09:00", "-04:00"), end: ny("2027-03-15", "10:00", "-04:00") });
+  });
+
+  it("the routes: public, by the token in the body, and refuse a body out of shape", async () => {
+    const mine = put(WORK, "2026-12-03", "10:00", "11:00");
+    const { token } = await linkOf(mine);
+    const post = (path: string, body: unknown) => call(`${ORIGIN}/api/c/${path}`, { method: "POST", headers: headers(false, patientIp), body: JSON.stringify(body) });
+    expect((await post("days", { token })).status).toBe(200);
+    expect((await post("offer", { token, day: "2026-12-07", turn: "evening", pref: 480 })).status).toBe(400);
+    expect((await post("offer", { token, day: "07/12/2026", turn: "morning", pref: 480 })).status).toBe(400);
+    expect((await post("reschedule", { token, day: "2026-12-07", turn: "morning", pref: 480, start: 1_440 })).status).toBe(400);
+    expect((await post("reschedule", { token, day: "2026-12-07", turn: "morning", pref: 480, start: 540, extra: 1 })).status).toBe(400);
   });
 });

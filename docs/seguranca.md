@@ -1078,11 +1078,20 @@ nada sozinha (a E7c faz o envio). As defesas:
 | Toque que não chega ao Google | Agenda que passou a só leitura ou foi fechada: o link responde 404; o dono não consegue criar link nela | `confirm-links.test.ts` |
 | Dois toques ao mesmo tempo | O segundo perde no `etag`, relê, acha a cor já mudada e não grava nem avisa | `confirm-links.test.ts` |
 | Links de uma conta antiga | Desconectar ou trocar a conta do Google apaga os links (404 daí em diante) | `confirm-links.test.ts` |
+| Ver a agenda de outros pela remarcação (E7b) | `POST /api/c/days` e `/api/c/offer` devolvem só dias, turnos e minutos livres; nunca título, tipo, quantidade nem horário de outro evento | `confirm-links.test.ts` (E7b) |
+| Remarcar para um horário que a página não ofereceu | `POST /api/c/reschedule` refaz a oferta no servidor e exige o horário nela; dia fora da janela de 8 dias ou turno que não existe dão 409 | `confirm-links.test.ts` (E7b) |
+| Dois pacientes no mesmo horário | Uma remarcação por vez no objeto, com o dia lido de novo dentro da trava; o segundo recebe 409 `error.rescheduleTaken` | `confirm-links.test.ts` (two patients at once) |
+| Remarcar sem fim | 2 remarcações por consulta, guardadas no banco, e as 10 respostas por link e dia; só dentro do prazo de cancelar | `confirm-links.test.ts` (E7b) |
+| Prever o sorteio dos horários | A semente é um HMAC do link, do dia e do turno com o segredo do servidor | `reschedule.test.ts` |
+| Custo da remarcação | Os passos contam como aberturas da rede (30 por 10 min) e leem o Google uma vez por agenda; remarcar conta como resposta | `confirm-links.test.ts`, `free-tier-budget.test.ts` |
+| Evento de séculos na agenda (auditoria E7b-1) | Um evento que dura anos, como um convite de estranho, é percorrido só nos dias pedidos, nunca um dia por vez desde o começo dele: o objeto não fica preso calculando | `confirm-links.test.ts` (an event of centuries) |
+| Horários de outros pacientes pela oferta | A oferta põe primeiro os horários colados numa consulta, então variar a hora preferida mostra onde há consultas, nunca de quem; o ritmo é o das aberturas da rede (30 por 10 min). Aceito pelo desenho do protótipo | `confirm-links.test.ts` (E7b) |
 
 Com o Cloudflare Access ligado, três caminhos passam sem o login dele
 (`c/*`, `api/c/*` e `assets/*`, em [instalacao-cloudflare.md](instalacao-cloudflare.md)).
 O Worker confere de novo: só `GET` e `HEAD` da casca e dos arquivos com
-hash, e só os dois `POST` da página. Os arquivos da interface são o código do
+hash, e só os cinco `POST` da página (`view`, `answer`, `days`, `offer` e
+`reschedule`). Os arquivos da interface são o código do
 repositório público e não levam dado, mas as notas de versão dizem a versão
 instalada a quem quiser ver. As duas rotas da página aceitam o cookie do
 dono (o **Ver como o paciente** abre a página no navegador dele), mas nunca
@@ -1102,7 +1111,8 @@ O que fica como está, de propósito:
   de borda da Cloudflare (WAF) é o remédio se isso acontecer.
 
 A tabela `zur_appointment_links`
-(migration 45) fica fora do backup: a cópia cifrada só abre com a chave
+(migration 45; a 46 acrescenta a contagem das remarcações e o horário de antes)
+fica fora do backup: a cópia cifrada só abre com a chave
 desta instalação.
 
 ## E-mail para pacientes

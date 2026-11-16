@@ -1040,9 +1040,10 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         publicUrl: () => this.publicUrl(),
         credentialKey: env.MCP_CREDENTIAL_KEY,
         secret: () => env.PASSWORD_PEPPER,
+        hours: () => settings.field("agenda"),
         lockdown: () => auth.lockdown.active(),
         notify: (notice) =>
-          alerts.raise({ kind: `agenda.${notice.kind}`, category: "events", priority: "normal", link: "/agenda", source: null, params: { name: notice.name, when: notice.when } }),
+          alerts.raise({ kind: `agenda.${notice.kind}`, category: "events", priority: "normal", link: "/agenda", source: null, params: { name: notice.name, when: notice.when, from: notice.from } }),
       });
       // The flows (step 22a): only the screen changes them; their calls go only to the connections the owner registered.
       const flowFetch = ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init)) as typeof fetch;

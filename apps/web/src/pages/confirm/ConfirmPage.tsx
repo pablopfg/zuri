@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ConfirmAction, type ConfirmView, confirmLinkToken, type MessageKey, ptBRConfirm } from "@zuri/shared";
-import { CalendarFold, CalendarX, CircleCheck, Clock4, Laptop, MapPinHouse, MessageCircleMore, Stethoscope, TriangleAlert, Unlink2 } from "lucide-react";
+import { CalendarClock, CalendarFold, CalendarX, CircleCheck, Clock4, Laptop, MapPinHouse, MessageCircleMore, Stethoscope, TriangleAlert, Unlink2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button, buttonClass, cn, Dialog } from "../../components/ui.tsx";
 import { ApiError, api } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { NOTICE_NOTES, play } from "../../lib/sounds.ts";
+import { Reschedule } from "./Reschedule.tsx";
 
 addMessages(ptBRConfirm);
 
@@ -45,6 +46,7 @@ export function ConfirmPage() {
     staleTime: Number.POSITIVE_INFINITY,
   });
   const [late, setLate] = useState(false);
+  const [moving, setMoving] = useState(false);
   const answer = useMutation({
     mutationFn: (action: ConfirmAction) => api<ConfirmView>("/c/answer", { method: "POST", body: { token, action } }),
     onSuccess: (next, action) => {
@@ -83,12 +85,28 @@ export function ConfirmPage() {
             <span className="h-11 rounded-xl zuri-skeleton" />
           </output>
         ) : (
-          <Body view={data} late={late} working={answer.isPending ? answer.variables : null} failed={answer.isError && !late && !(answer.error instanceof ApiError && answer.error.code === "NOT_FOUND") ? answer.error : null} onAnswer={(action) => answer.mutate(action)} />
+          moving && token && data.canReschedule ? (
+            <Reschedule token={token} view={data} viewKey={key} onClose={() => setMoving(false)} teamHref={(text) => teamHref(data.team, text)} />
+          ) : (
+            <Body
+              view={data}
+              late={late}
+              working={answer.isPending ? answer.variables : null}
+              failed={answer.isError && !late && !(answer.error instanceof ApiError && answer.error.code === "NOT_FOUND") ? answer.error : null}
+              onAnswer={(action) => answer.mutate(action)}
+              onReschedule={() => setMoving(true)}
+            />
+          )
         )}
         <p className="text-center text-xs text-fg-muted">{t("web.confirm.foot")}</p>
       </div>
     </main>
   );
+}
+
+/** The team's WhatsApp with a message ready: it only leaves the patient's phone if they tap send there. */
+function teamHref(team: string, text: string): string {
+  return `https://wa.me/55${team}?text=${encodeURIComponent(text)}`;
 }
 
 /** The office's name with its initials: the patient's page wears the office, never the Zuri. */
@@ -138,13 +156,27 @@ function useFormat(zone: string) {
   return { day: (iso: string) => day.format(new Date(iso)), time: (iso: string) => time.format(new Date(iso)) };
 }
 
-function Body({ view, late, working, failed, onAnswer }: { view: ConfirmView; late: boolean; working: ConfirmAction | null | undefined; failed: unknown; onAnswer: (action: ConfirmAction) => void }) {
+function Body({
+  view,
+  late,
+  working,
+  failed,
+  onAnswer,
+  onReschedule,
+}: {
+  view: ConfirmView;
+  late: boolean;
+  working: ConfirmAction | null | undefined;
+  failed: unknown;
+  onAnswer: (action: ConfirmAction) => void;
+  onReschedule: () => void;
+}) {
   const { t } = useI18n();
   const f = useFormat(view.zone);
   const [asking, setAsking] = useState(false);
   const team = (text: string) =>
     view.team ? (
-      <a className={buttonClass("ghost", "w-full text-fg-muted")} href={`https://wa.me/55${view.team}?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer">
+      <a className={buttonClass("ghost", "w-full text-fg-muted")} href={teamHref(view.team, text)} target="_blank" rel="noopener noreferrer">
         <MessageCircleMore className="h-4 w-4" aria-hidden />
         {t("web.confirm.team")}
       </a>
@@ -166,11 +198,15 @@ function Body({ view, late, working, failed, onAnswer }: { view: ConfirmView; la
   const from = f.time(view.start);
   const until = `${f.day(view.cancelUntil)}, ${f.time(view.cancelUntil)}`;
   const confirmed = view.state === "confirmed";
+  const rescheduled = view.state === "rescheduled";
   const canCancel = view.canCancel && !late;
+  const canMove = view.canReschedule && !late;
   return (
     <>
       {confirmed ? (
         <Confirmed name={view.first} />
+      ) : rescheduled ? (
+        <Rescheduled name={view.first} />
       ) : (
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("web.confirm.hello", { name: view.first })}</h1>
@@ -193,13 +229,20 @@ function Body({ view, late, working, failed, onAnswer }: { view: ConfirmView; la
           </Line>
         )}
       </dl>
-      {!confirmed && (
+      {!confirmed && !rescheduled && (
         <Button className="min-h-12 w-full text-base" loading={working === "confirm"} disabled={!!working} onClick={() => onAnswer("confirm")}>
           <CircleCheck className="h-5 w-5" aria-hidden />
           {t("web.confirm.confirm")}
         </Button>
       )}
-      <Note icon={<CalendarFold className="h-4 w-4" aria-hidden />}>{t("web.confirm.change")}</Note>
+      {canMove ? (
+        <Button variant="secondary" className="w-full" disabled={!!working} onClick={onReschedule}>
+          <CalendarClock className="h-4 w-4" aria-hidden />
+          {t("web.confirm.reschedule")}
+        </Button>
+      ) : (
+        <Note icon={<CalendarFold className="h-4 w-4" aria-hidden />}>{t("web.confirm.change")}</Note>
+      )}
       {team(t("web.confirm.teamText", { name: view.first, day, time: from }))}
       {failed ? (
         <p role="alert" className="text-sm text-danger">
@@ -221,6 +264,25 @@ function Body({ view, late, working, failed, onAnswer }: { view: ConfirmView; la
       </div>
       <Dialog open={asking} onClose={() => setAsking(false)} title={t("web.confirm.ask.title")}>
         <p className="text-sm text-fg-muted">{t("web.confirm.ask.body", { name: view.first, when: `${day}, ${from}` })}</p>
+        {canMove && (
+          <p className="flex items-start gap-2 rounded-xl bg-raised p-3 text-sm">
+            <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
+            <span>
+              {t("web.confirm.ask.rescheduleOffer")}{" "}
+              <button
+                type="button"
+                // Inline in the sentence, but a 44 px tall target (CA-R13) without moving the lines.
+                className="-my-3 inline-block min-h-11 py-3 font-semibold text-accent-text underline underline-offset-2"
+                onClick={() => {
+                  setAsking(false);
+                  onReschedule();
+                }}
+              >
+                {t("web.confirm.ask.reschedule")}
+              </button>
+            </span>
+          </p>
+        )}
         {/* "Manter" first and focused: Enter or a double tap by mistake never cancels. */}
         <div className="grid gap-2 sm:grid-cols-2">
           <Button variant="secondary" autoFocus onClick={() => setAsking(false)}>
@@ -250,6 +312,19 @@ function Confirmed({ name }: { name: string }) {
       <CircleCheck className="h-6 w-6 shrink-0" aria-hidden />
       <span>
         <b>{t("web.confirm.confirmed")}</b> {t("web.confirm.seeYou", { name })}
+      </span>
+    </div>
+  );
+}
+
+function Rescheduled({ name }: { name: string }) {
+  const { t } = useI18n();
+  const ref = useFocusOnMount<HTMLDivElement>();
+  return (
+    <div ref={ref} tabIndex={-1} role="status" className="flex items-start gap-2.5 rounded-xl bg-warning-soft p-4 text-warning focus:outline-none motion-safe:animate-rise">
+      <CalendarClock className="h-6 w-6 shrink-0" aria-hidden />
+      <span>
+        <b>{t("web.confirm.rescheduled")}</b> {t("web.confirm.seeYou", { name })} {t("web.confirm.rescheduledBelow")}
       </span>
     </div>
   );

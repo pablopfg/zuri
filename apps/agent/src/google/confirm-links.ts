@@ -1,5 +1,7 @@
 import {
+  type AgendaPrefs,
   type Clinic,
+  dayPlus,
   CONFIRM_LINK_LIMITS as L,
   CONFIRM_TOKEN,
   type ConfirmAction,
@@ -10,15 +12,22 @@ import {
   clinicLocation,
   EVENT_STATUS_COLOR,
   eventStatus,
+  GOOGLE_LIMITS,
   hmacSha256Hex,
+  type RescheduleDays,
+  type RescheduleOffer,
+  type RescheduleTurn,
   randomToken,
   sha256Hex,
   typeLine,
+  zonedParts,
 } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
 import { AppError } from "../http/errors.ts";
 import { McpCredentials } from "../mcp/credentials.ts";
-import { type CalendarEvent, localInstant, localToday } from "./events.ts";
+import { bound, minuteOf } from "./booking.ts";
+import { type CalendarEvent, localInstant, localToday, nextDay } from "./events.ts";
+import { type Busy, freeIn, gridOf, offerOf, type TurnWindow, turnsOf } from "./reschedule.ts";
 import { type GoogleCalendar, GoogleError, GoogleMeter } from "./service.ts";
 
 /**
@@ -38,17 +47,23 @@ interface LinkRow {
   revoked_at: number | null;
   answer_day: string | null;
   answer_count: number;
+  reschedules: number;
+  previous_start: string | null;
 }
 
 export interface ConfirmNotice {
-  kind: "confirmed" | "cancelled";
+  kind: "confirmed" | "cancelled" | "rescheduled";
   name: string;
   when: string;
+  /** The start before a move by the link, formatted as `when`; "" otherwise. */
+  from: string;
 }
 
 export interface ConfirmLinkDeps {
   db: Database;
-  google: () => Pick<GoogleCalendar, "event" | "updateEvent" | "usable" | "connected" | "calendar">;
+  google: () => Pick<GoogleCalendar, "event" | "updateEvent" | "usable" | "connected" | "calendar" | "readable" | "events">;
+  /** The opening hours, lunch and days off (Configurações › Agenda): the one source of the booking rule. */
+  hours: () => AgendaPrefs;
   timeZone: () => string;
   locale: () => string;
   clinic: () => Clinic;
@@ -64,6 +79,8 @@ export interface ConfirmLinkDeps {
 
 /** Google's reads and writes for one request: the event, a change, and once more after a 412. */
 const BUDGET = 4;
+/** Rescheduling: the event, one listing per calendar read, the change and a 412's second try. */
+const MOVE_BUDGET = 4 + GOOGLE_LIMITS.listCalendars;
 /** Distinct networks kept in memory; past it every new one waits, so a flood can't grow the object. */
 const NETWORKS_MAX = 5_000;
 
@@ -85,6 +102,8 @@ export class ConfirmLinks {
   #answers = new Map<string, number>();
   #invalid = new Map<string, number>();
   #blocked = new Map<string, number>();
+  /** One move at a time in the whole object: two patients never get the same hour. */
+  #moving: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly deps: ConfirmLinkDeps) {
     this.#vault = new McpCredentials(deps.credentialKey, "confirm-link-v1");
@@ -139,12 +158,13 @@ export class ConfirmLinks {
   }
 
   private statusOf(row: LinkRow | null): ConfirmLinkStatus {
-    const answer: ConfirmAnswer = row?.answer === "confirmed" || row?.answer === "cancelled" ? row.answer : "none";
+    const answer: ConfirmAnswer = row?.answer === "confirmed" || row?.answer === "cancelled" || row?.answer === "rescheduled" ? row.answer : "none";
     return {
       made: row !== null,
       answer,
       answeredAt: row?.answered_at ? new Date(row.answered_at).toISOString() : "",
       answerStart: row?.answer_start ?? "",
+      previousStart: row?.previous_start ?? "",
     };
   }
 
@@ -206,9 +226,179 @@ export class ConfirmLinks {
       now,
       row.id,
     );
-    this.deps.notify({ kind: action === "confirm" ? "confirmed" : "cancelled", name: [...event.title].slice(0, 60).join(""), when: this.when(event.start) });
+    this.deps.notify({ kind: action === "confirm" ? "confirmed" : "cancelled", name: [...event.title].slice(0, 60).join(""), when: this.when(event.start), from: "" });
     const view = this.page({ kind: "live", event, row: { ...row, answer: action === "confirm" ? "confirmed" : "cancelled", answer_start: event.start } });
-    return action === "cancel" ? { ...view, state: "cancelled", canCancel: false } : view;
+    return action === "cancel" ? { ...view, state: "cancelled", canCancel: false, canReschedule: false } : view;
+  }
+
+  // ---------- /c/<token>, rescheduling (E7b) ----------
+
+  /** Steps 1 and 2: the next days with a free hour, and their halves with one. */
+  async days(token: string, network: string): Promise<RescheduleDays> {
+    const key = await this.gate(network, "view");
+    const { event, row } = this.movable(await this.resolve(token, key));
+    const length = this.lengthOf(event);
+    const today = this.today();
+    const first = dayPlus(today, 1);
+    const last = dayPlus(today, L.rescheduleDays);
+    const busy = await this.busyBetween(first, last, row, new GoogleMeter(GOOGLE_LIMITS.listCalendars));
+    const hours = this.deps.hours();
+    const out: RescheduleDays["days"] = [];
+    for (let day = first; day <= last; day = nextDay(day)) {
+      const turns = turnsOf(hours)
+        .filter((window) => this.free(day, window, length, busy.get(day) ?? [], event).length > 0)
+        .map((window) => ({ turn: window.turn, from: window.from, to: window.to, hours: gridOf(window, length) }));
+      if (turns.length > 0) out.push({ day, turns });
+    }
+    return { length, days: out };
+  }
+
+  /** Step 4: the slots of a day's half, near the hour the patient prefers. */
+  async offer(input: { token: string; day: string; turn: RescheduleTurn; pref: number }, network: string): Promise<RescheduleOffer> {
+    const key = await this.gate(network, "view");
+    const { event, row } = this.movable(await this.resolve(input.token, key));
+    return { slots: await this.slots(input, event, row, new GoogleMeter(GOOGLE_LIMITS.listCalendars)) };
+  }
+
+  /**
+   * The patient's new hour: offered again right now, under the object's one lock, or refused with
+   * "taken". The same event moves at Google (its start, end and the Reagendado color); nothing is made.
+   */
+  async reschedule(input: { token: string; day: string; turn: RescheduleTurn; pref: number; start: number }, network: string): Promise<ConfirmView> {
+    const key = await this.gate(network, "answer");
+    const run = this.#moving.then(() => this.move(input, key));
+    this.#moving = run.catch(() => undefined);
+    return run;
+  }
+
+  private async move(input: { token: string; day: string; turn: RescheduleTurn; pref: number; start: number }, key: string): Promise<ConfirmView> {
+    const found = this.movable(await this.resolve(input.token, key));
+    if (this.deps.lockdown()) throw new AppError("SERVICE_UNAVAILABLE");
+    const { row } = found;
+    let { event } = found;
+    const today = this.today();
+    const count = row.answer_day === today ? row.answer_count : 0;
+    if (count >= L.answersPerDay) throw new AppError("RATE_LIMITED", "error.confirmTooMany", { retryAfter: 3_600 });
+    const meter = new GoogleMeter(MOVE_BUDGET);
+    // The day read again inside the lock: what another patient took a moment ago is gone from the offer.
+    const offered = await this.slots(input, event, row, meter);
+    if (!offered.includes(input.start)) throw new AppError("CONFLICT", "error.rescheduleTaken", { problem: "taken" });
+    const length = this.lengthOf(event);
+    const zone = this.deps.timeZone();
+    const startAt = localInstant(`${input.day}T${clock(input.start)}`, zone);
+    const endAt = localInstant(`${input.day}T${clock(input.start + length)}`, zone);
+    if (!startAt || !endAt) throw new AppError("CONFLICT", "error.rescheduleTaken", { problem: "taken" });
+    const body = {
+      start: { dateTime: startAt.toISOString(), timeZone: zone },
+      end: { dateTime: endAt.toISOString(), timeZone: zone },
+      colorId: EVENT_STATUS_COLOR.rescheduled,
+    };
+    const before = event.start;
+    event = await this.google(async () => {
+      try {
+        return await this.deps.google().updateEvent(row.calendar_id, row.event_id, body, event.etag, meter);
+      } catch (error) {
+        // Changed at Google meanwhile (412): moved, cancelled or gone there, the patient's choice no longer stands.
+        if (!(error instanceof GoogleError) || error.kind !== "changed") throw error;
+        const fresh = await this.deps.google().event(row.calendar_id, row.event_id, meter);
+        if (!isAppointment(fresh) || fresh.colorId === EVENT_STATUS_COLOR.cancelled || fresh.start !== before || fresh.end !== event.end) throw new AppError("CONFLICT", "error.confirmLinkChanged");
+        return this.deps.google().updateEvent(row.calendar_id, row.event_id, body, fresh.etag, meter);
+      }
+    });
+    const now = this.now();
+    this.deps.db.run(
+      `UPDATE zur_appointment_links SET answer = 'rescheduled', answer_start = ?, answered_at = ?, answer_day = ?, answer_count = ?, reschedules = reschedules + 1, previous_start = ? WHERE id = ?`,
+      event.start,
+      now,
+      today,
+      count + 1,
+      before,
+      row.id,
+    );
+    this.deps.notify({ kind: "rescheduled", name: [...event.title].slice(0, 60).join(""), when: this.when(event.start), from: this.when(before) });
+    return this.page({ kind: "live", event, row: { ...row, answer: "rescheduled", answer_start: event.start, previous_start: before, reschedules: row.reschedules + 1 } });
+  }
+
+  /** A live link whose appointment may still move by it; anything else is the page as it stands, or 409. */
+  private movable(found: Resolved): { event: CalendarEvent; row: LinkRow } {
+    if (found.kind !== "live") {
+      this.page(found);
+      throw new AppError("CONFLICT", "error.rescheduleClosed");
+    }
+    if (!this.canMove(found.event, found.row)) throw new AppError("CONFLICT", "error.rescheduleClosed");
+    return found;
+  }
+
+  private canMove(event: CalendarEvent, row: LinkRow): boolean {
+    const length = this.lengthOf(event);
+    return this.now() <= this.cancelUntil(event) && row.reschedules < L.reschedulesMax && length >= 15 && length <= 240;
+  }
+
+  /** The slots of one half of a day in the window, read from Google now. */
+  private async slots(input: { day: string; turn: RescheduleTurn; pref: number }, event: CalendarEvent, row: LinkRow, meter: GoogleMeter): Promise<number[]> {
+    const today = this.today();
+    if (input.day < dayPlus(today, 1) || input.day > dayPlus(today, L.rescheduleDays)) throw new AppError("CONFLICT", "error.rescheduleTaken", { problem: "taken" });
+    const window = turnsOf(this.deps.hours()).find((each) => each.turn === input.turn);
+    if (!window) throw new AppError("CONFLICT", "error.rescheduleTaken", { problem: "taken" });
+    const busy = (await this.busyBetween(input.day, input.day, row, meter)).get(input.day) ?? [];
+    const length = this.lengthOf(event);
+    const free = this.free(input.day, window, length, busy, event);
+    const seed = await hmacSha256Hex(this.deps.secret(), `zuri:reschedule-draw:v1:${row.id}:${input.day}:${input.turn}`);
+    return offerOf({ window, length, busy, free, pref: input.pref, seed: bytes(seed) });
+  }
+
+  private free(day: string, window: TurnWindow, length: number, busy: readonly Busy[], event: CalendarEvent): number[] {
+    const zone = this.deps.timeZone();
+    const clockNow = zonedParts(new Date(this.now()), zone);
+    // The appointment's own hour is no new hour.
+    const own = localToday(zone, new Date(event.start)) === day ? minuteOf(new Date(event.start), day, zone) : undefined;
+    return freeIn({ day, window, length, busy, hours: this.deps.hours(), today: this.today(), nowMinute: clockNow.hour * 60 + clockNow.minute, exclude: own });
+  }
+
+  /**
+   * Every timed event of the days, from every calendar read (meetings and calendars only read too), but
+   * the appointment itself and the cancelled ones. A listing read in part could hide one: nothing is offered.
+   */
+  private async busyBetween(first: string, last: string, row: LinkRow, meter: GoogleMeter): Promise<Map<string, Busy[]>> {
+    const zone = this.deps.timeZone();
+    const from = localInstant(first, zone);
+    const to = localInstant(nextDay(last), zone);
+    const google = this.deps.google();
+    const open = google.readable();
+    if (!from || !to || open.length > GOOGLE_LIMITS.listCalendars) throw new AppError("SERVICE_UNAVAILABLE", "error.confirmUnavailable");
+    const { events, more, skipped } = await this.google(() => google.events(open, from, to, meter, { timeZone: zone, perCalendar: 250, max: 1_000 }));
+    if (more || skipped.length > 0) throw new AppError("SERVICE_UNAVAILABLE", "error.confirmUnavailable");
+    const out = new Map<string, Busy[]>();
+    for (const other of events) {
+      if (other.allDay || other.colorId === EVENT_STATUS_COLOR.cancelled) continue;
+      if (other.id === row.event_id && other.calendarId === row.calendar_id) continue;
+      const start = new Date(other.start);
+      const end = new Date(other.end);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
+      // An event over midnight takes its hours on each day it touches, walked only inside the window:
+      // an event of a hundred years costs the days asked, never one loop per day it lasts.
+      const began = localToday(zone, start);
+      const ended = localToday(zone, end);
+      const stop = ended < last ? ended : last;
+      for (let day = began > first ? began : first; day <= stop; day = nextDay(day)) {
+        const list = out.get(day) ?? [];
+        list.push({ start: minuteOf(start, day, zone), end: minuteOf(end, day, zone), appointment: bound(other) });
+        out.set(day, list);
+      }
+    }
+    return out;
+  }
+
+  /** The appointment's length in minutes, on the owner's clock. */
+  private lengthOf(event: CalendarEvent): number {
+    const zone = this.deps.timeZone();
+    const start = new Date(event.start);
+    const day = localToday(zone, start);
+    return minuteOf(new Date(event.end), day, zone) - minuteOf(start, day, zone);
+  }
+
+  private today(): string {
+    return localToday(this.deps.timeZone(), new Date(this.now()));
   }
 
   /** The link and its appointment as Google has it now; anything that doesn't stand is "invalid", with no hint why. */
@@ -292,6 +482,7 @@ export class ConfirmLinks {
       place: online ? "" : clinicLocation(clinic),
       cancelUntil: new Date(until).toISOString(),
       canCancel: this.now() <= until,
+      canReschedule: found.kind === "live" && this.canMove(event, found.row),
       team: clinic.whatsapp,
     };
   }
@@ -300,7 +491,9 @@ export class ConfirmLinks {
    * Confirmed when the event is, unless the patient's own "yes" was for another time: moved at Google
    * with its color kept, the appointment asks again.
    */
-  private shown(event: CalendarEvent, row: LinkRow): "confirmed" | "open" {
+  private shown(event: CalendarEvent, row: LinkRow): "confirmed" | "rescheduled" | "open" {
+    // Moved by the link and still where the patient put it: "Consulta remarcada".
+    if (row.answer === "rescheduled" && row.answer_start === event.start && event.colorId === EVENT_STATUS_COLOR.rescheduled) return "rescheduled";
     if (event.colorId !== EVENT_STATUS_COLOR.confirmed) return "open";
     return row.answer === "confirmed" && row.answer_start !== event.start ? "open" : "confirmed";
   }
@@ -329,7 +522,7 @@ export class ConfirmLinks {
 
   private row(where: string, ...params: string[]): LinkRow | null {
     return this.deps.db.one<LinkRow>(
-      `SELECT id, calendar_id, event_id, token_sealed, answer, answer_start, answered_at, revoked_at, answer_day, answer_count FROM zur_appointment_links WHERE ${where}`,
+      `SELECT id, calendar_id, event_id, token_sealed, answer, answer_start, answered_at, revoked_at, answer_day, answer_count, reschedules, previous_start FROM zur_appointment_links WHERE ${where}`,
       ...params,
     );
   }
@@ -343,7 +536,19 @@ export class ConfirmLinks {
   }
 }
 
-const EMPTY: Omit<ConfirmView, "state" | "clinic" | "zone" | "team"> = { first: "", start: "", end: "", type: "", online: false, place: "", cancelUntil: "", canCancel: false };
+const EMPTY: Omit<ConfirmView, "state" | "clinic" | "zone" | "team"> = { first: "", start: "", end: "", type: "", online: false, place: "", cancelUntil: "", canCancel: false, canReschedule: false };
+
+/** "HH:MM" of a minute of the day. */
+function clock(minute: number): string {
+  return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+}
+
+/** The bytes of a hex string. */
+function bytes(hex: string): Uint8Array {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}
 
 /** Only an appointment has a link: timed, with a type, and a color that is a status (Cancelado included). */
 function isAppointment(event: CalendarEvent): boolean {

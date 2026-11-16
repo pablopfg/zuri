@@ -796,6 +796,7 @@ const KIND_TEXT: Record<Exclude<NoticeKind, "security">, Text> = {
   "agenda.changed": { title: "notice.agenda.changed.title", body: "notice.agenda.changed.body" },
   "agenda.confirmed": { title: "notice.agenda.confirmed.title", body: "notice.agenda.confirmed.body" },
   "agenda.cancelled": { title: "notice.agenda.cancelled.title", body: "notice.agenda.cancelled.body" },
+  "agenda.rescheduled": { title: "notice.agenda.rescheduled.title", body: "notice.agenda.rescheduled.body" },
   "ai.modelLeaving": { title: "notice.ai.modelLeaving.title", body: "notice.ai.modelLeaving.body" },
   "ai.modelSwitched": { title: "notice.ai.modelSwitched.title", body: "notice.ai.modelSwitched.body" },
   "ai.fallbackOff": { title: "notice.ai.fallbackOff.title", body: "notice.ai.fallbackOff.body" },

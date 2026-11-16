@@ -49,8 +49,14 @@ test("a suggestion from the day fills the field and sends nothing @mobile", asyn
   const buttons = ideas.getByRole("button");
   await expect(buttons.first()).toBeVisible();
   expect(await buttons.count()).toBeLessThanOrEqual(3);
-  // Whatever the server's hour, one of the hour's kinds is always there.
-  await expect(ideas.getByRole("button", { name: /^(O que tenho hoje\?|O que falta para hoje\?|O que tenho amanhã\?)$/ })).toBeVisible();
+  // Whatever the server's hour, one of the hour's kinds is there. From Sunday 18:00 to the end of Monday
+  // (São Paulo), "Organizar a semana" outranks it and a late task and a review left by other tests can fill
+  // the row before it: then the week is the one that has to be there (suggestions.ts, BASE).
+  const local = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", weekday: "short", hour: "numeric", hourCycle: "h23" }).formatToParts(new Date()).map((part) => [part.type, part.value]));
+  const week = local.weekday === "Mon" || (local.weekday === "Sun" && Number(local.hour) >= 18);
+  const hourKind = /^(O que tenho hoje\?|O que falta para hoje\?|O que tenho amanhã\?)$/;
+  await expect(ideas.getByRole("button", { name: week ? /^(O que tenho hoje\?|O que falta para hoje\?|O que tenho amanhã\?|Organizar a semana)$/ : hourKind }).first()).toBeVisible();
+  if (!week) await expect(ideas.getByRole("button", { name: "Organizar a semana" })).toHaveCount(0);
   expect(await tooSmallControls(page)).toEqual([]);
   const first = (await buttons.first().textContent()) ?? "";
   const counted = page.waitForResponse((r) => /\/api\/home\/suggestions\/[a-z]+\/used$/.test(r.url()));
