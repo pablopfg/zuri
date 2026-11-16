@@ -15,7 +15,7 @@ export interface BackupRouteDeps {
   storage: StorageGuard;
   exporter: ExportDeps;
   importer: ImportDeps;
-  /** After an import: the alarm again (a new zone moves the schedules) and the CRM's birthday notice. */
+  /** After an import: the alarm again (a new zone moves the schedules). */
   afterImport(): Promise<void>;
   /** The automatic backup (step 23b). */
   auto: AutomaticBackup;

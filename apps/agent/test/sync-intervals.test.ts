@@ -97,7 +97,7 @@ describe("the contacts at the owner's interval", () => {
       const planned = world.contacts.status().nextSyncAt;
       world.clock.now += 7 * MINUTE;
       expect(world.contacts.configure({ syncEveryMinutes: 20 }).nextSyncAt).toBe(planned);
-      expect(world.contacts.configure({ birthdays: false })).toMatchObject({ syncEveryMinutes: 20, nextSyncAt: planned });
+      expect(world.contacts.configure({ dates: false })).toMatchObject({ syncEveryMinutes: 20, nextSyncAt: planned });
     }));
 
   it("a retry after a failure keeps its time when the interval changes; the next good read plans by the new one", () =>

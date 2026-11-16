@@ -44,14 +44,10 @@ avisa, pelos canais da central de avisos:
 
 - **Retorno**: na hora marcada. Até 10 avisos de uma vez; se vencerem mais, o
   resto vem num aviso só.
-- **Aniversários**: na hora que você escolher em **Hora do aviso de
-  aniversários** (9 h no seu fuso, se não mexer), com até 5 nomes por aviso.
-  Quem faz aniversário em 29 de fevereiro é lembrado no dia 28 nos anos comuns.
 
-Cada dia tem um aviso de aniversários só. Se você mudar a hora depois do aviso
-do dia, a hora nova vale a partir de amanhã. Se mudar para uma hora que já
-passou, antes do aviso do dia, o de hoje sai na hora antiga e a nova vale a
-partir de amanhã.
+Desde 16/11/2026 não há aviso de aniversários (protótipo aprovado em 13/11,
+item 7): o aniversário fica para a automação "Parabéns de aniversário", que
+escreve ao paciente pelo WhatsApp e por e-mail quando chegar.
 
 ### Na conversa
 

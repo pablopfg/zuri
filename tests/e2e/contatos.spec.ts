@@ -39,7 +39,7 @@ async function copy(page: Page, labels: string[]) {
 const rows = (page: Page) => page.locator("[data-contact]");
 const card = (page: Page) => page.getByRole("region", { name: "Contato", exact: true });
 
-test("the list by letter and the card in groups, with call, WhatsApp, e-mail and what is empty at Google; accessible @mobile", async ({ page }) => {
+test("the list by letter and the card in groups, with call, WhatsApp, e-mail and nothing shown for what is empty at Google; accessible @mobile", async ({ page }) => {
   await copy(page, ["clientes", "consultorio"]);
   const list = page.getByRole("region", { name: "Lista de contatos" });
   await expect(list.getByText("Google Contatos · 6 contatos")).toBeVisible();
@@ -72,9 +72,9 @@ test("the list by letter and the card in groups, with call, WhatsApp, e-mail and
   await expect(site).toHaveAttribute("href", "https://padaria.exemplo.com.br/");
   await expect(site).toHaveAttribute("rel", "noopener noreferrer");
   await expect(site).toHaveAttribute("target", "_blank");
-  // What Google has nothing for is one line, never a blank row.
-  await expect(person.getByText("Vazio no Google")).toBeVisible();
-  await expect(person.getByText("Datas especiais.", { exact: true })).toBeVisible();
+  // E11a: what Google has nothing for doesn't show at all, not even as a line.
+  await expect(person.getByText("Vazio no Google")).toHaveCount(0);
+  await expect(person.getByText("Datas especiais.", { exact: true })).toHaveCount(0);
   await expect(person.getByRole("link", { name: "Abrir no Google Contatos" })).toHaveAttribute("rel", "noopener noreferrer");
   await expectAccessible(page, "contatos-ficha");
   expect(await tooSmallControls(page), "every control of the card is a 44 px target").toEqual([]);
@@ -112,7 +112,7 @@ test("a contact with no name, one with no mobile and one with only an e-mail @mo
   await expect(person.getByText("O que a Zuri sabe")).toHaveCount(0);
   await expect(person.getByRole("link", { name: "WhatsApp", exact: true })).toHaveAttribute("href", "https://wa.me/5541999990117");
   await expect(person.getByText("Sem e-mail")).toBeVisible();
-  await expect(person.getByText(/^Nome, E-mail, Endereço, Aniversário/)).toBeVisible();
+  await expect(person.getByText(/^Nome, E-mail, Endereço, Aniversário/)).toHaveCount(0);
   await expectAccessible(page, "contatos-sem-nome");
   await back();
 
@@ -130,7 +130,7 @@ test("a contact with no name, one with no mobile and one with only an e-mail @mo
   await expect(person.getByText("Sem telefone")).toHaveCount(2);
   await expect(person.getByRole("link", { name: "Ligar" })).toHaveCount(0);
   await expect(person.getByRole("link", { name: "E-mail" })).toHaveAttribute("href", "mailto:diego@exemplo.com.br");
-  await expect(person.getByText(/^Nome, Telefone, Endereço/)).toBeVisible();
+  await expect(person.getByText(/^Nome, Telefone, Endereço/)).toHaveCount(0);
 });
 
 test("the label filter is a list with a search, and the labels Zuri copies are chosen from it @mobile", async ({ page }) => {

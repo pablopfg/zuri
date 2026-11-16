@@ -161,7 +161,7 @@ describe("what the alarm is told", () => {
     withChatWorld(async (world) => {
       add(world, "c1", "Ana", [CLIENTS]);
       await turnOn(world);
-      world.contacts.configure({ birthdays: true, time: "08:00" });
+      world.contacts.configure({ dates: true, time: "08:00" });
       const reminder = row(world).next_reminder as number;
       // The owner connected again and left the contacts out.
       world.db.run(`UPDATE zur_google_account SET scopes = 'https://www.googleapis.com/auth/calendar.events'`);
