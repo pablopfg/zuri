@@ -2038,6 +2038,16 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE TRIGGER IF NOT EXISTS zur_counts_contact_family_delete AFTER DELETE ON zur_contact_family BEGIN UPDATE zur_counts SET n = n - 1 WHERE kind = 'contact_family'; END`,
     ],
   },
+  {
+    version: 49,
+    name: "auth_events_abroad",
+    statements: [
+      // E12a (plano acessos-e-sino.md): the access log's "Outside Brazil" filter. An owner who only signs in from
+      // Brazil has no such row, and without this index the filter would walk the whole log to say so (SEC-E12a-01).
+      // Partial: only the rows from abroad pay its write. The query repeats this WHERE word for word.
+      `CREATE INDEX IF NOT EXISTS zur_auth_events_abroad ON zur_auth_events (at) WHERE country <> '' AND country <> 'BR'`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

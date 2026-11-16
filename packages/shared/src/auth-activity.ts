@@ -102,6 +102,17 @@ export const AUTH_ACTIVITY_GROUPS: { readonly [G in keyof typeof REFUSAL_GROUPS 
 export type AuthActivityGroup = keyof typeof AUTH_ACTIVITY_GROUPS;
 export const AUTH_ACTIVITY_GROUP_NAMES = Object.keys(AUTH_ACTIVITY_GROUPS) as AuthActivityGroup[];
 
+/**
+ * What needs the owner's attention: the refusals and what the guard stopped,
+ * plus a reset of the credentials. The "Attention" filter and the card's
+ * warning sign read this one list.
+ */
+export const AUTH_ATTENTION_KINDS: readonly AuthEventKind[] = [...GROUPED.filter((kind) => kind !== "login_success"), "credentials_reset"];
+
+/** The access log's "Show" filter: everything (absent), what needs attention, or what came from abroad. */
+export const AUTH_ACTIVITY_SHOW = ["attention", "abroad"] as const;
+export type AuthActivityShow = (typeof AUTH_ACTIVITY_SHOW)[number];
+
 /** How far back the log looks, in days (the detail is kept for AUTH_EVENT_DETAIL_DAYS). */
 export const AUTH_ACTIVITY_PERIODS = [1, 7, 30, 90] as const;
 export type AuthActivityPeriod = (typeof AUTH_ACTIVITY_PERIODS)[number];
@@ -124,6 +135,7 @@ export const authActivityQuerySchema = /* @__PURE__ */ z
       .regex(/^[0-9A-Fa-f.:]+$/)
       .transform((value) => value.toLowerCase())
       .optional(),
+    show: z.enum(AUTH_ACTIVITY_SHOW).optional(),
     before: z.string().regex(activityCursor).optional(),
   })
   .strict();
