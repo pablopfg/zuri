@@ -370,6 +370,28 @@ describe("import", () => {
     }
   });
 
+  it("SEC-E7c3a-01: with the automatic confirmation on, a backup that changes its text alerts; off, or the same text, none", async () => {
+    const alerts = () => inOwner((agent) => agent.store.db.all(`SELECT id FROM zur_auth_events WHERE kind = 'confirm_text_changed'`).length);
+    try {
+      await inOwner((agent) => {
+        agent.store.db.run(`DELETE FROM zur_auth_events WHERE kind = 'confirm_text_changed'`);
+        agent.store.settings.update({ confirmMessage: "" });
+      });
+      await ok(session("POST", "/backup/import", backup({ settings: { confirmMessage: "Desligada {nome}: {link}" } })));
+      expect(await alerts()).toBe(0);
+      await inOwner((agent) => agent.store.db.run(`INSERT INTO zur_crm_automations (id, state, updated_at) VALUES ('appointment-confirmation', 'live', '2099-01-01T00:00:00.000Z')`));
+      await ok(session("POST", "/backup/import", backup({ settings: { confirmMessage: "Desligada {nome}: {link}" } })));
+      expect(await alerts()).toBe(0);
+      await ok(session("POST", "/backup/import", backup({ settings: { confirmMessage: "Ligada {nome}: {link}" } })));
+      expect(await alerts()).toBe(1);
+    } finally {
+      await inOwner((agent) => {
+        agent.store.db.run(`DELETE FROM zur_crm_automations WHERE id = 'appointment-confirmation'`);
+        agent.store.settings.update({ confirmMessage: "" });
+      });
+    }
+  });
+
   it("E7c1: the owner's confirmation message goes in the file and comes back; one with an address typed by hand is refused (SEC-E7c1-01)", async () => {
     try {
       await inOwner((agent) => agent.store.settings.update({ confirmMessage: "Oi {nome}, até {dia}: {link}" }));
