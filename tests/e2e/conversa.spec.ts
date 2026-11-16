@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, expectFits, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, expectFits, signIn, tooSmallControls, uniqueTag, tabTitle } from "./ui-helpers.ts";
 
 // The Conversa screen of the Sinal (PR S05): the list of conversations as a
 // column with its search, groups by day and a "Mais opções" menu on every row
@@ -116,7 +116,7 @@ test("each row shows when the conversation was used and renames by keyboard, the
   await rename.getByLabel("Nome da conversa").fill(`Título novo ${word}`);
   await rename.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("heading", { level: 1, name: `Título novo ${word}` })).toBeVisible();
-  await expect(page).toHaveTitle(`Título novo ${word} · Zuri`);
+  await expect(page).toHaveTitle(tabTitle(`Título novo ${word} · Zuri`));
   await expect(row(page, `Título novo ${word}`).getByRole("link")).toHaveAttribute("aria-current", "page");
 });
 

@@ -659,9 +659,10 @@ function versions(deps: ApiDeps): { versions?: AreaVersions } {
   return { versions: deps.versions() };
 }
 
-function unread(deps: ApiDeps): { unreadNotices?: number } {
+function unread(deps: ApiDeps): { unseenNotices?: number } {
   const notices = deps.notices?.();
-  return notices ? { unreadNotices: notices.alerts.unreadCount() } : {};
+  // The bell shows what wasn't seen yet in the panel (E12b), not what wasn't read.
+  return notices ? { unseenNotices: notices.alerts.unseenCount() } : {};
 }
 
 /**

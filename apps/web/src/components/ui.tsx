@@ -12,6 +12,7 @@ import {
 } from "react";
 import { errorMessage } from "../lib/api.ts";
 import { useI18n } from "../lib/i18n.tsx";
+import { currentBadge } from "../lib/title.ts";
 
 export function cn(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
@@ -64,10 +65,10 @@ export function useDocumentTitle(title: string) {
   const { t } = useI18n();
   const app = t("app.name");
   useEffect(() => {
-    document.title = title === app ? app : `${title} · ${app}`;
+    document.title = currentBadge() + (title === app ? app : `${title} · ${app}`);
     // Screens without a title of their own (loading, a failed check) don't keep the last page's.
     return () => {
-      document.title = app;
+      document.title = currentBadge() + app;
     };
   }, [title, app]);
 }

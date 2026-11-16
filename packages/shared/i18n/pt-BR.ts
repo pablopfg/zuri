@@ -110,7 +110,7 @@ export const ptBRCore = {
   "web.guard.stay": "Continuar conectado",
   "web.notifications.open": "Abrir avisos",
   "web.notifications.title": "Avisos",
-  "web.notifications.openUnread": "Abrir avisos, {count} sem ler",
+  "web.notifications.unseen": "Avisos não vistos: {n}",
   "web.notFound.title": "Página não encontrada",
   "web.notFound.body": "Este endereço não existe na Zuri.",
   "web.notFound.home": "Voltar ao início",

@@ -34,7 +34,7 @@ test("greets by the part of the day in the owner's zone and turns by itself at n
   await signIn(page);
   await expect(page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)!$/ })).toBeVisible();
   // The tab is named after the page, not after the greeting.
-  await expect(page).toHaveTitle(/^Início/);
+  await expect(page).toHaveTitle(/^(\(\d+\+?\) )?Início/);
 
   expect((await settings(page, { timeZone: zoneWhere(start, 11) })).ok()).toBe(true);
   await page.reload();

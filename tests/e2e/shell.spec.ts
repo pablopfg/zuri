@@ -1,6 +1,6 @@
 import { APP_VERSION } from "@zuri/shared";
 import { expect, test } from "./fixtures.ts";
-import { CSRF, EMAIL, expectAccessible, openAccountMenu, openSettingsSection, openPlace, PASSWORD, settingsHasTabs, settingsTitle, signIn, signOutFromMenu } from "./ui-helpers.ts";
+import { CSRF, EMAIL, expectAccessible, openAccountMenu, openSettingsSection, openPlace, PASSWORD, settingsHasTabs, settingsTitle, signIn, signOutFromMenu, BELL_NAME, tabTitle } from "./ui-helpers.ts";
 
 // The interface against the real Worker: sign-in, the session guard, sign-out
 // and the ways a session ends. pt-BR is the default language.
@@ -103,7 +103,7 @@ test("the notification center opens from the bell and closes with Escape", async
   await page.goto("/");
   await signIn(page);
   // Earlier tests may have left notices (a sign-in from a new browser is one): the count may show.
-  const bell = page.getByRole("button", { name: /^Abrir avisos/ });
+  const bell = page.getByRole("button", { name: BELL_NAME });
   await bell.click();
   const dialog = page.getByRole("dialog", { name: "Avisos" });
   await expect(dialog).toBeVisible();
@@ -160,7 +160,7 @@ test("settings has the thirteen sections in six groups, each with its address an
     await openSettingsSection(page, name);
     await expect(page).toHaveURL(new RegExp(`/configuracoes/${path}$`));
     await expect(page.getByRole("main")).toContainText(text);
-    await expect(page).toHaveTitle(`${name} · Configurações · Zuri`);
+    await expect(page).toHaveTitle(tabTitle(`${name} · Configurações · Zuri`));
     // The AI tab became two (stage 26c): each one holds only its own part.
     if (path === "ia") {
       await expect(page.getByRole("heading", { name: "Uso de hoje" })).toBeVisible();

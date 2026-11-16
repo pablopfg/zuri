@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { CSRF, expectAccessible, listenToSounds, SOUND_NOTES, signIn, soundsHeard, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
+import { CSRF, expectAccessible, listenToSounds, SOUND_NOTES, signIn, soundsHeard, tooSmallControls, uniqueTag, BELL_NAME } from "./ui-helpers.ts";
 
 // The sounds of the open app (12/11/2026) against the real Worker: the card in
 // Settings > Avisos and the sound of a notice that arrives. The test hears by
@@ -23,7 +23,7 @@ async function expectHeard(page: Page, notes: readonly number[], label: string) 
 async function open(page: Page, path: string) {
   await page.goto(path);
   await signIn(page);
-  await expect(page.getByRole("button", { name: /^Abrir avisos/ }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: BELL_NAME }).first()).toBeVisible();
   expect((await save(page, STANDARD)).status()).toBe(200);
   await page.reload();
 }
@@ -171,9 +171,9 @@ async function newNotice(page: Page, name: string) {
 async function sessionChecked(page: Page) {
   const checked = page.waitForResponse((r) => r.url().endsWith("/api/auth/session") && r.status() === 200);
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-  const { unreadNotices } = (await (await checked).json()) as { unreadNotices: number };
-  await expect(page.getByRole("button", { name: `Abrir avisos, ${unreadNotices > 99 ? "99+" : unreadNotices} sem ler` }).first()).toBeVisible();
-  return unreadNotices;
+  const { unseenNotices } = (await (await checked).json()) as { unseenNotices: number };
+  await expect(page.getByRole("button", { name: `Avisos não vistos: ${unseenNotices > 99 ? "99+" : unseenNotices}` }).first()).toBeVisible();
+  return unseenNotices;
 }
 
 test("CA1: a notice that arrives with the Zuri open plays the chosen sound once; with the sound off, nothing @mobile", async ({ page }) => {
@@ -183,7 +183,7 @@ test("CA1: a notice that arrives with the Zuri open plays the chosen sound once;
   await newNotice(page, `Som ${tag} 0`);
   // Opening the Zuri with a notice already waiting plays nothing: only what arrives after.
   await page.reload();
-  await expect(page.getByRole("button", { name: /^Abrir avisos, \d+\+? sem ler$/ }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Avisos não vistos: \d+\+?$/ }).first()).toBeVisible();
   await page.getByRole("heading", { level: 1 }).click();
   await sessionChecked(page);
   expect(await soundsHeard(page)).toEqual([]);
