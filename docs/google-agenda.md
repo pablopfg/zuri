@@ -418,6 +418,16 @@ celular com o 9), em agenda em que a Zuri não escreve, com o link cancelado,
 já respondida para aquele horário ou já enviada (pelo WhatsApp, por e-mail ou
 pelo próprio automático). No ensaio nada é criado: nem link, nem mensagem.
 
+Com **Também por e-mail, na mesma hora** ligado (o padrão), quem tem e-mail no
+agendamento recebe também o e-mail de confirmação, na mesma rodada, pela forma
+de envio de Integrações › E-mail para pacientes. Quem tem só o e-mail recebe só
+por e-mail. É um e-mail por horário, o mesmo do botão: se você já mandou, o
+automático não repete. O primeiro e-mail que não sai encerra os e-mails da
+rodada, e a rodada seguinte tenta de novo; um endereço que o servidor de e-mail
+recusa não é tentado de novo pelo automático (o botão continua podendo). Saem no
+máximo 10 e-mails por rodada, dentro dos tetos do e-mail para pacientes. No
+ensaio, nenhum e-mail sai.
+
 Nos detalhes da consulta, o quadro diz quando ela sai ("Sai sozinho pelo
 Chatwoot em qua., 18 de nov., às 07:00"), que está na fila, que foi enviada
 ou que não saiu, e nesse caso pede o envio pelo WhatsApp ou por e-mail.

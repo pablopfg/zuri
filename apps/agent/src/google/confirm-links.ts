@@ -37,6 +37,7 @@ import {
 } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
 import { AppError } from "../http/errors.ts";
+import { currentWake } from "../agent/wake-budget.ts";
 import { McpCredentials } from "../mcp/credentials.ts";
 import { bound, minuteOf } from "./booking.ts";
 import { type CalendarEvent, localInstant, localToday, nextDay } from "./events.ts";
@@ -167,23 +168,37 @@ export class ConfirmLinks {
     const { event, row, url } = await this.made(calendarId, eventId, (found) => {
       if (!isMailAddress((found.email ?? "").trim().toLowerCase())) throw new AppError("CONFLICT", "error.confirmNoEmail");
     });
-    const to = (event.email ?? "").trim().toLowerCase();
-    // Once per start (SEC-E7c2-04): the send is claimed before it goes, so two taps or two tabs send
-    // one e-mail, and a session that isn't the owner's can't spend the day's cap on one patient. A
-    // moved appointment has a new start and sends again. A send that fails gives the claim back.
+    const sent = await this.mailOnce(row.id, event, url);
+    if (sent === "already") throw new AppError("CONFLICT", "error.confirmMailed");
+    if (sent !== "sent") throw new AppError("SERVICE_UNAVAILABLE", "error.confirmMailFailed", { problem: sent.problem });
+    return this.statusOf(row);
+  }
+
+  /**
+   * The confirmation e-mail to the appointment's own e-mail, once per start (SEC-E7c2-04): the send is
+   * claimed before it goes, so two taps, two tabs or the button and the automatic one send one e-mail,
+   * and a session that isn't the owner's can't spend the day's cap on one patient. A moved appointment
+   * has a new start and sends again. A send that fails gives the claim back, except, for the automatic one
+   * (E7c3b), an address the way out refuses: kept as `email-refused`, the automation never tries it again
+   * (each try spends the day's cap) while the owner's button still can.
+   */
+  private async mailOnce(linkId: string, event: CalendarEvent, url: string, auto = false): Promise<"sent" | "already" | { problem: string }> {
     const claimed = this.deps.db.run(
       `INSERT INTO zur_confirm_sends (link_id, start, channel, sent_at) VALUES (?, ?, 'email', ?) ON CONFLICT (link_id, start, channel) DO NOTHING`,
-      row.id,
+      linkId,
       event.start,
       this.now(),
     );
-    if (claimed.rowsWritten === 0) throw new AppError("CONFLICT", "error.confirmMailed");
+    if (claimed.rowsWritten === 0) return "already";
+    const to = (event.email ?? "").trim().toLowerCase();
     const sent = await this.deps.sendMail({ to, ...this.mailOf(event, url) }).catch(() => ({ ok: false as const, problem: "unreachable" as const }));
-    if (!sent.ok) {
-      this.deps.db.run(`DELETE FROM zur_confirm_sends WHERE link_id = ? AND start = ? AND channel = 'email'`, row.id, event.start);
-      throw new AppError("SERVICE_UNAVAILABLE", "error.confirmMailFailed", { problem: sent.problem });
+    if (sent.ok) return "sent";
+    if (auto && sent.problem === "refused") {
+      this.deps.db.run(`UPDATE zur_confirm_sends SET channel = '${REFUSED}' WHERE link_id = ? AND start = ? AND channel = 'email'`, linkId, event.start);
+    } else {
+      this.deps.db.run(`DELETE FROM zur_confirm_sends WHERE link_id = ? AND start = ? AND channel = 'email'`, linkId, event.start);
     }
-    return this.statusOf(row);
+    return { problem: sent.problem };
   }
 
   /** The appointment and its link, made the first time. */
@@ -238,7 +253,7 @@ export class ConfirmLinks {
    * and no answer or send for that start, by any channel. Live, each with its link and the message of
    * the WhatsApp button; a rehearsal (`make` false) makes no link and reads only who.
    */
-  async eve(day: string, make: boolean, max = Number.POSITIVE_INFINITY): Promise<EveItem[]> {
+  async eve(day: string, make: boolean, max = Number.POSITIVE_INFINITY, mail = false): Promise<EveItem[]> {
     const google = this.deps.google();
     if (!this.#vault.available || !google.connected()) return [];
     const zone = this.deps.timeZone();
@@ -255,8 +270,10 @@ export class ConfirmLinks {
     for (const event of events) {
       const status = eventStatus(event.colorId);
       if (!isAppointment(event) || (status !== "scheduled" && status !== "rescheduled") || this.expiresAt(event) <= now) continue;
-      const phone = e164(event);
-      if (!phone || !this.canWrite(event.calendarId)) continue;
+      let phone = e164(event) ?? "";
+      // E7c3b: with "Também por e-mail" on, an appointment with only the patient's e-mail goes too.
+      const email = mail && isMailAddress((event.email ?? "").trim().toLowerCase());
+      if ((!phone && !email) || !this.canWrite(event.calendarId)) continue;
       const row = this.row(`calendar_id = ? AND event_id = ?`, event.calendarId, event.id);
       if (row && (row.revoked_at || this.answeredFor(row, event.start) || this.sentFor(row.id, event.start))) continue;
       if (out.length >= max) break;
@@ -267,14 +284,28 @@ export class ConfirmLinks {
       const label = name && confirmValueOk(name) ? name : phone;
       if (!make) {
         const print = (await sha256Hex(`${event.calendarId}\n${event.id}`)).slice(0, 24);
-        out.push({ key: `${print}:${event.start}`, label, phone, text: "", notAfter });
+        out.push({ key: `${print}:${event.start}`, label, phone, text: "", notAfter, email });
         continue;
       }
       // SEC-E7c3a-02: a message the queue would refuse (the template near its limit, filled) is left to the
       // buttons, before a link is made, instead of stopping the day's run. The link's length is fixed.
-      if ([...this.message(event, `${this.deps.publicUrl().origin}/c/${"x".repeat(TOKEN_CHARS)}`)].length > OUTBOX_LIMITS.text) continue;
+      if (phone && [...this.message(event, `${this.deps.publicUrl().origin}/c/${"x".repeat(TOKEN_CHARS)}`)].length > OUTBOX_LIMITS.text) {
+        if (!email) continue;
+        phone = "";
+      }
       const { row: link, url } = await this.linkOf(event.calendarId, event.id, row);
-      out.push({ key: confirmKey(link.id, event.start), label, phone, text: this.message(event, url), notAfter });
+      const item: EveItem = { key: confirmKey(link.id, event.start), label, phone, text: this.message(event, url), notAfter, email };
+      if (email) {
+        item.mail = async () => {
+          // E7c3b (P9): a Gmail send takes 2 places of the wake through its meter; an SMTP one, 2 DNS lookups and
+          // a socket the meter doesn't see. Room for either, taken before the claim; without it, the next run.
+          const wake = currentWake();
+          if (wake && !wake.room(MAIL_PLACES + 2)) return { problem: "budget" };
+          wake?.take(MAIL_PLACES);
+          return this.mailOnce(link.id, event, url, true);
+        };
+      }
+      out.push(item);
     }
     return out;
   }
@@ -284,7 +315,7 @@ export class ConfirmLinks {
     return row.answer === "cancelled" || (row.answer !== null && row.answer_start === start);
   }
 
-  /** The owner already sent for this start, by the WhatsApp button or by e-mail. */
+  /** The owner already sent for this start, by the WhatsApp button or by e-mail, or the automatic e-mail was refused. */
   private sentFor(linkId: string, start: string): boolean {
     return this.deps.db.one(`SELECT 1 AS hit FROM zur_confirm_sends WHERE link_id = ? AND start = ? LIMIT 1`, linkId, start) !== null;
   }
@@ -395,7 +426,7 @@ export class ConfirmLinks {
   private statusOf(row: LinkRow | null): ConfirmLinkStatus {
     const answer: ConfirmAnswer = row?.answer === "confirmed" || row?.answer === "cancelled" || row?.answer === "rescheduled" ? row.answer : "none";
     // Every send of the link at once (one per start and channel: a handful), the last of each kind picked here.
-    const sends = row ? this.deps.db.all<{ start: string; channel: string; sent_at: number }>(`SELECT start, channel, sent_at FROM zur_confirm_sends WHERE link_id = ?`, row.id) : [];
+    const sends = row ? this.deps.db.all<{ start: string; channel: string; sent_at: number }>(`SELECT start, channel, sent_at FROM zur_confirm_sends WHERE link_id = ? AND channel <> '${REFUSED}'`, row.id) : [];
     const last = (channel?: string) => sends.filter((send) => !channel || send.channel === channel).reduce<(typeof sends)[number] | null>((best, send) => (!best || send.sent_at > best.sent_at ? send : best), null);
     const sent = last();
     const mailed = last("email");
@@ -831,6 +862,11 @@ function unavailable(error: unknown): unknown {
 }
 
 /** An item of the working eve: what the automation hands to the outbox. */
+/** E7c3b: an automatic e-mail the way out refused, kept so the automation doesn't try it again; not a send. */
+const REFUSED = "email-refused";
+/** The places of the wake an SMTP e-mail spends outside any meter: 2 DNS lookups and the socket. */
+const MAIL_PLACES = 3;
+
 export interface EveItem {
   key: string;
   /** The event's title: the contact's name in the queue's history. */
@@ -841,6 +877,10 @@ export interface EveItem {
   text: string;
   /** The link expires an hour before the start: after it, the message doesn't go ("Não saiu"). */
   notAfter: string;
+  /** E7c3b: the e-mail goes too (on, and the appointment has the patient's e-mail). */
+  email: boolean;
+  /** Live, with `email`: sends the confirmation e-mail now, once per start, as "Enviar por e-mail" does. */
+  mail?: () => Promise<"sent" | "already" | { problem: string }>;
 }
 
 /** A message of the outbox still on its way. */

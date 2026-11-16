@@ -47,6 +47,8 @@ export const ptBRCrmAutomations = {
   "web.crmAutomations.cancel": "Cancelar",
   "web.crmAutomations.option.perDay": "Por dia",
   "web.crmAutomations.option.hour": "Horário do envio",
+  "web.crmAutomations.option.mail": "Também por e-mail, na mesma hora",
+  "web.crmAutomations.option.mailHint": "Para quem tem e-mail no agendamento. Sai pela forma de envio de Integrações › E-mail para pacientes, com o modelo de lá e o link no botão. Quem tem só o e-mail recebe só por e-mail. O automático não repete o que já saiu. No ensaio, nenhum e-mail sai.",
   "web.crmAutomations.follow.rehearsal": "Em ensaio desde {date}. A Zuri roda tudo, mas não envia nada: só anota o que faria.",
   "web.crmAutomations.follow.live": "Ligada desde {date}. Envia de verdade, dentro dos limites.",
   "web.crmAutomations.follow.paused": "Pausada. {reason}",

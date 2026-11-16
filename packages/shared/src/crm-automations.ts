@@ -61,7 +61,8 @@ export const CRM_AUTOMATION_LIMITS = {
 /** An option the manifest lets the owner change: a whole number or a time of day, with its range. */
 export type CrmAutomationOption =
   | { key: string; kind: "number"; min: number; max: number; default: number }
-  | { key: string; kind: "time"; min: string; max: string; default: string };
+  | { key: string; kind: "time"; min: string; max: string; default: string }
+  | { key: string; kind: "switch"; default: 0 | 1 };
 
 export type CrmAutomationOptions = Record<string, number | string>;
 

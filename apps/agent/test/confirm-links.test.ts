@@ -2,8 +2,9 @@ import { AGENT_INSTANCE_NAME, type Clinic, SECURITY_ALERT_EVENTS, CONFIRM_LINK_L
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
+import { inWake, WakeBudget } from "../src/agent/wake-budget.ts";
 import { InternalState } from "../src/db/internal-state.ts";
-import { ConfirmLinks, firstName } from "../src/google/confirm-links.ts";
+import { type ConfirmLinkDeps, ConfirmLinks, firstName } from "../src/google/confirm-links.ts";
 import { type DevEvent, type DevGoogle, devGoogle, googleNetwork } from "../src/google/dev-google.ts";
 import { call, CSRF, fakeAssets, HUMAN_TOKEN, ORIGIN, signedCookies, TEST_EMAIL, TEST_PASSWORD, testEnv } from "./helpers.ts";
 
@@ -259,7 +260,7 @@ describe("E7c2: the confirmation e-mail", () => {
 });
 
 describe("E7c3a: the automatic confirmation on the working eve", () => {
-  const links = (agent: ZuriAgent, autoHour = "", message = "") =>
+  const links = (agent: ZuriAgent, autoHour = "", message = "", sendMail: ConfirmLinkDeps["sendMail"] = async () => ({ ok: true })) =>
     new ConfirmLinks({
       db: agent.store.db,
       google: () => agent.store.google,
@@ -268,7 +269,7 @@ describe("E7c3a: the automatic confirmation on the working eve", () => {
       clinic: () => CLINIC,
       message: () => message,
       mailTemplate: () => ({ subject: "", body: "", button: "" }),
-      sendMail: async () => ({ ok: true }),
+      sendMail,
       publicUrl: () => new URL(ORIGIN),
       credentialKey: testEnv.MCP_CREDENTIAL_KEY,
       secret: () => "segredo-de-teste",
@@ -339,6 +340,130 @@ describe("E7c3a: the automatic confirmation on the working eve", () => {
     const labels = await inOwner(async (agent) => (await links(agent).eve("2099-12-24", false)).map((item) => item.label).sort());
     expect(labels).toEqual(["Depois", "No"]);
     expect([christmas.summary, friday.summary]).toEqual(["No feriado", "Depois do feriado"]);
+  });
+
+  it("E7c3b: with the e-mail on, one with only an e-mail goes too; live, the e-mail goes once per start, a failure is tried again", async () => {
+    // 2099-11-10 is a Tuesday: its eve covers Wednesday the 11th.
+    const both = at("2099-11-11", "09:00", { summary: "Ana Souza" });
+    const onlyMail = at("2099-11-11", "10:00", { summary: "Bruno Lima", extendedProperties: { private: { zuriEmail: "bruno@exemplo.com.br" } } });
+    at("2099-11-11", "11:00", { summary: "Carla Dias", extendedProperties: { private: { zuriPhone: "41999990000" } } });
+    at("2099-11-11", "12:00", { summary: "Sem nada", extendedProperties: { private: {} } });
+    const mails: string[] = [];
+    const bodies: string[] = [];
+    let fail = true;
+    const result = await inOwner(async (agent) => {
+      const sendMail: ConfirmLinkDeps["sendMail"] = async (mail) => {
+        if (fail && mail.to === "bruno@exemplo.com.br") return { ok: false, problem: "unreachable" };
+        mails.push(mail.to);
+        bodies.push(mail.html ?? "");
+        return { ok: true };
+      };
+      const owner = links(agent, "", "", sendMail);
+      const off = (await owner.eve("2099-11-10", false)).map((item) => [item.label, item.email]);
+      const rehearsal = (await owner.eve("2099-11-10", false, Number.POSITIVE_INFINITY, true)).map((item) => [item.label, item.phone !== "", item.email, typeof item.mail]);
+      const live = await owner.eve("2099-11-10", true, Number.POSITIVE_INFINITY, true);
+      const liveBruno = live.find((item) => item.label === "Bruno");
+      const anaText = live.find((item) => item.label === "Ana")?.text ?? "";
+      const first = await Promise.all(live.map(async (item) => [item.label, await item.mail?.()]));
+      // The same item twice at once: one e-mail (SEC-E7c2-04).
+      const again = await live.find((item) => item.label === "Ana")?.mail?.();
+      fail = false;
+      const next = await owner.eve("2099-11-10", true, Number.POSITIVE_INFINITY, true);
+      const second = await Promise.all(next.map(async (item) => [item.label, await item.mail?.()]));
+      const third = (await owner.eve("2099-11-10", true, Number.POSITIVE_INFINITY, true)).map((item) => item.label);
+      const status = owner.status(WORK, both.id);
+      return { off, rehearsal, first, again, second, third, status, liveBruno: [liveBruno?.phone, liveBruno?.text.includes("/c/")], anaText };
+    });
+    // Off: as in E7c3a, only the ones with a mobile.
+    expect(result.off.map(([label]) => label).sort()).toEqual(["Ana", "Carla"]);
+    expect(result.off.every(([, email]) => email === false)).toBe(true);
+    // A rehearsal lists who, sends nothing.
+    expect(result.rehearsal.sort()).toEqual([
+      ["Ana", true, true, "undefined"],
+      ["Bruno", false, true, "undefined"],
+      ["Carla", true, false, "undefined"],
+    ]);
+    expect(result.first.sort()).toEqual([["Ana", "sent"], ["Bruno", { problem: "unreachable" }], ["Carla", undefined]]);
+    expect(result.again).toBe("already");
+    // The failed one is tried again by the next run; the ones that went are out (any channel counts).
+    expect(result.second.map(([label, sent]) => [label, sent]).sort()).toEqual([["Bruno", "sent"], ["Carla", undefined]]);
+    expect(result.third).toEqual(["Carla"]);
+    expect(mails.sort()).toEqual(["bruno@exemplo.com.br", "paciente@exemplo.com.br"]);
+    expect(result.status).toMatchObject({ sentChannel: "email", mailedStart: new Date(both.start.dateTime ?? "").toISOString() });
+    // Live, the one with only an e-mail has no number for Chatwoot.
+    expect(result.liveBruno).toEqual(["", true]);
+    // The e-mail carries the same link as the message: the button of the template.
+    const link = /\/c\/[A-Za-z0-9_-]+/.exec(result.anaText)?.[0] ?? "missing";
+    expect(bodies.some((html) => html.includes(link))).toBe(true);
+    expect(onlyMail.summary).toBe("Bruno Lima");
+  });
+
+  it("E7c3b (SEC-E7c3b-02): an address the way out refuses isn't tried again by the automation, the button still can; the status doesn't call it sent", async () => {
+    const event = at("2099-11-17", "09:00", { summary: "Ana Souza", extendedProperties: { private: { zuriEmail: "ana@exemplo.com.br" } } });
+    const other = at("2099-11-17", "10:00", { summary: "Bruno Lima", extendedProperties: { private: { zuriEmail: "bruno@exemplo.com.br" } } });
+    const result = await inOwner(async (agent) => {
+      let tries = 0;
+      const owner = links(agent, "", "", async () => {
+        tries++;
+        return { ok: false, problem: "refused" };
+      });
+      const [item] = await owner.eve("2099-11-16", true, Number.POSITIVE_INFINITY, true);
+      const first = await item?.mail?.();
+      const next = (await owner.eve("2099-11-16", true, Number.POSITIVE_INFINITY, true)).filter((one) => one.label === "Ana");
+      const status = owner.status(WORK, event.id);
+      // A failure that may pass (the way out down) gives the claim back, as before.
+      const down = links(agent, "", "", async () => ({ ok: false, problem: "unreachable" }));
+      const [again] = (await down.eve("2099-11-16", true, Number.POSITIVE_INFINITY, true)).filter((one) => one.label === "Bruno");
+      await again?.mail?.();
+      const retried = (await down.eve("2099-11-16", true, Number.POSITIVE_INFINITY, true)).map((one) => one.label);
+      const button = await owner.mail(WORK, event.id).catch((error: { message: string }) => error.message);
+      return { first, next: next.length, status, tries, retried, other: other.id, button };
+    });
+    expect(result.first).toEqual({ problem: "refused" });
+    expect(result.next).toBe(0);
+    expect(result.status).toMatchObject({ sentChannel: "", mailedStart: "" });
+    expect(result.retried).toEqual(["Bruno"]);
+    // The button tries again (and is refused again): the automatic mark doesn't hold it.
+    expect(result.button).toBe("SERVICE_UNAVAILABLE");
+    expect(result.tries).toBe(2);
+  });
+
+  it("E7c3b (SEC-E7c3b-01): without room in the wake for an e-mail, nothing is claimed or sent, and the next run tries", async () => {
+    at("2099-11-24", "09:00", { summary: "Ana Souza", extendedProperties: { private: { zuriEmail: "ana@exemplo.com.br" } } });
+    const result = await inOwner(async (agent) => {
+      let tries = 0;
+      const owner = links(agent, "", "", async () => {
+        tries++;
+        return { ok: true };
+      });
+      const answers: unknown[] = [];
+      const [item] = await owner.eve("2099-11-23", true, Number.POSITIVE_INFINITY, true);
+      // n-1, n, n+1 around the 5 places an e-mail needs (3 taken, 2 left for Gmail's meter).
+      for (const left of [4, 5, 6]) {
+        const budget = new WakeBudget(100, 0);
+        budget.take(100 - left);
+        answers.push([left, await inWake(budget, async () => item?.mail?.()), budget.used]);
+      }
+      return { answers, tries };
+    });
+    expect(result.answers).toEqual([
+      [4, { problem: "budget" }, 96],
+      [5, "sent", 98],
+      [6, "already", 97],
+    ]);
+    expect(result.tries).toBe(1);
+  });
+
+  it("E7c3b: a message too long for the queue goes by e-mail only when the e-mail is on", async () => {
+    at("2099-12-01", "09:00", { summary: "Ana Souza", extendedProperties: { private: { zuriPhone: "41999990000", zuriEmail: "ana@exemplo.com.br" } } });
+    const result = await inOwner(async (agent) => {
+      const long = links(agent, "", `${"a".repeat(993)} {link}`);
+      const off = await long.eve("2099-11-30", true);
+      const on = await long.eve("2099-11-30", true, Number.POSITIVE_INFINITY, true);
+      return { off: off.length, on: on.map((item) => [item.phone, item.email, typeof item.mail]) };
+    });
+    expect(result.off).toBe(0);
+    expect(result.on).toEqual([["", true, "function"]]);
   });
 
   it("SEC-E7c3a-02 and 06: a message the queue would refuse is left out before its link, and no more links than the day's ceiling", async () => {
