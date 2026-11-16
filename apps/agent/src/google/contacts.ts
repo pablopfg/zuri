@@ -1214,6 +1214,35 @@ export class GoogleContacts {
     return this.db.one<{ id: string; name: string }>(`SELECT id, display_name AS name FROM zur_contacts WHERE resource_name = ?`, resource) ?? null;
   }
 
+  /** A contact's `resourceName` by the copy's id; null when it is not in the copy (or Contacts is off). */
+  resourceOf(id: string): string | null {
+    if (!this.enabled() || !/^[0-9a-f-]{36}$/.test(id)) return null;
+    return this.db.one<{ resource_name: string }>(`SELECT resource_name FROM zur_contacts WHERE id = ?`, id)?.resource_name ?? null;
+  }
+
+  /**
+   * The relatives of a family (E11b) still in the copy, by `resourceName`: the name, the birthday and whether
+   * another contact has the very name, which is when the card tells them apart by the birthday.
+   */
+  relatives(resources: readonly string[]): Map<string, { id: string; name: string; birthday: string; sameName: boolean }> {
+    const out = new Map<string, { id: string; name: string; birthday: string; sameName: boolean }>();
+    if (!this.enabled() || resources.length === 0) return out;
+    for (let at = 0; at < resources.length; at += SQL_BATCH) {
+      const part = resources.slice(at, at + SQL_BATCH);
+      for (const row of this.db.all<{ id: string; resource_name: string; display_name: string; data: string }>(
+        `SELECT id, resource_name, display_name, data FROM zur_contacts WHERE resource_name IN (${part.map(() => "?").join(",")})`,
+        ...part,
+      ))
+        out.set(row.resource_name, { id: row.id, name: row.display_name, birthday: parseData(row.data).birthday ?? "", sameName: false });
+    }
+    return out;
+  }
+
+  /** Whether another contact has this very name: one read of the name's index. */
+  hasHomonym(id: string, name: string): boolean {
+    return this.sameName(id, name).length > 0;
+  }
+
   /** The copy's id and name of each linked `resourceName` that is still in the copy. */
   idsOf(resources: readonly string[]): Map<string, { id: string; name: string }> {
     const out = new Map<string, { id: string; name: string }>();

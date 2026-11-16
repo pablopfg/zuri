@@ -22,6 +22,7 @@ import { useCatalog } from "./crm-automations-world.ts";
 import { fakeSmtp } from "../src/mail/dev-mail.ts";
 import { MailService } from "../src/mail/service.ts";
 import { ConfirmLinks } from "../src/google/confirm-links.ts";
+import { ContactFamilyService } from "../src/google/family.ts";
 
 // What each route costs in the units the Free plan bills: rows read and rows
 // written in the object's SQLite (docs/arquitetura/orcamento-free-tier.md). A
@@ -859,6 +860,48 @@ describe("the Free plan budget of each route", () => {
       });
     }
   });
+});
+
+// E11b: the card's "Família" with a full family: 20 relatives, each with one more of their own.
+describe("Contacts' family (E11b)", () => {
+  it("the card reads a few rows per relative, and a link writes its row, the screens' number and the count", () =>
+    withChatWorld(async (world) => {
+      const member = [{ contactGroupMembership: { contactGroupResourceName: "contactGroups/clientes" } }];
+      world.googleSim.people.groups.push({ resourceName: "contactGroups/clientes", name: "Clientes", groupType: "USER_CONTACT_GROUP", memberCount: 300 });
+      for (let i = 0; i < 300; i++) world.googleSim.people.add({ resourceName: `people/c${i}`, names: [{ displayName: `Pessoa ${i}` }], phoneNumbers: [{ value: `(11) 9${String(i).padStart(4, "0")}-0000` }], memberships: member });
+      for (const purpose of ["calendar", "contacts"] as const) {
+        const url = new URL(await world.google.begin("sessao", purpose));
+        await world.google.finish({ state: url.searchParams.get("state") ?? "", code: `dev.${url.searchParams.get("code_challenge") ?? ""}` }, "sessao");
+      }
+      world.contacts.enable();
+      await world.contacts.sync("owner");
+      world.contacts.select(["contactGroups/clientes"]);
+      expect(await world.contacts.sync("alarm")).toBe("ok");
+      const id = (n: number) => world.db.one<{ id: string }>(`SELECT id FROM zur_contacts WHERE resource_name = ?`, `people/c${n}`)?.id ?? "";
+      const family = new ContactFamilyService({ db: world.db, contacts: () => world.contacts });
+      for (let i = 1; i < 20; i++) family.add(id(0), { relative: id(i), role: "cousinF", otherRole: "cousinM" });
+      for (let i = 1; i < 20; i++) family.add(id(i), { relative: id(100 + i), role: "daughter", otherRole: "mother" });
+      const measure = (work: () => unknown) => {
+        const before = { ...world.db.usage };
+        work();
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      const card = measure(() => family.list(id(0)));
+      expect(family.list(id(0))).toMatchObject({ groupMore: 0 });
+      expect(family.list(id(0)).group).toHaveLength(19);
+      // The walk reads each relative's links by index, and the names and homonyms of 38 people (measured 350).
+      expect(card.written).toBe(0);
+      expect(card.read).toBeLessThanOrEqual(400);
+      // A new link with the table almost full: the checks read the count, never the table (SEC-A11-02); the
+      // row, its two indexes, the area's number and the count; then the card again.
+      world.db.transaction(() => {
+        for (let i = 0; i < 4_900; i++) world.db.run(`INSERT INTO zur_contact_family (id, a, b, role_a, role_b, created_at) VALUES (?, ?, ?, 'spouse', 'spouse', 1)`, crypto.randomUUID(), `people/x${i}`, `people/y${i}`);
+      });
+      const add = measure(() => family.add(id(0), { relative: id(250), role: "sister", otherRole: "brother" }));
+      expect(add.written).toBeLessThanOrEqual(6);
+      // Measured 428: the checks, then the card it answers with.
+      expect(add.read).toBeLessThanOrEqual(500);
+    }));
 });
 
 // Step 19b, the plan's section 10: 2,000 contacts at Google, 500 of them in the chosen labels.

@@ -258,3 +258,67 @@ export interface BookingPage {
   people: BookingPerson[];
   same: number;
 }
+
+/**
+ * Family (E11b, plano contatos-familia-e-ficha.md): links between two contacts that only Zuri keeps (the
+ * copy of Google stays read only). Each link says what each side is to the other, as codes: the screen
+ * names them in the owner's language. The first list is what "Essa pessoa é" offers, in the prototype's
+ * order; `dependent` only answers `guardian`.
+ */
+export const FAMILY_ROLES = ["mother", "father", "daughter", "son", "sister", "brother", "grandmother", "grandfather", "granddaughter", "grandson", "aunt", "uncle", "niece", "nephew", "cousinF", "cousinM", "spouse", "guardian", "dependent"] as const;
+export type FamilyRole = (typeof FAMILY_ROLES)[number];
+
+/** For each role, what the other side can be ("Mãe" → "Filha" or "Filho"). */
+export const FAMILY_INVERSE: Record<FamilyRole, readonly FamilyRole[]> = {
+  mother: ["daughter", "son"],
+  father: ["daughter", "son"],
+  daughter: ["mother", "father"],
+  son: ["mother", "father"],
+  sister: ["sister", "brother"],
+  brother: ["sister", "brother"],
+  grandmother: ["granddaughter", "grandson"],
+  grandfather: ["granddaughter", "grandson"],
+  granddaughter: ["grandmother", "grandfather"],
+  grandson: ["grandmother", "grandfather"],
+  aunt: ["niece", "nephew"],
+  uncle: ["niece", "nephew"],
+  niece: ["aunt", "uncle"],
+  nephew: ["aunt", "uncle"],
+  cousinF: ["cousinF", "cousinM"],
+  cousinM: ["cousinF", "cousinM"],
+  spouse: ["spouse"],
+  guardian: ["dependent"],
+  dependent: ["guardian"],
+};
+
+/** Two roles that make one link: each is among the other's inverses. */
+export function familyPair(role: FamilyRole, other: FamilyRole): boolean {
+  return FAMILY_INVERSE[role].includes(other) && FAMILY_INVERSE[other].includes(role);
+}
+
+export const FAMILY_LIMITS = {
+  /** Relatives linked to one contact. */
+  perContact: 20,
+  /** Links in all: as many as the copy has contacts. */
+  total: 5_000,
+  /** People named in "Também no grupo familiar"; past it, "e mais N". */
+  group: 30,
+} as const;
+
+/** One relative on a contact's card. */
+export interface FamilyLink {
+  id: string;
+  /** What the relative is to this contact. */
+  role: FamilyRole;
+  /** The relative in the copy; null when they left the chosen labels (the link stays for when they come back). */
+  contact: { id: string; name: string; birthday: string; sameName: boolean } | null;
+}
+
+/** GET /api/contacts/:id/family */
+export interface ContactFamily {
+  links: FamilyLink[];
+  /** Others in the family through someone else (the sister of the daughter), by name. */
+  group: string[];
+  /** People in the group past FAMILY_LIMITS.group. */
+  groupMore: number;
+}
