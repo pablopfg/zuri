@@ -196,6 +196,12 @@ export function* exportBackup(deps: ExportDeps): Generator<string> {
   )}}`;
   // The record of the day (13/11/2026): every closed day with the events copied at 0:00, oldest first.
   yield* section("agendaRecord", backupItemSchemas.agendaDay, recordDays(db));
+  // The family links (E11b): the owner's own data, by Google's names, which the copy of a new installation finds again.
+  yield* section(
+    "contactFamily",
+    backupItemSchemas.familyLink,
+    pages(db, `SELECT rowid AS _r, a, b, role_a, role_b, responsible FROM zur_contact_family`, (r) => ({ a: r.a, b: r.b, roleA: r.role_a, roleB: r.role_b, responsible: r.responsible })),
+  );
   yield "}}";
   for (const [kind, count] of Object.entries(skipped)) log("warn", "backup_export_skipped", { kind, count });
 }

@@ -140,6 +140,8 @@ export const ROUTE_WORDS: ReadonlySet<string> = new Set([
   "agents", "versions",
   // E-mail to patients (E6c).
   "mail", "gmail",
+  // Family links between contacts (E11b).
+  "family",
   // The home page's suggestions (PR S22).
   "home", "suggestions", "used",
   // The automatic backup (step 23b).

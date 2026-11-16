@@ -1,6 +1,6 @@
 # Plano · Contatos: família e ficha (E11)
 
-Situação: aprovado em 13/11/2026 (protótipo v51, itens 7 e 10, e ajuste de 12/11 18:45 UTC); E11a em andamento
+Situação: aprovado em 13/11/2026 (protótipo v51, itens 7 e 10, e ajuste de 12/11 18:45 UTC); E11a mesclada (#365), E11b em andamento
 Origem: pedido do Pablo, cronograma de [sons-menu-e-agenda-editavel.md](sons-menu-e-agenda-editavel.md) (entrega E11)
 Dependências: E5b e E5f (vínculo do agendamento ao contato), mescladas; E7 (envios da confirmação), mesclada
 
@@ -35,7 +35,21 @@ A ficha do contato passa a mostrar só o que está preenchido, os avisos de aniv
 | CA-A5 | Avisos de aniversário que já estão na central continuam aparecendo com o texto deles | plano |
 | CA-A6 | Celular, tema escuro, teclado, leitor de tela, 44 px e inglês nas telas mexidas | padrão |
 
-E11b e E11c ganham os critérios no começo de cada PR, nesta seção.
+### E11b
+
+| Nº | Critério | Origem |
+| --- | --- | --- |
+| CA-B1 | A ficha tem o cartão "Família": vazio com a explicação do protótipo, ou cada parente com o nome (link para a ficha dele) e o papel | v51 item 10 |
+| CA-B2 | "Ligar parente" busca pelo nome, só quem tem telefone ou e-mail, mostrando telefone (ou e-mail) e nascimento; não oferece o próprio contato nem quem já está ligado | v51 item 10, decisão dos homônimos |
+| CA-B3 | Dois papéis: "Essa pessoa é" e "E {nome} é", com só os pares do protótipo; o servidor recusa par inválido (400), o próprio contato (400), par já ligado de qualquer lado (409) | v51 item 10 |
+| CA-B4 | Homônimo ligado aparece com a data de nascimento | decisão dos homônimos |
+| CA-B5 | "Também no grupo familiar" lista quem é da família por outra pessoa, até 30 nomes, e conta o resto | v51 item 10 |
+| CA-B6 | O X tira a ligação, só uma ligação daquele contato (404 se não for); os contatos não mudam | v51 item 10 |
+| CA-B7 | Até 20 parentes por contato e 5.000 ligações (409 no limite, n−1/n/n+1) | plano |
+| CA-B8 | A ligação sobrevive à saída do contato das etiquetas ("Fora das etiquetas escolhidas") e ao desligar Contatos; entra no backup, e o restore não sobrescreve um par já ligado | plano |
+| CA-B9 | Celular, tema escuro, teclado (Esc fecha, o foco volta a "Ligar parente"), leitor de tela, 44 px, inglês | padrão |
+
+A E11c ganha os critérios no começo da PR dela, nesta seção.
 
 ## 4. Escopo
 
@@ -76,6 +90,15 @@ A E11a só tira trabalho: um aviso diário a menos em cada área e nenhum desper
 
 Sem migration na E11a: as colunas antigas ficam sem leitura (migrations só acrescentam). Os tipos `contacts.birthdays` e `crm.birthdays` saem dos avisos que o servidor gera, mas continuam no catálogo de alertas para os avisos já guardados.
 
+## E11b: textos, limites, custo, segurança e desenho
+
+- **Textos:** os do protótipo ("Família", "Ligar parente", "Nenhum parente ligado…", "Também no grupo familiar: …", "Ligar um parente de {nome}", "Essa pessoa é", "E {nome} é", "Escolha o parente na lista.", "Tirar a ligação com {nome}") e os papéis em pt-BR e en (`web.contacts.family.*`). O aviso de ligação feita é neutro ("Ligação feita: Marcos é pai de Beatriz"), porque o protótipo flexionava no feminino.
+- **Limites:** 20 parentes por contato, 5.000 ligações, 30 nomes no grupo (`FAMILY_LIMITS`); corpo até 1 KB.
+- **Custo:** a ficha lê cerca de 350 linhas com 20 parentes e mais 19 no grupo; ligar escreve 6 linhas (a linha, dois índices, o número da tela e a contagem). O total vem de `zur_counts` (`contact_family`, por gatilho), e o restore conta uma vez: 5.000 ligações leem cerca de 10 mil linhas (SEC-A11-01; com um `count(*)` por ligação eram 12,5 milhões). Sem chamada ao Google, sem alarme.
+- **Segurança:** a ligação usa o id da cópia que o dono escolheu, nunca um nome (homônimos); `relative` e o link conferidos no servidor (404 para id de fora da cópia ou ligação de outro contato); papéis só da lista fechada e em par; o texto do nome é sempre texto.
+- **Desenho:** tabela `zur_contact_family` (migration 48), um par por linha com `a < b` pelo `resourceName`, `role_a` o que `a` é para `b`, `responsible` para a E11c (0, 1 = `a` recebe por `b`, 2 = `b` recebe por `a`). Serviço `apps/agent/src/google/family.ts`; tela `apps/web/src/pages/contacts/FamilyCard.tsx`; o grupo é uma busca em largura pelos índices, com até 50 pessoas abertas. A busca do diálogo usa `GET /api/contacts?for=booking`, a mesma do formulário da Agenda (seis pessoas, com telefone, e-mail e nascimento).
+- **Testes:** `contact-family.test.ts`, `backup.test.ts` (E11b), `free-tier-budget.test.ts` (família), `shared/contacts-family.test.ts` e o e2e de `contatos.spec.ts` (E11b, computador e celular).
+
 ## 12. Entrevista com o Pablo
 
 Sem perguntas: tudo coberto pelo protótipo v51 aprovado em 13/11/2026 e pelo ajuste de 12/11, 18:45 UTC.
@@ -83,6 +106,12 @@ Sem perguntas: tudo coberto pelo protótipo v51 aprovado em 13/11/2026 e pelo aj
 ## 13. Suposições
 
 - A divisão em três PRs é técnica e não muda o que o Pablo vê no fim.
+- E11b: o protótipo usa uma lista de seleção com todos os contatos; com até 5.000, a tela usa a busca pelo nome, com o mesmo telefone e nascimento em cada linha.
+- E11b: o "X" tira a ligação sem pedir confirmação, como no protótipo; nada se perde, porque os dois contatos ficam e a ligação se refaz em dois toques.
+- E11b: um parente fora das etiquetas aparece como "Fora das etiquetas escolhidas" e pode ter a ligação tirada.
+- E11b: "Também no grupo familiar" percorre até 50 pessoas; numa família maior que isso, "e mais N" conta só as que achou.
+- E11b: a busca do diálogo traz as seis pessoas do formulário da Agenda e tira, na tela, o próprio contato e quem já está ligado. Com muitos nomes parecidos, digitar mais do nome acha o resto.
+- E11c (auditoria, SEC-A9-02): um backup traz `responsible`; quando a E11c passar a usá-lo para mandar mensagens, decidir se ele entra no import ou volta a 0 e pede confirmação na ficha.
 
 ## 14. Perguntas abertas
 

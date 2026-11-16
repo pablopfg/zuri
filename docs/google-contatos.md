@@ -145,6 +145,30 @@ Cada lista guarda até 10 itens (20 nos campos personalizados) e a ficha diz
 quantos o Google tem além disso. Site só vira link se for um endereço `http`
 ou `https`. Nome, observações e campos do Google aparecem sempre como texto.
 
+### Família
+
+Na ficha, o cartão **Família** liga parentes (E11b, 16/11/2026). "Ligar
+parente" abre a busca pelo nome, que mostra o telefone (ou o e-mail) e a
+data de nascimento de cada pessoa: homônimos são pessoas diferentes e você
+escolhe pela linha certa. Depois vêm dois papéis, o da pessoa ("Essa pessoa
+é Mãe") e o do contato do outro lado ("E Lucas é Filho"). Os pares possíveis
+são mãe ou pai e filha ou filho, irmãos, avós e netos, tios e sobrinhos,
+primos, cônjuges, e responsável legal e dependente.
+
+- A ligação fica só na Zuri. O Google Contatos não muda, e a ligação usa o
+  nome interno do Google (`people/…`), então volta sozinha se o contato sair
+  das etiquetas e voltar depois. Enquanto ele estiver fora, a ficha mostra
+  "Fora das etiquetas escolhidas".
+- Cada contato tem até 20 parentes ligados, e a Zuri guarda até 5.000
+  ligações. O mesmo par só se liga uma vez; para mudar o papel, tire a
+  ligação e ligue de novo.
+- "Também no grupo familiar" lista quem é da família por meio de outra
+  pessoa (a irmã da mãe, por exemplo), até 30 nomes, e conta o resto.
+- O X ao lado do parente tira a ligação. Os dois contatos continuam como
+  estavam.
+- As ligações entram no backup. Ao restaurar, um par que já está ligado
+  continua como está.
+
 ### Avisos
 
 No cartão, em **Avisos**:
@@ -268,6 +292,13 @@ Os mesmos secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   `contacts_ignored`, `contacts_sync_failed`), nunca nome, telefone ou e-mail.
 - Backup (etapa 23): as tabelas dos contatos ficam fora, porque a cópia se
   refaz sozinha a partir do Google.
+- Família (E11b, migration 48): `zur_contact_family` guarda um par por
+  linha, com `a < b` pelo `resourceName` e o papel de cada lado
+  (`role_a` é o que `a` é para `b`). A coluna `responsible` fica para a
+  E11c. Ela não sai com a cópia ao desligar, entra no backup
+  (`data.contactFamily`) e soma ao número "contacts" das telas. A ficha lê
+  as ligações de cada parente pelo índice (cerca de 350 linhas com 20
+  parentes e mais 19 no grupo, `free-tier-budget.test.ts`).
 - Modo de bloqueio: nada sai para o Google, a tela e as rotas respondem 423.
 
 ## Custo

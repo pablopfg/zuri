@@ -2,7 +2,7 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { CONTACT_LIMITS, CONTACT_ON_ADDED } from "./contacts.ts";
+import { CONTACT_LIMITS, CONTACT_ON_ADDED, FAMILY_ROLES, familyPair } from "./contacts.ts";
 
 /**
  * Google Contacts (step 19b): the routes' request bodies and what Zuri reads
@@ -145,3 +145,14 @@ export const googleGroupSchema = /* @__PURE__ */ (() =>
     })
     .loose())();
 export type GoogleGroup = z.output<typeof googleGroupSchema>;
+
+/** POST /api/contacts/:id/family: the relative, what they are to the contact, and what the contact is to them. */
+export const familyLinkSchema = /* @__PURE__ */ (() =>
+  z
+    .object({
+      relative: z.string().regex(/^[0-9a-f-]{36}$/),
+      role: z.enum(FAMILY_ROLES),
+      otherRole: z.enum(FAMILY_ROLES),
+    })
+    .strict()
+    .refine((body) => familyPair(body.role, body.otherRole), { message: "roles that don't make a pair", path: ["otherRole"] }))();
