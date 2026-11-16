@@ -19,6 +19,60 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) até juntar 10 merges, quando o workflow de versão escreve a seção.
 
+## [0.53.1] - 2026-11-16
+
+Mesclada às 13:24 (UTC-3) · commit [`dd55700`](https://github.com/pablopfg/Zuri/commit/dd557003d23b7d8087e0b9ee69429ef41e9862e3) · Reúne 10 mudanças (#355, #356, #357, #358, #360, #361, #364, #365, #366, #367)
+
+### Adicionado
+
+- Link de confirmação para o paciente: nos detalhes da consulta, **Copiar link** e **Ver como o paciente**. Pelo link, o paciente vê o dia, a hora, o tipo e o endereço do consultório e toca em **Confirmar presença** ou **Cancelar a consulta**. A resposta muda a situação e a cor aqui e no Google e chega em Avisos.
+- O quadro **Confirmação do paciente** nos detalhes diz se o paciente já respondeu, e quando.
+- O paciente fala com a equipe pelo WhatsApp do consultório, com a mensagem pronta.
+- O paciente remarca pelo próprio link de confirmação: **Preciso remarcar** leva em 4 passos ao dia, à manhã ou tarde, à hora de preferência e a um horário livre, só dentro do horário de atendimento e nos próximos 8 dias. O mesmo evento muda de dia e hora no Google e fica Reagendado, e o aviso com o sino diz de quando para quando.
+- O aviso de cancelar pelo link oferece **Prefiro remarcar**. Sem dia livre, a página oferece **Combinar pelo WhatsApp** com a mensagem pronta.
+- O quadro **Confirmação do paciente** nos detalhes da consulta mostra "Remarcou pelo link", com o horário de antes.
+- Configurações › Consultório ganhou a **Mensagem de confirmação**: o texto que vai ao paciente, com um botão para cada variável (nome, tipo, dia, hora, local, link, prazo, consultório e WhatsApp da equipe), a prévia de como chega no WhatsApp, com o negrito, e "Voltar ao modelo padrão". A Zuri recusa mensagem sem `{link}` ou com variável que não conhece.
+- Nos detalhes da consulta, **Enviar pelo WhatsApp** abre o WhatsApp Web com a mensagem pronta para o celular do paciente, e a Zuri registra o envio ("Enviado pelo WhatsApp…", depois "Enviar de novo"). **Copiar mensagem** copia o mesmo texto.
+- Integrações › E-mail para pacientes ganhou o **E-mail de confirmação de consulta**: assunto, texto e botão, com as variáveis, a prévia de como chega, "Voltar ao modelo padrão" e "Copiar o texto do WhatsApp". O link do paciente vai sempre no botão.
+- Nos detalhes da consulta, **Enviar por e-mail** manda a confirmação para o e-mail do paciente guardado na consulta, pela forma de envio salva, uma vez por horário, e a Zuri registra o envio ("Enviado por e-mail…").
+- CRM › Automações ganhou a **Confirmação de consulta**: no dia útil antes da consulta, no horário que você escolher, a Zuri manda ao paciente a mensagem de confirmação com o link, pelo Chatwoot. Ela chega desligada e passa pelo ensaio de 3 dias úteis antes de enviar.
+- Os detalhes da consulta dizem quando a confirmação sai sozinha, se está na fila, se foi enviada ou se não saiu.
+- Configurações › Consultório mostra se a confirmação automática está ligada, com o atalho para mudar.
+- A confirmação automática da véspera também sai por e-mail, na mesma hora, para quem tem e-mail no agendamento. É o interruptor "Também por e-mail, na mesma hora", ligado por padrão, no painel da automação em CRM › Automações. Quem tem só o e-mail recebe só por e-mail, e o e-mail sai uma vez por horário, o mesmo do botão "Enviar por e-mail".
+- Configurações › Consultório diz, em "Como a confirmação sai", se o e-mail vai junto.
+- A ficha do contato ganhou o cartão "Família". Em "Ligar parente" você busca a pessoa pelo nome, vê o telefone e a data de nascimento de cada uma para não confundir homônimos e escolhe os dois papéis, como "Essa pessoa é Mãe" e "E Lucas é Filho". A ficha mostra também quem é da família por meio de outra pessoa, e o X tira a ligação. As ligações ficam só na Zuri, o Google Contatos não muda, e elas entram no backup.
+- Em "Ligar parente", a caixa "As mensagens do consultório para Lucas vão para essa pessoa" escolhe quem recebe as mensagens de uma criança ou de quem não usa o celular. Vale para mãe, pai, avós, tios, irmãos e responsável legal. O cartão "Família" diz para quem as mensagens vão, e os detalhes do agendamento também.
+
+### Alterado
+
+- O quadro "Confirmação do paciente" começa em "Ainda não enviado", e "Copiar link" virou "Copiar mensagem". Consulta já confirmada não oferece envio.
+- O backup leva a mensagem de confirmação.
+- O backup leva o e-mail de confirmação.
+- A ficha do contato mostra só o que está preenchido no Google; a linha "Vazio no Google" saiu.
+- Saíram os avisos de aniversário: "Aniversários do dia" em Integrações › Contatos e "Aniversários de clientes", com a hora, em Configurações › Avisos › CRM. O aviso de datas especiais e o de retorno continuam.
+- Com a confirmação automática ligada, as consultas já vinculadas a um contato passam a receber a confirmação na véspera, no primeiro celular brasileiro e no primeiro e-mail do contato no Google (ou do responsável). Confira os números desses contatos no Google Contatos. Na Chatwoot, o contato do responsável aparece com o nome dele, não com o da criança.
+
+### Corrigido
+
+- A confirmação de uma consulta vinculada a um contato agora sai pelo WhatsApp, pelo Chatwoot e por e-mail, para o celular e o e-mail do contato (ou do responsável dele). Antes, como a consulta vinculada não guarda celular nem e-mail, nada saía.
+
+### Segurança
+
+- O link tem um código difícil de adivinhar, guardado só como hash, e vale até 1 hora antes da consulta. Abrir só mostra; só um toque muda algo. A página mostra só o primeiro nome do paciente, nunca o telefone nem o e-mail. Tentativas demais pela mesma rede são barradas por um tempo.
+- Cancelar pelo link vai até 12 horas antes e só até o dia anterior, e desliga o link para sempre.
+- Trocar o WhatsApp do consultório pede a senha de novo e gera aviso de segurança.
+- A remarcação mostra só dias e horários livres, nunca outro evento. O servidor confere de novo o horário na hora de gravar, uma remarcação por vez, e vale até 2 vezes por consulta e só até o prazo de cancelar.
+- A mensagem de confirmação não aceita endereço da web nem telefone escritos à mão: eles entram só por `{link}` e `{whatsapp}`. Assim uma sessão roubada não manda os pacientes para outro lugar. Endereço no título do evento ou no nome do consultório também fica fora da mensagem.
+- O e-mail de confirmação não aceita endereço da web nem telefone escritos à mão, e o HTML do e-mail escapa tudo o que vem do modelo, da consulta e do consultório.
+- A mensagem do WhatsApp e o e-mail de confirmação recusam caracteres invisíveis, que escondiam um endereço da regra acima.
+
+### Atualização
+
+- A migration 45 cria a tabela dos links de confirmação. Nada muda nos dados que já existem. Com o Cloudflare Access ligado, crie as passagens `c/*`, `api/c/*` e `assets/*` (veja a instalação).
+- A migration 46 acrescenta à tabela dos links de confirmação a contagem das remarcações e o horário de antes. Nada muda nos dados que já existem. Com o Cloudflare Access ligado, a passagem `api/c/*` já cobre as rotas novas.
+- Migration 47: tabela `zur_confirm_sends`, o registro dos envios da confirmação (link, horário, canal e hora, sem o texto e sem o telefone), fora do backup.
+- Um backup feito a partir desta versão não abre numa instalação mais antiga, que ainda espera o ajuste dos aniversários do CRM. Um backup antigo continua abrindo nesta versão.
+
 ## [0.53.0] - 2026-11-14
 
 Mesclada às 15:27 (UTC-3) · commit [`6e35825`](https://github.com/pablopfg/Zuri/commit/6e358255872404334fe7f31ce534b933bc18322a) · Reúne 10 mudanças (#344, #345, #341, #346, #347, #348, #350, #351, #352, #353)
@@ -3523,7 +3577,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.53.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.53.1...develop
+[0.53.1]: https://github.com/pablopfg/Zuri/releases/tag/v0.53.1
 [0.53.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.53.0
 [0.52.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.52.0
 [0.51.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.51.0
