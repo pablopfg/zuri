@@ -90,7 +90,6 @@ export interface ContactLabel {
 }
 
 export interface ContactReminders {
-  birthdays: boolean;
   dates: boolean;
   /** "HH:MM" in the owner's time zone. */
   time: string;

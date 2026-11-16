@@ -29,11 +29,10 @@ export const contactLabelsSchema = /* @__PURE__ */ (() =>
     })
     .strict())();
 
-/** The birthday and special date notices, and what a contact who joins a label brings. */
+/** The special date notice, and what a contact who joins a label brings (no birthday notice since E11a). */
 export const contactSettingsSchema = /* @__PURE__ */ (() =>
   z
     .object({
-      birthdays: z.boolean(),
       dates: z.boolean(),
       time: z.string().regex(HHMM),
       daysAhead: z.number().int().min(0).max(CONTACT_LIMITS.daysAheadMax),

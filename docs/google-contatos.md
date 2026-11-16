@@ -2,8 +2,8 @@
 
 A partir da etapa 19b, a Zuri guarda uma cópia, só para leitura, dos seus
 contatos do Google que estão nas etiquetas que você escolher. Ela usa essa
-cópia para responder na conversa, para a tela **Contatos** e para avisar dos
-aniversários e das datas especiais. Ela nunca muda um contato no Google e não
+cópia para responder na conversa, para a tela **Contatos** e para avisar das
+datas especiais (aniversário não gera aviso desde 16/11/2026). Ela nunca muda um contato no Google e não
 manda mensagem para ninguém. O plano está em `docs/planos/google-contatos.md`.
 
 ## Para o dono
@@ -88,8 +88,8 @@ volta.
   celular". Abaixo, **O que a Zuri sabe** traz até três memórias que citam o
   nome, e **Dados** mostra o que o Google tem, em grupos: nome, telefone,
   e-mail, endereço, aniversário, datas, relações, empresa, site, mensageiro,
-  etiquetas, campos personalizados e observações. Os grupos sem nada aparecem
-  numa linha só ("Vazio no Google: …"). **Abrir no Google Contatos** leva à
+  etiquetas, campos personalizados e observações. Grupo sem nada no Google não
+  aparece. **Abrir no Google Contatos** leva à
   ficha de lá, onde se muda qualquer coisa.
 
 #### Nome e anotação
@@ -151,14 +151,13 @@ No cartão, em **Avisos**:
 
 | Opção | O que faz |
 | --- | --- |
-| **Aniversários do dia** | Ligado por padrão. No horário escolhido, um aviso com quem faz aniversário hoje (até 20 nomes e "+N"). |
 | **Datas especiais** | Desligado por padrão. Avisa das datas personalizadas dos contatos (por exemplo "Retorno"), no dia ou com até 30 dias de antecedência. |
 | **Só datas com este rótulo** | Opcional. Com "Retorno", só as datas com esse rótulo entram no aviso. |
 | **Horário dos avisos** | 08:00 por padrão, no seu fuso. |
 | **Quando alguém entrar numa etiqueta** | Não fazer nada, me avisar (padrão) ou me avisar e criar uma tarefa para o dia seguinte às 9h. |
 
-Quem faz aniversário em 29 de fevereiro aparece em 28 de fevereiro nos anos
-que não são bissextos.
+Desde 16/11/2026 não há aviso de aniversários do dia (protótipo aprovado em
+13/11, item 7). O aniversário continua na ficha e na busca da conversa.
 
 Os avisos saem do mesmo alarme das outras rotinas e não usam IA. Para algo
 mais elaborado (uma mensagem sugerida, um resumo da semana), crie uma rotina

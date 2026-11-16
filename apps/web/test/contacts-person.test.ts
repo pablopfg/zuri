@@ -1,6 +1,6 @@
 import type { ContactDetail } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { byLetter, countdown, daysApart, dayText, dialNumber, emptyGroups, fileLetter, initials, isContactId, isNamed, localDay, sameNamed, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "../src/pages/contacts/person.ts";
+import { byLetter, CARD_GROUPS, countdown, daysApart, dayText, dialNumber, fileLetter, hasGroup, initials, isContactId, isNamed, localDay, sameNamed, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "../src/pages/contacts/person.ts";
 
 const contact = (over: Partial<ContactDetail> = {}): ContactDetail => ({
   id: "0f8fad5b-d9cb-469f-a165-70867728950e",
@@ -141,7 +141,10 @@ describe("siteHref", () => {
   });
 });
 
-describe("emptyGroups", () => {
+// The card shows only the groups that have something (E11a: no "Vazio no Google" line).
+const emptyGroups = (item: ContactDetail) => CARD_GROUPS.filter((group) => !hasGroup(item, group));
+
+describe("hasGroup", () => {
   it("names every group of a contact that has only a phone", () => {
     expect(emptyGroups(contact({ phones: [{ label: "Celular", value: "(41) 99999-0117" }], labels: ["Consultório"] }))).toEqual([
       "name",
