@@ -4,6 +4,8 @@ import {
   dayPlus,
   CONFIRM_LINK_LIMITS as L,
   CONFIRM_TOKEN,
+  OUTBOX_LIMITS,
+  COUNTRY_DIAL,
   type ConfirmAction,
   type ConfirmAnswer,
   type ConfirmChannel,
@@ -21,6 +23,8 @@ import {
   isMailAddress,
   type MailProblem,
   GOOGLE_LIMITS,
+  HOME_COUNTRY,
+  nationalHoliday,
   hmacSha256Hex,
   type RescheduleDays,
   type RescheduleOffer,
@@ -70,7 +74,7 @@ export interface ConfirmNotice {
 
 export interface ConfirmLinkDeps {
   db: Database;
-  google: () => Pick<GoogleCalendar, "event" | "updateEvent" | "usable" | "connected" | "calendar" | "readable" | "events">;
+  google: () => Pick<GoogleCalendar, "event" | "updateEvent" | "usable" | "connected" | "calendar" | "readable" | "writable" | "events">;
   /** The opening hours, lunch and days off (Configurações › Agenda): the one source of the booking rule. */
   hours: () => AgendaPrefs;
   timeZone: () => string;
@@ -89,6 +93,8 @@ export interface ConfirmLinkDeps {
   notify: (notice: ConfirmNotice) => void;
   /** Nothing changes during a lockdown (/bloquear). */
   lockdown: () => boolean;
+  /** The automatic confirmation's hour while it is on for real (E7c3a), "" otherwise. */
+  autoHour: () => string;
   clock?: () => number;
 }
 
@@ -187,11 +193,17 @@ export class ConfirmLinks {
     if (!this.canWrite(calendarId)) throw new AppError("CONFLICT", "error.confirmLinkReadOnly");
     const event = await this.deps.google().event(calendarId, eventId, new GoogleMeter(BUDGET));
     if (!isAppointment(event)) throw new AppError("VALIDATION_FAILED", "error.confirmLinkNotAppointment");
-    let row = this.row(`calendar_id = ? AND event_id = ?`, calendarId, eventId);
+    const row = this.row(`calendar_id = ? AND event_id = ?`, calendarId, eventId);
     if (row?.revoked_at || event.colorId === EVENT_STATUS_COLOR.cancelled || this.expiresAt(event) <= this.now()) {
       throw new AppError("CONFLICT", "error.confirmLinkGone");
     }
     check?.(event);
+    return { event, ...(await this.linkOf(calendarId, eventId, row)) };
+  }
+
+  /** The link of an appointment already checked, made the first time: the same address every time after. */
+  private async linkOf(calendarId: string, eventId: string, found: LinkRow | null): Promise<{ row: LinkRow; url: string }> {
+    let row = found;
     let token: string | null = null;
     if (row) token = await this.#vault.decrypt(row.id, row.token_sealed);
     else {
@@ -214,7 +226,67 @@ export class ConfirmLinks {
     }
     // A key changed since: the old address can't be rebuilt, so this one says so instead of a wrong link.
     if (!row || !token) throw new AppError("NOT_CONFIGURED");
-    return { event, row, url: `${this.deps.publicUrl().origin}/c/${token}` };
+    return { row, url: `${this.deps.publicUrl().origin}/c/${token}` };
+  }
+
+  // ---------- The automatic confirmation (E7c3a) ----------
+
+  /**
+   * The appointments whose working eve is `day` (the last working day before them): from tomorrow to
+   * the end of the next working day, so Friday covers the weekend and Monday. Only the ones still to
+   * ask: a type, Agendado or Reagendado, a mobile, a calendar the Zuri writes, the link still valid
+   * and no answer or send for that start, by any channel. Live, each with its link and the message of
+   * the WhatsApp button; a rehearsal (`make` false) makes no link and reads only who.
+   */
+  async eve(day: string, make: boolean, max = Number.POSITIVE_INFINITY): Promise<EveItem[]> {
+    const google = this.deps.google();
+    if (!this.#vault.available || !google.connected()) return [];
+    const zone = this.deps.timeZone();
+    const first = nextDay(day);
+    let last = first;
+    while (!workingDay(last)) last = nextDay(last);
+    const from = localInstant(first, zone);
+    const to = localInstant(nextDay(last), zone);
+    const open = google.writable().slice(0, GOOGLE_LIMITS.listCalendars);
+    if (!from || !to || open.length === 0) return [];
+    const { events } = await google.events(open, from, to, new GoogleMeter(GOOGLE_LIMITS.listCalendars * 2), { timeZone: zone, perCalendar: 250, max: 1_000 });
+    const now = this.now();
+    const out: EveItem[] = [];
+    for (const event of events) {
+      const status = eventStatus(event.colorId);
+      if (!isAppointment(event) || (status !== "scheduled" && status !== "rescheduled") || this.expiresAt(event) <= now) continue;
+      const phone = e164(event);
+      if (!phone || !this.canWrite(event.calendarId)) continue;
+      const row = this.row(`calendar_id = ? AND event_id = ?`, event.calendarId, event.id);
+      if (row && (row.revoked_at || this.answeredFor(row, event.start) || this.sentFor(row.id, event.start))) continue;
+      if (out.length >= max) break;
+      const notAfter = new Date(this.expiresAt(event)).toISOString();
+      // SEC-E7c3a-03: the contact's name at Chatwoot and in the history is the first name only, as in the
+      // message: the title may carry a treatment or a note. Without a usable one, the number stands in.
+      const name = firstName(event.title);
+      const label = name && confirmValueOk(name) ? name : phone;
+      if (!make) {
+        const print = (await sha256Hex(`${event.calendarId}\n${event.id}`)).slice(0, 24);
+        out.push({ key: `${print}:${event.start}`, label, phone, text: "", notAfter });
+        continue;
+      }
+      // SEC-E7c3a-02: a message the queue would refuse (the template near its limit, filled) is left to the
+      // buttons, before a link is made, instead of stopping the day's run. The link's length is fixed.
+      if ([...this.message(event, `${this.deps.publicUrl().origin}/c/${"x".repeat(TOKEN_CHARS)}`)].length > OUTBOX_LIMITS.text) continue;
+      const { row: link, url } = await this.linkOf(event.calendarId, event.id, row);
+      out.push({ key: confirmKey(link.id, event.start), label, phone, text: this.message(event, url), notAfter });
+    }
+    return out;
+  }
+
+  /** The patient answered by the link for this start (a cancellation, for any). */
+  private answeredFor(row: LinkRow, start: string): boolean {
+    return row.answer === "cancelled" || (row.answer !== null && row.answer_start === start);
+  }
+
+  /** The owner already sent for this start, by the WhatsApp button or by e-mail. */
+  private sentFor(linkId: string, start: string): boolean {
+    return this.deps.db.one(`SELECT 1 AS hit FROM zur_confirm_sends WHERE link_id = ? AND start = ? LIMIT 1`, linkId, start) !== null;
   }
 
   /**
@@ -327,7 +399,21 @@ export class ConfirmLinks {
     const last = (channel?: string) => sends.filter((send) => !channel || send.channel === channel).reduce<(typeof sends)[number] | null>((best, send) => (!best || send.sent_at > best.sent_at ? send : best), null);
     const sent = last();
     const mailed = last("email");
+    // The automation's last message for this link: its keys are the link's id and a start (P2: the unique index).
+    const job = row
+      ? this.deps.db.one<{ key: string; status: string; created_at: string; done_at: string | null }>(
+          `SELECT key, status, created_at, done_at FROM zur_outbox WHERE automation_id = ? AND key > ? AND key < ? ORDER BY created_at DESC LIMIT 1`,
+          CONFIRM_AUTOMATION,
+          `${row.id}:`,
+          `${row.id};`,
+        )
+      : null;
+    const autoState = !job ? "" : job.status === "sent" || job.status === "delivered" ? "sent" : WAITING.has(job.status) ? "queued" : "missed";
     return {
+      autoHour: this.deps.autoHour(),
+      autoState,
+      autoStart: job ? job.key.slice(row ? row.id.length + 1 : 0) : "",
+      autoAt: job ? (job.done_at ?? job.created_at) : "",
       sentChannel: sent?.channel === "whatsapp" || sent?.channel === "email" ? sent.channel : "",
       mailedStart: mailed?.start ?? "",
       sentAt: sent ? new Date(sent.sent_at).toISOString() : "",
@@ -742,4 +828,43 @@ function limited(ms: number): AppError {
 function unavailable(error: unknown): unknown {
   if (error instanceof AppError) return error;
   return new AppError("SERVICE_UNAVAILABLE", "error.confirmUnavailable");
+}
+
+/** An item of the working eve: what the automation hands to the outbox. */
+export interface EveItem {
+  key: string;
+  /** The event's title: the contact's name in the queue's history. */
+  label: string;
+  /** E.164. */
+  phone: string;
+  /** The message with the link; "" in a rehearsal. */
+  text: string;
+  /** The link expires an hour before the start: after it, the message doesn't go ("Não saiu"). */
+  notAfter: string;
+}
+
+/** A message of the outbox still on its way. */
+const WAITING = new Set(["queued", "sending", "checking"]);
+
+/** The automation's id in the CRM's catalog and its key in the outbox: the link and the start. */
+/** The patient's token: `randomToken(16)`, 22 characters of base64url. */
+const TOKEN_CHARS = 22;
+
+export const CONFIRM_AUTOMATION = "appointment-confirmation";
+export const confirmKey = (linkId: string, start: string) => `${linkId}:${start}`;
+
+/** A weekday that is not a national holiday. */
+function workingDay(day: string): boolean {
+  const weekday = new Date(`${day}T12:00:00Z`).getUTCDay();
+  return weekday !== 0 && weekday !== 6 && nationalHoliday(day) === null;
+}
+
+/** The patient's mobile as E.164, from the country's code kept on the event (E5e); null without one. */
+function e164(event: CalendarEvent): string | null {
+  const dial = (COUNTRY_DIAL[event.country ?? HOME_COUNTRY] ?? "").replace(/\D/g, "");
+  const digits = (event.phone ?? "").replace(/\D/g, "");
+  const phone = `+${dial}${digits}`;
+  // In Brazil only a mobile (DDD and 9 digits starting with 9): a landline has no WhatsApp to write to.
+  if ((event.country ?? HOME_COUNTRY) === HOME_COUNTRY && !/^[1-9]{2}9\d{8}$/.test(digits)) return null;
+  return dial && digits && /^\+[1-9]\d{7,14}$/.test(phone) ? phone : null;
 }

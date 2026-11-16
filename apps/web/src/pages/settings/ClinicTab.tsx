@@ -1,11 +1,11 @@
-import { type AgendaPrefs, CLINIC_LIMITS, CLINIC_PHONE, type Clinic, ptBRClinic } from "@zuri/shared";
+import { type AgendaPrefs, CLINIC_LIMITS, CLINIC_PHONE, type Clinic, type CrmAutomationList, ptBRClinic } from "@zuri/shared";
 import { ChevronRight, MessageCircleMore } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useToast } from "../../components/Toaster.tsx";
 import { Button, Card, ErrorNotice, Loading, TextField } from "../../components/ui.tsx";
 import { useSettings, useSettingsMutation } from "../../hooks/settings.ts";
-import { errorMessage } from "../../lib/api.ts";
+import { api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { ConfirmMessageCard } from "./ConfirmMessageCard.tsx";
 
@@ -127,6 +127,54 @@ function ClinicForm({ stored }: { stored: Clinic }) {
   );
 }
 
+/**
+ * "Automático, pelo Chatwoot" (E7c3a): the CRM automation's state and hour, shown here; it is turned on,
+ * rehearsed and paused in CRM › Automações, its one place (rule of 13/11).
+ */
+function AutoRow() {
+  const { t } = useI18n();
+  // A plain read, not a query: one more shared module here would weigh on the first load (P11).
+  const [list, setList] = useState<CrmAutomationList | null>(null);
+  useEffect(() => {
+    const abort = new AbortController();
+    api<CrmAutomationList>("/crm/automations", { signal: abort.signal }).then(setList, () => {});
+    return () => abort.abort();
+  }, []);
+  const item = list?.automations.find((automation) => automation.id === "appointment-confirmation");
+  const state = item?.state ?? null;
+  const on = state === "live";
+  return (
+    <div className="mt-4 flex flex-wrap items-start justify-between gap-3 border-t border-border/60 pt-4">
+      <div className="min-w-0 flex-1 basis-64 space-y-1">
+        <p className="text-sm font-semibold">{t("web.clinic.send.auto")}</p>
+        <p className="text-sm text-fg-muted">{t("web.clinic.send.autoHint")}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {state && (
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${on ? "bg-success-soft text-success" : "bg-raised text-fg-muted"}`}>
+            <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+            {state === "live"
+              ? t("web.clinic.send.state.live", { hour: String(item?.options.hour ?? "07:00") })
+              : state === "rehearsal"
+                ? t("web.clinic.send.state.rehearsal")
+                : state === "paused"
+                  ? t("web.clinic.send.state.paused")
+                  : t("web.clinic.send.state.off")}
+          </span>
+        )}
+        <Link
+          to="/crm"
+          aria-label={t("web.clinic.send.changeAuto")}
+          className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 text-sm font-medium text-fg hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {t("web.clinic.change")}
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 /** Configurações › Consultório (E6a): the office's details the whole system reads, and the office hours as a line that leads to where they are set. */
 export function ClinicTab() {
   const { t, locale } = useI18n();
@@ -169,6 +217,7 @@ export function ClinicTab() {
             {t("web.clinic.send.always")}
           </span>
         </div>
+        <AutoRow />
       </Card>
     </>
   );

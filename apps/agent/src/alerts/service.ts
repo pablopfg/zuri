@@ -844,6 +844,7 @@ const SECURITY_TEXT: Record<SecurityAlertEvent, Text> = {
   review_link_changed: { title: "notice.security.review_link_changed.title", body: "notice.security.review_link_changed.body" },
   mail_changed: { title: "notice.security.mail_changed.title", body: "notice.security.mail_changed.body" },
   clinic_whatsapp_changed: { title: "notice.security.clinic_whatsapp_changed.title", body: "notice.security.clinic_whatsapp_changed.body" },
+  confirm_text_changed: { title: "notice.security.confirm_text_changed.title", body: "notice.security.confirm_text_changed.body" },
   setup_failure: { title: "notice.security.setup_failure.title", body: "notice.security.setup_failure.body" },
   setup_locked: { title: "notice.security.setup_locked.title", body: "notice.security.setup_locked.body" },
   owner_created: { title: "notice.security.owner_created.title", body: "notice.security.owner_created.body" },

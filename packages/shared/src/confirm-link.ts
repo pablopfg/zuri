@@ -133,6 +133,14 @@ export interface ConfirmLinkStatus {
   sentStart: string;
   /** The start the last e-mail went for (E7c2), ISO; "" when never. The button hides for that start. */
   mailedStart: string;
+  /**
+   * The automatic confirmation by Chatwoot (E7c3a): its hour ("07:00") while it is on for real, "" otherwise;
+   * and the last message it queued for this link: for which start, how it went and when.
+   */
+  autoHour: string;
+  autoState: "" | "queued" | "sent" | "missed";
+  autoStart: string;
+  autoAt: string;
 }
 
 /** How the confirmation went out: by the owner on WhatsApp (E7c1) or by e-mail (E7c2); Chatwoot comes next. */

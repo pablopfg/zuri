@@ -123,5 +123,6 @@ export const ptBRSecurity = {
   "web.activity.kind.review_link_changed": "Link de avaliação trocado",
   "web.activity.kind.mail_changed": "E-mail para pacientes mudado",
   "web.activity.kind.clinic_whatsapp_changed": "WhatsApp da equipe mudado",
+  "web.activity.kind.confirm_text_changed": "Mensagem da confirmação automática mudada",
   "web.activity.kind.google_disconnected": "Google Agenda desconectada",
 } as const;
