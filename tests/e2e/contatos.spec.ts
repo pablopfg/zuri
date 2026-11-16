@@ -601,3 +601,81 @@ test("the photo from Google Contacts takes the place of the initials, and the in
   // A list being read again when the test ends is no failure of the test that follows.
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });
+
+test("E11b: the family on the card: link a relative picked among homonyms, see them on both cards and in the group, take the link off @mobile", async ({ page }) => {
+  await copy(page, ["pacientes"]);
+  // Links outlive the copy (they are the owner's): a run before this one may have left some.
+  const clear = async () => {
+    const all = (await (await page.request.get("/api/contacts", { headers: CSRF })).json()) as { contacts: { id: string }[] };
+    for (const { id } of all.contacts) {
+      const { links } = (await (await page.request.get(`/api/contacts/${id}/family`, { headers: CSRF })).json()) as { links: { id: string }[] };
+      for (const link of links) await page.request.delete(`/api/contacts/${id}/family/${link.id}`, { headers: CSRF });
+    }
+  };
+  await clear();
+  await rows(page).filter({ hasText: "Beatriz Novaes Conceição" }).click();
+  const person = card(page);
+  const family = person.getByRole("region", { name: "Família" });
+  await expect(family.getByText("Nenhum parente ligado. Ligue pais e filhos, irmãos, avós e tios para a Zuri saber que são da mesma família.")).toBeVisible();
+
+  const add = family.getByRole("button", { name: "Ligar parente" });
+  await add.click();
+  const dialog = page.getByRole("dialog", { name: "Ligar um parente de Beatriz" });
+  await expect(dialog.getByText("A ligação fica só na Zuri. O Google Contatos não muda.", { exact: false })).toBeVisible();
+  // Nothing picked yet: the dialog says so and links nothing.
+  await dialog.getByRole("button", { name: "Ligar", exact: true }).click();
+  await expect(dialog.getByRole("status")).toHaveText("Escolha o parente na lista.");
+  // Two people called Marcos Vieira Lopes: each with the phone and the birthday that tell them apart.
+  await dialog.getByRole("textbox", { name: "Parente" }).fill("marcos");
+  const options = dialog.getByRole("radio");
+  await expect(options).toHaveCount(2);
+  await dialog.getByRole("radio", { name: /\(41\) 97777-0112 · nasc\. 11 de fevereiro de 1979/ }).check();
+  await expectAccessible(page, "ligar parente");
+  expect(await tooSmallControls(page), "every control of the dialog is a 44 px target").toEqual([]);
+  await dialog.getByRole("combobox", { name: "Essa pessoa é" }).selectOption({ label: "Pai" });
+  const other = dialog.getByRole("combobox", { name: "E Beatriz é" });
+  await expect(other.getByRole("option")).toHaveText(["Filha", "Filho"]);
+  await other.selectOption({ label: "Filha" });
+  await dialog.getByRole("button", { name: "Ligar", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("status").filter({ hasText: "Ligação feita: Marcos Vieira Lopes é pai de Beatriz Novaes Conceição" })).toBeVisible();
+  await expect(add).toBeFocused();
+  const relative = family.getByRole("listitem");
+  await expect(relative).toHaveCount(1);
+  await expect(relative).toContainText("Marcos Vieira Lopes");
+  await expect(relative).toContainText("Pai · nasc. 11 de fevereiro de 1979");
+  await expectAccessible(page, "família na ficha");
+
+  // Already linked, so out of the dialog's list; the other Marcos is still a different person.
+  await add.click();
+  await dialog.getByRole("textbox", { name: "Parente" }).fill("marcos");
+  await expect(dialog.getByRole("radio")).toHaveCount(1);
+  await expect(dialog.getByRole("radio")).toHaveAccessibleName(/\(41\) 96666-0113/);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(add).toBeFocused();
+
+  // Marcos's card: Beatriz is his daughter. Linking Carla there puts her in Beatriz's group.
+  await relative.getByRole("link", { name: "Marcos Vieira Lopes" }).click();
+  await expect(person.getByRole("heading", { level: 2, name: "Marcos Vieira Lopes" })).toBeVisible();
+  await expect(family.getByRole("listitem")).toContainText("Filha");
+  await family.getByRole("button", { name: "Ligar parente" }).click();
+  const marcos = page.getByRole("dialog", { name: "Ligar um parente de Marcos" });
+  await marcos.getByRole("textbox", { name: "Parente" }).fill("carla");
+  await marcos.getByRole("radio").first().check();
+  await marcos.getByRole("combobox", { name: "Essa pessoa é" }).selectOption({ label: "Cônjuge" });
+  await expect(marcos.getByRole("combobox", { name: "E Marcos é" }).getByRole("option")).toHaveText(["Cônjuge"]);
+  await marcos.getByRole("button", { name: "Ligar", exact: true }).click();
+  await expect(family.getByRole("listitem")).toHaveCount(2);
+  await page.goBack();
+  await expect(person.getByRole("heading", { level: 2, name: "Beatriz Novaes Conceição" })).toBeVisible();
+  await expect(family.getByText("Também no grupo familiar: Carla Regina Duarte Pires.")).toBeVisible();
+
+  // Taking the link off: both contacts stay, and the group goes with it.
+  await family.getByRole("button", { name: "Tirar a ligação com Marcos Vieira Lopes" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Ligação com Marcos Vieira Lopes tirada. Os dois contatos continuam como estavam." })).toBeVisible();
+  await expect(family.getByText("Nenhum parente ligado.", { exact: false })).toBeVisible();
+  await expect(family.getByText("Também no grupo familiar", { exact: false })).toHaveCount(0);
+  await expect(add).toBeFocused();
+  await clear();
+});

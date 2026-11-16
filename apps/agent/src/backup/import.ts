@@ -5,10 +5,12 @@ import {
   type BackupImportSummary,
   backupSchema,
   CRM_LIMITS,
+  FAMILY_LIMITS,
   STORAGE_LIMITS,
   type StorageKind,
 } from "@zuri/shared";
 import type { CrmService } from "../crm/service.ts";
+import { familyCount, familyTotal } from "../google/family.ts";
 import type { Database } from "../db/database.ts";
 import { AppError } from "../http/errors.ts";
 import { cleanImportedLinks } from "../memory/lifecycle.ts";
@@ -240,6 +242,38 @@ export function importBackup(deps: ImportDeps, backup: Backup): BackupImportSumm
         // `birthdays` and `birthdayTime` of a backup of before 16/11/2026 are read and left: no birthday notice since then.
         db.run(`UPDATE zur_crm_settings SET follow_ups = ?, new_clients = ? WHERE id = 1`, d.crm.settings.followUps ? 1 : 0, d.crm.settings.newClients ? 1 : 0);
       }
+    }
+
+    // The family links (E11b): a pair already linked here stays as it is, and the ceilings hold as in the card.
+    // The counts are read once and kept here: a count per row would read the table N times (SEC-A11-01).
+    let total = familyTotal(db);
+    const counts = new Map<string, number>();
+    const count = (who: string) => {
+      let n = counts.get(who);
+      if (n === undefined) {
+        n = familyCount(db, who);
+        counts.set(who, n);
+      }
+      return n;
+    };
+    for (const link of d.contactFamily) {
+      if (total >= FAMILY_LIMITS.total) break;
+      const [a, b, roleA, roleB, responsible] = link.a < link.b ? [link.a, link.b, link.roleA, link.roleB, link.responsible] : [link.b, link.a, link.roleB, link.roleA, link.responsible === 0 ? 0 : 3 - link.responsible];
+      if (count(a) >= FAMILY_LIMITS.perContact || count(b) >= FAMILY_LIMITS.perContact) continue;
+      const added = db.run(
+        `INSERT OR IGNORE INTO zur_contact_family (id, a, b, role_a, role_b, responsible, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        crypto.randomUUID(),
+        a,
+        b,
+        roleA,
+        roleB,
+        responsible,
+        Date.now(),
+      );
+      if (added.rowsWritten === 0) continue;
+      total++;
+      counts.set(a, count(a) + 1);
+      counts.set(b, count(b) + 1);
     }
 
     // Inside the transaction: a file that takes the database past its ceiling imports nothing.

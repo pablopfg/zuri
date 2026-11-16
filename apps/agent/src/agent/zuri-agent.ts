@@ -59,6 +59,7 @@ import { McpService, OAUTH_CALLBACK_PATH } from "../mcp/service.ts";
 import { developmentGoogle, developmentGoogleNetwork } from "../google/dev-google.ts";
 import { GoogleCalendar } from "../google/service.ts";
 import { CONFIRM_AUTOMATION, ConfirmLinks } from "../google/confirm-links.ts";
+import { ContactFamilyService } from "../google/family.ts";
 import { AgendaRecord } from "../google/record.ts";
 import { localToday } from "../google/events.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
@@ -158,6 +159,8 @@ interface Store {
   reviewRequests: ReviewRequests;
   /** The patient's confirmation link (E7a). */
   confirmLinks: ConfirmLinks;
+  /** The family links between contacts (E11b). */
+  family: ContactFamilyService;
   /** The flows and the site monitor (step 22a). */
   flows: FlowService;
   /** E-mail to patients (E6c). */
@@ -328,6 +331,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       record: this.store.agendaRecord,
       reviewRequests: this.store.reviewRequests,
       confirmLinks: this.store.confirmLinks,
+      family: this.store.family,
       reviewMatches: this.store.reviewMatches,
       auth: this.store.auth,
       gmailGranted: () => this.store.mail.useGmailIfNone(),
@@ -1010,6 +1014,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       // The Google reviews (step 19c): the reviews' agent has no tools, only the metered model; its notices go to the center.
       // Which contact left a review (PR S20): by HMAC prints of the name, never the name kept; homonyms never link by themselves.
       const reviewMatches = new ReviewMatches({ db, contacts: () => contacts });
+      // The family links between contacts (E11b): only Zuri keeps them; the copy of Google stays read only.
+      const family = new ContactFamilyService({ db, contacts: () => contacts });
       const reviews = new ReviewService({
         db,
         google,
@@ -1338,7 +1344,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         settings: () => agents.settings("home_order"),
         background: (work) => void this.keepAliveWhile(work),
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, confirmLinks, flows, mail, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog, home };
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, confirmLinks, family, flows, mail, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog, home };
     }
     return this.#store;
   }
