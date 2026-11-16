@@ -394,8 +394,36 @@ os asteriscos.
 
 A Zuri guarda cada envio (link, horário, canal e hora), sem o texto e sem o
 telefone, na tabela `zur_confirm_sends` (migration 47), fora do backup como os
-links. O envio automático da véspera (E7c3) vai usar o mesmo registro para não
-mandar duas vezes.
+links. O envio automático da véspera usa o mesmo registro para não mandar duas
+vezes.
+
+#### Confirmação automática na véspera
+
+É a automação **Confirmação de consulta**, em CRM › Automações. Ela chega
+desligada, passa pelo ensaio de 3 dias úteis como as outras e só então envia.
+No dia útil antes da consulta, no horário escolhido (07:00 por padrão, entre
+07:00 e 20:00, e de novo a cada meia hora até as 21:00 para o que ainda faltar), a Zuri põe na fila de saída a mensagem de Configurações ›
+Consultório, com o link, para o celular de cada consulta. Na sexta, vão as
+consultas de sábado, domingo e segunda; antes de um feriado, as do feriado e
+do dia útil seguinte. A mensagem sai pelo Chatwoot e, se não sair até 1 hora
+antes da consulta, não sai mais.
+
+Com a automação em ensaio, ligada ou pausada, mudar a mensagem de confirmação
+ou o nome, o endereço ou a cidade do consultório pede a sua senha e gera um
+alerta de segurança, porque esse texto sai sem você ver. No Chatwoot, o
+contato aparece só com o primeiro nome.
+
+Ficam de fora: consulta cancelada ou já passada, sem celular (no Brasil, só
+celular com o 9), em agenda em que a Zuri não escreve, com o link cancelado,
+já respondida para aquele horário ou já enviada (pelo WhatsApp, por e-mail ou
+pelo próprio automático). No ensaio nada é criado: nem link, nem mensagem.
+
+Nos detalhes da consulta, o quadro diz quando ela sai ("Sai sozinho pelo
+Chatwoot em qua., 18 de nov., às 07:00"), que está na fila, que foi enviada
+ou que não saiu, e nesse caso pede o envio pelo WhatsApp ou por e-mail.
+Configurações › Consultório mostra, no cartão "Como a confirmação sai", se a
+automação está desligada, em ensaio, ligada ou pausada, com **Mudar** levando
+a CRM › Automações.
 
 O que o paciente vê, sem entrar em nada:
 

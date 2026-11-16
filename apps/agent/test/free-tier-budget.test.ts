@@ -1255,6 +1255,8 @@ describe("flows (step 22a)", () => {
         message: () => "",
         mailTemplate: () => ({ subject: "", body: "", button: "" }),
         sendMail: async () => ({ ok: true as const }),
+        // QA-E7c3a-06: as in the object, the automation's row is read for each status.
+        autoHour: () => String(world.db.one<{ options: string }>(`SELECT options FROM zur_crm_automations WHERE id = 'appointment-confirmation' AND state = 'live'`)?.options ?? ""),
         publicUrl: () => new URL("https://zuri.exemplo.com.br"),
         credentialKey: testEnv.MCP_CREDENTIAL_KEY,
         secret: () => "segredo-de-teste",
@@ -1283,14 +1285,14 @@ describe("flows (step 22a)", () => {
       // E7c1: the WhatsApp send writes its one row (no other index); the same tap within the minute, none.
       const sent = await measure(() => links.sent("agenda", "e1", "whatsapp"));
       expect(sent.written).toBe(1);
-      // The link's row, the conflict check and the last send for the status: measured 3.
-      expect(sent.read).toBeLessThanOrEqual(3);
+      // The link's row, the conflict check, the last send and the automation's last message (E7c3a) for the status: measured 4.
+      expect(sent.read).toBeLessThanOrEqual(4);
       expect((await measure(() => links.sent("agenda", "e1", "whatsapp"))).written).toBe(0);
       // E7c2: the e-mail (its count of the day is MailService's, measured in the E6c test) records its one row.
       const mailed = await measure(() => links.mail("agenda", "e1"));
       expect(mailed.written).toBe(1);
-      // The link's row, its token's row and the sends for the status: measured below 5.
-      expect(mailed.read).toBeLessThanOrEqual(5);
+      // The link's row, its token's row, the sends and the automation's last message for the status: measured below 6.
+      expect(mailed.read).toBeLessThanOrEqual(6);
       const token = url.split("/c/")[1] ?? "";
       expect(await measure(() => links.view(token, "198.51.100.1"))).toEqual({ read: 1, written: 0 });
       expect(await measure(() => links.view("Z".repeat(22), "198.51.100.2"), true)).toEqual({ read: 0, written: 0 });

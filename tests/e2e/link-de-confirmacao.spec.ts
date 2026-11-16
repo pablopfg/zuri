@@ -278,6 +278,14 @@ const EVENTS = [
   appointment("e4", "Renato Sampaio Cruz", "2026-11-16T08:30:00-03:00", "2026-11-16T09:30:00-03:00"),
   appointment("e5", "Paula Reis Moura", "2026-11-18T15:00:00-03:00", "2026-11-18T16:00:00-03:00", "5"),
   { ...appointment("e6", "Lívia Prates Nunes", "2026-11-19T10:00:00-03:00", "2026-11-19T11:00:00-03:00"), email: "livia@exemplo.com.br" },
+  // E7c3a: on Saturday the 21st, after the 20th (Consciência Negra, a national holiday).
+  { ...appointment("e7", "Otávio Brandão Reis", "2026-11-21T09:00:00-03:00", "2026-11-21T10:00:00-03:00"), country: "BR", phone: "41999990001" },
+  { ...appointment("e8", "Sílvia Matos Rocha", "2026-11-21T11:00:00-03:00", "2026-11-21T12:00:00-03:00"), country: "BR", phone: "41999990002" },
+  { ...appointment("e9", "Tomás Pires Lago", "2026-11-21T13:00:00-03:00", "2026-11-21T14:00:00-03:00"), country: "BR", phone: "41999990003" },
+  { ...appointment("e10", "Vera Lúcia Campos", "2026-11-21T15:00:00-03:00", "2026-11-21T16:00:00-03:00"), country: "BR", phone: "41999990004" },
+  // QA-E7c3a-2: a landline, and one confirmed by hand, the automation leaves out.
+  { ...appointment("e11", "Rui Fontes Prado", "2026-11-19T16:00:00-03:00", "2026-11-19T17:00:00-03:00"), country: "BR", phone: "4133330000" },
+  { ...appointment("e12", "Ester Nogueira Dias", "2026-11-18T11:00:00-03:00", "2026-11-18T12:00:00-03:00", "10"), country: "BR", phone: "41999990005" },
 ];
 
 async function routeAgenda(page: Page, status: Record<string, unknown>) {
@@ -317,7 +325,7 @@ async function routeAgenda(page: Page, status: Record<string, unknown>) {
 }
 
 async function openDetails(page: Page, title: string) {
-  await page.getByRole("main").getByRole("button", { name: new RegExp(`^${title}`) }).click();
+  await page.getByRole("main").getByRole("button", { name: new RegExp(`^(Fora do horário de atendimento: )?${title}`) }).click();
   return page.getByRole("dialog", { name: title });
 }
 
@@ -354,6 +362,60 @@ test("an appointment with the patient's e-mail sends the confirmation by e-mail 
   await expect(page.getByRole("status").filter({ hasText: "O e-mail não saiu. Confira Integrações › E-mail para pacientes e tente de novo." }).first()).toBeVisible();
   await expect(box.getByText("Ainda não enviado", { exact: true })).toBeVisible();
   await expect(box.getByRole("button", { name: "Enviar por e-mail" })).toBeVisible();
+});
+
+// E7c3a: the automatic confirmation by Chatwoot, while it is on: when it goes, in the queue, sent, or not sent.
+test("with the automatic confirmation on, the details say when it goes, that it is queued, sent or didn't go", async ({ page }) => {
+  const base = { made: true, answer: "none", answeredAt: "", answerStart: "", sentChannel: "", sentAt: "", sentStart: "", mailedStart: "", autoHour: "07:00", autoState: "", autoStart: "", autoAt: "" };
+  const startOf = (id: string) => EVENTS.find((event) => event.id === id)?.start ?? "";
+  await routeAgenda(page, {
+    e1: base,
+    e6: base,
+    e7: { ...base, autoState: "sent", autoStart: startOf("e7"), autoAt: "2026-11-16T10:00:05.000Z" },
+    e8: { ...base, autoState: "missed", autoStart: startOf("e8"), autoAt: "2026-11-16T10:00:05.000Z" },
+    e9: { ...base, autoState: "queued", autoStart: startOf("e9"), autoAt: "2026-11-16T10:00:05.000Z" },
+    e10: base,
+    e11: base,
+    e12: base,
+  });
+  await page.clock.install({ time: NOW });
+  await page.goto("/agenda");
+  await signIn(page);
+  await expect(page.getByRole("heading", { level: 1, name: "Agenda" })).toBeVisible();
+  const boxOf = async (title: string) => (await openDetails(page, title)).getByRole("region", { name: "Confirmação do paciente" });
+  const close = () => page.getByRole("dialog").getByRole("button", { name: "Fechar" }).click();
+
+  // Thursday's appointment goes on Wednesday, at the automation's hour.
+  let box = await boxOf("Helena Duarte Prado");
+  await expect(box.getByText("Sai sozinho pelo Chatwoot em qua., 18 de nov., às 07:00. Se você enviar antes pelo WhatsApp, o automático não repete.")).toBeVisible();
+  await close();
+  // Saturday's skips Friday's holiday: it goes on Thursday.
+  box = await boxOf("Vera Lúcia Campos");
+  await expect(box.getByText("Sai sozinho pelo Chatwoot em qui., 19 de nov., às 07:00.", { exact: false })).toBeVisible();
+  await close();
+  // Without a mobile there is nothing to send by Chatwoot.
+  box = await boxOf("Lívia Prates Nunes");
+  await expect(box.getByText("Sai sozinho pelo Chatwoot", { exact: false })).toHaveCount(0);
+  await close();
+  // Nor for a landline, or one marked Confirmado in the calendar.
+  for (const name of ["Rui Fontes Prado", "Ester Nogueira Dias"]) {
+    box = await boxOf(name);
+    await expect(box.getByText("Ainda não enviado", { exact: true })).toBeVisible();
+    await expect(box.getByText("Sai sozinho pelo Chatwoot", { exact: false })).toHaveCount(0);
+    await close();
+  }
+  box = await boxOf("Otávio Brandão Reis");
+  await expect(box.getByText("Enviado pelo Chatwoot 16 de nov., 07:00. Ainda sem resposta.", { exact: true })).toBeVisible();
+  await expect(box.getByRole("button", { name: "Enviar de novo" })).toBeVisible();
+  await close();
+  box = await boxOf("Sílvia Matos Rocha");
+  await expect(box.getByText("Ainda não enviado", { exact: true })).toBeVisible();
+  await expect(box.getByText("Não foi enviado pelo Chatwoot. Envie pelo WhatsApp ou por e-mail.")).toBeVisible();
+  await expect(box.getByRole("button", { name: "Enviar pelo WhatsApp" })).toBeVisible();
+  await close();
+  box = await boxOf("Tomás Pires Lago");
+  await expect(box.getByText("Na fila do Chatwoot. Ainda sem resposta.", { exact: true })).toBeVisible();
+  await expectAccessible(page, "confirmacao-automatica");
 });
 
 // Desktop only: the phone opens on the day, and the details are the same panel.

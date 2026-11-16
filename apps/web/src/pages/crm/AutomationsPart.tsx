@@ -117,7 +117,7 @@ const EFFECT: Record<CrmAutomationEffect["status"], MessageKey> = {
 };
 
 /** The options' names; one the catalog doesn't name shows its key. */
-const OPTION: Record<string, MessageKey> = { perDay: "web.crmAutomations.option.perDay" };
+const OPTION: Record<string, MessageKey> = { perDay: "web.crmAutomations.option.perDay", hour: "web.crmAutomations.option.hour" };
 
 export function useNames() {
   const { t } = useI18n();

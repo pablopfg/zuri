@@ -103,6 +103,7 @@ describe("E7c2: the confirmation e-mail", () => {
     hours: () => agent.store.settings.field("agenda"),
     notify: () => {},
     lockdown: () => false,
+    autoHour: () => "",
   });
   const links = (agent: ZuriAgent, sent: Mail[], template = { subject: "", body: "", button: "" }, answer: () => { ok: true } | { ok: false; problem: "daily_limit" } = () => ({ ok: true })) =>
     new ConfirmLinks({
@@ -124,6 +125,7 @@ describe("E7c2: the confirmation e-mail", () => {
       hours: () => agent.store.settings.field("agenda"),
       notify: () => {},
       lockdown: () => false,
+      autoHour: () => "",
     });
 
   it("sends the default e-mail to the appointment's e-mail, the link only in the button, and records it for that start", async () => {
@@ -253,6 +255,145 @@ describe("E7c2: the confirmation e-mail", () => {
       expect((await api("PATCH", "/settings", { confirmMail })).status, JSON.stringify(confirmMail).slice(0, 60)).toBe(400);
     }
     expect((await api("PATCH", "/settings", { confirmMail: { subject: "x".repeat(120), body: "y".repeat(2000), button: "z".repeat(30) } })).status).toBe(200);
+  });
+});
+
+describe("E7c3a: the automatic confirmation on the working eve", () => {
+  const links = (agent: ZuriAgent, autoHour = "", message = "") =>
+    new ConfirmLinks({
+      db: agent.store.db,
+      google: () => agent.store.google,
+      timeZone: () => "America/Sao_Paulo",
+      locale: () => "pt-BR",
+      clinic: () => CLINIC,
+      message: () => message,
+      mailTemplate: () => ({ subject: "", body: "", button: "" }),
+      sendMail: async () => ({ ok: true }),
+      publicUrl: () => new URL(ORIGIN),
+      credentialKey: testEnv.MCP_CREDENTIAL_KEY,
+      secret: () => "segredo-de-teste",
+      hours: () => agent.store.settings.field("agenda"),
+      notify: () => {},
+      lockdown: () => false,
+      autoHour: () => autoHour,
+    });
+  const at = (day: string, time: string, extra: Partial<DevEvent> = {}) =>
+    seed(0, { start: { dateTime: `${day}T${time}:00-03:00` }, end: { dateTime: `${day}T${time.replace(/^\d\d/, (h) => String(Number(h) + 1).padStart(2, "0"))}:00-03:00` }, ...extra });
+
+  it("a Friday covers the weekend and Monday, only who still has to confirm, and a rehearsal makes no link", async () => {
+    // 2099-12-11 is a Friday.
+    const sat = at("2099-12-12", "10:00", { summary: "Ana Souza" });
+    const mon = at("2099-12-14", "09:00", { summary: "Bruno Lima" });
+    const moved = at("2099-12-14", "11:00", { summary: "Carla Dias", colorId: EVENT_STATUS_COLOR.rescheduled });
+    at("2099-12-15", "09:00", { summary: "Depois da véspera" });
+    at("2099-12-11", "15:00", { summary: "No mesmo dia" });
+    at("2099-12-12", "11:00", { summary: "Já confirmada", colorId: EVENT_STATUS_COLOR.confirmed });
+    at("2099-12-12", "12:00", { summary: "Cancelada", colorId: EVENT_STATUS_COLOR.cancelled });
+    at("2099-12-12", "13:00", { summary: "Sem celular", extendedProperties: { private: {} } });
+    at("2099-12-12", "14:00", { summary: "Telefone fixo", extendedProperties: { private: { zuriPhone: "4133330000" } } });
+    at("2099-12-12", "15:00", { summary: "Sem tipo", description: "" });
+    const sent = at("2099-12-14", "13:00", { summary: "Recebeu pelo WhatsApp" });
+    const answered = at("2099-12-14", "14:00", { summary: "Respondeu pelo link" });
+    const result = await inOwner(async (agent) => {
+      const owner = links(agent);
+      await owner.link(WORK, sent.id);
+      await owner.sent(WORK, sent.id, "whatsapp");
+      await owner.link(WORK, answered.id);
+      agent.store.db.run(`UPDATE zur_appointment_links SET answer = 'confirmed', answer_start = ? WHERE event_id = ?`, new Date(answered.start.dateTime ?? "").toISOString(), answered.id);
+      const before = { ...agent.store.db.usage };
+      const rehearsal = await owner.eve("2099-12-11", false);
+      const rehearsalCost = { read: agent.store.db.usage.rowsRead - before.rowsRead, written: agent.store.db.usage.rowsWritten - before.rowsWritten };
+      const linksAfterRehearsal = agent.store.db.all(`SELECT event_id FROM zur_appointment_links`).length;
+      const middle = { ...agent.store.db.usage };
+      const live = await owner.eve("2099-12-11", true);
+      const liveCost = { read: agent.store.db.usage.rowsRead - middle.rowsRead, written: agent.store.db.usage.rowsWritten - middle.rowsWritten };
+      const ids = agent.store.db.all<{ id: string; event_id: string }>(`SELECT id, event_id FROM zur_appointment_links`);
+      return { rehearsal, linksAfterRehearsal, live, ids, rehearsalCost, liveCost };
+    });
+    // P1: a rehearsal writes nothing; live writes only the 3 new links (a row and its indexes each). The reads are a
+    // handful per event of the 4 days (the calendar, its link and its sends): measured 24 and 27 for 12 events.
+    expect(result.rehearsalCost).toMatchObject({ written: 0 });
+    expect(result.rehearsalCost.read).toBeLessThanOrEqual(30);
+    expect(result.liveCost.written).toBeLessThanOrEqual(12);
+    expect(result.liveCost.read).toBeLessThanOrEqual(30);
+    // SEC-E7c3a-03: the contact's name is the first name, as in the message, never the whole title.
+    expect(result.rehearsal.map((item) => item.label).sort()).toEqual(["Ana", "Bruno", "Carla"]);
+    expect(result.rehearsal.every((item) => item.text === "" && item.phone === "+5541999990000")).toBe(true);
+    expect(result.linksAfterRehearsal).toBe(2);
+    expect(result.live.map((item) => item.label).sort()).toEqual(["Ana", "Bruno", "Carla"]);
+    const ana = result.live.find((item) => item.label === "Ana");
+    const linkId = result.ids.find((row) => row.event_id === sat.id)?.id ?? "";
+    const start = new Date(sat.start.dateTime ?? "").toISOString();
+    expect(ana?.key).toBe(`${linkId}:${start}`);
+    expect(ana?.text).toMatch(/^Olá, Ana! Sua \*consulta\* no \*Consultório Exemplo\* está marcada para \*sábado, 12 de dezembro, às 10:00\*\./);
+    expect(ana?.text).toContain(`${ORIGIN}/c/`);
+    // The link expires an hour before: the message doesn't go after it.
+    expect(ana?.notAfter).toBe(new Date(Date.parse(start) - HOUR).toISOString());
+    expect(result.ids.map((row) => row.event_id).sort()).toEqual([answered.id, mon.id, moved.id, sat.id, sent.id].sort());
+  });
+
+  it("a holiday is no working day: the Thursday before Christmas covers it and the Friday", async () => {
+    // 2099-12-24 is a Thursday; the 25th is a national holiday.
+    const christmas = at("2099-12-25", "10:00", { summary: "No feriado" });
+    const friday = at("2099-12-26", "10:00", { summary: "Depois do feriado" });
+    const labels = await inOwner(async (agent) => (await links(agent).eve("2099-12-24", false)).map((item) => item.label).sort());
+    expect(labels).toEqual(["Depois", "No"]);
+    expect([christmas.summary, friday.summary]).toEqual(["No feriado", "Depois do feriado"]);
+  });
+
+  it("SEC-E7c3a-02 and 06: a message the queue would refuse is left out before its link, and no more links than the day's ceiling", async () => {
+    at("2099-12-14", "09:00", { summary: "Ana Souza" });
+    at("2099-12-14", "10:00", { summary: "Bruno Lima" });
+    const result = await inOwner(async (agent) => {
+      // At the template's limit, filled with the link it passes the queue's 1,000 characters.
+      const long = await links(agent, "", `${"a".repeat(993)} {link}`).eve("2099-12-11", true);
+      const afterLong = agent.store.db.all(`SELECT id FROM zur_appointment_links`).length;
+      const capped = await links(agent).eve("2099-12-11", true, 1);
+      const afterCap = agent.store.db.all(`SELECT id FROM zur_appointment_links`).length;
+      return { long, afterLong, capped, afterCap };
+    });
+    expect(result.long).toEqual([]);
+    expect(result.afterLong).toBe(0);
+    expect(result.capped).toHaveLength(1);
+    expect(result.afterCap).toBe(1);
+  });
+
+  it("the status says the automation's hour and how its last message for the link went", async () => {
+    const event = at("2099-12-16", "10:00");
+    const states = await inOwner(async (agent) => {
+      const owner = links(agent, "07:00");
+      const made = await owner.link(WORK, event.id);
+      const id = agent.store.db.one<{ id: string }>(`SELECT id FROM zur_appointment_links WHERE event_id = ?`, event.id)?.id ?? "";
+      const start = new Date(event.start.dateTime ?? "").toISOString();
+      const now = new Date().toISOString();
+      agent.store.db.run(
+        `INSERT INTO zur_outbox (id, automation_id, key, connection_id, priority, label, status, grp, available_at, day, created_at, updated_at) VALUES ('j1', 'appointment-confirmation', ?, 'c1', 0, 'x', 'queued', 'waiting', ?, '2099-12-15', ?, ?)`,
+        `${id}:${start}`,
+        now,
+        now,
+        now,
+      );
+      const queued = owner.status(WORK, event.id);
+      agent.store.db.run(`UPDATE zur_outbox SET status = 'sent', grp = 'sent', done_at = '2099-12-15T10:00:05.000Z' WHERE id = 'j1'`);
+      const sentNow = owner.status(WORK, event.id);
+      agent.store.db.run(`UPDATE zur_outbox SET status = 'expired', grp = 'skipped' WHERE id = 'j1'`);
+      const missed = owner.status(WORK, event.id);
+      agent.store.db.run(`DELETE FROM zur_outbox WHERE id = 'j1'`);
+      return { made, queued, sentNow, missed, start };
+    });
+    expect(states.made).toMatchObject({ autoHour: "07:00", autoState: "" });
+    expect(states.queued).toMatchObject({ autoState: "queued", autoStart: states.start });
+    expect(states.sentNow).toMatchObject({ autoState: "sent", autoAt: "2099-12-15T10:00:05.000Z" });
+    expect(states.missed).toMatchObject({ autoState: "missed" });
+  });
+
+  it("the owner's object has the automation in its catalog, ready and off; its hour is empty until it is live", async () => {
+    const event = at("2099-12-17", "10:00");
+    const view = await inOwner((agent) => agent.store.crmAutomations.list().automations.find((item) => item.id === "appointment-confirmation"));
+    expect(view).toMatchObject({ availability: "ready", state: "off", connectionKind: "chatwoot", writesToContacts: true });
+    await linkOf(event);
+    const status = (await (await api("GET", `/google/events/link?${new URLSearchParams({ calendarId: WORK, eventId: event.id })}`)).json()) as ConfirmLinkStatus;
+    expect(status.autoHour).toBe("");
   });
 });
 
@@ -388,7 +529,7 @@ describe("E7a: the owner's link", () => {
   it("says the state without making a link, and refuses a plain event, a cancelled one and one that already expired", async () => {
     const event = seed(30 * 24 * HOUR);
     const status = await api("GET", `/google/events/link?calendarId=${encodeURIComponent(WORK)}&eventId=${event.id}`);
-    expect(await status.json()).toEqual({ made: false, answer: "none", answeredAt: "", answerStart: "", previousStart: "", sentChannel: "", sentAt: "", sentStart: "", mailedStart: "" });
+    expect(await status.json()).toEqual({ made: false, answer: "none", answeredAt: "", answerStart: "", previousStart: "", sentChannel: "", sentAt: "", sentStart: "", mailedStart: "", autoHour: "", autoState: "", autoStart: "", autoAt: "" });
     expect(await inOwner((agent) => agent.store.db.all(`SELECT id FROM zur_appointment_links`))).toEqual([]);
     const plain = seed(30 * 24 * HOUR, { description: "Reunião do condomínio" });
     expect((await api("POST", "/google/events/link", { calendarId: WORK, eventId: plain.id })).status).toBe(400);
@@ -758,6 +899,7 @@ describe("E7a: the edges, on a clock of the test's own", () => {
       hours: () => agent.store.settings.field("agenda"),
       notify: () => {},
       lockdown: () => false,
+      autoHour: () => "",
       clock: () => at,
     });
   const codeOf = (error: unknown) => (error as { code?: string }).code ?? String(error);
@@ -813,6 +955,44 @@ describe("E7a: the team's WhatsApp", () => {
     // The owner hears of it as a security notice, the critical kind.
     // A security alert kind: the alerts' pass turns it into the owner's critical notice (alerts/security.ts).
     expect(SECURITY_ALERT_EVENTS).toContain("clinic_whatsapp_changed");
+  });
+});
+
+describe("SEC-E7c3a-01: the automatic confirmation's text", () => {
+  it("with the automation on, changing the message or the office's name, address or city asks for the password and alerts; off, it doesn't", async () => {
+    const reset = () =>
+      inOwner((agent) => {
+        agent.store.db.run(`DELETE FROM zur_auth_events`);
+        agent.store.db.run(`UPDATE zur_sessions SET confirmed_at = ?`, Date.now() - 16 * 60_000);
+      });
+    const alerts = () => inOwner((agent) => agent.store.db.all(`SELECT id FROM zur_auth_events WHERE kind = 'confirm_text_changed'`).length);
+    await reset();
+    // Off: as before, no password.
+    expect((await api("PATCH", "/settings", { confirmMessage: "Olá, {nome}! Confirme: {link}", clinic: CLINIC })).status).toBe(200);
+    expect(await alerts()).toBe(0);
+    let stored = "Olá, {nome}! Confirme: {link}";
+    for (const state of ["rehearsal", "live", "paused"]) {
+      await inOwner((agent) =>
+        agent.store.db.run(
+          `INSERT INTO zur_crm_automations (id, state, updated_at) VALUES ('appointment-confirmation', ?, '2099-01-01T00:00:00.000Z') ON CONFLICT (id) DO UPDATE SET state = excluded.state`,
+          state,
+        ),
+      );
+      await reset();
+      for (const patch of [{ confirmMessage: `Oi, {nome} (${state}): {link}` }, { clinic: { ...CLINIC, name: `Outro ${state}` } }, { clinic: { ...CLINIC, address: `Rua ${state}, 1` } }, { clinic: { ...CLINIC, city: `Cidade ${state}` } }]) {
+        expect((await api("PATCH", "/settings", patch)).status, `${state} ${JSON.stringify(patch).slice(0, 40)}`).toBe(403);
+      }
+      // The same text again changes nothing: no password.
+      expect((await api("PATCH", "/settings", { confirmMessage: stored, clinic: CLINIC })).status).toBe(200);
+      expect(await alerts()).toBe(0);
+      await inOwner((agent) => agent.store.db.run(`UPDATE zur_sessions SET confirmed_at = ?`, Date.now()));
+      stored = `Oi, {nome} (${state}): {link}`;
+      expect((await api("PATCH", "/settings", { confirmMessage: stored })).status).toBe(200);
+      expect(await alerts()).toBe(1);
+    }
+    expect(SECURITY_ALERT_EVENTS).toContain("confirm_text_changed");
+    await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_crm_automations WHERE id = 'appointment-confirmation'`));
+    await api("PATCH", "/settings", { confirmMessage: "", clinic: CLINIC });
   });
 });
 
@@ -879,6 +1059,7 @@ describe("E7b: rescheduling by the link", () => {
       hours: () => agent.store.settings.field("agenda"),
       notify: (notice) => notices.push(notice),
       lockdown: () => false,
+      autoHour: () => "",
       clock: () => clock,
     });
   let notices: { kind: string; from: string; when: string }[] = [];

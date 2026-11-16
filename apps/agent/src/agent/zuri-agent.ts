@@ -6,7 +6,7 @@ import type { AIProvider } from "../ai/provider.ts";
 import { breachCheckFor } from "../auth/dev-breach.ts";
 import { MockTranscriber, type Transcriber, WorkersAITranscriber } from "../ai/transcription.ts";
 import type { AiLimits } from "../ai/usage.ts";
-import { createApi } from "../api/app.ts";
+import { confirmTextChanged, createApi } from "../api/app.ts";
 import { readAreaVersions } from "../db/area-versions.ts";
 import { LiveChannel } from "../live/channel.ts";
 import { SSE_PING_MS } from "../api/chat.ts";
@@ -58,7 +58,7 @@ import { McpMeaning } from "../mcp/meaning.ts";
 import { McpService, OAUTH_CALLBACK_PATH } from "../mcp/service.ts";
 import { developmentGoogle, developmentGoogleNetwork } from "../google/dev-google.ts";
 import { GoogleCalendar } from "../google/service.ts";
-import { ConfirmLinks } from "../google/confirm-links.ts";
+import { CONFIRM_AUTOMATION, ConfirmLinks } from "../google/confirm-links.ts";
 import { AgendaRecord } from "../google/record.ts";
 import { localToday } from "../google/events.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
@@ -77,6 +77,7 @@ import { developmentSmtp } from "../mail/dev-mail.ts";
 import { MailService } from "../mail/service.ts";
 import { SiteStates } from "../flows/monitor.ts";
 import { type FlowNotice, FlowService } from "../flows/service.ts";
+import { appointmentConfirmation } from "../crm/automations/appointment-confirmation.ts";
 import { EXAMPLE_AUTOMATION } from "../crm/automations/example.ts";
 import { AUTOMATION_NAME } from "../crm/automations/names.ts";
 import { buildCatalog } from "../crm/automations/registry.ts";
@@ -284,6 +285,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     chatwoot: () => ({ owner: this.store.chatwootOwner, auth: this.store.auth }),
     crm: () => ({ crm: this.store.crm, rearm: () => this.store.automations.rearm() }),
     crmAutomations: () => ({ automations: this.store.crmAutomations, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
+    confirmAutoOn: () => this.store.crmAutomations.on(CONFIRM_AUTOMATION),
     outbox: () => ({ outbox: this.store.outbox, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
     backup: () => {
       const { db, settings, productivity, crm, auth, automations } = this.store;
@@ -301,8 +303,11 @@ export class ZuriAgent extends Agent<WorkerEnv> {
             zoneBefore = settings.field("timeZone");
             // The team's WhatsApp reaches patients (E7a): a backup that changes it alerts like PATCH /settings.
             const whatsapp = patch.clinic !== undefined && patch.clinic.whatsapp !== settings.field("clinic").whatsapp;
+            // SEC-E7c3a-01: so does the automatic confirmation's text, while the automation is on.
+            const confirmText = this.store.crmAutomations.on(CONFIRM_AUTOMATION) && confirmTextChanged(patch, settings);
             settings.update(patch);
             if (whatsapp) auth.events.record("clinic_whatsapp_changed", null, { alert: true });
+            if (confirmText) auth.events.record("confirm_text_changed", null, { alert: true });
             return Object.keys(patch).length;
           },
         },
@@ -1046,6 +1051,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         secret: () => env.PASSWORD_PEPPER,
         hours: () => settings.field("agenda"),
         lockdown: () => auth.lockdown.active(),
+        // The CRM's automation is made below; its hour only matters once the object is up (E7c3a).
+        autoHour: () => String(crmAutomations.liveOption(CONFIRM_AUTOMATION, "hour") ?? ""),
         notify: (notice) =>
           alerts.raise({ kind: `agenda.${notice.kind}`, category: "events", priority: "normal", link: "/agenda", source: null, params: { name: notice.name, when: notice.when, from: notice.from } }),
       });
@@ -1137,7 +1144,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         timeZone: () => settings.field("timeZone"),
         lockdown: () => auth.lockdown.active(),
         notify: (notice) => crmAutomationNotice(alerts, notice, this.locale()),
-        catalog: buildCatalog(this.development() ? [EXAMPLE_AUTOMATION] : []),
+        // The appointment confirmation (E7c3a) reads the working eve through the confirmation links.
+        catalog: buildCatalog([appointmentConfirmation((day, make, max) => confirmLinks.eve(day, make, max)), ...(this.development() ? [EXAMPLE_AUTOMATION] : [])]),
       });
       flows.automationUsers = (id) => crmAutomations.users(id).map((automation) => automationName(this.locale(), automation));
       const crm = new CrmService({ db, timeZone: () => settings.field("timeZone"), locale: () => this.locale(), notify: (notice) => crmNotice(alerts, notice), assertBytes: () => productivity.storage.assertBytes() });

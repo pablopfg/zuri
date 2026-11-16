@@ -111,6 +111,8 @@ test("on a phone the section opens from the list and every control is a 44 px ta
   await signIn(page);
   await openSettingsSection(page, "Consultório");
   await expect(section(page).getByRole("heading", { name: "Dados do consultório" })).toBeVisible();
+  // QA-E7c3a-10: the automation's line loads on its own; its "Mudar" is measured too.
+  await expect(section(page).getByRole("link", { name: "Mudar a confirmação automática em CRM › Automações" })).toBeVisible();
   expect(await tooSmallControls(page), "every control of the section is a 44 px target").toEqual([]);
   await expectAccessible(page, "configuracoes-consultorio-celular");
 });
@@ -126,6 +128,8 @@ test("in English, the section follows the language", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Office details" })).toBeVisible();
   await expect(page.getByText("Monday to Friday, 08:00 to 18:00, lunch 12:00 to 14:00. They live in one place, Settings › Calendar.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Change office hours" })).toBeVisible();
+  await expect(page.getByText("Automatic, through Chatwoot")).toBeVisible();
+  await expect(page.getByText("Off", { exact: true })).toBeVisible();
 });
 
 // E7c1 (plano link-de-confirmacao.md, seção 16): the confirmation message, its variables and its preview.
@@ -180,5 +184,31 @@ test("@mobile the confirmation message starts at the default, takes a variable a
   await section(page).getByRole("button", { name: "Salvar a mensagem" }).click();
   expect((await reset).postDataJSON()).toEqual({ confirmMessage: "" });
   await expect(section(page).getByText("Sempre disponível")).toBeVisible();
+});
+
+// E7c3a (plano link-de-confirmacao.md, seção 18): the automatic confirmation is turned on in CRM › Automações; here it only shows.
+test("the automatic confirmation shows its state and Mudar opens CRM › Automações", async ({ page }) => {
+  await open(page);
+  const send = section(page).getByRole("region", { name: "Como a confirmação sai" });
+  await expect(send.getByText("Automático, pelo Chatwoot")).toBeVisible();
+  await expect(send.getByText("Desligado", { exact: true })).toBeVisible();
+  // Each state as CRM › Automações has it; a live one says its hour.
+  let state = "rehearsal";
+  await page.route("**/api/crm/automations", async (route) => {
+    const list = (await (await route.fetch()).json()) as { automations: { id: string; state: string; options: Record<string, unknown> }[] };
+    for (const item of list.automations) if (item.id === "appointment-confirmation") Object.assign(item, { state, options: { hour: "08:30" } });
+    return route.fulfill({ json: list });
+  });
+  for (const [next, text] of [
+    ["rehearsal", "Em ensaio"],
+    ["paused", "Pausado"],
+    ["live", "Ligado, às 08:30"],
+  ] as const) {
+    state = next;
+    await page.reload();
+    await expect(send.getByText(text, { exact: true })).toBeVisible();
+  }
+  await send.getByRole("link", { name: "Mudar a confirmação automática em CRM › Automações" }).click();
+  await expect(page).toHaveURL(/\/crm$/);
 });
 
