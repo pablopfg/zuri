@@ -761,6 +761,8 @@ export const ptBRServer = {
   "reviews.link.unavailable": "Este link não abriu agora. Tente de novo daqui a pouco.",
   "notice.security.review_link_changed.title": "Link de avaliação trocado",
   "notice.security.clinic_whatsapp_changed.title": "WhatsApp da equipe mudado",
+  "notice.security.confirm_text_changed.title": "Mensagem da confirmação automática mudada",
+  "notice.security.confirm_text_changed.body": "A mensagem de confirmação ou os dados do consultório que vão nela mudaram em Configurações › Consultório, com a confirmação automática ligada. Ela sai sozinha para os pacientes. Se não foi você, confira lá e troque a senha.",
   "notice.security.clinic_whatsapp_changed.body": "O WhatsApp da equipe mudou em Configurações › Consultório. É ele que os pacientes veem na página de confirmação. Se não foi você, confira lá e troque a senha.",
   "notice.security.mail_changed.title": "E-mail para pacientes mudado",
   "notice.security.mail_changed.body": "Por onde saem os e-mails aos pacientes mudou em Configurações › Integrações (remetente, Responder para ou servidor). Se não foi você, confira lá e troque a senha.",
