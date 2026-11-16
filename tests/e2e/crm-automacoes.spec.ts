@@ -50,7 +50,10 @@ test("lists the automations in the order they arrive, with the base and the noti
   await expect(row(page, "Acompanhamento do plano")).toContainText("10");
   // Only local development has the example, last, with its code.
   await expect(row(page, "Automação de exemplo")).toContainText("Desligada");
-  await expect(page.getByText("1 de 11 liberada")).toBeVisible();
+  // E7c3a: the appointment confirmation arrived with its code, off until the owner turns it on.
+  await expect(row(page, "Confirmação de consulta")).toContainText("Desligada");
+  await expect(row(page, "Confirmação de consulta").getByRole("button", { name: "Ligar" })).toBeVisible();
+  await expect(page.getByText("2 de 11 liberadas")).toBeVisible();
   // "Avisar quando chegar": a button that says whether it's pressed.
   const bell = row(page, "Pedido de avaliação").getByRole("button", { name: "Avisar quando “Pedido de avaliação” chegar" });
   await expect(bell).toHaveAttribute("aria-pressed", "false");

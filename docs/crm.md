@@ -98,6 +98,11 @@ Chatwoot, contato de cada consulta), com o que já está pronto.
   volta ao ensaio e avisa. **Desligar** e o modo de bloqueio param tudo na hora.
 - Cabem 10 automações ligadas (em ensaio, de verdade ou pausadas).
 
+A primeira automação é a **Confirmação de consulta**: no dia útil antes da
+consulta, no horário escolhido, ela manda ao paciente a mensagem de
+confirmação com o link. Detalhes em
+[google-agenda.md](google-agenda.md#confirmação-automática-na-véspera).
+
 Cada automação declara no código os caminhos que chama, os limites por
 execução e por dia e se escreve a contatos. A Zuri confere essa declaração
 antes de rodar e recusa chamada fora dela. Nenhuma usa IA ainda.
