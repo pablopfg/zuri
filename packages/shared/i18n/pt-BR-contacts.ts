@@ -105,7 +105,6 @@ export const ptBRContacts = {
   "web.contacts.nickname": "Apelido",
   "web.contacts.moreAtGoogle.one": "e mais {count} no Google",
   "web.contacts.moreAtGoogle.other": "e mais {count} no Google",
-  "web.contacts.emptyAtGoogle": "Vazio no Google",
   "web.contacts.readOnly": "Só leitura, do Google Contatos.",
   "web.contacts.openGoogle": "Abrir no Google Contatos",
 } as const;

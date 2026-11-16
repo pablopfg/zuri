@@ -668,45 +668,47 @@ describe("search_contacts and get_contact", () => {
 });
 
 describe("the notices", () => {
-  it("tells today's birthdays at the chosen time in the owner's zone, near midnight UTC too", () =>
+  it("E11a: tells no birthday any more, even with the old switch on; the special dates keep their time in the owner's zone, near midnight UTC too", () =>
     withChatWorld(async (world) => {
       add(world, "c1", "Ana", [CLIENTS], { birthdays: [{ date: { month: 11, day: 1 } }] });
-      add(world, "c2", "Bia", [CLIENTS], { birthdays: [{ date: { month: 10, day: 31 } }] });
+      add(world, "c2", "Bia", [CLIENTS], { events: [{ date: { month: 10, day: 31 }, formattedType: "Retorno" }] });
       await turnOn(world);
+      world.db.run(`UPDATE zur_contact_sync SET birthdays = 1`);
       world.contacts.configure({ time: "22:30" });
-      // 31/10 22:30 in São Paulo is 01/11 01:30 UTC: still Bia's day, not Ana's.
+      // Only the dates' switch plans a notice now.
+      expect(sync(world).next_reminder).toBeNull();
+      world.contacts.configure({ dates: true });
+      // 31/10 22:30 in São Paulo is 01/11 01:30 UTC: still Bia's day.
       expect(sync(world).next_reminder).toBe(Date.parse("2026-11-01T01:30:00Z"));
       world.clock.now = Date.parse("2026-11-01T01:30:00Z");
       await world.contacts.tick();
-      expect(world.contactNotices.filter((notice) => notice.kind === "contacts.birthdays")).toEqual([{ kind: "contacts.birthdays", names: "Bia", more: 0, day: "2026-10-31" }]);
-      expect(sync(world).next_reminder).toBe(Date.parse("2026-11-02T01:30:00Z"));
-      // The next day's notice, Ana's.
-      world.clock.now = Date.parse("2026-11-02T01:30:00Z");
-      await world.contacts.tick();
-      expect(world.contactNotices.filter((notice) => notice.kind === "contacts.birthdays").at(-1)).toMatchObject({ names: "Ana", day: "2026-11-01" });
+      expect(world.contactNotices.map((notice) => notice.kind)).toEqual(["contacts.dates"]);
+      expect(world.contactNotices[0]).toMatchObject({ items: "Bia (Retorno)", day: "2026-10-31" });
+      expect(world.contacts.status().reminders).not.toHaveProperty("birthdays");
     }));
 
   it("tells special dates days ahead, only with the chosen label, and lists 20 names at most", () =>
     withChatWorld(async (world) => {
       add(world, "c1", "Ana", [CLIENTS], { events: [{ date: { month: 11, day: 4 }, formattedType: "Retorno" }] });
       add(world, "c2", "Bia", [CLIENTS], { events: [{ date: { month: 11, day: 4 }, formattedType: "Aniversário de casamento" }] });
-      for (let i = 0; i < 22; i++) add(world, `b${i}`, `Pessoa ${String(i).padStart(2, "0")}`, [CLIENTS], { birthdays: [{ date: { month: 11, day: 1 } }] });
+      for (let i = 0; i < 22; i++) add(world, `b${i}`, `Pessoa ${String(i).padStart(2, "0")}`, [CLIENTS], { events: [{ date: { month: 11, day: 4 }, formattedType: "Retorno" }] });
       await turnOn(world);
       world.contacts.configure({ dates: true, daysAhead: 3, match: "retorno", time: "08:00" });
       // 01/11 08:00 in São Paulo.
       expect(sync(world).next_reminder).toBe(Date.parse("2026-11-01T11:00:00Z"));
       world.clock.now = Date.parse("2026-11-01T11:00:00Z");
       await world.contacts.tick();
-      expect(world.contactNotices.find((notice) => notice.kind === "contacts.dates")).toEqual({ kind: "contacts.dates", items: "Ana (Retorno)", more: 0, day: "2026-11-04" });
-      const birthdays = world.contactNotices.find((notice) => notice.kind === "contacts.birthdays");
-      expect(birthdays).toMatchObject({ more: 2 });
-      expect((birthdays as { names: string }).names.split(", ")).toHaveLength(CONTACT_LIMITS.namesPerNotice);
+      const dates = world.contactNotices.find((notice) => notice.kind === "contacts.dates") as { items: string; more: number; day: string };
+      expect(dates).toMatchObject({ more: 3, day: "2026-11-04" });
+      expect(dates.items.split(", ")).toHaveLength(CONTACT_LIMITS.namesPerNotice);
+      expect(dates.items.startsWith("Ana (Retorno), Pessoa 00 (Retorno)")).toBe(true);
+      expect(dates.items).not.toContain("Bia");
     }));
 
-  it("plans no notice while both are off", () =>
+  it("plans no notice while the dates are off", () =>
     withChatWorld(async (world) => {
       await turnOn(world);
-      world.contacts.configure({ birthdays: false, dates: false });
+      world.contacts.configure({ dates: false });
       expect(sync(world).next_reminder).toBeNull();
     }));
 

@@ -314,7 +314,6 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         auto: this.store.backupAuto,
         rearm: () => automations.rearm(),
         afterImport: async () => {
-          crm.planReminder();
           // A new zone moves every wall-clock time, as in PATCH /settings.
           if (zoneBefore !== null && settings.field("timeZone") !== zoneBefore) await automations.rescheduleAll();
           else await automations.rearm();
@@ -503,7 +502,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     } catch (error) {
       log("error", "outbox_failed", { error });
     }
-    // The CRM's follow-ups and birthdays (step 22b): set the alarm again when they moved.
+    // The CRM's follow-ups (step 22b): set the alarm again when they moved.
     try {
       if (this.store.crm.tick()) await automations.rearm();
     } catch (error) {
@@ -887,7 +886,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
               return null;
             }
           })();
-          // The CRM's follow-ups and birthdays (step 22b).
+          // The CRM's follow-ups (step 22b).
           const crmDue = (() => {
             try {
               const at = crm.nextDue();
@@ -1518,17 +1517,6 @@ function crmNotice(alerts: AlertService, notice: CrmNotice): void {
     case "crm.followUps":
       alerts.raise({ kind: notice.kind, category: "reminders", priority: "normal", params: { count: notice.count }, link: "/crm" });
       return;
-    case "crm.birthdays":
-      alerts.raise({
-        kind: notice.kind,
-        category: "reminders",
-        priority: "normal",
-        params: { names: notice.more > 0 ? `${notice.names} (+${notice.more})` : notice.names },
-        link: "/crm",
-        dedupeKey: `crm-birthdays-${notice.day}`,
-        dedupeMs: 36 * 3_600_000,
-      });
-      return;
   }
 }
 
@@ -1574,17 +1562,6 @@ export function reviewNotice(alerts: Pick<AlertService, "raise">, notice: Review
 function contactNotice(alerts: AlertService, notice: ContactNotice): void {
   const base = { priority: "normal" as const };
   switch (notice.kind) {
-    case "contacts.birthdays":
-      alerts.raise({
-        ...base,
-        kind: notice.kind,
-        category: "reminders",
-        params: { names: notice.more > 0 ? `${notice.names} (+${notice.more})` : notice.names },
-        link: "/contatos",
-        dedupeKey: `contacts-birthdays-${notice.day}`,
-        dedupeMs: 36 * 3_600_000,
-      });
-      return;
     case "contacts.dates":
       alerts.raise({
         ...base,

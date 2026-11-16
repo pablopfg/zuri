@@ -65,7 +65,7 @@ const status: ContactsStatus = {
   syncEveryMinutes: 5,
   contacts: 2,
   labels: [{ id: "contactGroups/pacientes", name: "Pacientes", count: 2, selected: true }],
-  reminders: { birthdays: false, dates: false, time: "08:00", daysAhead: 0, match: "" },
+  reminders: { dates: false, time: "08:00", daysAhead: 0, match: "" },
   onAdded: "off",
 };
 

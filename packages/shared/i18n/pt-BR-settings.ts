@@ -381,7 +381,6 @@ export const ptBRSettings = {
   "web.sync.interval.next": "Próxima leitura: {when}",
   "web.contacts.card.open": "Abrir Contatos",
   "web.contacts.card.notices": "Avisos",
-  "web.contacts.card.birthdays": "Aniversários do dia",
   "web.contacts.card.dates": "Datas especiais",
   "web.contacts.card.time": "Horário dos avisos",
   "web.contacts.card.daysAhead": "Avisar das datas com quantos dias de antecedência",
