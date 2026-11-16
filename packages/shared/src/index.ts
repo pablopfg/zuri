@@ -200,3 +200,4 @@ export * from "./countries.ts";
 export * from "./home-suggestions.ts";
 export * from "./mail.ts";
 export * from "./confirm-link.ts";
+export * from "./confirm-message.ts";

@@ -370,6 +370,22 @@ describe("import", () => {
     }
   });
 
+  it("E7c1: the owner's confirmation message goes in the file and comes back; one with an address typed by hand is refused (SEC-E7c1-01)", async () => {
+    try {
+      await inOwner((agent) => agent.store.settings.update({ confirmMessage: "Oi {nome}, até {dia}: {link}" }));
+      const file = await ok(session("GET", "/backup/export"));
+      expect(JSON.stringify(file)).toContain("Oi {nome}, até {dia}: {link}");
+      await inOwner((agent) => agent.store.settings.update({ confirmMessage: "" }));
+      await ok(session("POST", "/backup/import", backup({ settings: { confirmMessage: "Oi {nome}: {link}" } })));
+      expect(await inOwner((agent) => agent.store.settings.get().confirmMessage)).toBe("Oi {nome}: {link}");
+      const bad = await session("POST", "/backup/import", backup({ settings: { confirmMessage: "Oi {nome}: {link} https://pix.exemplo.com.br" } }));
+      expect(bad.status).toBe(400);
+      expect(await inOwner((agent) => agent.store.settings.get().confirmMessage)).toBe("Oi {nome}: {link}");
+    } finally {
+      await inOwner((agent) => agent.store.settings.update({ confirmMessage: "" }));
+    }
+  });
+
   it("the record of the day goes in the file and comes back, and a day already closed here is never changed", async () => {
     // SEC-E5e-01: an appointment with the patient's fields and a Meet call stays in the file (it was left out whole).
     const event = (title: string) => ({

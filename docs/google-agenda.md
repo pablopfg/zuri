@@ -345,14 +345,37 @@ Google Agenda (decisão de 03/11/2026).
 Os detalhes de uma consulta (um evento com tipo, numa agenda em que a Zuri
 escreve) têm o quadro **Confirmação do paciente**:
 
-- A linha de cima diz a resposta: "Ainda sem resposta", "Confirmou pelo link",
-  "Remarcou pelo link" (com o horário de antes) ou "Cancelou pelo link", com o
-  dia e a hora. Uma consulta que mudou de hora
-  depois da resposta volta a "Ainda sem resposta": o paciente confirma de novo.
-- **Copiar link** copia o endereço `https://<domínio>/c/<token>` e **Ver como
-  o paciente** abre a página numa aba nova. O link nasce no primeiro pedido e
-  é o mesmo depois disso, um por consulta.
+- A linha de cima diz a situação: "Ainda não enviado", "Enviado pelo
+  WhatsApp" (com o dia e a hora, ainda sem resposta), "Confirmou pelo link",
+  "Remarcou pelo link" (com o horário de antes) ou "Cancelou pelo link". Uma
+  consulta que mudou de hora depois do envio ou da resposta volta a "Ainda não
+  enviado": o paciente confirma de novo.
+- **Enviar pelo WhatsApp** abre o WhatsApp Web, numa aba nova, com a mensagem
+  de Configurações › Consultório já preenchida para o celular do paciente. Você
+  confere e envia. Ao tocar, a Zuri registra o envio daquele horário e o botão
+  vira **Enviar de novo**. Sem celular na consulta, o botão não aparece.
+- **Copiar mensagem** copia o mesmo texto, sem registrar envio, e **Ver como o
+  paciente** abre a página numa aba nova. O link nasce no primeiro pedido e é o
+  mesmo depois disso, um por consulta.
+- Já confirmada, o quadro diz que não precisa enviar de novo.
 - Uma consulta cancelada, ou a menos de 1 hora, não tem link para dar.
+
+#### Mensagem de confirmação
+
+Fica em Configurações › Consultório, junto dos dados do consultório. Um botão
+por variável põe no texto, onde está o cursor, `{nome}` (primeiro nome do
+paciente), `{tipo}`, `{dia}`, `{hora}`, `{local}` (o endereço do consultório, o
+link do Google Meet ou o aviso de que ele chega antes), `{link}`, `{prazo}` (até
+quando dá para cancelar), `{consultorio}` e `{whatsapp}` (o da equipe). A
+prévia mostra como chega no WhatsApp, com `*texto*` em negrito, num exemplo com
+dados inventados. A mensagem precisa ter `{link}`, cabe em 1.000 caracteres e só
+aceita as variáveis da lista: o servidor recusa o resto. **Voltar ao modelo
+padrão** traz o texto do protótipo, no idioma da Zuri.
+
+A Zuri guarda cada envio (link, horário, canal e hora), sem o texto e sem o
+telefone, na tabela `zur_confirm_sends` (migration 47), fora do backup como os
+links. O envio automático da véspera (E7c3) vai usar o mesmo registro para não
+mandar duas vezes.
 
 O que o paciente vê, sem entrar em nada:
 

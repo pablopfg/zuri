@@ -6,12 +6,14 @@ import {
   CONFIRM_TOKEN,
   type ConfirmAction,
   type ConfirmAnswer,
+  type ConfirmChannel,
   type ConfirmLinkMade,
   type ConfirmLinkStatus,
   type ConfirmView,
   clinicLocation,
   EVENT_STATUS_COLOR,
   eventStatus,
+  confirmValueOk, fillConfirmMessage,
   GOOGLE_LIMITS,
   hmacSha256Hex,
   type RescheduleDays,
@@ -19,6 +21,7 @@ import {
   type RescheduleTurn,
   randomToken,
   sha256Hex,
+  t,
   typeLine,
   zonedParts,
 } from "@zuri/shared";
@@ -67,6 +70,8 @@ export interface ConfirmLinkDeps {
   timeZone: () => string;
   locale: () => string;
   clinic: () => Clinic;
+  /** The confirmation message of Configurações › Consultório (E7c1); "" is the catalog's default. */
+  message: () => string;
   publicUrl: () => URL;
   credentialKey: string | undefined;
   /** The key of the networks' prints (HMAC), never kept. */
@@ -154,12 +159,85 @@ export class ConfirmLinks {
     }
     // A key changed since: the old address can't be rebuilt, so this one says so instead of a wrong link.
     if (!row || !token) throw new AppError("NOT_CONFIGURED");
-    return { ...this.statusOf(row), url: `${this.deps.publicUrl().origin}/c/${token}` };
+    const url = `${this.deps.publicUrl().origin}/c/${token}`;
+    return { ...this.statusOf(row), url, message: this.message(event, url) };
+  }
+
+  /**
+   * The owner sent the confirmation (E7c1), now, for the start the event has at Google now: a moved
+   * appointment sends again. Only for a link already made; the same tap within a minute writes nothing.
+   */
+  async sent(calendarId: string, eventId: string, channel: ConfirmChannel): Promise<ConfirmLinkStatus> {
+    const row = this.row(`calendar_id = ? AND event_id = ?`, calendarId, eventId);
+    if (!row) throw new AppError("NOT_FOUND", "error.confirmLinkGone");
+    const event = await this.deps.google().event(calendarId, eventId, new GoogleMeter(BUDGET));
+    if (row.revoked_at || !isAppointment(event) || event.colorId === EVENT_STATUS_COLOR.cancelled || this.expiresAt(event) <= this.now()) {
+      throw new AppError("CONFLICT", "error.confirmLinkGone");
+    }
+    const now = this.now();
+    this.deps.db.run(
+      `INSERT INTO zur_confirm_sends (link_id, start, channel, sent_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT (link_id, start, channel) DO UPDATE SET sent_at = excluded.sent_at WHERE excluded.sent_at - sent_at >= 60000`,
+      row.id,
+      event.start,
+      channel,
+      now,
+    );
+    return this.statusOf(row);
+  }
+
+  /**
+   * The message of Configurações › Consultório for one appointment, in the owner's language and zone.
+   * Only the known variables are put in, once (fillConfirmMessage): the event's title stays text.
+   */
+  private message(event: CalendarEvent, url: string): string {
+    const locale = this.deps.locale();
+    const zone = this.deps.timeZone();
+    const clinic = this.deps.clinic();
+    const day = (at: Date) => new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", timeZone: zone }).format(at);
+    const time = (at: Date) => new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", timeZone: zone }).format(at);
+    const start = new Date(event.start);
+    const until = new Date(this.cancelUntil(event));
+    const meet = event.meet && event.meet !== "pending" && event.meet !== "failed" ? event.meet : "";
+    const place = clinicLocation(clinic);
+    const local = onlineLine(event.description)
+      ? meet
+        ? t(locale, "confirm.message.meet", { url: meet })
+        : t(locale, "confirm.message.online")
+      : place && confirmValueOk(place)
+        ? t(locale, "confirm.message.address", { place })
+        : "";
+    const text = this.deps.message() || t(locale, "confirm.message.default");
+    // What the event or the clinic's details carry goes in only without an address (SEC-E7c1-02/03).
+    const plain = (value: string) => (confirmValueOk(value) ? value : "");
+    const kind = plain((typeLine(event.description).split("|")[0] ?? "").trim().slice(0, 80).toLocaleLowerCase(locale));
+    const filled = fillConfirmMessage(text, {
+      nome: plain(firstName(event.title)),
+      tipo: kind || t(locale, "confirm.message.type"),
+      dia: day(start),
+      hora: time(start),
+      local,
+      link: url,
+      prazo: t(locale, "confirm.message.deadline", { day: day(until), time: time(until) }),
+      consultorio: plain(clinic.name) || t(locale, "confirm.message.clinic"),
+      whatsapp: phoneText(clinic.whatsapp),
+    });
+    // An empty value leaves no "**", no ": ." and no run of blank lines behind (the clinic's details may be unfilled).
+    return filled
+      .replace(/\*[ \t]*\*/g, "")
+      .replace(/[ \t]*:[ \t]*\./g, ".")
+      .replace(/[ \t]+$/gm, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   }
 
   private statusOf(row: LinkRow | null): ConfirmLinkStatus {
     const answer: ConfirmAnswer = row?.answer === "confirmed" || row?.answer === "cancelled" || row?.answer === "rescheduled" ? row.answer : "none";
+    const sent = row ? this.deps.db.one<{ start: string; channel: string; sent_at: number }>(`SELECT start, channel, sent_at FROM zur_confirm_sends WHERE link_id = ? ORDER BY sent_at DESC LIMIT 1`, row.id) : null;
     return {
+      sentChannel: sent?.channel === "whatsapp" ? sent.channel : "",
+      sentAt: sent ? new Date(sent.sent_at).toISOString() : "",
+      sentStart: sent?.start ?? "",
       made: row !== null,
       answer,
       answeredAt: row?.answered_at ? new Date(row.answered_at).toISOString() : "",
@@ -537,6 +615,13 @@ export class ConfirmLinks {
 }
 
 const EMPTY: Omit<ConfirmView, "state" | "clinic" | "zone" | "team"> = { first: "", start: "", end: "", type: "", online: false, place: "", cancelUntil: "", canCancel: false, canReschedule: false };
+
+/** The team's WhatsApp as people write it: "(41) 3333-0000" or "(41) 93333-0000"; "" with none. */
+export function phoneText(digits: string): string {
+  if (digits.length < 10) return digits;
+  const cut = digits.length === 11 ? 7 : 6;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, cut)}-${digits.slice(cut)}`;
+}
 
 /** "HH:MM" of a minute of the day. */
 function clock(minute: number): string {

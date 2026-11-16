@@ -1,4 +1,4 @@
-import { confirmAnswerSchema, confirmLinkRequestSchema, confirmViewSchema, rescheduleDaysSchema, rescheduleOfferSchema, rescheduleSchema } from "@zuri/shared";
+import { confirmAnswerSchema, confirmLinkRequestSchema, confirmSentSchema, confirmViewSchema, rescheduleDaysSchema, rescheduleOfferSchema, rescheduleSchema } from "@zuri/shared";
 import type { Context, Hono } from "hono";
 import type { ClientInfo } from "../auth/client.ts";
 import { AppError } from "../http/errors.ts";
@@ -52,6 +52,16 @@ export function registerConfirmOwner(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     const input = await readJson(c.req.raw, confirmLinkRequestSchema, 4 * 1024);
     try {
       return Response.json(await deps().confirmLinks.link(input.calendarId, input.eventId));
+    } catch (error) {
+      throw toAppError(error);
+    }
+  });
+
+  // E7c1: the owner sent the confirmation by the WhatsApp button, for the appointment's current start.
+  app.post("/google/events/link/sent", async (c) => {
+    const input = await readJson(c.req.raw, confirmSentSchema, 4 * 1024);
+    try {
+      return Response.json(await deps().confirmLinks.sent(input.calendarId, input.eventId, input.channel));
     } catch (error) {
       throw toAppError(error);
     }

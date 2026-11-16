@@ -12,6 +12,7 @@ import { AGENDA_RULES, periodDays } from "./agenda-rules.ts";
 import { isValidCalendarDate } from "./dates.ts";
 import { DEFAULT_SOUND_PREFS, NOTICE_SOUNDS } from "./sounds.ts";
 import { clinicSchema, DEFAULT_CLINIC } from "./clinic.ts";
+import { confirmMessageSchema } from "./confirm-message.ts";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "./time-zone.ts";
 
 export { DEFAULT_TIME_ZONE, isTimeZone };
@@ -176,6 +177,8 @@ export const settingsSchema = /* @__PURE__ */ z
     sounds: soundPrefsSchema,
     /** E6a: the office's name, team WhatsApp and address (Configurações › Consultório); saved whole. */
     clinic: clinicSchema,
+    /** E7c1: the confirmation message's text, with variables; "" is the default from the catalog. */
+    confirmMessage: confirmMessageSchema,
   })
   .strict();
 
@@ -218,4 +221,5 @@ export const DEFAULT_SETTINGS: Settings = /* @__PURE__ */ Object.freeze({
   agenda: DEFAULT_AGENDA_PREFS,
   sounds: DEFAULT_SOUND_PREFS,
   clinic: DEFAULT_CLINIC,
+  confirmMessage: "",
 });
