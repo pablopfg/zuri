@@ -351,6 +351,15 @@ test("an appointment's details show the patient's answer and copy the link; a ca
   expect(made.sent).toEqual([{ calendarId: "main", eventId: "e1", channel: "whatsapp" }]);
   await expect(box.getByText("Enviado pelo WhatsApp 16 de nov., 08:00. Ainda sem resposta.", { exact: true })).toBeVisible();
   await expect(box.getByRole("button", { name: "Enviar de novo" })).toBeVisible();
+  // A record that fails leaves the WhatsApp tab open with the message, and says so.
+  await page.route("**/api/google/events/link/sent", (route) => route.fulfill({ status: 409, json: { code: "CONFLICT", message: "Envio sem registro." } }));
+  const again = page.waitForEvent("popup");
+  await box.getByRole("button", { name: "Enviar de novo" }).click();
+  const kept = await again;
+  await expect(page.getByRole("status").filter({ hasText: "Envio sem registro." }).first()).toBeVisible();
+  expect(kept.isClosed()).toBe(false);
+  await kept.close();
+  await page.unroute("**/api/google/events/link/sent");
   await details.getByRole("button", { name: "Fechar" }).click();
 
   details = await openDetails(page, "Marina Teles Barreto");

@@ -54,8 +54,11 @@ export function ConfirmBox({ event }: { event: AgendaEvent }) {
       if (tab) {
         tab.opener = null;
         tab.location.href = what === "see" ? made.url : `https://wa.me/${phone}?text=${encodeURIComponent(made.message)}`;
-        // Opened with the message: counted as sent, so the automatic send (E7c3) skips it.
-        if (what === "whatsapp") await api("/google/events/link/sent", { method: "POST", body: { calendarId: event.calendarId, eventId: event.id, channel: "whatsapp" } });
+        // Opened with the message: counted as sent, so the automatic send (E7c3) skips it. A record that
+        // fails leaves the tab with the message open (the owner may already be sending it) and says so.
+        if (what === "whatsapp") {
+          await api("/google/events/link/sent", { method: "POST", body: { calendarId: event.calendarId, eventId: event.id, channel: "whatsapp" } }).catch((failure: unknown) => toast(errorMessage(failure)));
+        }
       } else {
         await navigator.clipboard.writeText(made.message);
         toast(t("web.agenda.confirm.messageCopied"));
