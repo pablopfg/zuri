@@ -413,6 +413,11 @@ dialog::backdrop {
     @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg-muted hover:bg-raised hover:text-fg;
   }
 
+  /* The bell's number of unseen notices (E12b), "99+" at most. Here and not in the JSX: the first load's JS stays small. */
+  .zuri-icon-button > [data-unseen] {
+    @apply absolute right-0.5 top-0.5 h-[18px] min-w-[18px] rounded-full bg-danger px-1 text-center text-[11px] font-bold leading-[18px] text-bg tabular-nums ring-2 ring-bg;
+  }
+
   /* A line of the menu: a place, "Nova conversa", the search. */
   .zuri-menu-row {
     @apply flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-[0.9375rem] font-medium transition-colors;

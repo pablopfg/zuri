@@ -24,6 +24,7 @@ export type CountKind =
   | "notices"
   | "security_notices"
   | "notices_unread"
+  | "notices_unseen"
   | "alert_deliveries"
   | "crm_clients";
 

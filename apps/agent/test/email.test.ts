@@ -60,6 +60,7 @@ function notice(overrides: Partial<Notice> = {}): Notice {
     link: "/automacoes",
     createdAt: new Date().toISOString(),
     readAt: null,
+    seen: false,
     escalation: null,
     attempts: 0,
     nextAttemptAt: null,

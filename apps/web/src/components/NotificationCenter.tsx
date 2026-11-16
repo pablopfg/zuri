@@ -9,31 +9,36 @@ import { Loading } from "./ui.tsx";
 const NoticesPanel = lazy(() => import("./NoticesPanel.tsx").then((m) => ({ default: m.NoticesPanel })));
 
 /**
- * The bell: whether there are unread notices (the count comes with the session
- * check and the heartbeat, so no request of its own) and the notice center
- * behind it, a panel beside the menu on a computer and a sheet on a phone.
- * `navigate` comes from the shell: the router stays out of the lazy panel
- * (.claude/memoria/armadilhas.md, "Pacote da interface").
+ * The bell: how many notices wait unseen (E12b; the count comes with the
+ * session check and the heartbeat, so no request of its own) and the notice
+ * center behind it, a panel beside the menu on a computer and a sheet on a
+ * phone. The same number goes in front of the tab's name and on the installed
+ * app's icon. `navigate` comes from the shell: the router stays out of the lazy
+ * panel (.claude/memoria/armadilhas.md, "Pacote da interface").
  */
 export function NotificationCenter({ navigate, rail = false }: { navigate: (to: string) => void; rail?: boolean }) {
   const { t } = useI18n();
   const { session } = useSession();
   const [open, setOpen] = useState(false);
   const titleId = useId();
-  const unread = session?.unreadNotices ?? 0;
-  // The name says the number ("99+" past that); the bell itself shows only a dot.
-  const shown = unread > 99 ? "99+" : String(unread);
+  const unseen = session?.unseenNotices ?? 0;
+  // "99+" past that, on the bell and in its name (the tab title: lib/sounds.ts).
+  const shown = unseen > 99 ? "99+" : String(unseen);
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={unread > 0 ? t("web.notifications.openUnread", { count: shown }) : t("web.notifications.open")}
+        aria-label={unseen ? t("web.notifications.unseen", { n: shown }) : t("web.notifications.open")}
         aria-haspopup="dialog"
         className="zuri-icon-button relative"
       >
         <Bell className="h-5 w-5" aria-hidden />
-        {unread > 0 && <span aria-hidden data-unread className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-danger ring-2 ring-bg" />}
+        {unseen > 0 && (
+          <span aria-hidden data-unseen>
+            {shown}
+          </span>
+        )}
       </button>
       {open && (
         <Panel onClose={() => setOpen(false)} labelledBy={titleId} at={rail ? "notices-rail" : "notices"}>

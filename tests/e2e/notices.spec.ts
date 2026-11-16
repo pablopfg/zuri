@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "./fixtures.ts";
-import { expectAccessible, expectFits, openSettingsSection, signIn, tooSmallControls, uniqueTag } from "./ui-helpers.ts";
+import { expectAccessible, expectFits, openSettingsSection, signIn, tooSmallControls, uniqueTag, BELL_NAME } from "./ui-helpers.ts";
 
 // The notice center, Settings > Avisos and Settings > Diagnóstico against the
 // real Worker (step 11): a reminder run lands under the bell, which counts it,
@@ -14,8 +14,7 @@ const toast = (page: Page, text: string | RegExp) => page.getByRole("status").fi
 async function signedIn(page: Page, path = "/") {
   await page.goto(path);
   await signIn(page);
-  // The shell's bell shows once the sign-in is through, so the API calls below carry the session.
-  await expect(page.getByRole("button", { name: /^Abrir avisos/ }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: BELL_NAME }).first()).toBeVisible();
 }
 
 /** A reminder run now: its text becomes a notice. Returns the automation's id, to delete it afterwards. */
@@ -37,7 +36,7 @@ test("a reminder's run reaches the bell: open, read, delete and read all @mobile
   const id = await reminderNotice(page, name, "Beber um copo de água");
   // The count comes with the session check, as when the owner comes back to the tab.
   await page.reload();
-  const bell = page.getByRole("button", { name: /^Abrir avisos, \d+\+? sem ler$/ }).first();
+  const bell = page.getByRole("button", { name: /^Avisos não vistos: \d+\+?$/ }).first();
   await expect(bell).toBeVisible();
   await bell.click();
 
@@ -59,7 +58,7 @@ test("a reminder's run reaches the bell: open, read, delete and read all @mobile
   await reminderNotice(page, `${name} 2`, "Mais um copo");
   await page.keyboard.press("Escape");
   await page.reload();
-  await page.getByRole("button", { name: /^Abrir avisos/ }).first().click();
+  await page.getByRole("button", { name: BELL_NAME }).first().click();
   await panel.getByRole("button", { name: "Marcar tudo como lido" }).click();
   await expect(panel.getByText("Tudo lido por aqui.")).toBeVisible();
   // One close control, an X in the dialog's top-right corner (no text button at the bottom).
@@ -78,6 +77,51 @@ test("a reminder's run reaches the bell: open, read, delete and read all @mobile
   await page.getByRole("button", { name: "Abrir avisos", exact: true }).first().click();
   await panel.getByRole("button", { name: "Escolher o que avisar" }).click();
   await expect(page).toHaveURL(/\/configuracoes\/avisos$/);
+
+  expect((await page.request.delete(`/api/automations/${id}`, { headers: CSRF })).status()).toBe(204);
+});
+
+test("E12b: the bell counts the notices not seen yet; one shown 0.6 s in the open panel is seen, a glance is not @mobile", async ({ page }) => {
+  const name = `Visto ${tag()}`;
+  // The page's own clock, so the 0.6 s can be held still for the glance below.
+  await page.clock.install();
+  await signedIn(page);
+  // Everything earlier read (and so seen): the count starts small, under the 99+ cap.
+  expect((await page.request.post("/api/notices/read", { headers: CSRF, data: {} })).status()).toBe(200);
+  const id = await reminderNotice(page, name, "Conferir a agenda de amanhã");
+  await page.reload();
+  const bell = page.getByRole("button", { name: /^Avisos não vistos: \d+\+?$/ }).first();
+  await expect(bell).toBeVisible();
+  // The tab's title carries the same number.
+  const count = Number((await bell.getAttribute("aria-label"))?.match(/\d+/)?.[0]);
+  expect(count).toBeGreaterThan(0);
+  await expect(page).toHaveTitle(new RegExp(`^\\(${count > 99 ? "99\\+" : count}\\) `));
+
+  // A glance (on screen, closed before 0.6 s): not seen, the count stays. The page's clock stands still
+  // from the moment the notice shows until the panel closes, so a slow machine can't turn the glance into a look.
+  await bell.click();
+  const panel = page.getByRole("dialog", { name: "Avisos" });
+  await expect(panel.getByRole("listitem").filter({ hasText: name })).toBeVisible();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 50));
+  await page.keyboard.press("Escape");
+  await page.clock.resume();
+  await expect(panel).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("button", { name: `Avisos não vistos: ${count > 99 ? "99+" : count}` }).first()).toBeVisible();
+
+  // Left open: the new notice is seen and the bell counts it no more, though it is still unread ("Novo").
+  await page.getByRole("button", { name: /^Avisos não vistos/ }).first().click();
+  const item = panel.getByRole("listitem").filter({ hasText: name });
+  await expect(item.getByText("Novo")).toBeVisible();
+  await expect(panel.locator("li[data-notice]").filter({ hasText: name })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  const after = page.getByRole("button", { name: BELL_NAME }).first();
+  await expect(after).not.toHaveAccessibleName(`Avisos não vistos: ${count > 99 ? "99+" : count}`);
+  // The seen state is the server's: a reload keeps the lower count, and the notice stays unread.
+  await page.reload();
+  await expect(page.getByRole("button", { name: `Avisos não vistos: ${count > 99 ? "99+" : count}` })).toHaveCount(0);
+  await page.getByRole("button", { name: BELL_NAME }).first().click();
+  await expect(panel.getByRole("listitem").filter({ hasText: name }).getByText("Novo")).toBeVisible();
 
   expect((await page.request.delete(`/api/automations/${id}`, { headers: CSRF })).status()).toBe(204);
 });

@@ -68,7 +68,7 @@ afterEach(() => {
 function signedIn(unread: number, sounds: SoundPrefs = DEFAULT_SOUND_PREFS) {
   const qc = new QueryClient();
   qc.setQueryData(["settings"], { sounds });
-  qc.setQueryData(["session"], { unreadNotices: unread });
+  qc.setQueryData(["session"], { unseenNotices: unread });
   return qc;
 }
 
@@ -210,7 +210,7 @@ describe("the bell's count in the open app (CA1)", () => {
     watchNotices(qc);
     expect(notesPlayed()).toHaveLength(0);
     vi.advanceTimersByTime(60_000);
-    qc.setQueryData(["session"], { unreadNotices: 4 });
+    qc.setQueryData(["session"], { unseenNotices: 4 });
     expect(notesPlayed().map((note) => note.frequency)).toEqual([1500, 760]);
   });
 
@@ -220,26 +220,26 @@ describe("the bell's count in the open app (CA1)", () => {
     // Settings not loaded yet: the standard ones apply.
     qc.removeQueries({ queryKey: ["settings"] });
     watchNotices(qc);
-    qc.setQueryData(["session"], { unreadNotices: 1 });
+    qc.setQueryData(["session"], { unseenNotices: 1 });
     expect(notesPlayed().map((note) => note.frequency)).toEqual([987.77, 1975.5, 1318.5, 2637]);
   });
 
   it("with the sound off nothing plays, and no audio context is even made", () => {
     const qc = signedIn(0, { ...DEFAULT_SOUND_PREFS, notice: false });
     watchNotices(qc);
-    qc.setQueryData(["session"], { unreadNotices: 5 });
+    qc.setQueryData(["session"], { unseenNotices: 5 });
     expect(FakeAudio.made).toHaveLength(0);
   });
 
   it("notices that arrive together sound once; the next one after 3 s sounds again", () => {
     const qc = signedIn(0);
     watchNotices(qc);
-    qc.setQueryData(["session"], { unreadNotices: 1 });
+    qc.setQueryData(["session"], { unseenNotices: 1 });
     vi.advanceTimersByTime(NOTICE_SOUND_GAP_MS - 1);
-    qc.setQueryData(["session"], { unreadNotices: 2 });
+    qc.setQueryData(["session"], { unseenNotices: 2 });
     expect(notesPlayed()).toHaveLength(4);
     vi.advanceTimersByTime(1);
-    qc.setQueryData(["session"], { unreadNotices: 3 });
+    qc.setQueryData(["session"], { unseenNotices: 3 });
     expect(notesPlayed()).toHaveLength(8);
   });
 
@@ -247,24 +247,48 @@ describe("the bell's count in the open app (CA1)", () => {
     const qc = signedIn(1);
     watchNotices(qc);
     watchNotices(qc);
-    qc.setQueryData(["session"], { unreadNotices: 1 });
+    qc.setQueryData(["session"], { unseenNotices: 1 });
     qc.setQueryData(["session"], { deadlines: {} });
     qc.setQueryData(["session"], null);
     vi.advanceTimersByTime(10_000);
     // Signed in again with more unread: the base, not a new notice.
-    qc.setQueryData(["session"], { unreadNotices: 9 });
+    qc.setQueryData(["session"], { unseenNotices: 9 });
     expect(notesPlayed()).toHaveLength(0);
     // Listening once, however many times it was started.
-    qc.setQueryData(["session"], { unreadNotices: 10 });
+    qc.setQueryData(["session"], { unseenNotices: 10 });
     expect(notesPlayed()).toHaveLength(4);
   });
 
   it("other parts of the app's memory changing never sound", () => {
     const qc = signedIn(0);
     watchNotices(qc);
-    qc.setQueryData(["tasks"], { unreadNotices: 50 });
+    qc.setQueryData(["tasks"], { unseenNotices: 50 });
     qc.setQueryData(["notices", "list"], [{}, {}]);
     expect(notesPlayed()).toHaveLength(0);
+  });
+
+  it("the tab's title and the app's icon carry the unseen count, 99+ past 99, and drop it at zero and on sign-out (E12b)", () => {
+    const page = { title: "Início · Zuri" };
+    const badges: number[] = [];
+    vi.stubGlobal("document", page);
+    vi.stubGlobal("navigator", { setAppBadge: (n: number) => (badges.push(n), Promise.reject(new Error("not installed"))) });
+    try {
+      const qc = signedIn(3);
+      watchNotices(qc);
+      expect(page.title).toBe("(3) Início · Zuri");
+      qc.setQueryData(["session"], { unseenNotices: 99 });
+      expect(page.title).toBe("(99) Início · Zuri");
+      qc.setQueryData(["session"], { unseenNotices: 100 });
+      expect(page.title).toBe("(99+) Início · Zuri");
+      qc.setQueryData(["session"], { unseenNotices: 0 });
+      expect(page.title).toBe("Início · Zuri");
+      qc.setQueryData(["session"], { unseenNotices: 2 });
+      qc.setQueryData(["session"], null);
+      expect(page.title).toBe("Início · Zuri");
+      expect(badges).toEqual([3, 99, 100, 0, 2, 0]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -300,19 +324,41 @@ describe("other tabs and the browser's hold on sound", () => {
     other.addEventListener("message", (event) => got.push(event.data));
     // Another tab read 3 first (and sounded there): the same 3 here is silent.
     other.postMessage(3);
-    qc.setQueryData(["session"], { unreadNotices: 3 });
+    qc.setQueryData(["session"], { unseenNotices: 3 });
     expect(notesPlayed()).toHaveLength(0);
     // Nothing new to tell: the other tab already knows.
     expect(got).toEqual([]);
     // Anything else on the channel is ignored: the next real notice still sounds.
     for (const hostile of ["9", -1, 1.5, Number.NaN, Number.MAX_VALUE, { unread: 9 }, null, [9]]) other.postMessage(hostile);
     vi.advanceTimersByTime(10_000);
-    qc.setQueryData(["session"], { unreadNotices: 4 });
+    qc.setQueryData(["session"], { unseenNotices: 4 });
     expect(notesPlayed()).toHaveLength(4);
     expect(got).toEqual([4]);
     // Signed out: nothing is said to the other tabs.
     qc.setQueryData(["session"], null);
     expect(got).toEqual([4]);
+  });
+
+  it("the tab's title and the app's icon follow the count even when another tab told it first (E12b)", () => {
+    const page = { title: "Início · Zuri" };
+    const badges: number[] = [];
+    vi.stubGlobal("document", page);
+    vi.stubGlobal("navigator", { setAppBadge: (n: number) => (badges.push(n), Promise.resolve()) });
+    const qc = signedIn(2);
+    watchNotices(qc);
+    new FakeChannel("zuri-sounds").postMessage(3);
+    qc.setQueryData(["session"], { unseenNotices: 3 });
+    expect(page.title).toBe("(3) Início · Zuri");
+    expect(badges).toEqual([2, 3]);
+    // The same count again (the next heartbeat) touches nothing.
+    qc.setQueryData(["session"], { unseenNotices: 3 });
+    expect(badges).toEqual([2, 3]);
+    // A page that named the tab without the number keeps its whole name.
+    page.title = "Confirmar consulta";
+    qc.setQueryData(["session"], { unseenNotices: 4 });
+    expect(page.title).toBe("(4) Confirmar consulta");
+    qc.setQueryData(["session"], null);
+    vi.unstubAllGlobals();
   });
 
   it("a context the browser left asleep wakes on the owner's next click or key, and the next notice sounds", async () => {
@@ -330,7 +376,7 @@ describe("other tabs and the browser's hold on sound", () => {
     // Before any context exists, a click does nothing.
     listeners.get("pointerdown")?.();
     expect(FakeAudio.made).toHaveLength(0);
-    qc.setQueryData(["session"], { unreadNotices: 1 });
+    qc.setQueryData(["session"], { unseenNotices: 1 });
     expect(notesPlayed()).toHaveLength(0);
     vi.advanceTimersByTime(30_000);
     listeners.get("keydown")?.();
@@ -339,7 +385,7 @@ describe("other tabs and the browser's hold on sound", () => {
     await vi.runAllTimersAsync();
     // The first notice stays unplayed; the next one sounds.
     expect(notesPlayed()).toHaveLength(0);
-    qc.setQueryData(["session"], { unreadNotices: 2 });
+    qc.setQueryData(["session"], { unseenNotices: 2 });
     expect(notesPlayed()).toHaveLength(4);
     resetSounds();
     expect(listeners.size).toBe(0);
@@ -365,7 +411,7 @@ describe("the recording sounds (CA4)", () => {
     expect(notesPlayed()).toHaveLength(2);
     const qc = signedIn(0, { ...DEFAULT_SOUND_PREFS, recording: false });
     watchNotices(qc);
-    qc.setQueryData(["session"], { unreadNotices: 1 });
+    qc.setQueryData(["session"], { unseenNotices: 1 });
     expect(notesPlayed()).toHaveLength(6);
   });
 });

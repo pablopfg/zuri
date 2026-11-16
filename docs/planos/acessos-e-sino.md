@@ -94,9 +94,13 @@ A nota diz "o detalhe" e não "tudo": o resumo por dia, tipo e país fica um ano
 
 `GET /api/auth/activity?show=attention|abroad` (opcional). Resposta igual.
 
+E12b: `POST /api/notices/seen` com `{ ids }` (1 a 50 uuids diferentes, `noticeSeenSchema`) devolve `{ unseen }`. A sessão e o heartbeat trazem `unseenNotices` no lugar de `unreadNotices`; `GET /api/notices` traz `unseen` e cada aviso, `seen`.
+
 ### Banco
 
 Migration 49 (`auth_events_abroad`): `CREATE INDEX zur_auth_events_abroad ON zur_auth_events (at) WHERE country <> '' AND country <> 'BR'`. A consulta repete esse `WHERE` com os mesmos literais, para o SQLite usar o índice parcial. Sem ele, um dono que só entra do Brasil faria o filtro andar o registro inteiro (até 50.000 linhas) para dizer que não há nada (SEC-E12a-01). Só as linhas de fora pagam a escrita do índice (regra P4).
+
+Migration 50 (`notices_seen`, E12b): coluna `seen_at` em `zur_notices`, preenchida com `coalesce(read_at, created_at)` nos avisos que já existem (CA-B4), e o contador `notices_unseen` em `zur_counts`, mantido por três gatilhos (aviso novo, visto, apagado). Assim o sino lê uma linha, nunca um `count(*)` (regra P2).
 
 ### Ferramentas do agente
 
@@ -114,6 +118,14 @@ Nenhum.
 
 JS inicial: nada no primeiro carregamento (a tela e o cartão já são sob demanda).
 
+| Rota (E12b) | Antes | Depois |
+| --- | --- | --- |
+| `POST /api/notices/seen` | não existia | 50 ids com 500 avisos guardados: 252 linhas lidas e 100 escritas (medido); o mesmo lote de novo: 103 lidas, 0 escritas |
+| Sessão e heartbeat | uma linha do contador `notices_unread` | uma linha do contador `notices_unseen` |
+| Aviso novo | linha, índices e 2 contadores | mais 1 contador (o gatilho do não visto) |
+
+JS inicial (E12b): 141.288 B de 141.300. O título da aba e o ícone do app ficam em `lib/sounds.ts`, que carrega depois da primeira tela.
+
 ## 9. Segurança e privacidade
 
 | Ameaça | Defesa | Teste |
@@ -121,6 +133,8 @@ JS inicial: nada no primeiro carregamento (a tela e o cartão já são sob deman
 | Valor estranho em `show` entra no SQL | enum Zod; o SQL só recebe `?` | `auth-activity` 400 |
 | País gravado com texto estranho vira texto na tela | `text(cf.country, 2)` já corta; a tela só usa `Intl.DisplayNames` com duas letras maiúsculas | unitário de `placeParts` |
 | Filtro que lê o registro todo (SEC-E12a-01) | índice parcial dos acessos de fora (migration 49) | `free-tier-budget` › SEC-E12a-01; `migrations` 48 → 49 com o plano da consulta |
+| Corpo grande ou repetido em `/notices/seen` (E12b) | Zod com 1 a 50 uuids diferentes, corpo até 4 KB, SQL só com `?` | `notices-routes` (validação) |
+| "Visto" parando a insistência de um alerta (E12b) | visto só muda o número do sino; lido, a insistência e as entregas seguem como antes | `notices-routes` (lido continua `null`) |
 
 ## 10. Testes
 
@@ -138,6 +152,13 @@ E12a e E12b em PRs separadas para a `develop`, cada uma com changelog, README, c
 - Os botões de "Mostrar" não têm o número de cada filtro (regra P2).
 - "Todos os acessos" continua uma página, com os filtros de Período, Tipo e IP que já existiam.
 - A situação "Certo/Atenção" do protótipo já existe como a etiqueta colorida do tipo, com o triângulo nas recusas.
+
+### Diferenças da E12b
+
+- Em outro aparelho aberto, o sino muda no próximo heartbeat (até 1 minuto), não pelo canal ao vivo: o canal só leva o número das áreas, e pôr os avisos nele custaria uma escrita a mais por aviso visto.
+- "Feito" e "Adiar" pelo Telegram, e-mail ou notificação do aparelho não marcam como visto, porque o aviso não apareceu no app.
+- O tempo de 0,6 s só corre com a aba à mostra (`document.hidden`), achado da auditoria: um painel esquecido aberto numa aba escondida não tira alertas novos do sino. Com a aba à mostra e a tela apagada, o navegador não tem como saber.
+- O nome do sino para o leitor de tela é "Avisos não vistos: 3" (sem o número: "Abrir avisos"), que cabe numa chave só e lê igual com "99+".
 
 ## 12. Riscos
 
