@@ -72,6 +72,7 @@ export const BACKUP_SETTINGS = [
   "sounds",
   "clinic",
   "confirmMessage",
+  "confirmMail",
 ] as const;
 export type BackupSetting = (typeof BACKUP_SETTINGS)[number];
 

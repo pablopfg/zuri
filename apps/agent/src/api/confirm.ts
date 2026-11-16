@@ -57,6 +57,16 @@ export function registerConfirmOwner(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     }
   });
 
+  // E7c2: "Enviar por e-mail", to the e-mail kept on the appointment; the body never names a recipient.
+  app.post("/google/events/link/mail", async (c) => {
+    const input = await readJson(c.req.raw, confirmLinkRequestSchema, 4 * 1024);
+    try {
+      return Response.json(await deps().confirmLinks.mail(input.calendarId, input.eventId));
+    } catch (error) {
+      throw toAppError(error);
+    }
+  });
+
   // E7c1: the owner sent the confirmation by the WhatsApp button, for the appointment's current start.
   app.post("/google/events/link/sent", async (c) => {
     const input = await readJson(c.req.raw, confirmSentSchema, 4 * 1024);

@@ -272,11 +272,12 @@ const appointment = (id: string, title: string, start: string, end: string, colo
 });
 const MESSAGE = `Olá, Helena! Sua *consulta* está marcada.\nConfirme por este link:\nhttps://zuri.exemplo.com.br/c/${"A".repeat(22)}`;
 const EVENTS = [
-  { ...appointment("e1", "Helena Duarte Prado", "2026-11-19T14:00:00-03:00", "2026-11-19T15:00:00-03:00"), country: "BR", phone: "41999990000" },
+  { ...appointment("e1", "Helena Duarte Prado", "2026-11-19T14:00:00-03:00", "2026-11-19T15:00:00-03:00"), country: "BR", phone: "41999990000", email: "helena@exemplo.com.br" },
   appointment("e2", "Marina Teles Barreto", "2026-11-18T09:00:00-03:00", "2026-11-18T10:00:00-03:00", "10"),
   appointment("e3", "Caio Vasques Lima", "2026-11-17T10:00:00-03:00", "2026-11-17T11:00:00-03:00", "11"),
   appointment("e4", "Renato Sampaio Cruz", "2026-11-16T08:30:00-03:00", "2026-11-16T09:30:00-03:00"),
   appointment("e5", "Paula Reis Moura", "2026-11-18T15:00:00-03:00", "2026-11-18T16:00:00-03:00", "5"),
+  { ...appointment("e6", "Lívia Prates Nunes", "2026-11-19T10:00:00-03:00", "2026-11-19T11:00:00-03:00"), email: "livia@exemplo.com.br" },
 ];
 
 async function routeAgenda(page: Page, status: Record<string, unknown>) {
@@ -302,13 +303,58 @@ async function routeAgenda(page: Page, status: Record<string, unknown>) {
     status[body.eventId] = now;
     return route.fulfill({ json: now });
   });
-  return Object.assign(made, { sent });
+  // E7c2: the e-mail, sent by the server to the appointment's own e-mail; the status says so.
+  const mailed: unknown[] = [];
+  await page.route("**/api/google/events/link/mail", (route) => {
+    const body = route.request().postDataJSON() as { eventId: string };
+    mailed.push(body);
+    const start = EVENTS.find((event) => event.id === body.eventId)?.start ?? "";
+    const now = { made: true, answer: "none", answeredAt: "", answerStart: "", sentChannel: "email", sentAt: "2026-11-16T11:00:00.000Z", sentStart: start, mailedStart: start };
+    status[body.eventId] = now;
+    return route.fulfill({ json: now });
+  });
+  return Object.assign(made, { sent, mailed });
 }
 
 async function openDetails(page: Page, title: string) {
   await page.getByRole("main").getByRole("button", { name: new RegExp(`^${title}`) }).click();
   return page.getByRole("dialog", { name: title });
 }
+
+// E7c2: "Enviar por e-mail" sends to the appointment's e-mail through the server, and goes for that start.
+test("an appointment with the patient's e-mail sends the confirmation by e-mail once for its start; a refusal says why", async ({ page }) => {
+  const made = await routeAgenda(page, {});
+  await page.clock.install({ time: NOW });
+  await page.goto("/agenda");
+  await signIn(page);
+  await expect(page.getByRole("heading", { level: 1, name: "Agenda" })).toBeVisible();
+  let details = await openDetails(page, "Helena Duarte Prado");
+  let box = details.getByRole("region", { name: "Confirmação do paciente" });
+  await box.getByRole("button", { name: "Enviar por e-mail" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "E-mail enviado para Helena" }).first()).toBeVisible();
+  expect(made.mailed).toEqual([{ calendarId: "main", eventId: "e1" }]);
+  await expect(box.getByText("Enviado por e-mail 16 de nov., 08:00. Ainda sem resposta.", { exact: true })).toBeVisible();
+  await expect(box.getByRole("button", { name: "Enviar por e-mail" })).toHaveCount(0);
+  // WhatsApp still there, as "send again" (the protótipo's cf.st): the e-mail doesn't take its place.
+  await expect(box.getByRole("button", { name: "Enviar de novo" })).toBeVisible();
+  await details.getByRole("button", { name: "Fechar" }).click();
+
+  // An appointment without the patient's e-mail has no button.
+  details = await openDetails(page, "Paula Reis Moura");
+  await expect(details.getByRole("region", { name: "Confirmação do paciente" }).getByRole("button", { name: "Enviar por e-mail" })).toHaveCount(0);
+  await details.getByRole("button", { name: "Fechar" }).click();
+
+  // The e-mail way out refuses: the reason, and nothing changes.
+  await page.route("**/api/google/events/link/mail", (route) =>
+    route.fulfill({ status: 503, json: { code: "SERVICE_UNAVAILABLE", message: "O e-mail não saiu. Confira Integrações › E-mail para pacientes e tente de novo.", details: { problem: "not_configured" } } }),
+  );
+  details = await openDetails(page, "Lívia Prates Nunes");
+  box = details.getByRole("region", { name: "Confirmação do paciente" });
+  await box.getByRole("button", { name: "Enviar por e-mail" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "O e-mail não saiu. Confira Integrações › E-mail para pacientes e tente de novo." }).first()).toBeVisible();
+  await expect(box.getByText("Ainda não enviado", { exact: true })).toBeVisible();
+  await expect(box.getByRole("button", { name: "Enviar por e-mail" })).toBeVisible();
+});
 
 // Desktop only: the phone opens on the day, and the details are the same panel.
 test("an appointment's details show the patient's answer and copy the link; a cancelled, a near and an answered-before-it-moved one say so", async ({ page }) => {

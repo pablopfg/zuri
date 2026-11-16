@@ -241,7 +241,7 @@ export class MailService {
    * One e-mail by the saved way out, inside the daily cap. Never throws for the way out: the answer
    * says why it didn't go, in a word the screen can explain.
    */
-  async send(message: { to: string; subject: string; text: string }): Promise<{ ok: true; via: "gmail" | "smtp" } | { ok: false; problem: MailProblem }> {
+  async send(message: { to: string; subject: string; text: string; html?: string }): Promise<{ ok: true; via: "gmail" | "smtp" } | { ok: false; problem: MailProblem }> {
     const to = message.to.trim().toLowerCase();
     // A recipient that isn't a plain address (a line break, a second address) never reaches a header or a command.
     if (!isMailAddress(to)) return { ok: false, problem: "refused" };
@@ -277,6 +277,7 @@ export class MailService {
         replyTo: row.reply_to || undefined,
         subject: message.subject,
         text: message.text,
+        html: message.html,
         at: this.now(),
         id: crypto.randomUUID(),
       });

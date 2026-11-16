@@ -23,6 +23,25 @@ const decode = (data: string) => {
 };
 
 describe("the message", () => {
+  it("E7c2: with HTML, goes as multipart/alternative, the text first and both in base64", () => {
+    const data = buildMessage({ fromName: "Consultório", from: "contato@exemplo.com.br", to: "paciente@exemplo.com.br", subject: "Confirme", text: "Olá\nConfirmar: https://zuri.exemplo.com.br/c/x", html: "<p>Olá</p>", at: Date.UTC(2026, 10, 14, 12), id: "id-2" });
+    const [head = "", ...rest] = data.split("\r\n\r\n");
+    expect(head).toContain('Content-Type: multipart/alternative; boundary="zuri-id2"');
+    expect(head).not.toContain("Content-Type: text/plain");
+    const body = rest.join("\r\n\r\n");
+    const parts = body.split("--zuri-id2").slice(1);
+    expect(parts).toHaveLength(3);
+    expect(parts[2]).toBe("--\r\n");
+    const decoded = parts.slice(0, 2).map((part) => {
+      const [headers = "", content = ""] = part.split("\r\n\r\n");
+      return [headers.trim(), new TextDecoder().decode(Uint8Array.from(atob(content.replace(/\r\n/g, "")), (ch) => ch.charCodeAt(0)))];
+    });
+    expect(decoded).toEqual([
+      ["Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64", "Olá\r\nConfirmar: https://zuri.exemplo.com.br/c/x"],
+      ["Content-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64", "<p>Olá</p>"],
+    ]);
+  });
+
   it("encodes every typed header and keeps a line break out of them", () => {
     const data = buildMessage({
       fromName: "Consultório \"Ana\"\r\nBcc: outro@exemplo.com.br",

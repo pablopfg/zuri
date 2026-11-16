@@ -1038,6 +1038,9 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         locale: () => this.locale(),
         clinic: () => settings.field("clinic"),
         message: () => settings.field("confirmMessage"),
+        mailTemplate: () => settings.field("confirmMail"),
+        // The e-mail service is made below; the confirmation only sends after the object is up.
+        sendMail: (message) => mail.send(message),
         publicUrl: () => this.publicUrl(),
         credentialKey: env.MCP_CREDENTIAL_KEY,
         secret: () => env.PASSWORD_PEPPER,

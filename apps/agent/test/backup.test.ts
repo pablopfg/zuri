@@ -386,6 +386,21 @@ describe("import", () => {
     }
   });
 
+  it("E7c2: the confirmation e-mail goes in the file and comes back; one with an address typed by hand is refused", async () => {
+    const mail = { subject: "Consulta de {dia}", body: "Oi {nome}, até {dia}.", button: "Vou" };
+    try {
+      await inOwner((agent) => agent.store.settings.update({ confirmMail: mail }));
+      expect(JSON.stringify(await ok(session("GET", "/backup/export")))).toContain("Oi {nome}, até {dia}.");
+      await inOwner((agent) => agent.store.settings.update({ confirmMail: { subject: "", body: "", button: "" } }));
+      await ok(session("POST", "/backup/import", backup({ settings: { confirmMail: mail } })));
+      expect(await inOwner((agent) => agent.store.settings.get().confirmMail)).toEqual(mail);
+      expect((await session("POST", "/backup/import", backup({ settings: { confirmMail: { ...mail, body: "Veja pix.exemplo.com" } } }))).status).toBe(400);
+      expect(await inOwner((agent) => agent.store.settings.get().confirmMail)).toEqual(mail);
+    } finally {
+      await inOwner((agent) => agent.store.settings.update({ confirmMail: { subject: "", body: "", button: "" } }));
+    }
+  });
+
   it("the record of the day goes in the file and comes back, and a day already closed here is never changed", async () => {
     // SEC-E5e-01: an appointment with the patient's fields and a Meet call stays in the file (it was left out whole).
     const event = (title: string) => ({
