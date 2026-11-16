@@ -355,9 +355,9 @@ A aprovação vem da decisão de 12/11/2026, 21:37 UTC (a confirmação sai sozi
 
 ### Suposições
 
-- O interruptor, o horário e a credencial ficam em CRM › Automações, onde as automações já ligam, ensaiam e pausam; o Consultório mostra o resumo e leva até lá (regra "um ajuste, um lugar"). O protótipo tinha os controles no Consultório; a escolha foi posta ao Pablo num cartão e a implementação segue a recomendação enquanto ele não responde.
+- O interruptor, o horário e a credencial ficam em CRM › Automações, onde as automações já ligam, ensaiam e pausam; o Consultório mostra o resumo e leva até lá (regra "um ajuste, um lugar"). O protótipo tinha os controles no Consultório; o Pablo escolheu CRM › Automações em 16/11, às 11:52 UTC.
 - Paciente que confirma pelo link, ou envio do Pablo pelo WhatsApp, entre a entrada na fila e a vez dela (minutos) não tira a mensagem da fila nesta PR. O mesmo vale para a consulta cancelada ou remarcada no Google nesse intervalo, que pode durar mais se a fila estiver pausada ou no bloqueio (auditoria SEC-E7c3a-04, baixo, aceito nesta PR); a mensagem vence de qualquer jeito 1 hora antes da consulta.
 - Quem pode editar uma agenda compartilhada que a Zuri escreve consegue gravar o celular do paciente num evento pela API do Google (auditoria SEC-E7c3a-05, informativo). As agendas em que a Zuri escreve são escolha do Pablo em Integrações › Google; fica registrado como risco conhecido.
 - A automação lê no máximo 250 eventos por agenda e 1.000 no total na véspera; acima disso o resto fica para os botões (o consultório tem bem menos).
-- Achados da auditoria corrigidos: SEC-E7c3a-01 (médio; mudar o texto da confirmação com a automação ligada pede senha e alerta, recomendação posta ao Pablo num cartão), SEC-E7c3a-02 (uma mensagem recusada não para as outras), SEC-E7c3a-03 (só o primeiro nome vai ao Chatwoot) e SEC-E7c3a-06 (links só até o teto do dia).
+- Achados da auditoria corrigidos: SEC-E7c3a-01 (médio; mudar o texto da confirmação com a automação ligada pede senha e alerta, escolha do Pablo em 16/11, às 11:52 UTC), SEC-E7c3a-02 (uma mensagem recusada não para as outras), SEC-E7c3a-03 (só o primeiro nome vai ao Chatwoot) e SEC-E7c3a-06 (links só até o teto do dia).
 
