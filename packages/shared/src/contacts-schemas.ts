@@ -2,7 +2,7 @@
 import "./zod-config.ts";
 
 import { z } from "zod";
-import { CONTACT_LIMITS, CONTACT_ON_ADDED, FAMILY_ROLES, familyPair } from "./contacts.ts";
+import { CONTACT_LIMITS, CONTACT_ON_ADDED, FAMILY_RESPONSIBLE_ROLES, FAMILY_ROLES, familyPair } from "./contacts.ts";
 
 /**
  * Google Contacts (step 19b): the routes' request bodies and what Zuri reads
@@ -153,6 +153,9 @@ export const familyLinkSchema = /* @__PURE__ */ (() =>
       relative: z.string().regex(/^[0-9a-f-]{36}$/),
       role: z.enum(FAMILY_ROLES),
       otherRole: z.enum(FAMILY_ROLES),
+      /** E11c: the relative receives the office's messages for the contact; only a grown-up role. */
+      responsible: z.boolean().optional(),
     })
     .strict()
-    .refine((body) => familyPair(body.role, body.otherRole), { message: "roles that don't make a pair", path: ["otherRole"] }))();
+    .refine((body) => familyPair(body.role, body.otherRole), { message: "roles that don't make a pair", path: ["otherRole"] })
+    .refine((body) => !body.responsible || FAMILY_RESPONSIBLE_ROLES.includes(body.role), { message: "a role that can't receive the messages", path: ["responsible"] }))();

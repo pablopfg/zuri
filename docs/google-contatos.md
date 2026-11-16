@@ -169,6 +169,28 @@ primos, cônjuges, e responsável legal e dependente.
 - As ligações entram no backup. Ao restaurar, um par que já está ligado
   continua como está.
 
+#### Quem recebe as mensagens (E11c)
+
+Para uma criança, ou para quem não usa o celular, marque em "Ligar parente"
+a caixa "As mensagens do consultório para Lucas vão para essa pessoa". Ela
+só vale quando o parente é mãe, pai, avó, avô, tia, tio, irmã, irmão ou
+responsável legal. O cartão passa a dizer "As mensagens do consultório para
+Lucas vão para Helena.", e a linha de Helena ganha "recebe as mensagens".
+
+- Cada contato tem um responsável só. Marcar outro troca o anterior, e tirar
+  a ligação tira o responsável.
+- A confirmação de uma consulta vinculada ao contato (WhatsApp, Chatwoot e
+  e-mail) vai para o celular e o e-mail do responsável. Sem responsável, vai
+  para os do próprio contato. Nos detalhes do agendamento aparece "As
+  mensagens vão para Helena Prado (mãe)."
+- O celular usado é o primeiro número de celular brasileiro do contato (DDD
+  e nove dígitos começando com 9), a mesma regra do botão WhatsApp da ficha.
+  O e-mail é o primeiro válido.
+- Se o responsável sair das etiquetas escolhidas, nada é enviado, nem para o
+  paciente, e os detalhes do agendamento dizem isso.
+- O backup leva o responsável. Ao restaurar, entra um por pessoa e só nos
+  papéis acima; o resto vira ligação sem responsável.
+
 ### Avisos
 
 No cartão, em **Avisos**:
@@ -294,8 +316,8 @@ Os mesmos secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   refaz sozinha a partir do Google.
 - Família (E11b, migration 48): `zur_contact_family` guarda um par por
   linha, com `a < b` pelo `resourceName` e o papel de cada lado
-  (`role_a` é o que `a` é para `b`). A coluna `responsible` fica para a
-  E11c. Ela não sai com a cópia ao desligar, entra no backup
+  (`role_a` é o que `a` é para `b`). A coluna `responsible` diz quem recebe as
+  mensagens de quem (E11c: 1, `a` recebe por `b`; 2, `b` recebe por `a`). Ela não sai com a cópia ao desligar, entra no backup
   (`data.contactFamily`) e soma ao número "contacts" das telas. A ficha lê
   as ligações de cada parente pelo índice (cerca de 350 linhas com 20
   parentes e mais 19 no grupo, `free-tier-budget.test.ts`).

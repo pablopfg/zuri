@@ -296,6 +296,23 @@ export function familyPair(role: FamilyRole, other: FamilyRole): boolean {
   return FAMILY_INVERSE[role].includes(other) && FAMILY_INVERSE[other].includes(role);
 }
 
+/** The relatives who may receive the office's messages for a contact (E11c, protótipo FAM_RESP): grown-up roles. */
+export const FAMILY_RESPONSIBLE_ROLES: readonly FamilyRole[] = ["mother", "father", "grandmother", "grandfather", "aunt", "uncle", "sister", "brother", "guardian"];
+
+/**
+ * The number for WhatsApp, as digits with Brazil's code ("5511987654321"), or null. Only a Brazilian
+ * mobile: area code and nine digits starting with 9, with or without the country code. Nothing says for
+ * free whether a number has WhatsApp; a landline certainly has not. The card's button and the office's
+ * messages to a contact (E11c) use this one rule.
+ */
+export function whatsappNumber(phone: string): string | null {
+  let digits = phone.replace(/\D/g, "").replace(/^0+/, "");
+  // Written with a country code that is not Brazil's: never read as a Brazilian number.
+  if (phone.trim().startsWith("+") && !digits.startsWith("55")) return null;
+  if (digits.length === 13 && digits.startsWith("55")) digits = digits.slice(2);
+  return /^[1-9][1-9]9\d{8}$/.test(digits) ? `55${digits}` : null;
+}
+
 export const FAMILY_LIMITS = {
   /** Relatives linked to one contact. */
   perContact: 20,
@@ -312,6 +329,20 @@ export interface FamilyLink {
   role: FamilyRole;
   /** The relative in the copy; null when they left the chosen labels (the link stays for when they come back). */
   contact: { id: string; name: string; birthday: string; sameName: boolean } | null;
+  /** E11c: the relative receives the office's messages for this contact. */
+  receives: boolean;
+}
+
+/**
+ * Where the office's messages for a contact go (E11c): the contact's own mobile and e-mail, or, with a
+ * responsible, theirs. `gone`: the responsible left the chosen labels, so nothing goes to anyone.
+ */
+export interface ContactReach {
+  /** E.164 ("+5511987654321"), a Brazilian mobile; "" without one. */
+  phone: string;
+  email: string;
+  via: { name: string; role: FamilyRole } | null;
+  gone: boolean;
 }
 
 /** GET /api/contacts/:id/family */

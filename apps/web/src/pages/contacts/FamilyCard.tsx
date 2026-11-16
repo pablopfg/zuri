@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type BookingPage, type BookingPerson, type ContactFamily, FAMILY_INVERSE, FAMILY_ROLES, type FamilyRole, type MessageKey } from "@zuri/shared";
-import { Plus, UsersRound, X } from "lucide-react";
+import { type BookingPage, type BookingPerson, type ContactFamily, FAMILY_INVERSE, FAMILY_RESPONSIBLE_ROLES, FAMILY_ROLES, type FamilyRole, type MessageKey } from "@zuri/shared";
+import { Plus, SendHorizontal, UsersRound, X } from "lucide-react";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { Link } from "react-router";
 import { useToast } from "../../components/Toaster.tsx";
@@ -55,6 +55,8 @@ export function FamilyCard({ id, name }: { id: string; name: string }) {
     void api<ContactFamily>(`/contacts/${encodeURIComponent(id)}/family/${encodeURIComponent(link)}`, { method: "DELETE" })
       .then((next) => {
         qc.setQueryData(key, next);
+        // E11c: where the messages go may have changed, in the card and in the Agenda's details.
+        void qc.invalidateQueries({ queryKey: ["contact"] });
         toast(t("web.contacts.family.removed", { nome: other }));
         document.getElementById(addButton)?.focus();
       })
@@ -63,6 +65,7 @@ export function FamilyCard({ id, name }: { id: string; name: string }) {
         void qc.invalidateQueries({ queryKey: key });
       });
   const data = family.data;
+  const via = data?.links.find((link) => link.receives && link.contact)?.contact;
   return (
     <section className="zuri-contact-box space-y-3" aria-labelledby="zuri-contact-family" aria-busy={family.isPending}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -98,7 +101,7 @@ export function FamilyCard({ id, name }: { id: string; name: string }) {
                         <span className="inline-flex min-h-11 items-center text-fg-muted">{other}</span>
                       )}
                       <span className="-mt-2 text-sm text-fg-muted">
-                        {[t(roleKey(link.role)), link.contact?.sameName && link.contact.birthday && t("web.contacts.born", { data: dayText(link.contact.birthday, locale) })].filter(Boolean).join(" · ")}
+                        {[t(roleKey(link.role)), link.contact?.sameName && link.contact.birthday && t("web.contacts.born", { data: dayText(link.contact.birthday, locale) }), link.receives && t("web.contacts.family.receives")].filter(Boolean).join(" · ")}
                       </span>
                     </span>
                     <button type="button" className="zuri-icon-button" aria-label={label} title={label} onClick={() => remove(link.id, other)}>
@@ -115,6 +118,12 @@ export function FamilyCard({ id, name }: { id: string; name: string }) {
               {data.groupMore > 0 && ` ${plural("web.contacts.family.groupMore", data.groupMore)}`}
             </p>
           )}
+          {via && (
+            <p className="flex items-start gap-2 text-sm">
+              <SendHorizontal className="mt-0.5 h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
+              <span>{t("web.contacts.family.messagesTo", { nome: first, responsavel: via.name })}</span>
+            </p>
+          )}
         </>
       )}
       <Dialog open={open} onClose={() => setOpen(false)} title={t("web.contacts.family.dialog", { nome: first })}>
@@ -123,10 +132,12 @@ export function FamilyCard({ id, name }: { id: string; name: string }) {
             id={id}
             first={first}
             linked={data.links.map((link) => link.contact?.id ?? "")}
-            onDone={(next, relative, role) => {
+            onDone={(next, relative, role, responsible) => {
               qc.setQueryData(key, next);
+              void qc.invalidateQueries({ queryKey: ["contact"] });
               setOpen(false);
-              toast(t("web.contacts.family.added", { nome: relative, papel: t(roleKey(role)).toLowerCase(), contato: name }));
+              const added = t("web.contacts.family.added", { nome: relative, papel: t(roleKey(role)).toLowerCase(), contato: name });
+              toast(responsible ? `${added}. ${t("web.contacts.family.messagesTo", { nome: first, responsavel: relative })}` : added);
               document.getElementById(addButton)?.focus();
             }}
             onCancel={() => setOpen(false)}
@@ -138,16 +149,20 @@ export function FamilyCard({ id, name }: { id: string; name: string }) {
 }
 
 /** "Ligar um parente": the relative, found by name (with phone and birthday to tell homonyms apart), and the two roles. */
-function LinkForm({ id, first, linked, onDone, onCancel }: { id: string; first: string; linked: string[]; onDone: (next: ContactFamily, relative: string, role: FamilyRole) => void; onCancel: () => void }) {
+function LinkForm({ id, first, linked, onDone, onCancel }: { id: string; first: string; linked: string[]; onDone: (next: ContactFamily, relative: string, role: FamilyRole, responsible: boolean) => void; onCancel: () => void }) {
   const { t, locale } = useI18n();
   const [typed, setTyped] = useState("");
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<BookingPerson | null>(null);
   const [role, setRole] = useState<FamilyRole>(FIRST[0] as FamilyRole);
   const [otherRole, setOtherRole] = useState<FamilyRole>(FAMILY_INVERSE[FIRST[0] as FamilyRole][0] as FamilyRole);
+  const [responsible, setResponsible] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const list = useId();
+  const why = useId();
+  // E11c: only a grown-up role receives the office's messages (protótipo FAM_RESP).
+  const canReceive = FAMILY_RESPONSIBLE_ROLES.includes(role);
   // A pause after the last key before asking the server (rule P11).
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(typed.trim()), 250);
@@ -168,8 +183,8 @@ function LinkForm({ id, first, linked, onDone, onCancel }: { id: string; first: 
     }
     setBusy(true);
     setError("");
-    api<ContactFamily>(`/contacts/${encodeURIComponent(id)}/family`, { method: "POST", body: { relative: picked.id, role, otherRole } })
-      .then((next) => onDone(next, picked.name, role))
+    api<ContactFamily>(`/contacts/${encodeURIComponent(id)}/family`, { method: "POST", body: { relative: picked.id, role, otherRole, ...(responsible && canReceive ? { responsible: true } : {}) } })
+      .then((next) => onDone(next, picked.name, role, responsible && canReceive))
       .catch((err: unknown) => setError(errorMessage(err)))
       .finally(() => setBusy(false));
   };
@@ -215,6 +230,7 @@ function LinkForm({ id, first, linked, onDone, onCancel }: { id: string; first: 
             const next = event.target.value as FamilyRole;
             setRole(next);
             setOtherRole(FAMILY_INVERSE[next][0] as FamilyRole);
+            if (!FAMILY_RESPONSIBLE_ROLES.includes(next)) setResponsible(false);
           }}
         >
           {FIRST.map((item) => (
@@ -231,6 +247,24 @@ function LinkForm({ id, first, linked, onDone, onCancel }: { id: string; first: 
           ))}
         </SelectField>
       </div>
+      <label className={cn("flex min-h-11 items-start gap-3 text-sm", !canReceive && "text-fg-muted")}>
+        <input
+          type="checkbox"
+          checked={responsible && canReceive}
+          disabled={!canReceive}
+          aria-describedby={canReceive ? undefined : why}
+          onChange={(event) => setResponsible(event.target.checked)}
+          className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-accent)]"
+        />
+        <span>
+          {t("web.contacts.family.responsible", { nome: first })}
+          {!canReceive && (
+            <span id={why} className="mt-1 block text-fg-muted">
+              {t("web.contacts.family.responsible.hint")}
+            </span>
+          )}
+        </span>
+      </label>
       <p role="status" className="text-sm text-danger empty:hidden">
         {error}
       </p>

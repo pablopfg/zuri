@@ -270,7 +270,8 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
   app.get("/contacts/:id", (c) => {
     const contact = deps().contacts.get(c.req.param("id"));
     if (!contact) throw new AppError("NOT_FOUND", "error.contactNotFound");
-    return Response.json({ contact });
+    // E11c: where the office's messages for this contact go, for the card and the appointment's details.
+    return Response.json({ contact, reach: deps().family.reach(contact.resource) });
   });
 
   /** The card's "Família" (E11b): links only Zuri keeps; Google is never called. */

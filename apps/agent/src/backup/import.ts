@@ -6,11 +6,12 @@ import {
   backupSchema,
   CRM_LIMITS,
   FAMILY_LIMITS,
+  FAMILY_RESPONSIBLE_ROLES,
   STORAGE_LIMITS,
   type StorageKind,
 } from "@zuri/shared";
 import type { CrmService } from "../crm/service.ts";
-import { familyCount, familyTotal } from "../google/family.ts";
+import { familyCount, familyTotal, hasResponsible } from "../google/family.ts";
 import type { Database } from "../db/database.ts";
 import { AppError } from "../http/errors.ts";
 import { cleanImportedLinks } from "../memory/lifecycle.ts";
@@ -256,10 +257,23 @@ export function importBackup(deps: ImportDeps, backup: Backup): BackupImportSumm
       }
       return n;
     };
+    // E11c (SEC-A9-02): the responsible comes back as it went, one a person and only a grown-up role, as in the card.
+    const served = new Map<string, boolean>();
+    const hasOne = (who: string) => {
+      let found = served.get(who);
+      if (found === undefined) {
+        found = hasResponsible(db, who);
+        served.set(who, found);
+      }
+      return found;
+    };
     for (const link of d.contactFamily) {
       if (total >= FAMILY_LIMITS.total) break;
-      const [a, b, roleA, roleB, responsible] = link.a < link.b ? [link.a, link.b, link.roleA, link.roleB, link.responsible] : [link.b, link.a, link.roleB, link.roleA, link.responsible === 0 ? 0 : 3 - link.responsible];
+      const [a, b, roleA, roleB, kept] = link.a < link.b ? [link.a, link.b, link.roleA, link.roleB, link.responsible] : [link.b, link.a, link.roleB, link.roleA, link.responsible === 0 ? 0 : 3 - link.responsible];
       if (count(a) >= FAMILY_LIMITS.perContact || count(b) >= FAMILY_LIMITS.perContact) continue;
+      // 1: a receives for b. The one who receives has to be a grown-up role, and the other has no responsible yet.
+      const patient = kept === 1 ? b : a;
+      const responsible = kept !== 0 && FAMILY_RESPONSIBLE_ROLES.includes(kept === 1 ? roleA : roleB) && !hasOne(patient) ? kept : 0;
       const added = db.run(
         `INSERT OR IGNORE INTO zur_contact_family (id, a, b, role_a, role_b, responsible, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         crypto.randomUUID(),
@@ -271,6 +285,7 @@ export function importBackup(deps: ImportDeps, backup: Backup): BackupImportSumm
         Date.now(),
       );
       if (added.rowsWritten === 0) continue;
+      if (responsible) served.set(patient, true);
       total++;
       counts.set(a, count(a) + 1);
       counts.set(b, count(b) + 1);
