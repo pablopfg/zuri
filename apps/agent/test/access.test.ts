@@ -206,11 +206,24 @@ describe("gate 3: Cloudflare Access in the Worker", () => {
     // Past Access, the route answers itself: a token it doesn't know is a 404, not Access's 403.
     const view = await call(`${ORIGIN}/api/c/view`, { method: "POST", headers: { "content-type": "application/json", "x-zuri-request": "1", "cf-connecting-ip": "198.51.100.77" }, body: JSON.stringify({ token: "A".repeat(22) }) }, env);
     expect(view.status).toBe(404);
+    // E7b: the three rescheduling routes pass too, and answer for themselves.
+    // A valid body with a token it doesn't know: the route's own 404, never Access's 403.
+    const bodies: [string, unknown][] = [
+      ["days", { token: "A".repeat(22) }],
+      ["offer", { token: "A".repeat(22), day: "2026-12-07", turn: "morning", pref: 480 }],
+      ["reschedule", { token: "A".repeat(22), day: "2026-12-07", turn: "morning", pref: 480, start: 540 }],
+    ];
+    for (const [path, body] of bodies) {
+      const res = await call(`${ORIGIN}/api/c/${path}`, { method: "POST", headers: { "content-type": "application/json", "x-zuri-request": "1", "cf-connecting-ip": "198.51.100.78" }, body: JSON.stringify(body) }, env);
+      expect(res.status, path).toBe(404);
+    }
     for (const [label, res] of [
       ["the app", await call(`${ORIGIN}/`, {}, env)],
       ["a screen", await call(`${ORIGIN}/agenda`, {}, env)],
       ["the session", await call(`${ORIGIN}/api/auth/session`, {}, env)],
       ["a GET of the route", await call(`${ORIGIN}/api/c/view`, {}, env)],
+      ["a GET of a rescheduling route", await call(`${ORIGIN}/api/c/days`, {}, env)],
+      ["a route next to them", await call(`${ORIGIN}/api/c/move`, { method: "POST", body: "{}" }, env)],
       ["a file outside /assets", await call(`${ORIGIN}/sw.js`, {}, env)],
       ["a folder under /assets", await call(`${ORIGIN}/assets/x/y.js`, {}, env)],
       ["the owner's link route", await call(`${ORIGIN}/api/google/events/link`, { method: "POST", body: "{}" }, env)],

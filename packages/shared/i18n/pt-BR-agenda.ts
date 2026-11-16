@@ -140,6 +140,7 @@ export const ptBRAgenda = {
   "web.agenda.confirm.none": "Ainda sem resposta",
   "web.agenda.confirm.confirmed": "Confirmou pelo link {when}",
   "web.agenda.confirm.cancelled": "Cancelou pelo link {when}",
+  "web.agenda.confirm.rescheduled": "Remarcou pelo link {when}. Antes: {from}.",
   "web.agenda.confirm.cancelledGone": "Consulta cancelada: o link deixou de valer.",
   "web.agenda.confirm.expired": "O link expirou 1 hora antes da consulta.",
   "web.agenda.confirm.copy": "Copiar link de confirmação",

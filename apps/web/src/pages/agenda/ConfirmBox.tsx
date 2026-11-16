@@ -27,8 +27,15 @@ export function ConfirmBox({ event }: { event: AgendaEvent }) {
   // An answer for another start is old: the appointment moved and asks again.
   const answer = s && (s.answer === "cancelled" || s.answerStart === event.start) ? s.answer : "none";
   const when = s?.answeredAt ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(s.answeredAt)) : "";
+  const format = (iso: string) => new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(iso));
   const line =
-    answer === "confirmed" ? t("web.agenda.confirm.confirmed", { when }) : answer === "cancelled" ? t("web.agenda.confirm.cancelled", { when }) : t("web.agenda.confirm.none");
+    answer === "confirmed"
+      ? t("web.agenda.confirm.confirmed", { when })
+      : answer === "rescheduled"
+        ? t("web.agenda.confirm.rescheduled", { when, from: s?.previousStart ? format(s.previousStart) : "" })
+        : answer === "cancelled"
+          ? t("web.agenda.confirm.cancelled", { when })
+          : t("web.agenda.confirm.none");
   const link = async (what: "copy" | "see") => {
     setBusy(what);
     // A tab opened now, before the wait: a browser blocks one opened after it.

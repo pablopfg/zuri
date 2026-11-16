@@ -30,6 +30,7 @@ const OPEN: ConfirmView = {
   place: "Rua das Flores, 100",
   cancelUntil: "2026-11-19T02:59:00.000Z",
   canCancel: true,
+  canReschedule: false,
   team: "11987654321",
 };
 
@@ -274,6 +275,7 @@ const EVENTS = [
   appointment("e2", "Marina Teles Barreto", "2026-11-18T09:00:00-03:00", "2026-11-18T10:00:00-03:00", "10"),
   appointment("e3", "Caio Vasques Lima", "2026-11-17T10:00:00-03:00", "2026-11-17T11:00:00-03:00", "11"),
   appointment("e4", "Renato Sampaio Cruz", "2026-11-16T08:30:00-03:00", "2026-11-16T09:30:00-03:00"),
+  appointment("e5", "Paula Reis Moura", "2026-11-18T15:00:00-03:00", "2026-11-18T16:00:00-03:00", "5"),
 ];
 
 async function routeAgenda(page: Page, status: Record<string, unknown>) {
@@ -303,6 +305,7 @@ test("an appointment's details show the patient's answer and copy the link; a ca
   const made = await routeAgenda(page, {
     e2: { made: true, answer: "confirmed", answeredAt: "2026-11-15T13:12:00.000Z", answerStart: EVENTS[1]?.start },
     e1: { made: true, answer: "confirmed", answeredAt: "2026-11-14T13:12:00.000Z", answerStart: "2026-11-18T17:00:00.000Z" },
+    e5: { made: true, answer: "rescheduled", answeredAt: "2026-11-15T13:12:00.000Z", answerStart: EVENTS[4]?.start, previousStart: "2026-11-17T17:00:00.000Z" },
   });
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.clock.install({ time: NOW });
@@ -325,6 +328,11 @@ test("an appointment's details show the patient's answer and copy the link; a ca
   await expect(details.getByRole("region", { name: "Confirmação do paciente" }).getByText("Confirmou pelo link 15 de nov., 10:12", { exact: true })).toBeVisible();
   await details.getByRole("button", { name: "Fechar" }).click();
 
+  // Moved by the patient (E7b): when, and where it was before.
+  details = await openDetails(page, "Paula Reis Moura");
+  await expect(details.getByRole("region", { name: "Confirmação do paciente" }).getByText(/^Remarcou pelo link 15 de nov\., 10:12\. Antes: ter\., 17 de nov\.,? 14:00\.$/)).toBeVisible();
+  await details.getByRole("button", { name: "Fechar" }).click();
+
   details = await openDetails(page, "Caio Vasques Lima");
   const cancelled = details.getByRole("region", { name: "Confirmação do paciente" });
   await expect(cancelled.getByText("Consulta cancelada: o link deixou de valer.", { exact: true })).toBeVisible();
@@ -336,4 +344,192 @@ test("an appointment's details show the patient's answer and copy the link; a ca
   const near = details.getByRole("region", { name: "Confirmação do paciente" });
   await expect(near.getByText("O link expirou 1 hora antes da consulta.")).toBeVisible();
   await expect(near.getByRole("button")).toHaveCount(0);
+});
+
+// ---------- E7b: "Preciso remarcar" ----------
+
+const MOVABLE = ok({ canReschedule: true });
+const DAYS = {
+  length: 60,
+  days: [
+    {
+      day: "2026-11-23",
+      turns: [
+        { turn: "morning", from: 480, to: 720, hours: [480, 540, 600, 660] },
+        { turn: "afternoon", from: 840, to: 1080, hours: [840, 900, 960, 1020] },
+      ],
+    },
+    { day: "2026-11-24", turns: [{ turn: "afternoon", from: 840, to: 1080, hours: [840, 900, 960, 1020] }] },
+  ],
+};
+
+/** The three routes of the steps; `move` answers the tap. Returns the bodies sent. */
+async function routeReschedule(page: Page, options: { days?: unknown; offers?: number[][]; move?: () => Reply } = {}) {
+  const sent: { days: unknown[]; offer: unknown[]; move: unknown[] } = { days: [], offer: [], move: [] };
+  const offers = [...(options.offers ?? [[540, 660]])];
+  await page.route("**/api/c/days", (route) => {
+    sent.days.push(route.request().postDataJSON());
+    return route.fulfill({ json: options.days ?? DAYS });
+  });
+  await page.route("**/api/c/offer", (route) => {
+    sent.offer.push(route.request().postDataJSON());
+    return route.fulfill({ json: { slots: offers.length > 1 ? offers.shift() : offers[0] } });
+  });
+  await page.route("**/api/c/reschedule", (route) => {
+    sent.move.push(route.request().postDataJSON());
+    const reply = options.move?.() ?? ok({ state: "rescheduled", start: "2026-11-23T12:00:00.000Z", end: "2026-11-23T13:00:00.000Z", canReschedule: true });
+    return route.fulfill({ status: reply.status, json: reply.json });
+  });
+  return sent;
+}
+
+const heading = (page: Page, name: string) => page.getByRole("heading", { level: 1, name });
+
+test("@mobile rescheduling goes day, half, hour and slot, asks first with 'Voltar' focused, and shows the new time; accessible", async ({ page }) => {
+  await routeConfirm(page, MOVABLE);
+  const sent = await routeReschedule(page);
+  await page.goto(PATH);
+  // Instead of "talk to the team", the button.
+  await expect(card(page).getByText("Para mudar o dia ou o horário, fale com a nossa equipe pelo WhatsApp.")).toHaveCount(0);
+  await card(page).getByRole("button", { name: "Preciso remarcar" }).click();
+
+  await expect(heading(page, "Para quando, Helena?")).toBeFocused();
+  await expect(card(page).getByText("Passo 1 de 4")).toBeVisible();
+  await expect(card(page).getByText("Consulta marcada")).toBeVisible();
+  await expect(card(page).getByText("quinta-feira, 19 de novembro, às 14:00", { exact: true })).toBeVisible();
+  const team = card(page).getByRole("link", { name: "Fale com a nossa equipe pelo WhatsApp" });
+  expect(new URL((await team.getAttribute("href")) ?? "").searchParams.get("text")).toBe(
+    "Olá! Sou Helena, tenho consulta marcada para quinta-feira, 19 de novembro às 14:00 e não achei um bom horário para remarcar pelo link. Vocês podem me ajudar?",
+  );
+  await expectFits(page, "remarcar-dia");
+  await expectAccessible(page, "remarcar-dia");
+  expect(await tooSmallControls(page)).toEqual([]);
+  await card(page).getByRole("button", { name: /segunda-feira\s*23 de nov/ }).click();
+
+  await expect(heading(page, "Manhã ou tarde?")).toBeFocused();
+  await expect(card(page).getByText("Passo 2 de 4")).toBeVisible();
+  await card(page).getByRole("button", { name: /Manhã\s*das 08:00 às 12:00/ }).click();
+
+  await expect(heading(page, "Que horário fica melhor?")).toBeFocused();
+  const hours = card(page).getByRole("group", { name: "Horário de preferência" });
+  await expect(hours.getByRole("button")).toHaveText(["08:00", "09:00", "10:00", "11:00"]);
+  await hours.getByRole("button", { name: "11:00" }).click();
+
+  await expect(heading(page, "Horários para você")).toBeFocused();
+  await expect(card(page).getByRole("listitem")).toHaveText(["09:00 até 10:00", "11:00 até 12:00"]);
+  await expectAccessible(page, "remarcar-horarios");
+  expect(await tooSmallControls(page)).toEqual([]);
+  await card(page).getByRole("button", { name: "09:00 até 10:00" }).click();
+
+  const ask = page.getByRole("dialog", { name: "Remarcar para este horário?" });
+  await expect(ask).toContainText("segunda-feira, 23 de novembro, das 09:00 às 10:00. O horário de quinta-feira, 19 de novembro, 14:00 fica livre para outra pessoa.");
+  await expect(ask.getByRole("button", { name: "Voltar" })).toBeFocused();
+  await expectAccessible(page, "remarcar-confirmar");
+  await ask.getByRole("button", { name: "Sim, remarcar" }).click();
+
+  await expect(card(page).getByRole("status")).toContainText("Consulta remarcada. Até lá, Helena! O novo dia e horário estão abaixo.");
+  await expect(card(page).getByText("segunda-feira, 23 de novembro", { exact: true })).toBeVisible();
+  await expect(card(page).getByRole("button", { name: "Confirmar presença" })).toHaveCount(0);
+  await expect(card(page).getByRole("button", { name: "Preciso remarcar" })).toBeVisible();
+  expect(sent.days).toEqual([{ token: TOKEN }]);
+  expect(sent.offer).toEqual([{ token: TOKEN, day: "2026-11-23", turn: "morning", pref: 660 }]);
+  expect(sent.move).toEqual([{ token: TOKEN, day: "2026-11-23", turn: "morning", pref: 660, start: 540 }]);
+});
+
+test("an hour taken meanwhile says so and offers what is left; a day with one half skips step 2 and Voltar walks back", async ({ page }) => {
+  await routeConfirm(page, MOVABLE);
+  let tries = 0;
+  const sent = await routeReschedule(page, {
+    offers: [[900, 1020], [1020]],
+    move: () => (tries++ === 0 ? { status: 409, json: { code: "CONFLICT", message: "x", details: { problem: "taken" } } } : ok({ state: "rescheduled", canReschedule: true })),
+  });
+  await page.goto(PATH);
+  await card(page).getByRole("button", { name: "Preciso remarcar" }).click();
+  await card(page).getByRole("button", { name: /terça-feira\s*24 de nov/ }).click();
+  // One half only: straight to the hours, and back to the days.
+  await expect(heading(page, "Que horário fica melhor?")).toBeVisible();
+  await expect(card(page).getByText("Passo 3 de 4")).toBeVisible();
+  await card(page).getByRole("button", { name: "Voltar" }).click();
+  await expect(heading(page, "Para quando, Helena?")).toBeVisible();
+  await card(page).getByRole("button", { name: /terça-feira\s*24 de nov/ }).click();
+  await card(page).getByRole("button", { name: "14:00" }).click();
+  await card(page).getByRole("button", { name: "15:00 até 16:00" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Sim, remarcar" }).click();
+
+  await expect(card(page).getByRole("alert")).toHaveText("Esse horário acabou de ser ocupado. Escolha outro.");
+  await expect(card(page).getByRole("listitem")).toHaveText(["17:00 até 18:00"]);
+  expect(sent.offer).toHaveLength(2);
+  await card(page).getByRole("button", { name: "17:00 até 18:00" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Sim, remarcar" }).click();
+  await expect(card(page).getByRole("status")).toContainText("Consulta remarcada.");
+  // Voltar on the first step goes back to the page as it was.
+  await card(page).getByRole("button", { name: "Preciso remarcar" }).click();
+  await card(page).getByRole("button", { name: "Voltar" }).click();
+  await expect(card(page).getByRole("status")).toContainText("Consulta remarcada.");
+});
+
+for (const [status, code] of [
+  [429, "RATE_LIMITED"],
+  [503, "SERVICE_UNAVAILABLE"],
+] as const) {
+  test(`a move refused with ${status} says so on the slots and keeps the appointment where it was`, async ({ page }) => {
+    await routeConfirm(page, MOVABLE);
+    let tries = 0;
+    const sent = await routeReschedule(page, { move: () => (tries++ === 0 ? { status, json: { code, message: "x" } } : ok({ state: "rescheduled", canReschedule: true })) });
+    await page.goto(PATH);
+    await card(page).getByRole("button", { name: "Preciso remarcar" }).click();
+    await card(page).getByRole("button", { name: /segunda-feira\s*23 de nov/ }).click();
+    await card(page).getByRole("button", { name: /Manhã/ }).click();
+    await card(page).getByRole("button", { name: "08:00" }).click();
+    await card(page).getByRole("button", { name: "09:00 até 10:00" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Sim, remarcar" }).click();
+    await expect(card(page).getByRole("alert")).toHaveText("Não deu para remarcar agora. A consulta continua no horário de antes. Tente de novo em alguns minutos.");
+    await expect(heading(page, "Horários para você")).toBeVisible();
+    // Another tap, and it goes: the note leaves with it.
+    await card(page).getByRole("button", { name: "09:00 até 10:00" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Sim, remarcar" }).click();
+    await expect(card(page).getByRole("status")).toContainText("Consulta remarcada.");
+    expect(sent.move).toHaveLength(2);
+  });
+}
+
+test("with no free day it offers WhatsApp; the cancel dialog offers to reschedule; past two moves only the team", async ({ page }) => {
+  let view = MOVABLE;
+  await routeConfirm(page, () => view);
+  await routeReschedule(page, { days: { length: 60, days: [] } });
+  await page.goto(PATH);
+  await card(page).getByRole("button", { name: "Cancelar a consulta" }).click();
+  const ask = page.getByRole("dialog", { name: "Cancelar a consulta?" });
+  await expect(ask).toContainText("Se for só o dia ou o horário que não dá, você pode remarcar agora.");
+  await expectAccessible(page, "cancelar-remarcar");
+  expect(await tooSmallControls(page)).toEqual([]);
+  await ask.getByRole("button", { name: "Prefiro remarcar" }).click();
+  await expect(ask).toBeHidden();
+  await expect(card(page).getByText("Não há horário livre nos próximos 8 dias.")).toBeVisible();
+  const whatsapp = card(page).getByRole("link", { name: "Combinar pelo WhatsApp" });
+  expect(new URL((await whatsapp.getAttribute("href")) ?? "").searchParams.get("text")).toContain("não achei um bom horário para remarcar pelo link");
+
+  view = ok({ state: "rescheduled", canReschedule: false });
+  await page.reload();
+  await expect(card(page).getByRole("button", { name: "Preciso remarcar" })).toHaveCount(0);
+  await expect(card(page).getByText("Para mudar o dia ou o horário, fale com a nossa equipe pelo WhatsApp.")).toBeVisible();
+  await card(page).getByRole("button", { name: "Cancelar a consulta" }).click();
+  await expect(page.getByRole("dialog", { name: "Cancelar a consulta?" }).getByRole("button", { name: "Prefiro remarcar" })).toHaveCount(0);
+});
+
+test.describe("rescheduling in the dark theme and in English", () => {
+  test.use({ colorScheme: "dark", locale: "en-US" });
+  test("@mobile the steps have no serious violation and speak English", async ({ page }) => {
+    await routeConfirm(page, MOVABLE);
+    await routeReschedule(page);
+    await page.goto(PATH);
+    await card(page).getByRole("button", { name: "I need to reschedule" }).click();
+    await expect(heading(page, "When works, Helena?")).toBeVisible();
+    await expectAccessible(page, "remarcar-escuro-dia");
+    await card(page).getByRole("button", { name: /23/ }).click();
+    await card(page).getByRole("button", { name: /Morning/ }).click();
+    await card(page).getByRole("button", { name: "08:00" }).click();
+    await expect(heading(page, "Times for you")).toBeVisible();
+    await expectAccessible(page, "remarcar-escuro-horarios");
+  });
 });
