@@ -2010,6 +2010,34 @@ export const MIGRATIONS: readonly Migration[] = [
       ) WITHOUT ROWID`,
     ],
   },
+  {
+    version: 48,
+    name: "contact_family",
+    statements: [
+      // E11b (plano contatos-familia-e-ficha.md): the family links that only Zuri keeps, the owner's data, so in
+      // the backup. Both sides by Google's resourceName, which outlives the copy (a contact that leaves the labels
+      // and comes back finds its family again). `a < b` keeps one row per pair; role_a is what a is to b and role_b
+      // what b is to a. `responsible` (E11c): 1 when a receives the office's messages for b, 2 when b does for a.
+      `CREATE TABLE IF NOT EXISTS zur_contact_family (
+        id TEXT PRIMARY KEY,
+        a TEXT NOT NULL,
+        b TEXT NOT NULL,
+        role_a TEXT NOT NULL,
+        role_b TEXT NOT NULL,
+        responsible INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        CHECK (a < b),
+        UNIQUE (a, b)
+      )`,
+      `CREATE INDEX IF NOT EXISTS zur_contact_family_b ON zur_contact_family (b)`,
+      ...areaTriggers("contacts", "zur_contact_family"),
+      // The ceiling of 5,000 links is checked on every link and on each row of an import: a count kept by
+      // triggers reads one row, where count(*) would read the table each time (SEC-A11-01, SEC-A11-02).
+      `INSERT INTO zur_counts (kind, n) SELECT 'contact_family', count(*) FROM zur_contact_family WHERE 1 ON CONFLICT (kind) DO UPDATE SET n = excluded.n`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_contact_family_insert AFTER INSERT ON zur_contact_family BEGIN UPDATE zur_counts SET n = n + 1 WHERE kind = 'contact_family'; END`,
+      `CREATE TRIGGER IF NOT EXISTS zur_counts_contact_family_delete AFTER DELETE ON zur_contact_family BEGIN UPDATE zur_counts SET n = n - 1 WHERE kind = 'contact_family'; END`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

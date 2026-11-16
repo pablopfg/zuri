@@ -132,7 +132,7 @@ describe("export", () => {
     expect(file.format).toBe(BACKUP_FORMAT);
     expect(file.version).toBe(BACKUP_VERSION);
     expect(file.schema).toBe(LATEST_SCHEMA_VERSION);
-    expect(Object.keys(file.data)).toEqual(["settings", "projects", "tasks", "notes", "memories", "conversations", "automations", "alertLearning", "crm", "agendaRecord"]);
+    expect(Object.keys(file.data)).toEqual(["settings", "projects", "tasks", "notes", "memories", "conversations", "automations", "alertLearning", "crm", "agendaRecord", "contactFamily"]);
     expect(file.data.tasks).toHaveLength(2);
     expect(file.data.notes.find((n: { title: string }) => n.title.startsWith("Senha")).localOnly).toBe(true);
     expect(file.data.memories.find((m: { content: string }) => m.content.startsWith("Meu médico")).localOnly).toBe(true);
@@ -280,6 +280,86 @@ describe("import", () => {
     }
     await ok(session("POST", "/backup/import", undefined, file));
     expect(await row()).toEqual(before);
+  });
+
+  it("E11b: carries the family links by Google's names; a pair already here stays and a reversed one is put right", async () => {
+    const family = () => inOwner((agent) => agent.store.db.all(`SELECT a, b, role_a, role_b, responsible FROM zur_contact_family ORDER BY a, b`));
+    await inOwner((agent) => {
+      const { db } = agent.store;
+      db.run(`DELETE FROM zur_contact_family`);
+      db.run(`INSERT INTO zur_contact_family (id, a, b, role_a, role_b, responsible, created_at) VALUES (?, 'people/c1', 'people/c2', 'mother', 'son', 1, 1)`, crypto.randomUUID());
+      db.run(`INSERT INTO zur_contact_family (id, a, b, role_a, role_b, responsible, created_at) VALUES (?, 'people/c1', 'people/c3', 'sister', 'brother', 0, 2)`, crypto.randomUUID());
+    });
+    const file = await exported();
+    expect(JSON.parse(file).data.contactFamily).toEqual([
+      { a: "people/c1", b: "people/c2", roleA: "mother", roleB: "son", responsible: 1 },
+      { a: "people/c1", b: "people/c3", roleA: "sister", roleB: "brother", responsible: 0 },
+    ]);
+    // Here, the first pair was linked another way since: it stays so; the second comes back.
+    await inOwner((agent) => {
+      const { db } = agent.store;
+      db.run(`DELETE FROM zur_contact_family`);
+      db.run(`INSERT INTO zur_contact_family (id, a, b, role_a, role_b, created_at) VALUES (?, 'people/c1', 'people/c2', 'spouse', 'spouse', 1)`, crypto.randomUUID());
+    });
+    await ok(session("POST", "/backup/import", undefined, file));
+    expect(await family()).toEqual([
+      { a: "people/c1", b: "people/c2", role_a: "spouse", role_b: "spouse", responsible: 0 },
+      { a: "people/c1", b: "people/c3", role_a: "sister", role_b: "brother", responsible: 0 },
+    ]);
+    // A link written b-first (another tool, an edit by hand) is stored a < b, roles and the responsible side with it.
+    const reversed = JSON.parse(file);
+    reversed.data.contactFamily = [{ a: "people/c9", b: "people/c4", roleA: "grandmother", roleB: "grandson", responsible: 1 }];
+    await ok(session("POST", "/backup/import", undefined, JSON.stringify(reversed)));
+    expect(await family()).toContainEqual({ a: "people/c4", b: "people/c9", role_a: "grandson", role_b: "grandmother", responsible: 2 });
+    // A file of before E11b has none, and imports.
+    const older = JSON.parse(file);
+    delete older.data.contactFamily;
+    await ok(session("POST", "/backup/import", undefined, JSON.stringify(older)));
+    // Roles that don't pair, one person linked to themself, a name that isn't Google's or a side out of range: nothing imports.
+    for (const bad of [
+      { a: "people/c1", b: "people/c5", roleA: "mother", roleB: "mother" },
+      { a: "people/c1", b: "people/c1", roleA: "spouse", roleB: "spouse" },
+      { a: "../c1", b: "people/c5", roleA: "spouse", roleB: "spouse" },
+      { a: "people/c1", b: "people/c5", roleA: "spouse", roleB: "spouse", responsible: 3 },
+      { a: "people/c1", b: "people/c5", roleA: "spouse", roleB: "spouse", note: "x" },
+    ]) {
+      const wrong = JSON.parse(file);
+      wrong.data.contactFamily = [bad];
+      expect((await session("POST", "/backup/import", undefined, JSON.stringify(wrong))).status, JSON.stringify(bad)).toBe(400);
+    }
+    expect(await family()).toHaveLength(3);
+    await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_contact_family`));
+  });
+
+  it("SEC-A11-01: a file with the 5,000 family links reads about a row per link, not the table per link", async () => {
+    const file = JSON.parse(await exported());
+    const links: unknown[] = [];
+    for (let i = 0; i < 500; i++) for (let j = 1; j <= 10; j++) links.push({ a: `people/p${String(i).padStart(4, "0")}`, b: `people/p${String((i + j) % 500).padStart(4, "0")}`, roleA: "cousinF", roleB: "cousinM" });
+    file.data.contactFamily = links;
+    const usage = () => inOwner((agent) => ({ ...agent.store.db.usage }));
+    const before = await usage();
+    await ok(session("POST", "/backup/import", undefined, JSON.stringify(file)));
+    const after = await usage();
+    const counted = await inOwner((agent) => [agent.store.db.one(`SELECT count(*) AS n FROM zur_contact_family`), agent.store.db.one(`SELECT n FROM zur_counts WHERE kind = 'contact_family'`)]);
+    expect(counted).toEqual([{ n: 5_000 }, { n: 5_000 }]);
+    // Measured 10,060 (with a count(*) per link it was 12.5 million, past the day's 5 million).
+    expect(after.rowsRead - before.rowsRead).toBeLessThanOrEqual(15_000);
+    // The ceilings hold in an import too: past 5,000 nothing more comes in, and someone with 20 relatives takes no 21st.
+    const more = JSON.parse(await exported());
+    more.data.contactFamily = [{ a: "people/q0001", b: "people/q0002", roleA: "spouse", roleB: "spouse" }];
+    await ok(session("POST", "/backup/import", undefined, JSON.stringify(more)));
+    expect(await inOwner((agent) => agent.store.db.one(`SELECT count(*) AS n FROM zur_contact_family WHERE a = 'people/q0001'`))).toEqual({ n: 0 });
+    await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_contact_family WHERE a = 'people/p0009' AND b = 'people/p0499'`));
+    const twentyFirst = JSON.parse(await exported());
+    twentyFirst.data.contactFamily = [
+      { a: "people/p0000", b: "people/q0003", roleA: "spouse", roleB: "spouse" },
+      { a: "people/q0004", b: "people/q0005", roleA: "spouse", roleB: "spouse" },
+    ];
+    await ok(session("POST", "/backup/import", undefined, JSON.stringify(twentyFirst)));
+    expect(await inOwner((agent) => agent.store.db.all(`SELECT a, b FROM zur_contact_family WHERE b LIKE 'people/q%'`))).toEqual([{ a: "people/q0004", b: "people/q0005" }]);
+    // The count follows each link taken off.
+    await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_contact_family`));
+    expect(await inOwner((agent) => agent.store.db.one(`SELECT n FROM zur_counts WHERE kind = 'contact_family'`))).toEqual({ n: 0 });
   });
 
   it("drops links to records missing from the file and a loop of replaced memories", async () => {

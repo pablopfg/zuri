@@ -33,6 +33,7 @@ import { cn, ErrorNotice, Loading, Notice } from "../../components/ui.tsx";
 import { ApiError, api } from "../../lib/api.ts";
 import { contactKey } from "../../lib/contacts.ts";
 import { Avatar } from "./Avatar.tsx";
+import { FamilyCard } from "./FamilyCard.tsx";
 import { useI18n } from "../../lib/i18n.tsx";
 import { CARD_GROUPS, type CardGroup, daysApart, dayText, dialNumber, hasGroup, isNamed, localDay, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "./person.ts";
 
@@ -177,6 +178,8 @@ function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: H
       {named && <Appointments id={contact.id} />}
 
       {named && <Known name={contact.name.trim()} />}
+
+      {named && <FamilyCard id={contact.id} name={contact.name.trim()} />}
 
       <section className="zuri-contact-box" aria-labelledby="zuri-contact-data">
         <h3 id="zuri-contact-data">{t("web.contacts.data")}</h3>

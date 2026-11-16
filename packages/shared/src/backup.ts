@@ -7,6 +7,8 @@ import { CONVERSATION_TITLE_MAX } from "./chat.ts";
 import { CRM_HISTORY_KINDS, CRM_LIMITS } from "./crm.ts";
 import { birthdaySchema, crmEmailSchema, crmPhoneSchema, crmTagSchema } from "./crm-schemas.ts";
 import { instantSchema, isValidCalendarDate } from "./dates.ts";
+import { FAMILY_LIMITS, FAMILY_ROLES, familyPair } from "./contacts.ts";
+import { PERSON_ID } from "./contacts-schemas.ts";
 import { CONTACT_RESOURCE, isCountry, PATIENT_EMAIL } from "./countries.ts";
 import { EVENT_PAYMENTS, GOOGLE_LIMITS, MEET_URL, PATIENT_LIMITS } from "./google.ts";
 import { MEMORY_AUTHORS, MEMORY_CATEGORIES, MEMORY_CONTENT_MAX, MEMORY_ORIGINS, MEMORY_STATUSES } from "./memory.ts";
@@ -301,8 +303,22 @@ const agendaDay = /* @__PURE__ */ z
   })
   .strict();
 
+/** A family link (E11b): the two contacts by Google's name (the copy's ids are this installation's), each one's role. */
+const familyLink = /* @__PURE__ */ z
+  .object({
+    // The copy's own pattern (SEC-A9-01): any link the card can make goes into the file.
+    a: z.string().regex(PERSON_ID),
+    b: z.string().regex(PERSON_ID),
+    roleA: z.enum(FAMILY_ROLES),
+    roleB: z.enum(FAMILY_ROLES),
+    /** E11c: 1 when `a` receives the office's messages for `b`, 2 when `b` does for `a`. */
+    responsible: z.number().int().min(0).max(2).default(0),
+  })
+  .strict()
+  .refine((link) => link.a !== link.b && familyPair(link.roleA, link.roleB));
+
 /** Each record's schema: the export runs every row through it, so what it writes always reads back. */
-export const backupItemSchemas = { project, task, note, memory, conversation, automation, alertLearning, crmStage, crmClient, agendaDay };
+export const backupItemSchemas = { project, task, note, memory, conversation, automation, alertLearning, crmStage, crmClient, agendaDay, familyLink };
 
 const unique = (items: readonly { id: string }[]) => new Set(items.map((item) => item.id)).size === items.length;
 
@@ -329,6 +345,8 @@ export const backupSchema = /* @__PURE__ */ z
         crm: crm.nullable().default(null),
         // Came later (13/11/2026): a backup of before has none.
         agendaRecord: list(agendaDay, AGENDA_RECORD_DAYS_MAX),
+        // E11b (16/11/2026): a backup of before has none.
+        contactFamily: list(familyLink, FAMILY_LIMITS.total),
       })
       .strict()
       .refine((data) => data.conversations.reduce((sum, item) => sum + item.messages.length, 0) <= STORAGE_LIMITS.messages, {

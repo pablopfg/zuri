@@ -11,6 +11,7 @@ import {
   contactLabelsSchema,
   contactSettingsSchema,
   contactsQuerySchema,
+  familyLinkSchema,
   googleCallbackSchema,
   googleEventCreateSchema,
   googleEventDeleteSchema,
@@ -26,6 +27,7 @@ import { contactAppointments } from "../google/appointments.ts";
 import { checkBooking, checkOpenDay, shapeOf } from "../google/booking.ts";
 import { type GoogleContacts, searchText } from "../google/contacts.ts";
 import type { ConfirmLinks } from "../google/confirm-links.ts";
+import type { ContactFamilyService } from "../google/family.ts";
 import type { AgendaRecord } from "../google/record.ts";
 import type { ReviewMatches } from "../reviews/matches.ts";
 import type { ReviewRequests } from "../reviews/requests.ts";
@@ -51,6 +53,8 @@ export interface GoogleRouteDeps {
   reviewMatches: ReviewMatches;
   /** The patient's confirmation link (E7a). */
   confirmLinks: ConfirmLinks;
+  /** The family links between contacts (E11b). */
+  family: ContactFamilyService;
   auth: AuthService;
   /** E6c: Gmail allowed from Integrações › E-mail para pacientes; with no way out chosen yet, it becomes the way out. */
   gmailGranted?: () => void;
@@ -268,6 +272,16 @@ export function registerGoogleRoutes(app: Hono<ApiEnv>, deps: () => GoogleRouteD
     if (!contact) throw new AppError("NOT_FOUND", "error.contactNotFound");
     return Response.json({ contact });
   });
+
+  /** The card's "Família" (E11b): links only Zuri keeps; Google is never called. */
+  app.get("/contacts/:id/family", (c) => Response.json(deps().family.list(c.req.param("id"))));
+
+  app.post("/contacts/:id/family", async (c) => {
+    const input = await readJson(c.req.raw, familyLinkSchema, 1024);
+    return Response.json(deps().family.add(c.req.param("id"), input), { status: 201 });
+  });
+
+  app.delete("/contacts/:id/family/:link", (c) => Response.json(deps().family.remove(c.req.param("id"), c.req.param("link"))));
 
   /**
    * The card's "last appointment" and "return": read from the calendar now, by the contact's name, and
