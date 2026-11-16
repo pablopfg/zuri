@@ -22,6 +22,13 @@ export const CONFIRM_LINK_LIMITS = {
   blockMs: 3_600_000,
   /** Answers that change something, per link and day. */
   answersPerDay: 10,
+  /** Rescheduling by the link (E7b): from tomorrow up to 8 days ahead, twice per appointment, on the hour. */
+  rescheduleDays: 8,
+  reschedulesMax: 2,
+  rescheduleStep: 60,
+  /** What the last step offers: up to 3 slots next to an appointment, else 2. */
+  offerNext: 3,
+  offerOther: 2,
 } as const;
 
 export const CONFIRM_LINK_PREFIX = "/c/";
@@ -44,8 +51,41 @@ export const confirmViewSchema = /* @__PURE__ */ z.object({ token: z.string().ma
 /** POST /api/c/answer: the patient's tap. */
 export const confirmAnswerSchema = /* @__PURE__ */ z.object({ token: z.string().max(64), action: z.enum(CONFIRM_ACTIONS) }).strict();
 
+/** The two halves of the day the patient picks from: the lunch break splits them (noon without one). */
+export const RESCHEDULE_TURNS = ["morning", "afternoon"] as const;
+export type RescheduleTurn = (typeof RESCHEDULE_TURNS)[number];
+
+const day = /* @__PURE__ */ z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const minute = /* @__PURE__ */ z.number().int().min(0).max(1_439);
+/** POST /api/c/days: the days with a free hour. */
+export const rescheduleDaysSchema = confirmViewSchema;
+/** POST /api/c/offer: the slots of a day's half, near the hour the patient prefers. */
+export const rescheduleOfferSchema = /* @__PURE__ */ z.object({ token: z.string().max(64), day, turn: z.enum(RESCHEDULE_TURNS), pref: minute }).strict();
+/** POST /api/c/reschedule: one of the offered slots. */
+export const rescheduleSchema = /* @__PURE__ */ z.object({ token: z.string().max(64), day, turn: z.enum(RESCHEDULE_TURNS), pref: minute, start: minute }).strict();
+
+/** A half of a day with a free hour: its window and the hours of step 3, in minutes of the owner's clock. */
+export interface RescheduleTurnView {
+  turn: RescheduleTurn;
+  from: number;
+  to: number;
+  hours: number[];
+}
+
+/** Step 1 and 2: only the days and halves with a free hour, never what fills the others. */
+export interface RescheduleDays {
+  /** The appointment's length, in minutes. */
+  length: number;
+  days: { day: string; turns: RescheduleTurnView[] }[];
+}
+
+/** Step 4: the slots offered, as minutes of the day. */
+export interface RescheduleOffer {
+  slots: number[];
+}
+
 /** What the page shows: `cancelled` only right after cancelling; opened again, it is `expired`. */
-export const CONFIRM_STATES = ["open", "confirmed", "cancelled", "expired"] as const;
+export const CONFIRM_STATES = ["open", "confirmed", "rescheduled", "cancelled", "expired"] as const;
 export type ConfirmState = (typeof CONFIRM_STATES)[number];
 
 /**
@@ -67,12 +107,14 @@ export interface ConfirmView {
   /** Up to when cancelling by the link is allowed. */
   cancelUntil: string;
   canCancel: boolean;
+  /** Whether "Preciso remarcar" is offered: within the cancel deadline and under two moves by the link. */
+  canReschedule: boolean;
   /** The team's WhatsApp, as digits ("" when the office has none). */
   team: string;
 }
 
 /** The owner's view of an appointment's link, in the Agenda's details. */
-export const CONFIRM_ANSWERS = ["none", "confirmed", "cancelled"] as const;
+export const CONFIRM_ANSWERS = ["none", "confirmed", "rescheduled", "cancelled"] as const;
 export type ConfirmAnswer = (typeof CONFIRM_ANSWERS)[number];
 
 export interface ConfirmLinkStatus {
@@ -83,6 +125,8 @@ export interface ConfirmLinkStatus {
   answeredAt: string;
   /** The start the answer was for, ISO: an answer for another start is old (the appointment moved). */
   answerStart: string;
+  /** The start before the patient moved it by the link, ISO; "" when never moved. */
+  previousStart: string;
 }
 
 /** POST /api/google/events/link and GET ?calendarId&eventId. */

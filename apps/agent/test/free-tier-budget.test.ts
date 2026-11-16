@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, CONTACT_LIMITS, CRM_LIMITS, FLOW_LIMITS, LIST_LIMIT_DEFAULT, REVIEW_LIMITS, REVIEW_REQUEST_LIMITS } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, CONTACT_LIMITS, DEFAULT_AGENDA_PREFS, CRM_LIMITS, FLOW_LIMITS, LIST_LIMIT_DEFAULT, REVIEW_LIMITS, REVIEW_REQUEST_LIMITS } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -1228,10 +1228,23 @@ describe("flows (step 22a)", () => {
       expect(server.log.messages).toHaveLength(1);
     }));
 
-  it("the confirmation link (E7a): opening reads one row and writes nothing, a guess reads none, an answer writes the one row", () =>
+  it("the confirmation link (E7a, E7b): opening and the steps of rescheduling read one row and write nothing, a guess reads none, an answer and a move write the one row", () =>
     withFlowWorld(async (world) => {
       const event = { id: "e1", calendarId: "agenda", title: "Ana Souza", start: new Date(Date.now() + 30 * 86_400_000).toISOString(), end: new Date(Date.now() + 30 * 86_400_000 + 3_600_000).toISOString(), allDay: false, location: "", description: "Consulta | Consultório", etag: '"1"', recurring: false, guests: 0, colorId: "", shared: false };
-      const google = { usable: () => true, connected: () => true, calendar: () => ({ mode: "write", writable: true }), event: async () => ({ ...event }), updateEvent: async (_c: string, _e: string, patch: Record<string, unknown>) => Object.assign(event, patch, { etag: '"2"' }) };
+      const google = {
+        usable: () => true,
+        connected: () => true,
+        calendar: () => ({ mode: "write", writable: true }),
+        readable: () => [{ id: "agenda" }],
+        events: async () => ({ events: [], more: false, skipped: [] }),
+        event: async () => ({ ...event }),
+        updateEvent: async (_c: string, _e: string, patch: Record<string, unknown>) => {
+          // A move sends Google's shape of a time: the event keeps the instant, as Google returns it.
+          const time = (value: unknown) => (value as { dateTime: string }).dateTime;
+          const { start, end, ...rest } = patch;
+          return Object.assign(event, rest, start ? { start: time(start), end: time(end) } : {}, { etag: '"2"' });
+        },
+      };
       let notices = 0;
       const links = new ConfirmLinks({
         db: world.db,
@@ -1242,6 +1255,7 @@ describe("flows (step 22a)", () => {
         publicUrl: () => new URL("https://zuri.exemplo.com.br"),
         credentialKey: testEnv.MCP_CREDENTIAL_KEY,
         secret: () => "segredo-de-teste",
+        hours: () => DEFAULT_AGENDA_PREFS,
         notify: () => {
           notices += 1;
         },
@@ -1272,6 +1286,26 @@ describe("flows (step 22a)", () => {
       // The lookup and the update's own: measured 2.
       expect(answered.read).toBeLessThanOrEqual(2);
       expect(notices).toBe(1);
+      // Rescheduling (E7b): the steps read the link's row and write nothing; the move writes the one row.
+      let days: Awaited<ReturnType<typeof links.days>> = { length: 0, days: [] };
+      expect(
+        await measure(async () => {
+          days = await links.days(token, "198.51.100.1");
+        }),
+      ).toEqual({ read: 1, written: 0 });
+      const first = days.days[0];
+      const turn = first?.turns[0];
+      expect(first && turn).toBeTruthy();
+      let slots: number[] = [];
+      expect(
+        await measure(async () => {
+          slots = (await links.offer({ token, day: first?.day ?? "", turn: turn?.turn ?? "morning", pref: turn?.from ?? 0 }, "198.51.100.1")).slots;
+        }),
+      ).toEqual({ read: 1, written: 0 });
+      const moved = await measure(() => links.reschedule({ token, day: first?.day ?? "", turn: turn?.turn ?? "morning", pref: turn?.from ?? 0, start: slots[0] ?? 0 }, "198.51.100.1"));
+      expect(moved.written).toBe(1);
+      expect(moved.read).toBeLessThanOrEqual(2);
+      expect(notices).toBe(2);
     }));
 
   it("a fzap credential (E6b): making, changing and testing it read a few rows, and the test writes nothing", () =>

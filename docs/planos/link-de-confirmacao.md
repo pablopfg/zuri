@@ -11,7 +11,7 @@ A E7 é grande e se divide em três PRs, na ordem:
 | PR | O que entra | Migration |
 | --- | --- | --- |
 | **E7a. Link e página** | Token, tabela, página pública com confirmar e cancelar (prazo, expiração, freios, cabeçalhos), "Falar com a equipe" com mensagem pronta, "Confirmação do paciente" nos detalhes do agendamento com Copiar link e Ver como o paciente, aviso ao Pablo, WhatsApp da equipe com senha recente | 45 `zur_appointment_links` |
-| **E7b. Remarcar pelo link** | "Preciso remarcar" em 4 passos (8 dias, só dias livres, de 1 em 1 hora, colado a uma consulta ou 2 sorteados, até 2 vezes por consulta), trava única no objeto e releitura do dia, "Esse horário acabou de ser ocupado", sons e transições | não |
+| **E7b. Remarcar pelo link** | "Preciso remarcar" em 4 passos (8 dias, só dias livres, de 1 em 1 hora, colado a uma consulta ou 2 sorteados, até 2 vezes por consulta), trava única no objeto e releitura do dia, "Esse horário acabou de ser ocupado", sons e transições | 46 (duas colunas em `zur_appointment_links`) |
 | **E7c. Envio da confirmação** | Mensagem modelo em Configurações › Consultório (variáveis, prévia, padrão), "Enviar pelo WhatsApp" e "Copiar mensagem" nos detalhes, envio automático pelo Chatwoot na véspera útil pela fila da S19, "Também por e-mail" pelo `MailService.send()` da E6c (assunto, texto e botão editáveis), registro dos envios sem duplicar | a próxima livre (registro dos envios) |
 
 O resto deste plano detalha a E7a. A E7b e a E7c ganham a sua seção "Diferenças" aqui quando começarem.
@@ -146,8 +146,8 @@ Uma leitura do evento no Google por abertura (`events.get`) e um `PATCH` com eta
 
 | PR | Situação |
 | --- | --- |
-| E7a. Link e página | em andamento |
-| E7b. Remarcar pelo link | a fazer |
+| E7a. Link e página | mesclada (#355) |
+| E7b. Remarcar pelo link | em andamento |
 | E7c. Envio da confirmação | a fazer |
 
 Cada PR traz changelog, README, capturas lado a lado com o protótipo e o teto do JS inicial (141.200 B, OK do Pablo em 15/11/2026): a página do paciente e o bloco dos detalhes carregam sob demanda.
@@ -170,3 +170,57 @@ Sem perguntas: tudo coberto pelas decisões de 12/11 e 13/11 citadas acima.
 ### Perguntas abertas
 
 Nenhuma.
+
+## 15. Diferenças da E7b (remarcar pelo link)
+
+Situação: aprovado com o protótipo (v51 e v52–v56, 13/11/2026). Regras de `sons-menu-e-agenda-editavel.md`: "Remarcar pelo link, pelo próprio paciente" (12/11, 22:37), "2. Remarcar pelo link, revisado" (13/11, 00:15), itens 3 e 4 de 13/11 01:04 e item 1 de 13/11 01:32. Sem perguntas novas ao Pablo.
+
+### Critérios de aceite
+
+- **CA-R1.** "Preciso remarcar" aparece na página com o link valendo, dentro do prazo de cancelar e com menos de 2 remarcações pelo link; fora disso, a página diz para falar com a equipe. O aviso de cancelar oferece "Prefiro remarcar" nas mesmas condições.
+- **CA-R2.** Passo 1 mostra só os dias de amanhã até 8 dias à frente que têm pelo menos um horário livre. Sem nenhum, "Combinar pelo WhatsApp" com a mensagem pronta.
+- **CA-R3.** Passo 2 mostra só os turnos com horário livre: manhã do início ao almoço, tarde do fim do almoço ao fim. Sem almoço, o turno corta ao meio-dia.
+- **CA-R4.** Passo 3 mostra as horas do turno de 1 em 1 hora, a partir do início, que cabem com a duração da consulta.
+- **CA-R5.** Passo 4 oferece: num turno com consulta, até 3 horários livres colados antes ou depois de uma consulta, os mais perto da hora escolhida primeiro; sem colado livre, os 2 de menor pontuação do protótipo (minutos até a consulta mais próxima, mais 1,5 vez os minutos até a hora escolhida), em ordem de horário; num turno sem consulta, 2 horários sorteados que não mudam ao recarregar.
+- **CA-R6.** Livre quer dizer: dia de atendimento, sem feriado nem dia sem expediente, dentro do horário, fora do almoço, sem encostar em nenhum evento com hora de nenhuma agenda lida (consultas, compromissos e agendas só de leitura), exceto ela mesma e os cancelados.
+- **CA-R7.** Escolher pede confirmação ("Remarcar para este horário?", foco em "Voltar"). O servidor refaz a oferta na hora de gravar, sob uma trava única no objeto, lendo o dia de novo: se o horário saiu da oferta, 409 e "Esse horário acabou de ser ocupado", com a lista nova.
+- **CA-R8.** Remarcar muda o mesmo evento no Google (início e fim, com etag) e a cor para Reagendado. O link continua o mesmo e mostra "Consulta remarcada" com o horário novo, ainda com cancelar dentro do novo prazo.
+- **CA-R9.** O Pablo recebe o aviso "{nome} remarcou pelo link", de {antes} para {depois}. Os detalhes do agendamento mostram "Remarcou pelo link" com o horário de antes.
+- **CA-R10.** Até 2 remarcações por consulta pelo link, contadas no banco; a terceira é 409. Só consultas de 15 minutos a 4 horas remarcam pelo link (fora disso, a equipe).
+- **CA-R11.** A lista de dias e a oferta passam pelo freio de aberturas da rede; remarcar, pelo de respostas e pelo de 10 por link e dia. Nenhuma resposta traz nome, tipo, quantidade ou horário de outro evento: só dias, turnos e horários livres.
+- **CA-R12.** Sons do sistema: Sino ao remarcar, dois tons graves quando o horário acabou de ser ocupado. Transição curta entre os passos, sem animação para quem pede menos movimento.
+- **CA-R13.** Celular, tema escuro, teclado, leitor de tela (título de cada passo recebe o foco), 44 px, inglês.
+
+### Rotas e contratos
+
+| Rota | Corpo | Resposta |
+| --- | --- | --- |
+| `POST /api/c/days` | `{ token }` | `{ length, days: [{ day, turns: [{ turn, from, to, hours }] }] }`, só dias e turnos com vaga; `hours` são as horas do passo 3 |
+| `POST /api/c/offer` | `{ token, day, turn, pref }` | `{ slots: [minuto] }`, até 3 |
+| `POST /api/c/reschedule` | `{ token, day, turn, pref, start }` | a página (`ConfirmView`) com `state: "rescheduled"`; 409 `error.rescheduleTaken` quando o horário saiu da oferta |
+
+`ConfirmView` ganha `canReschedule`. `ConfirmAnswer` e o estado da página ganham `rescheduled`; `ConfirmLinkStatus` ganha `previousStart`.
+
+### Banco
+
+Migration 46: `zur_appointment_links` ganha `reschedules INTEGER NOT NULL DEFAULT 0` e `previous_start TEXT`. Continua fora do backup.
+
+### Custo
+
+Cada passo lê o Google uma vez por agenda aberta (até 10 chamadas); remarcar lê o evento, a lista do dia, grava e, num 412, lê de novo (até 14). Banco: os passos não escrevem; remarcar escreve 1 linha e o aviso. Sem recurso novo.
+
+### Segurança
+
+| Ameaça | Defesa | Teste |
+| --- | --- | --- |
+| Ver a agenda de outros pela lista | Só dias, turnos e minutos livres; nada de evento | `confirm-links.test.ts` › days/offer |
+| Remarcar para um horário que não foi oferecido | O servidor recalcula a oferta e exige o horário nela | › refuses a slot outside the offer |
+| Dois pacientes no mesmo horário | Trava única no objeto e releitura do dia antes de gravar | › two reschedules at once |
+| Remarcar sem fim | 2 por consulta e 10 respostas por link e dia | › third reschedule |
+| Prever o sorteio | Semente HMAC com o segredo do servidor, por link, dia e turno | › draw is stable and needs the secret |
+
+### Suposições
+
+- O sorteio do turno sem consulta é um HMAC do link, do dia e do turno com o segredo do servidor, e não um número guardado: não muda ao recarregar e não grava nada.
+- Evento de dia inteiro não ocupa horário (o dia fechado vem de "Dias sem expediente").
+- Sem almoço configurado, manhã e tarde se dividem ao meio-dia.

@@ -1,4 +1,4 @@
-import { confirmAnswerSchema, confirmLinkRequestSchema, confirmViewSchema } from "@zuri/shared";
+import { confirmAnswerSchema, confirmLinkRequestSchema, confirmViewSchema, rescheduleDaysSchema, rescheduleOfferSchema, rescheduleSchema } from "@zuri/shared";
 import type { Context, Hono } from "hono";
 import type { ClientInfo } from "../auth/client.ts";
 import { AppError } from "../http/errors.ts";
@@ -21,6 +21,22 @@ export function registerConfirmPublic(app: Hono<ApiEnv>, deps: () => GoogleRoute
   app.post("/c/answer", async (c) => {
     const { token, action } = await readJson(c.req.raw, confirmAnswerSchema, 1024);
     return Response.json(await deps().confirmLinks.answer(token, action, client(c).network));
+  });
+
+  // Rescheduling by the link (E7b): the days, a half's slots, and the move.
+  app.post("/c/days", async (c) => {
+    const { token } = await readJson(c.req.raw, rescheduleDaysSchema, 1024);
+    return Response.json(await deps().confirmLinks.days(token, client(c).network));
+  });
+
+  app.post("/c/offer", async (c) => {
+    const input = await readJson(c.req.raw, rescheduleOfferSchema, 1024);
+    return Response.json(await deps().confirmLinks.offer(input, client(c).network));
+  });
+
+  app.post("/c/reschedule", async (c) => {
+    const input = await readJson(c.req.raw, rescheduleSchema, 1024);
+    return Response.json(await deps().confirmLinks.reschedule(input, client(c).network));
   });
 }
 

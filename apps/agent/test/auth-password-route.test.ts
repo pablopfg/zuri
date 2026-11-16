@@ -92,6 +92,10 @@ const PUBLIC = new Set([
   // The patient's confirmation link (E7a): no session, only the token in the body (and the CSRF of the page).
   "POST /api/c/view",
   "POST /api/c/answer",
+  // Rescheduling by the link (E7b): the same token in the body.
+  "POST /api/c/days",
+  "POST /api/c/offer",
+  "POST /api/c/reschedule",
   // The bot's /aprovar page: no session, only a one-time token and a passkey (step 15a).
   "POST /api/approvals/telegram/options",
   "POST /api/approvals/telegram/verify",

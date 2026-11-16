@@ -83,6 +83,7 @@ export const NOTICE_KINDS = [
   "agenda.changed",
   "agenda.confirmed",
   "agenda.cancelled",
+  "agenda.rescheduled",
   "ai.modelLeaving",
   "ai.modelSwitched",
   "ai.fallbackOff",

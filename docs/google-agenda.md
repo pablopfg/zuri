@@ -345,8 +345,9 @@ Google Agenda (decisão de 03/11/2026).
 Os detalhes de uma consulta (um evento com tipo, numa agenda em que a Zuri
 escreve) têm o quadro **Confirmação do paciente**:
 
-- A linha de cima diz a resposta: "Ainda sem resposta", "Confirmou pelo link"
-  ou "Cancelou pelo link", com o dia e a hora. Uma consulta que mudou de hora
+- A linha de cima diz a resposta: "Ainda sem resposta", "Confirmou pelo link",
+  "Remarcou pelo link" (com o horário de antes) ou "Cancelou pelo link", com o
+  dia e a hora. Uma consulta que mudou de hora
   depois da resposta volta a "Ainda sem resposta": o paciente confirma de novo.
 - **Copiar link** copia o endereço `https://<domínio>/c/<token>` e **Ver como
   o paciente** abre a página numa aba nova. O link nasce no primeiro pedido e
@@ -365,9 +366,27 @@ O que o paciente vê, sem entrar em nada:
   foco. Cancelar pinta de Cancelado (Tomate), nunca apaga o evento, manda o
   aviso e desliga o link para sempre. Dá para cancelar por aqui até 12 horas
   antes e só até 23:59 do dia anterior, o que vier primeiro.
+- **Preciso remarcar** (também como "Prefiro remarcar" no aviso de cancelar)
+  leva o paciente em 4 passos: o dia, manhã ou tarde, a hora de preferência e
+  um dos horários livres. Só aparecem os dias de amanhã até 8 dias à frente com
+  horário livre, dentro do horário de atendimento de Configurações › Agenda,
+  fora do almoço, dos feriados e dos dias sem expediente. Livre quer dizer sem
+  encostar em nenhum evento com hora das agendas lidas, compromissos e agendas
+  só de leitura também. Os horários vêm de 1 em 1 hora, com a duração da
+  própria consulta. O último passo oferece até 3 horários colados antes ou
+  depois de outra consulta, os mais perto da hora escolhida primeiro; sem
+  nenhum colado livre, os 2 que somam menos minutos até uma consulta e até a
+  hora escolhida (esta pesa 1,5 vez), em ordem de horário; num turno sem
+  consulta, 2 sorteados que não mudam ao recarregar. Escolher pede
+  confirmação. A Zuri lê o dia de novo na hora de gravar, uma remarcação por
+  vez: se o horário acabou de ser ocupado, a página diz e mostra os que
+  sobraram. O mesmo evento muda de dia e hora no Google e fica Reagendado
+  (Banana); o link continua o mesmo e o aviso com o sino diz de quando para
+  quando. Vale até o prazo de cancelar, até 2 vezes por consulta e só para
+  consultas de 15 minutos a 4 horas; fora disso, só pela equipe.
 - **Falar com a equipe pelo WhatsApp** abre o WhatsApp do consultório com a
-  mensagem pronta. Para mudar o dia ou a hora, é por lá (a E7b traz a
-  remarcação pelo link).
+  mensagem pronta. Sem dia livre para remarcar, **Combinar pelo WhatsApp**
+  abre com a mensagem de quem não achou horário.
 - O link vale até 1 hora antes da consulta. Depois disso, ou se a consulta for
   cancelada, a página diz que ele expirou.
 
@@ -451,7 +470,7 @@ passo a passo está em [avaliacoes-google.md](avaliacoes-google.md#para-quem-ins
 | Regras de arrastar, duração, "mover marca Reagendado" e desfazer; envio de uma mudança com o aviso | `apps/web/src/lib/agenda-edit.ts`, `apps/web/src/pages/agenda/changes.ts` |
 | Banco (migration 22) | `zur_google_account`, `zur_google_calendars` |
 | Registro do dia e última consulta de um contato (migrations 42 e 43) | `zur_agenda_record` com o índice `zur_agenda_record_contact`, `zur_agenda_closed_days`; `apps/agent/src/google/record.ts` |
-| Link de confirmação do paciente (migration 45) | `zur_appointment_links`; `apps/agent/src/google/confirm-links.ts`, `apps/agent/src/api/confirm.ts`, `apps/web/src/pages/confirm/ConfirmPage.tsx`, `apps/web/src/pages/agenda/ConfirmBox.tsx` |
+| Link de confirmação do paciente (migrations 45 e 46) | `zur_appointment_links`; `apps/agent/src/google/confirm-links.ts`, `apps/agent/src/google/reschedule.ts`, `apps/web/src/pages/confirm/Reschedule.tsx`, `apps/agent/src/api/confirm.ts`, `apps/web/src/pages/confirm/ConfirmPage.tsx`, `apps/web/src/pages/agenda/ConfirmBox.tsx` |
 | Busca do nome e vínculo com Contatos | `apps/agent/src/google/contacts.ts` (`forBooking`), `apps/web/src/pages/agenda/PatientLink.tsx` |
 
 - Os tokens ficam cifrados com AES-256-GCM, numa chave derivada do
