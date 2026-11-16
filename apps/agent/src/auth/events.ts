@@ -1,5 +1,6 @@
 import {
   AUTH_ACTIVITY_GROUPS,
+  AUTH_ATTENTION_KINDS,
   AUTH_EVENT_KINDS,
   AUTH_EVENT_DETAIL_DAYS,
   type AuthActivity,
@@ -71,6 +72,9 @@ export interface AuthEventOptions {
    */
   everyNetwork?: boolean;
 }
+
+/** The rows from outside Brazil, as the partial index of migration 49 states them (HOME_COUNTRY is "BR"). */
+const ABROAD_WHERE = "country <> '' AND country <> 'BR'";
 
 /**
  * The access activity (zur_auth_events): every sign-in, refusal, sign-out and
@@ -219,9 +223,17 @@ export class AuthEvents {
     }
     // Always by kind: a row of a kind that no longer exists (the remote tokens', removed on 11/11/2026,
     // kept for 90 days) would fail the screen's schema and take the whole page with it.
-    const kinds = query.group !== undefined ? AUTH_ACTIVITY_GROUPS[query.group] : AUTH_EVENT_KINDS;
+    const grouped = query.group !== undefined ? AUTH_ACTIVITY_GROUPS[query.group] : AUTH_EVENT_KINDS;
+    // "Attention" narrows the kinds further: a group outside it leaves nothing, so the page is empty without a read.
+    const kinds = query.show === "attention" ? grouped.filter((kind) => AUTH_ATTENTION_KINDS.includes(kind)) : grouped;
+    if (kinds.length === 0) return { events: [], nextCursor: null };
     where.push(`kind IN (${kinds.map(() => "?").join(", ")})`);
     params.push(...kinds);
+    if (query.show === "abroad") {
+      // Empty is a request the edge didn't place (local runs): not known to be from abroad. Written as the partial
+      // index zur_auth_events_abroad (migration 49) is, literals and all, so SQLite reads only the rows from abroad.
+      where.push(ABROAD_WHERE);
+    }
     if (query.ip !== undefined) {
       // A prefix compared as text: no LIKE, so "%" or "_" in the input mean nothing (CF-6-01 also caps LIKE patterns).
       where.push("substr(lower(ip), 1, ?) = ?");

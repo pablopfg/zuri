@@ -140,15 +140,44 @@ describe("the Free plan budget of each route", () => {
       db.transaction(() => {
         for (let i = 0; i < 3000; i++) {
           const at = now - 60_000 - i * 1000;
-          db.run(`INSERT INTO zur_auth_events (at, last_at, kind, ip) VALUES (?, ?, ?, ?)`, at, at, i % 2 ? "login_failure" : "logout", `198.51.100.${i % 200}`);
+          // One access in ten from abroad (E12a): the "Outside Brazil" filter skips the other nine on its way.
+          db.run(
+            `INSERT INTO zur_auth_events (at, last_at, kind, ip, country) VALUES (?, ?, ?, ?, ?)`,
+            at,
+            at,
+            i % 2 ? "login_failure" : "logout",
+            `198.51.100.${i % 200}`,
+            i % 10 === 3 ? "PT" : "BR",
+          );
         }
       });
     });
-    for (const query of ["", "?days=7", "?days=7&group=failure", "?group=failure&ip=198.51.100.1"]) {
+    for (const query of ["", "?days=7", "?days=7&group=failure", "?group=failure&ip=198.51.100.1", "?show=attention", "?days=90&show=abroad"]) {
       const res = await cost("GET", `/auth/activity${query}`);
       expect(res.status, query).toBe(200);
       // Session check, one page (51 rows) and what the filter skips on the way.
-      expect(res.read, query).toBeLessThanOrEqual(query.includes("ip=") ? 600 : 160);
+      expect(res.read, query).toBeLessThanOrEqual(query.includes("ip=") || query.includes("abroad") ? 600 : 160);
+      expect(res.written, query).toBe(0);
+    }
+  });
+
+  it("reads about one page for \"Outside Brazil\" even when nothing came from abroad (SEC-E12a-01)", async () => {
+    await runInDurableObject(owner(), (agent: ZuriAgent) => {
+      const { db } = agent.store;
+      const now = Date.now();
+      db.transaction(() => {
+        db.run(`DELETE FROM zur_auth_events WHERE country <> 'BR'`);
+        for (let i = 0; i < 3000; i++) {
+          const at = now - 60_000 - i * 1000;
+          db.run(`INSERT INTO zur_auth_events (at, last_at, kind, ip, country) VALUES (?, ?, 'login_failure', '198.51.100.1', 'BR')`, at, at);
+        }
+      });
+    });
+    // With and without a period: the partial index of migration 49 holds only the rows from abroad, so none is read.
+    for (const query of ["?show=abroad", "?days=90&show=abroad", "?days=90&show=abroad&group=failure"]) {
+      const res = await cost("GET", `/auth/activity${query}`);
+      expect(res.status, query).toBe(200);
+      expect(res.read, query).toBeLessThanOrEqual(10);
       expect(res.written, query).toBe(0);
     }
   });
