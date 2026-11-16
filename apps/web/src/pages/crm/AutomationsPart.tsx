@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useId, useState } from "react";
 import { Link } from "react-router";
+import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
 import { Button, cn, ErrorNotice, Loading, SelectField, TextField } from "../../components/ui.tsx";
 import { api, errorMessage } from "../../lib/api.ts";
@@ -117,7 +118,9 @@ const EFFECT: Record<CrmAutomationEffect["status"], MessageKey> = {
 };
 
 /** The options' names; one the catalog doesn't name shows its key. */
-const OPTION: Record<string, MessageKey> = { perDay: "web.crmAutomations.option.perDay", hour: "web.crmAutomations.option.hour" };
+const OPTION: Record<string, MessageKey> = { perDay: "web.crmAutomations.option.perDay", hour: "web.crmAutomations.option.hour", mail: "web.crmAutomations.option.mail" };
+/** What a switch does, under it (E7c3b). */
+const OPTION_HINT: Record<string, MessageKey> = { mail: "web.crmAutomations.option.mailHint" };
 
 export function useNames() {
   const { t } = useI18n();
@@ -296,6 +299,7 @@ function SetupPanel({ item, title, connections, rehearsalDays, onCancel }: { ite
   const [connectionId, setConnectionId] = useState(item.connectionId ?? connections[0]?.id ?? "");
   const [tested, setTested] = useState<string | null>(null);
   const [options, setOptions] = useState<Record<string, number | string>>(item.options);
+  const idBase = useId();
   const needs = item.connectionKind !== null;
   const canSave = !needs || (connectionId !== "" && tested === connectionId);
   return (
@@ -361,6 +365,20 @@ function SetupPanel({ item, title, connections, rehearsalDays, onCancel }: { ite
             {item.optionDefs.map((def) => {
               const named = OPTION[def.key];
               const label = named ? t(named) : def.key;
+              if (def.kind === "switch") {
+                const hint = OPTION_HINT[def.key];
+                const hintId = `${idBase}-${def.key}`;
+                return (
+                  <div key={def.key} className="sm:col-span-2">
+                    <Switch label={label} checked={(options[def.key] ?? def.default) === 1} onChange={(on) => setOptions({ ...options, [def.key]: on ? 1 : 0 })} {...(hint ? { describedBy: hintId } : {})} />
+                    {hint && (
+                      <p id={hintId} className="text-sm leading-6 text-fg-muted">
+                        {t(hint)}
+                      </p>
+                    )}
+                  </div>
+                );
+              }
               return def.kind === "number" ? (
                 <TextField
                   key={def.key}

@@ -54,6 +54,17 @@ test("lists the automations in the order they arrive, with the base and the noti
   await expect(row(page, "Confirmação de consulta")).toContainText("Desligada");
   await expect(row(page, "Confirmação de consulta").getByRole("button", { name: "Ligar" })).toBeVisible();
   await expect(page.getByText("2 de 11 liberadas")).toBeVisible();
+  // E7c3b: setting it up has the e-mail along, on by default, a switch with its hint.
+  await row(page, "Confirmação de consulta").getByRole("button", { name: "Ligar" }).click();
+  const setup = page.getByRole("form", { name: "Ligar “Confirmação de consulta”" });
+  const mail = setup.getByRole("switch", { name: "Também por e-mail, na mesma hora" });
+  await expect(mail).toBeChecked();
+  await expect(mail).toHaveAccessibleDescription(/Quem tem só o e-mail recebe só por e-mail/);
+  await mail.click();
+  await expect(mail).not.toBeChecked();
+  await expectAccessible(page, "ligar confirmação de consulta");
+  await setup.getByRole("button", { name: "Cancelar" }).click();
+  await expect(setup).toHaveCount(0);
   // "Avisar quando chegar": a button that says whether it's pressed.
   const bell = row(page, "Pedido de avaliação").getByRole("button", { name: "Avisar quando “Pedido de avaliação” chegar" });
   await expect(bell).toHaveAttribute("aria-pressed", "false");
