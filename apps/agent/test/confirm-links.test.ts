@@ -158,7 +158,7 @@ describe("E7c2: the confirmation e-mail", () => {
       return sent;
     });
     const html = sent[0]?.html ?? "";
-    expect(html).not.toMatch(/<script|<i>|<sim>/);
+    expect(html).not.toMatch(/<script|<i>|<sim>/i);
     expect(html).toContain("&lt;script&gt;x&lt;/script&gt;");
     expect(html).toContain("&quot;&lt;i&gt;aspas&lt;/i&gt;&quot; &amp; Consultório Exemplo");
     expect(html).toContain(">Vou &lt;sim&gt;</a>");
