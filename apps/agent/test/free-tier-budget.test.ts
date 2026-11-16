@@ -863,7 +863,7 @@ describe("the Free plan budget of each route", () => {
 });
 
 // E11b: the card's "Família" with a full family: 20 relatives, each with one more of their own.
-describe("Contacts' family (E11b)", () => {
+describe("Contacts' family (E11b, E11c)", () => {
   it("the card reads a few rows per relative, and a link writes its row, the screens' number and the count", () =>
     withChatWorld(async (world) => {
       const member = [{ contactGroupMembership: { contactGroupResourceName: "contactGroups/clientes" } }];
@@ -901,6 +901,15 @@ describe("Contacts' family (E11b)", () => {
       expect(add.written).toBeLessThanOrEqual(6);
       // Measured 428: the checks, then the card it answers with.
       expect(add.read).toBeLessThanOrEqual(500);
+      // E11c: a new responsible takes the place of the one before: that row back to 0 (and its index), then the new link.
+      family.add(id(260), { relative: id(261), role: "mother", otherRole: "son", responsible: true });
+      const swap = measure(() => family.add(id(260), { relative: id(262), role: "aunt", otherRole: "nephew", responsible: true }));
+      expect(swap.written).toBeLessThanOrEqual(8);
+      expect(swap.read).toBeLessThanOrEqual(80);
+      // Where the messages go: the responsible's link by two indexes, the patient and the responsible (measured 10).
+      const reach = measure(() => expect(family.reach("people/c260").via).toMatchObject({ name: "Pessoa 262", role: "aunt" }));
+      expect(reach.written).toBe(0);
+      expect(reach.read).toBeLessThanOrEqual(12);
     }));
 });
 
@@ -1304,6 +1313,7 @@ describe("flows (step 22a)", () => {
         credentialKey: testEnv.MCP_CREDENTIAL_KEY,
         secret: () => "segredo-de-teste",
         hours: () => DEFAULT_AGENDA_PREFS,
+        reach: () => ({ phone: "", email: "", via: null, gone: false }),
         notify: () => {
           notices += 1;
         },

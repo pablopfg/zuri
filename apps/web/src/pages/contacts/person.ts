@@ -1,4 +1,4 @@
-import type { ContactDetail, ContactSummary } from "@zuri/shared";
+import { type ContactDetail, type ContactSummary, whatsappNumber } from "@zuri/shared";
 
 /**
  * What the Contacts screen (Sinal, S10) works out from a contact by itself:
@@ -60,18 +60,8 @@ export function dialNumber(phone: string): string | null {
   return `${phone.trim().startsWith("+") ? "+" : ""}${digits}`;
 }
 
-/**
- * The number for a `wa.me` link, or null. Only a Brazilian mobile: area code
- * and nine digits starting with 9, with or without the country code. Nothing
- * says for free whether a number has WhatsApp; a landline certainly has not.
- */
-export function whatsappNumber(phone: string): string | null {
-  let digits = phone.replace(/\D/g, "").replace(/^0+/, "");
-  // Written with a country code that is not Brazil's: never read as a Brazilian number.
-  if (phone.trim().startsWith("+") && !digits.startsWith("55")) return null;
-  if (digits.length === 13 && digits.startsWith("55")) digits = digits.slice(2);
-  return /^[1-9][1-9]9\d{8}$/.test(digits) ? `55${digits}` : null;
-}
+/** The number for a `wa.me` link, or null: the one rule of `@zuri/shared`, also used for the office's messages. */
+export { whatsappNumber };
 
 /** The first number of the contact that opens WhatsApp. */
 export function whatsappOf(phones: { value: string }[]): string | null {

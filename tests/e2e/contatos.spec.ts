@@ -679,3 +679,47 @@ test("E11b: the family on the card: link a relative picked among homonyms, see t
   await expect(add).toBeFocused();
   await clear();
 });
+
+test("E11c: a grown-up relative can receive the office's messages: the box only for those roles, the hint on the row and the line on the card @mobile", async ({ page }) => {
+  await copy(page, ["pacientes"]);
+  // Links outlive the copy (they are the owner's): a run before this one may have left some.
+  const all = (await (await page.request.get("/api/contacts", { headers: CSRF })).json()) as { contacts: { id: string; name: string }[] };
+  for (const { id } of all.contacts) {
+    const { links } = (await (await page.request.get(`/api/contacts/${id}/family`, { headers: CSRF })).json()) as { links: { id: string }[] };
+    for (const link of links) await page.request.delete(`/api/contacts/${id}/family/${link.id}`, { headers: CSRF });
+  }
+  await rows(page).filter({ hasText: "Beatriz Novaes Conceição" }).click();
+  const family = card(page).getByRole("region", { name: "Família" });
+  const add = family.getByRole("button", { name: "Ligar parente" });
+  await add.click();
+  const dialog = page.getByRole("dialog", { name: "Ligar um parente de Beatriz" });
+  await dialog.getByRole("textbox", { name: "Parente" }).fill("marcos");
+  await dialog.getByRole("radio", { name: /\(41\) 97777-0112/ }).check();
+  const box = dialog.getByRole("checkbox", { name: "As mensagens do consultório para Beatriz vão para essa pessoa (criança ou quem não usa o celular)" });
+  // A daughter doesn't receive her mother's messages: the box is off and empty.
+  await dialog.getByRole("combobox", { name: "Essa pessoa é" }).selectOption({ label: "Pai" });
+  await box.check();
+  await dialog.getByRole("combobox", { name: "Essa pessoa é" }).selectOption({ label: "Filha" });
+  await expect(box).toBeDisabled();
+  await expect(box).not.toBeChecked();
+  await expect(box).toHaveAccessibleDescription("Só mãe, pai, avós, tios, irmãos ou o responsável legal recebem as mensagens.");
+  await dialog.getByRole("combobox", { name: "Essa pessoa é" }).selectOption({ label: "Pai" });
+  await expect(box).toBeEnabled();
+  await box.check();
+  await expectAccessible(page, "ligar parente com responsável");
+  expect(await tooSmallControls(page), "every control of the dialog is a 44 px target").toEqual([]);
+  await dialog.getByRole("button", { name: "Ligar", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("status").filter({ hasText: "Ligação feita: Marcos Vieira Lopes é pai de Beatriz Novaes Conceição. As mensagens do consultório para Beatriz vão para Marcos Vieira Lopes." })).toBeVisible();
+  await expect(family.getByRole("listitem")).toContainText("Pai · nasc. 11 de fevereiro de 1979 · recebe as mensagens");
+  await expect(family.getByText("As mensagens do consultório para Beatriz vão para Marcos Vieira Lopes.", { exact: true })).toBeVisible();
+  await expectAccessible(page, "família com responsável");
+  // The server says the same: Beatriz's messages go to Marcos's mobile.
+  const beatriz = all.contacts.find((contact) => contact.name === "Beatriz Novaes Conceição")?.id ?? "";
+  const { reach } = (await (await page.request.get(`/api/contacts/${beatriz}`, { headers: CSRF })).json()) as { reach: { phone: string; via: { name: string; role: string } | null } };
+  expect(reach).toMatchObject({ phone: "+5541977770112", via: { name: "Marcos Vieira Lopes", role: "father" } });
+  // Taking the link off takes the line off.
+  await family.getByRole("button", { name: "Tirar a ligação com Marcos Vieira Lopes" }).click();
+  await expect(family.getByText("As mensagens do consultório para Beatriz", { exact: false })).toHaveCount(0);
+});
+

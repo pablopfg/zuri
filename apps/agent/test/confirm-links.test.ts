@@ -102,6 +102,7 @@ describe("E7c2: the confirmation e-mail", () => {
     credentialKey: testEnv.MCP_CREDENTIAL_KEY,
     secret: () => "segredo-de-teste",
     hours: () => agent.store.settings.field("agenda"),
+    reach: (resource) => agent.store.family.reach(resource),
     notify: () => {},
     lockdown: () => false,
     autoHour: () => "",
@@ -124,6 +125,7 @@ describe("E7c2: the confirmation e-mail", () => {
       credentialKey: testEnv.MCP_CREDENTIAL_KEY,
       secret: () => "segredo-de-teste",
       hours: () => agent.store.settings.field("agenda"),
+      reach: (resource) => agent.store.family.reach(resource),
       notify: () => {},
       lockdown: () => false,
       autoHour: () => "",
@@ -260,7 +262,7 @@ describe("E7c2: the confirmation e-mail", () => {
 });
 
 describe("E7c3a: the automatic confirmation on the working eve", () => {
-  const links = (agent: ZuriAgent, autoHour = "", message = "", sendMail: ConfirmLinkDeps["sendMail"] = async () => ({ ok: true })) =>
+  const links = (agent: ZuriAgent, autoHour = "", message = "", sendMail: ConfirmLinkDeps["sendMail"] = async () => ({ ok: true }), reach?: ConfirmLinkDeps["reach"]) =>
     new ConfirmLinks({
       db: agent.store.db,
       google: () => agent.store.google,
@@ -274,6 +276,7 @@ describe("E7c3a: the automatic confirmation on the working eve", () => {
       credentialKey: testEnv.MCP_CREDENTIAL_KEY,
       secret: () => "segredo-de-teste",
       hours: () => agent.store.settings.field("agenda"),
+      reach: reach ?? ((resource) => agent.store.family.reach(resource)),
       notify: () => {},
       lockdown: () => false,
       autoHour: () => autoHour,
@@ -452,6 +455,77 @@ describe("E7c3a: the automatic confirmation on the working eve", () => {
       [6, "already", 97],
     ]);
     expect(result.tries).toBe(1);
+  });
+
+  it("E11c: a linked appointment goes to the contact's mobile and e-mail, or the responsible's, never to what the event or the request carries", async () => {
+    // 2099-11-10 is a Tuesday: its eve covers Wednesday the 11th. A linked event keeps no phone nor e-mail (SEC-E5f-04).
+    at("2099-11-11", "09:00", { summary: "Lucas Prado", extendedProperties: { private: { zuriContact: "people/c11" } } });
+    at("2099-11-11", "14:00", { summary: "Lucas Prado", extendedProperties: { private: { zuriContact: "people/c11" } } });
+    at("2099-11-11", "10:00", { summary: "Bruna Reis", extendedProperties: { private: { zuriContact: "people/c20" } } });
+    at("2099-11-11", "11:00", { summary: "Caio Melo", extendedProperties: { private: { zuriContact: "people/c30" } } });
+    // Even with the old fields left behind at Google, the link wins: the contact's data, never the event's.
+    at("2099-11-11", "12:00", { summary: "Davi Rocha", extendedProperties: { private: { zuriContact: "people/c40", zuriPhone: "41999990000", zuriEmail: "velho@exemplo.com.br" } } });
+    const asked: string[] = [];
+    const reach: ConfirmLinkDeps["reach"] = (resource) => {
+      asked.push(resource);
+      if (resource === "people/c11") return { phone: "+5511988880010", email: "helena@exemplo.com.br", via: { name: "Helena Prado", role: "mother" }, gone: false };
+      if (resource === "people/c20") return { phone: "", email: "bruna@exemplo.com.br", via: null, gone: false };
+      // The responsible left the labels: nothing goes to anyone.
+      if (resource === "people/c30") return { phone: "", email: "", via: null, gone: true };
+      return { phone: "", email: "", via: null, gone: false };
+    };
+    const mails: string[] = [];
+    const sendMail: ConfirmLinkDeps["sendMail"] = async (mail) => {
+      mails.push(mail.to);
+      return { ok: true };
+    };
+    const result = await inOwner(async (agent) => {
+      const owner = links(agent, "", "", sendMail, reach);
+      const phoneOnly = (await owner.eve("2099-11-10", false)).map((item) => [item.label, item.phone, item.email]);
+      const live = await owner.eve("2099-11-10", true, Number.POSITIVE_INFINITY, true);
+      const sent = await Promise.all(live.map(async (item) => [item.label, item.phone, await item.mail?.()]));
+      return { phoneOnly, sent };
+    });
+    // SEC-A12-01: the number is Helena's, so Chatwoot and the queue know it by her name, never the child's.
+    expect(result.phoneOnly).toEqual([
+      ["Helena", "+5511988880010", false],
+      ["Helena", "+5511988880010", false],
+    ]);
+    expect(result.sent.sort()).toEqual([
+      ["Bruna", "", "sent"],
+      ["Helena", "+5511988880010", "sent"],
+      ["Helena", "+5511988880010", "sent"],
+    ]);
+    expect(mails.sort()).toEqual(["bruna@exemplo.com.br", "helena@exemplo.com.br", "helena@exemplo.com.br"]);
+    // SEC-A12-03: each contact is resolved once a run (two runs here), Lucas's two appointments too; each
+    // e-mail resolves the address again when it goes, so a change in between is followed.
+    const times = (resource: string) => asked.filter((item) => item === resource).length;
+    expect([times("people/c11"), times("people/c20"), times("people/c30"), times("people/c40")]).toEqual([2 + 2, 2 + 1, 2, 2]);
+  });
+
+  it("E11c: the owner's e-mail button goes to the responsible's e-mail, and says there is none without one", async () => {
+    const lucas = at("2099-11-11", "09:00", { summary: "Lucas Prado", extendedProperties: { private: { zuriContact: "people/c11" } } });
+    const gone = at("2099-11-11", "10:00", { summary: "Caio Melo", extendedProperties: { private: { zuriContact: "people/c30", zuriEmail: "velho@exemplo.com.br" } } });
+    const reach: ConfirmLinkDeps["reach"] = (resource) =>
+      resource === "people/c11" ? { phone: "", email: "helena@exemplo.com.br", via: { name: "Helena Prado", role: "mother" }, gone: false } : { phone: "", email: "", via: null, gone: true };
+    const mails: string[] = [];
+    const result = await inOwner(async (agent) => {
+      const owner = links(agent, "", "", async (mail) => {
+        mails.push(mail.to);
+        return { ok: true };
+      }, reach);
+      const status = await owner.mail(WORK, lucas.id);
+      const refused = await owner.mail(WORK, gone.id).then(
+        () => "sent",
+        (error: unknown) => [(error as { code?: string }).code, (error as { messageKey?: string }).messageKey],
+      );
+      const madeForGone = agent.store.db.one(`SELECT 1 AS found FROM zur_appointment_links WHERE event_id = ?`, gone.id);
+      return { status, refused, madeForGone };
+    });
+    expect(mails).toEqual(["helena@exemplo.com.br"]);
+    expect(result.status).toMatchObject({ sentChannel: "email" });
+    expect(result.refused).toEqual(["CONFLICT", "error.confirmNoEmail"]);
+    expect(result.madeForGone).toBeNull();
   });
 
   it("E7c3b: a message too long for the queue goes by e-mail only when the e-mail is on", async () => {
@@ -1022,6 +1096,7 @@ describe("E7a: the edges, on a clock of the test's own", () => {
       credentialKey: testEnv.MCP_CREDENTIAL_KEY,
       secret: () => "segredo-de-teste",
       hours: () => agent.store.settings.field("agenda"),
+      reach: (resource) => agent.store.family.reach(resource),
       notify: () => {},
       lockdown: () => false,
       autoHour: () => "",
@@ -1182,6 +1257,7 @@ describe("E7b: rescheduling by the link", () => {
       credentialKey: testEnv.MCP_CREDENTIAL_KEY,
       secret: () => "segredo-de-teste",
       hours: () => agent.store.settings.field("agenda"),
+      reach: (resource) => agent.store.family.reach(resource),
       notify: (notice) => notices.push(notice),
       lockdown: () => false,
       autoHour: () => "",

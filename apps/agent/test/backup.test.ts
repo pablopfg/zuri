@@ -331,6 +331,39 @@ describe("import", () => {
     await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_contact_family`));
   });
 
+  it("E11c (SEC-A9-02): the responsible comes back, one a person and only a grown-up role; one already here stays", async () => {
+    const family = () => inOwner((agent) => agent.store.db.all(`SELECT a, b, role_a, role_b, responsible FROM zur_contact_family ORDER BY a, b`));
+    await inOwner((agent) => {
+      const { db } = agent.store;
+      db.run(`DELETE FROM zur_contact_family`);
+      // Here already: c7 receives c8's messages (a receives for b: 1).
+      db.run(`INSERT INTO zur_contact_family (id, a, b, role_a, role_b, responsible, created_at) VALUES (?, 'people/c7', 'people/c8', 'son', 'mother', 1, 1)`, crypto.randomUUID());
+    });
+    const file = JSON.parse(await exported());
+    file.data.contactFamily = [
+      // c1 (mother) receives for c2: kept.
+      { a: "people/c1", b: "people/c2", roleA: "mother", roleB: "son", responsible: 1 },
+      // A second responsible for c2: comes as a plain link.
+      { a: "people/c2", b: "people/c3", roleA: "nephew", roleB: "uncle", responsible: 2 },
+      // A daughter can't receive for her mother: a plain link.
+      { a: "people/c4", b: "people/c5", roleA: "daughter", roleB: "mother", responsible: 1 },
+      // c8 has a responsible here already: this one comes plain.
+      { a: "people/c6", b: "people/c8", roleA: "aunt", roleB: "niece", responsible: 1 },
+      // Written b-first: c9 (guardian) receives for c10.
+      { a: "people/c9", b: "people/c10", roleA: "guardian", roleB: "dependent", responsible: 1 },
+    ];
+    await ok(session("POST", "/backup/import", undefined, JSON.stringify(file)));
+    expect(await family()).toEqual([
+      { a: "people/c1", b: "people/c2", role_a: "mother", role_b: "son", responsible: 1 },
+      { a: "people/c10", b: "people/c9", role_a: "dependent", role_b: "guardian", responsible: 2 },
+      { a: "people/c2", b: "people/c3", role_a: "nephew", role_b: "uncle", responsible: 0 },
+      { a: "people/c4", b: "people/c5", role_a: "daughter", role_b: "mother", responsible: 0 },
+      { a: "people/c6", b: "people/c8", role_a: "aunt", role_b: "niece", responsible: 0 },
+      { a: "people/c7", b: "people/c8", role_a: "son", role_b: "mother", responsible: 1 },
+    ]);
+    await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_contact_family`));
+  });
+
   it("SEC-A11-01: a file with the 5,000 family links reads about a row per link, not the table per link", async () => {
     const file = JSON.parse(await exported());
     const links: unknown[] = [];
