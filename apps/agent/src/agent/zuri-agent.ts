@@ -1055,6 +1055,8 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         credentialKey: env.MCP_CREDENTIAL_KEY,
         secret: () => env.PASSWORD_PEPPER,
         hours: () => settings.field("agenda"),
+        // E11c: an appointment linked to a contact goes to the contact's mobile and e-mail, or the responsible's.
+        reach: (resource) => family.reach(resource),
         lockdown: () => auth.lockdown.active(),
         // The CRM's automation is made below; its hour only matters once the object is up (E7c3a).
         autoHour: () => String(crmAutomations.liveOption(CONFIRM_AUTOMATION, "hour") ?? ""),

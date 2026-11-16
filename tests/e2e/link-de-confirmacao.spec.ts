@@ -364,6 +364,52 @@ test("an appointment with the patient's e-mail sends the confirmation by e-mail 
   await expect(box.getByRole("button", { name: "Enviar por e-mail" })).toBeVisible();
 });
 
+// E11c: an appointment linked to a contact sends where the server says: the responsible's mobile and e-mail.
+test("a linked appointment says the messages go to the responsible and sends there; one whose responsible left the labels sends nowhere", async ({ page }) => {
+  const LUCAS = "00000000-0000-4000-8000-0000000000d1";
+  const CAIO = "00000000-0000-4000-8000-0000000000d2";
+  const linked = [
+    { ...appointment("e21", "Lucas Prado", "2026-11-19T09:00:00-03:00", "2026-11-19T10:00:00-03:00"), contact: "people/c11", contactId: LUCAS },
+    { ...appointment("e22", "Caio Melo", "2026-11-19T11:00:00-03:00", "2026-11-19T12:00:00-03:00"), contact: "people/c12", contactId: CAIO },
+  ];
+  const made = await routeAgenda(page, {});
+  await page.route("**/api/google/events?*", (route) => route.fulfill({ json: { more: false, calendars: CALENDARS, events: [...EVENTS, ...linked] } }));
+  // Invented people: Lucas's own data at Google, and where the server says his messages go.
+  const contact = (id: string, name: string) => ({ id, name, labels: ["Pacientes"], phone: "", email: "", birthday: "", birthdayFull: "", note: "", cpf: null, photo: null, phones: [], emails: [], sameName: 0 });
+  await page.route(`**/api/contacts/${LUCAS}`, (route) =>
+    route.fulfill({ json: { contact: contact(LUCAS, "Lucas Prado"), reach: { phone: "+5511988880010", email: "helena@exemplo.com.br", via: { name: "Helena Prado", role: "mother" }, gone: false } } }),
+  );
+  await page.route(`**/api/contacts/${CAIO}`, (route) => route.fulfill({ json: { contact: contact(CAIO, "Caio Melo"), reach: { phone: "", email: "", via: null, gone: true } } }));
+  await page.clock.install({ time: NOW });
+  await page.goto("/agenda");
+  await signIn(page);
+  await expect(page.getByRole("heading", { level: 1, name: "Agenda" })).toBeVisible();
+
+  let details = await openDetails(page, "Lucas Prado");
+  await expect(details.getByText("As mensagens vão para Helena Prado (mãe).", { exact: true })).toBeVisible();
+  await expectAccessible(page, "confirmacao-responsavel");
+  const box = details.getByRole("region", { name: "Confirmação do paciente" });
+  await page.context().route("https://wa.me/**", (route) => route.fulfill({ contentType: "text/html", body: "<title>WhatsApp</title>" }));
+  const opening = page.waitForEvent("popup");
+  await box.getByRole("button", { name: "Enviar pelo WhatsApp" }).click();
+  const popup = await opening;
+  await popup.waitForURL(/^https:\/\/wa\.me\//);
+  const wa = new URL(popup.url());
+  expect(wa.origin + wa.pathname).toBe("https://wa.me/5511988880010");
+  await popup.close();
+  await box.getByRole("button", { name: "Enviar por e-mail" }).click();
+  // The server picks the address; the request names only the appointment.
+  await expect.poll(() => made.mailed).toEqual([{ calendarId: "main", eventId: "e21" }]);
+  await details.getByRole("button", { name: "Fechar" }).click();
+
+  details = await openDetails(page, "Caio Melo");
+  await expect(details.getByText("O responsável está fora das etiquetas escolhidas, então nenhuma mensagem sai para este paciente.", { exact: true })).toBeVisible();
+  const none = details.getByRole("region", { name: "Confirmação do paciente" });
+  await expect(none.getByRole("button", { name: "Copiar mensagem" })).toBeVisible();
+  await expect(none.getByRole("button", { name: "Enviar pelo WhatsApp" })).toHaveCount(0);
+  await expect(none.getByRole("button", { name: "Enviar por e-mail" })).toHaveCount(0);
+});
+
 // E7c3a: the automatic confirmation by Chatwoot, while it is on: when it goes, in the queue, sent, or not sent.
 test("with the automatic confirmation on, the details say when it goes, that it is queued, sent or didn't go", async ({ page }) => {
   const base = { made: true, answer: "none", answeredAt: "", answerStart: "", sentChannel: "", sentAt: "", sentStart: "", mailedStart: "", autoHour: "07:00", autoState: "", autoStart: "", autoAt: "" };

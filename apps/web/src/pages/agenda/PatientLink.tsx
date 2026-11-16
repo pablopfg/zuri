@@ -1,4 +1,4 @@
-import type { AgendaEvent, BookingPage, BookingPerson, ContactDetail } from "@zuri/shared";
+import type { AgendaEvent, BookingPage, BookingPerson, ContactDetail, ContactReach, FamilyRole, MessageKey } from "@zuri/shared";
 import { HOME_COUNTRY } from "@zuri/shared";
 import { useQuery } from "@tanstack/react-query";
 import { type KeyboardEvent, type ReactNode, useId, useState } from "react";
@@ -245,27 +245,48 @@ export function NameHint({ name, page, other, onLink, onOther }: { name: string;
   );
 }
 
+/** What the responsible is to the patient (E11c), lower case for the sentence; only grown-up roles receive. */
+const VIA: Partial<Record<FamilyRole, MessageKey>> = {
+  mother: "web.agenda.event.role.mother",
+  father: "web.agenda.event.role.father",
+  grandmother: "web.agenda.event.role.grandmother",
+  grandfather: "web.agenda.event.role.grandfather",
+  aunt: "web.agenda.event.role.aunt",
+  uncle: "web.agenda.event.role.uncle",
+  sister: "web.agenda.event.role.sister",
+  brother: "web.agenda.event.role.brother",
+  guardian: "web.agenda.event.role.guardian",
+};
+
+/** The linked contact of an appointment and where the office's messages for them go (E11c); one cache for the details and the confirmation. */
+export function useLinkedContact(contactId: string | undefined) {
+  return useQuery({
+    queryKey: ["contact", contactId],
+    queryFn: ({ signal }) => api<{ contact: ContactDetail; reach?: ContactReach }>(`/contacts/${encodeURIComponent(contactId ?? "")}`, { signal }),
+    enabled: !!contactId,
+    staleTime: 30_000,
+  });
+}
+
 /** The patient in the details: the linked contact, with "Homônimo" and "Abrir em Contatos", or the event's own data with "Vincular". */
 export function PatientLine({ event, onLink }: { event: AgendaEvent; onLink: (() => void) | undefined }) {
   const { t } = useI18n();
   const birth = useBirth();
-  const contact = useQuery({
-    queryKey: ["contact", event.contactId],
-    queryFn: ({ signal }) => api<{ contact: ContactDetail }>(`/contacts/${encodeURIComponent(event.contactId ?? "")}`, { signal }),
-    enabled: !!event.contactId,
-    staleTime: 30_000,
-  });
+  const contact = useLinkedContact(event.contactId);
   const people = usePeople(event.title, !event.contactId);
   const linked = contact.data?.contact;
   if (event.contactId) {
     if (!linked) return <span className="text-fg-muted">{contact.isError ? t("web.agenda.event.contactGone") : "…"}</span>;
     const person = linkedOf(linked);
+    const reach = contact.data?.reach;
     return (
       <>
         <span>{t("web.agenda.event.linked", { name: person.name, birth: birth(person.birthday) })}</span>
         {linked.sameName > 0 && <span className="ml-2 rounded bg-subtle px-1.5 py-0.5 text-xs">{t("web.agenda.event.homonym")}</span>}
         {person.phone && <span className="block text-fg-muted tabular-nums">{person.phone}</span>}
         {person.email && <span className="block break-all text-fg-muted">{person.email}</span>}
+        {reach?.via && <span className="block text-sm text-fg-muted">{t("web.agenda.event.via", { name: reach.via.name, role: t(VIA[reach.via.role] ?? "web.agenda.event.role.guardian") })}</span>}
+        {reach?.gone && <span className="block text-sm text-fg-muted">{t("web.agenda.event.viaGone")}</span>}
         <Link to={`/contatos/${encodeURIComponent(linked.id)}`} className="mt-1 inline-flex min-h-11 items-center text-accent-text underline-offset-2 hover:underline">
           {t("web.agenda.event.openContact")}
         </Link>

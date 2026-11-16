@@ -1,6 +1,6 @@
 # Plano · Contatos: família e ficha (E11)
 
-Situação: aprovado em 13/11/2026 (protótipo v51, itens 7 e 10, e ajuste de 12/11 18:45 UTC); E11a mesclada (#365), E11b em andamento
+Situação: aprovado em 13/11/2026 (protótipo v51, itens 7 e 10, e ajuste de 12/11 18:45 UTC); E11a mesclada (#365), E11b mesclada (#366), E11c em andamento
 Origem: pedido do Pablo, cronograma de [sons-menu-e-agenda-editavel.md](sons-menu-e-agenda-editavel.md) (entrega E11)
 Dependências: E5b e E5f (vínculo do agendamento ao contato), mescladas; E7 (envios da confirmação), mesclada
 
@@ -49,7 +49,17 @@ A ficha do contato passa a mostrar só o que está preenchido, os avisos de aniv
 | CA-B8 | A ligação sobrevive à saída do contato das etiquetas ("Fora das etiquetas escolhidas") e ao desligar Contatos; entra no backup, e o restore não sobrescreve um par já ligado | plano |
 | CA-B9 | Celular, tema escuro, teclado (Esc fecha, o foco volta a "Ligar parente"), leitor de tela, 44 px, inglês | padrão |
 
-A E11c ganha os critérios no começo da PR dela, nesta seção.
+### E11c
+
+| Nº | Critério | Origem |
+| --- | --- | --- |
+| CA-C1 | "Ligar parente" tem a caixa "As mensagens do consultório para {nome} vão para essa pessoa (criança ou quem não usa o celular)", ligada só quando o parente é mãe, pai, avó, avô, tia, tio, irmã, irmão ou responsável legal; o servidor recusa outro papel com a caixa marcada (400) | v51 item 10 |
+| CA-C2 | Um contato tem um responsável só: marcar outro troca o anterior; tirar a ligação tira o responsável | v51 item 10 |
+| CA-C3 | O cartão diz "As mensagens do consultório para Lucas vão para Helena." e a linha do parente ganha "· recebe as mensagens" | v51 item 10 |
+| CA-C4 | A confirmação de um agendamento vinculado a um contato vai para o celular (brasileiro) e o e-mail do contato, ou do responsável dele, pelo WhatsApp (botão), pelo Chatwoot (automação) e por e-mail (botão e automação); sem vínculo, continua o celular e o e-mail do agendamento | v51 item 10 |
+| CA-C5 | Nos detalhes do agendamento, o paciente vinculado mostra "As mensagens vão para Helena (mãe)."; com o responsável fora das etiquetas escolhidas, a Zuri diz isso e não envia nada a ninguém | v51 item 10 |
+| CA-C6 | O backup leva o responsável; o restore aceita um por pessoa e só nos papéis da CA-C1 (o resto entra como ligação sem responsável) | SEC-A9-02 |
+| CA-C7 | Celular, tema escuro, teclado, leitor de tela, 44 px, inglês | padrão |
 
 ## 4. Escopo
 
@@ -99,6 +109,15 @@ Sem migration na E11a: as colunas antigas ficam sem leitura (migrations só acre
 - **Desenho:** tabela `zur_contact_family` (migration 48), um par por linha com `a < b` pelo `resourceName`, `role_a` o que `a` é para `b`, `responsible` para a E11c (0, 1 = `a` recebe por `b`, 2 = `b` recebe por `a`). Serviço `apps/agent/src/google/family.ts`; tela `apps/web/src/pages/contacts/FamilyCard.tsx`; o grupo é uma busca em largura pelos índices, com até 50 pessoas abertas. A busca do diálogo usa `GET /api/contacts?for=booking`, a mesma do formulário da Agenda (seis pessoas, com telefone, e-mail e nascimento).
 - **Testes:** `contact-family.test.ts`, `backup.test.ts` (E11b), `free-tier-budget.test.ts` (família), `shared/contacts-family.test.ts` e o e2e de `contatos.spec.ts` (E11b, computador e celular).
 
+## E11c: textos, limites, custo, segurança e desenho
+
+- **Textos:** os do protótipo (caixa do diálogo, "As mensagens do consultório para {nome} vão para {responsavel}.", "· recebe as mensagens", "As mensagens vão para {nome} ({papel}).") e o aviso do responsável fora das etiquetas, em pt-BR e en.
+- **Limites:** um responsável por contato; nada novo na tabela (a coluna `responsible` já existe desde a migration 48).
+- **Custo:** a ficha e os detalhes do agendamento leem até 3 linhas a mais (a ligação do responsável e o contato dele); a automação da véspera lê o mesmo por agendamento vinculado, poucos por dia. Marcar o responsável escreve no máximo uma linha a mais (o anterior volta a 0). Sem chamada ao Google.
+- **Segurança:** o destino é sempre o que o servidor resolve pelo vínculo do evento no Google e pelas ligações da Zuri, nunca um número vindo da requisição; papel fora da lista com a caixa marcada é recusado; o responsável fora das etiquetas não vira envio para o próprio paciente (criança).
+- **Desenho:** `ContactFamilyService.reach(resource)` devolve `{ phone, email, via, gone }` (`ContactReach`); `GET /api/contacts/:id` passa a trazer `reach`; `ConfirmLinks` recebe `reach` nas dependências e usa no botão de e-mail, no e-mail único e na véspera. `whatsappNumber` vai para `packages/shared` para a tela e o servidor usarem a mesma regra.
+- **Testes:** `contact-family.test.ts` (E11c), `confirm-links.test.ts` (E11c), `backup.test.ts` (E11c), `free-tier-budget.test.ts`, `shared/contacts-family.test.ts` e o e2e de `contatos.spec.ts` e da Agenda.
+
 ## 12. Entrevista com o Pablo
 
 Sem perguntas: tudo coberto pelo protótipo v51 aprovado em 13/11/2026 e pelo ajuste de 12/11, 18:45 UTC.
@@ -111,7 +130,10 @@ Sem perguntas: tudo coberto pelo protótipo v51 aprovado em 13/11/2026 e pelo aj
 - E11b: um parente fora das etiquetas aparece como "Fora das etiquetas escolhidas" e pode ter a ligação tirada.
 - E11b: "Também no grupo familiar" percorre até 50 pessoas; numa família maior que isso, "e mais N" conta só as que achou.
 - E11b: a busca do diálogo traz as seis pessoas do formulário da Agenda e tira, na tela, o próprio contato e quem já está ligado. Com muitos nomes parecidos, digitar mais do nome acha o resto.
-- E11c (auditoria, SEC-A9-02): um backup traz `responsible`; quando a E11c passar a usá-lo para mandar mensagens, decidir se ele entra no import ou volta a 0 e pede confirmação na ficha.
+- E11c (SEC-A9-02): o responsável entra no restore como veio, porque importar um backup já pede a senha digitada nos últimos 15 minutos, a mesma proteção de trocar o celular de um agendamento. O restore só garante um responsável por pessoa e os papéis da CA-C1.
+- E11c: o celular do contato usado é o primeiro número brasileiro de celular dele (DDD e nove dígitos começando com 9), a mesma regra do botão WhatsApp da ficha; o e-mail é o primeiro válido. Número de outro país em Contatos não recebe a confirmação automática (no agendamento sem vínculo, continua valendo o DDI digitado).
+- E11c: até aqui um agendamento vinculado não guardava celular nem e-mail (E5f, SEC-E5f-04), e a confirmação não saía para ele. A E11c passa a ler os dados de Contatos, como o protótipo (`cfCel`, `cfMail`).
+- E11c: o responsável só se escolhe ao ligar o parente, como no protótipo. Para trocar, liga-se outro com a caixa marcada, ou tira-se a ligação e liga-se de novo.
 
 ## 14. Perguntas abertas
 

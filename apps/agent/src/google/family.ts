@@ -1,4 +1,4 @@
-import { type ContactFamily, FAMILY_LIMITS, FAMILY_ROLES, type FamilyLink, type FamilyRole } from "@zuri/shared";
+import { type ContactFamily, type ContactReach, FAMILY_LIMITS, FAMILY_RESPONSIBLE_ROLES, FAMILY_ROLES, type FamilyLink, type FamilyRole } from "@zuri/shared";
 import type { Database } from "../db/database.ts";
 import { AppError } from "../http/errors.ts";
 import type { GoogleContacts } from "./contacts.ts";
@@ -35,7 +35,7 @@ export class ContactFamilyService {
   list(id: string): ContactFamily {
     const me = this.resource(id);
     const links = this.linksOf(me);
-    const direct = links.map((row) => this.other(row, me));
+    const direct = links.map((row) => ({ ...this.other(row, me), receives: receivesFor(row, me) }));
     const known = this.deps.contacts().relatives([...new Set([...direct.map((link) => link.resource), ...this.walk(me, direct.map((link) => link.resource))])]);
     const out: FamilyLink[] = direct.map((link) => {
       const person = known.get(link.resource);
@@ -43,6 +43,7 @@ export class ContactFamilyService {
         id: link.id,
         role: link.role,
         contact: person ? { ...person, sameName: this.deps.contacts().hasHomonym(person.id, person.name) } : null,
+        receives: link.receives,
       };
     });
     const directSet = new Set(direct.map((link) => link.resource));
@@ -57,10 +58,12 @@ export class ContactFamilyService {
    * Links a relative to the contact: `role` is what the relative is to the contact, `otherRole` what the
    * contact is to them (the schema already checked that they make a pair). One link per pair of people.
    */
-  add(id: string, input: { relative: string; role: FamilyRole; otherRole: FamilyRole }): ContactFamily {
+  add(id: string, input: { relative: string; role: FamilyRole; otherRole: FamilyRole; responsible?: boolean | undefined }): ContactFamily {
     const me = this.resource(id);
     const relative = this.resource(input.relative);
     if (relative === me) throw new AppError("VALIDATION_FAILED", "error.familySelf");
+    // E11c: only a grown-up role receives the messages (the schema checks it too).
+    if (input.responsible && !FAMILY_RESPONSIBLE_ROLES.includes(input.role)) throw new AppError("VALIDATION_FAILED");
     const { db } = this.deps;
     db.transaction(() => {
       const [a, b] = me < relative ? [me, relative] : [relative, me];
@@ -69,7 +72,10 @@ export class ContactFamilyService {
       if (familyTotal(db) >= FAMILY_LIMITS.total) throw new AppError("CONFLICT", "error.familyFull");
       // role_a is what a is to b: the relative's role when the relative is a.
       const [roleA, roleB] = a === relative ? [input.role, input.otherRole] : [input.otherRole, input.role];
-      db.run(`INSERT INTO zur_contact_family (id, a, b, role_a, role_b, responsible, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)`, crypto.randomUUID(), a, b, roleA, roleB, Date.now());
+      // E11c: one responsible a contact, so a new one takes the place of the one before. 1 = a receives for b.
+      if (input.responsible) clearResponsible(db, me);
+      const responsible = input.responsible ? (a === relative ? 1 : 2) : 0;
+      db.run(`INSERT INTO zur_contact_family (id, a, b, role_a, role_b, responsible, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, crypto.randomUUID(), a, b, roleA, roleB, responsible, Date.now());
     });
     return this.list(id);
   }
@@ -81,6 +87,29 @@ export class ContactFamilyService {
     const gone = this.deps.db.run(`DELETE FROM zur_contact_family WHERE id = ? AND (a = ? OR b = ?)`, link, me, me);
     if (gone.rowsWritten === 0) throw new AppError("NOT_FOUND", "error.familyLinkNotFound");
     return this.list(id);
+  }
+
+  /**
+   * Where the office's messages for a contact go (E11c), by its `resourceName`: the responsible's mobile and
+   * e-mail when there is one, else the contact's own. A responsible out of the copy sends nothing to anyone:
+   * the contact is a child or someone without a phone of their own. Two index reads and up to two contacts.
+   */
+  reach(resource: string): ContactReach {
+    const none = { phone: "", email: "", via: null, gone: false };
+    const row = this.deps.db.one<Row>(
+      `SELECT id, a, b, role_a, role_b, responsible FROM zur_contact_family WHERE a = ? AND responsible = 2
+       UNION ALL SELECT id, a, b, role_a, role_b, responsible FROM zur_contact_family WHERE b = ? AND responsible = 1 LIMIT 1`,
+      resource,
+      resource,
+    );
+    const contacts = this.deps.contacts();
+    // A patient out of the copy counts as no link (SEC-E5f-04): nothing goes, not even to a responsible.
+    const own = contacts.reachOf(resource);
+    if (!own) return none;
+    if (!row) return { ...none, phone: own.phone, email: own.email };
+    const other = this.other(row, resource);
+    const person = contacts.reachOf(other.resource);
+    return person ? { phone: person.phone, email: person.email, via: { name: person.name, role: other.role }, gone: false } : { ...none, gone: true };
   }
 
   private resource(id: string): string {
@@ -128,6 +157,24 @@ export class ContactFamilyService {
     }
     return found;
   }
+}
+
+/** Whether the other side of a link receives the office's messages for `me` (E11c). */
+function receivesFor(row: Pick<Row, "a" | "responsible">, me: string): boolean {
+  return row.a === me ? row.responsible === 2 : row.responsible === 1;
+}
+
+/** Whether a person already has a responsible: two index reads. */
+export function hasResponsible(db: Database, resource: string): boolean {
+  return (
+    db.one(`SELECT 1 AS found FROM zur_contact_family WHERE a = ? AND responsible = 2 UNION ALL SELECT 1 AS found FROM zur_contact_family WHERE b = ? AND responsible = 1 LIMIT 1`, resource, resource) !== null
+  );
+}
+
+/** Takes the responsible of a person off, wherever it is: two index reads. */
+export function clearResponsible(db: Database, resource: string): void {
+  db.run(`UPDATE zur_contact_family SET responsible = 0 WHERE a = ? AND responsible = 2`, resource);
+  db.run(`UPDATE zur_contact_family SET responsible = 0 WHERE b = ? AND responsible = 1`, resource);
 }
 
 /** The links of one person: two index reads, 40 rows at most. */

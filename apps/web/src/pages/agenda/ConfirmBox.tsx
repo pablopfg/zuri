@@ -7,6 +7,7 @@ import { useToast } from "../../components/Toaster.tsx";
 import { Button } from "../../components/ui.tsx";
 import { api, errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
+import { useLinkedContact } from "./PatientLink.tsx";
 
 /** The owner's day (YYYY-MM-DD) of an instant. */
 const dayIn = (at: Date, timeZone: string) => new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone }).format(at);
@@ -76,15 +77,20 @@ export function ConfirmBox({ event }: { event: AgendaEvent }) {
               : auto === "queued"
                 ? t("web.agenda.confirm.queued")
                 : t("web.agenda.confirm.none");
-  // The patient's mobile with the country's code, digits only (E5e); none, no WhatsApp button.
+  // E11c: linked to a contact, the messages go where the server says (the contact's mobile and e-mail, or the
+  // responsible's); otherwise to the patient's mobile with the country's code, digits only (E5e). None, no button.
+  const linked = useLinkedContact(event.contactId);
+  const reach = event.contactId ? linked.data?.reach : undefined;
   const dial = (COUNTRY_DIAL[event.country ?? HOME_COUNTRY] ?? "").replace(/\D/g, "");
-  const phone = event.phone && dial ? `${dial}${event.phone.replace(/\D/g, "")}` : "";
-  // E7c2: the e-mail kept on the appointment; once sent for this start, the button goes.
-  const mailable = !!event.email && !!s && s.mailedStart !== event.start;
+  const phone = event.contactId ? (reach?.phone ?? "").replace(/\D/g, "") : event.phone && dial ? `${dial}${event.phone.replace(/\D/g, "")}` : "";
+  // E7c2: the e-mail kept on the appointment (or the contact's); once sent for this start, the button goes.
+  const email = event.contactId ? (reach?.email ?? "") : (event.email ?? "");
+  const mailable = !!email && !!s && s.mailedStart !== event.start;
   // The automatic confirmation, while it is on: when it will go, that it won't repeat, or that it didn't go.
   // Only the ones the automation sends to, as the server picks them: Agendado or Reagendado and, in Brazil, a mobile.
   const color = eventStatus(event.colorId ?? "");
-  const mobile = (event.country ?? HOME_COUNTRY) !== HOME_COUNTRY || /^[1-9]{2}9\d{8}$/.test((event.phone ?? "").replace(/\D/g, ""));
+  // A contact's number is always a Brazilian mobile (the server's rule).
+  const mobile = !!event.contactId || (event.country ?? HOME_COUNTRY) !== HOME_COUNTRY || /^[1-9]{2}9\d{8}$/.test((event.phone ?? "").replace(/\D/g, ""));
   const eve = s?.autoHour && phone && mobile && (color === "scheduled" || color === "rescheduled") ? eveOf(event.start, timeZone) : "";
   const autoHint =
     !s?.autoHour || answer !== "none" || auto === "sent"

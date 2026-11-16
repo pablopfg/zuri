@@ -1,6 +1,7 @@
 import {
   type AgendaPrefs,
   type Clinic,
+  type ContactReach,
   dayPlus,
   CONFIRM_LINK_LIMITS as L,
   CONFIRM_TOKEN,
@@ -92,6 +93,8 @@ export interface ConfirmLinkDeps {
   /** The key of the networks' prints (HMAC), never kept. */
   secret: () => string;
   notify: (notice: ConfirmNotice) => void;
+  /** Where the office's messages for a linked contact go (E11c): its mobile and e-mail, or its responsible's. */
+  reach: (resource: string) => ContactReach;
   /** Nothing changes during a lockdown (/bloquear). */
   lockdown: () => boolean;
   /** The automatic confirmation's hour while it is on for real (E7c3a), "" otherwise. */
@@ -166,12 +169,26 @@ export class ConfirmLinks {
   async mail(calendarId: string, eventId: string): Promise<ConfirmLinkStatus> {
     // Without an e-mail, no link is made for it (P4).
     const { event, row, url } = await this.made(calendarId, eventId, (found) => {
-      if (!isMailAddress((found.email ?? "").trim().toLowerCase())) throw new AppError("CONFLICT", "error.confirmNoEmail");
+      if (!this.to(found).email) throw new AppError("CONFLICT", "error.confirmNoEmail");
     });
     const sent = await this.mailOnce(row.id, event, url);
     if (sent === "already") throw new AppError("CONFLICT", "error.confirmMailed");
     if (sent !== "sent") throw new AppError("SERVICE_UNAVAILABLE", "error.confirmMailFailed", { problem: sent.problem });
     return this.statusOf(row);
+  }
+
+  /**
+   * Who the confirmation goes to (E11c): an appointment linked to a contact keeps no phone nor e-mail of its
+   * own (SEC-E5f-04), so it goes to the contact's mobile and e-mail, or to the responsible's; one without a
+   * link, to what the appointment keeps. Never a number or address the request names.
+   */
+  private to(event: CalendarEvent): { phone: string; email: string } {
+    if (event.contact) {
+      const reach = this.deps.reach(event.contact);
+      return { phone: reach.phone, email: reach.email };
+    }
+    const email = (event.email ?? "").trim().toLowerCase();
+    return { phone: e164(event) ?? "", email: isMailAddress(email) ? email : "" };
   }
 
   /**
@@ -190,7 +207,7 @@ export class ConfirmLinks {
       this.now(),
     );
     if (claimed.rowsWritten === 0) return "already";
-    const to = (event.email ?? "").trim().toLowerCase();
+    const { email: to } = this.to(event);
     const sent = await this.deps.sendMail({ to, ...this.mailOf(event, url) }).catch(() => ({ ok: false as const, problem: "unreachable" as const }));
     if (sent.ok) return "sent";
     if (auto && sent.problem === "refused") {
@@ -270,9 +287,10 @@ export class ConfirmLinks {
     for (const event of events) {
       const status = eventStatus(event.colorId);
       if (!isAppointment(event) || (status !== "scheduled" && status !== "rescheduled") || this.expiresAt(event) <= now) continue;
-      let phone = e164(event) ?? "";
+      const to = this.to(event);
+      let phone = to.phone;
       // E7c3b: with "Também por e-mail" on, an appointment with only the patient's e-mail goes too.
-      const email = mail && isMailAddress((event.email ?? "").trim().toLowerCase());
+      const email = mail && !!to.email;
       if ((!phone && !email) || !this.canWrite(event.calendarId)) continue;
       const row = this.row(`calendar_id = ? AND event_id = ?`, event.calendarId, event.id);
       if (row && (row.revoked_at || this.answeredFor(row, event.start) || this.sentFor(row.id, event.start))) continue;

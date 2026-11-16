@@ -14,8 +14,10 @@ import {
   type ContactSyncStatus,
   type ContactsStatus,
   type GooglePerson,
+  whatsappNumber,
   googleGroupSchema,
   googlePersonSchema,
+  isMailAddress,
   nextRun,
   zonedParts,
   zonedTimeToUtc,
@@ -1212,6 +1214,20 @@ export class GoogleContacts {
   byResource(resource: string): { id: string; name: string } | null {
     if (!this.enabled()) return null;
     return this.db.one<{ id: string; name: string }>(`SELECT id, display_name AS name FROM zur_contacts WHERE resource_name = ?`, resource) ?? null;
+  }
+
+  /**
+   * Where a message to a contact goes (E11c): the name, the first Brazilian mobile as E.164 (the card's
+   * WhatsApp rule) and the first sound e-mail; null when it is not in the copy (or Contacts is off).
+   */
+  reachOf(resource: string): { name: string; phone: string; email: string } | null {
+    if (!this.enabled()) return null;
+    const row = this.db.one<{ display_name: string; data: string }>(`SELECT display_name, data FROM zur_contacts WHERE resource_name = ?`, resource);
+    if (!row) return null;
+    const data = parseData(row.data);
+    const mobile = data.phones.map((phone) => whatsappNumber(phone.value)).find(Boolean);
+    const email = data.emails.map((item) => item.value.trim().toLowerCase()).find(isMailAddress) ?? "";
+    return { name: row.display_name, phone: mobile ? `+${mobile}` : "", email };
   }
 
   /** A contact's `resourceName` by the copy's id; null when it is not in the copy (or Contacts is off). */

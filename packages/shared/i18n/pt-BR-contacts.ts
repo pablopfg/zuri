@@ -146,4 +146,8 @@ export const ptBRContacts = {
   "web.contacts.family.role.spouse": "Cônjuge",
   "web.contacts.family.role.guardian": "Responsável legal",
   "web.contacts.family.role.dependent": "Dependente",
+  "web.contacts.family.receives": "recebe as mensagens",
+  "web.contacts.family.messagesTo": "As mensagens do consultório para {nome} vão para {responsavel}.",
+  "web.contacts.family.responsible": "As mensagens do consultório para {nome} vão para essa pessoa (criança ou quem não usa o celular)",
+  "web.contacts.family.addedReceives": "As mensagens do consultório para {nome} vão para essa pessoa",
 } as const;
