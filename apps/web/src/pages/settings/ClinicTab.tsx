@@ -1,5 +1,5 @@
 import { type AgendaPrefs, CLINIC_LIMITS, CLINIC_PHONE, type Clinic, ptBRClinic } from "@zuri/shared";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, MessageCircleMore } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useToast } from "../../components/Toaster.tsx";
@@ -7,6 +7,7 @@ import { Button, Card, ErrorNotice, Loading, TextField } from "../../components/
 import { useSettings, useSettingsMutation } from "../../hooks/settings.ts";
 import { errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
+import { ConfirmMessageCard } from "./ConfirmMessageCard.tsx";
 
 // The section's texts come with its download (rule P11).
 addMessages(ptBRClinic);
@@ -151,6 +152,22 @@ export function ClinicTab() {
             {t("web.clinic.change")}
             <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
+        </div>
+      </Card>
+      <ConfirmMessageCard stored={settings.data.confirmMessage} clinic={settings.data.clinic} />
+      <Card title={t("web.clinic.send.title")} description={t("web.clinic.send.description")}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <MessageCircleMore className="h-4 w-4" aria-hidden />
+              {t("web.clinic.send.whatsapp")}
+            </p>
+            <p className="text-sm text-fg-muted">{t("web.clinic.send.whatsappHint")}</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-2.5 py-1 text-xs font-medium text-success">
+            <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+            {t("web.clinic.send.always")}
+          </span>
         </div>
       </Card>
     </>

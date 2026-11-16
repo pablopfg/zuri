@@ -1037,6 +1037,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         timeZone: () => settings.field("timeZone"),
         locale: () => this.locale(),
         clinic: () => settings.field("clinic"),
+        message: () => settings.field("confirmMessage"),
         publicUrl: () => this.publicUrl(),
         credentialKey: env.MCP_CREDENTIAL_KEY,
         secret: () => env.PASSWORD_PEPPER,

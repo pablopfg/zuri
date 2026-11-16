@@ -1228,7 +1228,7 @@ describe("flows (step 22a)", () => {
       expect(server.log.messages).toHaveLength(1);
     }));
 
-  it("the confirmation link (E7a, E7b): opening and the steps of rescheduling read one row and write nothing, a guess reads none, an answer and a move write the one row", () =>
+  it("the confirmation link (E7a, E7b, E7c1): opening and the steps of rescheduling read one row and write nothing, a guess reads none, an answer and a move write the one row", () =>
     withFlowWorld(async (world) => {
       const event = { id: "e1", calendarId: "agenda", title: "Ana Souza", start: new Date(Date.now() + 30 * 86_400_000).toISOString(), end: new Date(Date.now() + 30 * 86_400_000 + 3_600_000).toISOString(), allDay: false, location: "", description: "Consulta | Consultório", etag: '"1"', recurring: false, guests: 0, colorId: "", shared: false };
       const google = {
@@ -1252,6 +1252,7 @@ describe("flows (step 22a)", () => {
         timeZone: () => "America/Sao_Paulo",
         locale: () => "pt-BR",
         clinic: () => ({ name: "Consultório Exemplo", whatsapp: "", address: "", city: "" }),
+        message: () => "",
         publicUrl: () => new URL("https://zuri.exemplo.com.br"),
         credentialKey: testEnv.MCP_CREDENTIAL_KEY,
         secret: () => "segredo-de-teste",
@@ -1277,6 +1278,12 @@ describe("flows (step 22a)", () => {
         url = (await links.link("agenda", "e1")).url;
       });
       expect(made.written).toBeLessThanOrEqual(4);
+      // E7c1: the WhatsApp send writes its one row (no other index); the same tap within the minute, none.
+      const sent = await measure(() => links.sent("agenda", "e1", "whatsapp"));
+      expect(sent.written).toBe(1);
+      // The link's row, the conflict check and the last send for the status: measured 3.
+      expect(sent.read).toBeLessThanOrEqual(3);
+      expect((await measure(() => links.sent("agenda", "e1", "whatsapp"))).written).toBe(0);
       const token = url.split("/c/")[1] ?? "";
       expect(await measure(() => links.view(token, "198.51.100.1"))).toEqual({ read: 1, written: 0 });
       expect(await measure(() => links.view("Z".repeat(22), "198.51.100.2"), true)).toEqual({ read: 0, written: 0 });

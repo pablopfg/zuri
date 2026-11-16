@@ -133,6 +133,11 @@
       "reason": "Página do paciente (E7a): é o consultório falando com o paciente, no texto que o Pablo aprovou no protótipo v51 (\"Olá, Érica!\", \"Até lá, Érica!\" e a mensagem pronta do WhatsApp); não é texto de sistema."
     },
     {
+      "key": "confirm.message.default",
+      "rule": "exclamacao",
+      "reason": "Mensagem de confirmação (E7c1): o modelo que o dono manda ao paciente pelo WhatsApp, na voz do consultório, no texto do protótipo aprovado (\"Olá, {nome}!\"); não é texto de sistema."
+    },
+    {
       "key": "web.confirm.teamTextReschedule",
       "rule": "exclamacao",
       "reason": "Página do paciente (E7b): a mensagem pronta do WhatsApp quando não acha horário para remarcar, no texto que o Pablo aprovou no protótipo (13/11/2026, 01:04, item 4); é o paciente escrevendo ao consultório, não texto de sistema."
