@@ -147,8 +147,10 @@ Uma leitura do evento no Google por abertura (`events.get`) e um `PATCH` com eta
 | PR | Situação |
 | --- | --- |
 | E7a. Link e página | mesclada (#355) |
-| E7b. Remarcar pelo link | em andamento |
-| E7c. Envio da confirmação | a fazer |
+| E7b. Remarcar pelo link | mesclada (#356) |
+| E7c1. Mensagem modelo e envio pelo WhatsApp | em andamento |
+| E7c2. E-mail de confirmação | a fazer |
+| E7c3. Envio automático na véspera útil | a fazer |
 
 Cada PR traz changelog, README, capturas lado a lado com o protótipo e o teto do JS inicial (141.200 B, OK do Pablo em 15/11/2026): a página do paciente e o bloco dos detalhes carregam sob demanda.
 
@@ -224,3 +226,58 @@ Cada passo lê o Google uma vez por agenda aberta (até 10 chamadas); remarcar l
 - O sorteio do turno sem consulta é um HMAC do link, do dia e do turno com o segredo do servidor, e não um número guardado: não muda ao recarregar e não grava nada.
 - Evento de dia inteiro não ocupa horário (o dia fechado vem de "Dias sem expediente").
 - Sem almoço configurado, manhã e tarde se dividem ao meio-dia.
+
+## 16. Diferenças da E7c1 (mensagem modelo e envio pelo WhatsApp)
+
+A E7c ficou grande demais para uma PR e foi dividida em três, na ordem em que uma depende da outra:
+
+| PR | O que entra |
+| --- | --- |
+| **E7c1** | Mensagem modelo em Configurações › Consultório; "Enviar pelo WhatsApp", "Enviar de novo" e "Copiar mensagem" nos detalhes; registro dos envios (migration 47) |
+| **E7c2** | E-mail de confirmação (assunto, texto e botão) em Integrações › E-mail para pacientes; "Enviar por e-mail" nos detalhes, pelo `MailService.send()` da E6c |
+| **E7c3** | Envio automático pelo Chatwoot na véspera útil, pela fila da S19, junto com o e-mail; "Como a confirmação sai" completo e "Não foi enviado" |
+
+### Critérios de aceite
+
+- **CA-M1.** Configurações › Consultório ganha "Mensagem de confirmação": o texto, a contagem "N de 1.000", um botão por variável (`{nome}`, `{tipo}`, `{dia}`, `{hora}`, `{local}`, `{link}`, `{prazo}`, `{consultorio}`, `{whatsapp}`) que põe a variável onde está o cursor, a prévia "Como chega" num balão do WhatsApp (com `*texto*` em negrito, montada com nós de texto), "Voltar ao modelo padrão" e "Salvar a mensagem".
+- **CA-M2.** O servidor recusa (Zod, 400 com o campo `confirmMessage`) mensagem vazia, com mais de 1.000 caracteres, sem `{link}`, com variável fora da lista, com endereço ou telefone escrito à mão (auditoria E7c1-01) ou com caractere de controle. A tela mostra o erro antes de enviar e diz o nome da variável desconhecida; a contagem é a mesma nos dois lados (texto em NFC).
+- **CA-M3.** O modelo padrão é o do protótipo e sai do catálogo no idioma do dono. Guardar "" quer dizer "o padrão"; voltar ao padrão grava "".
+- **CA-M4.** Nos detalhes de uma consulta, "Enviar pelo WhatsApp" abre `https://wa.me/<DDI+celular>?text=<mensagem>` numa aba nova, com a mensagem montada no servidor (primeiro nome, tipo, dia, hora, local ou Meet, link, prazo, consultório e WhatsApp da equipe). Sem celular, o botão não aparece e a dica manda copiar.
+- **CA-M5.** Tocar em "Enviar pelo WhatsApp" registra o envio: a situação vira "Enviado pelo WhatsApp {quando}. Ainda sem resposta." e o botão vira "Enviar de novo". O registro é por horário: a consulta movida volta a "Ainda não enviado".
+- **CA-M6.** "Copiar mensagem" copia o mesmo texto e não registra envio. "Ver como o paciente" continua. Já confirmada: "Já confirmou pelo link: não precisa enviar de novo." sem os botões.
+- **CA-M7.** O registro guarda só o link, o horário, o canal e a hora: nem texto, nem telefone. Fica fora do backup, como os links. A mensagem modelo do dono vai no backup (`BACKUP_SETTINGS`) e volta pelas mesmas regras do CA-M2.
+- **CA-M9.** Com os dados do consultório em branco, a mensagem não deixa `**`, ": ." nem linhas vazias seguidas: o nome vira "consultório" e o trecho do telefone some. Valor do evento ou do consultório com endereço não entra (auditoria E7c1-02 e 03).
+- **CA-M8.** Celular, tema escuro, teclado, leitor de tela, 44 px e inglês, como o resto da Agenda.
+
+### Rotas
+
+| Rota | O que faz |
+| --- | --- |
+| `POST /api/google/events/link` | Já existia. Passa a devolver também `message`, a mensagem do modelo preenchida para aquele agendamento |
+| `POST /api/google/events/link/sent` | `{ calendarId, eventId, channel: "whatsapp" }`: registra o envio para o horário atual. Só com o link já feito; 409 se o agendamento acabou ou foi cancelado |
+| `GET /api/google/events/link` | Já existia. Passa a devolver `sentChannel`, `sentAt` e `sentStart`, o último envio |
+
+### Banco
+
+Migration 47 `confirm_sends`: `zur_confirm_sends (link_id, start, channel, sent_at, PRIMARY KEY (link_id, start, channel)) WITHOUT ROWID`. Enviar de novo pelo mesmo canal atualiza `sent_at`. A E7c3 usa a mesma chave (link e horário) para não mandar duas vezes. O modelo fica em `zur_settings`, chave `confirmMessage` (um texto; "" é o padrão).
+
+### Custo
+
+O registro grava uma linha (P4: uma escrita por toque, nada quando o toque se repete no mesmo minuto). O status lê uma linha a mais pelo índice da chave primária. Montar a mensagem não chama a IA e usa a leitura do evento que `link` já fazia.
+
+### Segurança
+
+| Ameaça | Defesa | Teste |
+| --- | --- | --- |
+| Texto do evento ou do consultório quebrando a mensagem | Só as variáveis da lista são trocadas, uma vez, sem reavaliar o resultado: um `{link}` no título do evento continua texto | `confirm-message.test.ts` |
+| Injeção na prévia | A prévia monta nós de texto e `<b>`, sem `innerHTML` | e2e da prévia com `<img onerror>` no modelo |
+| Abrir outro site pelo botão | O endereço é sempre `https://wa.me/` com o número em dígitos e o texto em `encodeURIComponent`; a aba abre com `opener = null` | `ConfirmBox` e2e |
+| Registro de envio de outra consulta | O `POST` só age sobre o link do evento pedido, feito antes | `confirm-links.test.ts` (E7c1) |
+
+### Suposições
+
+- A prévia de Configurações usa um exemplo inventado (Érica, quinta-feira às 14:00) em vez do "próximo agendamento da agenda" do protótipo: ler a agenda do Google só para a prévia custaria uma chamada a cada abertura da tela. O texto embaixo diz "Exemplo".
+- "Copiar link" dos detalhes vira "Copiar mensagem", como no protótipo.
+- O status mostra o envio mais recente. Se a consulta muda de hora e depois volta à hora antiga, a tela diz "Ainda não enviado" mesmo com um envio antigo para aquela hora; a E7c3 usa a linha da hora certa para não repetir o envio automático.
+- Telefone fixo do paciente também ganha o botão do WhatsApp (o `wa.me` abre e o WhatsApp diz se o número não tem conta). Em inglês, a hora segue o formato do idioma ("02:00 PM").
+

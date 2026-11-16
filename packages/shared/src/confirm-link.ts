@@ -127,7 +127,18 @@ export interface ConfirmLinkStatus {
   answerStart: string;
   /** The start before the patient moved it by the link, ISO; "" when never moved. */
   previousStart: string;
+  /** The last time the confirmation went out (E7c1): by which channel, when (ISO) and for which start; "" when never. */
+  sentChannel: ConfirmChannel | "";
+  sentAt: string;
+  sentStart: string;
 }
+
+/** How the confirmation went out: by the owner on WhatsApp (E7c1); e-mail and Chatwoot come next. */
+export const CONFIRM_CHANNELS = ["whatsapp"] as const;
+export type ConfirmChannel = (typeof CONFIRM_CHANNELS)[number];
+
+/** POST /api/google/events/link/sent: the owner sent it, now, for the appointment's current start. */
+export const confirmSentSchema = /* @__PURE__ */ z.object({ calendarId: z.string().min(1).max(1024), eventId: z.string().min(1).max(1024), channel: z.enum(CONFIRM_CHANNELS) }).strict();
 
 /** POST /api/google/events/link and GET ?calendarId&eventId. */
 export const confirmLinkRequestSchema = /* @__PURE__ */ z.object({ calendarId: z.string().min(1).max(1024), eventId: z.string().min(1).max(1024) }).strict();
@@ -135,4 +146,6 @@ export const confirmLinkRequestSchema = /* @__PURE__ */ z.object({ calendarId: z
 /** The link itself, once made: only for the owner. */
 export interface ConfirmLinkMade extends ConfirmLinkStatus {
   url: string;
+  /** The confirmation message of Configurações › Consultório, filled for this appointment (E7c1). */
+  message: string;
 }

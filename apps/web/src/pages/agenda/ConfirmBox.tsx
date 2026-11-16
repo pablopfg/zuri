@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { type AgendaEvent, type ConfirmLinkMade, type ConfirmLinkStatus, CONFIRM_LINK_LIMITS, EVENT_STATUS_COLOR } from "@zuri/shared";
-import { CalendarDays, Copy } from "lucide-react";
+import { type AgendaEvent, COUNTRY_DIAL, type ConfirmLinkMade, type ConfirmLinkStatus, CONFIRM_LINK_LIMITS, EVENT_STATUS_COLOR, HOME_COUNTRY } from "@zuri/shared";
+import { CalendarDays, Copy, MessageCircleMore } from "lucide-react";
+import { Link } from "react-router";
 import { useState } from "react";
 import { useToast } from "../../components/Toaster.tsx";
 import { Button } from "../../components/ui.tsx";
@@ -15,7 +16,7 @@ import { useI18n } from "../../lib/i18n.tsx";
 export function ConfirmBox({ event }: { event: AgendaEvent }) {
   const { t, locale, timeZone } = useI18n();
   const toast = useToast();
-  const [busy, setBusy] = useState<"copy" | "see" | null>(null);
+  const [busy, setBusy] = useState<"copy" | "see" | "whatsapp" | null>(null);
   const cancelled = event.colorId === EVENT_STATUS_COLOR.cancelled;
   const expired = Date.parse(event.start) - CONFIRM_LINK_LIMITS.expireBeforeMs <= Date.now();
   const query = new URLSearchParams({ calendarId: event.calendarId, eventId: event.id }).toString();
@@ -26,6 +27,9 @@ export function ConfirmBox({ event }: { event: AgendaEvent }) {
   const s = status.data;
   // An answer for another start is old: the appointment moved and asks again.
   const answer = s && (s.answer === "cancelled" || s.answerStart === event.start) ? s.answer : "none";
+  // A send for another start was for the old time: the appointment moved and asks again.
+  const sentNow = !!s?.sentAt && s.sentStart === event.start;
+  const sentWhen = sentNow && s ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(s.sentAt)) : "";
   const when = s?.answeredAt ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(s.answeredAt)) : "";
   const format = (iso: string) => new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(iso));
   const line =
@@ -35,19 +39,26 @@ export function ConfirmBox({ event }: { event: AgendaEvent }) {
         ? t("web.agenda.confirm.rescheduled", { when, from: s?.previousStart ? format(s.previousStart) : "" })
         : answer === "cancelled"
           ? t("web.agenda.confirm.cancelled", { when })
-          : t("web.agenda.confirm.none");
-  const link = async (what: "copy" | "see") => {
+          : sentNow
+            ? t("web.agenda.confirm.sent", { when: sentWhen })
+            : t("web.agenda.confirm.none");
+  // The patient's mobile with the country's code, digits only (E5e); none, no WhatsApp button.
+  const dial = (COUNTRY_DIAL[event.country ?? HOME_COUNTRY] ?? "").replace(/\D/g, "");
+  const phone = event.phone && dial ? `${dial}${event.phone.replace(/\D/g, "")}` : "";
+  const link = async (what: "copy" | "see" | "whatsapp") => {
     setBusy(what);
     // A tab opened now, before the wait: a browser blocks one opened after it.
-    const tab = what === "see" ? window.open("", "_blank") : null;
+    const tab = what === "copy" ? null : window.open("", "_blank");
     try {
       const made = await api<ConfirmLinkMade>("/google/events/link", { method: "POST", body: { calendarId: event.calendarId, eventId: event.id } });
       if (tab) {
         tab.opener = null;
-        tab.location.href = made.url;
+        tab.location.href = what === "see" ? made.url : `https://wa.me/${phone}?text=${encodeURIComponent(made.message)}`;
+        // Opened with the message: counted as sent, so the automatic send (E7c3) skips it.
+        if (what === "whatsapp") await api("/google/events/link/sent", { method: "POST", body: { calendarId: event.calendarId, eventId: event.id, channel: "whatsapp" } });
       } else {
-        await navigator.clipboard.writeText(made.url);
-        toast(t("web.agenda.confirm.copied"));
+        await navigator.clipboard.writeText(made.message);
+        toast(t("web.agenda.confirm.messageCopied"));
       }
       void status.refetch();
     } catch (failure) {
@@ -68,18 +79,30 @@ export function ConfirmBox({ event }: { event: AgendaEvent }) {
         {cancelled ? t("web.agenda.confirm.cancelledGone") : status.isPending ? "" : line}
       </p>
       {!cancelled && expired && <p className="text-sm text-fg-muted">{t("web.agenda.confirm.expired")}</p>}
-      {!cancelled && !expired && answer !== "cancelled" && (
+      {!cancelled && !expired && answer === "confirmed" && <p className="text-sm text-fg-muted">{t("web.agenda.confirm.noNeed")}</p>}
+      {!cancelled && !expired && answer !== "cancelled" && answer !== "confirmed" && (
         <>
-          <p className="text-sm text-fg-muted">{t("web.agenda.confirm.hint")}</p>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" loading={busy === "copy"} disabled={busy !== null} onClick={() => void link("copy")}>
+            {phone && (
+              <Button variant="secondary" loading={busy === "whatsapp"} disabled={busy !== null} onClick={() => void link("whatsapp")}>
+                <MessageCircleMore className="h-4 w-4" aria-hidden />
+                {sentNow ? t("web.agenda.confirm.again") : t("web.agenda.confirm.whatsapp")}
+              </Button>
+            )}
+            <Button variant="ghost" loading={busy === "copy"} disabled={busy !== null} onClick={() => void link("copy")}>
               <Copy className="h-4 w-4" aria-hidden />
-              {t("web.agenda.confirm.copy")}
+              {t("web.agenda.confirm.copyMessage")}
             </Button>
             <Button variant="ghost" loading={busy === "see"} disabled={busy !== null} onClick={() => void link("see")}>
               {t("web.agenda.confirm.see")}
             </Button>
           </div>
+          <p className="text-sm text-fg-muted">
+            {phone ? t("web.agenda.confirm.hintPhone") : t("web.agenda.confirm.hintNoPhone")}{" "}
+            <Link to="/configuracoes/consultorio" className="-my-3 inline-block min-h-11 py-3 font-medium text-accent-text underline underline-offset-2">
+              {t("web.agenda.confirm.editMessage")}
+            </Link>
+          </p>
         </>
       )}
     </section>

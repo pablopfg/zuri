@@ -270,8 +270,9 @@ const appointment = (id: string, title: string, start: string, end: string, colo
   guests: 0,
   colorId,
 });
+const MESSAGE = `Olá, Helena! Sua *consulta* está marcada.\nConfirme por este link:\nhttps://zuri.exemplo.com.br/c/${"A".repeat(22)}`;
 const EVENTS = [
-  appointment("e1", "Helena Duarte Prado", "2026-11-19T14:00:00-03:00", "2026-11-19T15:00:00-03:00"),
+  { ...appointment("e1", "Helena Duarte Prado", "2026-11-19T14:00:00-03:00", "2026-11-19T15:00:00-03:00"), country: "BR", phone: "41999990000" },
   appointment("e2", "Marina Teles Barreto", "2026-11-18T09:00:00-03:00", "2026-11-18T10:00:00-03:00", "10"),
   appointment("e3", "Caio Vasques Lima", "2026-11-17T10:00:00-03:00", "2026-11-17T11:00:00-03:00", "11"),
   appointment("e4", "Renato Sampaio Cruz", "2026-11-16T08:30:00-03:00", "2026-11-16T09:30:00-03:00"),
@@ -280,6 +281,7 @@ const EVENTS = [
 
 async function routeAgenda(page: Page, status: Record<string, unknown>) {
   const made: unknown[] = [];
+  const sent: unknown[] = [];
   await page.route("**/api/google", (route) =>
     route.fulfill({ json: { configured: true, connected: true, account: "dono@exemplo.com.br", status: "connected", problem: null, connectedAt: "2026-11-10T13:00:00.000Z", calendars: CALENDARS } }),
   );
@@ -287,12 +289,20 @@ async function routeAgenda(page: Page, status: Record<string, unknown>) {
   await page.route("**/api/google/events/link*", (route) => {
     if (route.request().method() === "POST") {
       made.push(route.request().postDataJSON());
-      return route.fulfill({ json: { made: true, answer: "none", answeredAt: "", answerStart: "", url: `https://zuri.exemplo.com.br/c/${TOKEN}` } });
+      return route.fulfill({ json: { made: true, answer: "none", answeredAt: "", answerStart: "", url: `https://zuri.exemplo.com.br/c/${TOKEN}`, message: MESSAGE } });
     }
     const id = new URL(route.request().url()).searchParams.get("eventId") ?? "";
     return route.fulfill({ json: status[id] ?? { made: false, answer: "none", answeredAt: "", answerStart: "" } });
   });
-  return made;
+  // E7c1: the WhatsApp send, recorded; the status says so from then on.
+  await page.route("**/api/google/events/link/sent", (route) => {
+    const body = route.request().postDataJSON() as { eventId: string };
+    sent.push(body);
+    const now = { made: true, answer: "none", answeredAt: "", answerStart: "", sentChannel: "whatsapp", sentAt: "2026-11-16T11:00:00.000Z", sentStart: EVENTS.find((event) => event.id === body.eventId)?.start ?? "" };
+    status[body.eventId] = now;
+    return route.fulfill({ json: now });
+  });
+  return Object.assign(made, { sent });
 }
 
 async function openDetails(page: Page, title: string) {
@@ -316,16 +326,39 @@ test("an appointment's details show the patient's answer and copy the link; a ca
   // Answered for another start: the appointment moved, so it asks again.
   let details = await openDetails(page, "Helena Duarte Prado");
   const box = details.getByRole("region", { name: "Confirmação do paciente" });
-  await expect(box.getByText("Ainda sem resposta", { exact: true })).toBeVisible();
+  await expect(box.getByText("Ainda não enviado", { exact: true })).toBeVisible();
   await expectAccessible(page, "confirmacao-detalhe");
-  await box.getByRole("button", { name: "Copiar link de confirmação" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Link copiado" }).first()).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`https://zuri.exemplo.com.br/c/${TOKEN}`);
-  expect(made).toEqual([{ calendarId: "main", eventId: "e1" }]);
+  expect(await tooSmallControls(page)).toEqual([]);
+  await box.getByRole("button", { name: "Copiar mensagem" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Mensagem copiada" }).first()).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(MESSAGE);
+  expect([...made]).toEqual([{ calendarId: "main", eventId: "e1" }]);
+  // Copying sends nothing: still not sent.
+  expect(made.sent).toEqual([]);
+  await expect(box.getByRole("link", { name: "Editar a mensagem modelo" })).toHaveAttribute("href", "/configuracoes/consultorio");
+
+  // E7c1: WhatsApp opens with the filled message to the patient's mobile, and counts as sent.
+  await page.context().route("https://wa.me/**", (route) => route.fulfill({ contentType: "text/html", body: "<title>WhatsApp</title>" }));
+  const opening = page.waitForEvent("popup");
+  await box.getByRole("button", { name: "Enviar pelo WhatsApp" }).click();
+  const popup = await opening;
+  await popup.waitForURL(/^https:\/\/wa\.me\//);
+  const wa = new URL(popup.url());
+  expect(wa.origin + wa.pathname).toBe("https://wa.me/5541999990000");
+  expect(wa.searchParams.get("text")).toBe(MESSAGE);
+  expect(await popup.evaluate(() => window.opener)).toBeNull();
+  await popup.close();
+  expect(made.sent).toEqual([{ calendarId: "main", eventId: "e1", channel: "whatsapp" }]);
+  await expect(box.getByText("Enviado pelo WhatsApp 16 de nov., 08:00. Ainda sem resposta.", { exact: true })).toBeVisible();
+  await expect(box.getByRole("button", { name: "Enviar de novo" })).toBeVisible();
   await details.getByRole("button", { name: "Fechar" }).click();
 
   details = await openDetails(page, "Marina Teles Barreto");
-  await expect(details.getByRole("region", { name: "Confirmação do paciente" }).getByText("Confirmou pelo link 15 de nov., 10:12", { exact: true })).toBeVisible();
+  const confirmed = details.getByRole("region", { name: "Confirmação do paciente" });
+  await expect(confirmed.getByText("Confirmou pelo link 15 de nov., 10:12", { exact: true })).toBeVisible();
+  // Already confirmed: nothing to send; no mobile on it either.
+  await expect(confirmed.getByText("Já confirmou pelo link: não precisa enviar de novo.")).toBeVisible();
+  await expect(confirmed.getByRole("button")).toHaveCount(0);
   await details.getByRole("button", { name: "Fechar" }).click();
 
   // Moved by the patient (E7b): when, and where it was before.

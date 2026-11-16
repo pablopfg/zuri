@@ -17,7 +17,7 @@ async function open(page: Page) {
 const section = (page: Page) => settingsTitle(page, "Consultório");
 
 test.afterEach(async ({ page }) => {
-  await page.request.patch("/api/settings", { headers: CSRF, data: { clinic: EMPTY } });
+  await page.request.patch("/api/settings", { headers: CSRF, data: { clinic: EMPTY, confirmMessage: "" } });
 });
 
 test("the office's details save, come back after a reload and go to the server as digits", async ({ page }) => {
@@ -127,3 +127,58 @@ test("in English, the section follows the language", async ({ page }) => {
   await expect(page.getByText("Monday to Friday, 08:00 to 18:00, lunch 12:00 to 14:00. They live in one place, Settings › Calendar.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Change office hours" })).toBeVisible();
 });
+
+// E7c1 (plano link-de-confirmacao.md, seção 16): the confirmation message, its variables and its preview.
+test("@mobile the confirmation message starts at the default, takes a variable at the cursor, previews in bold and saves", async ({ page }) => {
+  await open(page);
+  expect((await page.request.patch("/api/settings", { headers: CSRF, data: { clinic: { name: "Consultório Exemplo", whatsapp: "4133330000", address: "Rua das Flores, 120", city: "Curitiba, PR" } } })).status()).toBe(200);
+  await page.reload();
+  const box = section(page);
+  const text = box.getByLabel("Mensagem", { exact: true });
+  await expect(text).toHaveValue(/^Olá, \{nome\}! Sua \*\{tipo\}\* no \*\{consultorio\}\*/);
+  const preview = box.getByText(/^Olá, Érica! Sua consulta no Consultório Exemplo está marcada para quinta-feira, 19 de novembro, às 14:00\./);
+  await expect(preview).toBeVisible();
+  // *texto* is bold, as WhatsApp shows it.
+  await expect(preview.locator("b").first()).toHaveText("consulta");
+  await expect(preview).toContainText("Endereço: Rua das Flores, 120, Curitiba, PR.");
+  await expect(preview).toContainText("(41) 3333-0000");
+  const save = box.getByRole("button", { name: "Salvar a mensagem" });
+  await expect(save).toBeDisabled();
+  await expect(box.getByRole("button", { name: "Voltar ao modelo padrão" })).toBeDisabled();
+  await expectAccessible(page, "consultorio-mensagem");
+  expect(await tooSmallControls(page)).toEqual([]);
+
+  // A variable goes where the cursor is.
+  await text.fill("Oi  ");
+  await text.press("End");
+  await text.press("ArrowLeft");
+  await box.getByRole("group", { name: "Variáveis" }).getByRole("button", { name: "{nome}" }).click();
+  await expect(text).toHaveValue("Oi {nome} ");
+  await expect(text).toBeFocused();
+  // No {link}: said before sending, and nothing goes.
+  let patches = 0;
+  page.on("request", (request) => request.url().endsWith("/api/settings") && request.method() === "PATCH" && patches++);
+  await save.click();
+  await expect(box.getByText("A mensagem precisa ter {link}, senão o paciente não tem como confirmar.")).toBeVisible();
+  await text.fill("Oi {nome}, {data}: {link}");
+  await save.click();
+  await expect(box.getByText("Não conheço {data}. Use só as variáveis da lista.")).toBeVisible();
+  expect(patches).toBe(0);
+  await text.fill("Oi {nome}: {link} <img src=x onerror=alert(1)>");
+  await expect(box.getByText(/^Oi Érica: http.*\/c\/AbCdEfGhIjKlMnOpQrStUv <img src=x onerror=alert\(1\)>$/)).toBeVisible();
+  await expect(box.locator("img")).toHaveCount(0);
+  await expect(box.getByText("46 de 1000")).toBeVisible();
+  const sent = page.waitForRequest((request) => request.url().endsWith("/api/settings") && request.method() === "PATCH");
+  await save.click();
+  expect((await sent).postDataJSON()).toEqual({ confirmMessage: "Oi {nome}: {link} <img src=x onerror=alert(1)>" });
+  await expect(page.getByRole("status").getByText("Mensagem salva")).toBeVisible();
+  await page.reload();
+  await expect(section(page).getByLabel("Mensagem", { exact: true })).toHaveValue("Oi {nome}: {link} <img src=x onerror=alert(1)>");
+  // Back to the default: kept as "", so a new version of the default follows.
+  await section(page).getByRole("button", { name: "Voltar ao modelo padrão" }).click();
+  const reset = page.waitForRequest((request) => request.url().endsWith("/api/settings") && request.method() === "PATCH");
+  await section(page).getByRole("button", { name: "Salvar a mensagem" }).click();
+  expect((await reset).postDataJSON()).toEqual({ confirmMessage: "" });
+  await expect(section(page).getByText("Sempre disponível")).toBeVisible();
+});
+

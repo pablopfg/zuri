@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, type Clinic, SECURITY_ALERT_EVENTS, CONFIRM_LINK_LIMITS, type ConfirmLinkMade, type ConfirmView, EVENT_STATUS_COLOR } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, type Clinic, SECURITY_ALERT_EVENTS, CONFIRM_LINK_LIMITS, type ConfirmLinkMade, type ConfirmLinkStatus, type ConfirmView, EVENT_STATUS_COLOR } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -80,10 +80,121 @@ afterEach(() =>
   inOwner((agent) => {
     const { db } = agent.store;
     new InternalState(db).delete("google_oauth_pending");
-    for (const table of ["zur_google_calendars", "zur_google_account", "zur_appointment_links", "zur_notices", "zur_auth_events"]) db.run(`DELETE FROM ${table}`);
-    db.run(`DELETE FROM zur_settings WHERE key = 'clinic'`);
+    for (const table of ["zur_google_calendars", "zur_google_account", "zur_appointment_links", "zur_confirm_sends", "zur_notices", "zur_auth_events"]) db.run(`DELETE FROM ${table}`);
+    db.run(`DELETE FROM zur_settings WHERE key IN ('clinic', 'confirm_message')`);
   }),
 );
+
+describe("E7c1: the confirmation message and the WhatsApp send", () => {
+  const sent = (eventId: string, body: Record<string, unknown> = {}) => api("POST", "/google/events/link/sent", { calendarId: WORK, eventId, channel: "whatsapp", ...body });
+  const status = async (eventId: string) => (await api("GET", `/google/events/link?calendarId=${encodeURIComponent(WORK)}&eventId=${eventId}`)).json() as Promise<ConfirmLinkStatus>;
+
+  it("fills the default message for the appointment: first name, type, day, time, address, link, deadline, office and team", async () => {
+    // Thursday 10/12/2099 at 14:00 in São Paulo: far ahead, so the clock of the test never reaches it.
+    const event = seed(0, { start: { dateTime: "2099-12-10T14:00:00-03:00" }, end: { dateTime: "2099-12-10T15:00:00-03:00" } });
+    const { made, url } = await linkOf(event);
+    expect(made.message).toBe(
+      `Olá, Beatriz! Sua *consulta* no *Consultório Exemplo* está marcada para *quinta-feira, 10 de dezembro, às 14:00*.\nEndereço: Rua das Flores, 120, Curitiba, PR.\n\nConfirme sua presença por este link:\n${url}\n\nSe não puder vir, cancele pelo mesmo link até quarta-feira, 9 de dezembro, às 23:59. Para mudar o dia ou o horário, fale com a nossa equipe: (41) 3333-0000.`,
+    );
+    // Never the rest of the title nor the notes of the event.
+    for (const word of ["Novaes", "dipirona", "Dra"]) expect(made.message).not.toContain(word);
+  });
+
+  it("uses the owner's message, the Meet link of an online one, and keeps a variable a title carries as text", async () => {
+    expect((await api("PATCH", "/settings", { confirmMessage: "{nome}|{tipo}|{local}|{link}|{prazo}|{whatsapp}" })).status).toBe(200);
+    const online = seed(0, {
+      summary: "{link} Souza",
+      description: "Retorno | Online",
+      start: { dateTime: "2099-12-10T09:00:00-03:00" },
+      end: { dateTime: "2099-12-10T10:00:00-03:00" },
+      hangoutLink: "https://meet.google.com/abc-defg-hij",
+    });
+    const { made, url } = await linkOf(online);
+    expect(made.message).toBe(`{link}|retorno|Link da chamada (Google Meet): https://meet.google.com/abc-defg-hij|${url}|quarta-feira, 9 de dezembro, às 21:00|(41) 3333-0000`);
+    // No call yet, and an office with no address: the line says so, or stays empty.
+    const waiting = seed(0, { description: "Retorno | Online", start: { dateTime: "2099-12-11T09:00:00-03:00" }, end: { dateTime: "2099-12-11T10:00:00-03:00" } });
+    expect((await linkOf(waiting)).made.message).toContain("|Atendimento online: o link da chamada chega antes da consulta.|");
+    expect((await api("PATCH", "/settings", { clinic: { ...CLINIC, address: "", whatsapp: "" } })).status).toBe(200);
+    const nowhere = seed(0, { start: { dateTime: "2099-12-12T09:00:00-03:00" }, end: { dateTime: "2099-12-12T10:00:00-03:00" } });
+    expect((await linkOf(nowhere)).made.message).toMatch(/^Beatriz\|consulta\|\|https:.*\|$/);
+    // Saving a message without {link} or with an unknown variable is refused; "" is back to the default.
+    expect((await api("PATCH", "/settings", { confirmMessage: "Oi {nome}" })).status).toBe(400);
+    expect((await api("PATCH", "/settings", { confirmMessage: "Oi {nome} {data} {link}" })).status).toBe(400);
+    expect((await api("PATCH", "/settings", { confirmMessage: "" })).status).toBe(200);
+    expect((await linkOf(nowhere)).made.message).toMatch(/^Olá, Beatriz!/);
+  });
+
+  it("with the office's details unfilled, the default leaves no empty bold, no stray colon and no run of blank lines", async () => {
+    expect((await api("PATCH", "/settings", { clinic: { name: "", whatsapp: "", address: "", city: "" } })).status).toBe(200);
+    const event = seed(0, { start: { dateTime: "2099-12-14T09:00:00-03:00" }, end: { dateTime: "2099-12-14T10:00:00-03:00" } });
+    const { made, url } = await linkOf(event);
+    expect(made.message).toBe(
+      `Olá, Beatriz! Sua *consulta* no *consultório* está marcada para *segunda-feira, 14 de dezembro, às 09:00*.\n\nConfirme sua presença por este link:\n${url}\n\nSe não puder vir, cancele pelo mesmo link até domingo, 13 de dezembro, às 21:00. Para mudar o dia ou o horário, fale com a nossa equipe.`,
+    );
+  });
+
+  it("SEC-E7c1-01/02/03: an address or a phone typed into the message is refused; one in the event or the office's name never goes in", async () => {
+    for (const confirmMessage of ["Oi {nome}: {link} https://pix.exemplo.com.br", "Oi {nome}: {link} fale com (41) 98888-7777", "Oi\u202e {link}"]) {
+      expect((await api("PATCH", "/settings", { confirmMessage })).status, confirmMessage).toBe(400);
+    }
+    expect((await api("PATCH", "/settings", { clinic: { ...CLINIC, name: "Consultório pix.exemplo.com" } })).status).toBe(200);
+    const event = seed(0, {
+      summary: "pix.exemplo.com Souza",
+      description: "Consulta https://pix.exemplo.com.br",
+      start: { dateTime: "2099-12-15T09:00:00-03:00" },
+      end: { dateTime: "2099-12-15T10:00:00-03:00" },
+    });
+    const { made, url } = await linkOf(event);
+    expect(made.message.replace(url, "")).not.toMatch(/pix|https?:/);
+    expect(made.message).toMatch(/^Olá, ! Sua \*consulta\* no \*consultório\*/);
+  });
+
+  it("records the WhatsApp send for the current start, once a minute; a moved appointment is not sent yet", async () => {
+    const event = seed(3 * 24 * HOUR);
+    expect((await sent(event.id)).status).toBe(404);
+    await linkOf(event);
+    const first = await sent(event.id);
+    expect(first.status).toBe(200);
+    const after = (await first.json()) as ConfirmLinkStatus;
+    expect(after).toMatchObject({ sentChannel: "whatsapp", sentStart: new Date(event.start.dateTime ?? "").toISOString() });
+    expect(Date.now() - Date.parse(after.sentAt)).toBeLessThan(60_000);
+    expect(await inOwner((agent) => agent.store.db.all(`SELECT channel FROM zur_confirm_sends`))).toEqual([{ channel: "whatsapp" }]);
+    // Neither the text nor the phone is kept.
+    const row = JSON.stringify(await inOwner((agent) => agent.store.db.all(`SELECT * FROM zur_confirm_sends`)));
+    for (const word of ["41999990000", "Beatriz", "Olá"]) expect(row).not.toContain(word);
+    // The same tap again within the minute writes nothing.
+    const writes = await inOwner(async (agent) => {
+      const before = agent.store.db.usage.rowsWritten;
+      await agent.store.confirmLinks.sent(WORK, event.id, "whatsapp");
+      return agent.store.db.usage.rowsWritten - before;
+    });
+    expect(writes).toBe(0);
+    // Moved at Google: the send was for the old start.
+    const original = new Date(event.start.dateTime ?? "").toISOString();
+    const moved = new Date(Date.parse(event.start.dateTime ?? "") + 24 * HOUR).toISOString();
+    const at = atGoogle(event.id);
+    if (at) at.start = { dateTime: moved };
+    expect((await status(event.id)).sentStart).toBe(original);
+    expect((await sent(event.id)).status).toBe(200);
+    expect((await status(event.id)).sentStart).toBe(moved);
+    expect(await inOwner((agent) => agent.store.db.all(`SELECT start FROM zur_confirm_sends ORDER BY start`))).toHaveLength(2);
+  });
+
+  it("refuses a cancelled or expired appointment, an unknown channel and a body out of shape", async () => {
+    const event = seed(3 * 24 * HOUR);
+    await linkOf(event);
+    expect((await sent(event.id, { channel: "email" })).status).toBe(400);
+    expect((await sent(event.id, { extra: 1 })).status).toBe(400);
+    const at = atGoogle(event.id);
+    if (at) at.colorId = EVENT_STATUS_COLOR.cancelled;
+    expect((await sent(event.id)).status).toBe(409);
+    const soon = seed(30 * 60_000);
+    // Made while it still could be, then past the hour before: gone.
+    await inOwner((agent) => agent.store.db.run(`INSERT INTO zur_appointment_links (id, calendar_id, event_id, token_hash, token_sealed, created_at) VALUES ('old', ?, ?, 'h-old', 's', 1)`, WORK, soon.id));
+    expect((await sent(soon.id)).status).toBe(409);
+    expect(await inOwner((agent) => agent.store.db.all(`SELECT * FROM zur_confirm_sends`))).toEqual([]);
+  });
+});
 
 describe("E7a: the owner's link", () => {
   it("makes one token per appointment, 22 base64url characters, the same address every time, and keeps only its hash and a sealed copy", async () => {
@@ -106,7 +217,7 @@ describe("E7a: the owner's link", () => {
   it("says the state without making a link, and refuses a plain event, a cancelled one and one that already expired", async () => {
     const event = seed(30 * 24 * HOUR);
     const status = await api("GET", `/google/events/link?calendarId=${encodeURIComponent(WORK)}&eventId=${event.id}`);
-    expect(await status.json()).toEqual({ made: false, answer: "none", answeredAt: "", answerStart: "", previousStart: "" });
+    expect(await status.json()).toEqual({ made: false, answer: "none", answeredAt: "", answerStart: "", previousStart: "", sentChannel: "", sentAt: "", sentStart: "" });
     expect(await inOwner((agent) => agent.store.db.all(`SELECT id FROM zur_appointment_links`))).toEqual([]);
     const plain = seed(30 * 24 * HOUR, { description: "Reunião do condomínio" });
     expect((await api("POST", "/google/events/link", { calendarId: WORK, eventId: plain.id })).status).toBe(400);
@@ -467,6 +578,7 @@ describe("E7a: the edges, on a clock of the test's own", () => {
       timeZone: () => "America/Sao_Paulo",
       locale: () => "pt-BR",
       clinic: () => CLINIC,
+      message: () => "",
       publicUrl: () => new URL(ORIGIN),
       credentialKey: testEnv.MCP_CREDENTIAL_KEY,
       secret: () => "segredo-de-teste",
@@ -585,6 +697,7 @@ describe("E7b: rescheduling by the link", () => {
       timeZone: () => zone,
       locale: () => "pt-BR",
       clinic: () => CLINIC,
+      message: () => "",
       publicUrl: () => new URL(ORIGIN),
       credentialKey: testEnv.MCP_CREDENTIAL_KEY,
       secret: () => "segredo-de-teste",

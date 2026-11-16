@@ -50,6 +50,7 @@ describe("default settings", () => {
       agenda: { from: 8, to: 18, view: "week", weekStart: 1, workDays: [1, 2, 3, 4, 5], daysOff: true, outside: true, lunch: { from: 720, to: 840 }, closed: [] },
       sounds: { notice: true, pick: "sino", recording: true },
       clinic: { name: "", whatsapp: "", address: "", city: "" },
+      confirmMessage: "",
     });
     expect(DEFAULT_TIME_ZONE).toBe("America/Sao_Paulo");
     expect(settingsSchema.parse(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS);

@@ -1993,6 +1993,23 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE zur_appointment_links ADD COLUMN previous_start TEXT`,
     ],
   },
+  {
+    version: 47,
+    name: "confirm_sends",
+    statements: [
+      // E7c1 (plano link-de-confirmacao.md, seção 16): each time the confirmation went out, by channel, for
+      // one start of the appointment: a moved appointment can go again, the same start never twice by the
+      // automatic send (E7c3). Neither the text nor the phone: only the link, the start, the channel and
+      // when. Out of the backup, like the links it points to.
+      `CREATE TABLE IF NOT EXISTS zur_confirm_sends (
+        link_id TEXT NOT NULL,
+        start TEXT NOT NULL,
+        channel TEXT NOT NULL,
+        sent_at INTEGER NOT NULL,
+        PRIMARY KEY (link_id, start, channel)
+      ) WITHOUT ROWID`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */
