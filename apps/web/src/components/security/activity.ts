@@ -153,10 +153,13 @@ const NOT_A_COUNTRY: Record<string, MessageKey> = { XX: "web.activity.countryUnk
 
 /** The pieces of the place line (E12a). Only two capital letters go to DisplayNames: anything else stays as it came. */
 export function placeParts(event: Pick<AuthActivityEvent, "city" | "region" | "country">, locale: string, t: (key: MessageKey) => string): PlaceParts {
-  const code = /^[A-Z0-9]{2}$/.test(event.country) ? event.country : "";
   const city = [event.city, event.region].filter(Boolean).join(", ");
-  if (!code) return { city, country: "", code: "", abroad: false };
-  const abroad = code !== HOME_COUNTRY;
+  if (!event.country) return { city, country: "", code: "", abroad: false };
+  // The same rule as the server's "Outside Brazil" filter: anything recorded that isn't BR.
+  const abroad = event.country !== HOME_COUNTRY;
+  const code = /^[A-Z0-9]{2}$/.test(event.country) ? event.country : "";
+  // Something the edge doesn't send today (not two capitals or digits): an unknown country, its text never shown.
+  if (!code) return { city, country: t("web.activity.countryUnknown"), code: "", abroad };
   if (Object.hasOwn(NOT_A_COUNTRY, code)) return { city, country: t(NOT_A_COUNTRY[code] as MessageKey), code, abroad };
   let country = code;
   if (/^[A-Z]{2}$/.test(code)) {
@@ -167,4 +170,26 @@ export function placeParts(event: Pick<AuthActivityEvent, "city" | "region" | "c
     }
   }
   return { city, country, code, abroad };
+}
+
+/** The calendar day of an instant in the owner's zone, as YYYY-MM-DD (en-CA writes it so), never the device's zone. */
+export function dayKey(at: string | number, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(at));
+}
+
+/** The day before a YYYY-MM-DD, by the calendar: a 23- or 25-hour day can't move it. */
+export function dayBefore(day: string): string {
+  return new Date(Date.parse(`${day}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+}
+
+/** The rows in blocks of one day each, newest first, as they came: a page cut in the middle of a day goes on in the same block. */
+export function byDay<T extends { at: string }>(events: readonly T[], timeZone: string): { day: string; events: T[] }[] {
+  const days: { day: string; events: T[] }[] = [];
+  for (const event of events) {
+    const day = dayKey(event.at, timeZone);
+    const last = days.at(-1);
+    if (last?.day === day) last.events.push(event);
+    else days.push({ day, events: [event] });
+  }
+  return days;
 }

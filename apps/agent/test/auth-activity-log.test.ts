@@ -1,4 +1,4 @@
-import { AUTH_ACTIVITY_GROUPS, AUTH_ACTIVITY_LIMIT, AUTH_EVENT_KINDS, authActivitySchema } from "@zuri/shared";
+import { AUTH_ACTIVITY_GROUPS, AUTH_ACTIVITY_LIMIT, AUTH_EVENT_KINDS, authActivitySchema, HOME_COUNTRY } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
 import { createApi } from "../src/api/app.ts";
 import type { AuthService } from "../src/auth/service.ts";
@@ -239,6 +239,8 @@ describe("the access log's pages and filters", () => {
       expect(ips({ show: "abroad" })).toEqual(["198.51.100.2", "198.51.100.4", "198.51.100.5"]);
       expect(ips({ show: "abroad", group: "failure" })).toEqual(["198.51.100.2"]);
       expect(ips({ show: "abroad", ip: "198.51.100.4" })).toEqual(["198.51.100.4"]);
+      // The query writes Brazil as a literal, to match migration 49's partial index: it must stay the shared home.
+      expect(HOME_COUNTRY).toBe("BR");
     });
   });
 
@@ -266,6 +268,8 @@ describe("GET /api/auth/activity's query", () => {
     ["an unknown group", "?group=everything"],
     ["an unknown show filter", "?show=everything"],
     ["a show filter in other case", "?show=Abroad"],
+    ["an empty show filter", "?show="],
+    ["a show filter with a NUL", "?show=abroad%00"],
     ["a LIKE wildcard in the IP", "?ip=203.0.%25"],
     ["SQL in the IP", "?ip=1'%20OR%201=1--"],
     ["an IP longer than any address", `?ip=${"1".repeat(46)}`],
@@ -284,6 +288,7 @@ describe("GET /api/auth/activity's query", () => {
       const body = (await res.json()) as { code: string; details: { fields: string[] } };
       expect(body.code).toBe("VALIDATION_FAILED");
       expect(body.details.fields.length).toBeGreaterThan(0);
+      if (query.startsWith("?show=")) expect(body.details.fields).toEqual(["show"]);
       expect(JSON.stringify(body)).not.toContain("OR 1=1");
     });
   });

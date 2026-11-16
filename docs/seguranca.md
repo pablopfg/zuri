@@ -525,7 +525,9 @@ e tem o filtro **Mostrar**: Todos, Atenção (recusas, bloqueios e a troca das
 credenciais, a lista `AUTH_ATTENTION_KINDS`) e Fora do Brasil (`show=attention`
 ou `show=abroad` na API; acesso sem país, como numa execução local, não entra).
 Os botões não mostram a contagem de cada filtro: isso pediria um `count(*)` no
-registro a cada abertura (regra P2). A API é
+registro a cada abertura (regra P2). O filtro Fora do Brasil lê pelo índice parcial
+`zur_auth_events_abroad` (migration 49), que só guarda os acessos de fora: um
+dono que só entra do Brasil não faz a consulta andar o registro inteiro. A API é
 `GET /api/auth/activity` (sessão e CSRF), com cursor `at:id` para não repetir
 nem pular linhas quando chegam acessos novos. A resposta nunca leva o id da
 sessão, a chave de rede nem a marca de alerta.

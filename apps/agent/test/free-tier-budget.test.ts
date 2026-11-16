@@ -161,6 +161,27 @@ describe("the Free plan budget of each route", () => {
     }
   });
 
+  it("reads about one page for \"Outside Brazil\" even when nothing came from abroad (SEC-E12a-01)", async () => {
+    await runInDurableObject(owner(), (agent: ZuriAgent) => {
+      const { db } = agent.store;
+      const now = Date.now();
+      db.transaction(() => {
+        db.run(`DELETE FROM zur_auth_events WHERE country <> 'BR'`);
+        for (let i = 0; i < 3000; i++) {
+          const at = now - 60_000 - i * 1000;
+          db.run(`INSERT INTO zur_auth_events (at, last_at, kind, ip, country) VALUES (?, ?, 'login_failure', '198.51.100.1', 'BR')`, at, at);
+        }
+      });
+    });
+    // With and without a period: the partial index of migration 49 holds only the rows from abroad, so none is read.
+    for (const query of ["?show=abroad", "?days=90&show=abroad", "?days=90&show=abroad&group=failure"]) {
+      const res = await cost("GET", `/auth/activity${query}`);
+      expect(res.status, query).toBe(200);
+      expect(res.read, query).toBeLessThanOrEqual(10);
+      expect(res.written, query).toBe(0);
+    }
+  });
+
   it("keeps the heartbeat, sent once a minute while the app is open, to a couple of rows", async () => {
     const beat = await cost("POST", "/auth/heartbeat", { active: true });
     expect(beat.status).toBe(200);

@@ -7,7 +7,6 @@ import {
   type AuthActivityQuery,
   AUTH_EVENT_SUMMARY_DAYS,
   type AuthEventKind,
-  HOME_COUNTRY,
   LOGIN_WINDOW_MS,
   MAX_AUTH_EVENTS,
   MAX_DEVICES,
@@ -73,6 +72,9 @@ export interface AuthEventOptions {
    */
   everyNetwork?: boolean;
 }
+
+/** The rows from outside Brazil, as the partial index of migration 49 states them (HOME_COUNTRY is "BR"). */
+const ABROAD_WHERE = "country <> '' AND country <> 'BR'";
 
 /**
  * The access activity (zur_auth_events): every sign-in, refusal, sign-out and
@@ -228,9 +230,9 @@ export class AuthEvents {
     where.push(`kind IN (${kinds.map(() => "?").join(", ")})`);
     params.push(...kinds);
     if (query.show === "abroad") {
-      // Empty is a request the edge didn't place (local runs): not known to be from abroad.
-      where.push("country <> '' AND country <> ?");
-      params.push(HOME_COUNTRY);
+      // Empty is a request the edge didn't place (local runs): not known to be from abroad. Written as the partial
+      // index zur_auth_events_abroad (migration 49) is, literals and all, so SQLite reads only the rows from abroad.
+      where.push(ABROAD_WHERE);
     }
     if (query.ip !== undefined) {
       // A prefix compared as text: no LIKE, so "%" or "_" in the input mean nothing (CF-6-01 also caps LIKE patterns).

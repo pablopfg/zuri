@@ -1,6 +1,6 @@
 import { AUTH_EVENT_KINDS, type AuthActivityEvent } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
-import { deviceText, groupOf, isWarning, KIND_LABEL, placeParts, reasonLabels } from "../src/components/security/activity.ts";
+import { byDay, dayBefore, dayKey, deviceText, groupOf, isWarning, KIND_LABEL, placeParts, reasonLabels } from "../src/components/security/activity.ts";
 
 const event = (over: Partial<AuthActivityEvent> = {}): AuthActivityEvent => ({
   id: 1,
@@ -54,8 +54,9 @@ describe("the access log's helpers", () => {
     expect(placeParts(event({ country: "T1" }), "pt-BR", t)).toMatchObject({ country: "<web.activity.tor>", code: "T1", abroad: true });
     // No country (a local run) or something that isn't a code: nothing to name, nothing to flag.
     expect(placeParts(event({ city: "", region: "", country: "" }), "pt-BR", t)).toEqual({ city: "", country: "", code: "", abroad: false });
-    expect(placeParts(event({ country: "<b>" }), "pt-BR", t)).toEqual({ city: "Campinas, São Paulo", country: "", code: "", abroad: false });
-    expect(placeParts(event({ country: "br" }), "pt-BR", t)).toMatchObject({ code: "", abroad: false });
+    // Not a code the edge sends: an unknown country, never its text, and outside Brazil as the server's filter counts it.
+    expect(placeParts(event({ country: "<b>" }), "pt-BR", t)).toEqual({ city: "Campinas, São Paulo", country: "<web.activity.countryUnknown>", code: "", abroad: true });
+    expect(placeParts(event({ country: "br" }), "pt-BR", t)).toMatchObject({ code: "", abroad: true });
   });
 
   it("describes the browser, or only the half it knows, or nothing", () => {
@@ -63,5 +64,42 @@ describe("the access log's helpers", () => {
     expect(deviceText(event(), format)).toBe("Chrome no Android");
     expect(deviceText(event({ userAgent: "" }), format)).toBe("");
     expect(deviceText(event({ userAgent: "curl/8.0" }), format)).toBe("");
+  });
+});
+
+describe("the access log's days (E12a)", () => {
+  it("takes the day in the owner's zone, not the device's or UTC", () => {
+    // 02:30 UTC on the 16th is still the 15th in São Paulo, and already the 16th in Tokyo.
+    expect(dayKey("2026-11-16T02:30:00.000Z", "America/Sao_Paulo")).toBe("2026-11-15");
+    expect(dayKey("2026-11-16T02:30:00.000Z", "Asia/Tokyo")).toBe("2026-11-16");
+    expect(dayKey("2026-11-16T03:00:00.000Z", "America/Sao_Paulo")).toBe("2026-11-16");
+  });
+
+  it("finds yesterday by the calendar, across a month, a year and the 23- and 25-hour days", () => {
+    expect(dayBefore("2026-11-16")).toBe("2026-11-15");
+    expect(dayBefore("2026-03-01")).toBe("2026-02-28");
+    expect(dayBefore("2026-01-01")).toBe("2025-12-31");
+    // New York's 23-hour day (08/03/2026) and 25-hour day (01/11/2026): the day after each still says the day before.
+    expect(dayBefore(dayKey("2026-03-09T12:00:00.000Z", "America/New_York"))).toBe("2026-03-08");
+    expect(dayBefore(dayKey("2026-11-02T12:00:00.000Z", "America/New_York"))).toBe("2026-11-01");
+    // 23:30 and 00:30 of the 23-hour day, an hour of the clock apart from UTC's: one block.
+    expect(byDay([{ at: "2026-03-09T03:30:00.000Z" }, { at: "2026-03-08T05:30:00.000Z" }], "America/New_York").map((d) => d.day)).toEqual(["2026-03-08"]);
+  });
+
+  it("puts the rows in blocks of a day, in the order they came, and a second page goes on in the same block", () => {
+    const page1 = [{ at: "2026-11-16T11:00:00.000Z" }, { at: "2026-11-16T03:10:00.000Z" }, { at: "2026-11-16T02:50:00.000Z" }];
+    const page2 = [{ at: "2026-11-16T02:40:00.000Z" }, { at: "2026-11-14T20:00:00.000Z" }];
+    const one = byDay(page1, "America/Sao_Paulo");
+    expect(one.map((d) => [d.day, d.events.length])).toEqual([
+      ["2026-11-16", 2],
+      ["2026-11-15", 1],
+    ]);
+    const both = byDay([...page1, ...page2], "America/Sao_Paulo");
+    expect(both.map((d) => [d.day, d.events.length])).toEqual([
+      ["2026-11-16", 2],
+      ["2026-11-15", 2],
+      ["2026-11-14", 1],
+    ]);
+    expect(byDay([], "America/Sao_Paulo")).toEqual([]);
   });
 });

@@ -1,5 +1,4 @@
 import type { AuthActivityEvent } from "@zuri/shared";
-import { MapPin } from "lucide-react";
 import { useI18n } from "../../lib/i18n.tsx";
 import { cn } from "../ui.tsx";
 import { placeParts } from "./activity.ts";
@@ -15,7 +14,11 @@ export function Place({ event, className }: { event: Pick<AuthActivityEvent, "ci
   const { city, country, code, abroad } = placeParts(event, locale, t);
   return (
     <span className={cn("flex items-start gap-1.5", className)}>
-      <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      {/* Lucide's map-pin drawn here: the icon's own module would add a file to the first load's list (armadilhas). */}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true">
+        <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+        <circle cx="12" cy="10" r="3" />
+      </svg>
       <span className="min-w-0 break-words">
         {country ? (
           <>

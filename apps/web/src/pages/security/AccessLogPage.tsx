@@ -11,7 +11,7 @@ import {
 } from "@zuri/shared";
 import { Globe, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "react-router";
-import { deviceText, GROUP_LABEL, groupOf, KIND_LABEL, reasonLabels } from "../../components/security/activity.ts";
+import { byDay, dayBefore, dayKey, deviceText, GROUP_LABEL, groupOf, KIND_LABEL, reasonLabels } from "../../components/security/activity.ts";
 import { Place } from "../../components/security/Place.tsx";
 import { Button, Card, cn, EmptyState, ErrorNotice, PageHeader, SelectField, Loading, TextField } from "../../components/ui.tsx";
 import { api } from "../../lib/api.ts";
@@ -23,7 +23,6 @@ const PERIOD_LABEL = { 1: "web.accessLog.period.1", 7: "web.accessLog.period.7",
 /** "Show" in the address, in the owner's words, and what each asks of the server (E12a). */
 const SHOW_PARAM: Record<AuthActivityShow, string> = { attention: "atencao", abroad: "fora" };
 const SHOW_LABEL = { all: "web.accessLog.show.all", attention: "web.accessLog.show.attention", abroad: "web.accessLog.show.abroad" } as const;
-const DAY_MS = 86_400_000;
 /** What the IP filter accepts, the same as the server: the start of an IPv4 or IPv6 address. */
 const IP_PREFIX = /^[0-9A-Fa-f.:]{1,45}$/;
 
@@ -43,23 +42,6 @@ function readPeriod(value: string | null): AuthActivityPeriod {
 
 function readShow(value: string | null): AuthActivityShow | "" {
   return AUTH_ACTIVITY_SHOW.find((show) => SHOW_PARAM[show] === value) ?? "";
-}
-
-/** The calendar day of an instant in the owner's zone, as YYYY-MM-DD (en-CA writes it so), never the device's zone. */
-function dayKey(at: string | number, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(at));
-}
-
-/** The rows in blocks of one day each, newest first, as they came: a page cut in the middle of a day goes on in the same block. */
-function byDay(events: readonly AuthActivityEvent[], timeZone: string): { day: string; events: AuthActivityEvent[] }[] {
-  const days: { day: string; events: AuthActivityEvent[] }[] = [];
-  for (const event of events) {
-    const day = dayKey(event.at, timeZone);
-    const last = days.at(-1);
-    if (last?.day === day) last.events.push(event);
-    else days.push({ day, events: [event] });
-  }
-  return days;
 }
 
 function readGroup(value: string | null): AuthActivityGroup | "" {
@@ -110,8 +92,7 @@ export function AccessLogPage() {
   const events = log.data?.pages.flatMap((page) => page.events) ?? [];
   const days = byDay(events, timeZone);
   const today = dayKey(Date.now(), timeZone);
-  // The day before today's date, by the calendar: a 23- or 25-hour day can't move it.
-  const yesterday = new Date(Date.parse(`${today}T12:00:00Z`) - DAY_MS).toISOString().slice(0, 10);
+  const yesterday = dayBefore(today);
   const dayTitle = (day: string, at: string) =>
     day === today
       ? t("web.accessLog.today")
@@ -223,7 +204,7 @@ export function AccessLogPage() {
               {days.map(({ day, events: rows }) => (
                 <tbody key={day} className="divide-y divide-border border-b border-border last:border-b-0">
                   <tr className="bg-raised/60">
-                    <th scope="colgroup" colSpan={5} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-fg-muted">
+                    <th scope="rowgroup" colSpan={5} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-fg-muted">
                       {dayTitle(day, rows[0]?.at ?? day)}
                     </th>
                   </tr>

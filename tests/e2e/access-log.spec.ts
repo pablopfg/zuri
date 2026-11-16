@@ -181,7 +181,7 @@ test("the access log shows an error with a retry, and loads more pages", async (
   await expect(page.getByRole("button", { name: "Carregar mais" })).toHaveCount(0);
   await expect(page.getByRole("table").locator("tbody tr:has(td)")).toHaveCount(51);
   // All on one day: the second page goes on in the same block, under one heading.
-  await expect(page.getByRole("table").locator("tbody th[scope=colgroup]")).toHaveCount(1);
+  await expect(page.getByRole("table").locator("tbody th[scope=rowgroup]")).toHaveCount(1);
 });
 
 test("Segurança's access activity shows the address on its own line, apart from the device and the place", async ({ page }) => {
@@ -219,6 +219,10 @@ test("Segurança's access activity shows the address on its own line, apart from
   await expect(item.locator("p").filter({ hasText: "Chrome" })).not.toContainText("198.51.100.7");
 });
 
+test.describe("E12a, on a device in another zone than the owner's", () => {
+// Tokyo: the instant below is already the 17th there, and a row of 23:30 in São Paulo is the 16th. Only the owner's zone gives "Hoje" and "Ontem" right.
+test.use({ timezoneId: "Asia/Tokyo" });
+
 test("E12a: each access says the country with its code, flags what came from outside Brazil, and the log goes by day with Show @mobile", async ({ page, isMobile }) => {
   // The page's clock at a fixed instant: "Hoje" and "Ontem" are computed from it, in the owner's zone (São Paulo).
   const now = new Date("2026-11-16T15:00:00.000Z");
@@ -242,6 +246,8 @@ test("E12a: each access says the country with its code, flags what came from out
   const all = [
     row(1, "2026-11-16T11:02:00.000Z", {}),
     row(2, "2026-11-16T10:58:00.000Z", { kind: "login_failure" }),
+    // 23:30 on the 15th for the owner (São Paulo); the 16th in UTC and in Tokyo.
+    row(5, "2026-11-16T02:30:00.000Z", { kind: "logout" }),
     row(3, "2026-11-15T13:44:00.000Z", { city: "", region: "" }),
     row(4, "2026-11-07T06:12:00.000Z", { kind: "login_attack", country: "PT", city: "", region: "" }),
   ];
@@ -250,28 +256,37 @@ test("E12a: each access says the country with its code, flags what came from out
     const query = new URL(route.request().url()).searchParams;
     asked.push(query.get("show") ?? "");
     const show = query.get("show");
-    const events = show === "abroad" ? all.filter((e) => e.country !== "BR") : show === "attention" ? all.filter((e) => e.kind !== "login_success") : all;
+    if (show && query.get("group") === "success") return route.fulfill({ contentType: "application/json", body: JSON.stringify({ events: [], nextCursor: null }) });
+    const events = show === "abroad" ? all.filter((e) => e.country !== "BR") : show === "attention" ? all.filter((e) => e.kind !== "login_success" && e.kind !== "logout") : all;
     return route.fulfill({ contentType: "application/json", body: JSON.stringify({ events, nextCursor: null }) });
   });
 
   await page.goto("/configuracoes/seguranca");
   await signIn(page);
   const card = page.getByRole("region", { name: "Atividade de acesso" });
-  await expect(card.getByRole("listitem")).toHaveCount(4);
+  await expect(card.getByRole("listitem")).toHaveCount(5);
   await expect(card.getByRole("listitem").nth(0)).toContainText("Curitiba, PR · Brasil BR");
   await expect(card.getByRole("listitem").nth(0)).not.toContainText("fora do Brasil");
-  await expect(card.getByRole("listitem").nth(2)).toContainText("Cidade desconhecida · Brasil BR");
-  await expect(card.getByRole("listitem").nth(3)).toContainText("Cidade desconhecida · Portugal PT · fora do Brasil");
+  await expect(card.getByRole("listitem").nth(3)).toContainText("Cidade desconhecida · Brasil BR");
+  await expect(card.getByRole("listitem").nth(4)).toContainText("Cidade desconhecida · Portugal PT · fora do Brasil");
 
   await card.getByRole("link", { name: "Ver todos os acessos" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Acessos" })).toBeVisible();
   // A block per day, newest first: today, yesterday, then the date.
   const days = isMobile
     ? page.getByRole("heading", { level: 3 })
-    : page.getByRole("table").locator("th[scope=colgroup]");
+    : page.getByRole("table").locator("th[scope=rowgroup]");
   await expect(days).toHaveText(["Hoje", "Ontem", /sáb\.?, 07\/11/i]);
   await expect(page.getByText("O país vem da rede de quem acessou e a cidade é aproximada.", { exact: false })).toBeVisible();
-  if (isMobile) await expect(page.getByRole("region", { name: "Hoje" }).getByRole("listitem")).toHaveCount(2);
+  if (isMobile) {
+    await expect(page.getByRole("region", { name: "Hoje" }).getByRole("listitem")).toHaveCount(2);
+    await expect(page.getByRole("region", { name: "Ontem" }).getByRole("listitem")).toHaveCount(2);
+  } else {
+    // The day's heading row, then its rows: the 23:30 access sits under "Ontem".
+    const yesterday = page.getByRole("table").locator("tbody").filter({ has: page.locator("th", { hasText: "Ontem" }) });
+    await expect(yesterday.locator("tr:has(td)")).toHaveCount(2);
+    await expect(yesterday.locator("tr:has(td)").first()).toContainText("23:30");
+  }
 
   const show = page.getByRole("group", { name: "Mostrar" });
   await expect(show.getByRole("button", { name: "Todos" })).toHaveAttribute("aria-pressed", "true");
@@ -280,8 +295,14 @@ test("E12a: each access says the country with its code, flags what came from out
   await expect(show.getByRole("button", { name: "Fora do Brasil" })).toHaveAttribute("aria-pressed", "true");
   await expect(days).toHaveText([/sáb\.?, 07\/11/i]);
   await expect(page.getByText("Portugal").filter({ visible: true })).toHaveCount(1);
+  await expect(page.getByText("fora do Brasil", { exact: true }).filter({ visible: true })).toHaveCount(1);
   expect(asked).toContain("abroad");
   await expectAccessible(page, "acessos fora do Brasil");
+  // Joined with the type: nothing left says so, with the way to clear.
+  await page.getByLabel("Tipo").selectOption("success");
+  await expect(page).toHaveURL(/mostrar=fora/);
+  await expect(page.getByText("Nenhum acesso com esses filtros")).toBeVisible();
+  await page.getByLabel("Tipo").selectOption("");
 
   await show.getByRole("button", { name: "Atenção" }).click();
   await expect(page).toHaveURL(/mostrar=atencao/);
@@ -295,4 +316,5 @@ test("E12a: each access says the country with its code, flags what came from out
   await expect(page).toHaveURL(/\/acessos$/);
   await expect(days).toHaveCount(3);
   expect(await tooSmallControls(page)).toEqual([]);
+});
 });

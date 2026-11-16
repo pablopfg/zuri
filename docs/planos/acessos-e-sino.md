@@ -4,8 +4,8 @@ Situação: aprovado (protótipo v38 e v51, aprovados pelo Pablo em 13/11/2026, 
 
 A E12 se divide em duas PRs, uma por tela:
 
-- **E12a:** país nos acessos e "Todos os acessos" por dia, com filtros. Sem migration.
-- **E12b:** sino com o número de avisos não vistos. Migration `seen_at`.
+- **E12a:** país nos acessos e "Todos os acessos" por dia, com filtros. Migration 49: índice parcial dos acessos de fora do Brasil.
+- **E12b:** sino com o número de avisos não vistos. Migration `seen_at` (a próxima livre, 50).
 
 ## 1. Resumo
 
@@ -68,7 +68,9 @@ Entra: o descrito acima. Fica fora:
 | `web.accessLog.show.abroad` | Fora do Brasil | Outside Brazil |
 | `web.accessLog.today` | Hoje | Today |
 | `web.accessLog.yesterday` | Ontem | Yesterday |
-| `web.accessLog.note` | O país vem da rede de quem acessou e a cidade é aproximada. IPv6 aparece quando a conexão chega por ele. Tudo sai do registro depois de 90 dias. | The country comes from the visitor's network and the city is approximate. IPv6 shows when the connection uses it. Everything leaves the log after 90 days. |
+| `web.accessLog.note` | O país vem da rede de quem acessou e a cidade é aproximada. O IPv6 aparece quando a conexão chega por ele. O detalhe de cada acesso sai do registro depois de 90 dias. | The country comes from the visitor's network and the city is approximate. IPv6 shows when the connection uses it. Each access's detail leaves the log after 90 days. |
+
+A nota diz "o detalhe" e não "tudo": o resumo por dia, tipo e país fica um ano (`AUTH_EVENT_SUMMARY_DAYS`).
 
 ## 6. Regras de negócio e limites
 
@@ -94,7 +96,7 @@ Entra: o descrito acima. Fica fora:
 
 ### Banco
 
-Nada novo na E12a. O filtro do país lê pelo índice de `at`, como o do IP: o período limita quanto ele anda.
+Migration 49 (`auth_events_abroad`): `CREATE INDEX zur_auth_events_abroad ON zur_auth_events (at) WHERE country <> '' AND country <> 'BR'`. A consulta repete esse `WHERE` com os mesmos literais, para o SQLite usar o índice parcial. Sem ele, um dono que só entra do Brasil faria o filtro andar o registro inteiro (até 50.000 linhas) para dizer que não há nada (SEC-E12a-01). Só as linhas de fora pagam a escrita do índice (regra P4).
 
 ### Ferramentas do agente
 
@@ -108,7 +110,7 @@ Nenhum.
 
 | Rota | Antes | Depois |
 | --- | --- | --- |
-| `GET /api/auth/activity` | até 51 linhas sem filtro | igual; com `show`, teto no teste de orçamento com registro misto |
+| `GET /api/auth/activity` | até 51 linhas sem filtro | igual; Atenção e 1 em 10 de fora: até 160 e 600 linhas; nenhum de fora em 3.000: 2 linhas (medido), teto 10 |
 
 JS inicial: nada no primeiro carregamento (a tela e o cartão já são sob demanda).
 
@@ -118,7 +120,7 @@ JS inicial: nada no primeiro carregamento (a tela e o cartão já são sob deman
 | --- | --- | --- |
 | Valor estranho em `show` entra no SQL | enum Zod; o SQL só recebe `?` | `auth-activity` 400 |
 | País gravado com texto estranho vira texto na tela | `text(cf.country, 2)` já corta; a tela só usa `Intl.DisplayNames` com duas letras maiúsculas | unitário de `placeParts` |
-| Filtro que lê o registro todo | período e índice de `at`; teto no orçamento | `free-tier-budget` |
+| Filtro que lê o registro todo (SEC-E12a-01) | índice parcial dos acessos de fora (migration 49) | `free-tier-budget` › SEC-E12a-01; `migrations` 48 → 49 com o plano da consulta |
 
 ## 10. Testes
 
@@ -139,7 +141,13 @@ E12a e E12b em PRs separadas para a `develop`, cada uma com changelog, README, c
 
 ## 12. Riscos
 
-- Registro grande com quase nada de fora do Brasil: o filtro anda até o fim do período. Mesma situação do filtro de IP; o teto de 90 dias e o limite de linhas do registro seguram.
+- O filtro de IP continua andando pelo índice de `at` até achar a página (já era assim antes da E12a).
+- Uma sigla que a borda não manda hoje (fora de duas letras maiúsculas ou dígitos) aparece como "País desconhecido" e conta como fora do Brasil, igual ao servidor.
+
+### Revisão de QA e auditoria (16/11/2026)
+
+- SEC-E12a-01 (baixo): "Fora do Brasil" lia o registro todo quando nada veio de fora. Corrigido com o índice parcial, com teste de orçamento.
+- QA: os dias agora têm teste unitário (`dayKey`, `dayBefore`, `byDay`, com os dias de 23 e 25 h) e o e2e roda num aparelho em Tóquio, com um acesso às 23:30 do dono que fica em "Ontem". O 400 de `show` confere o nome do campo. O título do dia usa `scope="rowgroup"`. A tela e o servidor contam igual o que é de fora.
 
 ## 13. Suposições
 
