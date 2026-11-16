@@ -148,8 +148,8 @@ Uma leitura do evento no Google por abertura (`events.get`) e um `PATCH` com eta
 | --- | --- |
 | E7a. Link e página | mesclada (#355) |
 | E7b. Remarcar pelo link | mesclada (#356) |
-| E7c1. Mensagem modelo e envio pelo WhatsApp | em andamento |
-| E7c2. E-mail de confirmação | a fazer |
+| E7c1. Mensagem modelo e envio pelo WhatsApp | mesclada (#357) |
+| E7c2. E-mail de confirmação | em andamento |
 | E7c3. Envio automático na véspera útil | a fazer |
 
 Cada PR traz changelog, README, capturas lado a lado com o protótipo e o teto do JS inicial (141.200 B, OK do Pablo em 15/11/2026): a página do paciente e o bloco dos detalhes carregam sob demanda.
@@ -281,3 +281,51 @@ O registro grava uma linha (P4: uma escrita por toque, nada quando o toque se re
 - O status mostra o envio mais recente. Se a consulta muda de hora e depois volta à hora antiga, a tela diz "Ainda não enviado" mesmo com um envio antigo para aquela hora; a E7c3 usa a linha da hora certa para não repetir o envio automático.
 - Telefone fixo do paciente também ganha o botão do WhatsApp (o `wa.me` abre e o WhatsApp diz se o número não tem conta). Em inglês, a hora segue o formato do idioma ("02:00 PM").
 
+
+## 17. Diferenças da E7c2 (e-mail de confirmação)
+
+Protótipo: `mailTplSec()` e `mailTplCheck()` (Integrações › E-mail para pacientes) e o botão `data-cf-mail` dos detalhes, aprovados com a v52–v56 (13/11, 12:49 UTC). Sem perguntas ao Pablo.
+
+### Critérios de aceite
+
+- **CA-E1.** Integrações › E-mail para pacientes ganha o cartão "E-mail de confirmação de consulta": assunto (com as variáveis `{nome}`, `{tipo}`, `{dia}`, `{hora}` e `{consultorio}`), texto (com a contagem "N de 2.000" e todas as variáveis menos `{link}`), texto do botão, a prévia "Como chega" (De, Assunto, o texto, o botão e o rodapé), "Voltar ao modelo padrão", "Copiar o texto do WhatsApp" e "Salvar o e-mail".
+- **CA-E2.** O servidor recusa (400 com o campo `confirmMail`): assunto vazio, com quebra de linha, acima de 120 caracteres ou com variável fora das cinco; texto vazio, acima de 2.000, com `{link}` ("o link já vai no botão") ou com variável desconhecida; botão vazio ou acima de 30. Nos três, endereço da web ou telefone escrito à mão e caractere de controle (a regra da E7c1-01). A tela mostra o mesmo erro antes de enviar, no campo certo.
+- **CA-E3.** O padrão é o do protótipo, no idioma do dono; "" em cada campo quer dizer o padrão, e "Voltar ao modelo padrão" grava os três como "".
+- **CA-E4.** Nos detalhes de uma consulta com e-mail do paciente (o campo da E5e), "Enviar por e-mail" manda o e-mail pelo `MailService.send()` da E6c (o mesmo teto de 100 por dia) e registra o envio no canal `email`. A situação vira "Enviado por e-mail {quando}. Ainda sem resposta." e o botão some para aquele horário.
+- **CA-E5.** O e-mail sai em texto e em HTML (`multipart/alternative`). No texto, o botão vira "Rótulo: endereço". No HTML, tudo o que vem do dono, do evento e do consultório passa por escape, as quebras viram `<br>` e só o botão é um `<a>` para o link do paciente. Sem imagens nem rastreio.
+- **CA-E6.** Sem e-mail no agendamento, o botão não aparece. Sem o e-mail configurado, com o teto do dia batido ou com o servidor recusando, a tela diz que não saiu e aponta para Integrações › E-mail para pacientes; nada é registrado.
+- **CA-E7.** Celular, tema escuro, teclado, leitor de tela, 44 px e inglês.
+
+### Rotas
+
+| Rota | O que faz |
+| --- | --- |
+| `POST /api/google/events/link/mail` | `{ calendarId, eventId }`: faz o link se ainda não existe, monta o e-mail do modelo, manda para o e-mail do agendamento e registra o envio. 409 sem e-mail, com a consulta cancelada ou vencida; 503 quando o e-mail não sai |
+| `GET /api/google/events/link` | Passa a devolver `mailedStart`, o horário do último envio por e-mail |
+
+### Banco
+
+Sem migration: o envio usa `zur_confirm_sends` com `channel = 'email'`. O modelo fica em `zur_settings`, chave `confirm_mail` (`{ subject, body, button }`, "" é o padrão), e vai no backup.
+
+### Custo
+
+Um envio lê o evento (1 subrequisição) e manda o e-mail (Gmail: até 2; SMTP: uma conexão), dentro do teto de 100 e-mails por dia da E6c. Grava a contagem do dia e uma linha de registro. Nenhuma IA.
+
+### Segurança
+
+| Ameaça | Defesa | Teste |
+| --- | --- | --- |
+| Sessão roubada mudando o e-mail para mandar os pacientes a outro lugar | Mesma regra da E7c1-01 nos três campos; o link só vai no botão | `confirm-mail.test.ts`, `confirm-links.test.ts` (E7c2) |
+| HTML injetado pelo modelo, pelo título do evento ou pelo consultório | Escape de `& < > " '` em tudo; só o botão é marcação, com o endereço do próprio link | `confirm-links.test.ts` (E7c2) |
+| Cabeçalho injetado pelo assunto | O assunto é uma linha só (schema) e sai codificado (RFC 2047) pelo `buildMessage` | `mail-smtp.test.ts` |
+| E-mail para outro endereço | Só o e-mail guardado no agendamento, validado por `isMailAddress`; a rota não aceita destinatário | `confirm-links.test.ts` (E7c2) |
+| Sessão roubada mandando o mesmo e-mail em laço e gastando o teto do dia (SEC-E7c2-04) | Um e-mail por horário: o envio é reservado antes de sair (dois toques ao mesmo tempo mandam um só) e devolvido se falhar; remarcado, vale de novo | `confirm-links.test.ts` (SEC-E7c2-04) |
+| Endereço escondido por um caractere invisível no meio (um espaço de largura zero em `golpe.com`) (SEC-E7c2-03) | Os caracteres de formato invisíveis (`\p{Cf}`, menos o que junta emojis) são recusados no modelo do e-mail e na mensagem do WhatsApp | `confirm-mail.test.ts` (SEC-E7c2-03) |
+
+### Suposições
+
+- O e-mail vem só do agendamento (campo da E5e). A cópia de Contatos guarda só o telefone, então "o e-mail do contato" do protótipo fica para quando ela guardar e-mail.
+- O cartão não repete "Enviar teste para você": o teste fica no cartão de cima, como já estava. A frase "Está ligado em … Como a confirmação sai" entra com o envio automático (E7c3).
+- A prévia usa o mesmo exemplo inventado da E7c1 (Érica).
+- "Copiar o texto do WhatsApp" traz a mensagem salva sem a linha do link e sem os asteriscos. Com a mensagem padrão, traz o texto padrão do e-mail, que já é a versão dela para e-mail (assim a tela não carrega o catálogo de Consultório).
+- Uma consulta recebe o e-mail uma vez por horário; o servidor recusa o segundo (409) e a tela já esconde o botão.

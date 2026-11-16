@@ -81,9 +81,180 @@ afterEach(() =>
     const { db } = agent.store;
     new InternalState(db).delete("google_oauth_pending");
     for (const table of ["zur_google_calendars", "zur_google_account", "zur_appointment_links", "zur_confirm_sends", "zur_notices", "zur_auth_events"]) db.run(`DELETE FROM ${table}`);
-    db.run(`DELETE FROM zur_settings WHERE key IN ('clinic', 'confirm_message')`);
+    db.run(`DELETE FROM zur_settings WHERE key IN ('clinic', 'confirm_message', 'confirm_mail')`);
   }),
 );
+
+describe("E7c2: the confirmation e-mail", () => {
+  type Mail = { to: string; subject: string; text: string; html: string };
+  /** The links of the owner's object, with an e-mail way out of the test's own. */
+  const deps = (agent: ZuriAgent): ConstructorParameters<typeof ConfirmLinks>[0] => ({
+    db: agent.store.db,
+    google: () => agent.store.google,
+    timeZone: () => "America/Sao_Paulo",
+    locale: () => "pt-BR",
+    clinic: () => CLINIC,
+    message: () => "",
+    mailTemplate: () => ({ subject: "", body: "", button: "" }),
+    sendMail: async () => ({ ok: true }),
+    publicUrl: () => new URL(ORIGIN),
+    credentialKey: testEnv.MCP_CREDENTIAL_KEY,
+    secret: () => "segredo-de-teste",
+    hours: () => agent.store.settings.field("agenda"),
+    notify: () => {},
+    lockdown: () => false,
+  });
+  const links = (agent: ZuriAgent, sent: Mail[], template = { subject: "", body: "", button: "" }, answer: () => { ok: true } | { ok: false; problem: "daily_limit" } = () => ({ ok: true })) =>
+    new ConfirmLinks({
+      db: agent.store.db,
+      google: () => agent.store.google,
+      timeZone: () => "America/Sao_Paulo",
+      locale: () => "pt-BR",
+      clinic: () => CLINIC,
+      message: () => "",
+      mailTemplate: () => template,
+      sendMail: async (mail) => {
+        const result = answer();
+        if (result.ok) sent.push(mail);
+        return result;
+      },
+      publicUrl: () => new URL(ORIGIN),
+      credentialKey: testEnv.MCP_CREDENTIAL_KEY,
+      secret: () => "segredo-de-teste",
+      hours: () => agent.store.settings.field("agenda"),
+      notify: () => {},
+      lockdown: () => false,
+    });
+
+  it("sends the default e-mail to the appointment's e-mail, the link only in the button, and records it for that start", async () => {
+    const event = seed(0, { start: { dateTime: "2099-12-10T14:00:00-03:00" }, end: { dateTime: "2099-12-10T15:00:00-03:00" } });
+    const { sent, status, url } = await inOwner(async (agent) => {
+      const sent: Mail[] = [];
+      const status = await links(agent, sent).mail(WORK, event.id);
+      const url = (await links(agent, []).link(WORK, event.id)).url;
+      return { sent, status, url };
+    });
+    expect(sent).toHaveLength(1);
+    const mail = sent[0] as Mail;
+    expect(mail.to).toBe("paciente@exemplo.com.br");
+    expect(mail.subject).toBe("Confirme sua consulta de quinta-feira, 10 de dezembro");
+    expect(mail.text).toBe(
+      `Olá, Beatriz!\n\nSua consulta no Consultório Exemplo está marcada para quinta-feira, 10 de dezembro, às 14:00.\nEndereço: Rua das Flores, 120, Curitiba, PR.\n\nToque no botão abaixo para confirmar sua presença. Se não puder vir, cancele pelo mesmo botão até quarta-feira, 9 de dezembro, às 23:59.\n\nPara mudar o dia ou o horário, fale com a nossa equipe pelo WhatsApp (41) 3333-0000.\n\nConfirmar presença: ${url}\n\n--\nConsultório Exemplo · Rua das Flores, 120, Curitiba, PR\nVocê recebeu este e-mail porque tem uma consulta marcada.\n`,
+    );
+    // The HTML: only the button is a link, to the patient's own page; no image.
+    expect([...mail.html.matchAll(/<a /g)]).toHaveLength(1);
+    expect(mail.html).toContain(`<a href="${url}"`);
+    expect(mail.html).not.toMatch(/<img|<script/i);
+    expect(status).toMatchObject({ sentChannel: "email", mailedStart: new Date("2099-12-10T17:00:00.000Z").toISOString() });
+    expect(await inOwner((agent) => agent.store.db.all(`SELECT channel, start FROM zur_confirm_sends`))).toEqual([{ channel: "email", start: "2099-12-10T17:00:00.000Z" }]);
+  });
+
+  it("escapes what the owner and the event carry in the HTML, and keeps the subject on one line", async () => {
+    const event = seed(0, { summary: "<script>x</script> Souza", start: { dateTime: "2099-12-11T09:00:00-03:00" }, end: { dateTime: "2099-12-11T10:00:00-03:00" } });
+    const template = { subject: "Oi {nome}, {consultorio}", body: "Oi {nome} \"<i>aspas</i>\" & {consultorio}", button: "Vou <sim>" };
+    const sent = await inOwner(async (agent) => {
+      const sent: Mail[] = [];
+      await links(agent, sent, template).mail(WORK, event.id);
+      return sent;
+    });
+    const html = sent[0]?.html ?? "";
+    expect(html).not.toMatch(/<script|<i>|<sim>/);
+    expect(html).toContain("&lt;script&gt;x&lt;/script&gt;");
+    expect(html).toContain("&quot;&lt;i&gt;aspas&lt;/i&gt;&quot; &amp; Consultório Exemplo");
+    expect(html).toContain(">Vou &lt;sim&gt;</a>");
+    expect(sent[0]?.subject).not.toMatch(/[\r\n]/);
+  });
+
+  it("a line separator the event carries into the subject becomes a space", async () => {
+    const event = seed(0, { description: "Retorno\u2028curto | Consultório", start: { dateTime: "2099-12-14T09:00:00-03:00" }, end: { dateTime: "2099-12-14T10:00:00-03:00" } });
+    const sent = await inOwner(async (agent) => {
+      const sent: Mail[] = [];
+      await links(agent, sent, { subject: "Sua {tipo}", body: "", button: "" }).mail(WORK, event.id);
+      return sent;
+    });
+    expect(sent[0]?.subject).toBe("Sua retorno curto");
+  });
+
+  it("SEC-E7c2-04: one e-mail per start, even for two taps at once; a send that failed can be tried again", async () => {
+    const event = seed(4 * 24 * HOUR);
+    const failed = seed(4 * 24 * HOUR);
+    const result = await inOwner(async (agent) => {
+      const sent: Mail[] = [];
+      const codeOf = (run: Promise<unknown>) => run.then(() => "ok", (error: { code?: string; messageKey?: string }) => `${error.code} ${error.messageKey}`);
+      const both = await Promise.all([codeOf(links(agent, sent).mail(WORK, event.id)), codeOf(links(agent, sent).mail(WORK, event.id))]);
+      const later = await codeOf(links(agent, sent).mail(WORK, event.id));
+      const first = await codeOf(links(agent, [], undefined, () => ({ ok: false, problem: "daily_limit" })).mail(WORK, failed.id));
+      const again = await codeOf(links(agent, sent).mail(WORK, failed.id));
+      return { both: both.sort(), later, first, again, sent: sent.length };
+    });
+    expect(result.both).toEqual(["CONFLICT error.confirmMailed", "ok"]);
+    expect(result.later).toBe("CONFLICT error.confirmMailed");
+    expect(result.first).toBe("SERVICE_UNAVAILABLE error.confirmMailFailed");
+    expect(result.again).toBe("ok");
+    expect(result.sent).toBe(2);
+  });
+
+  it("the footer leaves out the clinic's name when there is none", async () => {
+    const event = seed(0, { start: { dateTime: "2099-12-15T09:00:00-03:00" }, end: { dateTime: "2099-12-15T10:00:00-03:00" } });
+    const sent = await inOwner(async (agent) => {
+      const sent: Mail[] = [];
+      await new ConfirmLinks({ ...deps(agent), clinic: () => ({ ...CLINIC, name: "" }), sendMail: async (mail) => {
+          sent.push(mail);
+          return { ok: true };
+        },
+      }).mail(WORK, event.id);
+      return sent;
+    });
+    expect(sent[0]?.text).toMatch(/\n--\nRua das Flores, 120, Curitiba, PR\nVocê recebeu/);
+  });
+
+  it("without an e-mail on the appointment, with the e-mail not going out or for a cancelled one, nothing is recorded", async () => {
+    const none = seed(3 * 24 * HOUR, { extendedProperties: { private: { zuriPhone: "41999990000" } } });
+    const codes = await inOwner(async (agent) => {
+      const codeOf = async (run: () => Promise<unknown>) => run().then(() => "ok", (error: { code?: string; details?: unknown }) => [error.code, error.details]);
+      const capped = seed(3 * 24 * HOUR);
+      const cancelled = seed(3 * 24 * HOUR, { colorId: EVENT_STATUS_COLOR.cancelled });
+      return [
+        await codeOf(() => links(agent, []).mail(WORK, none.id)),
+        await codeOf(() => links(agent, [], undefined, () => ({ ok: false, problem: "daily_limit" })).mail(WORK, capped.id)),
+        await codeOf(() => links(agent, []).mail(WORK, cancelled.id)),
+      ];
+    });
+    expect(codes).toEqual([["CONFLICT", undefined], ["SERVICE_UNAVAILABLE", { problem: "daily_limit" }], ["CONFLICT", undefined]]);
+    expect(await inOwner((agent) => agent.store.db.all(`SELECT * FROM zur_confirm_sends`))).toEqual([]);
+    // Without an e-mail, no link is made for it either.
+    expect(await inOwner((agent) => agent.store.db.all(`SELECT id FROM zur_appointment_links WHERE event_id = ?`, none.id))).toEqual([]);
+  });
+
+  it("the route sends only to the appointment's own e-mail: a recipient in the body is refused, and an e-mail not set up says so", async () => {
+    const event = seed(3 * 24 * HOUR);
+    expect((await api("POST", "/google/events/link/mail", { calendarId: WORK, eventId: event.id, to: "outro@exemplo.com.br" })).status).toBe(400);
+    const res = await api("POST", "/google/events/link/mail", { calendarId: WORK, eventId: event.id });
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ code: "SERVICE_UNAVAILABLE", message: "O e-mail não saiu. Confira Integrações › E-mail para pacientes e tente de novo.", details: { problem: "not_configured" } });
+    const none = seed(3 * 24 * HOUR, { extendedProperties: { private: {} } });
+    expect(await (await api("POST", "/google/events/link/mail", { calendarId: WORK, eventId: none.id })).json()).toMatchObject({ code: "CONFLICT", message: "Este agendamento não tem o e-mail do paciente." });
+  });
+
+  it("SEC-E7c2: the server refuses an e-mail template out of the rules, field by field", async () => {
+    const ok = { subject: "", body: "", button: "" };
+    for (const confirmMail of [
+      { ...ok, subject: "Oi\n{nome}" },
+      { ...ok, subject: "Oi {local}" },
+      { ...ok, subject: "x".repeat(121) },
+      { ...ok, body: "Clique: {link}" },
+      { ...ok, body: "Veja https://pix.exemplo.com.br" },
+      { ...ok, body: "Ligue (41) 98888-7777" },
+      { ...ok, body: "y".repeat(2001) },
+      { ...ok, button: "z".repeat(31) },
+      { ...ok, button: "   " },
+      { ...ok, extra: "" },
+    ]) {
+      expect((await api("PATCH", "/settings", { confirmMail })).status, JSON.stringify(confirmMail).slice(0, 60)).toBe(400);
+    }
+    expect((await api("PATCH", "/settings", { confirmMail: { subject: "x".repeat(120), body: "y".repeat(2000), button: "z".repeat(30) } })).status).toBe(200);
+  });
+});
 
 describe("E7c1: the confirmation message and the WhatsApp send", () => {
   const sent = (eventId: string, body: Record<string, unknown> = {}) => api("POST", "/google/events/link/sent", { calendarId: WORK, eventId, channel: "whatsapp", ...body });
@@ -217,7 +388,7 @@ describe("E7a: the owner's link", () => {
   it("says the state without making a link, and refuses a plain event, a cancelled one and one that already expired", async () => {
     const event = seed(30 * 24 * HOUR);
     const status = await api("GET", `/google/events/link?calendarId=${encodeURIComponent(WORK)}&eventId=${event.id}`);
-    expect(await status.json()).toEqual({ made: false, answer: "none", answeredAt: "", answerStart: "", previousStart: "", sentChannel: "", sentAt: "", sentStart: "" });
+    expect(await status.json()).toEqual({ made: false, answer: "none", answeredAt: "", answerStart: "", previousStart: "", sentChannel: "", sentAt: "", sentStart: "", mailedStart: "" });
     expect(await inOwner((agent) => agent.store.db.all(`SELECT id FROM zur_appointment_links`))).toEqual([]);
     const plain = seed(30 * 24 * HOUR, { description: "Reunião do condomínio" });
     expect((await api("POST", "/google/events/link", { calendarId: WORK, eventId: plain.id })).status).toBe(400);
@@ -579,6 +750,8 @@ describe("E7a: the edges, on a clock of the test's own", () => {
       locale: () => "pt-BR",
       clinic: () => CLINIC,
       message: () => "",
+      mailTemplate: () => ({ subject: "", body: "", button: "" }),
+      sendMail: async () => ({ ok: true as const }),
       publicUrl: () => new URL(ORIGIN),
       credentialKey: testEnv.MCP_CREDENTIAL_KEY,
       secret: () => "segredo-de-teste",
@@ -698,6 +871,8 @@ describe("E7b: rescheduling by the link", () => {
       locale: () => "pt-BR",
       clinic: () => CLINIC,
       message: () => "",
+      mailTemplate: () => ({ subject: "", body: "", button: "" }),
+      sendMail: async () => ({ ok: true as const }),
       publicUrl: () => new URL(ORIGIN),
       credentialKey: testEnv.MCP_CREDENTIAL_KEY,
       secret: () => "segredo-de-teste",

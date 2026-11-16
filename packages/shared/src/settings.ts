@@ -12,6 +12,7 @@ import { AGENDA_RULES, periodDays } from "./agenda-rules.ts";
 import { isValidCalendarDate } from "./dates.ts";
 import { DEFAULT_SOUND_PREFS, NOTICE_SOUNDS } from "./sounds.ts";
 import { clinicSchema, DEFAULT_CLINIC } from "./clinic.ts";
+import { confirmMailSchema, DEFAULT_CONFIRM_MAIL } from "./confirm-mail.ts";
 import { confirmMessageSchema } from "./confirm-message.ts";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "./time-zone.ts";
 
@@ -179,6 +180,8 @@ export const settingsSchema = /* @__PURE__ */ z
     clinic: clinicSchema,
     /** E7c1: the confirmation message's text, with variables; "" is the default from the catalog. */
     confirmMessage: confirmMessageSchema,
+    /** E7c2: the confirmation e-mail's subject, text and button; each "" is its default from the catalog. Saved whole. */
+    confirmMail: confirmMailSchema,
   })
   .strict();
 
@@ -222,4 +225,5 @@ export const DEFAULT_SETTINGS: Settings = /* @__PURE__ */ Object.freeze({
   sounds: DEFAULT_SOUND_PREFS,
   clinic: DEFAULT_CLINIC,
   confirmMessage: "",
+  confirmMail: DEFAULT_CONFIRM_MAIL,
 });

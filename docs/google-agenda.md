@@ -346,7 +346,7 @@ Os detalhes de uma consulta (um evento com tipo, numa agenda em que a Zuri
 escreve) têm o quadro **Confirmação do paciente**:
 
 - A linha de cima diz a situação: "Ainda não enviado", "Enviado pelo
-  WhatsApp" (com o dia e a hora, ainda sem resposta), "Confirmou pelo link",
+  WhatsApp" ou "Enviado por e-mail" (com o dia e a hora, ainda sem resposta), "Confirmou pelo link",
   "Remarcou pelo link" (com o horário de antes) ou "Cancelou pelo link". Uma
   consulta que mudou de hora depois do envio ou da resposta volta a "Ainda não
   enviado": o paciente confirma de novo.
@@ -354,6 +354,12 @@ escreve) têm o quadro **Confirmação do paciente**:
   de Configurações › Consultório já preenchida para o celular do paciente. Você
   confere e envia. Ao tocar, a Zuri registra o envio daquele horário e o botão
   vira **Enviar de novo**. Sem celular na consulta, o botão não aparece.
+- **Enviar por e-mail** aparece quando a consulta tem o e-mail do paciente. A
+  Zuri manda o e-mail de confirmação de Integrações › E-mail para pacientes
+  pela forma de envio salva, com o link no botão, e registra o envio. Depois
+  disso o botão some até a consulta mudar de hora, e o servidor recusa um
+  segundo e-mail para o mesmo horário. Se o e-mail não sair (sem forma de
+  envio, teto do dia, servidor recusando), o aviso diz e nada é registrado.
 - **Copiar mensagem** copia o mesmo texto, sem registrar envio, e **Ver como o
   paciente** abre a página numa aba nova. O link nasce no primeiro pedido e é o
   mesmo depois disso, um por consulta.
@@ -371,6 +377,20 @@ prévia mostra como chega no WhatsApp, com `*texto*` em negrito, num exemplo com
 dados inventados. A mensagem precisa ter `{link}`, cabe em 1.000 caracteres e só
 aceita as variáveis da lista: o servidor recusa o resto. **Voltar ao modelo
 padrão** traz o texto do protótipo, no idioma da Zuri.
+
+#### E-mail de confirmação
+
+Fica em Integrações › E-mail para pacientes, logo abaixo da forma de envio.
+Tem assunto (até 120 caracteres, uma linha, com `{nome}`, `{tipo}`, `{dia}`,
+`{hora}` e `{consultorio}`), texto (até 2.000 caracteres, com todas as
+variáveis menos `{link}`) e o texto do botão (até 30). O link do paciente vai
+sempre no botão: o texto não aceita `{link}`. O e-mail sai em texto e em HTML
+simples, sem imagens; no texto, o botão vira "Confirmar presença: endereço".
+Como na mensagem do WhatsApp, os três campos recusam endereço da web e
+telefone escritos à mão e caracteres invisíveis. A tela não salva campo em
+branco; **Voltar ao modelo padrão** traz o modelo de volta, e **Copiar o texto
+do WhatsApp** põe no texto a mensagem de Consultório sem a linha do link e sem
+os asteriscos.
 
 A Zuri guarda cada envio (link, horário, canal e hora), sem o texto e sem o
 telefone, na tabela `zur_confirm_sends` (migration 47), fora do backup como os

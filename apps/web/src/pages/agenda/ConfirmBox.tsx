@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type AgendaEvent, COUNTRY_DIAL, type ConfirmLinkMade, type ConfirmLinkStatus, CONFIRM_LINK_LIMITS, EVENT_STATUS_COLOR, HOME_COUNTRY } from "@zuri/shared";
-import { CalendarDays, Copy, MessageCircleMore } from "lucide-react";
+import { CalendarDays, Copy, Mail, MessageCircleMore } from "lucide-react";
 import { Link } from "react-router";
 import { useState } from "react";
 import { useToast } from "../../components/Toaster.tsx";
@@ -16,12 +16,14 @@ import { useI18n } from "../../lib/i18n.tsx";
 export function ConfirmBox({ event }: { event: AgendaEvent }) {
   const { t, locale, timeZone } = useI18n();
   const toast = useToast();
-  const [busy, setBusy] = useState<"copy" | "see" | "whatsapp" | null>(null);
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<"copy" | "see" | "whatsapp" | "mail" | null>(null);
   const cancelled = event.colorId === EVENT_STATUS_COLOR.cancelled;
   const expired = Date.parse(event.start) - CONFIRM_LINK_LIMITS.expireBeforeMs <= Date.now();
   const query = new URLSearchParams({ calendarId: event.calendarId, eventId: event.id }).toString();
+  const key = ["calendar", "link", event.calendarId, event.id];
   const status = useQuery({
-    queryKey: ["calendar", "link", event.calendarId, event.id],
+    queryKey: key,
     queryFn: ({ signal }) => api<ConfirmLinkStatus>(`/google/events/link?${query}`, { signal }),
   });
   const s = status.data;
@@ -40,11 +42,26 @@ export function ConfirmBox({ event }: { event: AgendaEvent }) {
         : answer === "cancelled"
           ? t("web.agenda.confirm.cancelled", { when })
           : sentNow
-            ? t("web.agenda.confirm.sent", { when: sentWhen })
+            ? s?.sentChannel === "email"
+              ? t("web.agenda.confirm.sentEmail", { when: sentWhen })
+              : t("web.agenda.confirm.sent", { when: sentWhen })
             : t("web.agenda.confirm.none");
   // The patient's mobile with the country's code, digits only (E5e); none, no WhatsApp button.
   const dial = (COUNTRY_DIAL[event.country ?? HOME_COUNTRY] ?? "").replace(/\D/g, "");
   const phone = event.phone && dial ? `${dial}${event.phone.replace(/\D/g, "")}` : "";
+  // E7c2: the e-mail kept on the appointment; once sent for this start, the button goes.
+  const mailable = !!event.email && !!s && s.mailedStart !== event.start;
+  const mail = async () => {
+    setBusy("mail");
+    try {
+      qc.setQueryData(key, await api<ConfirmLinkStatus>("/google/events/link/mail", { method: "POST", body: { calendarId: event.calendarId, eventId: event.id } }));
+      toast(t("web.agenda.confirm.mailed", { name: event.title.replace(/^\s*dra?\.?\s+/i, "").trim().split(/\s+/)[0] ?? "" }));
+    } catch (failure) {
+      toast(errorMessage(failure));
+    } finally {
+      setBusy(null);
+    }
+  };
   const link = async (what: "copy" | "see" | "whatsapp") => {
     setBusy(what);
     // A tab opened now, before the wait: a browser blocks one opened after it.
@@ -90,6 +107,12 @@ export function ConfirmBox({ event }: { event: AgendaEvent }) {
               <Button variant="secondary" loading={busy === "whatsapp"} disabled={busy !== null} onClick={() => void link("whatsapp")}>
                 <MessageCircleMore className="h-4 w-4" aria-hidden />
                 {sentNow ? t("web.agenda.confirm.again") : t("web.agenda.confirm.whatsapp")}
+              </Button>
+            )}
+            {mailable && (
+              <Button variant="ghost" loading={busy === "mail"} disabled={busy !== null} onClick={() => void mail()}>
+                <Mail className="h-4 w-4" aria-hidden />
+                {t("web.agenda.confirm.mail")}
               </Button>
             )}
             <Button variant="ghost" loading={busy === "copy"} disabled={busy !== null} onClick={() => void link("copy")}>

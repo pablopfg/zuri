@@ -51,6 +51,7 @@ describe("default settings", () => {
       sounds: { notice: true, pick: "sino", recording: true },
       clinic: { name: "", whatsapp: "", address: "", city: "" },
       confirmMessage: "",
+      confirmMail: { subject: "", body: "", button: "" },
     });
     expect(DEFAULT_TIME_ZONE).toBe("America/Sao_Paulo");
     expect(settingsSchema.parse(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS);
