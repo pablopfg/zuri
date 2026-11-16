@@ -149,8 +149,9 @@ Uma leitura do evento no Google por abertura (`events.get`) e um `PATCH` com eta
 | E7a. Link e página | mesclada (#355) |
 | E7b. Remarcar pelo link | mesclada (#356) |
 | E7c1. Mensagem modelo e envio pelo WhatsApp | mesclada (#357) |
-| E7c2. E-mail de confirmação | em andamento |
-| E7c3. Envio automático na véspera útil | a fazer |
+| E7c2. E-mail de confirmação | mesclada (#358) |
+| E7c3a. Confirmação automática pelo Chatwoot | em andamento |
+| E7c3b. Também por e-mail, na mesma hora | a fazer |
 
 Cada PR traz changelog, README, capturas lado a lado com o protótipo e o teto do JS inicial (141.200 B, OK do Pablo em 15/11/2026): a página do paciente e o bloco dos detalhes carregam sob demanda.
 
@@ -329,3 +330,34 @@ Um envio lê o evento (1 subrequisição) e manda o e-mail (Gmail: até 2; SMTP:
 - A prévia usa o mesmo exemplo inventado da E7c1 (Érica).
 - "Copiar o texto do WhatsApp" traz a mensagem salva sem a linha do link e sem os asteriscos. Com a mensagem padrão, traz o texto padrão do e-mail, que já é a versão dela para e-mail (assim a tela não carrega o catálogo de Consultório).
 - Uma consulta recebe o e-mail uma vez por horário; o servidor recusa o segundo (409) e a tela já esconde o botão.
+
+## 18. Diferenças da E7c3 (confirmação automática na véspera útil)
+
+A E7c3 também ficou grande para uma PR. Ela vira duas, nesta ordem:
+
+| PR | O que entra |
+| --- | --- |
+| **E7c3a** | A automação "Confirmação de consulta" do CRM ganha código: na véspera útil, no horário escolhido, ela põe na fila de Envios (S19) a mensagem modelo com o link, pela caixa do WhatsApp no Chatwoot. Começa em ensaio de 3 dias úteis, como toda automação que escreve a pacientes. "Como a confirmação sai" em Configurações › Consultório, e a situação do envio automático nos detalhes da consulta |
+| **E7c3b** | "Também por e-mail, na mesma hora": o e-mail da E7c2 sai junto, pela mesma automação |
+
+A aprovação vem da decisão de 12/11/2026, 21:37 UTC (a confirmação sai sozinha pelo Chatwoot no último dia útil antes da consulta), que respondeu na prática a P1 de `modulos-crm.md`. Desligada por padrão: nada vai a paciente até o Pablo ligar e o ensaio passar.
+
+### Critérios de aceite (E7c3a)
+
+- **CA-A1.** O catálogo do CRM traz "Confirmação de consulta" (`appointment-confirmation`) com código: credencial do Chatwoot, opção "Horário do envio" (07:00 a 20:00, padrão 07:00), só em dias úteis (sem fim de semana nem feriado nacional), teto de 30 mensagens por dia (P1) e nenhuma chamada de IA.
+- **CA-A2.** Recebe a mensagem quem tem, entre amanhã e o fim do próximo dia útil (a consulta de segunda recebe na sexta), um agendamento com tipo, situação Agendado (cor da agenda ou Pavão) ou Reagendado, celular brasileiro válido, numa agenda que a Zuri escreve, com o link ainda valendo e sem resposta pelo link para aquele horário. Quem já recebeu para aquele horário, por qualquer canal, fica de fora.
+- **CA-A3.** A mensagem é a mesma do botão do WhatsApp (modelo da E7c1), com o link daquele agendamento. A chave da fila é a agenda, o evento e o horário: a mesma consulta nunca entra duas vezes, e remarcada recebe de novo. A mensagem não sai depois de 1 hora antes da consulta (o link expira): vira "Não saiu" em Envios.
+- **CA-A4.** Em ensaio nada sai: a Zuri anota quem receberia, e o CRM mostra as anotações para o Pablo conferir, como nas outras automações. Ao vivo, entra na fila, uma de cada vez, com a espera da credencial.
+- **CA-A5.** Nos detalhes da consulta: ligada ao vivo e ainda sem envio, a dica "Sai sozinho pelo Chatwoot em {dia}, às {hora}. Se você enviar antes pelo WhatsApp, o automático não repete."; na fila, "Na fila do Chatwoot"; enviada, "Enviado pelo Chatwoot {quando}. Ainda sem resposta."; se não saiu ou falhou, "Não foi enviado pelo Chatwoot", e os botões de enviar continuam.
+- **CA-A6.** Configurações › Consultório ganha "Como a confirmação sai": pelo WhatsApp, por você (sempre disponível), e automático pelo Chatwoot, com a situação (desligado, em ensaio, ligado ou pausado), o horário e "Mudar", que leva a CRM › Automações. Um ajuste, um lugar (regra de 13/11).
+- **CA-A7.** Custo: roda a cada 30 minutos só em dia útil e trabalha do horário escolhido até as 21:00, para refazer uma rodada que falhou e pegar quem marcou durante o dia (no máximo 28 leituras da agenda por dia; a chave da fila não deixa repetir); não cria mais links do que o teto do dia.
+- **CA-A8.** Celular, tema escuro, teclado, leitor de tela, 44 px e inglês.
+
+### Suposições
+
+- O interruptor, o horário e a credencial ficam em CRM › Automações, onde as automações já ligam, ensaiam e pausam; o Consultório mostra o resumo e leva até lá (regra "um ajuste, um lugar"). O protótipo tinha os controles no Consultório; o Pablo escolheu CRM › Automações em 16/11, às 11:52 UTC.
+- Paciente que confirma pelo link, ou envio do Pablo pelo WhatsApp, entre a entrada na fila e a vez dela (minutos) não tira a mensagem da fila nesta PR. O mesmo vale para a consulta cancelada ou remarcada no Google nesse intervalo, que pode durar mais se a fila estiver pausada ou no bloqueio (auditoria SEC-E7c3a-04, baixo, aceito nesta PR); a mensagem vence de qualquer jeito 1 hora antes da consulta.
+- Quem pode editar uma agenda compartilhada que a Zuri escreve consegue gravar o celular do paciente num evento pela API do Google (auditoria SEC-E7c3a-05, informativo). As agendas em que a Zuri escreve são escolha do Pablo em Integrações › Google; fica registrado como risco conhecido.
+- A automação lê no máximo 250 eventos por agenda e 1.000 no total na véspera; acima disso o resto fica para os botões (o consultório tem bem menos).
+- Achados da auditoria corrigidos: SEC-E7c3a-01 (médio; mudar o texto da confirmação com a automação ligada pede senha e alerta, escolha do Pablo em 16/11, às 11:52 UTC), SEC-E7c3a-02 (uma mensagem recusada não para as outras), SEC-E7c3a-03 (só o primeiro nome vai ao Chatwoot) e SEC-E7c3a-06 (links só até o teto do dia).
+

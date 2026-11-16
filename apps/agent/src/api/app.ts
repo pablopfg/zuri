@@ -140,6 +140,8 @@ export interface ApiDeps {
   /** The internal CRM (step 22b). Absent only in tests of other routes. */
   crm?(): CrmRouteDeps;
   crmAutomations?(): CrmAutomationRouteDeps;
+  /** SEC-E7c3a-01: whether the automatic confirmation is on, so its text is sensitive. Absent only in tests of other routes. */
+  confirmAutoOn?(): boolean;
   /** CRM › Envios (PR S19). Absent only in tests of other routes. */
   outbox?(): OutboxRouteDeps;
   /** Storage use, the export and the import (step 23). Absent only in tests of other routes. */
@@ -495,9 +497,14 @@ export function createApi(deps: ApiDeps) {
     // E7a: the team's WhatsApp goes to patients on the confirmation page, so changing it is sensitive.
     const whatsapp = patch.clinic !== undefined && patch.clinic.whatsapp !== deps.settings().field("clinic").whatsapp;
     if (whatsapp) deps.auth().requireRecentAuth(c.get("session"));
+    // SEC-E7c3a-01: with the automatic confirmation on, its text (the message and the office's details that fill it)
+    // goes to patients unseen: changing it asks for the password and alerts.
+    const confirmText = !!deps.confirmAutoOn?.() && confirmTextChanged(patch, deps.settings());
+    if (confirmText) deps.auth().requireRecentAuth(c.get("session"));
     const before = patch.timeZone === undefined ? null : deps.settings().field("timeZone");
     const settings = deps.settings().update(patch);
     if (whatsapp) deps.auth().events.record("clinic_whatsapp_changed", client(c), { alert: true });
+    if (confirmText) deps.auth().events.record("confirm_text_changed", client(c), { alert: true });
     // A new zone moves every wall-clock time: each automation's next run is computed again.
     if (before !== null && settings.timeZone !== before) await deps.automations().service.rescheduleAll();
     return Response.json(settings);
@@ -634,6 +641,13 @@ export function createApi(deps: ApiDeps) {
 }
 
 const SESSION_FIELDS = Object.keys(SESSION_TIMEOUT_RANGES);
+
+/** The confirmation's message, or an office detail that fills it ({consultorio}, {local}), changes (SEC-E7c3a-01). */
+export function confirmTextChanged(patch: { confirmMessage?: string | undefined; clinic?: { name: string; address: string; city: string } | undefined }, settings: Pick<SettingsRepository, "field">): boolean {
+  if (patch.confirmMessage !== undefined && patch.confirmMessage !== settings.field("confirmMessage")) return true;
+  const now = settings.field("clinic");
+  return patch.clinic !== undefined && (["name", "address", "city"] as const).some((key) => patch.clinic?.[key] !== now[key]);
+}
 
 /** The bell's count, when the notice center is there. */
 /** The areas' numbers ride on the same answers as the bell: the screens learn of a change made elsewhere without a request of their own. */

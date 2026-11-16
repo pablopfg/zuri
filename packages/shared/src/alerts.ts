@@ -129,6 +129,7 @@ export const SECURITY_ALERT_EVENTS = [
   "review_link_changed",
   "mail_changed",
   "clinic_whatsapp_changed",
+  "confirm_text_changed",
   "setup_failure",
   "setup_locked",
   "owner_created",

@@ -46,6 +46,7 @@ export const ptBRCrmAutomations = {
   "web.crmAutomations.setup.started": "Ensaio começou",
   "web.crmAutomations.cancel": "Cancelar",
   "web.crmAutomations.option.perDay": "Por dia",
+  "web.crmAutomations.option.hour": "Horário do envio",
   "web.crmAutomations.follow.rehearsal": "Em ensaio desde {date}. A Zuri roda tudo, mas não envia nada: só anota o que faria.",
   "web.crmAutomations.follow.live": "Ligada desde {date}. Envia de verdade, dentro dos limites.",
   "web.crmAutomations.follow.paused": "Pausada. {reason}",

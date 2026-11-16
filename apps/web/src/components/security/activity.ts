@@ -58,6 +58,7 @@ export const KIND_LABEL: Record<AuthEventKind, MessageKey> = {
   review_link_changed: "web.activity.kind.review_link_changed",
   mail_changed: "web.activity.kind.mail_changed",
   clinic_whatsapp_changed: "web.activity.kind.clinic_whatsapp_changed",
+  confirm_text_changed: "web.activity.kind.confirm_text_changed",
   google_disconnected: "web.activity.kind.google_disconnected",
   setup_failure: "web.activity.kind.setup_failure",
   setup_locked: "web.activity.kind.setup_locked",

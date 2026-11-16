@@ -228,15 +228,30 @@ export class CrmAutomations {
     };
   }
 
-  /**
-   * The credential's users by id, for "Usada por" and for refusing to remove one in use: the ones on (rehearsal,
-   * live or paused). One turned off only remembers the pick; starting it again checks the credential once more.
-   */
+  /** One option of an automation that is on for real (live), the default filling an unset one; null otherwise (E7c3a). */
+  liveOption(id: string, key: string): number | string | null {
+    const entry = this.deps.catalog.find((item) => item.id === id);
+    const row = this.row(id);
+    if (!entry?.module || row?.state !== "live") return null;
+    const options = optionsFor(entry.module.manifest.options, parseOptions(row.options));
+    return "invalid" in options ? null : (options[key] ?? null);
+  }
+
+  /** Whether an automation is on: in rehearsal, live or paused (SEC-E7c3a-01). */
+  on(id: string): boolean {
+    const state = this.row(id)?.state;
+    return state === "rehearsal" || state === "live" || state === "paused";
+  }
+
   /** Whether what this automation queued may go out: only while it is on for real. */
   sends(id: string): boolean {
     return this.db.one<{ state: string }>(`SELECT state FROM zur_crm_automations WHERE id = ?`, id)?.state === "live";
   }
 
+  /**
+   * The credential's users by id, for "Usada por" and for refusing to remove one in use: the ones on (rehearsal,
+   * live or paused). One turned off only remembers the pick; starting it again checks the credential once more.
+   */
   users(connectionId: string): string[] {
     return this.db.all<{ id: string }>(`SELECT id FROM zur_crm_automations WHERE connection_id = ? AND state != 'off' LIMIT 100`, connectionId).map((row) => row.id);
   }
