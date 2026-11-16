@@ -28,6 +28,8 @@ const optionSchema = z.discriminatedUnion("kind", [
     .object({ key: z.string().regex(NAME), kind: z.literal("time"), min: z.string().regex(TIME), max: z.string().regex(TIME), default: z.string().regex(TIME) })
     .strict()
     .refine((value) => value.min <= value.default && value.default <= value.max),
+  // E7c3b: on or off, kept as 1 or 0.
+  z.object({ key: z.string().regex(NAME), kind: z.literal("switch"), default: z.union([z.literal(0), z.literal(1)]) }).strict(),
 ]);
 
 const callSchema = z
@@ -117,6 +119,8 @@ export interface AutomationContext {
     notBefore?: string;
     notAfter?: string;
   }): Promise<"would" | "queued" | "skipped">;
+  /** Still in the state the run started in, and no lockdown: work outside `effect` and `send` asks before each step. */
+  stillOn(): boolean;
 }
 
 export interface AutomationModule {
@@ -130,7 +134,9 @@ export function optionsFor(defs: readonly CrmAutomationOption[], input: Record<s
   for (const key of Object.keys(input)) if (!defs.some((def) => def.key === key)) return { invalid: key };
   for (const def of defs) {
     const value = input[def.key] ?? def.default;
-    if (def.kind === "number") {
+    if (def.kind === "switch") {
+      if (value !== 0 && value !== 1) return { invalid: def.key };
+    } else if (def.kind === "number") {
       if (typeof value !== "number" || !Number.isInteger(value) || value < def.min || value > def.max) return { invalid: def.key };
     } else if (typeof value !== "string" || !TIME.test(value) || value < def.min || value > def.max) return { invalid: def.key };
     out[def.key] = value;

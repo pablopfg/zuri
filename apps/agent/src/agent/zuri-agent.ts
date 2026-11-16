@@ -1145,7 +1145,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         lockdown: () => auth.lockdown.active(),
         notify: (notice) => crmAutomationNotice(alerts, notice, this.locale()),
         // The appointment confirmation (E7c3a) reads the working eve through the confirmation links.
-        catalog: buildCatalog([appointmentConfirmation((day, make, max) => confirmLinks.eve(day, make, max)), ...(this.development() ? [EXAMPLE_AUTOMATION] : [])]),
+        catalog: buildCatalog([appointmentConfirmation((day, make, max, mail) => confirmLinks.eve(day, make, max, mail)), ...(this.development() ? [EXAMPLE_AUTOMATION] : [])]),
       });
       flows.automationUsers = (id) => crmAutomations.users(id).map((automation) => automationName(this.locale(), automation));
       const crm = new CrmService({ db, timeZone: () => settings.field("timeZone"), locale: () => this.locale(), notify: (notice) => crmNotice(alerts, notice), assertBytes: () => productivity.storage.assertBytes() });

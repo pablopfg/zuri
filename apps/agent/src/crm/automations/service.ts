@@ -628,6 +628,14 @@ export class CrmAutomations {
         effects++;
         return "done";
       },
+      stillOn: () => {
+        try {
+          this.stillOn(row.id, row.state);
+          return true;
+        } catch {
+          return false;
+        }
+      },
       send: async (input) => {
         if (!manifest.effects.includes("message") || manifest.connection !== "chatwoot" || !manifest.writesToContacts) throw new ManifestViolation("send");
         if (input.key.length === 0 || input.key.length > CRM_AUTOMATION_LIMITS.key) throw new ManifestViolation("key");

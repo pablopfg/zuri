@@ -208,6 +208,17 @@ test("the automatic confirmation shows its state and Mudar opens CRM › Automa�
     await page.reload();
     await expect(send.getByText(text, { exact: true })).toBeVisible();
   }
+  // E7c3b: the e-mail along shows with the state; off, it says only Chatwoot.
+  await expect(send.getByText("Também por e-mail, na mesma hora, para quem tem e-mail no agendamento.")).toBeVisible();
+  await page.unroute("**/api/crm/automations");
+  await page.route("**/api/crm/automations", async (route) => {
+    const list = (await (await route.fetch()).json()) as { automations: { id: string; state: string; options: Record<string, unknown> }[] };
+    for (const item of list.automations) if (item.id === "appointment-confirmation") Object.assign(item, { state: "live", options: { hour: "08:30", mail: 0 } });
+    return route.fulfill({ json: list });
+  });
+  await page.reload();
+  await expect(send.getByText("Só pelo Chatwoot: o e-mail junto está desligado.")).toBeVisible();
+  await expect(send.getByText("Também por e-mail", { exact: false })).toHaveCount(0);
   await send.getByRole("link", { name: "Mudar a confirmação automática em CRM › Automações" }).click();
   await expect(page).toHaveURL(/\/crm$/);
 });
