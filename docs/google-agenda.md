@@ -340,6 +340,39 @@ se o Google recusar o aviso, a tela lê de novo quando você volta para ela.
 A tela mexe só nos eventos. Criar, renomear ou apagar agendas continua no
 Google Agenda (decisão de 03/11/2026).
 
+### Confirmação do paciente
+
+Os detalhes de uma consulta (um evento com tipo, numa agenda em que a Zuri
+escreve) têm o quadro **Confirmação do paciente**:
+
+- A linha de cima diz a resposta: "Ainda sem resposta", "Confirmou pelo link"
+  ou "Cancelou pelo link", com o dia e a hora. Uma consulta que mudou de hora
+  depois da resposta volta a "Ainda sem resposta": o paciente confirma de novo.
+- **Copiar link** copia o endereço `https://<domínio>/c/<token>` e **Ver como
+  o paciente** abre a página numa aba nova. O link nasce no primeiro pedido e
+  é o mesmo depois disso, um por consulta.
+- Uma consulta cancelada, ou a menos de 1 hora, não tem link para dar.
+
+O que o paciente vê, sem entrar em nada:
+
+- O nome do consultório (Configurações › Consultório), o primeiro nome dele,
+  o dia, a hora, o tipo e o endereço. Numa consulta online, um aviso de que o
+  link da chamada chega antes. Nada mais da Zuri: sem menu, sem link para
+  dentro.
+- **Confirmar presença** pinta a consulta de Confirmado (Manjericão) aqui e no
+  Google e manda um aviso com o sino.
+- **Cancelar a consulta** pergunta antes, com "Não, manter a consulta" em
+  foco. Cancelar pinta de Cancelado (Tomate), nunca apaga o evento, manda o
+  aviso e desliga o link para sempre. Dá para cancelar por aqui até 12 horas
+  antes e só até 23:59 do dia anterior, o que vier primeiro.
+- **Falar com a equipe pelo WhatsApp** abre o WhatsApp do consultório com a
+  mensagem pronta. Para mudar o dia ou a hora, é por lá (a E7b traz a
+  remarcação pelo link).
+- O link vale até 1 hora antes da consulta. Depois disso, ou se a consulta for
+  cancelada, a página diz que ele expirou.
+
+Defesas e limites: [seguranca.md](seguranca.md#link-de-confirmação-ctoken).
+
 ### Na conversa, no bot e nas rotinas
 
 - "O que tenho amanhã?", "Marca dentista sexta às 15h", "Muda a reunião de
@@ -418,6 +451,7 @@ passo a passo está em [avaliacoes-google.md](avaliacoes-google.md#para-quem-ins
 | Regras de arrastar, duração, "mover marca Reagendado" e desfazer; envio de uma mudança com o aviso | `apps/web/src/lib/agenda-edit.ts`, `apps/web/src/pages/agenda/changes.ts` |
 | Banco (migration 22) | `zur_google_account`, `zur_google_calendars` |
 | Registro do dia e última consulta de um contato (migrations 42 e 43) | `zur_agenda_record` com o índice `zur_agenda_record_contact`, `zur_agenda_closed_days`; `apps/agent/src/google/record.ts` |
+| Link de confirmação do paciente (migration 45) | `zur_appointment_links`; `apps/agent/src/google/confirm-links.ts`, `apps/agent/src/api/confirm.ts`, `apps/web/src/pages/confirm/ConfirmPage.tsx`, `apps/web/src/pages/agenda/ConfirmBox.tsx` |
 | Busca do nome e vínculo com Contatos | `apps/agent/src/google/contacts.ts` (`forBooking`), `apps/web/src/pages/agenda/PatientLink.tsx` |
 
 - Os tokens ficam cifrados com AES-256-GCM, numa chave derivada do

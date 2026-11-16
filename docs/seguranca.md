@@ -1051,6 +1051,60 @@ quem envia é ele. O que protege:
 - **Fora do backup.** Os links, as aberturas e as impressões ficam fora do
   backup. Desconectar o Google apaga pedidos e links.
 
+### Link de confirmação `/c/<token>`
+
+A E7a dá a cada consulta um link para o paciente confirmar a presença ou
+cancelar ([google-agenda.md](google-agenda.md#confirmação-do-paciente)). O
+link sai de **Copiar link** nos detalhes da consulta; a Zuri ainda não envia
+nada sozinha (a E7c faz o envio). As defesas:
+
+| Ameaça | Defesa | Teste |
+| --- | --- | --- |
+| Adivinhar um token | 16 bytes de `crypto.getRandomValues` (22 caracteres base64url); o banco guarda só o SHA-256 e uma cópia cifrada (cofre `confirm-link-v1`, preso à linha); token fora do formato nunca é procurado | `confirm-links.test.ts`, `packages/shared/test/confirm-link.test.ts` |
+| Força bruta e custo | Na memória do objeto, por rede (HMAC do endereço com o `PASSWORD_PEPPER`), a cada 10 min: 30 aberturas, 10 respostas, e o 3º token errado tira a rede de `/c/` por 1 h. Até 5.000 redes guardadas; um token errado não grava nada | `confirm-links.test.ts` (30/31, 10/11, 3º errado), `free-tier-budget.test.ts` |
+| Saber se um link existe | Token desconhecido, evento apagado, em outra agenda ou que deixou de ser consulta dão o mesmo 404 com o mesmo corpo | `confirm-links.test.ts` |
+| Token de um paciente muda a consulta de outro | A consulta sai da linha achada pelo hash, nunca do pedido | `confirm-links.test.ts` |
+| Prévia do WhatsApp confirma sozinha | Abrir só mostra (`GET` da página e `POST /api/c/view` não mudam nada); só um toque em `POST /api/c/answer` com a ação muda a cor | `confirm-links.test.ts`, e2e |
+| Outro site responde pelo paciente | CSRF de mesma origem (`Origin` e `x-zuri-request`), ação em lista fixa | `confirm-links.test.ts` |
+| Dado pessoal na página | Só o primeiro nome (sem "Dr."/"Dra.", até 40 caracteres), o dia, a hora, o tipo e o endereço do consultório; nunca o nome inteiro, o telefone, o e-mail nem a observação. A casca é a mesma para qualquer token, com `no-store`, `no-referrer`, `noindex, nofollow` e sem cookie | `confirm-links.test.ts`, e2e |
+| Token nos registros | Na API o token vai no corpo; no caminho da página ele vira `:id` no log da Zuri. O log de invocação do Workers Logs ainda vê o caminho, como no `/a/<código>` | `log.test.ts` |
+| Página dentro de um frame | `frame-ancestors 'none'` e `X-Frame-Options: DENY` | `confirm-links.test.ts` |
+| Paciente cancela em cima da hora | Prazo no servidor: 12 h antes ou 23:59 do dia anterior, o que vier primeiro, no fuso do dono. Cancelar desliga o link para sempre; a consulta nunca é apagada, só fica Cancelada | `confirm-links.test.ts` |
+| Respostas sem fim no mesmo link | 10 respostas que mudam algo por link e por dia, guardadas no banco | `confirm-links.test.ts` |
+| Evento mudado no Google no meio | `PATCH` só com a cor e o `etag` lido; um 412 lê de novo uma vez e decide nessa versão | `confirm-links.test.ts` |
+| Sessão roubada troca o WhatsApp da equipe para desviar pacientes | Mudar o WhatsApp do consultório pede a senha recente e gera o aviso de segurança `clinic_whatsapp_changed` | `confirm-links.test.ts` |
+| Bloqueio | Com `/bloquear` ativo, responder dá 503 e nada muda no Google | `confirm-links.test.ts` |
+| Restaurar um backup com outro WhatsApp da equipe | A restauração (que já pede a senha recente) gera o mesmo aviso `clinic_whatsapp_changed` | `backup.test.ts` (SEC-E7a-01) |
+| Toque que não chega ao Google | Agenda que passou a só leitura ou foi fechada: o link responde 404; o dono não consegue criar link nela | `confirm-links.test.ts` |
+| Dois toques ao mesmo tempo | O segundo perde no `etag`, relê, acha a cor já mudada e não grava nem avisa | `confirm-links.test.ts` |
+| Links de uma conta antiga | Desconectar ou trocar a conta do Google apaga os links (404 daí em diante) | `confirm-links.test.ts` |
+
+Com o Cloudflare Access ligado, três caminhos passam sem o login dele
+(`c/*`, `api/c/*` e `assets/*`, em [instalacao-cloudflare.md](instalacao-cloudflare.md)).
+O Worker confere de novo: só `GET` e `HEAD` da casca e dos arquivos com
+hash, e só os dois `POST` da página. Os arquivos da interface são o código do
+repositório público e não levam dado, mas as notas de versão dizem a versão
+instalada a quem quiser ver. As duas rotas da página aceitam o cookie do
+dono (o **Ver como o paciente** abre a página no navegador dele), mas nunca
+leem a sessão.
+
+O que fica como está, de propósito:
+
+- A janela dos freios é fixa, como no `/a/<código>`: dois tokens errados no
+  fim de uma janela e dois no começo da seguinte passam.
+- Atrás do mesmo IPv4 de operadora (CGNAT), três tokens errados de um vizinho
+  tiram de `/c/` por 1 hora todos os pacientes daquele IP, e as 30 aberturas
+  são divididas. Como um token errado nunca acerta (128 bits), quem chega
+  bloqueado ainda pode falar com a equipe.
+- O objeto guarda até 5.000 redes por janela. Quem tiver muitos `/64` de
+  IPv6 enche o mapa e, até a janela virar, toda rede nova recebe 429. Os
+  mesmos pedidos gastam a cota do plano Free de qualquer jeito; o bloqueio
+  de borda da Cloudflare (WAF) é o remédio se isso acontecer.
+
+A tabela `zur_appointment_links`
+(migration 45) fica fora do backup: a cópia cifrada só abre com a chave
+desta instalação.
+
 ## E-mail para pacientes
 
 O cartão de Configurações › Integrações (E6c, [email-para-pacientes.md](email-para-pacientes.md)) decide por onde saem os e-mails aos pacientes. As defesas:

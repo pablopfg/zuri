@@ -49,6 +49,7 @@ export {
   ptBROutbox,
   ptBRClinic,
   ptBRMail,
+  ptBRConfirm,
   t,
 } from "../i18n/index.ts";
 export { AGENDA_VIEWS, type AgendaPrefs, type AgendaView, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
@@ -198,3 +199,4 @@ export * from "./model-catalog.ts";
 export * from "./countries.ts";
 export * from "./home-suggestions.ts";
 export * from "./mail.ts";
+export * from "./confirm-link.ts";

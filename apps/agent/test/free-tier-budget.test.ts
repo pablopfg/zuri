@@ -21,6 +21,7 @@ import type { AutomationModule } from "../src/crm/automations/manifest.ts";
 import { useCatalog } from "./crm-automations-world.ts";
 import { fakeSmtp } from "../src/mail/dev-mail.ts";
 import { MailService } from "../src/mail/service.ts";
+import { ConfirmLinks } from "../src/google/confirm-links.ts";
 
 // What each route costs in the units the Free plan bills: rows read and rows
 // written in the object's SQLite (docs/arquitetura/orcamento-free-tier.md). A
@@ -192,7 +193,8 @@ describe("the Free plan budget of each route", () => {
   });
 
   it("E6a: saving the office's details writes its one row and the activity, and the same details again write nothing", async () => {
-    const clinic = { name: "Consultório Exemplo", whatsapp: "4133330000", address: "Rua das Flores, 120", city: "Curitiba, PR" };
+    // Without the team's WhatsApp: a new number also raises a security alert (E7a), measured below.
+    const clinic = { name: "Consultório Exemplo", whatsapp: "", address: "Rua das Flores, 120", city: "Curitiba, PR" };
     const saved = await cost("PATCH", "/settings", { clinic });
     expect(saved.status).toBe(200);
     // The row of zur_settings and the activity line, each with its index.
@@ -203,6 +205,11 @@ describe("the Free plan budget of each route", () => {
     // The session check and one row per setting the owner changed: here only this one.
     const read = await cost("GET", "/settings");
     expect(read.read).toBeLessThanOrEqual(3);
+    // E7a: the WhatsApp the patients see changes with the row, the activity and the security event with its daily count.
+    const whatsapp = await cost("PATCH", "/settings", { clinic: { ...clinic, whatsapp: "4133330000" } });
+    expect(whatsapp.status).toBe(200);
+    // Rare (the owner changes the number), and the alert's notice with its indexes is most of it: measured 27.
+    expect(whatsapp.written).toBeLessThanOrEqual(27);
     await runInDurableObject(owner(), (agent: ZuriAgent) => agent.store.db.run(`DELETE FROM zur_settings WHERE key = 'clinic'`));
   });
 
@@ -1219,6 +1226,52 @@ describe("flows (step 22a)", () => {
       expect(sent.written).toBe(1);
       expect(sent.read).toBeLessThanOrEqual(2);
       expect(server.log.messages).toHaveLength(1);
+    }));
+
+  it("the confirmation link (E7a): opening reads one row and writes nothing, a guess reads none, an answer writes the one row", () =>
+    withFlowWorld(async (world) => {
+      const event = { id: "e1", calendarId: "agenda", title: "Ana Souza", start: new Date(Date.now() + 30 * 86_400_000).toISOString(), end: new Date(Date.now() + 30 * 86_400_000 + 3_600_000).toISOString(), allDay: false, location: "", description: "Consulta | Consultório", etag: '"1"', recurring: false, guests: 0, colorId: "", shared: false };
+      const google = { usable: () => true, connected: () => true, calendar: () => ({ mode: "write", writable: true }), event: async () => ({ ...event }), updateEvent: async (_c: string, _e: string, patch: Record<string, unknown>) => Object.assign(event, patch, { etag: '"2"' }) };
+      let notices = 0;
+      const links = new ConfirmLinks({
+        db: world.db,
+        google: () => google as never,
+        timeZone: () => "America/Sao_Paulo",
+        locale: () => "pt-BR",
+        clinic: () => ({ name: "Consultório Exemplo", whatsapp: "", address: "", city: "" }),
+        publicUrl: () => new URL("https://zuri.exemplo.com.br"),
+        credentialKey: testEnv.MCP_CREDENTIAL_KEY,
+        secret: () => "segredo-de-teste",
+        notify: () => {
+          notices += 1;
+        },
+        lockdown: () => false,
+      });
+      // Each call must succeed: a failure would measure nothing.
+      const measure = async (fn: () => Promise<unknown>, fails = false) => {
+        const before = { ...world.db.usage };
+        const failed = await fn().then(
+          () => false,
+          () => true,
+        );
+        expect(failed).toBe(fails);
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      let url = "";
+      // The row, its key and its two unique indexes: measured 4.
+      const made = await measure(async () => {
+        url = (await links.link("agenda", "e1")).url;
+      });
+      expect(made.written).toBeLessThanOrEqual(4);
+      const token = url.split("/c/")[1] ?? "";
+      expect(await measure(() => links.view(token, "198.51.100.1"))).toEqual({ read: 1, written: 0 });
+      expect(await measure(() => links.view("Z".repeat(22), "198.51.100.2"), true)).toEqual({ read: 0, written: 0 });
+      // The link's row only (no index column changes); the notice goes through the caller.
+      const answered = await measure(() => links.answer(token, "confirm", "198.51.100.1"));
+      expect(answered.written).toBe(1);
+      // The lookup and the update's own: measured 2.
+      expect(answered.read).toBeLessThanOrEqual(2);
+      expect(notices).toBe(1);
     }));
 
   it("a fzap credential (E6b): making, changing and testing it read a few rows, and the test writes nothing", () =>

@@ -60,6 +60,8 @@ test("no page breaks the Content Security Policy @mobile", async ({ page }) => {
     ["/configuracoes/diagnostico", "Configurações"],
     ["/configuracoes/assistente", "Configurações"],
     ["/configuracoes/sobre", "Configurações"],
+    // The patient's confirmation page (E7a), with a token out of shape: nothing is asked of the server.
+    ["/c/curto", "Este link não vale mais"],
   ] as const;
   // Every page of the interface is here (stage 25): a new one can't skip the policy check.
   const pages = [...readFileSync(new URL("../../apps/web/src/App.tsx", import.meta.url), "utf8").matchAll(/path="([a-z-]+)/g)].map((m) => `/${m[1]}`);

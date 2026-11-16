@@ -94,6 +94,7 @@ import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { play } from "../../lib/sounds.ts";
 import { EVENTS_KEY, lostGoogle, useEventChanges } from "./changes.ts";
 import { CountryField, DateField, TimeField } from "./AppointmentFields.tsx";
+import { ConfirmBox } from "./ConfirmBox.tsx";
 import { fold, LinkedPatient, type LinkedPerson, linkedOf, NameHint, PatientLine, PatientNameField, usePeople } from "./PatientLink.tsx";
 import { SyncSignal, syncKind } from "./SyncSignal.tsx";
 
@@ -1947,6 +1948,7 @@ function EventDialog({
               </Detail>
             )}
           </div>
+          {type && look?.editable && !event.allDay && <ConfirmBox event={event} />}
           {frozen && look?.editable && (
             <p role="note" className="flex gap-2 rounded-xl border border-border px-3 py-2.5 text-sm text-fg-muted">
               {/* The closed day's icon, not a lock: an icon of its own would be one more file to fetch on the first load (P11). */}

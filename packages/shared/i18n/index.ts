@@ -36,6 +36,7 @@ import { ptBRCrmAutomations } from "./pt-BR-crm-automations.ts";
 import { ptBRClinic } from "./pt-BR-clinic.ts";
 import { ptBROutbox } from "./pt-BR-outbox.ts";
 import { ptBRMail } from "./pt-BR-mail.ts";
+import { ptBRConfirm } from "./pt-BR-confirm.ts";
 
 export type MessageKey = keyof typeof ptBR;
 export type Messages = Record<MessageKey, string>;
@@ -91,6 +92,7 @@ export {
   ptBROutbox,
   ptBRClinic,
   ptBRMail,
+  ptBRConfirm,
 };
 
 export type Params = Record<string, string | number>;

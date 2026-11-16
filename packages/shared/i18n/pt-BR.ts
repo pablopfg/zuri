@@ -34,6 +34,7 @@ import { ptBRCrmAutomations } from "./pt-BR-crm-automations.ts";
 import { ptBRClinic } from "./pt-BR-clinic.ts";
 import { ptBROutbox } from "./pt-BR-outbox.ts";
 import { ptBRMail } from "./pt-BR-mail.ts";
+import { ptBRConfirm } from "./pt-BR-confirm.ts";
 
 // Default and fallback catalog. Every key must also exist in en.ts and be used in the code (npm run lint).
 // The texts of the lazy screens live in their own files (pt-BR-memory.ts, pt-BR-productivity.ts,
@@ -181,4 +182,5 @@ export const ptBR = /* @__PURE__ */ join(
   ptBROutbox,
   ptBRClinic,
   ptBRMail,
+  ptBRConfirm,
 );

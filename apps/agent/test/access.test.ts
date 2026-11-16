@@ -196,4 +196,26 @@ describe("gate 3: Cloudflare Access in the Worker", () => {
     }
     expect((await call(hook, { headers: notice }, ACCESS_ENV)).status).toBe(403);
   });
+  it("E7a: lets the patient's page, its two routes and the hashed files through, and nothing else", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(fakeCerts());
+    const assets = fakeAssets();
+    const env = { ...ACCESS_ENV, ASSETS: assets.binding };
+    const page = await call(`${ORIGIN}/c/${"A".repeat(22)}`, {}, env);
+    expect(page.status).toBe(200);
+    expect((await call(`${ORIGIN}/assets/index-abc123.js`, {}, env)).status).toBe(200);
+    // Past Access, the route answers itself: a token it doesn't know is a 404, not Access's 403.
+    const view = await call(`${ORIGIN}/api/c/view`, { method: "POST", headers: { "content-type": "application/json", "x-zuri-request": "1", "cf-connecting-ip": "198.51.100.77" }, body: JSON.stringify({ token: "A".repeat(22) }) }, env);
+    expect(view.status).toBe(404);
+    for (const [label, res] of [
+      ["the app", await call(`${ORIGIN}/`, {}, env)],
+      ["a screen", await call(`${ORIGIN}/agenda`, {}, env)],
+      ["the session", await call(`${ORIGIN}/api/auth/session`, {}, env)],
+      ["a GET of the route", await call(`${ORIGIN}/api/c/view`, {}, env)],
+      ["a file outside /assets", await call(`${ORIGIN}/sw.js`, {}, env)],
+      ["a folder under /assets", await call(`${ORIGIN}/assets/x/y.js`, {}, env)],
+      ["the owner's link route", await call(`${ORIGIN}/api/google/events/link`, { method: "POST", body: "{}" }, env)],
+    ] as const) {
+      expect(res.status, label).toBe(403);
+    }
+  });
 });
