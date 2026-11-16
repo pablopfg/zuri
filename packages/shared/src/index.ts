@@ -47,6 +47,9 @@ export {
   ptBRChatwoot,
   ptBRCrmAutomations,
   ptBROutbox,
+  ptBRClinic,
+  ptBRMail,
+  ptBRConfirm,
   t,
 } from "../i18n/index.ts";
 export { AGENDA_VIEWS, type AgendaPrefs, type AgendaView, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
@@ -70,6 +73,7 @@ export {
   weekdayOf,
 } from "./agenda-rules.ts";
 export { AGENT_INSTANCE_NAME } from "./constants.ts";
+export { CLINIC_LIMITS, CLINIC_PHONE, type Clinic, clinicLocation, clinicSchema, DEFAULT_CLINIC } from "./clinic.ts";
 export { DEFAULT_SOUND_PREFS, NOTICE_SOUND_GAP_MS, NOTICE_SOUNDS, type NoticeSound, type SoundPrefs } from "./sounds.ts";
 export {
   API_ERROR_CODES,
@@ -192,3 +196,7 @@ export * from "./chatwoot-owner.ts";
 export * from "./chatwoot-owner-schemas.ts";
 export * from "./outbox.ts";
 export * from "./model-catalog.ts";
+export * from "./countries.ts";
+export * from "./home-suggestions.ts";
+export * from "./mail.ts";
+export * from "./confirm-link.ts";

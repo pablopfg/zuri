@@ -21,3 +21,6 @@ CLAUDE.local.md
 
 # The production deploy config (scripts/deploy/gerar-config.ts), written in CI only.
 apps/agent/wrangler.deploy.json
+
+# Reports of the differential-review skill: they hold attack steps and never enter the public repository.
+*_DIFFERENTIAL_REVIEW_*.md

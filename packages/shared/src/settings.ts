@@ -11,6 +11,7 @@ import { AGENDA_VIEWS, DEFAULT_AGENDA_PREFS } from "./agenda-prefs.ts";
 import { AGENDA_RULES, periodDays } from "./agenda-rules.ts";
 import { isValidCalendarDate } from "./dates.ts";
 import { DEFAULT_SOUND_PREFS, NOTICE_SOUNDS } from "./sounds.ts";
+import { clinicSchema, DEFAULT_CLINIC } from "./clinic.ts";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "./time-zone.ts";
 
 export { DEFAULT_TIME_ZONE, isTimeZone };
@@ -173,6 +174,8 @@ export const settingsSchema = /* @__PURE__ */ z
     agenda: agendaPrefsSchema,
     /** The notice sound and the recording sounds of the open app; saved whole. */
     sounds: soundPrefsSchema,
+    /** E6a: the office's name, team WhatsApp and address (Configurações › Consultório); saved whole. */
+    clinic: clinicSchema,
   })
   .strict();
 
@@ -214,4 +217,5 @@ export const DEFAULT_SETTINGS: Settings = /* @__PURE__ */ Object.freeze({
   alertFullText: [],
   agenda: DEFAULT_AGENDA_PREFS,
   sounds: DEFAULT_SOUND_PREFS,
+  clinic: DEFAULT_CLINIC,
 });

@@ -1915,6 +1915,73 @@ export const MIGRATIONS: readonly Migration[] = [
       ) WITHOUT ROWID`,
     ],
   },
+  {
+    version: 43,
+    name: "agenda_record_contact",
+    statements: [
+      // E5f (plano agenda-vinculo-com-contatos.md): the last appointment of a linked contact, read at every
+      // key of the Agenda's name field. Without it each search reads the whole record; with it, a few rows
+      // of each contact. Only rows with a link are in the index. The expression is the very text of
+      // AgendaRecord.lastVisits, or SQLite would not use it; json_valid keeps a row that is not JSON from
+      // failing the index (and this migration) instead of being left out.
+      `CREATE INDEX IF NOT EXISTS zur_agenda_record_contact ON zur_agenda_record (json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact'), day) WHERE json_extract(CASE WHEN json_valid(data) THEN data END, '$.contact') IS NOT NULL`,
+    ],
+  },
+  {
+    version: 44,
+    name: "mail",
+    statements: [
+      // E6c (plano email-para-pacientes.md): how e-mail to patients goes out, one row. The SMTP password is
+      // sealed with its own key (info "smtp-v1") and the server and user as associated data, so it never
+      // opens for another server; the backup leaves it out. sent_day and sent_count hold the daily cap; the
+      // test_* columns the tests' own limits (3 in 10 minutes, 10 a day), kept here so a restart doesn't reset them.
+      `CREATE TABLE IF NOT EXISTS zur_mail (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        mode TEXT NOT NULL DEFAULT 'off',
+        name TEXT NOT NULL DEFAULT '',
+        reply_to TEXT NOT NULL DEFAULT '',
+        smtp_host TEXT,
+        smtp_port INTEGER,
+        smtp_user TEXT,
+        smtp_from TEXT NOT NULL DEFAULT '',
+        credential TEXT,
+        key_end TEXT,
+        sent_day TEXT,
+        sent_count INTEGER NOT NULL DEFAULT 0,
+        test_day TEXT,
+        test_count INTEGER NOT NULL DEFAULT 0,
+        test_times TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL
+      )`,
+    ],
+  },
+  {
+    version: 45,
+    name: "appointment_links",
+    statements: [
+      // E7a (plano link-de-confirmacao.md): the patient's confirmation link, one per appointment for its
+      // whole life. Only the token's SHA-256 finds it; the token itself is sealed (info "confirm-link-v1",
+      // the row's id as associated data) so the same address can be sent again. `answer` is the last tap
+      // and `answer_start` the start it answered, so a moved appointment asks again. A cancellation sets
+      // `revoked_at` for good. answer_day and answer_count cap the taps that change something. Out of the
+      // backup: a sealed token only opens with this installation's key.
+      `CREATE TABLE IF NOT EXISTS zur_appointment_links (
+        id TEXT PRIMARY KEY,
+        calendar_id TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        token_sealed TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        answer TEXT,
+        answer_start TEXT,
+        answered_at INTEGER,
+        revoked_at INTEGER,
+        answer_day TEXT,
+        answer_count INTEGER NOT NULL DEFAULT 0,
+        UNIQUE (calendar_id, event_id)
+      )`,
+    ],
+  },
 ];
 
 /** The three triggers that move an area's number when a row of `table` is added, changed or removed. Frozen: migration 21 is built from it. */

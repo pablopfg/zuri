@@ -251,9 +251,26 @@ body {
   }
 }
 
+/* A field to fix shakes once when the form points at it (protótipo v52). */
+.shake {
+  animation: zuri-shake 320ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes zuri-shake {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .zuri-skeleton,
-  .zuri-progress::before {
+  .zuri-progress::before,
+  .shake {
     animation: none;
   }
   .zuri-flash {

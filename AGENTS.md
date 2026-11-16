@@ -34,10 +34,12 @@ Antes de declarar qualquer tarefa pronta: `npm run typecheck`, `npm run lint` e 
 ## Skills de agente
 
 Além de `.claude/skills/`, o Claude Code instala sozinho, no início de cada
-sessão, o plugin `cloudflare` e seis pacotes de terceiros fixados por commit
+sessão, o plugin `cloudflare` e sete pacotes de terceiros fixados por commit
 (`mattpocock/skills`, `nateherkai/scroll-craft`,
 `cloudflare/security-audit-skill`, `blader/humanizer`, `anthropics/skills` só
-com `frontend-design` e `DietrichGebert/ponytail` só com as skills). Quando e como cada um é
+com `frontend-design`, `DietrichGebert/ponytail` só com as skills e
+`trailofbits/skills` só com `differential-review`, `sharp-edges` e
+`insecure-defaults`). Quando e como cada um é
 usado, a revisão de segurança e a atualização estão em
 [docs/agente/skills-externas.md](docs/agente/skills-externas.md). Outros
 agentes podem ler as mesmas skills nos repositórios de origem, no commit fixado.
@@ -74,6 +76,7 @@ agentes podem ler as mesmas skills nos repositórios de origem, no commit fixado
 - PRs abertas para a `develop` não ficam paradas: a passada de merge confere, atualiza, resolve conflitos e mescla na ordem certa. Critérios e ordem em [docs/agente/merge-de-prs.md](docs/agente/merge-de-prs.md).
 - Antes de codar uma etapa ou um ajuste grande: skill `planejar` (`.claude/skills/planejar/SKILL.md`), que escreve o plano em `docs/planos/` no modelo `docs/planos/modelo-de-plano.md` e entrevista o dono quando falta decisão de produto, custo ou segurança.
 - Ao terminar: skills `verificar`, `revisao-qa` e `auditoria-seguranca`, nessa ordem, e corrija o que elas acharem.
+- Segurança é prioridade (Pablo, 13/11/2026): Semgrep e Gitleaks rodam em todo PR (checks `semgrep` e `gitleaks`) e antes do push (`bash scripts/seguranca/semgrep.sh` e `gitleaks.sh`), o SonarQube Cloud analisa cada PR, e a auditoria usa as skills da Trail of Bits. O Strix só roda com autorização do Pablo. Veja [docs/qa/varreduras-de-seguranca.md](docs/qa/varreduras-de-seguranca.md).
 - Erro fora do escopo da PR vira issue pelo modelo `erro`, com a possível solução. Veja [docs/agente/issues.md](docs/agente/issues.md).
 
 ## Como evitar erros

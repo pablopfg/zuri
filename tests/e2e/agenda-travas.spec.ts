@@ -1,6 +1,10 @@
 import { expect, type Page, test } from "./fixtures.ts";
 import { CSRF, expectAccessible, signIn, tooSmallControls } from "./ui-helpers.ts";
 
+/** The form names its fields by what is being booked: an appointment or a plain event (E5e). */
+const NAME = /^(Nome completo do paciente|Título)$/;
+const DAY = /^(Data da consulta|Data)$/;
+
 // The booking rule on the screen (docs/planos/agenda-travas-do-agendamento.md, E5a): a consultation goes
 // only into the office hours of a working day, never at lunch, on a holiday not opened, on a day off or
 // over another one. A click on a closed hour says why and offers the next free one; a drop there is
@@ -125,14 +129,15 @@ test("a click on the lunch hour says why and offers the next free hour; a holida
   await closed.getByRole("button", { name: "Usar o próximo livre" }).click();
   // The form opens on the free hour, as a consultation: after the lunch (until 14:00) and Renato's return.
   const form = page.getByRole("dialog", { name: "Novo evento" });
-  await expect(form.getByLabel("Dia", { exact: true })).toHaveValue("2026-11-19");
-  await expect(form.getByLabel("Hora de início")).toHaveValue("15:00");
-  await expect(form.getByLabel("Tipo")).toHaveValue("Consulta | Consultório");
-  await form.getByRole("textbox", { name: "Título" }).fill("Bruno Macedo Teixeira");
+  await expect(form.getByLabel(DAY)).toHaveValue("19/11/2026");
+  await expect(form.getByLabel("Hora do início")).toHaveValue("15:00");
+  await expect(form.getByLabel("Tipo do evento")).toHaveValue("Consulta");
+  await expect(form.getByLabel("Local", { exact: true })).toHaveValue("Consultório");
+  await form.getByLabel(NAME).fill("Bruno Macedo Teixeira");
   await form.getByRole("button", { name: "Criar evento" }).click();
   await expect(form).toHaveCount(0);
   expect(sent.posts).toEqual([
-    { calendarId: "main", title: "Bruno Macedo Teixeira", allDay: false, start: "2026-11-19T15:00", end: "2026-11-19T16:00", location: "", description: "Consulta | Consultório" },
+    { calendarId: "main", title: "Bruno Macedo Teixeira", allDay: false, start: "2026-11-19T15:00", end: "2026-11-19T16:00", location: "", description: "Consulta | Consultório", country: "BR", phone: "", email: "", payment: "unpaid" },
   ]);
 
   // Friday 20 is Consciência Negra: nothing free is left in the week read, and a personal event still fits.
@@ -141,9 +146,9 @@ test("a click on the lunch hour says why and offers the next free hour; a holida
   await expect(closed.getByText(/Próximo horário livre/)).toHaveCount(0);
   await expect(closed.getByRole("button", { name: "Entendi" })).toBeVisible();
   await closed.getByRole("button", { name: "Criar compromisso pessoal" }).click();
-  await expect(form.getByLabel("Dia", { exact: true })).toHaveValue("2026-11-20");
-  await expect(form.getByLabel("Hora de início")).toHaveValue("09:30");
-  await expect(form.getByLabel("Tipo")).toHaveValue("");
+  await expect(form.getByLabel(DAY)).toHaveValue("20/11/2026");
+  await expect(form.getByLabel("Hora do início")).toHaveValue("09:30");
+  await expect(form.getByLabel("Tipo do evento")).toHaveValue("");
   await form.getByRole("button", { name: "Fechar" }).click();
 
   // An hour gone by today, and Escape closes the notice without opening anything.
@@ -153,12 +158,12 @@ test("a click on the lunch hour says why and offers the next free hour; a holida
   await expect(page.getByRole("dialog")).toHaveCount(0);
   // An open hour opens the form straight away.
   await clickHour(page, "19", 2.5);
-  await expect(form.getByLabel("Hora de início")).toHaveValue("10:30");
+  await expect(form.getByLabel("Hora do início")).toHaveValue("10:30");
   await form.getByRole("button", { name: "Fechar" }).click();
   // The last half hour before lunch takes a half-hour appointment: the form opens with 30 minutes, not the notice.
   await clickHour(page, "19", 3.5);
-  await expect(form.getByLabel("Hora de início")).toHaveValue("11:30");
-  await expect(form.getByLabel("Dura", { exact: true })).toHaveValue("30");
+  await expect(form.getByLabel("Hora do início")).toHaveValue("11:30");
+  await expect(form.getByLabel("Hora do término")).toHaveValue("12:00");
 });
 
 test("a consultation dragged into the lunch or onto the holiday is refused with its reason, and a meeting is not", async ({ page }) => {
@@ -232,7 +237,7 @@ test("the form refuses a consultation at lunch over the form, with Corrigir, Esc
   await event(page, "Isadora Pires Falcão").click();
   await page.getByRole("dialog", { name: "Isadora Pires Falcão" }).getByRole("button", { name: "Editar" }).click();
   const form = page.getByRole("dialog", { name: "Editar evento" });
-  const start = form.getByLabel("Hora de início");
+  const start = form.getByLabel("Hora do início");
   const save = form.getByRole("button", { name: "Salvar" });
   // Changed herself, her own 09:00 is free; Renato takes 14:00, so the next free hour after lunch is 15:00 (E5c, protótipo v52).
   await start.fill("12:30");
@@ -256,7 +261,7 @@ test("the form refuses a consultation at lunch over the form, with Corrigir, Esc
   await refusal.getByRole("button", { name: "Usar este horário" }).click();
   await expect(refusal).toHaveCount(0);
   await expect(start).toHaveValue("15:00");
-  await expect(form.getByLabel("Dura", { exact: true })).toHaveValue("60");
+  await expect(form.getByLabel("Hora do término")).toHaveValue("16:00");
   await expect(save).toBeFocused();
   await expect(form.getByText("Horário trocado para qui, 19/11, às 15:00. Confira e toque em Salvar.")).toBeAttached();
   expect(sent.patches).toEqual([]);
@@ -267,7 +272,7 @@ test("the form refuses a consultation at lunch over the form, with Corrigir, Esc
   await page.keyboard.press("Escape");
   // Without a type it is a personal event: the lunch takes it.
   await start.fill("12:30");
-  await form.getByLabel("Tipo").selectOption("");
+  await form.getByLabel("Tipo do evento").selectOption("");
   await save.click();
   await expect(form).toHaveCount(0);
   expect(sent.patches).toHaveLength(1);

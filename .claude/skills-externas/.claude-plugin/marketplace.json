@@ -83,6 +83,36 @@
         "./ponytail-audit",
         "./ponytail-debt"
       ]
+    },
+    {
+      "name": "differential-review",
+      "description": "Trail of Bits: revisão de segurança do diff de um PR, com histórico do git, raio de impacto e cobertura de testes.",
+      "source": {
+        "source": "git-subdir",
+        "url": "trailofbits/skills",
+        "path": "plugins/differential-review",
+        "sha": "149d7b21f4067765b82e67029730b42d228ef4b4"
+      }
+    },
+    {
+      "name": "sharp-edges",
+      "description": "Trail of Bits: interfaces, configurações e APIs que facilitam erro de segurança (footguns).",
+      "source": {
+        "source": "git-subdir",
+        "url": "trailofbits/skills",
+        "path": "plugins/sharp-edges",
+        "sha": "149d7b21f4067765b82e67029730b42d228ef4b4"
+      }
+    },
+    {
+      "name": "insecure-defaults",
+      "description": "Trail of Bits: configurações inseguras por padrão (segredo de reserva, credencial padrão, falha aberta, cripto fraca, acesso permissivo, depuração exposta).",
+      "source": {
+        "source": "git-subdir",
+        "url": "trailofbits/skills",
+        "path": "plugins/insecure-defaults",
+        "sha": "149d7b21f4067765b82e67029730b42d228ef4b4"
+      }
     }
   ]
 }

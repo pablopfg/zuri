@@ -195,6 +195,8 @@ export async function seed(page: Page, base: string): Promise<{ conversationId: 
   })) as unknown as { connection: { id: string } };
   const inbox = await page.request.patch(`${base}/api/flows/connections/${chatwoot.connection.id}`, { headers: CSRF, data: { inboxId: 7 } });
   if (!inbox.ok()) throw new Error(`/api/flows/connections: ${inbox.status()}`);
+  // The fzap instance for the Pix (E6b), on the simulated instance in WhatsApp Web mode.
+  await post("/api/flows/connections", { kind: "fzap", name: "fzap do consultório", origin: "https://fzap.exemplo.com.br", credential: "token-de-exemplo-9b3c" });
   const proposals = (await post("/api/flows", {
     name: "Propostas em aberto",
     definition: {

@@ -46,7 +46,14 @@ function useWindow() {
  * owner stays on top. The list arranges itself again every 30 seconds without
  * taking the focus from whoever is using the keyboard.
  */
-export function DayCard({ automations, onNewDay }: { automations: readonly Automation[]; onNewDay: () => void }) {
+/** What the line under the greeting says about today (PR S22): the open tasks, how many are late, the next event. */
+export interface DaySummary {
+  tasks: number;
+  late: number;
+  next: { title: string; at: number } | null;
+}
+
+export function DayCard({ automations, onNewDay, onSummary }: { automations: readonly Automation[]; onNewDay: () => void; onSummary?: (summary: DaySummary | null) => void }) {
   const { t, plural, locale, timeZone } = useI18n();
   const qc = useQueryClient();
   const pastId = useId();
@@ -115,6 +122,23 @@ export function DayCard({ automations, onNewDay }: { automations: readonly Autom
 
   const live = dayItems({ tasks: (tasks.data?.tasks ?? []).filter((task) => task.status !== "done"), events: events.data?.events ?? [], automations }, now, timeZone);
   const liveKeys = new Set(live.map((item) => item.key));
+
+  // The summary from the same lists, told to the page only when it changes (and only once the tasks are read).
+  const nowMs = now.getTime();
+  const openTasks = live.filter((item) => item.kind === "task");
+  const nextEvent = live.filter((item) => item.kind === "event" && item.at !== null && item.at > nowMs && localDate(item.at, timeZone) === today).sort((a, b) => (a.at ?? 0) - (b.at ?? 0))[0];
+  const summary: DaySummary | null = tasks.isSuccess
+    ? {
+        tasks: openTasks.length,
+        late: openTasks.filter((item) => item.daysLate > 0 || (item.at !== null && item.at < nowMs)).length,
+        next: nextEvent?.at ? { title: nextEvent.title, at: nextEvent.at } : null,
+      }
+    : null;
+  const summaryKey = JSON.stringify(summary);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the key stands for the summary, so a redraw with the same day tells nothing.
+  useEffect(() => {
+    onSummary?.(summary);
+  }, [summaryKey, onSummary]);
   // A task marked done here hides the list's copy; one unmarked shows from here only until the list has it again.
   const done = new Set([...marked].filter(([, entry]) => entry.done).map(([key]) => key));
   const items = [...live.filter((item) => !done.has(item.key)), ...[...marked].filter(([key, entry]) => entry.done || !liveKeys.has(key)).map(([, entry]) => entry.item)];

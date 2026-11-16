@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { type AutomationList, CHAT_MESSAGE_MAX, ptBRHome } from "@zuri/shared";
+import { type AutomationList, CHAT_MESSAGE_MAX, type HomeSuggestion, type HomeSuggestions, type MessageKey, ptBRHome } from "@zuri/shared";
 import { ArrowUp, ChevronRight } from "lucide-react";
-import { type FormEvent, type ReactNode, useCallback, useId, useState } from "react";
+import { type FormEvent, type ReactNode, useCallback, useId, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Greeting } from "../../components/Greeting.tsx";
 import { cn, ErrorNotice, Loading } from "../../components/ui.tsx";
@@ -12,7 +12,7 @@ import { api } from "../../lib/api.ts";
 import { dueInputs } from "../../lib/due.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { dayOffset } from "../../lib/recents.ts";
-import { DayCard, useDayWindow } from "./DayCard.tsx";
+import { DayCard, type DaySummary, useDayWindow } from "./DayCard.tsx";
 
 // Loaded on demand by the home page, with its pt-BR texts (rule P11).
 addMessages(ptBRHome);
@@ -23,8 +23,8 @@ const SHOWN = 5;
 const NEXT_DAYS = 7;
 
 /**
- * The home page: the greeting, a field to write to Zuri, three ideas to start
- * with, "Seu dia" and the next days. The greeting's placeholder comes from the
+ * The home page: the greeting, a field to write to Zuri, up to three
+ * suggestions from the day, "Seu dia" and the next days. The greeting's placeholder comes from the
  * page, which shows the same one while this part loads.
  */
 export function HomeBody({ greetingSlot }: { greetingSlot: ReactNode }) {
@@ -36,12 +36,13 @@ export function HomeBody({ greetingSlot }: { greetingSlot: ReactNode }) {
   // At midnight "Amanhã" is another day: the lists under this one are drawn again.
   const [, turn] = useState(0);
   const newDay = useCallback(() => turn((count) => count + 1), []);
+  const [day, setDay] = useState<DaySummary | null>(null);
   return (
     <>
-      <Greeting placeholder={greetingSlot} />
+      <Greeting placeholder={greetingSlot} summary={useSummaryLine(day)} />
       <Ask />
       <Block title={t("web.home.day.title")} note={window} link={<More to="/agenda" label={t("web.home.day.agenda")} />}>
-        <DayCard automations={list} onNewDay={newDay} />
+        <DayCard automations={list} onNewDay={newDay} onSummary={setDay} />
       </Block>
       <Block title={t("web.home.next.title")} link={<More to="/tarefas" label={t("web.home.next.link")} />}>
         <NextDays automations={list} />
@@ -50,11 +51,48 @@ export function HomeBody({ greetingSlot }: { greetingSlot: ReactNode }) {
   );
 }
 
+/** "4 tarefas hoje, 1 delas atrasada. Próximo compromisso: Vistoria, às 09:00." Null on a day with nothing: the agent's line stays. */
+function useSummaryLine(day: DaySummary | null): string | null {
+  const { t, plural, timeZone } = useI18n();
+  if (!day) return null;
+  const parts: string[] = [];
+  if (day.tasks > 0) {
+    if (day.late === 0) parts.push(plural("web.home.summary.tasks", day.tasks));
+    else if (day.late === day.tasks) parts.push(plural("web.home.summary.lateAll", day.late));
+    else parts.push(plural("web.home.summary.lateSome", day.late, { total: day.tasks }));
+  }
+  if (day.next) parts.push(t("web.home.summary.event", { title: day.next.title, time: dueInputs(new Date(day.next.at).toISOString(), timeZone).time }));
+  return parts.length ? parts.join(" ") : null;
+}
+
+/** The text of each kind of suggestion: always the interface's own, with the server's blanks. */
+const IDEAS: Record<HomeSuggestion["id"], MessageKey> = {
+  late: "web.home.idea.late",
+  bill: "web.home.idea.bill",
+  review: "web.home.idea.review",
+  week: "web.home.idea.week",
+  today: "web.home.idea.today",
+  rest: "web.home.idea.rest",
+  tomorrow: "web.home.idea.tomorrow",
+};
+
+function ideaText(t: ReturnType<typeof useI18n>["t"], idea: HomeSuggestion): string {
+  if (idea.id === "review" && !idea.name) return t("web.home.idea.reviewAnon");
+  return t(IDEAS[idea.id], { name: idea.name ?? "", time: idea.time ?? "" });
+}
+
 /** Whatever is written here opens a new conversation with it (ChatPage reads it from the address's state). */
 function Ask() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [text, setText] = useState("");
+  const field = useRef<HTMLTextAreaElement>(null);
+  // Picked on the server from the day; read again at most once a minute.
+  const suggestions = useQuery({
+    queryKey: ["home", "suggestions"],
+    queryFn: ({ signal }) => api<HomeSuggestions>("/home/suggestions", { signal }),
+    staleTime: 60_000,
+  });
   // What was said lands after what is written, for the owner to read before sending (as in the conversation).
   const voice = useVoice(useCallback((said: string) => setText((current) => (current.trim() ? `${current.trimEnd()} ${said}` : said).slice(0, CHAT_MESSAGE_MAX)), []));
   const ask = (message: string) => message.trim() && navigate("/conversa", { state: { ask: message.trim() } });
@@ -62,7 +100,15 @@ function Ask() {
     event.preventDefault();
     ask(text);
   };
-  const ideas = [t("web.home.idea.week"), t("web.home.idea.tomorrow"), t("web.home.idea.remind")];
+  // A suggestion only fills the field: nothing is sent until the owner sends it. What was already written stays,
+  // with the suggestion after it, as with the voice. The tap teaches the order (its kind, never the text).
+  const pick = (idea: HomeSuggestion) => {
+    const said = ideaText(t, idea);
+    setText((current) => (current.trim() ? `${current.trimEnd()} ${said}` : said).slice(0, CHAT_MESSAGE_MAX));
+    field.current?.focus();
+    void api(`/home/suggestions/${idea.id}/used`, { method: "POST" }).catch(() => undefined);
+  };
+  const ideas = suggestions.data?.suggestions ?? [];
   return (
     <>
       <form
@@ -75,6 +121,7 @@ function Ask() {
         <label className="min-w-0 basis-full">
           <span className="sr-only">{t("web.home.ask")}</span>
           <textarea
+            ref={field}
             value={text}
             rows={1}
             onChange={(event) => setText(event.target.value)}
@@ -101,19 +148,23 @@ function Ask() {
           <ArrowUp className="h-5 w-5" strokeWidth={2.25} aria-hidden />
         </button>
       </form>
-      <ul className="mt-3 flex flex-wrap gap-2" aria-label={t("web.home.ideas")}>
-        {ideas.map((idea) => (
-          <li key={idea}>
-            <button
-              type="button"
-              onClick={() => ask(idea)}
-              className="min-h-11 rounded-full border border-border-strong bg-surface px-3.5 text-sm font-medium text-fg transition-colors hover:bg-raised"
-            >
-              {idea}
-            </button>
-          </li>
-        ))}
-      </ul>
+      {/* The chips' room is kept while they load, so "Seu dia" doesn't jump down when they arrive. */}
+      {suggestions.isPending && <div className="mt-3 min-h-11" aria-hidden />}
+      {ideas.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-2" aria-label={t("web.home.ideas")}>
+          {ideas.map((idea) => (
+            <li key={idea.id}>
+              <button
+                type="button"
+                onClick={() => pick(idea)}
+                className="min-h-11 rounded-full border border-border-strong bg-surface px-3.5 text-sm font-medium text-fg transition-colors hover:bg-raised"
+              >
+                {ideaText(t, idea)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }

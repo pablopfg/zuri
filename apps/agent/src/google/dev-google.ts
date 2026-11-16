@@ -1,4 +1,4 @@
-import { BUSINESS_SCOPE, CONTACTS_SCOPE, GOOGLE_CALLBACK_PATH, toBase64Url } from "@zuri/shared";
+import { BUSINESS_SCOPE, CONTACTS_SCOPE, GMAIL_SEND_SCOPE, GOOGLE_CALLBACK_PATH, toBase64Url } from "@zuri/shared";
 import type { GoogleNetwork } from "./service.ts";
 
 /**
@@ -35,6 +35,31 @@ export interface DevEvent {
   organizer?: { email?: string; self?: boolean };
   recurringEventId?: string;
   colorId?: string;
+  extendedProperties?: { private?: Record<string, string> };
+  conferenceData?: Record<string, unknown>;
+  hangoutLink?: string;
+}
+
+/**
+ * A Meet call, as Google answers a `createRequest` with `conferenceDataVersion=1`: an address with
+ * Google's shape, the same for the same request.
+ */
+function devMeet(event: DevEvent, request: unknown, asked: boolean): void {
+  const create = (request as { createRequest?: { conferenceSolutionKey?: { type?: unknown }; requestId?: unknown } } | null | undefined)?.createRequest;
+  if (!asked || create?.conferenceSolutionKey?.type !== "hangoutsMeet") {
+    delete event.conferenceData;
+    return;
+  }
+  const letters = "abcdefghijkmnopqrstuvwxyz";
+  let hash = 2166136261;
+  let code = "";
+  for (let i = 0; i < 10; i++) {
+    for (const char of `${String(create.requestId)}:${i}`) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0;
+    code += letters[hash % letters.length];
+  }
+  const uri = `https://meet.google.com/${code.slice(0, 3)}-${code.slice(3, 7)}-${code.slice(7)}`;
+  event.hangoutLink = uri;
+  event.conferenceData = { entryPoints: [{ entryPointType: "video", uri }], conferenceSolution: { key: { type: "hangoutsMeet" } }, createRequest: { status: { statusCode: "success" } } };
 }
 
 /** A person as the People API sends it (step 19b); `version` orders the changes for the sync tokens. */
@@ -127,9 +152,9 @@ async function s256(verifier: string): Promise<string> {
 }
 
 const BUSINESS_HOSTS = new Set(["mybusinessaccountmanagement.googleapis.com", "mybusinessbusinessinformation.googleapis.com", "mybusiness.googleapis.com"]);
-const GOOGLE_HOSTS = new Set(["oauth2.googleapis.com", "www.googleapis.com", "people.googleapis.com", ...BUSINESS_HOSTS]);
-// What the consent page grants by default: the calendar and, joined to it, the contacts (step 19b) and the reviews (step 19c).
-const SCOPES = ["https://www.googleapis.com/auth/calendar.calendarlist.readonly", "https://www.googleapis.com/auth/calendar.events", CONTACTS_SCOPE, BUSINESS_SCOPE];
+const GOOGLE_HOSTS = new Set(["oauth2.googleapis.com", "www.googleapis.com", "people.googleapis.com", "gmail.googleapis.com", ...BUSINESS_HOSTS]);
+// What the consent page grants by default: the calendar and, joined to it, the contacts (step 19b), the reviews (step 19c) and the Gmail's sending (E6c).
+const SCOPES = ["https://www.googleapis.com/auth/calendar.calendarlist.readonly", "https://www.googleapis.com/auth/calendar.events", CONTACTS_SCOPE, BUSINESS_SCOPE, GMAIL_SEND_SCOPE];
 const STARS = ["STAR_RATING_UNSPECIFIED", "ONE", "TWO", "THREE", "FOUR", "FIVE"];
 
 export function devGoogle(options: { clientId?: string | undefined; clientSecret?: string | undefined; calendars?: DevCalendar[]; clock?: () => number } = {}): DevGoogle {
@@ -226,6 +251,12 @@ export function devGoogle(options: { clientId?: string | undefined; clientSecret
       const auth = request.headers.get("authorization") ?? "";
       if (!auth.startsWith("Bearer ") || !google.accessTokens.has(auth.slice(7))) return json({ error: { code: 401 } }, 401);
       if (url.hostname === "people.googleapis.com") return peopleApi(url, request.method);
+      // Gmail (E6c): only the sending; the message is in `seen`.
+      if (url.hostname === "gmail.googleapis.com") {
+        if (request.method !== "POST" || url.pathname !== "/gmail/v1/users/me/messages/send") return json({ error: { code: 404 } }, 404);
+        if (google.grant && !google.grant.includes(GMAIL_SEND_SCOPE)) return json({ error: { code: 403, errors: [{ reason: "insufficientPermissions" }] } }, 403);
+        return json({ id: `dev-mail-${random()}`, threadId: "dev-thread", labelIds: ["SENT"] });
+      }
       if (BUSINESS_HOSTS.has(url.hostname)) return businessApi(url, request.method, body);
       return api(url, request.method, body, request.headers);
     },
@@ -249,6 +280,7 @@ export function devGoogle(options: { clientId?: string | undefined; clientSecret
     const form = new URLSearchParams(body);
     if (form.get("client_id") !== google.clientId || form.get("client_secret") !== google.clientSecret) return json({ error: "invalid_client" }, 401);
     const issue = (refresh?: string) => {
+      // nosemgrep: detected-google-oauth-access-token -- the local fake Google server makes up this token
       const access = `ya29.dev-${random()}`;
       google.accessTokens.add(access);
       return json({
@@ -391,6 +423,7 @@ export function devGoogle(options: { clientId?: string | undefined; clientSecret
         if (input.id !== undefined && !/^[a-v0-9]{5,1024}$/.test(input.id)) return json({ error: { code: 400 } }, 400);
         if (input.id !== undefined && events.some((event) => event.id === input.id)) return json({ error: { code: 409 } }, 409);
         const event: DevEvent = { ...(input as DevEvent), id: input.id ?? `ev${random().replace(/[-_]/g, "").toLowerCase().slice(0, 12)}`, etag: nextEtag() };
+        if (input.conferenceData !== undefined) devMeet(event, input.conferenceData, url.searchParams.get("conferenceDataVersion") === "1");
         events.push(event);
         return json(event);
       }
@@ -418,6 +451,19 @@ export function devGoogle(options: { clientId?: string | undefined; clientSecret
       if (patch.start !== undefined) updated.start = merge(event.start, patch.start);
       if (patch.end !== undefined) updated.end = merge(event.end, patch.end);
       if (patch.colorId === null) delete updated.colorId;
+      if (patch.extendedProperties !== undefined) {
+        // A map merges key by key, and a null removes the key, as Google does.
+        const kept: Record<string, string> = { ...(event.extendedProperties?.private ?? {}) };
+        for (const [key, value] of Object.entries(patch.extendedProperties?.private ?? {})) {
+          if (value === null) delete kept[key];
+          else kept[key] = value;
+        }
+        updated.extendedProperties = { private: kept };
+      }
+      if (patch.conferenceData === null) {
+        delete updated.conferenceData;
+        delete updated.hangoutLink;
+      } else if (patch.conferenceData !== undefined) devMeet(updated, patch.conferenceData, url.searchParams.get("conferenceDataVersion") === "1");
       if ([updated.start, updated.end].some((time) => time?.date !== undefined && time.dateTime !== undefined)) return json({ error: { code: 400 } }, 400);
       events[index] = updated;
       return json(updated);

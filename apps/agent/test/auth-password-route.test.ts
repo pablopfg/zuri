@@ -78,7 +78,7 @@ function registeredRoutes(): string[] {
   const unused = () => {
     throw new Error("not used");
   };
-  const app = createApi({ locale: () => "pt-BR", auth: unused, settings: unused, productivity: unused, memories: unused, automations: unused, aiUsage: unused, aiHistory: unused, aiHours: unused, aiMonths: unused, chat: unused, notices: unused, telegram: unused, semantic: unused, mcp: unused, google: unused, flows: unused, crm: unused, crmAutomations: unused, chatwoot: unused, outbox: unused, backup: unused, passwordSecretSet: () => true, origin: () => ORIGIN, development: () => false });
+  const app = createApi({ locale: () => "pt-BR", auth: unused, settings: unused, productivity: unused, memories: unused, automations: unused, aiUsage: unused, aiHistory: unused, aiHours: unused, aiMonths: unused, chat: unused, notices: unused, telegram: unused, semantic: unused, mcp: unused, google: unused, flows: unused, crm: unused, crmAutomations: unused, chatwoot: unused, outbox: unused, backup: unused, modelCatalog: unused, agents: unused, home: unused, mail: unused, passwordSecretSet: () => true, origin: () => ORIGIN, development: () => false });
   return [...new Set(app.routes.filter((r) => r.method !== "ALL").map((r) => `${r.method} ${r.path}`))];
 }
 
@@ -89,6 +89,9 @@ const PUBLIC = new Set([
   "POST /api/telegram/webhook",
   // A review request's short address (PR S20): no session, only the Worker's internal header.
   "GET /api/reviews/open/:code",
+  // The patient's confirmation link (E7a): no session, only the token in the body (and the CSRF of the page).
+  "POST /api/c/view",
+  "POST /api/c/answer",
   // The bot's /aprovar page: no session, only a one-time token and a passkey (step 15a).
   "POST /api/approvals/telegram/options",
   "POST /api/approvals/telegram/verify",

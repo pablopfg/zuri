@@ -2,9 +2,15 @@ import type { Locator } from "@playwright/test";
 import { expect, type Page, routeFakeTurnstile, test } from "./fixtures.ts";
 import { expectAccessible, signIn } from "./ui-helpers.ts";
 
+/** The form names its fields by what is being booked: an appointment or a plain event (E5e). */
+const NAME = /^(Nome completo do paciente|Título)$/;
+const DAY = /^(Data da consulta|Data)$/;
+/** What a new appointment sends of the patient when nothing of the patient is typed. */
+const NO_PATIENT = { country: "BR", phone: "", email: "", payment: "unpaid" };
+
 // The Agenda that edits (docs/planos/sons-menu-e-agenda-editavel.md, delivery 3): dragging an event to
 // another day or hour, pulling its end, Alt + arrows, "Desfazer", the line that says where Google stands
-// and the form's "Dura", "Tipo" and "Situação". Google is answered here and the clock is fixed on the week
+// and the form's end, "Tipo" and "Situação". Google is answered here and the clock is fixed on the week
 // of 16/11/2026, so nothing depends on the sample calendar or on the day the tests run.
 //
 // CA7 (drag, length, keyboard, touch by "Editar"), CA8 (sent at once, "Salvando…", back on a refusal),
@@ -396,7 +402,7 @@ test("a repeating event changes on that day only, and the notice warns of anothe
   expect(sent.patches).toEqual([{ calendarId: "main", eventId: "e3", etag: '"v1-3"', start: "2026-11-17T14:00", end: "2026-11-17T15:00" }]);
 });
 
-test("an empty hour opens Novo evento on that day and hour; the form's Dura, Tipo and Situação go to Google", async ({ page }) => {
+test("an empty hour opens Novo evento on that day and hour; the form's end, Tipo and Situação go to Google", async ({ page }) => {
   const sent = await routeAgenda(page, WEEK);
   await openAgenda(page);
   // Thursday, a little after 11:30: the half hour clicked.
@@ -405,41 +411,41 @@ test("an empty hour opens Novo evento on that day and hour; the form's Dura, Tip
   if (!box) throw new Error("the column is not on screen");
   await page.mouse.click(box.x + box.width / 2, box.y + 3.6 * HOUR_PX);
   const form = page.getByRole("dialog", { name: "Novo evento" });
-  await expect(form.getByLabel("Dia", { exact: true })).toHaveValue("2026-11-19");
-  await expect(form.getByLabel("Hora de início")).toHaveValue("11:30");
-  await expect(form.getByLabel("Dura", { exact: true })).toHaveValue("60");
-  await expect(form.getByLabel("Dura", { exact: true }).getByRole("option")).toHaveText(["15 min", "30 min", "45 min", "1 hora", "1 h 30", "2 horas", "3 horas", "Outra"]);
-  // The types the calendar already uses, and none.
-  await expect(form.getByLabel("Tipo").getByRole("option")).toHaveText(["Sem tipo", "Consulta | Consultório", "Retorno | Consultório"]);
+  await expect(form.getByLabel(DAY)).toHaveValue("19/11/2026");
+  await expect(form.getByLabel("Hora do início")).toHaveValue("11:30");
+  // An hour by default: the end follows the start.
+  await expect(form.getByLabel("Hora do término")).toHaveValue("12:30");
+  await expect(form.getByText("Dura 1 h, o padrão.")).toBeVisible();
+  // The fixed kinds, then the calendar's own, then another one to type and none.
+  await expect(form.getByLabel("Tipo do evento").getByRole("option")).toHaveText(["Consulta", "Retorno", "Avaliação física", "Outro, digitar", "Sem tipo (compromisso comum)"]);
+  await expect(form.getByLabel("Tipo do evento")).toHaveValue("Consulta");
   await expect(form.getByLabel("Situação")).toHaveValue("scheduled");
-  // The end's own fields show only for another length.
-  await expect(form.getByLabel("Hora de fim")).toHaveCount(0);
   await expectAccessible(page, "agenda-arrastar-formulario");
 
-  await form.getByRole("textbox", { name: "Título" }).fill("Bruno Macedo Teixeira");
-  await form.getByLabel("Dura", { exact: true }).selectOption("30");
-  await form.getByLabel("Tipo").selectOption("Retorno | Consultório");
+  await form.getByLabel(NAME).fill("Bruno Macedo Teixeira");
+  await form.getByLabel("Hora do término").fill("12:00");
+  await expect(form.getByText("Dura 30 min.")).toBeVisible();
+  await form.getByLabel("Tipo do evento").selectOption("Retorno");
   await form.getByLabel("Situação").selectOption("confirmed");
   await form.getByRole("button", { name: "Criar evento" }).click();
-  await expect(notice(page, "Evento criado")).toBeVisible();
+  await expect(notice(page, "“Bruno Macedo Teixeira” agendado para qui, 19/11 às 11:30.")).toBeVisible();
   expect(sent.posts).toEqual([
-    { calendarId: "main", title: "Bruno Macedo Teixeira", allDay: false, start: "2026-11-19T11:30", end: "2026-11-19T12:00", location: "", description: "Retorno | Consultório", colorId: "10" },
+    { calendarId: "main", title: "Bruno Macedo Teixeira", allDay: false, start: "2026-11-19T11:30", end: "2026-11-19T12:00", location: "", description: "Retorno | Consultório", colorId: "10", ...NO_PATIENT },
   ]);
 
   // "Agendado" is an event without a color: nothing of it is sent. A new event starts as a Consulta.
   await page.getByRole("button", { name: "Novo evento" }).click();
-  await form.getByRole("textbox", { name: "Título" }).fill("Clara Nóbrega Dias");
-  await form.getByLabel("Dura", { exact: true }).selectOption("other");
-  await form.getByLabel("Dia", { exact: true }).fill("2026-11-18");
-  await form.getByLabel("Hora de início").fill("15:00");
-  await form.getByLabel("Termina em").fill("2026-11-18");
-  await form.getByLabel("Hora de fim").fill("14:00");
+  await form.getByLabel(NAME).fill("Clara Nóbrega Dias");
+  await form.getByLabel(DAY).fill("18/11/2026");
+  await form.getByLabel("Hora do início").fill("15:00");
+  await form.getByLabel("Hora do término").fill("14:00");
   await form.getByRole("button", { name: "Criar evento" }).click();
-  await expect(form.getByRole("alert")).toHaveText("O fim precisa ser depois do começo.");
-  await form.getByLabel("Hora de fim").fill("15:50");
+  await expect(form.getByLabel("Hora do término")).toBeFocused();
+  await expect(form.getByText("O término precisa ser depois do início, no mesmo dia.")).toBeVisible();
+  await form.getByLabel("Hora do término").fill("15:50");
   await form.getByRole("button", { name: "Criar evento" }).click();
   await expect(form).toHaveCount(0);
-  expect(sent.posts[1]).toEqual({ calendarId: "main", title: "Clara Nóbrega Dias", allDay: false, start: "2026-11-18T15:00", end: "2026-11-18T15:50", location: "", description: "Consulta | Consultório" });
+  expect(sent.posts[1]).toEqual({ calendarId: "main", title: "Clara Nóbrega Dias", allDay: false, start: "2026-11-18T15:00", end: "2026-11-18T15:50", location: "", description: "Consulta | Consultório", ...NO_PATIENT });
 });
 
 test("Editar changes the length, the type and the status in one change, with its notice and Desfazer; a new hour marks Reagendado unless a status is picked", async ({ page }) => {
@@ -448,13 +454,13 @@ test("Editar changes the length, the type and the status in one change, with its
   await event(page, "Marina Teles Barreto").click();
   await page.getByRole("dialog", { name: "Marina Teles Barreto" }).getByRole("button", { name: "Editar" }).click();
   const form = page.getByRole("dialog", { name: "Editar evento" });
-  await expect(form.getByLabel("Dura", { exact: true })).toHaveValue("60");
-  await expect(form.getByLabel("Tipo")).toHaveValue("Retorno | Consultório");
+  await expect(form.getByLabel("Hora do término")).toHaveValue("15:00");
+  await expect(form.getByLabel("Tipo do evento")).toHaveValue("Retorno");
   await expect(form.getByLabel("Situação")).toHaveValue("scheduled");
   // The description shows without its type line.
-  await expect(form.getByRole("textbox", { name: "Descrição (opcional)" })).toHaveValue("Levar exames");
-  await form.getByLabel("Dura", { exact: true }).selectOption("90");
-  await form.getByLabel("Tipo").selectOption("Consulta | Consultório");
+  await expect(form.getByRole("textbox", { name: "Observação (opcional)" })).toHaveValue("Levar exames");
+  await form.getByLabel("Hora do término").fill("15:30");
+  await form.getByLabel("Tipo do evento").selectOption("Consulta");
   await form.getByLabel("Situação").selectOption("confirmed");
   await form.getByRole("button", { name: "Salvar" }).click();
   // The form closes and the notice is on the page, within reach.
@@ -474,7 +480,7 @@ test("Editar changes the length, the type and the status in one change, with its
   // A new hour alone marks the appointment "Reagendado", and the notice says it.
   await event(page, "Marina Teles Barreto").click();
   await page.getByRole("dialog", { name: "Marina Teles Barreto" }).getByRole("button", { name: "Editar" }).click();
-  await form.getByLabel("Hora de início").fill("16:00");
+  await form.getByLabel("Hora do início").fill("16:00");
   await form.getByRole("button", { name: "Salvar" }).click();
   await expect(notice(page, "“Marina Teles Barreto” atualizado. Ficou como Reagendado.")).toBeVisible();
   expect(sent.patches[2]).toMatchObject({ start: "2026-11-16T16:00", end: "2026-11-16T17:00", colorId: "5" });
@@ -482,7 +488,7 @@ test("Editar changes the length, the type and the status in one change, with its
   // A status picked in the form wins over the mark; saving without a change sends nothing.
   await event(page, "Marina Teles Barreto").click();
   await page.getByRole("dialog", { name: "Marina Teles Barreto" }).getByRole("button", { name: "Editar" }).click();
-  await form.getByLabel("Hora de início").fill("15:00");
+  await form.getByLabel("Hora do início").fill("15:00");
   await form.getByLabel("Situação").selectOption("cancelled");
   await form.getByRole("button", { name: "Salvar" }).click();
   // Nothing about "Reagendado": the status picked is the one that counts.
@@ -512,8 +518,8 @@ test("on a phone the change is by Editar: no dragging, the day's list names the 
   await page.getByRole("dialog", { name: "Helena Duarte Prado" }).getByRole("button", { name: "Editar" }).click();
   const form = page.getByRole("dialog", { name: "Editar evento" });
   await expectAccessible(page, "agenda-arrastar-formulario-celular");
-  await form.getByLabel("Dia", { exact: true }).fill("2026-11-17");
-  await form.getByLabel("Dura", { exact: true }).selectOption("30");
+  await form.getByLabel(DAY).fill("17/11/2026");
+  await form.getByLabel("Hora do término").fill("09:30");
   await form.getByRole("button", { name: "Salvar" }).click();
   await expect(notice(page, "“Helena Duarte Prado” atualizado. Ficou como Reagendado.")).toBeVisible();
   expect(sent.patches).toEqual([{ calendarId: "main", eventId: "e0", etag: '"v1-0"', allDay: false, start: "2026-11-17T09:00", end: "2026-11-17T09:30", colorId: "5" }]);
@@ -573,8 +579,11 @@ test("in English the notices, the line of Google and the form speak English", as
   await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
   await page.getByRole("button", { name: "New event" }).click();
   const form = page.getByRole("dialog", { name: "New event" });
-  await expect(form.getByLabel("Lasts").getByRole("option")).toHaveText(["15 min", "30 min", "45 min", "1 hour", "1 h 30", "2 hours", "3 hours", "Other"]);
-  await expect(form.getByLabel("Type").getByRole("option").first()).toHaveText("No type");
+  // Hours of 24 h and a date dd/mm/yyyy, whatever the language (protótipo v52).
+  await expect(form.getByLabel("Patient's full name")).toBeVisible();
+  await expect(form.getByLabel("Start time")).toHaveValue(/^\d{2}:\d{2}$/);
+  await expect(form.getByText("Lasts 1 h, the default.")).toBeVisible();
+  await expect(form.getByLabel("Event type").getByRole("option").last()).toHaveText("No type (regular event)");
 });
 
 test("QA-E3-02: Desfazer is on offer for eight seconds, by the button and by Ctrl + Z, and not a moment longer", async ({ page }) => {
@@ -674,7 +683,7 @@ test("QA-E3-01, QA-E3-08, QA-E3-09: a change is never dropped in silence, and De
   await event(page, "Renato Sampaio Cruz").click();
   await page.getByRole("dialog", { name: "Renato Sampaio Cruz" }).getByRole("button", { name: "Editar" }).click();
   const form = page.getByRole("dialog", { name: "Editar evento" });
-  await form.getByRole("textbox", { name: "Título" }).fill("Renato Sampaio Cruz Filho");
+  await form.getByLabel(NAME).fill("Renato Sampaio Cruz Filho");
   await expect(form.getByRole("button", { name: "Salvar" })).toBeDisabled();
   expect(sent.patches).toHaveLength(1);
   release();

@@ -19,6 +19,9 @@ import { add, DAY, draftAnswer, LOCATION, PATTERN, person, SECOND_OK, setUp, tur
 import { EXAMPLE_AUTOMATION } from "../src/crm/automations/example.ts";
 import type { AutomationModule } from "../src/crm/automations/manifest.ts";
 import { useCatalog } from "./crm-automations-world.ts";
+import { fakeSmtp } from "../src/mail/dev-mail.ts";
+import { MailService } from "../src/mail/service.ts";
+import { ConfirmLinks } from "../src/google/confirm-links.ts";
 
 // What each route costs in the units the Free plan bills: rows read and rows
 // written in the object's SQLite (docs/arquitetura/orcamento-free-tier.md). A
@@ -187,6 +190,27 @@ describe("the Free plan budget of each route", () => {
       expect(res.read, path).toBeLessThanOrEqual(path === "/auth/session" ? 3 : 2);
       expect(res.written, path).toBe(0);
     }
+  });
+
+  it("E6a: saving the office's details writes its one row and the activity, and the same details again write nothing", async () => {
+    // Without the team's WhatsApp: a new number also raises a security alert (E7a), measured below.
+    const clinic = { name: "Consultório Exemplo", whatsapp: "", address: "Rua das Flores, 120", city: "Curitiba, PR" };
+    const saved = await cost("PATCH", "/settings", { clinic });
+    expect(saved.status).toBe(200);
+    // The row of zur_settings and the activity line, each with its index.
+    expect(saved.written).toBeLessThanOrEqual(6);
+    const again = await cost("PATCH", "/settings", { clinic });
+    expect(again.status).toBe(200);
+    expect(again.written).toBe(0);
+    // The session check and one row per setting the owner changed: here only this one.
+    const read = await cost("GET", "/settings");
+    expect(read.read).toBeLessThanOrEqual(3);
+    // E7a: the WhatsApp the patients see changes with the row, the activity and the security event with its daily count.
+    const whatsapp = await cost("PATCH", "/settings", { clinic: { ...clinic, whatsapp: "4133330000" } });
+    expect(whatsapp.status).toBe(200);
+    // Rare (the owner changes the number), and the alert's notice with its indexes is most of it: measured 27.
+    expect(whatsapp.written).toBeLessThanOrEqual(27);
+    await runInDurableObject(owner(), (agent: ZuriAgent) => agent.store.db.run(`DELETE FROM zur_settings WHERE key = 'clinic'`));
   });
 
   it("keeps a push device alive from its browser's session check with one index probe, writing once a day", async () => {
@@ -933,6 +957,22 @@ describe("Google contacts (step 19b)", () => {
       world.contacts.search({ query: "pessoa 4", limit: 50 });
       expect(world.googleSim.seen.length).toBe(calls);
       expect(world.db.usage.rowsRead - before.rowsRead).toBeLessThanOrEqual(1_000);
+      // E5f: the Agenda's name field (GET /api/contacts?for=booking), a moment after each key, never Google and
+      // nothing written. A name typed from its start reads a range of the name's index; a word typed first,
+      // from three letters, reads the copy once (measured 20 and 508).
+      const typing = (query: string) => {
+        const at = { ...world.db.usage };
+        const found = world.contacts.forBooking(query);
+        expect(world.db.usage.rowsWritten - at.rowsWritten).toBe(0);
+        return { found, read: world.db.usage.rowsRead - at.rowsRead };
+      };
+      const start = typing("pessoa 42");
+      expect(start.found.people.map((person) => person.name)).toContain("Pessoa 42");
+      expect(start.read).toBeLessThanOrEqual(30);
+      const surname = typing("420");
+      expect(surname.found.people.length).toBeGreaterThan(0);
+      expect(surname.read).toBeLessThanOrEqual(600);
+      expect(world.googleSim.seen.length).toBe(calls);
       // The card (GET /api/contacts/:id) and what the calendar needs of the contact (GET /api/contacts/:id/appointments):
       // the contact, its labels and the others with the very same name, by the name's index. Nothing is written.
       const [someone] = world.contacts.search({ query: "pessoa 4", limit: 1 }).contacts;
@@ -1159,6 +1199,103 @@ describe("flows (step 22a)", () => {
       const list = await measure(async () => world.flows.list());
       expect(list.written).toBe(0);
       expect(list.read).toBeLessThanOrEqual(60);
+    }));
+
+  it("the e-mail to patients (E6c): saving, the status and a send read the one row and write at most three", () =>
+    withFlowWorld(async (world) => {
+      const server = fakeSmtp();
+      const google = { connected: () => false, granted: () => false, accountEmail: () => null, gmailSend: async () => null };
+      const mail = new MailService(
+        { db: world.db, credentialKey: testEnv.MCP_CREDENTIAL_KEY, google: () => google, ownerEmail: () => "dono@exemplo.com.br", timeZone: () => "America/Sao_Paulo", clinicName: () => "Consultório Exemplo", development: () => false, lockdown: () => false },
+        { connect: server.connect, resolve: async () => ["8.8.8.8"] },
+      );
+      const measure = async (fn: () => Promise<unknown>) => {
+        const before = { ...world.db.usage };
+        await fn();
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      const smtp = { host: "smtp.exemplo.com.br", port: 465, user: "contato@exemplo.com.br", from: "", password: "senha-de-app-exemplo" };
+      // The row, the activity and its index: measured 3.
+      const saved = await measure(() => mail.save({ mode: "smtp", name: "", replyTo: "", smtp }, { development: false }));
+      expect(saved.written).toBeLessThanOrEqual(3);
+      expect(saved.read).toBeLessThanOrEqual(2);
+      const status = await measure(async () => mail.status());
+      expect(status).toEqual({ read: 1, written: 0 });
+      // Only the day's counter: nothing else is written for a send.
+      const sent = await measure(() => mail.send({ to: "dono@exemplo.com.br", subject: "s", text: "t" }));
+      expect(sent.written).toBe(1);
+      expect(sent.read).toBeLessThanOrEqual(2);
+      expect(server.log.messages).toHaveLength(1);
+    }));
+
+  it("the confirmation link (E7a): opening reads one row and writes nothing, a guess reads none, an answer writes the one row", () =>
+    withFlowWorld(async (world) => {
+      const event = { id: "e1", calendarId: "agenda", title: "Ana Souza", start: new Date(Date.now() + 30 * 86_400_000).toISOString(), end: new Date(Date.now() + 30 * 86_400_000 + 3_600_000).toISOString(), allDay: false, location: "", description: "Consulta | Consultório", etag: '"1"', recurring: false, guests: 0, colorId: "", shared: false };
+      const google = { usable: () => true, connected: () => true, calendar: () => ({ mode: "write", writable: true }), event: async () => ({ ...event }), updateEvent: async (_c: string, _e: string, patch: Record<string, unknown>) => Object.assign(event, patch, { etag: '"2"' }) };
+      let notices = 0;
+      const links = new ConfirmLinks({
+        db: world.db,
+        google: () => google as never,
+        timeZone: () => "America/Sao_Paulo",
+        locale: () => "pt-BR",
+        clinic: () => ({ name: "Consultório Exemplo", whatsapp: "", address: "", city: "" }),
+        publicUrl: () => new URL("https://zuri.exemplo.com.br"),
+        credentialKey: testEnv.MCP_CREDENTIAL_KEY,
+        secret: () => "segredo-de-teste",
+        notify: () => {
+          notices += 1;
+        },
+        lockdown: () => false,
+      });
+      // Each call must succeed: a failure would measure nothing.
+      const measure = async (fn: () => Promise<unknown>, fails = false) => {
+        const before = { ...world.db.usage };
+        const failed = await fn().then(
+          () => false,
+          () => true,
+        );
+        expect(failed).toBe(fails);
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      let url = "";
+      // The row, its key and its two unique indexes: measured 4.
+      const made = await measure(async () => {
+        url = (await links.link("agenda", "e1")).url;
+      });
+      expect(made.written).toBeLessThanOrEqual(4);
+      const token = url.split("/c/")[1] ?? "";
+      expect(await measure(() => links.view(token, "198.51.100.1"))).toEqual({ read: 1, written: 0 });
+      expect(await measure(() => links.view("Z".repeat(22), "198.51.100.2"), true)).toEqual({ read: 0, written: 0 });
+      // The link's row only (no index column changes); the notice goes through the caller.
+      const answered = await measure(() => links.answer(token, "confirm", "198.51.100.1"));
+      expect(answered.written).toBe(1);
+      // The lookup and the update's own: measured 2.
+      expect(answered.read).toBeLessThanOrEqual(2);
+      expect(notices).toBe(1);
+    }));
+
+  it("a fzap credential (E6b): making, changing and testing it read a few rows, and the test writes nothing", () =>
+    withFlowWorld(async (world) => {
+      world.network.handlers.set("fzap.exemplo.com.br", () => Response.json({ code: 200, success: true, data: { connected: true, loggedIn: true } }));
+      const measure = async (fn: () => Promise<unknown>) => {
+        const before = { ...world.db.usage };
+        await fn();
+        return { read: world.db.usage.rowsRead - before.rowsRead, written: world.db.usage.rowsWritten - before.rowsWritten };
+      };
+      let id = "";
+      const made = await measure(async () => {
+        id = await world.connections.create({ kind: "fzap", name: "fzap", origin: "https://fzap.exemplo.com.br", credential: "token-da-instancia-zuri-4f2a" }, { development: false });
+      });
+      // The row (with its index), its area's version (trigger) and the activity: measured 5.
+      expect(made.written).toBeLessThanOrEqual(5);
+      expect(made.read).toBeLessThanOrEqual(4);
+      const changed = await measure(() => world.connections.update(id, { credential: "token-novo-da-instancia-9b3c" }, { development: false }));
+      expect(changed.written).toBeLessThanOrEqual(4);
+      expect(changed.read).toBeLessThanOrEqual(4);
+      const test = await measure(() => world.flows.testConnection(id));
+      expect(test.written).toBe(0);
+      expect(test.read).toBeLessThanOrEqual(2);
+      expect(world.network.requests).toHaveLength(1);
     }));
 
   it("the Flows tab, a page of the history, a monitor run of 10 sites and an idle wake read and write about one page, out of 20 flows and 2,000 runs", () =>
@@ -1553,8 +1690,17 @@ describe("the record of the day (E5b)", () => {
       };
       const last = measure(() => agendaRecord.last());
       const week = measure(() => agendaRecord.apply([], "2026-10-25", "2026-10-31", ["dono@exemplo.com.br"], false));
+      // E5f: the last visit of the 150 people a name field may find, in two batches of the contact's index:
+      // the 730 days of rows without a link are never read; each name probed costs about two reads (measured 319).
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+      for (let n = 1; n <= 20; n++) {
+        const day = new Date(Date.parse(`${today}T12:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10);
+        db.run(`INSERT OR REPLACE INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES (?, 'dono@exemplo.com.br', ?, '"1"', ?)`, day, `link${n}`, JSON.stringify({ title: `Ana ${n}`, contact: `people/a${n}` }));
+      }
+      const people = Array.from({ length: 150 }, (_, i) => ({ resource: `people/a${i}`, name: `Ana ${i}` }));
+      const visits = measure(() => agendaRecord.lastVisits(people));
       for (const table of ["zur_agenda_record", "zur_agenda_closed_days"]) db.run(`DELETE FROM ${table}`);
-      return { last: last.read, lastDay: last.value?.day, week: week.read, weekEvents: week.value.length, written: last.written + week.written };
+      return { last: last.read, lastDay: last.value?.day, week: week.read, weekEvents: week.value.length, visits: visits.read, visited: visits.value.size, written: last.written + week.written + visits.written };
     });
     expect(measured.lastDay).toBe("2026-10-31");
     // The newest row of the primary key, never the 730 days.
@@ -1562,6 +1708,8 @@ describe("the record of the day (E5b)", () => {
     // The week's 7 days and their 35 copies, by the primary key.
     expect(measured.weekEvents).toBe(35);
     expect(measured.week).toBeLessThanOrEqual(7 + 35 + 4);
+    expect(measured.visited).toBe(20);
+    expect(measured.visits).toBeLessThanOrEqual(2 * 150 + 20 + 10);
     // Reading never writes (a notice only when something changed at Google).
     expect(measured.written).toBe(0);
     const route = await cost("GET", "/google/record");
@@ -1661,6 +1809,43 @@ describe("the catalog of models (PR S21)", () => {
       await runInDurableObject(owner(), (agent: ZuriAgent) => {
         agent.testCatalog = null;
         agent.store.db.run(`DELETE FROM zur_settings WHERE key = 'model_catalog'`);
+      });
+    }
+  });
+});
+
+describe("the home page's suggestions (PR S22)", () => {
+  it("reads a handful of rows over a long backlog; the day's first reading marks the day, a tap writes one row", async () => {
+    await runInDurableObject(owner(), (agent: ZuriAgent) => {
+      agent.testProvider = new MockAIProvider();
+      agent.store.db.run(`DELETE FROM zur_settings WHERE key IN ('home_suggestion_order', 'home_suggestion_uses')`);
+    });
+    try {
+      // The day's first reading: the rules' reads (late, bills, the review, the taps, the order) and the
+      // AI's settings, the day's mark written before the call, then the call itself in the background:
+      // its counts (capped at 20) and the usage meter's rows, once a day. Measured 43 to 49 and 6: the bill
+      // scan reads the open tasks still due today, so the hour moves it, up to its own LIMIT of 20 (P2).
+      const first = await cost("GET", "/home/suggestions");
+      expect(first.status).toBe(200);
+      expect(first.read).toBeLessThanOrEqual(65);
+      expect(first.written).toBeLessThanOrEqual(6);
+      // Every other reading: measured 9 to 12 with the session's own reads, nothing written; the same
+      // bill scan adds at most 20 rows late in the morning of a busy day.
+      const second = await cost("GET", "/home/suggestions");
+      expect(second.status).toBe(200);
+      expect(second.read).toBeLessThanOrEqual(30);
+      expect(second.written).toBe(0);
+      // A tap: one row (and its index); a second tap within the minute writes nothing.
+      const tap = await cost("POST", "/home/suggestions/today/used");
+      expect(tap.status).toBe(204);
+      expect(tap.read).toBeLessThanOrEqual(2);
+      expect(tap.written).toBeLessThanOrEqual(2);
+      const again = await cost("POST", "/home/suggestions/today/used");
+      expect(again.status).toBe(204);
+      expect(again.written).toBe(0);
+    } finally {
+      await runInDurableObject(owner(), (agent: ZuriAgent) => {
+        agent.testProvider = null;
       });
     }
   });

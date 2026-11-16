@@ -42,6 +42,10 @@
  *   needs --exemplos).
  * - `agenda-editar=/agenda`: the form of that event ("Dura", "Tipo", "Situação"); `agenda-movido=/agenda`: the
  *   Agenda right after the event moved, with the notice that offers "Desfazer" (both need --exemplos).
+ * - `contato-agendar=/contatos`: "Agendar" on Beatriz's card, with the Agenda's form ready (needs --exemplos).
+ * - `consultorio=/configuracoes/consultorio`: Configurações › Consultório with the sample office's details.
+ * - `agenda-vinculo=/agenda`: "Novo evento" with the name of two sample contacts typed and the list of Contacts
+ *   open (needs --exemplos).
  * - `agenda-hora-fechada=/agenda`: the notice of a click on today's lunch, "Consulta não entra neste horário"
  *   (computer only: a phone's day has no grid to click; run it with `--relogio` before noon).
  * - `catalogo-de-modelos=/configuracoes/modelos`: Configurações › Modelos e limites scrolled to the
@@ -50,6 +54,10 @@
  *   holidays and the days off.
  * - `credencial-chatwoot=/crm/credenciais`: the sample Chatwoot credential open in "Editar", with its
  *   inboxes found (needs --exemplos).
+ * - `credencial-fzap=/crm/credenciais`: "Nova credencial da fzap" filled in (E6b).
+ * - `email-gmail=/configuracoes/integracoes>E-mail para pacientes` and `email-smtp=…`: the e-mail to patients
+ *   going out by the Gmail or by the example SMTP server (E6c; email-gmail needs --exemplos, for the Google account).
+ * - `credenciais-fzap=/crm/credenciais`: the list with the sample fzap credential just tested (needs --exemplos).
  * - `automacao-ensaio=/crm`: the example automation in rehearsal with the sample Chatwoot credential,
  *   its follow-up open (needs --exemplos; local development only).
  * - `--relogio=HH:MM`: the signed-in screens see that hour of today in São Paulo (the home
@@ -217,15 +225,35 @@ for (const [device, options] of [
           await page.waitForTimeout(250);
         }
       }
-      if (/^contatos?(-|$)/.test(screen.name)) {
+      if (/^contatos?(-|$)/.test(screen.name) || screen.name === "agenda-vinculo") {
         await seedContacts(page, BASE);
         // "contato-ficha": Beatriz, with the note after her name and her appointments; "contato-homonimo": one of the two Marcos.
-        const who = screen.name === "contato-ficha" ? "Beatriz" : screen.name === "contato-homonimo" ? "Marcos" : "";
+        const who = screen.name === "contato-ficha" || screen.name === "contato-agendar" ? "Beatriz" : screen.name === "contato-homonimo" ? "Marcos" : "";
         if (who) {
           const found = (await (await page.request.get(`${BASE}/api/contacts?q=${who}`, { headers: CSRF })).json()) as { contacts: { id: string }[] };
           if (!found.contacts[0]) throw new Error(`${screen.name} needs --exemplos`);
           path = `/contatos/${found.contacts[0].id}`;
         }
+      }
+      if (screen.name === "consultorio") {
+        // An invented office (E6a): the details the whole system reads.
+        const clinic = { name: "Consultório Exemplo", whatsapp: "4133330000", address: "Rua das Flores, 120, sala 304 · Centro", city: "Curitiba, PR" };
+        const saved = await page.request.patch(`${BASE}/api/settings`, { headers: CSRF, data: { clinic } });
+        if (!saved.ok()) throw new Error(`/api/settings: ${saved.status()}`);
+      }
+      if (screen.name === "email-gmail" || screen.name === "email-smtp") {
+        // An invented way out (E6c): the Gmail of the sample Google account, or the example SMTP server of local development.
+        const data =
+          screen.name === "email-gmail"
+            ? { mode: "gmail", name: "Consultório Exemplo", replyTo: "equipe@exemplo.com.br" }
+            : {
+                mode: "smtp",
+                name: "Consultório Exemplo",
+                replyTo: "",
+                smtp: { host: "smtp.exemplo.com.br", port: 465, user: "contato@exemplo.com.br", from: "", password: "senha-de-app-exemplo" },
+              };
+        const saved = await page.request.put(`${BASE}/api/mail`, { headers: CSRF, data });
+        if (!saved.ok()) throw new Error(`/api/mail: ${saved.status()} ${await saved.text()}`);
       }
       if (screen.name === "integracoes-sem-etiqueta") {
         // The first setup: the contacts on, the labels read and none chosen yet (shoot it apart: it empties the copy).
@@ -289,6 +317,19 @@ for (const [device, options] of [
         await dialog.getByRole("button", { name: "Buscar caixas" }).click();
         await dialog.getByText("2 caixas encontradas").waitFor();
       }
+      if (screen.name === "credencial-fzap") {
+        await page.getByRole("button", { name: "Nova credencial" }).click();
+        await page.getByRole("dialog", { name: "Nova credencial" }).getByRole("button", { name: "fzap (Pix pelo WhatsApp)" }).click();
+        const dialog = page.getByRole("dialog", { name: "Nova credencial da fzap" });
+        await dialog.getByLabel("Endereço da instância").fill("https://fzap.exemplo.com.br");
+        await dialog.getByLabel("Token da instância").fill("token-de-exemplo-0000");
+      }
+      if (screen.name === "credenciais-fzap") {
+        const row = page.getByRole("list", { name: "Credenciais" }).getByRole("listitem").filter({ hasText: "fzap do consultório" });
+        await row.getByRole("button", { name: /^Mais opções/ }).click();
+        await page.getByRole("menuitem", { name: "Testar" }).click();
+        await page.getByRole("status").filter({ hasText: "Conectada. Modo WhatsApp Web" }).waitFor();
+      }
       if (screen.name === "automacao-ensaio") {
         const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: /^\d+ Automação de exemplo$/ }) });
         await row.getByRole("button", { name: "Acompanhar" }).click();
@@ -301,7 +342,19 @@ for (const [device, options] of [
       if (screen.name === "agenda-editar") {
         await page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ }).click();
         await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("button", { name: "Editar" }).click();
-        await page.getByRole("dialog", { name: "Editar evento" }).getByLabel("Dura").waitFor();
+        await page.getByRole("dialog", { name: "Editar evento" }).getByLabel("Hora do término").waitFor();
+      }
+      if (screen.name === "contato-agendar") {
+        // E5g: "Agendar" on Beatriz's card, the Agenda with her appointment ready at the first free hour.
+        await page.getByRole("link", { name: /^Agendar com / }).click();
+        await page.getByRole("dialog", { name: "Novo evento" }).getByText(/^Vinculado a /).waitFor();
+      }
+      if (screen.name === "agenda-vinculo") {
+        // E5f: the name field with the people of Contacts, two of them with the same name.
+        await page.getByRole("button", { name: "Novo evento" }).click();
+        const form = page.getByRole("dialog", { name: "Novo evento" });
+        await form.getByRole("combobox", { name: "Nome completo do paciente" }).fill("Marcos Vieira Lopes");
+        await form.getByRole("listbox", { name: "Contatos com este nome" }).getByRole("option").nth(2).waitFor();
       }
       if (screen.name === "agenda-movido") {
         const event = page.getByRole("main").getByRole("button", { name: /^Café com a Ana/ });
@@ -317,8 +370,11 @@ for (const [device, options] of [
           await page.getByRole("dialog", { name: "Café com a Ana" }).getByRole("button", { name: "Editar" }).click();
           const form = page.getByRole("dialog", { name: "Editar evento" });
           // Another length than the one it has: the run before (the other theme) already changed it.
-          const length = form.getByLabel("Dura");
-          await length.selectOption((await length.inputValue()) === "90" ? "60" : "90");
+          const [h, m] = (await form.getByLabel("Hora do início").inputValue()).split(":").map(Number);
+          const end = form.getByLabel("Hora do término");
+          const minutes = (await form.getByText("Dura 1 h 30.").count()) > 0 ? 60 : 90;
+          const at = (h ?? 0) * 60 + (m ?? 0) + minutes;
+          await end.fill(`${String(Math.floor(at / 60)).padStart(2, "0")}:${String(at % 60).padStart(2, "0")}`);
           await form.getByRole("button", { name: "Salvar" }).click();
         }
         await page.getByRole("button", { name: "Desfazer" }).waitFor();

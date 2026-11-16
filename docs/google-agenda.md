@@ -123,11 +123,10 @@ Agenda troca a tela por "Conectar de novo".
 - **No celular** (e na lista do dia) não há arrastar: a mudança é pelo "Editar".
 - **Clicar num horário vazio** da semana abre "Novo evento" com o dia e a meia
   hora clicada.
-- **Editar** tem os campos Dia, Hora de início, Dura (15 min a 3 horas, ou
-  "Outra", que mostra o dia e a hora do fim), Tipo e Situação. O Tipo é a
-  primeira linha da descrição do evento no Google ("Consulta | Consultório") e
-  a lista traz os tipos que já aparecem nos eventos da tela. O tipo também
-  aparece no bloco do evento, depois da hora.
+- **Editar** tem os mesmos campos do "Novo evento" (abaixo). O tipo e o local
+  formam a primeira linha da observação do evento no Google ("Consulta |
+  Consultório" ou "Consulta | Online"), e o tipo aparece no bloco do evento,
+  depois da hora.
 - **Mover marca Reagendado:** mudar o dia ou a hora de um atendimento (evento
   com tipo) que estava Agendado ou Confirmado troca a situação para Reagendado,
   e o aviso diz isso. Mudar só a duração não troca. No "Editar", uma situação
@@ -261,10 +260,70 @@ Agenda ("2 eventos fora das 08:00 às 18:00"), com **Mostrar** ao lado. O mês
 mostra tudo. As opções ficam guardadas na Zuri e valem em todos os seus
 aparelhos; elas não mudam nada no Google.
 
-- **Novo evento** (ou Ctrl/⌘ K > Novo evento): título, agenda, dia e
-  horário, tipo (começa como a primeira "Consulta" que a agenda já usa), local
-  e descrição. Evento de dia inteiro se cria no Google; aqui ele aparece e se
-  edita.
+- **Novo evento** (ou Ctrl/⌘ K > Novo evento) começa como uma Consulta
+  presencial. Os campos, na ordem:
+  - **Nome completo do paciente**, que vira o título do evento. A partir de
+    duas letras, a Zuri procura em Contatos, sem acento: primeiro os nomes
+    que começam com o que você digitou ("carla m" acha "Carla Mendes"); se
+    nenhum começa assim, cada palavra pode ser o começo de qualquer palavra
+    do nome ("mendes"). Cada pessoa aparece com o celular, a data de
+    nascimento e a última consulta, e quem já tem consulta registrada vem
+    primeiro. A última opção é sempre **Agendar “nome” sem vínculo**. Setas
+    escolhem, Enter vincula e Esc fecha a lista.
+  - Vinculada, a consulta mostra "Vinculado a Carla Mendes, nasc. 02/09/1995"
+    com o celular e o e-mail de Contatos só para leitura e **Remover
+    vínculo**. Para mudar esses dados, edite o contato no Google. Mudar o nome
+    desfaz o vínculo. Nada se vincula sozinho: com um só contato do nome, a
+    tela mostra "“Carla Mendes” está em Contatos." com **Vincular**.
+  - Homônimos: com dois ou mais contatos do mesmo nome, a consulta só é salva
+    com o contato certo da lista ou com **É outra pessoa**, que deixa o
+    celular obrigatório.
+  - **DDI do paciente** (todos os países, Brasil primeiro), **Celular com
+    DDD** e **E-mail de contato**, os dois opcionais. O celular toma a forma
+    enquanto você digita, "(41) 99999-0000" no Brasil e em blocos de três nos
+    outros países; um "+55" colado na frente sai sozinho. A Zuri guarda só os
+    dígitos.
+  - **Data da consulta** (dd/mm/aaaa), **Hora do início** e **Hora do
+    término**, sempre de 00:00 a 23:59, sem AM ou PM, em qualquer idioma do
+    aparelho. O término começa 1 h depois do início e acompanha o início
+    quando ele muda; outro término mostra a duração e **Voltar para 1 h**.
+  - **Tipo do evento**: Consulta, Retorno, Avaliação física, os tipos que a
+    agenda já usa, **Outro, digitar** e **Sem tipo (compromisso comum)**, que
+    é um compromisso pessoal: tira os campos do paciente, o local e o
+    financeiro, e o nome vira **Título**.
+  - **Local**: Presencial ou Online. Online pede ao Google uma chamada do
+    Google Meet ao salvar; voltar para Presencial tira a chamada, e essa
+    mudança não oferece "Desfazer" (o link não volta igual). Presencial leva
+    ao campo Local do evento o endereço de Configurações › Consultório
+    ("endereço, cidade e estado"), quando a consulta ainda não tem local;
+    passar para Online tira esse endereço. Um local escrito à mão no Google
+    não é trocado.
+  - **Situação** e **Financeiro** (Não pago, o padrão, Pago ou Gratuito).
+  - **Observação**, que no Google vem depois da linha do tipo.
+
+  Um campo errado recebe o foco, treme uma vez (parado, se o aparelho pede
+  menos movimento) e mostra a mensagem embaixo dele. Ao salvar, o aviso diz
+  quem, o dia e a hora ("“Helena Prado” agendado para qua, 18/11 às 14:30."). Evento de dia
+  inteiro se cria no Google; aqui ele aparece e se edita.
+- Os **detalhes** de uma consulta mostram o tipo, o local (no Online, o link
+  do Meet com **Copiar link**, ou "O Google está criando o link da
+  chamada…"), o paciente, o financeiro e a observação como está no
+  Google. O paciente vinculado aparece com a data de nascimento, o celular, o
+  e-mail, **Abrir em Contatos** e a etiqueta **Homônimo** quando outro contato
+  tem o mesmo nome. Sem vínculo, aparece "Sem vínculo com Contatos" (ou
+  "Pessoa nova, com o mesmo nome de N contatos") com o celular, o e-mail e
+  **Vincular**, que abre o formulário com a lista. Quando o contato saiu de
+  Contatos, mudou de nome lá ou Contatos está desligado, aparece "O vínculo
+  com Contatos não vale mais", e o formulário abre sem vínculo.
+- **Agendar** na ficha de um contato abre a Agenda com "Novo evento" pronto: o
+  contato já vinculado (mesmo com homônimos, porque foi ele o escolhido) e o
+  primeiro horário livre, de meia em meia hora a partir de agora, num dia
+  aberto, fora do almoço e sem outro evento no horário, até o fim do mês
+  seguinte. Sem horário livre, vem amanhã no começo do expediente. Uma linha
+  diz de onde veio o horário e avisa se o contato já tem consulta marcada daqui
+  para frente. Contato sem nome no Google não se vincula: o celular e o e-mail
+  vêm preenchidos e o nome fica para escrever. **Cancelar** volta para a
+  ficha.
 - Toque num evento para ver os detalhes. Em agendas **Ler e editar**, aparecem
   **Editar** e **Apagar** (com confirmação). Em **Só ler**, só os detalhes.
 - Se alguém mudou o evento no Google depois que a tela abriu, a Zuri não
@@ -280,6 +339,39 @@ se o Google recusar o aviso, a tela lê de novo quando você volta para ela.
 
 A tela mexe só nos eventos. Criar, renomear ou apagar agendas continua no
 Google Agenda (decisão de 03/11/2026).
+
+### Confirmação do paciente
+
+Os detalhes de uma consulta (um evento com tipo, numa agenda em que a Zuri
+escreve) têm o quadro **Confirmação do paciente**:
+
+- A linha de cima diz a resposta: "Ainda sem resposta", "Confirmou pelo link"
+  ou "Cancelou pelo link", com o dia e a hora. Uma consulta que mudou de hora
+  depois da resposta volta a "Ainda sem resposta": o paciente confirma de novo.
+- **Copiar link** copia o endereço `https://<domínio>/c/<token>` e **Ver como
+  o paciente** abre a página numa aba nova. O link nasce no primeiro pedido e
+  é o mesmo depois disso, um por consulta.
+- Uma consulta cancelada, ou a menos de 1 hora, não tem link para dar.
+
+O que o paciente vê, sem entrar em nada:
+
+- O nome do consultório (Configurações › Consultório), o primeiro nome dele,
+  o dia, a hora, o tipo e o endereço. Numa consulta online, um aviso de que o
+  link da chamada chega antes. Nada mais da Zuri: sem menu, sem link para
+  dentro.
+- **Confirmar presença** pinta a consulta de Confirmado (Manjericão) aqui e no
+  Google e manda um aviso com o sino.
+- **Cancelar a consulta** pergunta antes, com "Não, manter a consulta" em
+  foco. Cancelar pinta de Cancelado (Tomate), nunca apaga o evento, manda o
+  aviso e desliga o link para sempre. Dá para cancelar por aqui até 12 horas
+  antes e só até 23:59 do dia anterior, o que vier primeiro.
+- **Falar com a equipe pelo WhatsApp** abre o WhatsApp do consultório com a
+  mensagem pronta. Para mudar o dia ou a hora, é por lá (a E7b traz a
+  remarcação pelo link).
+- O link vale até 1 hora antes da consulta. Depois disso, ou se a consulta for
+  cancelada, a página diz que ele expirou.
+
+Defesas e limites: [seguranca.md](seguranca.md#link-de-confirmação-ctoken).
 
 ### Na conversa, no bot e nas rotinas
 
@@ -358,11 +450,35 @@ passo a passo está em [avaliacoes-google.md](avaliacoes-google.md#para-quem-ins
 | Tela Agenda e cartão em Integrações | `apps/web/src/pages/agenda/AgendaPage.tsx`, `apps/web/src/pages/settings/GoogleCard.tsx` |
 | Regras de arrastar, duração, "mover marca Reagendado" e desfazer; envio de uma mudança com o aviso | `apps/web/src/lib/agenda-edit.ts`, `apps/web/src/pages/agenda/changes.ts` |
 | Banco (migration 22) | `zur_google_account`, `zur_google_calendars` |
+| Registro do dia e última consulta de um contato (migrations 42 e 43) | `zur_agenda_record` com o índice `zur_agenda_record_contact`, `zur_agenda_closed_days`; `apps/agent/src/google/record.ts` |
+| Link de confirmação do paciente (migration 45) | `zur_appointment_links`; `apps/agent/src/google/confirm-links.ts`, `apps/agent/src/api/confirm.ts`, `apps/web/src/pages/confirm/ConfirmPage.tsx`, `apps/web/src/pages/agenda/ConfirmBox.tsx` |
+| Busca do nome e vínculo com Contatos | `apps/agent/src/google/contacts.ts` (`forBooking`), `apps/web/src/pages/agenda/PatientLink.tsx` |
 
 - Os tokens ficam cifrados com AES-256-GCM, numa chave derivada do
   `MCP_CREDENTIAL_KEY` com um `info` próprio (`google-v1`). Nunca voltam para
   o navegador, para o log nem para o backup.
 - Os eventos não ficam guardados aqui: cada leitura vai ao Google.
+- O DDI, o celular, o e-mail e o financeiro do paciente viajam com o evento,
+  nas propriedades privadas dele no Google (`extendedProperties.private`:
+  `zuriCountry`, `zuriPhone`, `zuriEmail`, `zuriPayment`). Quem abre o evento
+  no Google não vê esses campos e não há tabela nova na Zuri. Cada valor
+  lido volta conferido: um celular fora do formato ou um país desconhecido é
+  ignorado. Um campo esvaziado no "Editar" é apagado no Google.
+- O vínculo da consulta a um contato fica na mesma lista, em `zuriContact`,
+  com o `resourceName` do contato no Google (`people/c123`). Ele não muda
+  quando Contatos é desligado e ligado de novo. Com vínculo, o servidor exige
+  que o contato esteja na cópia de Contatos e que o título seja o nome dele, e
+  apaga `zuriCountry`, `zuriPhone` e `zuriEmail`: os dados são os de
+  Contatos. Sem vínculo, um nome que dois ou mais contatos têm precisa do
+  celular. Nada se vincula sozinho: só o formulário manda `contact`.
+- `GET /api/contacts?for=booking&q=…` é a busca do nome no formulário: só a
+  cópia de Contatos, nunca o Google, a partir de duas letras e até 6
+  pessoas, com `same` (quantos contatos têm exatamente esse nome). A última
+  consulta de cada pessoa sai do registro do dia, pelo índice
+  `zur_agenda_record_contact` (migration 43).
+- O Meet sai por `conferenceData.createRequest` (`hangoutsMeet`) com
+  `conferenceDataVersion=1`. Só um link `https://meet.google.com/xxx-xxxx-xxx`
+  vira link na tela.
 - `GET /api/google/events` devolve o `colorId` de cada evento (de "1" a "11",
   ou vazio). `PATCH /api/google/events` aceita `colorId` só com "5", "7", "10",
   "11" ou vazio (tira a cor), sempre com o `etag` que a tela leu.

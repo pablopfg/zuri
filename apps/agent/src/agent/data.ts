@@ -5,7 +5,7 @@
  * one or look like markup; line breaks become spaces, so one item is one line.
  */
 
-export const DATA_SOURCES = ["memory", "note", "task", "tool", "summary", "mcp", "telegram_forward", "calendar", "settings", "contact", "flow", "crm", "review"] as const;
+export const DATA_SOURCES = ["memory", "note", "task", "tool", "summary", "mcp", "telegram_forward", "calendar", "settings", "contact", "flow", "crm", "review", "home"] as const;
 export type DataSource = (typeof DATA_SOURCES)[number];
 
 /**
@@ -64,5 +64,6 @@ export function dataLine(source: DataSource, id: string, text: string, extra: Re
   const attrs = Object.entries({ source, id, ...extra })
     .map(([key, value]) => `${key.replace(/[^a-z_]/g, "")}="${attribute(value)}"`)
     .join(" ");
+  // nosemgrep: html-in-template-string -- not HTML: the prompt's data line, attribute() and neutralize() escape every value
   return `<data ${attrs}>${neutralize(text)}</data>`;
 }

@@ -27,9 +27,12 @@ import { gzipSync } from "node:zlib";
 // 141.1 kB, with the owner's OK on 13/11/2026 (PR S20): the review requests add
 // nothing to the first load, but the hashed names of the files to fetch change
 // with every build and took the 13 bytes of room left (141,003 B measured).
+// 141.2 kB, with the owner's OK on 15/11/2026 (PR E7a): the patient page rides
+// in a lazy chunk, but its route and the shell's file list add 49 bytes
+// (141,149 B measured).
 // Never raise it without the owner's OK; the ceiling of P11 is 160 kB and its
 // goal 150 kB.
-const BUDGET_KB = 141.1;
+const BUDGET_KB = 141.2;
 
 const dist = join(import.meta.dirname, "..", "apps", "web", "dist");
 const html = readFileSync(join(dist, "index.html"), "utf8");

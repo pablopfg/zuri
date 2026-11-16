@@ -5,6 +5,7 @@ import { specialistSystem } from "../src/specialists/contract.ts";
 import { FLOW_AI_SPECIALIST } from "../src/specialists/flow-ai.ts";
 import { REVIEW_CHECK_SPECIALIST, REVIEW_DRAFT_SPECIALIST } from "../src/specialists/reviews.ts";
 import { ROUTINE_CHECK_SPECIALIST } from "../src/specialists/routine-check.ts";
+import { HOME_ORDER_SPECIALIST } from "../src/specialists/home-order.ts";
 import { SUMMARY_SPECIALIST } from "../src/specialists/summary.ts";
 
 /**
@@ -30,7 +31,7 @@ describe("the prompts as built", () => {
   });
 
   it("matches every specialist's prompt", () => {
-    for (const spec of [SUMMARY_SPECIALIST, FLOW_AI_SPECIALIST, REVIEW_DRAFT_SPECIALIST, REVIEW_CHECK_SPECIALIST, ROUTINE_CHECK_SPECIALIST]) {
+    for (const spec of [SUMMARY_SPECIALIST, FLOW_AI_SPECIALIST, REVIEW_DRAFT_SPECIALIST, REVIEW_CHECK_SPECIALIST, ROUTINE_CHECK_SPECIALIST, HOME_ORDER_SPECIALIST]) {
       expect(specialistSystem(spec, defaultAgentSettings(spec.id)), spec.id).toMatchSnapshot(spec.id);
     }
   });

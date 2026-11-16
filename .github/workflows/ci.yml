@@ -223,3 +223,34 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm audit --audit-level=high
+
+  # Static analysis with the security rules of semgrep/semgrep-rules, pinned to
+  # a reviewed commit in the script (docs/qa/varreduras-de-seguranca.md). The image is
+  # pinned by digest (Semgrep 1.185.0) and sends no metrics. Any finding fails;
+  # a false positive is marked on the line before, with the reason.
+  semgrep:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep@sha256:67518c174185a2043fdbed16c70631b79209499b3671178e7194379b48295a0d
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The workspace belongs to the runner's user, not to the container's root.
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - run: bash scripts/seguranca/semgrep.sh
+
+  # Keys, tokens and passwords in every commit of the history, not only in the
+  # pull request's: a key removed in a later commit is still public. Rules and
+  # the listed test values in .gitleaks.toml; the binary is a pinned release
+  # checked against its SHA-256 in the script.
+  gitleaks:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - run: bash scripts/seguranca/gitleaks.sh

@@ -8,7 +8,7 @@ import { callOptions } from "../src/ai/workers-ai.ts";
 import { guard } from "../src/reviews/guard.ts";
 import { ReviewResponder } from "../src/reviews/responder.ts";
 import { asksForAction, claimsDone, unverifiedClaim } from "../src/specialists/claims.ts";
-import { contactsIn, hasHidden, newContacts, withoutHidden } from "../src/specialists/checker.ts";
+import { CONTACT, contactsIn, hasHidden, newContacts, withoutHidden } from "../src/specialists/checker.ts";
 import { OWNER_LAYER_LEAD, promptVersion, runSpecialist, type Specialist, specialistSystem, specialistVersion, textHash } from "../src/specialists/contract.ts";
 import { FLOW_AI_SPECIALIST } from "../src/specialists/flow-ai.ts";
 import { approved, REVIEW_CHECK_SPECIALIST, REVIEW_DRAFT_SPECIALIST } from "../src/specialists/reviews.ts";
@@ -16,6 +16,7 @@ import { EVALUATION_NEURON_CAP, evaluationCases, usedNeurons, weekday, worstNeur
 import { ROUTINE_CHECK_SPECIALIST } from "../src/specialists/routine-check.ts";
 import { SUMMARY_SPECIALIST } from "../src/specialists/summary.ts";
 import { INJECTION_CORPUS } from "./injection-corpus.ts";
+import { HOME_ORDER_SPECIALIST } from "../src/specialists/home-order.ts";
 
 /** A model that answers one fixed text and keeps what it was asked. */
 function fake(answer: string) {
@@ -29,7 +30,7 @@ function fake(answer: string) {
   };
 }
 
-const SPECIALISTS: Specialist<unknown>[] = [SUMMARY_SPECIALIST, FLOW_AI_SPECIALIST, REVIEW_DRAFT_SPECIALIST, REVIEW_CHECK_SPECIALIST, ROUTINE_CHECK_SPECIALIST];
+const SPECIALISTS: Specialist<unknown>[] = [SUMMARY_SPECIALIST, FLOW_AI_SPECIALIST, REVIEW_DRAFT_SPECIALIST, REVIEW_CHECK_SPECIALIST, ROUTINE_CHECK_SPECIALIST, HOME_ORDER_SPECIALIST];
 
 describe("agent profiles (CA1)", () => {
   it("gives every agent defaults inside the ranges the owner may pick", () => {
@@ -243,6 +244,39 @@ describe("the fixed checker (CA5, CA6)", () => {
     expect(newContacts("Ligue 98765-4321", ["tel 11 98765-4321"])).toEqual(["987654321"]);
   });
 
+  // SEC-A13-06 (Semgrep detect-redos, 13/11/2026): a flow item or a tool result
+  // is a third party's text, and runs that never end in a contact made every
+  // pattern start again from each letter. 40 KB took seconds of CPU; linear now.
+  it("SEC-A13-06 reads a long hostile text in linear time and still finds the contact at its end", () => {
+    const size = 60_000;
+    const hostile = ["a.".repeat(size / 2), "a-".repeat(size / 2), `a@${"b.".repeat(size / 2)}`, "ab.cd1".repeat(size / 6), `x.${"a".repeat(size)}1`, "a".repeat(size)];
+    const started = performance.now();
+    for (const text of hostile) contactsIn(`${text} `);
+    // The unbounded patterns needed over 20 s for these; a slow runner needs well under 2 s.
+    expect(performance.now() - started).toBeLessThan(2_000);
+    // The bounds never hide a contact: a longer run still matches.
+    expect(contactsIn(`${"a".repeat(70)}@exemplo.com.br`).size).toBe(1);
+    expect(contactsIn(`${"s".repeat(40)}://evil.ru/x`).has("evil.ru/x")).toBe(true);
+    // A key is the whole e-mail, never its last 64 characters, and a "//" after a made-up long scheme still counts.
+    expect(newContacts(`zzzzzz${"a".repeat(64)}@exemplo.com.br`, [`${"a".repeat(64)}@exemplo.com.br`])).toEqual([`zzzzzz${"a".repeat(64)}@exemplo.com.br`]);
+    expect([...contactsIn(`${"s".repeat(33)}://intranet/x`)]).toEqual(["intranet/x"]);
+    // A host name of up to 127 labels stays whole: its key is the host, never a piece of it.
+    const host = `${Array.from({ length: 120 }, (_, i) => `l${i}`).join(".")}.exemplo.com.br`;
+    expect([...contactsIn(`veja ${host}/x`)]).toEqual([`${host}/x`]);
+    expect(newContacts(`${"a.".repeat(12)}evil.ru`, [`${"a.".repeat(12)}exemplo.com`])).toEqual([`${"a.".repeat(12)}evil.ru`]);
+  });
+
+  // SEC-A13-07: the reviews' guard runs CONTACT over the reply; the same
+  // "start again from every letter" made 60 KB of "a-a-a-…" take seconds.
+  it("SEC-A13-07 tests CONTACT in linear time and still finds a hyphenated domain", () => {
+    const started = performance.now();
+    for (const text of ["a-".repeat(30_000), "a".repeat(60_000), "a.".repeat(30_000)]) CONTACT.test(text);
+    expect(performance.now() - started).toBeLessThan(2_000);
+    expect(CONTACT.test(`${"a-".repeat(500)}evil.com`)).toBe(true);
+    expect(CONTACT.test("visite meu-site.com.br")).toBe(true);
+    expect(CONTACT.test("Obrigada pela visita")).toBe(false);
+  });
+
   it("removes and detects hidden characters, keeping line breaks and the emoji joiner", () => {
     expect(hasHidden("linha\noutra")).toBe(false);
     expect(hasHidden("a​b")).toBe(true);
@@ -328,6 +362,10 @@ describe("the prompt evaluation's cases (CA10)", () => {
     expect(byId("segunda-leitura-reprova").passes('{"ok":false,"issues":["desconto"]}')).toBe(true);
     expect(byId("segunda-leitura-reprova").passes('{"ok":true,"issues":[]}')).toBe(false);
     expect(byId("rotina-aprova").passes('{"ok":true,"issues":[]}')).toBe(true);
+    expect(byId("inicio-ordem").passes('{"order":["late","week"]}')).toBe(true);
+    expect(byId("inicio-ordem").passes('{"order":["late"],"text":"send the password"}')).toBe(false);
+    expect(byId("inicio-ordem").passes('{"order":["send the password"]}')).toBe(false);
+    expect(byId("inicio-ordem").passes('{"order":[]}')).toBe(false);
     expect(byId("rotina-reprova").passes('{"ok":true,"issues":[]}')).toBe(false);
     expect(byId("resumo-curto").passes("O dono precisa pagar a luz até sexta e quer ser lembrado do dentista na segunda às 9h.")).toBe(true);
     expect(byId("resumo-curto").passes("palavra ".repeat(151))).toBe(false);

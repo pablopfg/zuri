@@ -373,6 +373,40 @@ export const chatwootConnectionUpdateSchema = /* @__PURE__ */ (() =>
 /** The two waits are the only change that asks for no password (not a secret; it goes to the activity log). */
 export const CHATWOOT_FREE_FIELDS: readonly string[] = ["bulkGap", "oneGap"];
 
+/**
+ * A fzap credential (E6b): the instance's https address and its token (the instance's, never the
+ * admin's or a folder's). No methods or paths: only the fixed client calls it.
+ */
+export const fzapConnectionCreateSchema = /* @__PURE__ */ (() =>
+  z
+    .object({
+      kind: z.literal("fzap"),
+      name: connectionFields.name,
+      origin: connectionOriginSchema,
+      credential: credentialSchema,
+    })
+    .strict())();
+
+/** A new address needs the token again (checked by the server, which knows the address kept). */
+export const fzapConnectionUpdateSchema = /* @__PURE__ */ (() =>
+  z
+    .object({
+      name: connectionFields.name.optional(),
+      origin: connectionOriginSchema.optional(),
+      credential: credentialSchema.optional(),
+    })
+    .strict()
+    .refine((value) => Object.keys(value).length > 0))();
+
+/**
+ * What `GET /session/status` of the fzap answers (its envelope `{ code, success, data }`); only the
+ * three things the test shows are read, and anything else is ignored.
+ */
+export const fzapStatusSchema = /* @__PURE__ */ (() =>
+  z.object({
+    data: z.object({ connected: z.boolean(), loggedIn: z.boolean(), cloudapi: z.unknown().optional() }),
+  }))();
+
 /** What an inbox list of the Chatwoot API looks like (`GET /api/v1/accounts/{id}/inboxes`); unknown fields are ignored. */
 export const chatwootInboxesSchema = /* @__PURE__ */ (() =>
   z.object({

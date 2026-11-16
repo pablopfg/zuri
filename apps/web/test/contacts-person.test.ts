@@ -31,6 +31,7 @@ const contact = (over: Partial<ContactDetail> = {}): ContactDetail => ({
   chats: [],
   more: {},
   googleUrl: "https://contacts.google.com/person/c1",
+  resource: "people/c1",
   ...over,
 });
 

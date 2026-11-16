@@ -218,6 +218,7 @@ export class TelegramClient {
    */
   async download(filePath: string, maxBytes: number, signal?: AbortSignal): Promise<Uint8Array> {
     // Telegram's paths look like "voice/file_3.oga": anything else could point the token's URL elsewhere.
+    // nosemgrep: detect-redos -- each repeated group starts with a slash, so the match is linear
     if (!/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(filePath) || filePath.includes("..") || filePath.length > 256) {
       throw new TelegramApiError("download", 0, "invalid path");
     }

@@ -46,7 +46,7 @@ export const triggers = (wf: Workflow) =>
   typeof wf.on === "string" ? [wf.on] : Array.isArray(wf.on) ? wf.on : Object.keys(wf.on);
 
 /** The CI jobs that the develop and main rulesets require. */
-export const REQUIRED_CI_JOBS = ["typecheck", "lint", "test", "i18n", "build", "e2e", "audit", "lighthouse"];
+export const REQUIRED_CI_JOBS = ["typecheck", "lint", "test", "i18n", "build", "e2e", "audit", "lighthouse", "semgrep", "gitleaks"];
 
 /** The CI jobs behind a required check that are not checks themselves: the parts the "e2e" job answers for. */
 export const CI_PART_JOBS = ["e2e-parte"];

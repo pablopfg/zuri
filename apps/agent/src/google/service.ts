@@ -4,6 +4,7 @@ import {
   CONTACTS_SCOPE,
   GOOGLE_CALLBACK_PATH,
   GOOGLE_LIMITS,
+  GMAIL_SEND_SCOPE,
   GOOGLE_STATE_PREFIX,
   type GoogleCalendarInfo,
   type GoogleProblem,
@@ -22,7 +23,7 @@ import { log } from "../log.ts";
 import { McpCredentials } from "../mcp/credentials.ts";
 import { forgetReviewRequests, forgetReviews } from "../reviews/store.ts";
 import { forgetContacts } from "./contacts-store.ts";
-import { type CalendarEvent, cleanText, readEvent, startMs } from "./events.ts";
+import { type CalendarEvent, cleanText, PRIVATE_KEYS, readEvent, startMs } from "./events.ts";
 
 export const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 export const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -37,10 +38,13 @@ export const GOOGLE_REVIEWS_API = "https://mybusiness.googleapis.com/v4";
 const BUSINESS_APIS: readonly string[] = [GOOGLE_ACCOUNTS_API, GOOGLE_LOCATIONS_API, GOOGLE_REVIEWS_API];
 
 /** What a consent asks for: the calendar (step 19), or the contacts (step 19b) or the reviews (step 19c) joined to the same grant. */
-export type GooglePurpose = "calendar" | "contacts" | "reviews";
+export type GooglePurpose = "calendar" | "contacts" | "reviews" | "gmail";
 
 /** The scope each joined purpose adds to the calendar's grant. */
-const JOINED_SCOPE: Record<Exclude<GooglePurpose, "calendar">, string> = { contacts: CONTACTS_SCOPE, reviews: BUSINESS_SCOPE };
+const JOINED_SCOPE: Record<Exclude<GooglePurpose, "calendar">, string> = { contacts: CONTACTS_SCOPE, reviews: BUSINESS_SCOPE, gmail: GMAIL_SEND_SCOPE };
+
+/** Gmail's API: only `messages/send` is ever called (E6c, scope gmail.send). */
+const GMAIL_API = "https://gmail.googleapis.com/gmail/v1";
 
 /**
  * The narrowest scopes that do the job: the list of calendars (read only) and
@@ -103,7 +107,8 @@ export type GoogleErrorKind =
   | "expired"
   | "api_disabled"
   | "contacts_scope"
-  | "business_scope";
+  | "business_scope"
+  | "gmail_scope";
 
 export class GoogleError extends Error {
   constructor(
@@ -401,13 +406,13 @@ export class GoogleCalendar {
     const refresh = typeof token.refresh_token === "string" ? token.refresh_token : "";
     const granted = typeof token.scope === "string" ? token.scope.split(" ") : [];
     const previous = this.account();
-    const purpose: GooglePurpose = pending.purpose === "contacts" || pending.purpose === "reviews" ? pending.purpose : "calendar";
+    const purpose: GooglePurpose = pending.purpose === "contacts" || pending.purpose === "reviews" || pending.purpose === "gmail" ? pending.purpose : "calendar";
     const required: readonly string[] = purpose === "calendar" ? GOOGLE_CALENDAR_SCOPES : [...GOOGLE_CALENDAR_SCOPES, JOINED_SCOPE[purpose]];
     if (!refresh || !required.every((scope) => granted.includes(scope))) {
       // Unticked permissions on Google's page: give back what was granted and stop. Not while an account is
       // connected: revoking ends the whole grant, which may be that account's.
       if (!previous) await this.revoke(refresh || (typeof token.access_token === "string" ? token.access_token : ""), meter);
-      throw new GoogleError(purpose === "contacts" ? "contacts_scope" : purpose === "reviews" ? "business_scope" : "scopes");
+      throw new GoogleError(purpose === "contacts" ? "contacts_scope" : purpose === "reviews" ? "business_scope" : purpose === "gmail" ? "gmail_scope" : "scopes");
     }
     const access = accessFrom(token, this.clock());
     const list = await this.calendarList(access.token, meter);
@@ -425,6 +430,8 @@ export class GoogleCalendar {
         forgetContacts(this.deps.db);
         forgetReviews(this.deps.db);
         forgetReviewRequests(this.deps.db);
+        // The patients' confirmation links (E7a) were for the other account's events.
+        this.deps.db.run(`DELETE FROM zur_appointment_links`);
       }
       this.deps.db.run(
         `INSERT INTO zur_google_account (id, email, refresh_token, access_token, access_expires_at, scopes, status, problem, problem_noticed_at, connected_at, checked_at)
@@ -519,6 +526,8 @@ export class GoogleCalendar {
       forgetContacts(this.deps.db);
       forgetReviews(this.deps.db);
       forgetReviewRequests(this.deps.db);
+      // The patients' confirmation links (E7a) go too: from then on they answer "not found".
+      this.deps.db.run(`DELETE FROM zur_appointment_links`);
       this.deps.state.delete("google_oauth_pending");
     });
     this.#due = undefined;
@@ -665,6 +674,16 @@ export class GoogleCalendar {
   ): Promise<Record<string, unknown> | null> {
     if (!BUSINESS_APIS.includes(base)) throw new GoogleError("not_found");
     return this.call(base, path, meter, init);
+  }
+
+  /**
+   * Sends one message already built (RFC 5322, as base64url) through the owner's Gmail (E6c). Only
+   * with the gmail.send scope; answers the message's id.
+   */
+  async gmailSend(raw: string, meter: GoogleMeter): Promise<string | null> {
+    if (!this.connected() || !this.granted(GMAIL_SEND_SCOPE)) throw new GoogleError("gmail_scope");
+    const body = await this.call(GMAIL_API, "/users/me/messages/send", meter, { method: "POST", body: { raw }, maxBytes: 64 * 1024 });
+    return typeof body?.id === "string" ? body.id : null;
   }
 
   private async call(
@@ -831,10 +850,11 @@ export class GoogleCalendar {
   async createEvent(calendarId: string, body: Record<string, unknown>, meter: GoogleMeter, id?: string): Promise<CalendarEvent> {
     this.writableRow(calendarId);
     if (id !== undefined && !EVENT_ID.test(id)) throw new GoogleError("invalid");
+    const safe = safeBody(body);
     const created = await this.api(`/calendars/${enc(calendarId)}/events`, meter, {
       method: "POST",
-      query: { sendUpdates: "none" },
-      body: { ...safeBody(body), ...(id === undefined ? {} : { id }) },
+      query: writeQuery(safe),
+      body: { ...safe, ...(id === undefined ? {} : { id }) },
     });
     this.touch(calendarId);
     const event = readEvent(created, calendarId);
@@ -845,10 +865,11 @@ export class GoogleCalendar {
   /** Changes an event only if it is still the version `etag` names (412: changed at Google meanwhile). */
   async updateEvent(calendarId: string, eventId: string, patch: Record<string, unknown>, etag: string, meter: GoogleMeter): Promise<CalendarEvent> {
     this.writableRow(calendarId);
+    const safe = safeBody(patch);
     const updated = await this.api(`/calendars/${enc(calendarId)}/events/${enc(eventId)}`, meter, {
       method: "PATCH",
-      query: { sendUpdates: "none" },
-      body: safeBody(patch),
+      query: writeQuery(safe),
+      body: safe,
       ...(etag ? { ifMatch: etag } : {}),
     });
     this.touch(calendarId);
@@ -1022,7 +1043,30 @@ function safeBody(body: Record<string, unknown>): Record<string, unknown> {
   for (const key of ["summary", "location", "description", "start", "end"]) if (body[key] !== undefined) out[key] = body[key];
   // The color is the appointment's status: one of its four, or null to take it off. Nothing else, whoever asks.
   if (body.colorId === null || STATUS_COLORS.has(body.colorId as string)) out.colorId = body.colorId;
+  // The patient's contact and the payment: only Zuri's own private keys, each a string or null (E5e).
+  const props = (body.extendedProperties as { private?: Record<string, unknown> } | undefined)?.private;
+  if (props) {
+    const kept: Record<string, string | null> = {};
+    for (const key of Object.values(PRIVATE_KEYS)) {
+      const value = props[key];
+      if (value === null || (typeof value === "string" && value.length <= 300)) kept[key] = value;
+    }
+    if (Object.keys(kept).length > 0) out.extendedProperties = { private: kept };
+  }
+  // A Meet call: Google's own kind, or null to take it off. Never anything else.
+  if (body.conferenceData === null) out.conferenceData = null;
+  else {
+    const request = (body.conferenceData as { createRequest?: { requestId?: unknown; conferenceSolutionKey?: { type?: unknown } } } | undefined)?.createRequest;
+    if (request?.conferenceSolutionKey?.type === "hangoutsMeet" && typeof request.requestId === "string" && /^[\w-]{1,64}$/.test(request.requestId)) {
+      out.conferenceData = { createRequest: { requestId: request.requestId, conferenceSolutionKey: { type: "hangoutsMeet" } } };
+    }
+  }
   return out;
+}
+
+/** Google reads `conferenceData` only when asked to (`conferenceDataVersion=1`). */
+function writeQuery(body: Record<string, unknown>): Record<string, string> {
+  return body.conferenceData === undefined ? { sendUpdates: "none" } : { sendUpdates: "none", conferenceDataVersion: "1" };
 }
 
 function apiError(status: number): GoogleError {

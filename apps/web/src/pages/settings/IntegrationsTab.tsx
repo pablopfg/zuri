@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChatwootOwnerStatus, MCP_LIMITS, MCP_TOOL_KINDS, MCP_TOOL_POLICIES, type McpAuthType, type McpOverview, type McpServerInfo, type McpServerProblem, type McpToolInfo, type McpToolKind, type McpToolProblem } from "@zuri/shared";
 import { ChevronRight, CircleAlert, CircleCheck, Pencil, Plug, RefreshCw, Trash2 } from "lucide-react";
 import { Link } from "react-router";
-import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import { type FormEvent, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { Switch } from "../../components/Switch.tsx";
 import { useToast } from "../../components/Toaster.tsx";
 import { ActionsMenu } from "../../components/ActionsMenu.tsx";
@@ -11,6 +11,9 @@ import { api, errorMessage } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.tsx";
 import { GoogleCard, isGoogleReturn } from "./GoogleCard.tsx";
 import { TelegramCard } from "./TelegramCard.tsx";
+
+// E-mail to patients (E6c) comes with its own download (rule P11).
+const MailCard = lazy(() => import("./MailCard.tsx").then((m) => ({ default: m.MailCard })));
 
 /** The query of the whole tab: the servers with their counts (one request, no polling, rule P11). */
 const MCP_KEY = ["mcp"] as const;
@@ -83,6 +86,9 @@ export function IntegrationsTab() {
   return (
     <div className="space-y-6">
       <GoogleCard />
+      <Suspense fallback={<Loading rows={2} />}>
+        <MailCard />
+      </Suspense>
       {/* The Telegram bot sits with the other connections since PR S16 (it was in Avisos). */}
       <TelegramCard />
       <ChatwootShortcut />

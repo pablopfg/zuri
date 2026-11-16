@@ -245,7 +245,7 @@ e-mail. É gratuito para até 50 pessoas.
    `zuri.exemplo.com.br`, caminho vazio, duração da sessão de 24 h. Política
    **Allow** com **Emails** = o seu e-mail. Salve e copie o **AUD** do
    aplicativo (64 caracteres).
-3. Três caminhos precisam passar sem o login do Access, porque cada um
+3. Alguns caminhos precisam passar sem o login do Access, porque cada um
    se prova de outro jeito, conferido pelo Worker antes de tudo. Para cada
    linha, crie **outro** aplicativo *Self-hosted* com o mesmo domínio, o caminho
    abaixo e uma política **Bypass** com **Everyone**:
@@ -255,10 +255,14 @@ e-mail. É gratuito para até 50 pessoas.
    | `api/telegram/webhook` | o Telegram (bot) | cabeçalho secreto derivado do `SESSION_SECRET`, só POST, sem cookie |
    | `api/google/push` | o Google (agenda em tempo real) | token do canal derivado do `SESSION_SECRET`, sem cookie |
    | `a/*` | o paciente (link do pedido de avaliação) | só GET e HEAD, código de 10 caracteres, destino guardado no banco, sem cookie |
+   | `c/*` | o paciente (link de confirmação da consulta) | só GET e HEAD, devolve só a casca da página, sem cookie e sem dado |
+   | `api/c/*` | a página de confirmação | só `POST /api/c/view` e `POST /api/c/answer`, token de 22 caracteres no corpo, limite por rede; as duas rotas nunca leem a sessão |
+   | `assets/*` | a página de confirmação | só GET e HEAD dos arquivos da interface (o código do repositório público, sem dado) |
 
    O caminho mais específico vence: o resto da Zuri continua atrás do Access.
-   Escreva `a/*` com a barra: `a*` sozinho pegaria também `api`. Crie só os
-   que você usa. O `/aprovar` do bot **não** ganha exceção. Se você
+   Escreva `a/*` e `c/*` com a barra: `a*` sozinho pegaria também `api`, e `c*`
+   pegaria `configuracoes`. Crie só os que você usa: os três últimos servem
+   ao link de confirmação e vão juntos. O `/aprovar` do bot **não** ganha exceção. Se você
    criou antes um aplicativo com **Bypass** para `api/crm/events/*`, apague-o:
    a Zuri não recebe mais eventos do n8n e esse endereço deixou de existir.
 4. Grave como **Secret** no Worker: `ACCESS_TEAM_DOMAIN`

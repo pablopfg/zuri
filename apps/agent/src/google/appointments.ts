@@ -140,6 +140,7 @@ export function carries(proof: ContactProof, text: string, guests: readonly stri
   }
   if (proof.birthday) {
     const [year, month, day] = proof.birthday.split("-");
+    // nosemgrep: detect-non-literal-regexp -- day, month and year are digits, built by readDate in contacts.ts
     if (folded.includes(proof.birthday) || new RegExp(`(?<!\\d)${day}[/.-]${month}[/.-]${year}(?!\\d)`).test(folded)) return true;
   }
   if (proof.phones.length) {

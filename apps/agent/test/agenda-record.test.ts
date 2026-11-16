@@ -1,3 +1,4 @@
+import { EVENT_STATUS_COLOR } from "@zuri/shared";
 import { describe, expect, it } from "vitest";
 import { InternalState } from "../src/db/internal-state.ts";
 import type { DevEvent } from "../src/google/dev-google.ts";
@@ -167,6 +168,23 @@ describe("agenda record: the copy on the Agenda", () => {
       expect(notices[2]?.versions).not.toBe(notices[0]?.versions);
     }));
 
+  it("E5e: the copy of a closed day keeps the patient's contact and the payment, whatever Google says later", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      const props = { zuriCountry: "BR", zuriPhone: "41999990000", zuriEmail: "a@exemplo.com.br", zuriPayment: "unpaid" };
+      seed(world, PRIMARY, "visit", "2026-10-31T10:00:00-03:00", "2026-10-31T11:00:00-03:00", { description: "Consulta | Online", extendedProperties: { private: props }, hangoutLink: "https://meet.google.com/abc-defg-hij" });
+      const { record: agenda } = record(world);
+      await agenda.tick();
+      world.clock.now = MIDNIGHT_NOV_1 + 1_000;
+      await agenda.tick();
+
+      const visit = (world.googleSim.events.get(PRIMARY) ?? []).find((event) => event.id === "visit");
+      if (visit) Object.assign(visit, { etag: '"visit-2"', extendedProperties: { private: { ...props, zuriPhone: "41988880000", zuriPayment: "paid" } } });
+      const after = await read(world);
+      const [shown] = agenda.apply(after.events, "2026-10-31", "2026-10-31", after.ids, true);
+      expect(shown).toMatchObject({ id: "visit", phone: "41999990000", payment: "unpaid", email: "a@exemplo.com.br", meet: "https://meet.google.com/abc-defg-hij", changedAtGoogle: "changed" });
+    }));
+
   it("never calls an event deleted on a partial reading, and leaves open days and other calendars as Google gives them", () =>
     withChatWorld(async (world) => {
       await connect(world);
@@ -258,5 +276,32 @@ describe("agenda record: the copy on the Agenda", () => {
         ["2026-10-29", undefined],
       ]);
       expect(notices.map((notice) => notice.day)).toEqual(["2026-10-28"]);
+    }));
+});
+
+describe("agenda record: the last appointment of a linked contact (E5f)", () => {
+  it("reads the closed days of the last 400 only, before today, cancelled ones and other names left out", () =>
+    withChatWorld(async (world) => {
+      await connect(world);
+      const { record: kept } = record(world);
+      // The world's today is 31/10/2026: 400 days back is 26/09/2025.
+      const put = (day: string, id: string, contact: string, extra: Record<string, string> = {}) =>
+        world.db.run(`INSERT INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES (?, ?, ?, '"1"', ?)`, day, PRIMARY, id, JSON.stringify({ title: "Ana Souza", contact, colorId: "", ...extra }));
+      put("2025-09-25", "n1", "people/a");
+      put("2025-09-26", "n0", "people/b");
+      put("2025-09-27", "m1", "people/c");
+      put("2026-10-20", "x1", "people/d");
+      put("2026-10-25", "x2", "people/d", { colorId: EVENT_STATUS_COLOR.cancelled });
+      put("2026-10-31", "t1", "people/e");
+      // SEC-E5f-05: a link copied onto another person's event never counts as the contact's visit.
+      put("2026-10-29", "f1", "people/d", { title: "Fulano de Tal" });
+      const ana = (resource: string) => ({ resource, name: "Ána souza" });
+      const visits = kept.lastVisits(["people/a", "people/b", "people/c", "people/d", "people/e", "people/z"].map(ana));
+      expect(Object.fromEntries(visits)).toEqual({ "people/b": "2025-09-26", "people/c": "2025-09-27", "people/d": "2026-10-20" });
+      expect(kept.lastVisits([]).size).toBe(0);
+      // SEC-E5f-02: SQLite takes 100 values a query; 200 candidates go in batches.
+      const many = Array.from({ length: 200 }, (_, i) => ana(`people/p${i}`));
+      put("2026-10-21", "p199", "people/p199");
+      expect(Object.fromEntries(kept.lastVisits(many))).toEqual({ "people/p199": "2026-10-21" });
     }));
 });

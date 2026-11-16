@@ -185,6 +185,24 @@ const RESULTS = new Set<string>(["unchanged", "changed", "failed"]);
 
 class TooMany extends Error {}
 
+/** The matches one search of the Agenda's name field keeps, at most (E5f). */
+const BOOKING_SCAN = 200;
+/** The words of one search that count; more are left out. */
+const BOOKING_WORDS = 8;
+/** Values one query takes at most: SQLite in a Durable Object refuses more than 100. */
+export const SQL_BATCH = 90;
+
+/** A person the Agenda's name field offers (E5f). */
+export interface BookingCandidate {
+  id: string;
+  resource: string;
+  name: string;
+  phone: string;
+  email: string;
+  /** "YYYY-MM-DD", "MM-DD" without the year, or "". */
+  birthday: string;
+}
+
 /**
  * Divides the name from the nickname and the note in `search_name`. It sorts before a space, so every
  * contact called "Ana Paula" (with or without a note) comes together and before "Ana Paula Souza": the
@@ -1159,6 +1177,73 @@ export class GoogleContacts {
   }
 
   /**
+   * The people an appointment can be linked to (E5f): every word typed starts a word of the name, without
+   * accents ("carla m" finds "Carla Mendes"), and only who has a phone or an e-mail. The name typed
+   * from its start is a range of the index; only when no name starts so, and with three letters or more,
+   * does it scan the copy (5,000 contacts at most), for a surname typed first. Keeps BOOKING_SCAN matches; `same` counts the contacts with the very name typed (homonyms).
+   */
+  forBooking(query: string): { people: BookingCandidate[]; same: number } {
+    const folded = searchText(query);
+    if (!this.enabled() || folded.length < 2) return { people: [], same: 0 };
+    // SEC-E5f-03: a few words of a sensible length, so no query passes SQLite's limits (100 values, 50-byte patterns).
+    const words = folded.split(" ").slice(0, BOOKING_WORDS).map((word) => word.slice(0, 40));
+    const keep = (rows: ContactRow[]) => {
+      const people: BookingCandidate[] = [];
+      for (const row of rows) {
+        const name = searchText(row.display_name).split(" ");
+        if (!words.every((word) => name.some((part) => part.startsWith(word)))) continue;
+        const data = parseData(row.data);
+        const phone = data.phones[0]?.value ?? "";
+        const email = data.emails[0]?.value ?? "";
+        if (phone || email) people.push({ id: row.id, resource: row.resource_name, name: row.display_name, phone, email, birthday: data.birthday ?? "" });
+      }
+      return people;
+    };
+    const columns = `SELECT id, resource_name, display_name, birthday_md, data FROM zur_contacts`;
+    // The name as it is typed, from its start ("carla m"): a range of the name's index, a few rows.
+    let people = keep(this.db.all<ContactRow>(`${columns} WHERE search_name >= ? AND search_name < ? ORDER BY search_name, id LIMIT ?`, folded, `${folded}\uffff`, BOOKING_SCAN));
+    if (people.length === 0 && folded.length >= 3) {
+      // Nobody's name starts so: each word may start any word of the name ("mendes"), which reads the copy;
+      // from three letters on, so the first keys stay on the index. instr has no pattern limit, unlike LIKE.
+      people = keep(
+        this.db.all<ContactRow>(
+          `${columns} WHERE ${words.map(() => `(substr(search_name, 1, length(?)) = ? OR instr(search_name, ?) > 0)`).join(" AND ")} ORDER BY search_name, id LIMIT ?`,
+          ...words.flatMap((word) => [word, word, ` ${word}`]),
+          BOOKING_SCAN,
+        ),
+      );
+    }
+    return { people, same: this.homonyms(query) };
+  }
+
+  /** How many contacts have this very name (up to twenty); none while Contacts is off. */
+  homonyms(name: string): number {
+    return this.enabled() ? this.sameName("", name).length : 0;
+  }
+
+  /** The contact of a link (E5f), by its `resourceName`; null when it left the copy. */
+  byResource(resource: string): { id: string; name: string } | null {
+    if (!this.enabled()) return null;
+    return this.db.one<{ id: string; name: string }>(`SELECT id, display_name AS name FROM zur_contacts WHERE resource_name = ?`, resource) ?? null;
+  }
+
+  /** The copy's id and name of each linked `resourceName` that is still in the copy. */
+  idsOf(resources: readonly string[]): Map<string, { id: string; name: string }> {
+    const out = new Map<string, { id: string; name: string }>();
+    if (!this.enabled() || resources.length === 0) return out;
+    // SEC-E5f-01: a window holds up to 500 events and SQLite takes 100 values a query, so in batches.
+    for (let at = 0; at < resources.length; at += SQL_BATCH) {
+      const part = resources.slice(at, at + SQL_BATCH);
+      for (const row of this.db.all<{ id: string; resource_name: string; name: string }>(
+        `SELECT id, resource_name, display_name AS name FROM zur_contacts WHERE resource_name IN (${part.map(() => "?").join(",")})`,
+        ...part,
+      ))
+        out.set(row.resource_name, { id: row.id, name: row.name });
+    }
+    return out;
+  }
+
+  /**
    * The contacts whose folded name (`searchText`, then SEARCH_BREAK and the note) lies in [from, to),
    * for the reviews' links (PR S20): one index range, at most `limit` rows. `more` says some were
    * left out, so a caller never takes the rows read for all there are.
@@ -1228,6 +1313,7 @@ export class GoogleContacts {
       more: data.more,
       sameName: this.sameName(row.id, row.display_name).length,
       googleUrl: `https://contacts.google.com/person/${row.resource_name.slice("people/".length)}`,
+      resource: row.resource_name,
     };
   }
 }

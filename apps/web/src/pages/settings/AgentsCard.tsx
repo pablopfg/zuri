@@ -73,6 +73,7 @@ const NAME: Record<AgentId, MessageKey> = {
   review_draft: "web.agents.name.review_draft",
   review_check: "web.agents.name.review_check",
   routine_check: "web.agents.name.routine_check",
+  home_order: "web.agents.name.home_order",
 };
 const ABOUT: Record<AgentId, MessageKey> = {
   chat: "web.agents.about.chat",
@@ -81,6 +82,7 @@ const ABOUT: Record<AgentId, MessageKey> = {
   review_draft: "web.agents.about.review_draft",
   review_check: "web.agents.about.review_check",
   routine_check: "web.agents.about.routine_check",
+  home_order: "web.agents.about.home_order",
 };
 function AgentRow({ agent }: { agent: AgentView }) {
   const { t } = useI18n();

@@ -70,6 +70,8 @@ export const ptBRContacts = {
   "web.contacts.person.noName.phone": "Sem nome no Google. A Zuri mostra o telefone.",
   "web.contacts.person.noName.email": "Sem nome no Google. A Zuri mostra o e-mail.",
   "web.contacts.ask": "Perguntar à Zuri",
+  "web.contacts.book": "Agendar",
+  "web.contacts.bookWith": "Agendar com {nome}",
   "web.contacts.ask.message": "O que você sabe sobre {nome}?",
   "web.contacts.call": "Ligar",
   "web.contacts.whatsapp": "WhatsApp",

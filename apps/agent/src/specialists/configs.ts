@@ -1,3 +1,4 @@
+import { HOME_ORDER_SPECIALIST } from "./home-order.ts";
 import {
   AGENT_IDS,
   AGENT_PROFILES,
@@ -41,6 +42,7 @@ const TEXTS: Readonly<Record<AgentId, SpecialistText>> = {
   review_draft: REVIEW_DRAFT_SPECIALIST,
   review_check: REVIEW_CHECK_SPECIALIST,
   routine_check: ROUTINE_CHECK_SPECIALIST,
+  home_order: HOME_ORDER_SPECIALIST,
 };
 
 /** The PROMPT_VERSION a call of `id` with `settings` records. */

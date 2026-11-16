@@ -37,6 +37,7 @@ import { log } from "../log.ts";
 import { endpointUrl } from "../mcp/url.ts";
 import { parse } from "../productivity/validate.ts";
 import { chatwootInboxes } from "./chatwoot.ts";
+import { fzapStatus } from "./fzap.ts";
 import { type CallDeps, type ConnectionRow, type FlowConnections, type FlowNetwork, FlowStepError, knownKind, parseList } from "./connections.ts";
 import { type Advance, advance, type RunState, startState, type Wake } from "./engine.ts";
 import type { FlowGoogle } from "./google-steps.ts";
@@ -451,7 +452,7 @@ export class FlowService {
   /**
    * "Testar" (PR S17): one read, never a change. An http credential gets a GET
    * of its first path (only when GET is allowed); a Chatwoot one lists the
-   * inboxes its key sees. Same rules as a flow's call (public DNS, no redirect,
+   * inboxes its key sees; a fzap one reads its session (E6b). Same rules as a flow's call (public DNS, no redirect,
    * 10 s, 256 KB); at most 5 tests a minute per credential.
    */
   async testConnection(id: string): Promise<FlowConnectionTest> {
@@ -462,6 +463,10 @@ export class FlowService {
       if (kind === "chatwoot") {
         const inboxes = await chatwootInboxes(this.deps.connections, row, this.callDeps());
         return { ok: true, ms: Math.max(0, this.now() - at), status: null, inboxes };
+      }
+      if (kind === "fzap") {
+        const fzap = await fzapStatus(this.deps.connections, row, this.callDeps());
+        return { ok: true, ms: Math.max(0, this.now() - at), status: null, inboxes: null, fzap };
       }
       if (kind !== "http") throw new FlowStepError("kind_not_allowed");
       const path = parseList(row.paths)[0];

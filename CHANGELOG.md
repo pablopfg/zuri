@@ -19,6 +19,63 @@ funciona: [docs/agente/versionamento.md](docs/agente/versionamento.md).
 
 O que já entrou na `develop` e ainda não ganhou número fica em [`changelog/nao-lancado/`](changelog/nao-lancado/) até juntar 10 merges, quando o workflow de versão escreve a seção.
 
+## [0.53.0] - 2026-11-14
+
+Mesclada às 15:27 (UTC-3) · commit [`6e35825`](https://github.com/pablopfg/Zuri/commit/6e358255872404334fe7f31ce534b933bc18322a) · Reúne 10 mudanças (#344, #345, #341, #346, #347, #348, #350, #351, #352, #353)
+
+### Adicionado
+
+- Formulário da Agenda: **Ver no calendário** abre o mês com os dias que não aceitam consulta riscados (o leitor de tela diz o motivo) e os horários livres do dia em botões, já na duração escolhida.
+- **Escolher na agenda**, no computador, recolhe o formulário de uma consulta nova para você tocar no dia e na hora na própria Agenda. O formulário volta com tudo o que estava digitado.
+- Sinal da sincronização na Agenda: a linha "Em dia com o Google" virou um botão com ícone, cor e nome (Sincronizado, Salvando…, Salvo no Google, Atualizando…, Sem internet, Falha ao salvar, Mudou no Google, Em pausa e Desatualizada). Ele abre um painel com o que houve, o que fazer (Tentar de novo, Ver o evento ou Atualizar agora), as últimas mudanças da visita e o que cada sinal quer dizer.
+- **Sugestões do Início pelo seu dia**: embaixo do campo do Início aparecem até três sugestões tiradas do que está acontecendo. "Reagendar o que atrasou" quando há tarefa atrasada, "Me lembre de pagar a luz às 17:30" quando uma conta vence hoje, "Responder a avaliação de Pedro" quando uma avaliação espera resposta, "Organizar a semana" na segunda e a pergunta da hora ("O que tenho hoje?", "O que falta para hoje?", "O que tenho amanhã?").
+- As sugestões que você mais toca sobem. Uma vez por dia a IA pode mudar a ordem, mas só escolhe entre as sugestões que já existem: ela nunca escreve o texto e não vê títulos nem nomes. Sem IA, as regras sozinhas funcionam.
+- A frase embaixo do cumprimento resume o dia quando há o que contar ("4 tarefas hoje, 2 delas atrasadas. Próximo compromisso: Aula de fotografia, às 19:00."). Num dia sem tarefas nem compromissos, continua a frase da Zuri.
+- O agente **Sugestões do Início** aparece em Configurações › Assistente, com as regras dele.
+- Formulário da consulta na Agenda com os dados do paciente: DDI (todos os países, Brasil primeiro), celular com DDD e e-mail de contato, os dois opcionais. O celular toma a forma enquanto você digita.
+- **Local** Presencial ou Online. Uma consulta Online ganha uma chamada do Google Meet ao salvar, e os detalhes mostram o link com **Copiar link**.
+- **Financeiro** da consulta: Não pago, Pago ou Gratuito.
+- Tipos fixos Consulta, Retorno e Avaliação física, além dos que a agenda já usa, **Outro, digitar** e **Sem tipo (compromisso comum)**.
+- Os detalhes da consulta mostram o paciente com celular e e-mail, o financeiro e a observação como está no Google.
+- O nome do paciente no formulário da Agenda procura em Contatos a partir de duas letras, sem acento. Cada pessoa aparece com o celular, a data de nascimento e a última consulta, e a última opção é sempre **Agendar “nome” sem vínculo**.
+- **Vincular** a consulta a um contato: o nome, o celular e o e-mail vêm de Contatos e ficam só para leitura, com **Remover vínculo**. Mudar o nome desfaz o vínculo. Nada se vincula sozinho.
+- Homônimos: com dois ou mais contatos do mesmo nome, a consulta só é salva com o contato certo ou com **É outra pessoa**, que pede o celular.
+- Os detalhes da consulta mostram o contato vinculado com **Abrir em Contatos** e a etiqueta **Homônimo**, ou "Pessoa nova, com o mesmo nome de N contatos" com **Vincular**.
+- **Agendar** na ficha do contato: a Agenda abre com a consulta pronta, o contato já vinculado e o primeiro horário livre. Se o contato já tem consulta marcada daqui para frente, o formulário avisa. **Cancelar** volta para a ficha.
+- Contato sem nome no Google não se vincula: o celular e o e-mail vêm preenchidos e o nome fica para escrever.
+- **Configurações › Consultório**, num grupo próprio: nome do consultório, WhatsApp da equipe, endereço e cidade, num lugar só para todo o sistema. A seção também mostra o horário de atendimento, com **Mudar**, que leva a Configurações › Agenda.
+- A consulta presencial recebe o endereço do consultório no local do evento no Google, quando ainda não tem local. Passar para online tira esse endereço.
+- CRM › Credenciais ganha o tipo **fzap (Pix pelo WhatsApp)**: o endereço https da instância e o token dela, cifrado e só de escrita. **Testar** lê o estado da sessão e diz se a instância está conectada e se está no modo WhatsApp Web, o único em que o Pix funciona. O envio do Pix chega com "Enviar Pix".
+- Configurações › Integrações ganha **E-mail para pacientes**: o e-mail sai pelo seu Gmail (só a permissão de enviar, sem senha guardada) ou pelo servidor SMTP de outro provedor (465 ou 587, sempre com TLS). Dá para escolher o nome do remetente e o "Responder para", ver como o paciente recebe e mandar um teste para você. Até 100 e-mails por dia. A confirmação de consulta por e-mail chega numa próxima entrega.
+
+### Alterado
+
+- Quando o formulário recusa um horário, o motivo aparece num aviso por cima dele, com o som de recusa, o próximo horário livre e os botões **Corrigir** e **Usar este horário**. Antes era uma linha no pé do formulário, fácil de não ver.
+- Tocar numa sugestão agora só preenche o campo e deixa o cursor nele. Nada é enviado até você mandar.
+- Data em dd/mm/aaaa e horas de 00:00 a 23:59 em qualquer idioma do aparelho, sem AM ou PM. O campo **Hora do término** substitui o "Dura": ele começa 1 h depois do início, acompanha o início e mostra a duração, com **Voltar para 1 h**.
+- Um campo errado do formulário recebe o foco, treme uma vez e mostra a mensagem embaixo dele.
+- O aviso depois de criar diz quem, o dia e a hora: "“Helena Prado” agendado para qua, 18/11 às 14:30.", e avisa quando o Google Meet criou o link.
+- Uma consulta nova começa como Consulta presencial.
+
+### Corrigido
+
+- **Escolher na agenda** mantém o contato vinculado quando o formulário volta.
+
+### Segurança
+
+- Semgrep e Gitleaks rodam em todo PR e em cada mudança da `develop`, como checks obrigatórios. O Semgrep usa as regras de segurança da comunidade fixadas num commit revisado, e o Gitleaks procura chaves, tokens e senhas em todo o histórico do Git. As duas ferramentas são grátis, rodam sem conta e não mandam métricas para fora.
+- A análise do SonarQube Cloud roda em todo PR, no plano grátis para código aberto. Ela começa quando o segredo `SONAR_TOKEN` estiver gravado (passo a passo em `docs/qa/varreduras-de-seguranca.md`). ⚠️ Pede uma conta no SonarQube Cloud.
+- A auditoria de segurança de cada ajuste passa a usar as skills `differential-review`, `sharp-edges` e `insecure-defaults` da Trail of Bits, fixadas por commit. O pentest com o Strix fica documentado e só roda com autorização do dono. ⚠️ Gasta créditos de IA.
+- O verificador de contatos dos agentes de IA ficava lento com texto hostil de terceiros: 60 mil caracteres levavam mais de um minuto de processamento. Agora a leitura cresce em linha reta com o tamanho do texto, nele e na guarda das respostas às Avaliações, e continua achando o contato no fim do texto.
+- A análise do SonarQube recebe o token num job que não roda código do PR nem das dependências, com o servidor fixado no workflow.
+- O token da fzap fica num cofre com chave própria do tipo, nunca volta para a tela e nenhum fluxo pode usá-lo. Criar ou mudar a credencial pede a senha recente e gera aviso de segurança; trocar o endereço pede o token de novo.
+- A senha de app fica cifrada, presa ao servidor e ao usuário, e nunca volta para a tela. Mudar para onde o e-mail sai pede a senha recente e gera aviso de segurança. Servidor com IP ou de rede interna é recusado, e a senha nunca sai antes do TLS.
+
+### Atualização
+
+- Migration 43: o índice `zur_agenda_record_contact` no registro do dia, para achar a última consulta de cada contato. Só acrescenta; nada a fazer.
+- A migration 44 cria a tabela do e-mail para pacientes. Nada muda nos dados que já existem.
+
 ## [0.52.0] - 2026-11-13
 
 Mesclada às 14:28 (UTC-3) · commit [`11f4d1e`](https://github.com/pablopfg/Zuri/commit/11f4d1e4ca01290fb166d9c27fd9da0ace3b7166) · Reúne 10 mudanças (#332, #331, #333, #334, #335, #337, #338, #339, #340, #342)
@@ -3466,7 +3523,8 @@ Mesclada às 22:15 (UTC-3) · commit [`360a79e`](https://github.com/pablopfg/Zur
   `npm audit`), CodeQL, Dependabot e rulesets para a `develop` e a `main`.
 - `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md` e `CONTRIBUTING.md`.
 
-[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.52.0...develop
+[Não lançado]: https://github.com/pablopfg/Zuri/compare/v0.53.0...develop
+[0.53.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.53.0
 [0.52.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.52.0
 [0.51.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.51.0
 [0.50.0]: https://github.com/pablopfg/Zuri/releases/tag/v0.50.0

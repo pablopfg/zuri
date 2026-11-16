@@ -1,3 +1,4 @@
+import { connect } from "cloudflare:sockets";
 import { type ChosenFallback, type ChosenModel, DEFAULT_CHAT_MODEL, DEFAULT_LOCALE, isPaidModel, MODEL_CATALOG_LIMITS, NO_FALLBACK_MODEL, isPasswordHash, isUsableSetupCode, type CrmAutomationPause as AutomationPause, type Locale, type MessageKey, type OutboxStopReason, PAID_PROVIDER_IDS, type PaidProviderId, paidProviderOf, type ProviderState, RECOVERY_LIMITS, RECOVERY_PATH, t, type UsageReport } from "@zuri/shared";
 import { Agent } from "agents";
 import { chooseChain, CircuitBreaker, MeteredAI, type PaidKeys, ProviderChain, paidKey, UsageMeter } from "../ai/index.ts";
@@ -57,11 +58,13 @@ import { McpMeaning } from "../mcp/meaning.ts";
 import { McpService, OAUTH_CALLBACK_PATH } from "../mcp/service.ts";
 import { developmentGoogle, developmentGoogleNetwork } from "../google/dev-google.ts";
 import { GoogleCalendar } from "../google/service.ts";
+import { ConfirmLinks } from "../google/confirm-links.ts";
 import { AgendaRecord } from "../google/record.ts";
 import { localToday } from "../google/events.ts";
 import { type ContactNotice, GoogleContacts } from "../google/contacts.ts";
 import { ReviewMatches } from "../reviews/matches.ts";
 import { ReviewRequests } from "../reviews/requests.ts";
+import { HomeSuggestionService, homeOrderAllowed } from "../home/suggestions.ts";
 import { ModelCatalogService } from "../ai/catalog.ts";
 import { developmentCatalog } from "../ai/dev-catalog.ts";
 import { type ReviewNotice, ReviewService } from "../reviews/service.ts";
@@ -70,6 +73,8 @@ import { ChatwootOwner } from "../chatwoot/owner-service.ts";
 import { chatwootHookPath, isChatwootHookToken } from "../gates/chatwoot-owner.ts";
 import { FlowConnections } from "../flows/connections.ts";
 import { developmentFlowNetwork } from "../flows/dev-flows.ts";
+import { developmentSmtp } from "../mail/dev-mail.ts";
+import { MailService } from "../mail/service.ts";
 import { SiteStates } from "../flows/monitor.ts";
 import { type FlowNotice, FlowService } from "../flows/service.ts";
 import { EXAMPLE_AUTOMATION } from "../crm/automations/example.ts";
@@ -150,8 +155,12 @@ interface Store {
   reviewMatches: ReviewMatches;
   /** Review requests and the link (PR S20). */
   reviewRequests: ReviewRequests;
+  /** The patient's confirmation link (E7a). */
+  confirmLinks: ConfirmLinks;
   /** The flows and the site monitor (step 22a). */
   flows: FlowService;
+  /** E-mail to patients (E6c). */
+  mail: MailService;
   /** The internal CRM (step 22b). */
   crm: CrmService;
   /** The CRM's automations (PR S18). */
@@ -166,6 +175,8 @@ interface Store {
   chatwootOwner: ChatwootOwner;
   /** The catalog of Workers AI models, checked once a day (PR S21). */
   modelCatalog: ModelCatalogService;
+  /** The home page's suggestions (PR S22). */
+  home: HomeSuggestionService;
 }
 
 /**
@@ -235,6 +246,7 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     aiMonths: () => this.store.usage.months(),
     paidConfigured: (provider) => this.paidConfigured(provider),
     modelCatalog: () => this.store.modelCatalog,
+    home: () => this.store.home,
     retryPaidProvider: (provider) => this.breaker().reset(provider),
     versions: () => readAreaVersions(this.store.db, this.store.usage.version),
     passwordSecretSet: () => this.passwordSecretSet(),
@@ -262,6 +274,13 @@ export class ZuriAgent extends Agent<WorkerEnv> {
     }),
     mcp: () => ({ service: this.store.mcp, auth: this.store.auth, automations: this.store.automations }),
     flows: () => ({ flows: this.store.flows, connections: this.store.flows.connections, auth: this.store.auth, development: () => this.development() }),
+    mail: () => ({
+      mail: this.store.mail,
+      auth: this.store.auth,
+      development: () => this.development(),
+      locale: () => this.locale(),
+      gmailConnect: (session) => this.store.google.begin(session, "gmail"),
+    }),
     chatwoot: () => ({ owner: this.store.chatwootOwner, auth: this.store.auth }),
     crm: () => ({ crm: this.store.crm, rearm: () => this.store.automations.rearm() }),
     crmAutomations: () => ({ automations: this.store.crmAutomations, auth: this.store.auth, rearm: () => this.store.automations.rearm() }),
@@ -280,7 +299,10 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           today: () => localToday(settings.field("timeZone"), new Date()),
           applySettings: (patch) => {
             zoneBefore = settings.field("timeZone");
+            // The team's WhatsApp reaches patients (E7a): a backup that changes it alerts like PATCH /settings.
+            const whatsapp = patch.clinic !== undefined && patch.clinic.whatsapp !== settings.field("clinic").whatsapp;
             settings.update(patch);
+            if (whatsapp) auth.events.record("clinic_whatsapp_changed", null, { alert: true });
             return Object.keys(patch).length;
           },
         },
@@ -301,10 +323,13 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       reviews: this.store.reviews,
       record: this.store.agendaRecord,
       reviewRequests: this.store.reviewRequests,
+      confirmLinks: this.store.confirmLinks,
       reviewMatches: this.store.reviewMatches,
       auth: this.store.auth,
+      gmailGranted: () => this.store.mail.useGmailIfNone(),
       timeZone: () => this.store.settings.field("timeZone"),
       agendaHours: () => this.store.settings.field("agenda"),
+      clinic: () => this.store.settings.field("clinic"),
       rearm: () => this.store.automations.rearm(),
     }),
     telegram: () => ({
@@ -1005,6 +1030,20 @@ export class ZuriAgent extends Agent<WorkerEnv> {
         secret: () => env.PASSWORD_PEPPER,
         notify: (notice) => alerts.raise({ kind: notice.kind, category: "system", priority: "normal", link: "/avaliacoes/pedidos", source: null, params: { count: notice.count } }),
       });
+      // The patient's confirmation link (E7a): the answer changes the event's color and reaches the bell.
+      const confirmLinks = new ConfirmLinks({
+        db,
+        google: () => google,
+        timeZone: () => settings.field("timeZone"),
+        locale: () => this.locale(),
+        clinic: () => settings.field("clinic"),
+        publicUrl: () => this.publicUrl(),
+        credentialKey: env.MCP_CREDENTIAL_KEY,
+        secret: () => env.PASSWORD_PEPPER,
+        lockdown: () => auth.lockdown.active(),
+        notify: (notice) =>
+          alerts.raise({ kind: `agenda.${notice.kind}`, category: "events", priority: "normal", link: "/agenda", source: null, params: { name: notice.name, when: notice.when } }),
+      });
       // The flows (step 22a): only the screen changes them; their calls go only to the connections the owner registered.
       const flowFetch = ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init)) as typeof fetch;
       const flows = new FlowService(
@@ -1027,6 +1066,23 @@ export class ZuriAgent extends Agent<WorkerEnv> {
       );
       // Local development never reaches a real site (src/flows/dev-flows.ts).
       if (this.development()) flows.network = developmentFlowNetwork(flows.network);
+      // E-mail to patients (E6c): the owner's Gmail or an SMTP server, over the Workers' TCP sockets.
+      const mail = new MailService(
+        {
+          db,
+          credentialKey: env.MCP_CREDENTIAL_KEY,
+          google: () => google,
+          // The address the first access stored (or OWNER_EMAIL of an older installation).
+          ownerEmail: () => auth.ownerEmail(),
+          timeZone: () => settings.field("timeZone"),
+          clinicName: () => settings.field("clinic").name,
+          development: () => this.development(),
+          lockdown: () => auth.lockdown.active(),
+        },
+        { connect: (address, options) => connect(address, options), resolve: flows.network.resolve },
+      );
+      // Local development never reaches a real mail server (src/mail/dev-mail.ts).
+      if (this.development()) mail.network = { connect: developmentSmtp(mail.network.connect), resolve: flows.network.resolve };
       // The owner's conversation with Zuri in the Chatwoot: the flows' network and vault, the same runner and turns as Telegram.
       const ownerNetwork = this.development()
         ? developmentOwnerNetwork(flows.network, (address, raw, headers) => {
@@ -1250,7 +1306,27 @@ export class ZuriAgent extends Agent<WorkerEnv> {
           alerts.raise({ kind, category: "system", priority: "normal", link: "/configuracoes/modelos", source: null, params });
         },
       });
-      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, flows, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog };
+      // The home page's suggestions (PR S22): rules over the day; the AI only orders ids, once a day, with room to spare.
+      const home = new HomeSuggestionService({
+        db,
+        state,
+        timeZone: () => settings.field("timeZone"),
+        review: () => reviews.firstWaiting(),
+        // Local development answers with the stand-in model, which can't order anything: no call, and the
+        // day's request count (the usage card) stays what the owner did.
+        ai: () =>
+          !this.development() &&
+          homeOrderAllowed({
+            lockdown: auth.lockdown.active(),
+            paidModel: isPaidModel(this.chosenModel("aiModel")) || isPaidModel(this.chosenModel("aiFallbackModel")),
+            roomNeurons: usage.room(this.aiLimits()).neurons,
+          })
+            ? this.ai()
+            : null,
+        settings: () => agents.settings("home_order"),
+        background: (work) => void this.keepAliveWhile(work),
+      });
+      this.#store = { db, settings, auth, productivity, memories, usage, conversations, actions, plans, automations, alerts, watchers, diagnostics, push, telegram, telegramConversation, semantic, mcp, google, contacts, reviews, agendaRecord, reviewMatches, reviewRequests, confirmLinks, flows, mail, crm, crmAutomations, outbox, agents, backupAuto, chatwootOwner, modelCatalog, home };
     }
     return this.#store;
   }

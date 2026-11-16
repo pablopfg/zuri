@@ -11,7 +11,7 @@
  * `repetition_penalty` are left out on purpose.
  */
 
-export const AGENT_IDS = ["chat", "summary", "flow_ai", "review_draft", "review_check", "routine_check"] as const;
+export const AGENT_IDS = ["chat", "summary", "flow_ai", "review_draft", "review_check", "routine_check", "home_order"] as const;
 export type AgentId = (typeof AGENT_IDS)[number];
 
 export interface AgentProfile {
@@ -46,6 +46,8 @@ export const AGENT_PROFILES: Readonly<Record<AgentId, AgentProfile>> = {
   review_draft: { temperature: 0.2, topP: null, maxOutputTokens: 320, maxOutputRange: { min: 200, max: 600 }, ownerPrompt: true, sampling: true },
   review_check: { temperature: 0, topP: null, maxOutputTokens: 120, maxOutputRange: { min: 60, max: 300 }, ownerPrompt: false, sampling: false },
   routine_check: { temperature: 0, topP: null, maxOutputTokens: 120, maxOutputRange: { min: 60, max: 300 }, ownerPrompt: false, sampling: false },
+  // PR S22: orders the home page's suggestions once a day. Ids only, so the prompt is all rules.
+  home_order: { temperature: 0, topP: null, maxOutputTokens: 80, maxOutputRange: { min: 60, max: 160 }, ownerPrompt: false, sampling: false },
 };
 
 /** What one call of an agent uses: the code's defaults, or the owner's saved version (PR 2). */

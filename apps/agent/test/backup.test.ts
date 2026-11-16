@@ -354,8 +354,46 @@ describe("import", () => {
     }
   });
 
+  it("SEC-E7a-01: a backup that changes the team's WhatsApp raises the same security alert as the screen; the same number raises none", async () => {
+    const before = await inOwner((agent) => agent.store.settings.get().clinic);
+    const clinic = { name: "Consultório Exemplo", whatsapp: "41988887777", address: "Rua das Flores, 120", city: "Curitiba, PR" };
+    const alerts = () => inOwner((agent) => agent.store.db.all(`SELECT id FROM zur_auth_events WHERE kind = 'clinic_whatsapp_changed'`).length);
+    try {
+      await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_auth_events WHERE kind = 'clinic_whatsapp_changed'`));
+      await ok(session("POST", "/backup/import", backup({ settings: { clinic } })));
+      expect(await inOwner((agent) => agent.store.settings.get().clinic.whatsapp)).toBe("41988887777");
+      expect(await alerts()).toBe(1);
+      await ok(session("POST", "/backup/import", backup({ settings: { clinic: { ...clinic, name: "Outro nome" } } })));
+      expect(await alerts()).toBe(1);
+    } finally {
+      await inOwner((agent) => agent.store.settings.update({ clinic: before }));
+    }
+  });
+
   it("the record of the day goes in the file and comes back, and a day already closed here is never changed", async () => {
-    const event = (title: string) => ({ id: "ev1", calendarId: "dono@exemplo.com.br", title, start: "2026-10-30T13:00:00.000Z", end: "2026-10-30T14:00:00.000Z", allDay: false, location: "", description: "Consulta | Consultório", etag: '"ev1-1"', recurring: false, guests: 0, colorId: "", shared: false });
+    // SEC-E5e-01: an appointment with the patient's fields and a Meet call stays in the file (it was left out whole).
+    const event = (title: string) => ({
+      id: "ev1",
+      calendarId: "dono@exemplo.com.br",
+      title,
+      start: "2026-10-30T13:00:00.000Z",
+      end: "2026-10-30T14:00:00.000Z",
+      allDay: false,
+      location: "",
+      description: "Consulta | Online",
+      etag: '"ev1-1"',
+      recurring: false,
+      guests: 0,
+      colorId: "",
+      shared: false,
+      country: "BR",
+      phone: "41999990000",
+      email: "ana@exemplo.com.br",
+      payment: "paid",
+      meet: "https://meet.google.com/abc-defg-hij",
+      // E5f: the link to a contact is part of the day's record too.
+      contact: "people/c1",
+    });
     const close = (day: string, title: string) =>
       inOwner((agent) => {
         const { db } = agent.store;
@@ -382,6 +420,11 @@ describe("import", () => {
     // A bad day refuses the whole file.
     const bad = { ...file, data: { ...file.data, agendaRecord: [{ day: "30/10/2026", closedAt: "2026-10-30T03:00:05.000Z", events: [] }] } };
     expect((await session("POST", "/backup/import", bad)).status).toBe(400);
+    // SEC-E5e-01: a patient's field out of shape refuses the whole file, as a bad time does.
+    for (const wrong of [{ country: "ZZ" }, { phone: "12" }, { email: "ana@" }, { payment: "owed" }, { meet: "https://meet.exemplo.com.br/x" }, { contact: "people/<b>" }]) {
+      const broken = { ...file, data: { ...file.data, agendaRecord: [{ day: "2026-10-29", closedAt: "2026-10-30T03:00:05.000Z", events: [{ ...event("Ana Souza"), ...wrong }] }] } };
+      expect((await session("POST", "/backup/import", broken)).status, JSON.stringify(wrong)).toBe(400);
+    }
     // SEC-E5b-04: a copy whose time the Agenda can't read refuses the whole file too.
     for (const start of ["x", "2026-02-30", "2026-10-30T25:00:00.000Z"]) {
       const broken = { ...file, data: { ...file.data, agendaRecord: [{ day: "2026-10-29", closedAt: "2026-10-30T03:00:05.000Z", events: [{ ...event("Ana Souza"), start }] }] } };

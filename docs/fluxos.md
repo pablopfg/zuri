@@ -116,9 +116,18 @@ segundos, padrão 30 a 60, sorteada a cada envio) e **mensagem a uma pessoa** (d
 nunca usa uma credencial do Chatwoot: mensagem a paciente só sai pelas
 automações, com texto e destino escritos no código.
 
+**fzap (Pix pelo WhatsApp).** O terceiro tipo guarda a instância da fzap que vai
+mandar o Pix pelo WhatsApp. Preencha o endereço https da instância (só o
+domínio, sem caminho) e o token **da instância**, não o de administrador nem o
+de pasta. A Zuri usa só o envio de Pix e o estado da sessão; nenhum fluxo usa
+essa credencial. O envio do Pix chega com "Enviar Pix" na Agenda.
+
 **Testar**, no menu **Mais opções**, faz só uma leitura: num serviço, chama o
 primeiro caminho com GET (se GET é permitido); no Chatwoot, conta as caixas que
-a chave enxerga. Até 5 testes por minuto por credencial.
+a chave enxerga; na fzap, lê o estado da sessão (`GET /session/status`) e diz se
+a instância está conectada e em qual modo. O Pix só funciona no modo WhatsApp
+Web: no modo Cloud API, a fzap não envia Pix. Até 5 testes por minuto por
+credencial.
 
 Criar e mudar uma credencial pede a senha recente; mudar só as esperas do
 Chatwoot não pede, mas fica na atividade. Mudar o endereço, a conta ou o tipo

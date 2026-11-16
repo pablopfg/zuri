@@ -411,7 +411,7 @@ Retome o modo contínuo: marque "Situação: ligado" em .claude/memoria/progress
 
 **Pentest completo** (fim de fase, antes do primeiro deploy ou quando quiser)
 ```text
-Rode o passe completo de pentest do Zuri (docs/qa/pentest.md, todas as áreas A1 a A13) na develop atual: um subagente auditor-seguranca por grupo de áreas, em paralelo (até 6), mais revisor-cloudflare, /security-review e cloudflare-security-audit:security-audit no modo completo. Confirme cada achado no código, escreva o ataque como teste SEC-<área>-<nn>, corrija em PRs pequenas para develop (uma por área) e grave o relatório em docs/qa/auditorias/. Achado crítico, alto ou médio: pare e me chame antes de publicar o passo a passo.
+Rode o passe completo de pentest do Zuri (docs/qa/pentest.md, todas as áreas A1 a A13) na develop atual: um subagente auditor-seguranca por grupo de áreas, em paralelo (até 6), mais revisor-cloudflare, /security-review, cloudflare-security-audit:security-audit no modo completo, /insecure-defaults:audit no repositório inteiro e as varreduras bash scripts/seguranca/semgrep.sh e gitleaks.sh (docs/qa/varreduras-de-seguranca.md); o Strix só se eu autorizar a rodada. Confirme cada achado no código, escreva o ataque como teste SEC-<área>-<nn>, corrija em PRs pequenas para develop (uma por área) e grave o relatório em docs/qa/auditorias/. Achado crítico, alto ou médio: pare e me chame antes de publicar o passo a passo.
 ```
 
 **Revisar um PR antes de mesclar**

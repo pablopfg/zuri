@@ -80,8 +80,10 @@ volta.
   agora; salvar sincroniza na hora.
 - **Sincronização.** A linha no alto diz quando foi a última conferência e
   conta o tempo até a próxima. **Sincronizar agora** vale uma vez por minuto.
-- **Ficha.** Quatro atalhos: **Perguntar à Zuri** (abre a Conversa com a
-  pergunta escrita; você envia), **Ligar**, **WhatsApp** e **E-mail**. O
+- **Ficha.** Cinco atalhos: **Perguntar à Zuri** (abre a Conversa com a
+  pergunta escrita; você envia), **Agendar** (abre a Agenda com a consulta
+  pronta; veja [Google Agenda](google-agenda.md)), **Ligar**, **WhatsApp** e
+  **E-mail**. O
   WhatsApp só aparece para celular do Brasil; telefone fixo mostra "Sem
   celular". Abaixo, **O que a Zuri sabe** traz até três memórias que citam o
   nome, e **Dados** mostra o que o Google tem, em grupos: nome, telefone,

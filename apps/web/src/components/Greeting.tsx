@@ -28,11 +28,11 @@ function useNow(timeZone: string): Date {
 /**
  * The home page's title: the day, good morning, afternoon or evening by the owner's
  * clock (their zone, not the device's), with their name when they gave one,
- * and a line in the agent's voice that changes every day.
+ * and a line in the agent's voice that changes every day, or the day's summary when it has one.
  */
 // The placeholder comes from the page: importing ui.tsx here would make the bundler split it
 // out of the first load into a shared chunk (armadilhas.md, "Pacote da interface").
-export function Greeting({ placeholder }: { placeholder: ReactNode }) {
+export function Greeting({ placeholder, summary }: { placeholder: ReactNode; summary?: string | null }) {
   const { t, locale, timeZone } = useI18n();
   // Same query as the session's: already in memory, no second request.
   const settings = useQuery({ queryKey: SETTINGS_KEY, queryFn: () => api<Settings>("/settings"), staleTime: 5 * 60_000 });
@@ -52,7 +52,12 @@ export function Greeting({ placeholder }: { placeholder: ReactNode }) {
     <header className="mb-5 motion-safe:animate-rise">
       <p className="mb-1.5 text-sm font-medium text-fg-muted first-letter:uppercase">{date}</p>
       <h1 className="text-3xl leading-tight font-semibold tracking-tight break-words md:text-4xl">{name ? t(titles.named, { name }) : t(titles.plain)}</h1>
-      {lineKey && <p className="mt-2.5 max-w-[56ch] text-lg text-fg-muted">{t(lineKey)}</p>}
+      {/* The day in one line when it has something (PR S22), otherwise the agent's line of the day. */}
+      {summary ? (
+        <p className="mt-2.5 max-w-[56ch] text-lg text-fg-muted">{summary}</p>
+      ) : (
+        lineKey && <p className="mt-2.5 max-w-[56ch] text-lg text-fg-muted">{t(lineKey)}</p>
+      )}
     </header>
   );
 }

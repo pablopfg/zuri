@@ -184,6 +184,8 @@ export interface ContactDetail extends ContactSummary {
   sameName: number;
   /** The contact in Google Contacts. */
   googleUrl: string;
+  /** Its `resourceName` at Google ("people/c1"), which an appointment keeps as its link (E5g). */
+  resource: string;
 }
 
 /** GET /api/contacts */
@@ -236,3 +238,24 @@ export const APPOINTMENT_LIMITS = {
   typeMax: 40,
   placeMax: 60,
 } as const;
+
+/** A person the Agenda's name field offers (E5f): what tells homonyms apart, and the last appointment. */
+export interface BookingPerson {
+  id: string;
+  /** Its `resourceName` at Google, which the appointment keeps as its link. */
+  resource: string;
+  name: string;
+  /** As Google keeps it; "" when the contact has none. */
+  phone: string;
+  email: string;
+  /** "YYYY-MM-DD", "MM-DD" without the year, or "". */
+  birthday: string;
+  /** The day of the last appointment recorded, "YYYY-MM-DD", or "". */
+  lastVisit: string;
+}
+
+/** `GET /api/contacts?for=booking`: at most six people, and how many contacts have the very name typed. */
+export interface BookingPage {
+  people: BookingPerson[];
+  same: number;
+}

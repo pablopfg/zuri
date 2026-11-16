@@ -1,6 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type AgendaEvent,
+  type BookingPerson,
+  type ContactAppointments,
+  type ContactDetail,
   type AgendaPage as AgendaWindow,
   type AgendaPrefs,
   type AppointmentProblem,
@@ -10,19 +13,24 @@ import {
   dayPlus,
   dayClosure,
   outsideHours,
+  EVENT_PAYMENTS,
   EVENT_STATUS_COLOR,
   EVENT_STATUSES,
+  type EventPayment,
   type EventStatus,
   GOOGLE_LIMITS,
   type GoogleCalendarInfo,
+  HOME_COUNTRY,
   type GoogleStatus,
   type MessageKey,
   type NationalHoliday,
   nationalHoliday,
+  CONTACT_RESOURCE,
   ptBRAgenda,
   type Settings,
+  zonedParts,
 } from "@zuri/shared";
-import { CalendarDays, CalendarOff, CalendarPlus, ChevronLeft, ChevronRight, Flag, MapPin, Palette, Pencil, RefreshCw, Repeat, Tag, Trash2, TriangleAlert, Users } from "lucide-react";
+import { CalendarDays, CalendarOff, CalendarPlus, ChevronLeft, ChevronRight, Copy, Flag, MapPin, Palette, Pencil, RefreshCw, Repeat, Tag, Trash2, TriangleAlert, User, Users, Video, Wallet } from "lucide-react";
 import {
   type CSSProperties,
   type FormEvent,
@@ -39,7 +47,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { useToast } from "../../components/Toaster.tsx";
 import { Button, cn, Dialog, EmptyState, ErrorNotice, Loading, Notice, PageHeader, SelectField, TextAreaField, TextField } from "../../components/ui.tsx";
 import { SETTINGS_KEY } from "../../hooks/session.tsx";
@@ -49,7 +57,6 @@ import {
   blankForm,
   changedFields,
   type DayBlock,
-  DURATIONS,
   dayEvents,
   daysOf,
   EVENT_COLORS,
@@ -57,13 +64,15 @@ import {
   eventDays,
   eventLook,
   eventsOn,
-  type FormProblem,
   formAt,
   formBody,
   formLength,
   formOf,
   GOOGLE_STATUS_KEY,
+  isDate,
   isFrozen,
+  isTime,
+  later,
   isWeekend,
   localDate,
   localTime,
@@ -77,12 +86,16 @@ import {
   viewRange,
   withoutType,
 } from "../../lib/agenda.ts";
+import { emailFits, KINDS, kindList, kindOf, maskPhone, type Place, patientBody, patientChanges, phoneFits, phoneText, placeOf, typeOf } from "../../lib/agenda-fields.ts";
 import { applyChanges, clashes, type EventChanges, moveSlot, reschedules, resizeSlot, type Slot, STEP_MIN, slotChanges, slotOf, slotTimes } from "../../lib/agenda-edit.ts";
-import { bookedOn, dayRefusal, freeStarts, hhmm, isAppointment, nextFree, slotProblem } from "../../lib/agenda-rules.ts";
+import { bookedOn, dayRefusal, firstBooking, freeStarts, hhmm, isAppointment, nextFree, slotProblem } from "../../lib/agenda-rules.ts";
 import { ApiError, api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
 import { play } from "../../lib/sounds.ts";
 import { EVENTS_KEY, lostGoogle, useEventChanges } from "./changes.ts";
+import { CountryField, DateField, TimeField } from "./AppointmentFields.tsx";
+import { ConfirmBox } from "./ConfirmBox.tsx";
+import { fold, LinkedPatient, type LinkedPerson, linkedOf, NameHint, PatientLine, PatientNameField, usePeople } from "./PatientLink.tsx";
 import { SyncSignal, syncKind } from "./SyncSignal.tsx";
 
 // This screen's pt-BR texts travel with its code, not in the first bundle (rule P11).
@@ -107,11 +120,34 @@ const NEW_STEP_MIN = 30;
 
 type T = ReturnType<typeof useI18n>["t"];
 const VIEW_TEXT: Record<AgendaView, Parameters<T>[0]> = { day: "web.agenda.view.day", week: "web.agenda.view.week", month: "web.agenda.view.month" };
-const PROBLEM_TEXT: Record<FormProblem, Parameters<T>[0]> = {
+/** What the form asks to fix, each under its field (protótipo v52). */
+type Problem = "title" | "name" | "day" | "start" | "endTime" | "end" | "kind" | "phone" | "email" | "twins" | "phoneNeeded";
+
+const PROBLEM_TEXT: Record<Problem, Parameters<T>[0]> = {
   title: "web.agenda.form.error.title",
-  date: "web.agenda.form.error.date",
-  end: "web.agenda.form.error.end",
+  name: "web.agenda.form.error.name",
+  day: "web.agenda.form.error.day",
+  start: "web.agenda.form.error.start",
+  endTime: "web.agenda.form.error.endTime",
+  end: "web.agenda.form.error.endAfter",
+  kind: "web.agenda.form.error.kind",
+  phone: "web.agenda.form.error.phone",
+  email: "web.agenda.form.error.email",
+  twins: "web.agenda.form.error.twins",
+  phoneNeeded: "web.agenda.form.error.phoneNeeded",
 };
+
+/** The field a problem points at, when it is not its own name (E5f). */
+const PROBLEM_FIELD: Partial<Record<Problem, string>> = { twins: "name", phoneNeeded: "phone" };
+
+const PAYMENT_TEXT: Record<EventPayment, Parameters<T>[0]> = {
+  unpaid: "web.agenda.payment.unpaid",
+  paid: "web.agenda.payment.paid",
+  free: "web.agenda.payment.free",
+};
+
+/** The type list's "Outro, digitar". */
+const OTHER_KIND = "\u0000other";
 
 const STATUS_TEXT: Record<EventStatus, Parameters<T>[0]> = {
   scheduled: "web.agenda.status.scheduled",
@@ -288,9 +324,41 @@ function useNow(): number {
 const eventsKey = (from: string, to: string) => [...EVENTS_KEY, from, to] as const;
 
 /** `plain`: a personal event, offered when a closed hour refused an appointment: it starts without a type. */
-type Editing = { mode: "new"; day: string; time?: string; minutes?: number; plain?: boolean; form?: EventForm } | { mode: "edit"; event: AgendaEvent };
+type Editing = { mode: "new"; day: string; time?: string; minutes?: number; plain?: boolean; form?: EventForm; from?: From } | { mode: "edit"; event: AgendaEvent; link?: boolean };
+/**
+ * "Agendar" on a contact's card (E5g): the contact the form came from (Cancelar goes back to it), the line
+ * under the title, and either the contact, already linked, or a note to write the name it lacks at Google.
+ * "Escolher na agenda" keeps it, and the contact picked in the form, while the form is put away.
+ */
+type From = { contactId?: string; sub?: string; person?: LinkedPerson; note?: string };
 /** "Escolher na agenda" (protótipo v52): the form put away while the owner taps a day and an hour. */
-type Picking = { form: EventForm };
+type Picking = { form: EventForm; from: From };
+/**
+ * The contact's card under the key of the Contacts screen (`contactKey` of lib/contacts.ts), so a card just seen
+ * comes from the cache. Written here: importing that module would add a file to the Agenda's first load (P11).
+ */
+const contactKey = (id: string) => ["contacts", "one", id] as const;
+/** `?agendar=<id>`: only an id of the copy of Contacts counts. */
+const CONTACT_ID = /^[0-9a-f-]{36}$/;
+/** What the form keeps while put away: where it came from, and the contact picked now (none once unlinked). */
+function withPerson(from: From | undefined, person: LinkedPerson | null): From {
+  const { person: _, ...rest } = from ?? {};
+  return person ? { ...rest, person } : rest;
+}
+/** QA-E5g-04: the field is "Celular": a Brazilian mobile number first (11 digits, the third a 9), else the first phone. */
+function mobileOf(phones: readonly { value: string }[]): string {
+  const mobile = phones.find((phone) => {
+    const digits = phone.value.replace(/\D/g, "").replace(/^55(?=\d{11}$)/, "");
+    return digits.length === 11 && digits[2] === "9";
+  });
+  return (mobile ?? phones[0])?.value ?? "";
+}
+
+/** The owner's minute of the day of an instant. */
+const minuteOf = (iso: string, timeZone: string) => {
+  const parts = zonedParts(new Date(iso), timeZone);
+  return parts.hour * 60 + parts.minute;
+};
 /** A refusal of the form: why, the field it points at, the hour asked and the next free one. */
 type FormRefusal = { text: string; field: "date" | "start" | "end"; day: string; minute: number; next: { day: string; start: number } | null };
 /** An hour that takes no appointment, clicked: why, and the next free one. */
@@ -436,7 +504,7 @@ export function AgendaPage() {
       const problem = picking.form.type ? slotProblem({ prefs, events: all, day, start: minute, end: minute + length, now: Date.now(), timeZone }) : null;
       if (!problem) {
         setPicking(null);
-        return setEditing({ mode: "new", day, form: formAt(picking.form, day, time) });
+        return setEditing({ mode: "new", day, form: formAt(picking.form, day, time), from: picking.from });
       }
       if (settings.data?.sounds.notice !== false) play(REFUSAL_NOTES);
       return setClosedHour({ day, minute, why: problemText(problem, day), next: nextFree({ prefs, events: all, day, minute, until: to, now: Date.now(), timeZone, length }) });
@@ -474,6 +542,79 @@ export function AgendaPage() {
     window.addEventListener(NEW_EVENT, start);
     return () => window.removeEventListener(NEW_EVENT, start);
   }, [canCreate, timeZone]);
+
+  // "Agendar" on a contact's card (E5g, protótipo v52): the form opens with the contact and the first free hour.
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const asked = params.get("agendar");
+  const booking = asked !== null && CONTACT_ID.test(asked) ? asked : null;
+  const thisMonth = today.slice(0, 7);
+  const nextMonth = dayPlus(`${thisMonth}-28`, 7).slice(0, 7);
+  const bookingOn = !!booking && ready && !!prefs && canCreate;
+  const months = [useMonthEvents(thisMonth, prefs?.weekStart, bookingOn), useMonthEvents(nextMonth, prefs?.weekStart, bookingOn)];
+  const bookCard = useQuery({
+    queryKey: contactKey(booking ?? ""),
+    queryFn: ({ signal }) => api<{ contact: ContactDetail }>(`/contacts/${encodeURIComponent(booking ?? "")}`, { signal }),
+    enabled: !!booking,
+    retry: false,
+  });
+  const bookNext = useQuery({
+    queryKey: [...contactKey(booking ?? ""), "appointments"],
+    queryFn: ({ signal }) => api<ContactAppointments>(`/contacts/${encodeURIComponent(booking ?? "")}/appointments`, { signal }),
+    enabled: !!booking && !!bookCard.data,
+    retry: false,
+  });
+  const shortDay = useShortDay();
+  const booked = useRef<string | null>(null);
+  useEffect(() => {
+    if (asked === null) return;
+    const drop = () => setParams((old) => {
+      const left = new URLSearchParams(old);
+      left.delete("agendar");
+      return left;
+    }, { replace: true });
+    if (!booking) return drop();
+    if (booked.current === booking) return;
+    const noCalendar = !!status.data && !!settings.data && (!ready || (!!events.data && !canCreate));
+    // QA-E5g-01: a reading that failed never opens a form that says "first free hour" or leaves out the one ahead.
+    const failed = bookCard.isError || bookNext.isError || months.some((month) => month.isError);
+    if (failed || noCalendar) {
+      booked.current = booking;
+      drop();
+      const gone = bookCard.error instanceof ApiError && bookCard.error.status === 404;
+      toast(t(gone ? "web.agenda.book.gone" : noCalendar ? "web.agenda.book.noCalendar" : "web.agenda.book.failed"), { failed: true });
+      return;
+    }
+    if (!prefs || !bookCard.data || !bookingOn || months.some((month) => month.isPending) || bookNext.isPending) return;
+    booked.current = booking;
+    const contact = bookCard.data.contact;
+    const slot = firstBooking({ prefs, events: months.flatMap((month) => month.data?.events ?? []), until: viewRange("month", `${nextMonth}-01`, prefs.weekStart).to, now: Date.now(), timeZone });
+    const name = contact.name.trim();
+    // A contact with no name at Google is not linked: the title of the event is the name (protótipo v52). The same
+    // test as `isNamed` of the Contacts screen, written here so the Agenda does not load that screen's module (P11).
+    // A resourceName out of the shape the server keeps (SEC review of E5g) is not linked either.
+    const named = name !== "" && name !== contact.phone && name !== contact.email && CONTACT_RESOURCE.test(contact.resource);
+    const at = { day: shortDay(slot.day), time: hhmm(slot.start) };
+    const next = bookNext.data?.next;
+    const kind = next ? next.type || KINDS[0] : "";
+    const ahead = !next
+      ? ""
+      : next.allDay
+        ? t("web.agenda.book.nextDay", { type: kind, day: shortDay(next.start.slice(0, 10)) })
+        : t("web.agenda.book.next", { type: kind, day: shortDay(localDate(next.start, timeZone)), time: hhmm(minuteOf(next.start, timeZone)) });
+    const sub = [named ? t("web.agenda.book.from", { name, ...at }) : t("web.agenda.book.fromNoName", at), ahead].filter(Boolean).join(" ");
+    const blank = blankForm(slot.day, (writable.find((c) => c.primary) ?? writable[0])?.id ?? "", timeZone, Date.now(), at.time);
+    const own = named ? { title: name, contact: contact.resource } : { phone: mobileOf(contact.phones), email: contact.emails[0]?.value ?? "" };
+    drop();
+    go(slot.day);
+    if (view === "month") setChosen("week");
+    setEditing({
+      mode: "new",
+      day: slot.day,
+      form: { ...blank, type: typeOf(KINDS[0], "Consultório"), ...own },
+      from: { contactId: contact.id, sub, ...(named ? { person: linkedOf(contact) } : { note: t("web.agenda.book.noName") }) },
+    });
+  });
 
   const header = (
     <PageHeader
@@ -648,9 +789,9 @@ export function AgendaPage() {
         onNote={note}
         // Only while the details still show that event: closed, or on another one, the answer changes nothing here.
         onChange={(saved) => setOpen((old) => (old && eventKey(old) === eventKey(saved) ? saved : old))}
-        onEdit={(event) => {
+        onEdit={(event, link) => {
           setOpen(null);
-          setEditing({ mode: "edit", event });
+          setEditing(link ? { mode: "edit", event, link: true } : { mode: "edit", event });
         }}
       />
       {editing && (
@@ -667,9 +808,9 @@ export function AgendaPage() {
           // A phone shows the day as a list, with no hour to tap: there the calendar is the way.
           onPick={
             wide
-              ? (form) => {
+              ? (form, from) => {
                   setEditing(null);
-                  setPicking({ form });
+                  setPicking({ form, from });
                   // The month has no hours to tap: the week has.
                   if (view === "month") setChosen("week");
                 }
@@ -677,6 +818,8 @@ export function AgendaPage() {
           }
           onCreated={note}
           onClose={() => setEditing(null)}
+          // QA-E5g-08: in place of the Agenda's entry, so the browser's Voltar never passes by an empty Agenda.
+          onBack={(contactId) => navigate(`/contatos/${encodeURIComponent(contactId)}`, { replace: true, state: { focus: "agendar" } })}
         />
       )}
       {/* Room under the grid, so the last hours can scroll out from under the band. */}
@@ -690,7 +833,7 @@ export function AgendaPage() {
           <Button
             variant="secondary"
             onClick={() => {
-              setEditing({ mode: "new", day: picking.form.startDate, form: picking.form });
+              setEditing({ mode: "new", day: picking.form.startDate, form: picking.form, from: picking.from });
               setPicking(null);
             }}
           >
@@ -706,7 +849,7 @@ export function AgendaPage() {
             setClosedHour(null);
             if (picking) {
               // The form typed so far, as a personal event at the hour tapped.
-              setEditing({ mode: "new", day: closedHour.day, form: { ...formAt(picking.form, closedHour.day, hhmm(closedHour.minute)), type: "" } });
+              setEditing({ mode: "new", day: closedHour.day, form: { ...formAt(picking.form, closedHour.day, hhmm(closedHour.minute)), type: "" }, from: picking.from });
               setPicking(null);
             } else setEditing({ mode: "new", day: closedHour.day, time: hhmm(closedHour.minute), plain: true });
           }}
@@ -715,7 +858,7 @@ export function AgendaPage() {
             go(next.day);
             if (closedHour.moving) moveTo(closedHour.moving.event, { day: next.day, start: next.start, end: next.start + closedHour.moving.length });
             else if (picking) {
-              setEditing({ mode: "new", day: next.day, form: formAt(picking.form, next.day, hhmm(next.start)) });
+              setEditing({ mode: "new", day: next.day, form: formAt(picking.form, next.day, hhmm(next.start)), from: picking.from });
               setPicking(null);
             } else setEditing({ mode: "new", day: next.day, time: hhmm(next.start) });
           }}
@@ -1640,7 +1783,8 @@ function EventDialog({
   onSend: () => void;
   /** The event as Google answered after a change of status: the dialog stays open on it, with the new version. */
   onChange: (event: AgendaEvent) => void;
-  onEdit: (event: AgendaEvent) => void;
+  /** `link`: "Vincular", which opens the form with the list of Contacts (E5f). */
+  onEdit: (event: AgendaEvent, link?: boolean) => void;
   /** A line in "Últimas mudanças" of the sync signal: what happened, and whether it reached Google. */
   onNote: (text: string, ok: boolean) => void;
 }) {
@@ -1760,20 +1904,38 @@ function EventDialog({
                 </span>
               </Detail>
             )}
-            {event.location && (
-              <Detail icon={<MapPin className="h-4 w-4" />} label={t("web.agenda.event.location")}>
-                {event.location}
-              </Detail>
-            )}
-            {type && (
-              <Detail icon={<Tag className="h-4 w-4" />} label={t("web.agenda.form.type")}>
-                {type}
-              </Detail>
-            )}
-            {rest && (
-              <Detail icon={<span className="block h-4 w-4" />} label={t("web.agenda.event.description")}>
-                <p className="whitespace-pre-line text-fg-muted">{rest}</p>
-              </Detail>
+            {type ? (
+              <>
+                <Detail icon={<Tag className="h-4 w-4" />} label={t("web.agenda.form.kind")}>
+                  {kindOf(type)}
+                </Detail>
+                <AppointmentPlace event={event} place={placeOf(type)} />
+                <Detail icon={<User className="h-4 w-4" />} label={t("web.agenda.event.patient")}>
+                  <PatientLine event={event} onLink={editable && !event.contactId ? () => onEdit(event, true) : undefined} />
+                </Detail>
+                <Detail icon={<Wallet className="h-4 w-4" />} label={t("web.agenda.event.payment")}>
+                  {t(PAYMENT_TEXT[event.payment ?? "unpaid"])}
+                </Detail>
+                <Detail icon={<span className="block h-4 w-4" />} label={t("web.agenda.event.googleNote")}>
+                  <p className="whitespace-pre-line text-fg-muted">
+                    <span className="tabular-nums">{type}</span>
+                    {rest && `\n${rest}`}
+                  </p>
+                </Detail>
+              </>
+            ) : (
+              <>
+                {event.location && (
+                  <Detail icon={<MapPin className="h-4 w-4" />} label={t("web.agenda.event.location")}>
+                    {event.location}
+                  </Detail>
+                )}
+                {rest && (
+                  <Detail icon={<span className="block h-4 w-4" />} label={t("web.agenda.event.description")}>
+                    <p className="whitespace-pre-line text-fg-muted">{rest}</p>
+                  </Detail>
+                )}
+              </>
             )}
             {event.recurring && (
               <Detail icon={<Repeat className="h-4 w-4" />} label={t("web.agenda.event.recurring")}>
@@ -1786,6 +1948,7 @@ function EventDialog({
               </Detail>
             )}
           </div>
+          {type && look?.editable && !event.allDay && <ConfirmBox event={event} />}
           {frozen && look?.editable && (
             <p role="note" className="flex gap-2 rounded-xl border border-border px-3 py-2.5 text-sm text-fg-muted">
               {/* The closed day's icon, not a lock: an icon of its own would be one more file to fetch on the first load (P11). */}
@@ -1833,6 +1996,57 @@ function EventDialog({
 }
 
 /** What changed at Google after the day closed, in the details of the copy. */
+/**
+ * Where an appointment happens (protótipo v52): the Meet call with its link and "Copiar link", the
+ * call Google is still making, or the office. Only Google's own Meet address is a link (the server checks it).
+ */
+function AppointmentPlace({ event, place }: { event: AgendaEvent; place: Place }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  if (place === "Consultório") {
+    return (
+      <Detail icon={<MapPin className="h-4 w-4" />} label={t("web.agenda.event.place")}>
+        {t("web.agenda.event.office")}
+        {event.location && <span className="block text-fg-muted">{event.location}</span>}
+      </Detail>
+    );
+  }
+  const url = event.meet?.startsWith("https://meet.google.com/") ? event.meet : null;
+  return (
+    <Detail icon={<Video className="h-4 w-4" />} label={t("web.agenda.event.place")}>
+      {url ? (
+        <span className="flex flex-wrap items-center gap-x-2">
+          <span>{t("web.agenda.event.meet")} ·</span>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="break-all font-medium text-accent-text underline-offset-2 hover:underline">
+            {url.slice("https://".length)}
+          </a>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              // QA-E5e-05: a copy the browser refuses says so; the link is still there to open or select.
+              const copied = navigator.clipboard?.writeText(url) ?? Promise.reject(new Error("no clipboard"));
+              copied.then(
+                () => toast(t("web.agenda.event.meetCopied")),
+                () => toast(t("web.agenda.event.meetCopyFailed"), { failed: true }),
+              );
+            }}
+          >
+            <Copy className="h-4 w-4" aria-hidden />
+            {t("web.agenda.event.meetCopy")}
+          </Button>
+        </span>
+      ) : event.meet === "failed" ? (
+        <span className="text-fg-muted">{t("web.agenda.event.meetFailed")}</span>
+      ) : event.meet === undefined ? (
+        // An online appointment from before the call (or made at Google without one): just the place.
+        t("web.agenda.form.placeOnline")
+      ) : (
+        <span className="text-fg-muted">{t("web.agenda.event.meetPending")}</span>
+      )}
+    </Detail>
+  );
+}
+
 const RECORD_TEXT = {
   changed: "web.agenda.record.changed",
   deleted: "web.agenda.record.deleted",
@@ -1861,6 +2075,7 @@ function EventFormDialog({
   onPick,
   onCreated,
   onClose,
+  onBack,
 }: {
   editing: Editing;
   /** The last day the events read reach: the next free hour is looked for only up to it. */
@@ -1869,7 +2084,9 @@ function EventFormDialog({
   sound: boolean;
   /** "Escolher na agenda": the form goes away, kept as it is, while a day and an hour are tapped. */
   /** Only where the Agenda has hours to tap (not on a phone). */
-  onPick: ((form: EventForm) => void) | undefined;
+  onPick: ((form: EventForm, from: From) => void) | undefined;
+  /** A form that came from a contact's card, cancelled (E5g): back to that card. */
+  onBack: (contactId: string) => void;
   /** A new event reached Google, or did not: a line in "Últimas mudanças". */
   onCreated: (text: string, ok: boolean) => void;
   /** Configurações › Agenda: an appointment is checked against them before it goes (13/11/2026, 00:44). */
@@ -1895,11 +2112,43 @@ function EventFormDialog({
     if (editing.mode === "edit") return formOf(editing.event, timeZone);
     if (editing.form) return editing.form;
     const blank = blankForm(editing.day, (calendars.find((c) => c.primary) ?? calendars[0])?.id ?? "", timeZone, Date.now(), editing.time, editing.minutes);
-    // A new event is an appointment of the calendar's first "Consulta" type, unless it is a personal one.
-    return editing.plain ? blank : { ...blank, type: types.find((type) => /^consulta\b/i.test(type)) ?? "" };
-  }, [editing, calendars, timeZone, types]);
-  const [form, setForm] = useState<EventForm>(initial);
-  const [problem, setProblem] = useState<FormProblem | null>(null);
+    // A new event is a "Consulta" at the office (plano E5e, item 1 dos fluxos), unless it is a personal one.
+    return editing.plain ? blank : { ...blank, type: typeOf(KINDS[0], "Consultório") };
+  }, [editing, calendars, timeZone]);
+  // The phone as it is typed: "(41) 99999-0000" in Brazil.
+  const [form, setForm] = useState<EventForm>(() => ({ ...initial, phone: maskPhone(initial.phone, initial.country) }));
+  const [problem, setProblem] = useState<Problem | null>(null);
+  /** The linked contact as the form shows it (E5f): picked from the list, or read from its card when editing. */
+  const from = editing.mode === "new" ? editing.from : undefined;
+  const [picked, setPicked] = useState<LinkedPerson | null>(() => from?.person ?? null);
+  /** "É outra pessoa": the name two or more contacts share is someone new, and the phone is required. */
+  const [otherPerson, setOtherPerson] = useState(false);
+  const card = useQuery({
+    queryKey: ["contact", editing.mode === "edit" ? editing.event.contactId : undefined],
+    queryFn: ({ signal }) => api<{ contact: ContactDetail }>(`/contacts/${encodeURIComponent(editing.mode === "edit" ? (editing.event.contactId ?? "") : "")}`, { signal }),
+    enabled: editing.mode === "edit" && !!editing.event.contactId && !!initial.contact,
+    staleTime: 30_000,
+  });
+  const linked: LinkedPerson | null = form.contact ? (picked ?? (card.data && form.contact === initial.contact ? linkedOf(card.data.contact) : null)) : null;
+  /** The type picked: a kind of the list, "other" to write one, or "" for a plain event (protótipo v52). */
+  const [kindChoice, setKindChoice] = useState(() => kindOf(initial.type));
+  const [otherKind, setOtherKind] = useState("");
+  const [place, setPlace] = useState<Place>(() => placeOf(initial.type));
+  const appointment = kindChoice !== "";
+  /** Contacts with the name typed (E5f); none once linked, or for a plain event. */
+  const people = usePeople(form.title, appointment && !form.contact);
+  const page = form.contact ? undefined : people.data;
+  /** The name is new here: an unchanged name of an event keeps what it was (the server checks the same). */
+  const renamed = editing.mode === "new" || fold(form.title) !== fold(initial.title);
+  const kinds = kindList(types, initial.type);
+  const listId = useId();
+  /** The type line follows the kind and the place: "Consulta | Online". */
+  const pickType = (choice: string, written: string, at: Place) => {
+    setKindChoice(choice);
+    setOtherKind(written);
+    setPlace(at);
+    set("type", choice === "" ? "" : typeOf(choice === OTHER_KIND ? written : choice, at));
+  };
   /** What the booking rule refused, over the form: why, the field it points at and the next free hour (protótipo v52). */
   const [refusal, setRefusal] = useState<FormRefusal | null>(null);
   /** Said to a screen reader after "Usar este horário" or a free hour picked. */
@@ -1910,6 +2159,36 @@ function EventFormDialog({
     setForm((old) => ({ ...old, [key]: value }));
     setProblem(null);
     setRefusal(null);
+  };
+
+  /** Cancelar, the X or Esc: a form that came from a contact's card goes back to it (E5g). */
+  const cancel = () => {
+    onClose();
+    if (from?.contactId) onBack(from.contactId);
+  };
+  // QA-E5g-02: the line is the dialog's description, read with the title. Set here, not in the shared Dialog,
+  // whose every byte is in the first load (P11).
+  const subId = useId();
+  const sub = from?.sub;
+  useEffect(() => {
+    const dialog = fields.current?.closest("dialog");
+    if (!dialog || !sub) return;
+    dialog.setAttribute("aria-describedby", subId);
+    return () => dialog.removeAttribute("aria-describedby");
+  }, [sub, subId]);
+  // Came from a contact with a name: the name is right, so the focus goes to the day (protótipo v52).
+  useEffect(() => {
+    if (from?.person) requestAnimationFrame(() => fields.current?.querySelector<HTMLElement>('[data-field="day"]')?.focus());
+  }, [from]);
+
+  /** A contact picked (E5f): its name, and its phone and e-mail only to read; the focus goes to the day. */
+  const link = (person: BookingPerson) => {
+    setForm((old) => ({ ...old, title: person.name, contact: person.resource, country: HOME_COUNTRY, phone: "", email: "" }));
+    setPicked(person);
+    setOtherPerson(false);
+    setProblem(null);
+    setRefusal(null);
+    requestAnimationFrame(() => fields.current?.querySelector<HTMLElement>('[data-field="day"]')?.focus());
   };
 
   /** The rule's verdict on the form as it is, or null: only for an appointment whose day or hours are new. */
@@ -1928,13 +2207,63 @@ function EventFormDialog({
     return { text: problemText(found, day), field: found.field, day, minute: start, next };
   };
 
+  // A field to fix gets the focus, with its message under it.
+  useEffect(() => {
+    // An end before the start points at the end's hour; an all-day event has its own message.
+    const field = problem === "end" && !form.allDay ? "endTime" : problem ? (PROBLEM_FIELD[problem] ?? problem) : null;
+    const input = field ? fields.current?.querySelector<HTMLElement>(`[data-field="${field}"]`) : null;
+    if (!input) return;
+    input.focus();
+    // The field shakes once, as in the prototype; styles.css stills it for reduced motion.
+    input.classList.remove("shake");
+    void input.offsetWidth;
+    input.classList.add("shake");
+  }, [problem, form.allDay]);
+
+  /** The first field to fix, in the order of the form. */
+  const check = (): Problem | null => {
+    if (!form.title.trim()) return appointment ? "name" : "title";
+    // Homonyms never link on their own (12/11/2026): the right contact, or "É outra pessoa" with a phone.
+    const twins = appointment && !form.contact && renamed && (page?.same ?? 0) >= 2;
+    if (twins && !otherPerson) return "twins";
+    if (appointment && !form.contact && !form.phone.trim() && (twins || (otherPerson && renamed))) return "phoneNeeded";
+    if (appointment && !form.contact && !phoneFits(form.country, form.phone)) return "phone";
+    if (appointment && !form.contact && !emailFits(form.email)) return "email";
+    if (!form.allDay) {
+      if (!form.startDate) return "day";
+      if (!form.startTime) return "start";
+      if (form.duration === OTHER_DURATION && !form.endTime) return "endTime";
+    }
+    if (kindChoice === OTHER_KIND && !otherKind.trim()) return "kind";
+    return null;
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const body = formBody(form);
-    if (typeof body === "string") {
-      setProblem(body);
+    const first = check();
+    if (first) {
+      setProblem(first);
       return;
     }
+    const body = formBody(form);
+    if (typeof body === "string") {
+      setProblem(body === "date" ? "day" : body);
+      return;
+    }
+    // QA-E5e-01: the end is on the start's day ("no mesmo dia"). An event from Google over midnight keeps
+    // its own days while its hours are left as they were.
+    const before = editing.mode === "edit" ? formBody(initial) : null;
+    const untouched = before && typeof before !== "string" && before.start === body.start && before.end === body.end;
+    if (!body.allDay && body.end.slice(0, 10) !== body.start.slice(0, 10) && !untouched) {
+      setProblem("end");
+      return;
+    }
+    const patient = appointment ? patientBody(form) : null;
+    if (typeof patient === "string") {
+      setProblem(patient);
+      return;
+    }
+    const meet = appointment && place === "Online";
     const refused = ruleProblem(body);
     if (refused) {
       // Over the form, with the sound: a line at its foot went unseen (Pablo, 13/11/2026 02:58).
@@ -1949,6 +2278,17 @@ function EventFormDialog({
       const rescheduled = typeof before !== "string" && before.start !== body.start && form.status === initial.status && reschedules(body, form.status);
       const status = rescheduled ? "rescheduled" : form.status;
       if (status && status !== initial.status) changes.colorId = EVENT_STATUS_COLOR[status];
+      const was = patientBody(initial);
+      if (patient && typeof was !== "string") Object.assign(changes, patientChanges(was, patient));
+      // SEC-E5e-03: an appointment that becomes a plain event takes the patient's fields off at Google too.
+      const kept = editing.event;
+      if (!appointment && (kept.country || kept.phone || kept.email || kept.payment)) Object.assign(changes, { country: "", phone: "", email: "", payment: "" });
+      if (!appointment && kept.contact) changes.contact = "";
+      // SEC-E5e-02: only the place changed here asks for a call (Online) or takes it off (Presencial). Any other
+      // change leaves Google's call as it is: a meeting made at Google keeps its link and its guests' link.
+      if (appointment && place !== placeOf(initial.type)) changes.meet = meet;
+      // QA-E5e-04: a call Google failed to make is asked for again on the next save.
+      else if (meet && editing.event.meet === "failed") changes.meet = true;
       // The form closes first: the notice, with "Desfazer", is on the page, out of reach behind an open dialog.
       onClose();
       if (Object.keys(changes).length > 0) onChange(editing.event, changes, { kind: "updated", rescheduled });
@@ -1958,9 +2298,17 @@ function EventFormDialog({
     try {
       // Without a color the event counts as "Agendado": only another status is sent.
       const colorId = form.status && form.status !== "scheduled" ? { colorId: EVENT_STATUS_COLOR[form.status] } : {};
-      await api("/google/events", { method: "POST", body: { calendarId: form.calendarId, ...body, ...colorId } });
-      toast(t("web.agenda.created"));
-      onCreated(t("web.agenda.sync.lineAbout", { title: body.title, text: t("web.agenda.created") }), true);
+      // A new event has no link to take off: only a contact picked goes.
+      const { contact, ...own } = patient ?? { contact: "" };
+      const made = await api<{ event: AgendaEvent }>("/google/events", { method: "POST", body: { calendarId: form.calendarId, ...body, ...colorId, ...own, ...(contact ? { contact } : {}), ...(meet ? { meet: true } : {}) } });
+      // QA-E5e-03: what Google answered about the call, never a link it did not make.
+      const call = made.event.meet;
+      const meetText = !meet ? "" : call?.startsWith("https://") ? t("web.agenda.meetMade") : call === "pending" ? t("web.agenda.event.meetPending") : t("web.agenda.event.meetFailed");
+      // Who, when and the call, as the prototype says it (v52): "“Helena Prado” agendado para qua, 18/11 às 14:30."
+      const at = { title: body.title, day: shortDay(form.startDate), time: form.startTime };
+      const said = [t(appointment ? "web.agenda.booked" : "web.agenda.createdOn", at), meetText].filter(Boolean).join(" ");
+      toast(said);
+      onCreated(said, true);
       onClose();
     } catch (failure) {
       toast(errorMessage(failure), { failed: true });
@@ -1971,22 +2319,96 @@ function EventFormDialog({
       void qc.invalidateQueries({ queryKey: EVENTS_KEY });
     }
   };
-  const typeOptions = form.type && !types.includes(form.type) ? [form.type, ...types] : types;
-
-  const error = problem ? t(PROBLEM_TEXT[problem]) : null;
+  const error = (field: Problem) => (problem === field ? t(field === "phone" && form.country !== HOME_COUNTRY ? "web.agenda.form.error.phoneAbroad" : PROBLEM_TEXT[field]) : null);
+  const length = formLength(form);
   const action = editing.mode === "new" ? t("web.agenda.form.create") : t("web.save");
   return (
-    <Dialog open onClose={onClose} title={t(editing.mode === "new" ? "web.agenda.form.newTitle" : "web.agenda.form.editTitle")}>
+    <Dialog open onClose={cancel} title={t(editing.mode === "new" ? "web.agenda.form.newTitle" : "web.agenda.form.editTitle")}>
       <form ref={fields} onSubmit={submit} className="space-y-4" noValidate>
-        <TextField
-          label={t("web.agenda.form.title")}
-          value={form.title}
-          maxLength={GOOGLE_LIMITS.titleMax}
-          required
-          autoFocus
-          error={problem === "title" ? error : null}
-          onChange={(e) => set("title", e.target.value)}
-        />
+        {from?.sub && (
+          <p id={subId} className="text-sm leading-6 text-fg-muted">
+            {from.sub}
+          </p>
+        )}
+        {appointment ? (
+          <PatientNameField
+            label={t("web.agenda.form.patient")}
+            value={form.title}
+            error={error("name") ?? error("twins")}
+            page={page}
+            startOpen={editing.mode === "edit" && !!editing.link}
+            onType={(text) => {
+              // A new name undoes the link and the contact's data with it (item 5): one person's data never stays on another's appointment.
+              setForm((old) => ({ ...old, title: text, contact: "" }));
+              setPicked(null);
+              setOtherPerson(false);
+              setProblem(null);
+              setRefusal(null);
+            }}
+            onPick={link}
+          >
+            {from?.note && !form.title.trim() && (
+              <p role="status" className="text-sm text-fg-muted">
+                {from.note}
+              </p>
+            )}
+            <NameHint name={form.title} page={page} other={otherPerson} onLink={link} onOther={() => setOtherPerson(true)} />
+          </PatientNameField>
+        ) : (
+          <TextField
+            data-field="title"
+            label={t("web.agenda.form.title")}
+            value={form.title}
+            maxLength={GOOGLE_LIMITS.titleMax}
+            required
+            autoFocus
+            error={error("title")}
+            onChange={(e) => set("title", e.target.value)}
+          />
+        )}
+        {appointment && linked && (
+          <LinkedPatient
+            person={linked}
+            onRemove={() => {
+              setForm((old) => ({ ...old, contact: "", phone: "", email: "" }));
+              setPicked(null);
+            }}
+          />
+        )}
+        {/* The patient's contact (12/11/2026): an appointment only; a plain event has none. Linked, it is the contact's. */}
+        {appointment && !form.contact && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <CountryField
+              value={form.country}
+              onChange={(country) => {
+                set("country", country);
+                set("phone", maskPhone(form.phone, country));
+              }}
+            />
+            <TextField
+              data-field="phone"
+              label={t("web.agenda.form.phone")}
+              inputMode="tel"
+              autoComplete="off"
+              value={form.phone}
+              placeholder={t(form.country === HOME_COUNTRY ? "web.agenda.form.phonePlaceholder" : "web.agenda.form.phoneAbroad")}
+              error={error("phone") ?? error("phoneNeeded")}
+              onChange={(e) => set("phone", maskPhone(e.target.value, form.country))}
+            />
+            <TextField
+              data-field="email"
+              type="email"
+              className="sm:col-span-2"
+              label={t("web.agenda.form.email")}
+              autoComplete="off"
+              value={form.email}
+              maxLength={254}
+              placeholder={t("web.agenda.form.emailPlaceholder")}
+              error={error("email")}
+              onChange={(e) => set("email", e.target.value)}
+            />
+          </div>
+        )}
         {editing.mode === "new" && calendars.length > 1 && (
           <SelectField label={t("web.agenda.form.calendar")} value={form.calendarId} onChange={(e) => set("calendarId", e.target.value)}>
             {calendars.map((calendar) => (
@@ -1999,44 +2421,95 @@ function EventFormDialog({
         {/* No "Dia todo" for a new event (13/11/2026): an all-day one from Google keeps its days. */}
         {form.allDay ? (
           <div className="grid grid-cols-2 gap-3">
-            <TextField type="date" label={t("web.agenda.form.startDate")} value={form.startDate} required onChange={(e) => set("startDate", e.target.value)} />
-            <TextField type="date" label={t("web.agenda.form.endDate")} value={form.endDate} required onChange={(e) => set("endDate", e.target.value)} />
+            <DateField data-field="day" label={t("web.agenda.form.startDate")} value={form.startDate} required error={error("day")} onValue={(day) => set("startDate", day)} />
+            <DateField
+              data-field="end"
+              label={t("web.agenda.form.endDate")}
+              value={form.endDate}
+              required
+              error={problem === "end" ? t("web.agenda.form.error.endDay") : null}
+              onValue={(day) => set("endDate", day)}
+            />
           </div>
         ) : (
-          <>
+          <div className="space-y-1.5">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <TextField
-                type="date"
+              <DateField
+                data-field="day"
                 data-rule="date"
-                label={t("web.agenda.form.day")}
+                label={t(appointment ? "web.agenda.form.visitDate" : "web.agenda.form.eventDate")}
                 value={form.startDate}
                 required
                 className="col-span-2 sm:col-span-1"
-                onChange={(e) => set("startDate", e.target.value)}
+                error={error("day")}
+                onValue={(day) => {
+                  setForm((old) => (day ? formAt(old, day, old.startTime) : { ...old, startDate: "" }));
+                  setProblem(null);
+                  setRefusal(null);
+                }}
               />
-              <TextField type="time" data-rule="start" label={t("web.agenda.form.startTime")} value={form.startTime} step={STEP_MIN * 60} required onChange={(e) => set("startTime", e.target.value)} />
-              <SelectField data-rule="end" label={t("web.agenda.form.duration")} value={form.duration} onChange={(e) => set("duration", e.target.value)}>
-                {DURATIONS.map((minutes) => (
-                  <option key={minutes} value={minutes}>
-                    {duration(minutes)}
-                  </option>
-                ))}
-                <option value={OTHER_DURATION}>{t("web.agenda.form.durationOther")}</option>
-              </SelectField>
+              <TimeField
+                data-field="start"
+                data-rule="start"
+                label={t("web.agenda.form.start")}
+                list={`${listId}-starts`}
+                value={form.startTime}
+                required
+                error={error("start")}
+                onValue={(time) => {
+                  // A new start keeps the length: the end goes with it.
+                  setForm((old) => (time && old.startDate ? formAt(old, old.startDate, time) : { ...old, startTime: time }));
+                  setProblem(null);
+                  setRefusal(null);
+                }}
+              />
+              <TimeField
+                data-field="endTime"
+                data-rule="end"
+                label={t("web.agenda.form.end")}
+                list={`${listId}-ends`}
+                value={form.endTime}
+                required
+                error={error("endTime") ?? error("end")}
+                onValue={(time) => {
+                  setForm((old) => ({ ...old, duration: OTHER_DURATION, endDate: old.startDate, endTime: time }));
+                  setProblem(null);
+                  setRefusal(null);
+                }}
+              />
             </div>
-            {/* Any other length: the end has its own day and hour, as an event that crosses the night needs. */}
-            {form.duration === OTHER_DURATION && (
-              <div className="grid grid-cols-2 gap-3">
-                <TextField type="date" label={t("web.agenda.form.endDate")} value={form.endDate} required onChange={(e) => set("endDate", e.target.value)} />
-                <TextField type="time" label={t("web.agenda.form.endTime")} value={form.endTime} required onChange={(e) => set("endTime", e.target.value)} />
-              </div>
-            )}
-          </>
-        )}
-        {problem && problem !== "title" && (
-          <p role="alert" className="text-sm text-danger">
-            {error}
-          </p>
+            <datalist id={`${listId}-starts`}>
+              {Array.from({ length: 96 }, (_, k) => (
+                <option key={hhmm(k * 15)} value={hhmm(k * 15)} />
+              ))}
+            </datalist>
+            <datalist id={`${listId}-ends`}>
+              {isDate(form.startDate) && isTime(form.startTime) &&
+                [15, 30, 45, 60, 90, 120, 180].map((minutes) => {
+                  const end = later(form.startDate, form.startTime, minutes);
+                  return end.date === form.startDate ? <option key={minutes} value={end.time} label={duration(minutes)} /> : null;
+                })}
+            </datalist>
+            <p className="text-xs leading-5 text-fg-muted" aria-live="polite">
+              {length === 60 ? (
+                t("web.agenda.form.lengthDefault")
+              ) : (
+                <>
+                  {t("web.agenda.form.lengthOwn", { length: duration(length) })}{" "}
+                  <button
+                    type="button"
+                    className="inline-flex min-h-11 items-center font-medium text-accent-text underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    onClick={() => {
+                      setForm((old) => (old.startDate && old.startTime ? { ...formAt({ ...old, duration: "60" }, old.startDate, old.startTime) } : old));
+                      setProblem(null);
+                    }}
+                  >
+                    {t("web.agenda.form.lengthBack")}
+                  </button>
+                </>
+              )}
+            </p>
+          </div>
         )}
         {!form.allDay && (
           <MiniCalendar
@@ -2054,27 +2527,49 @@ function EventFormDialog({
               setRefusal(null);
               setSaid(t("web.agenda.pick.picked", { day: shortDay(form.startDate), time: hhmm(minute) }));
             }}
-            onAgenda={editing.mode === "new" && onPick ? () => onPick(form) : undefined}
+            onAgenda={editing.mode === "new" && onPick ? () => onPick(form, withPerson(from, picked && form.contact ? picked : null)) : undefined}
           />
         )}
         <p className="sr-only" aria-live="polite">
           {said}
         </p>
-        <div className="grid grid-cols-2 gap-3">
-          {typeOptions.length > 0 && (
-            <SelectField label={t("web.agenda.form.type")} value={form.type} onChange={(e) => set("type", e.target.value)}>
-              <option value="">{t("web.agenda.form.typeNone")}</option>
-              {typeOptions.map((type) => (
-                <option key={type} value={type}>
-                  {type}
+        <div className={cn("grid gap-3", appointment ? "sm:grid-cols-2" : "grid-cols-2")}>
+          <div className="space-y-3">
+            <SelectField
+              label={t("web.agenda.form.kind")}
+              value={kindChoice}
+              onChange={(e) => pickType(e.target.value, e.target.value === OTHER_KIND ? otherKind : "", place)}
+            >
+              {kinds.map((kind) => (
+                <option key={kind} value={kind}>
+                  {kind}
                 </option>
               ))}
+              <option value={OTHER_KIND}>{t("web.agenda.form.kindOther")}</option>
+              <option value="">{t("web.agenda.form.kindNone")}</option>
+            </SelectField>
+            {kindChoice === OTHER_KIND && (
+              <TextField
+                data-field="kind"
+                label={t("web.agenda.form.kindWrite")}
+                hint={t("web.agenda.form.kindWriteHint")}
+                placeholder={t("web.agenda.form.kindPlaceholder")}
+                maxLength={60}
+                value={otherKind}
+                error={error("kind")}
+                onChange={(e) => pickType(OTHER_KIND, e.target.value, place)}
+              />
+            )}
+          </div>
+          {appointment && (
+            <SelectField label={t("web.agenda.form.place")} value={place} onChange={(e) => pickType(kindChoice, otherKind, e.target.value === "Online" ? "Online" : "Consultório")}>
+              <option value="Consultório">{t("web.agenda.form.placeOffice")}</option>
+              <option value="Online">{t("web.agenda.form.placeOnline")}</option>
             </SelectField>
           )}
           <SelectField
             label={t("web.agenda.status.label")}
             value={form.status ?? ""}
-            className={typeOptions.length > 0 ? undefined : "col-span-2"}
             onChange={(e) => set("status", (EVENT_STATUSES.find((status) => status === e.target.value) ?? null) as EventForm["status"])}
           >
             {/* A color of the event's own at Google, outside the four: it stays until a status is picked. */}
@@ -2085,12 +2580,28 @@ function EventFormDialog({
               </option>
             ))}
           </SelectField>
+          {appointment && (
+            <SelectField label={t("web.agenda.form.payment")} value={form.payment} onChange={(e) => set("payment", EVENT_PAYMENTS.find((payment) => payment === e.target.value) ?? "unpaid")}>
+              {EVENT_PAYMENTS.map((payment) => (
+                <option key={payment} value={payment}>
+                  {t(PAYMENT_TEXT[payment])}
+                </option>
+              ))}
+            </SelectField>
+          )}
         </div>
-        <TextField label={t("web.agenda.form.location")} value={form.location} maxLength={GOOGLE_LIMITS.locationMax} onChange={(e) => set("location", e.target.value)} />
-        <TextAreaField label={t("web.agenda.form.description")} value={form.description} maxLength={GOOGLE_LIMITS.descriptionMax} rows={3} onChange={(e) => set("description", e.target.value)} />
+        {appointment && place === "Online" && editing.mode === "new" && <p className="text-xs leading-5 text-fg-muted">{t("web.agenda.form.meetHint")}</p>}
+        <TextAreaField
+          label={t("web.agenda.form.note")}
+          {...(form.type ? { hint: t("web.agenda.form.noteHint", { type: form.type }) } : {})}
+          value={form.description}
+          maxLength={GOOGLE_LIMITS.descriptionMax}
+          rows={2}
+          onChange={(e) => set("description", e.target.value)}
+        />
         <p className="text-xs leading-5 text-fg-muted">{t("web.agenda.form.noGuests")}</p>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={cancel}>
             {t("web.cancel")}
           </Button>
           <Button type="submit" data-submit loading={saving || (busy && editing.mode === "edit")}>
@@ -2183,7 +2694,7 @@ function FormAlert({ refusal, onFix, onUse }: { refusal: FormRefusal; onFix: () 
 }
 
 /** One month of events, read as the Agenda's month view reads it, under the same key: a month seen comes from the cache. */
-function useMonthEvents(month: string, weekStart: AgendaPrefs["weekStart"], enabled: boolean) {
+function useMonthEvents(month: string, weekStart: AgendaPrefs["weekStart"] | undefined, enabled: boolean) {
   const { from, to } = viewRange("month", `${month}-01`, weekStart);
   return useQuery({
     queryKey: eventsKey(from, to),

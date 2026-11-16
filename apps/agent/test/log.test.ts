@@ -87,6 +87,9 @@ describe("nothing personal or secret reaches the log", () => {
     // Plain words that are not route words are chosen by whoever typed the URL.
     expect(route("https://h/api/senha-secreta")).toBe("PATCH /api/:id");
     expect(route("https://h/api/maria-souza/tasks")).toBe("PATCH /api/:id/tasks");
+    // E7a: the patient's token is in the page's address, never in the log; the API's routes keep their words.
+    expect(route(`https://h/c/${"Ex".repeat(10)}_9`)).toBe("PATCH /c/:id");
+    expect(route("https://h/api/c/view")).toBe("PATCH /api/c/view");
     expect(logLine("error", "unhandled_error", { request: { method: "get; ip=1", path: "/api" } }).route).toBeUndefined();
   });
 

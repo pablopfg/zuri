@@ -28,11 +28,14 @@ export function markdownToHtml(markdown: string): string {
   };
   let text = disarm(markdown.replace(/[\uE000\uE001]/g, ""));
   // Code first: nothing inside it is formatted.
+  // nosemgrep: html-in-template-string -- escapeHtml runs on the body; only this tag is ours
   text = text.replace(/```[^\n`]*\n?([\s\S]*?)```/g, (_, body: string) => keep(`<pre>${escapeHtml(body.replace(/\n$/, ""))}</pre>`));
+  // nosemgrep: html-in-template-string -- escapeHtml runs on the body; only this tag is ours
   text = text.replace(/`([^`\n]+)`/g, (_, body: string) => keep(`<code>${escapeHtml(body)}</code>`));
   text = escapeHtml(text);
   const lines = text.split("\n").map((line) => {
     const heading = /^#{1,6}\s+(.+)$/.exec(line);
+    // nosemgrep: html-in-template-string -- the line was escaped above; only this tag is ours
     if (heading) return `<b>${inline(heading[1] ?? "")}</b>`;
     const bullet = /^(\s*)[-*+]\s+(.*)$/.exec(line);
     if (bullet) return `${bullet[1] ?? ""}• ${inline(bullet[2] ?? "")}`;

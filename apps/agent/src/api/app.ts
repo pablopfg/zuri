@@ -65,12 +65,14 @@ import { registerMemoryRoutes } from "./memory.ts";
 import { type NoticeDeps, registerNoticeRoutes } from "./notices.ts";
 import { registerProductivityRoutes } from "./productivity.ts";
 import { registerApprovalRoutes } from "./approvals.ts";
+import { registerConfirmOwner, registerConfirmPublic } from "./confirm.ts";
 import { registerSemanticRoutes, type SemanticDeps } from "./semantic.ts";
 import { type McpRouteDeps, registerMcpRoutes } from "./mcp.ts";
 import { type GoogleRouteDeps, registerGooglePush, registerGoogleRoutes } from "./google.ts";
 import { registerReviewOpen, registerReviewRoutes } from "./reviews.ts";
 import { type ChatwootRouteDeps, registerChatwootHook, registerChatwootRoutes } from "./chatwoot.ts";
 import { type FlowRouteDeps, registerFlowRoutes } from "./flows.ts";
+import { type MailRouteDeps, registerMailRoutes } from "./mail.ts";
 import { type CrmRouteDeps, registerCrmRoutes } from "./crm.ts";
 import { type CrmAutomationRouteDeps, registerCrmAutomationRoutes } from "./crm-automations.ts";
 import { type OutboxRouteDeps, registerOutboxRoutes } from "./outbox.ts";
@@ -79,6 +81,8 @@ import { type BackupRouteDeps, registerBackupRoutes } from "./backup.ts";
 import { log, rayOf, routeLabel } from "../log.ts";
 import type { AgentConfigs } from "../specialists/configs.ts";
 import { registerAgentRoutes } from "./agents.ts";
+import { registerHomeRoutes } from "./home.ts";
+import type { HomeSuggestionService } from "../home/suggestions.ts";
 import { registerModelCatalogRoutes } from "./model-catalog.ts";
 import type { ModelCatalogService } from "../ai/catalog.ts";
 
@@ -112,6 +116,8 @@ export interface ApiDeps {
   paidConfigured?(provider: PaidProviderId): boolean;
   /** The catalog of models (PR S21): which extra models the settings may name. */
   modelCatalog?(): ModelCatalogService;
+  /** The home page's suggestions (PR S22). Absent only in tests of other routes. */
+  home?(): HomeSuggestionService;
   /** The owner says a paid company may be tried again (topped up, new key). Absent only in tests of other routes. */
   retryPaidProvider?(provider: PaidProviderId): void;
   /** The chat, its proposals and voice input (step 9). */
@@ -128,6 +134,7 @@ export interface ApiDeps {
   google?(): GoogleRouteDeps;
   /** The flows and the site monitor (step 22a). Absent only in tests of other routes. */
   flows?(): FlowRouteDeps;
+  mail?(): MailRouteDeps;
   /** The owner's conversation with Zuri in the Chatwoot (docs/planos/zuri-no-chatwoot.md). Absent only in tests of other routes. */
   chatwoot?(): ChatwootRouteDeps;
   /** The internal CRM (step 22b). Absent only in tests of other routes. */
@@ -375,6 +382,8 @@ export function createApi(deps: ApiDeps) {
   // ---------- The bot's confirmation page, /aprovar (step 15, no session) ----------
 
   if (telegram) registerApprovalRoutes(app, () => telegram(), client);
+  // The patient's confirmation link (E7a, no session): the token in the body is the key.
+  if (google) registerConfirmPublic(app, () => google(), client);
 
   app.use("*", async (c, next) => {
     const token = readSessionCookie(c.req.raw);
@@ -483,8 +492,12 @@ export function createApi(deps: ApiDeps) {
     });
     if (unusable.length > 0) throw new AppError("VALIDATION_FAILED", undefined, { fields: unusable });
     if (paid.length > 0 || "aiUsdCentsPerDay" in patch) deps.auth().requireRecentAuth(c.get("session"));
+    // E7a: the team's WhatsApp goes to patients on the confirmation page, so changing it is sensitive.
+    const whatsapp = patch.clinic !== undefined && patch.clinic.whatsapp !== deps.settings().field("clinic").whatsapp;
+    if (whatsapp) deps.auth().requireRecentAuth(c.get("session"));
     const before = patch.timeZone === undefined ? null : deps.settings().field("timeZone");
     const settings = deps.settings().update(patch);
+    if (whatsapp) deps.auth().events.record("clinic_whatsapp_changed", client(c), { alert: true });
     // A new zone moves every wall-clock time: each automation's next run is computed again.
     if (before !== null && settings.timeZone !== before) await deps.automations().service.rescheduleAll();
     return Response.json(settings);
@@ -567,8 +580,11 @@ export function createApi(deps: ApiDeps) {
   if (mcp) registerMcpRoutes(app, () => mcp(), client);
   if (google) registerGoogleRoutes(app, () => google(), client);
   if (google) registerReviewRoutes(app, () => google(), client);
+  if (google) registerConfirmOwner(app, () => google());
   const flows = deps.flows;
   if (flows) registerFlowRoutes(app, () => flows(), client);
+  const mail = deps.mail;
+  if (mail) registerMailRoutes(app, () => mail(), client);
   if (chatwoot) registerChatwootRoutes(app, () => chatwoot(), client);
   const crm = deps.crm;
   if (crm) registerCrmRoutes(app, () => crm());
@@ -583,6 +599,8 @@ export function createApi(deps: ApiDeps) {
   app.get("/usage", () => Response.json(deps.aiUsage()));
   const modelCatalog = deps.modelCatalog;
   if (modelCatalog) registerModelCatalogRoutes(app, () => modelCatalog());
+  const home = deps.home;
+  if (home) registerHomeRoutes(app, () => home());
   const agents = deps.agents;
   if (agents) registerAgentRoutes(app, () => agents(), () => deps.auth(), client);
 

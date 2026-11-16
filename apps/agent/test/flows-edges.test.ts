@@ -71,6 +71,16 @@ describe("the development network", () => {
     expect(await dev.resolve("api.exemplo.com.br")).toEqual(["8.8.8.8"]);
   });
 
+  it("answers the fzap instances of the examples, each in its state (E6b)", async () => {
+    const read = async (host: string, token = "token-de-exemplo") => (await dev.fetch(`https://${host}/session/status`, { headers: { token } })).json();
+    expect(await read("fzap.exemplo.com.br")).toEqual({ code: 200, success: true, data: { connected: true, loggedIn: true } });
+    expect(await read("fzap-cloud.exemplo.com.br")).toMatchObject({ data: { connected: true, cloudapi: { phoneNumberId: "100000000000001" } } });
+    expect(await read("fzap-fora.exemplo.com.br")).toMatchObject({ data: { connected: false, loggedIn: false } });
+    expect(await read("fzap-sem-login.exemplo.com.br")).toMatchObject({ data: { connected: true, loggedIn: false } });
+    expect((await dev.fetch("https://fzap.exemplo.com.br/session/status", { headers: { token: "token-recusado-exemplo" } })).status).toBe(401);
+    expect((await dev.fetch("https://fzap.exemplo.com.br/chat/send/pix", { method: "POST" })).status).toBe(404);
+  });
+
   it("sends every other address to the real network", async () => {
     expect((await dev.fetch("https://outro.com.br/")).status).toBe(299);
     expect(await dev.resolve("outro.com.br")).toEqual(["9.9.9.9"]);
