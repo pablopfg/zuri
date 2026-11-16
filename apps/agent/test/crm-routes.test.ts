@@ -71,7 +71,7 @@ describe("/api/crm", () => {
     ]);
     expect(view.tags).toEqual([]);
     expect(view.summary).toEqual({ total: 0, overdue: 0, today: 0, week: 0, newThisWeek: 0 });
-    expect(view.settings).toEqual({ followUps: true, birthdays: true, birthdayTime: "09:00" });
+    expect(view.settings).toEqual({ followUps: true });
     // Nothing of the events other systems once sent: no address, no key, no secret.
     expect(Object.keys(view).sort()).toEqual(["limits", "settings", "stages", "summary", "tags"]);
     expect(JSON.stringify(view)).not.toMatch(/secret|zcrm_|events/i);
@@ -153,41 +153,30 @@ describe("/api/crm", () => {
     expect((await api("PATCH", "/crm/stages", { stages: [{ id: crypto.randomUUID(), name: "A" }, { name: "B" }] })).status).toBe(404);
   });
 
-  it("turns the notices off and on", async () => {
-    const res = await api("PATCH", "/crm/settings", { birthdays: false });
+  it("turns the follow-up notice off and on; E11a: the birthday notice and its time are no setting any more", async () => {
+    const res = await api("PATCH", "/crm/settings", { followUps: false });
     expect(res.status).toBe(200);
-    expect((await overview()).settings).toEqual({ followUps: true, birthdays: false, birthdayTime: "09:00" });
-    // The notice of clients from n8n went with the events.
-    expect((await api("PATCH", "/crm/settings", { newClients: false })).status).toBe(400);
-    expect((await api("PATCH", "/crm/settings", { birthdays: "no" })).status).toBe(400);
-    expect((await api("PATCH", "/crm/settings", { other: true })).status).toBe(400);
-  });
-
-  it("saves the birthday notice's time, a time of the clock only, and nothing else", async () => {
-    const res = await api("PATCH", "/crm/settings", { birthdayTime: "07:45" });
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ settings: { followUps: true, birthdays: true, birthdayTime: "07:45" } });
+    expect(await res.json()).toEqual({ settings: { followUps: false } });
+    expect((await api("PATCH", "/crm/settings", { followUps: true })).status).toBe(200);
     for (const body of [
-      { birthdayTime: "24:00" },
-      { birthdayTime: "7:45" },
-      { birthdayTime: "07:60" },
-      { birthdayTime: "07:45:00" },
-      { birthdayTime: "07:45\n" },
-      { birthdayTime: 745 },
-      // What the plan fixes, and what went with n8n's events, is nobody's to send.
+      { birthdays: false },
+      { birthdayTime: "07:45" },
+      { followUps: "no" },
+      {},
+      // What went with n8n's events is nobody's to send.
       { newClients: false },
       { newClientNoticesPerDay: 5 },
       { eventsPerHour: 100 },
-      { eventsPerDay: 100 },
+      { other: true },
     ]) {
       const refused = await api("PATCH", "/crm/settings", body);
       expect(refused.status, JSON.stringify(body)).toBe(400);
     }
     // A body past 1 KB is refused before it is read, whatever it holds.
-    const big = await call(`${ORIGIN}/api/crm/settings`, { method: "PATCH", headers: headers(true), body: `{"birthdayTime":"08:00"${" ".repeat(1_024)}}` });
+    const big = await call(`${ORIGIN}/api/crm/settings`, { method: "PATCH", headers: headers(true), body: `{"followUps":true${" ".repeat(1_024)}}` });
     expect(big.status).toBe(400);
     expect(await errorBody(big)).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: ["_body"] } });
-    expect((await overview()).settings).toMatchObject({ birthdayTime: "07:45" });
+    expect((await overview()).settings).toEqual({ followUps: true });
   });
 
   it("has no door for other systems: the signed events' address and its key are gone", async () => {

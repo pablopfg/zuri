@@ -133,8 +133,6 @@ export const crmSettingsSchema = /* @__PURE__ */ (() =>
   z
     .object({
       followUps: z.boolean(),
-      birthdays: z.boolean(),
-      birthdayTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     })
     .partial()
     .strict()

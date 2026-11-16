@@ -82,7 +82,6 @@ export interface ContactsDeps {
 }
 
 export type ContactNotice =
-  | { kind: "contacts.birthdays"; names: string; more: number; day: string }
   | { kind: "contacts.dates"; items: string; more: number; day: string }
   | { kind: "contacts.added"; name: string; label: string }
   | { kind: "contacts.problem"; problem: ContactProblem }
@@ -351,7 +350,6 @@ export class GoogleContacts {
     const row = this.row();
     const enabled = row?.enabled === 1;
     const reminders: ContactReminders = {
-      birthdays: (row?.birthdays ?? 1) === 1,
       dates: (row?.dates ?? 0) === 1,
       time: row?.reminder_time ?? "08:00",
       daysAhead: row?.days_ahead ?? 0,
@@ -462,7 +460,6 @@ export class GoogleContacts {
       sets.push(`${column} = ?`);
       values.push(value);
     };
-    set("birthdays", patch.birthdays === undefined ? undefined : patch.birthdays ? 1 : 0);
     set("dates", patch.dates === undefined ? undefined : patch.dates ? 1 : 0);
     set("reminder_time", patch.time);
     set("days_ahead", patch.daysAhead);
@@ -495,11 +492,14 @@ export class GoogleContacts {
     );
   }
 
-  /** The next notice of birthdays and dates, at the chosen time in the owner's zone; none while both are off. */
+  /**
+   * The next notice of special dates, at the chosen time in the owner's zone; none while off. The
+   * birthdays of the day are no notice since E11a, 16/11/2026 (protótipo v51 approved 13/11, item 7): the column stays, unread.
+   */
   planReminder(): void {
     const row = this.row();
     if (!row) return;
-    const on = row.enabled === 1 && (row.birthdays === 1 || row.dates === 1);
+    const on = row.enabled === 1 && row.dates === 1;
     const at = on ? nextRun({ type: "daily", time: row.reminder_time }, this.deps.timeZone(), new Date(this.clock())) : null;
     this.db.run(`UPDATE zur_contact_sync SET next_reminder = ? WHERE id = 1`, at ? at.getTime() : null);
   }
@@ -1038,24 +1038,11 @@ export class GoogleContacts {
 
   // ---------- The notices of the day ----------
 
-  /** Birthdays today and the special dates `days_ahead` away, in the owner's zone; the next one is planned. */
+  /** The special dates `days_ahead` away, in the owner's zone; the next one is planned. */
   remind(): void {
     const row = this.row();
     if (!row || row.enabled !== 1) return;
     const today = localDay(this.clock(), this.deps.timeZone());
-    if (row.birthdays === 1) {
-      const keys = dayKeys(today);
-      const people = this.db.all<{ display_name: string }>(
-        `SELECT display_name FROM zur_contacts WHERE birthday_md IN (${keys.map(() => "?").join(",")}) ORDER BY search_name LIMIT ?`,
-        ...keys,
-        CONTACT_LIMITS.namesPerNotice + 1,
-      );
-      if (people.length) {
-        const total = this.db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_contacts WHERE birthday_md IN (${keys.map(() => "?").join(",")})`, ...keys)?.n ?? 0;
-        const shown = people.slice(0, CONTACT_LIMITS.namesPerNotice).map((person) => cleanText(person.display_name, 60));
-        this.deps.notify({ kind: "contacts.birthdays", names: shown.join(", "), more: Math.max(0, total - shown.length), day: today });
-      }
-    }
     if (row.dates === 1) {
       const day = addDays(today, row.days_ahead);
       const keys = dayKeys(day);

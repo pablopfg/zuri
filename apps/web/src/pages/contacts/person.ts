@@ -120,11 +120,6 @@ export function hasGroup(contact: ContactDetail, group: CardGroup): boolean {
   }
 }
 
-/** The groups with nothing at Google: the card names them in one line instead of drawing blank rows. */
-export function emptyGroups(contact: ContactDetail): CardGroup[] {
-  return CARD_GROUPS.filter((group) => !hasGroup(contact, group));
-}
-
 /** "MM-DD" or "YYYY-MM-DD": the day and month in the owner's language, the year when there is one. A date the calendar cannot hold stays as it came. */
 export function dayText(value: string, locale: string): string {
   const [a, b, c] = value.split("-");

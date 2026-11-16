@@ -34,7 +34,7 @@ import { ApiError, api } from "../../lib/api.ts";
 import { contactKey } from "../../lib/contacts.ts";
 import { Avatar } from "./Avatar.tsx";
 import { useI18n } from "../../lib/i18n.tsx";
-import { CARD_GROUPS, type CardGroup, daysApart, dayText, dialNumber, emptyGroups, hasGroup, isNamed, localDay, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "./person.ts";
+import { CARD_GROUPS, type CardGroup, daysApart, dayText, dialNumber, hasGroup, isNamed, localDay, shownName, siteHref, siteText, whatsappNumber, whatsappOf } from "./person.ts";
 
 const GROUP: Record<CardGroup, { icon: LucideIcon; title: MessageKey }> = {
   name: { icon: IdCard, title: "web.contacts.group.name" },
@@ -185,7 +185,6 @@ function Whole({ contact, heading }: { contact: ContactDetail; heading: (node: H
             <Group key={group} group={group} contact={contact} />
           ))}
         </dl>
-        <Empty contact={contact} />
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-3 text-xs text-fg-muted">
           <span className="flex items-center gap-2">
             <Lock className="h-4 w-4 shrink-0" aria-hidden />
@@ -471,18 +470,5 @@ function CopyButton({ value }: { value: string }) {
     >
       <ClipboardCopy className="h-4 w-4" aria-hidden />
     </button>
-  );
-}
-
-/** "Vazio no Google: Endereço, Site, Chat." */
-function Empty({ contact }: { contact: ContactDetail }) {
-  const { t } = useI18n();
-  const empty = emptyGroups(contact);
-  if (empty.length === 0) return null;
-  return (
-    <div className="space-y-1 border-t border-border py-3">
-      <p className="zuri-contact-term">{t("web.contacts.emptyAtGoogle")}</p>
-      <p className="text-sm leading-6 text-fg-muted">{empty.map((group) => t(GROUP[group].title)).join(", ")}.</p>
-    </div>
   );
 }

@@ -58,6 +58,8 @@ test("turns the contacts on, copies one label and searches the copy on the Conta
   await expect(page.getByRole("status").filter({ hasText: "Etiquetas salvas" })).toBeVisible();
   await contacts.getByRole("button", { name: "Sincronizar agora" }).click();
   await expect(contacts.getByText(/· 4 contatos$/)).toBeVisible();
+  // E11a: no birthday notice to turn on any more.
+  await expect(contacts.getByText(/aniversários do dia/i)).toHaveCount(0);
   await expectAccessible(page, "integracoes-contatos");
 
   await contacts.getByRole("link", { name: "Abrir Contatos" }).click();

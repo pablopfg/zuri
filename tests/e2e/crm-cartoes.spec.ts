@@ -11,36 +11,18 @@ test.use({ locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
 test.afterEach(async ({ page }) => {
   const list = (await (await page.request.get("/api/crm/clients", { headers: CSRF })).json()) as { clients?: { id: string }[] };
   for (const client of list.clients ?? []) await page.request.delete(`/api/crm/clients/${client.id}`, { headers: CSRF });
-  await page.request.patch("/api/crm/settings", { headers: CSRF, data: { birthdayTime: "09:00" } });
 });
 
-test("the owner picks the time of the birthday notice, kept after a reload @mobile", async ({ page }) => {
+// E11a (protótipo v51, item 7): no birthday notice in Avisos › CRM, nor its time; the follow-up one stays.
+test("a CRM notice turned off stays off after a reload; no birthday notice; the card is accessible @mobile", async ({ page }) => {
   await page.goto("/configuracoes/avisos");
   await signIn(page);
   const card = page.getByRole("region", { name: "CRM", exact: true });
-  const time = card.getByLabel("Hora do aviso de aniversários");
-  const save = card.getByRole("button", { name: "Salvar hora" });
-  await expect(time).toHaveValue("09:00");
-  // Nothing changed, or no time at all: nothing to save.
-  await expect(save).toBeDisabled();
-  await time.fill("");
-  await expect(save).toBeDisabled();
-  await time.fill("07:30");
-  await expectAccessible(page, "crm-avisos-hora");
-  expect(await tooSmallControls(page), "every control of the CRM card is a 44 px target").toEqual([]);
-  await save.click();
-  await expect(page.getByRole("status").filter({ hasText: "Hora salva" })).toBeVisible();
-  await expect(save).toBeDisabled();
-  await page.reload();
-  await expect(card.getByLabel("Hora do aviso de aniversários")).toHaveValue("07:30");
-});
-
-test("a CRM notice turned off stays off after a reload; the card is accessible @mobile", async ({ page }) => {
-  await page.goto("/configuracoes/avisos");
-  await signIn(page);
-  const card = page.getByRole("region", { name: "CRM", exact: true });
-  const notice = page.getByRole("switch", { name: "Aniversários de clientes", exact: true });
+  const notice = card.getByRole("switch", { name: "Quando chegar a hora de um retorno" });
   await expect(notice).toBeVisible();
+  await expect(card.getByRole("switch")).toHaveCount(1);
+  await expect(card.getByText(/aniversário/i)).toHaveCount(0);
+  await expect(card.getByRole("textbox")).toHaveCount(0);
   const before = await notice.isChecked();
   await expectAccessible(page, "crm-cartoes");
   expect(await tooSmallControls(page), "every control of the CRM card is a 44 px target").toEqual([]);
@@ -48,20 +30,19 @@ test("a CRM notice turned off stays off after a reload; the card is accessible @
     await notice.click();
     await expect(notice).toBeChecked({ checked: !before });
     await page.reload();
-    await expect(page.getByRole("switch", { name: "Aniversários de clientes", exact: true })).toBeChecked({ checked: !before });
-    // The other kept its place, and the notice of clients from n8n is gone.
-    await expect(page.getByRole("switch", { name: "Quando chegar a hora de um retorno" })).toBeVisible();
-    await expect(card.getByRole("switch")).toHaveCount(2);
+    await expect(card.getByRole("switch", { name: "Quando chegar a hora de um retorno" })).toBeChecked({ checked: !before });
   } finally {
-    const back = await page.request.patch("/api/crm/settings", { headers: CSRF, data: { birthdays: before } });
+    const back = await page.request.patch("/api/crm/settings", { headers: CSRF, data: { followUps: before } });
     expect(back.ok()).toBe(true);
   }
+  // The server takes no birthday switch any more.
+  expect((await page.request.patch("/api/crm/settings", { headers: CSRF, data: { birthdays: true } })).status()).toBe(400);
 });
 
 test("the CRM has no door for other systems: no events card and no address to post to", async ({ page }) => {
   await page.goto("/configuracoes/avisos");
   await signIn(page);
-  await expect(page.getByRole("switch", { name: "Aniversários de clientes", exact: true })).toBeVisible();
+  await expect(page.getByRole("switch", { name: "Quando chegar a hora de um retorno" })).toBeVisible();
   await expect(page.getByText(/n8n/i)).toHaveCount(0);
   await page.goto("/crm/credenciais");
   await expect(page.getByRole("heading", { level: 1, name: "CRM" })).toBeVisible();
@@ -97,5 +78,5 @@ test("the CRM group comes after the channels it speaks of, and keeps its name wh
   await expect(card.getByRole("switch")).toHaveCount(0);
   fail = false;
   await card.getByRole("button", { name: "Tentar de novo" }).click();
-  await expect(card.getByRole("switch")).toHaveCount(2);
+  await expect(card.getByRole("switch")).toHaveCount(1);
 });

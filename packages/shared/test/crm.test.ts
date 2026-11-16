@@ -106,9 +106,10 @@ describe("the Clients tab's bodies", () => {
     expect(ok(crmSettingsSchema, { followUps: false })).toBe(true);
     expect(ok(crmSettingsSchema, { followUps: "false" })).toBe(false);
     expect(ok(crmSettingsSchema, { events: true })).toBe(false);
-    for (const time of ["00:00", "09:00", "23:59"]) expect(ok(crmSettingsSchema, { birthdayTime: time }), time).toBe(true);
+    // E11a: the birthday notice is gone, so its switch and its time are refused too.
+    for (const gone of [{ birthdays: true }, { birthdays: false }, { birthdayTime: "09:00" }]) expect(ok(crmSettingsSchema, gone), JSON.stringify(gone)).toBe(false);
     for (const gone of [{ newClientNoticesPerDay: 5 }, { eventsPerHour: 100 }, { eventsPerDay: 100 }]) expect(ok(crmSettingsSchema, gone), JSON.stringify(gone)).toBe(false);
-    for (const time of ["24:00", "9:00", "09:60", "09:00:00", " 09:00", "09:00\n", ""]) expect(ok(crmSettingsSchema, { birthdayTime: time }), JSON.stringify(time)).toBe(false);
+    expect(ok(crmSettingsSchema, {})).toBe(false);
     expect(ok(crmClientsQuerySchema, { q: "a".repeat(CRM_LIMITS.query) })).toBe(true);
     expect(ok(crmClientsQuerySchema, { q: "a".repeat(CRM_LIMITS.query + 1) })).toBe(false);
     expect(ok(crmClientsQuerySchema, { followUp: "ontem" })).toBe(false);
@@ -140,8 +141,18 @@ describe("no door for other systems", () => {
     }
   });
 
-  it("the notices' settings take only the two notices left", () => {
-    expect(ok(crmSettingsSchema, { followUps: false, birthdays: true })).toBe(true);
+  it("E11a: birthday notices stored before still read, in both languages", () => {
+    expect(NOTICE_KINDS).toContain("crm.birthdays");
+    expect(NOTICE_KINDS).toContain("contacts.birthdays");
+    for (const locale of ["pt-BR", "en"] as const) {
+      for (const key of ["notice.crm.birthdays.title", "notice.crm.birthdays.body", "notice.contacts.birthdays.title", "notice.contacts.birthdays.body"]) {
+        expect((catalogs[locale] as Record<string, string>)[key], `${locale} ${key}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("the notices' settings take only the notice left", () => {
+    expect(ok(crmSettingsSchema, { followUps: false, birthdays: true })).toBe(false);
     expect(ok(crmSettingsSchema, { newClients: false })).toBe(false);
   });
 });

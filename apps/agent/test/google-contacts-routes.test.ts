@@ -211,9 +211,11 @@ describe("/api/google/contacts", () => {
 
   it("saves the notices' choices and plans the next one", async () => {
     await turnOn();
-    const res = await api("PATCH", "/google/contacts/settings", { birthdays: true, dates: true, time: "07:30", daysAhead: 30, match: " Retorno ", onAdded: "task" });
+    const res = await api("PATCH", "/google/contacts/settings", { dates: true, time: "07:30", daysAhead: 30, match: " Retorno ", onAdded: "task" });
     expect(res.status).toBe(200);
-    expect(((await res.json()) as ContactsStatus).reminders).toEqual({ birthdays: true, dates: true, time: "07:30", daysAhead: 30, match: "Retorno" });
+    expect(((await res.json()) as ContactsStatus).reminders).toEqual({ dates: true, time: "07:30", daysAhead: 30, match: "Retorno" });
+    // E11a: the day's birthdays are no notice any more, so no switch for them.
+    expect((await api("PATCH", "/google/contacts/settings", { birthdays: true })).status).toBe(400);
     const next = await inOwner((agent) => agent.store.db.one<{ next_reminder: number }>(`SELECT next_reminder FROM zur_contact_sync`));
     expect(next?.next_reminder).toBeGreaterThan(Date.now());
   });
@@ -330,7 +332,7 @@ describe("/api/google/contacts", () => {
     for (const [method, path, body] of [
       ["POST", "/google/contacts/sync", undefined],
       ["PATCH", "/google/contacts/labels", { selected: [CLIENTS] }],
-      ["PATCH", "/google/contacts/settings", { birthdays: false }],
+      ["PATCH", "/google/contacts/settings", { dates: false }],
     ] as const) {
       const res = await api(method, path, body);
       expect(res.status).toBe(409);

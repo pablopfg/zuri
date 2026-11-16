@@ -265,7 +265,7 @@ function LabelPicker({ status, onSaving }: { status: ContactsStatus; onSaving: (
   );
 }
 
-/** Birthdays, special dates and what a contact who joins a label brings. */
+/** Special dates and what a contact who joins a label brings. */
 function NoticeSettings({ reminders, onAdded }: { reminders: ContactReminders; onAdded: ContactOnAdded }) {
   const { t } = useI18n();
   const toast = useToast();
@@ -291,7 +291,6 @@ function NoticeSettings({ reminders, onAdded }: { reminders: ContactReminders; o
   return (
     <form onSubmit={(e) => void save(e)} className="space-y-3 rounded-xl border border-border p-3">
       <h4 className="text-sm font-medium">{t("web.contacts.card.notices")}</h4>
-      <Switch label={t("web.contacts.card.birthdays")} checked={form.birthdays} onChange={(on) => setForm((f) => ({ ...f, birthdays: on }))} />
       <Switch label={t("web.contacts.card.dates")} checked={form.dates} onChange={(on) => setForm((f) => ({ ...f, dates: on }))} />
       <div className="grid gap-3 sm:grid-cols-2">
         <TextField label={t("web.contacts.card.time")} type="time" required value={form.time} onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))} />
