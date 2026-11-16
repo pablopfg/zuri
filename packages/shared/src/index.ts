@@ -201,3 +201,4 @@ export * from "./home-suggestions.ts";
 export * from "./mail.ts";
 export * from "./confirm-link.ts";
 export * from "./confirm-message.ts";
+export * from "./confirm-mail.ts";

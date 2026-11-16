@@ -21,8 +21,8 @@ export type ConfirmMessageProblem = { problem: "empty" } | { problem: "long" } |
 const known = new Set<string>(CONFIRM_MESSAGE_VARS);
 /** Eight digits or more, spaced or not: a phone number written into the text. */
 const PHONE = /\d(?:[\s().+-]*\d){7,}/;
-/** The characters that turn the text's direction; the other control characters go by hasControlCharacter. */
-const BIDI = /[\u202a-\u202e\u2066-\u2069]/;
+/** Invisible format characters (direction, zero width, soft hyphen), but the joiner of emoji; the other control characters go by hasControlCharacter (SEC-E7c2-03). */
+const INVISIBLE = /(?!\u200d)\p{Cf}/u;
 
 /** A value from an event or the clinic's details that carries an address: never put in a message (SEC-E7c1-02/03). */
 export function confirmValueOk(value: string): boolean {
@@ -38,7 +38,7 @@ export function confirmMessageProblem(text: string): ConfirmMessageProblem | nul
   // SEC-E7c1-01: a stolen session could otherwise point every patient to another site or number in
   // the owner's own words. Addresses only by {link}, the team's number only by {whatsapp}.
   if (messageHasAddress(text) || PHONE.test(text)) return { problem: "address" };
-  if (hasControlCharacter(text, false) || BIDI.test(text)) return { problem: "control" };
+  if (hasControlCharacter(text, false) || INVISIBLE.test(text)) return { problem: "control" };
   const unknown = [...new Set([...text.matchAll(/\{([^{}]*)\}/g)].map((match) => match[1] ?? "").filter((name) => !known.has(name)))];
   if (unknown.length > 0) return { problem: "unknown", vars: unknown };
   return null;

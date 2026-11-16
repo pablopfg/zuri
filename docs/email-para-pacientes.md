@@ -13,6 +13,10 @@ A Zuri não lê, não apaga e não vê a caixa do Gmail. Para tirar a permissão
 
 Nos dois casos, **Nome do remetente** (em branco, vai o nome do consultório de Configurações › Consultório) e **Responder para** (para onde vão as respostas dos pacientes) valem para todo e-mail. A linha "De:" mostra como o paciente vai ver.
 
+## E-mail de confirmação de consulta
+
+Logo abaixo, o cartão **E-mail de confirmação de consulta** guarda o assunto, o texto e o botão do e-mail que sai pelo botão "Enviar por e-mail" dos detalhes da consulta, com a prévia de como chega. O detalhe está em [google-agenda.md](google-agenda.md#e-mail-de-confirmação). Cada envio conta no teto de 100 por dia.
+
 ## Enviar teste para você
 
 O botão manda um e-mail curto para o e-mail do dono (o da entrada na Zuri) pela forma salva. Se não der certo, o aviso diz o motivo: senha recusada, servidor sem TLS na 587, servidor fora do ar ou lento, permissão do Gmail retirada, teto do dia. As palavras do servidor nunca chegam à tela.

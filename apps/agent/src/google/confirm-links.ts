@@ -13,7 +13,13 @@ import {
   clinicLocation,
   EVENT_STATUS_COLOR,
   eventStatus,
-  confirmValueOk, fillConfirmMessage,
+  type ConfirmMail,
+  type ConfirmMessageVars,
+  confirmValueOk,
+  escapeHtml,
+  fillConfirmMessage,
+  isMailAddress,
+  type MailProblem,
   GOOGLE_LIMITS,
   hmacSha256Hex,
   type RescheduleDays,
@@ -72,6 +78,10 @@ export interface ConfirmLinkDeps {
   clinic: () => Clinic;
   /** The confirmation message of Configurações › Consultório (E7c1); "" is the catalog's default. */
   message: () => string;
+  /** The confirmation e-mail of Integrações › E-mail para pacientes (E7c2); each "" is its default. */
+  mailTemplate: () => ConfirmMail;
+  /** MailService.send() of E6c: the saved way out, inside its daily cap. */
+  sendMail: (message: { to: string; subject: string; text: string; html: string }) => Promise<{ ok: true } | { ok: false; problem: MailProblem }>;
   publicUrl: () => URL;
   credentialKey: string | undefined;
   /** The key of the networks' prints (HMAC), never kept. */
@@ -95,6 +105,16 @@ type Resolved = { kind: "invalid" } | { kind: "expired"; event?: CalendarEvent; 
 export function firstName(title: string): string {
   const word = title.replace(/^\s*dra?\.?\s+/i, "").trim().split(/\s+/)[0] ?? "";
   return [...word].slice(0, 40).join("");
+}
+
+/** An empty value leaves no "**", no ": ." and no run of blank lines behind (the clinic's details may be unfilled). */
+function tidy(filled: string): string {
+  return filled
+    .replace(/\*[ \t]*\*/g, "")
+    .replace(/[ \t]*:[ \t]*\./g, ".")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /** Whether the type line ends in "| Online". */
@@ -128,6 +148,40 @@ export class ConfirmLinks {
 
   /** The link of an appointment, made the first time: the same address every time after. */
   async link(calendarId: string, eventId: string): Promise<ConfirmLinkMade> {
+    const { event, row, url } = await this.made(calendarId, eventId);
+    return { ...this.statusOf(row), url, message: this.message(event, url) };
+  }
+
+  /**
+   * "Enviar por e-mail" (E7c2): the e-mail of the template, to the patient's e-mail kept on the
+   * appointment (never one the request names), with the link as the button. Recorded only when it went.
+   */
+  async mail(calendarId: string, eventId: string): Promise<ConfirmLinkStatus> {
+    // Without an e-mail, no link is made for it (P4).
+    const { event, row, url } = await this.made(calendarId, eventId, (found) => {
+      if (!isMailAddress((found.email ?? "").trim().toLowerCase())) throw new AppError("CONFLICT", "error.confirmNoEmail");
+    });
+    const to = (event.email ?? "").trim().toLowerCase();
+    // Once per start (SEC-E7c2-04): the send is claimed before it goes, so two taps or two tabs send
+    // one e-mail, and a session that isn't the owner's can't spend the day's cap on one patient. A
+    // moved appointment has a new start and sends again. A send that fails gives the claim back.
+    const claimed = this.deps.db.run(
+      `INSERT INTO zur_confirm_sends (link_id, start, channel, sent_at) VALUES (?, ?, 'email', ?) ON CONFLICT (link_id, start, channel) DO NOTHING`,
+      row.id,
+      event.start,
+      this.now(),
+    );
+    if (claimed.rowsWritten === 0) throw new AppError("CONFLICT", "error.confirmMailed");
+    const sent = await this.deps.sendMail({ to, ...this.mailOf(event, url) }).catch(() => ({ ok: false as const, problem: "unreachable" as const }));
+    if (!sent.ok) {
+      this.deps.db.run(`DELETE FROM zur_confirm_sends WHERE link_id = ? AND start = ? AND channel = 'email'`, row.id, event.start);
+      throw new AppError("SERVICE_UNAVAILABLE", "error.confirmMailFailed", { problem: sent.problem });
+    }
+    return this.statusOf(row);
+  }
+
+  /** The appointment and its link, made the first time. */
+  private async made(calendarId: string, eventId: string, check?: (event: CalendarEvent) => void): Promise<{ event: CalendarEvent; row: LinkRow; url: string }> {
     if (!this.#vault.available) throw new AppError("NOT_CONFIGURED");
     // The patient's tap changes the event: a calendar the Zuri only reads has no link to give.
     if (!this.canWrite(calendarId)) throw new AppError("CONFLICT", "error.confirmLinkReadOnly");
@@ -137,6 +191,7 @@ export class ConfirmLinks {
     if (row?.revoked_at || event.colorId === EVENT_STATUS_COLOR.cancelled || this.expiresAt(event) <= this.now()) {
       throw new AppError("CONFLICT", "error.confirmLinkGone");
     }
+    check?.(event);
     let token: string | null = null;
     if (row) token = await this.#vault.decrypt(row.id, row.token_sealed);
     else {
@@ -159,8 +214,7 @@ export class ConfirmLinks {
     }
     // A key changed since: the old address can't be rebuilt, so this one says so instead of a wrong link.
     if (!row || !token) throw new AppError("NOT_CONFIGURED");
-    const url = `${this.deps.publicUrl().origin}/c/${token}`;
-    return { ...this.statusOf(row), url, message: this.message(event, url) };
+    return { event, row, url: `${this.deps.publicUrl().origin}/c/${token}` };
   }
 
   /**
@@ -174,23 +228,27 @@ export class ConfirmLinks {
     if (row.revoked_at || !isAppointment(event) || event.colorId === EVENT_STATUS_COLOR.cancelled || this.expiresAt(event) <= this.now()) {
       throw new AppError("CONFLICT", "error.confirmLinkGone");
     }
-    const now = this.now();
-    this.deps.db.run(
-      `INSERT INTO zur_confirm_sends (link_id, start, channel, sent_at) VALUES (?, ?, ?, ?)
-       ON CONFLICT (link_id, start, channel) DO UPDATE SET sent_at = excluded.sent_at WHERE excluded.sent_at - sent_at >= 60000`,
-      row.id,
-      event.start,
-      channel,
-      now,
-    );
+    this.record(row.id, event.start, channel);
     return this.statusOf(row);
   }
 
+  /** One send for a start and a channel; the same one again within a minute writes nothing (P4). */
+  private record(linkId: string, start: string, channel: ConfirmChannel): void {
+    this.deps.db.run(
+      `INSERT INTO zur_confirm_sends (link_id, start, channel, sent_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT (link_id, start, channel) DO UPDATE SET sent_at = excluded.sent_at WHERE excluded.sent_at - sent_at >= 60000`,
+      linkId,
+      start,
+      channel,
+      this.now(),
+    );
+  }
+
   /**
-   * The message of Configurações › Consultório for one appointment, in the owner's language and zone.
-   * Only the known variables are put in, once (fillConfirmMessage): the event's title stays text.
+   * The values of the variables for one appointment, in the owner's language and zone. What the event
+   * or the clinic's details carry goes in only without an address (SEC-E7c1-02/03).
    */
-  private message(event: CalendarEvent, url: string): string {
+  private values(event: CalendarEvent, url: string): ConfirmMessageVars {
     const locale = this.deps.locale();
     const zone = this.deps.timeZone();
     const clinic = this.deps.clinic();
@@ -207,11 +265,9 @@ export class ConfirmLinks {
       : place && confirmValueOk(place)
         ? t(locale, "confirm.message.address", { place })
         : "";
-    const text = this.deps.message() || t(locale, "confirm.message.default");
-    // What the event or the clinic's details carry goes in only without an address (SEC-E7c1-02/03).
     const plain = (value: string) => (confirmValueOk(value) ? value : "");
     const kind = plain((typeLine(event.description).split("|")[0] ?? "").trim().slice(0, 80).toLocaleLowerCase(locale));
-    const filled = fillConfirmMessage(text, {
+    return {
       nome: plain(firstName(event.title)),
       tipo: kind || t(locale, "confirm.message.type"),
       dia: day(start),
@@ -221,21 +277,59 @@ export class ConfirmLinks {
       prazo: t(locale, "confirm.message.deadline", { day: day(until), time: time(until) }),
       consultorio: plain(clinic.name) || t(locale, "confirm.message.clinic"),
       whatsapp: phoneText(clinic.whatsapp),
-    });
-    // An empty value leaves no "**", no ": ." and no run of blank lines behind (the clinic's details may be unfilled).
-    return filled
-      .replace(/\*[ \t]*\*/g, "")
-      .replace(/[ \t]*:[ \t]*\./g, ".")
-      .replace(/[ \t]+$/gm, "")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+    };
+  }
+
+  /**
+   * The message of Configurações › Consultório for one appointment. Only the known variables are put
+   * in, once (fillConfirmMessage): the event's title stays text.
+   */
+  private message(event: CalendarEvent, url: string): string {
+    const text = this.deps.message() || t(this.deps.locale(), "confirm.message.default");
+    return tidy(fillConfirmMessage(text, this.values(event, url)));
+  }
+
+  /**
+   * The confirmation e-mail (E7c2): the text, and the same as HTML with every value escaped, where only
+   * the button is markup, a link to the patient's own page. No image, nothing that tracks.
+   */
+  private mailOf(event: CalendarEvent, url: string): { subject: string; text: string; html: string } {
+    const locale = this.deps.locale();
+    const template = this.deps.mailTemplate();
+    const values = this.values(event, url);
+    const subject = tidy(fillConfirmMessage(template.subject || t(locale, "confirm.mail.subject"), values)).replace(/\s+/g, " ");
+    const body = tidy(fillConfirmMessage(template.body || t(locale, "confirm.mail.body"), values));
+    const button = template.button || t(locale, "confirm.mail.button");
+    const clinic = this.deps.clinic();
+    const place = clinicLocation(clinic);
+    // Without the clinic's name, the footer doesn't stand "consultório" alone on a line.
+    const footer = [[clinic.name.trim() ? values.consultorio : "", place && confirmValueOk(place) ? place : ""].filter(Boolean).join(" · "), t(locale, "confirm.mail.footer")].filter(Boolean);
+    const text = `${body}\n\n${button}: ${url}\n\n--\n${footer.join("\n")}\n`;
+    const lines = (value: string) => escapeHtml(value).replace(/\n/g, "<br>\n");
+    const html = [
+      // nosemgrep: html-in-template-string -- every value passes escapeHtml (lines() escapes too); the markup is fixed
+      `<!doctype html><html lang="${escapeHtml(locale)}"><body style="margin:0;padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#1f2328;background:#ffffff">`,
+      // nosemgrep: html-in-template-string -- every value passes escapeHtml (lines() escapes too); the markup is fixed
+      `<p style="margin:0 0 20px">${lines(body)}</p>`,
+      // nosemgrep: html-in-template-string -- every value passes escapeHtml (lines() escapes too); the markup is fixed
+      `<p style="margin:0 0 24px"><a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#1a7f4b;color:#ffffff;font-weight:bold;text-decoration:none">${escapeHtml(button)}</a></p>`,
+      // nosemgrep: html-in-template-string -- every value passes escapeHtml (lines() escapes too); the markup is fixed
+      `<p style="margin:0;font-size:13px;color:#57606a">${footer.map(lines).join("<br>\n")}</p>`,
+      "</body></html>",
+    ].join("\n");
+    return { subject, text, html };
   }
 
   private statusOf(row: LinkRow | null): ConfirmLinkStatus {
     const answer: ConfirmAnswer = row?.answer === "confirmed" || row?.answer === "cancelled" || row?.answer === "rescheduled" ? row.answer : "none";
-    const sent = row ? this.deps.db.one<{ start: string; channel: string; sent_at: number }>(`SELECT start, channel, sent_at FROM zur_confirm_sends WHERE link_id = ? ORDER BY sent_at DESC LIMIT 1`, row.id) : null;
+    // Every send of the link at once (one per start and channel: a handful), the last of each kind picked here.
+    const sends = row ? this.deps.db.all<{ start: string; channel: string; sent_at: number }>(`SELECT start, channel, sent_at FROM zur_confirm_sends WHERE link_id = ?`, row.id) : [];
+    const last = (channel?: string) => sends.filter((send) => !channel || send.channel === channel).reduce<(typeof sends)[number] | null>((best, send) => (!best || send.sent_at > best.sent_at ? send : best), null);
+    const sent = last();
+    const mailed = last("email");
     return {
-      sentChannel: sent?.channel === "whatsapp" ? sent.channel : "",
+      sentChannel: sent?.channel === "whatsapp" || sent?.channel === "email" ? sent.channel : "",
+      mailedStart: mailed?.start ?? "",
       sentAt: sent ? new Date(sent.sent_at).toISOString() : "",
       sentStart: sent?.start ?? "",
       made: row !== null,

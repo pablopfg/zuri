@@ -131,14 +131,18 @@ export interface ConfirmLinkStatus {
   sentChannel: ConfirmChannel | "";
   sentAt: string;
   sentStart: string;
+  /** The start the last e-mail went for (E7c2), ISO; "" when never. The button hides for that start. */
+  mailedStart: string;
 }
 
-/** How the confirmation went out: by the owner on WhatsApp (E7c1); e-mail and Chatwoot come next. */
-export const CONFIRM_CHANNELS = ["whatsapp"] as const;
+/** How the confirmation went out: by the owner on WhatsApp (E7c1) or by e-mail (E7c2); Chatwoot comes next. */
+export const CONFIRM_CHANNELS = ["whatsapp", "email"] as const;
 export type ConfirmChannel = (typeof CONFIRM_CHANNELS)[number];
 
-/** POST /api/google/events/link/sent: the owner sent it, now, for the appointment's current start. */
-export const confirmSentSchema = /* @__PURE__ */ z.object({ calendarId: z.string().min(1).max(1024), eventId: z.string().min(1).max(1024), channel: z.enum(CONFIRM_CHANNELS) }).strict();
+/** POST /api/google/events/link/sent: the owner sent it on WhatsApp, now, for the appointment's current start. The e-mail has its own route. */
+export const confirmSentSchema = /* @__PURE__ */ z
+  .object({ calendarId: z.string().min(1).max(1024), eventId: z.string().min(1).max(1024), channel: z.enum(["whatsapp"]) })
+  .strict();
 
 /** POST /api/google/events/link and GET ?calendarId&eventId. */
 export const confirmLinkRequestSchema = /* @__PURE__ */ z.object({ calendarId: z.string().min(1).max(1024), eventId: z.string().min(1).max(1024) }).strict();

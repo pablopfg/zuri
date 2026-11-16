@@ -42,6 +42,7 @@ const STORAGE_KEYS = {
   sounds: "sounds",
   clinic: "clinic",
   confirmMessage: "confirm_message",
+  confirmMail: "confirm_mail",
 } as const satisfies Record<keyof Settings, string>;
 
 type Field = keyof Settings;

@@ -12,6 +12,8 @@ export interface MailMessage {
   replyTo?: string | undefined;
   subject: string;
   text: string;
+  /** The same message as HTML (E7c2), built by the caller with every value escaped; the text stays the fallback. */
+  html?: string | undefined;
   /** Milliseconds; the Date header. */
   at: number;
   /** The Message-ID's left part: random, from the caller. */
@@ -61,10 +63,13 @@ export function plainAddress(value: string): string {
 
 const domainOf = (address: string) => address.slice(address.lastIndexOf("@") + 1) || "zuri.invalid";
 
-export function buildMessage(message: MailMessage): string {
-  const body = base64(new TextEncoder().encode(message.text.replace(/\r?\n/g, CRLF)))
+/** A part's text in base64, in lines of 76. */
+const encodedBody = (text: string) =>
+  base64(new TextEncoder().encode(text.replace(/\r?\n/g, CRLF)))
     .match(/.{1,76}/g)
-    ?.join(CRLF);
+    ?.join(CRLF) ?? "";
+
+export function buildMessage(message: MailMessage): string {
   const headers = [
     `From: ${mailbox(message.fromName, plainAddress(message.from))}`,
     `To: <${plainAddress(message.to)}>`,
@@ -73,8 +78,15 @@ export function buildMessage(message: MailMessage): string {
     `Date: ${new Date(message.at).toUTCString().replace("GMT", "+0000")}`,
     `Message-ID: <${message.id}@${domainOf(message.from)}>`,
     "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: base64",
   ];
-  return `${headers.join(CRLF)}${CRLF}${CRLF}${body ?? ""}${CRLF}`;
+  const part = (type: "plain" | "html", text: string) => `Content-Type: text/${type}; charset=UTF-8${CRLF}Content-Transfer-Encoding: base64${CRLF}${CRLF}${encodedBody(text)}${CRLF}`;
+  if (message.html === undefined) return `${headers.join(CRLF)}${CRLF}${part("plain", message.text)}`;
+  // Base64 parts never hold "--", so a random boundary can't appear inside them.
+  const boundary = `zuri-${message.id.replace(/[^a-z0-9]/gi, "")}`;
+  return [
+    `${headers.join(CRLF)}${CRLF}Content-Type: multipart/alternative; boundary="${boundary}"${CRLF}${CRLF}`,
+    `--${boundary}${CRLF}${part("plain", message.text)}`,
+    `--${boundary}${CRLF}${part("html", message.html)}`,
+    `--${boundary}--${CRLF}`,
+  ].join("");
 }

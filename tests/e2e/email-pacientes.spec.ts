@@ -147,3 +147,81 @@ test("another provider: the password asked, a refused server named, saved with T
   await expect(password).toBeFocused();
   await expectAccessible(page, "email-pacientes-smtp");
 });
+
+// E7c2 (plano link-de-confirmacao.md, seção 17): the confirmation e-mail's subject, text and button.
+test("@mobile the confirmation e-mail starts at the default, takes a variable at the cursor, refuses {link} in the text and saves", async ({ page }) => {
+  await open(page);
+  try {
+    expect(
+      (
+        await page.request.patch("/api/settings", {
+          headers: CSRF,
+          data: {
+            clinic: { name: "Consultório Exemplo", whatsapp: "4133330000", address: "Rua das Flores, 120", city: "Curitiba, PR" },
+            confirmMessage: "Oi, {nome}! Sua *{tipo}* é {dia}.\nConfirme pelo link:\n{link}\n\nCancele pelo mesmo link até {prazo}.",
+          },
+        })
+      ).status(),
+    ).toBe(200);
+    await page.reload();
+    const box = page.getByRole("region", { name: "E-mail de confirmação de consulta" });
+    const subject = box.getByLabel("Assunto", { exact: true });
+    const body = box.getByLabel("Texto", { exact: true });
+    await expect(subject).toHaveValue("Confirme sua consulta de {dia}");
+    await expect(body).toHaveValue(/^Olá, \{nome\}!\n\nSua \{tipo\} no \{consultorio\}/);
+    await expect(box.getByLabel("Texto do botão")).toHaveValue("Confirmar presença");
+    // The preview: the example filled in, the button and the footer; no {link} anywhere.
+    await expect(box.getByText("Confirme sua consulta de quinta-feira, 19 de novembro", { exact: true })).toBeVisible();
+    await expect(box.getByText(/^Olá, Érica!\s+Sua consulta no Consultório Exemplo está marcada para quinta-feira, 19 de novembro, às 14:00\.\s+Endereço: Rua das Flores, 120, Curitiba, PR\./)).toBeVisible();
+    await expect(box.getByText("Confirmar presença", { exact: true })).toBeVisible();
+    await expect(box.getByRole("group", { name: "Variáveis do texto" }).getByRole("button", { name: /\{link\}/ })).toHaveCount(0);
+    await expect(box.getByRole("group", { name: "Variáveis do assunto" }).getByRole("button")).toHaveCount(5);
+    await expectAccessible(page, "email-confirmacao");
+    expect(await tooSmallControls(page)).toEqual([]);
+
+    // A variable at the cursor, in the subject.
+    await subject.fill("Sua consulta, ");
+    await box.getByRole("group", { name: "Variáveis do assunto" }).getByRole("button", { name: /^\{nome\}/ }).click();
+    await expect(subject).toHaveValue("Sua consulta, {nome}");
+    await expect(subject).toBeFocused();
+
+    // {link} in the text: refused before anything is sent, on the field.
+    let patches = 0;
+    page.on("request", (request) => request.url().endsWith("/api/settings") && request.method() === "PATCH" && patches++);
+    await body.fill("Toque: {link}");
+    await box.getByRole("button", { name: "Salvar o e-mail" }).click();
+    await expect(box.getByText("O link já vai no botão. Tire o {link} do texto.")).toBeVisible();
+    await expect(body).toBeFocused();
+    expect(patches).toBe(0);
+    // A field left blank is refused on the screen, never saved as the default in disguise.
+    await subject.fill("");
+    await box.getByRole("button", { name: "Salvar o e-mail" }).click();
+    await expect(box.getByText("Escreva o assunto.")).toBeVisible();
+    await expect(subject).toBeFocused();
+    expect(patches).toBe(0);
+    await subject.fill("Sua consulta, {nome}");
+    // "Copiar o texto do WhatsApp": the saved WhatsApp message, without the link line and the asterisks.
+    await box.getByRole("button", { name: "Copiar o texto do WhatsApp" }).click();
+    await expect(body).toHaveValue("Oi, {nome}! Sua {tipo} é {dia}.\n\nCancele pelo mesmo botão até {prazo}.");
+    await expect(box.getByText(/^\d+ de 2\.000$/)).toBeVisible();
+    // Markup typed in the text stays text in the preview.
+    await body.fill('Oi {nome} <img src=x onerror="document.title=1">');
+    await expect(box.getByText('Oi Érica <img src=x onerror="document.title=1">')).toBeVisible();
+    await expect(box.locator("img")).toHaveCount(0);
+
+    await body.fill("Oi {nome}, até {dia}.");
+    const saving = page.waitForRequest((request) => request.url().endsWith("/api/settings") && request.method() === "PATCH");
+    await box.getByRole("button", { name: "Salvar o e-mail" }).click();
+    expect((await saving).postDataJSON()).toEqual({ confirmMail: { subject: "Sua consulta, {nome}", body: "Oi {nome}, até {dia}.", button: "" } });
+    await expect(toast(page, "E-mail de confirmação salvo")).toBeVisible();
+
+    // Back to the default saves "" in each field.
+    await box.getByRole("button", { name: "Voltar ao modelo padrão" }).click();
+    await expect(subject).toHaveValue("Confirme sua consulta de {dia}");
+    const back = page.waitForRequest((request) => request.url().endsWith("/api/settings") && request.method() === "PATCH");
+    await box.getByRole("button", { name: "Salvar o e-mail" }).click();
+    expect((await back).postDataJSON()).toEqual({ confirmMail: { subject: "", body: "", button: "" } });
+  } finally {
+    await page.request.patch("/api/settings", { headers: CSRF, data: { confirmMail: { subject: "", body: "", button: "" }, confirmMessage: "", clinic: { name: "", whatsapp: "", address: "", city: "" } } });
+  }
+});

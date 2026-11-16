@@ -7,6 +7,7 @@ import { Button, Card, cn, ErrorNotice, Loading, Notice, PasswordField, SelectFi
 import { useSettings } from "../../hooks/settings.ts";
 import { ApiError, api, errorMessage } from "../../lib/api.ts";
 import { addMessages, useI18n } from "../../lib/i18n.tsx";
+import { ConfirmMailCard } from "./ConfirmMailCard.tsx";
 
 // The card's texts come with its download (rule P11).
 addMessages(ptBRMail);
@@ -76,7 +77,9 @@ const draftOf = (status: MailStatus): Draft => ({
 export function MailCard() {
   const { t } = useI18n();
   const status = useQuery({ queryKey: MAIL_KEY, queryFn: ({ signal }) => api<MailStatus>("/mail", { signal }) });
+  const settings = useSettings();
   return (
+    <>
     <Card
       title={t("web.mail.title")}
       description={
@@ -93,6 +96,17 @@ export function MailCard() {
         <MailForm key={JSON.stringify([status.data.mode, status.data.smtp, status.data.name, status.data.replyTo])} status={status.data} />
       )}
     </Card>
+      {/* E7c2: the confirmation e-mail, once the settings and the way out are read (the sender's name comes from both). */}
+      {settings.data && status.data && (
+        <ConfirmMailCard
+          key={JSON.stringify(settings.data.confirmMail)}
+          stored={settings.data.confirmMail}
+          whatsapp={settings.data.confirmMessage}
+          clinic={settings.data.clinic}
+          sender={status.data.name || settings.data.clinic.name}
+        />
+      )}
+    </>
   );
 }
 

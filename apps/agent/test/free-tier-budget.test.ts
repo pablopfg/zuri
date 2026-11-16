@@ -1228,9 +1228,9 @@ describe("flows (step 22a)", () => {
       expect(server.log.messages).toHaveLength(1);
     }));
 
-  it("the confirmation link (E7a, E7b, E7c1): opening and the steps of rescheduling read one row and write nothing, a guess reads none, an answer and a move write the one row", () =>
+  it("the confirmation link (E7a, E7b, E7c1, E7c2): opening and the steps of rescheduling read one row and write nothing, a guess reads none, an answer and a move write the one row", () =>
     withFlowWorld(async (world) => {
-      const event = { id: "e1", calendarId: "agenda", title: "Ana Souza", start: new Date(Date.now() + 30 * 86_400_000).toISOString(), end: new Date(Date.now() + 30 * 86_400_000 + 3_600_000).toISOString(), allDay: false, location: "", description: "Consulta | Consultório", etag: '"1"', recurring: false, guests: 0, colorId: "", shared: false };
+      const event = { id: "e1", calendarId: "agenda", title: "Ana Souza", start: new Date(Date.now() + 30 * 86_400_000).toISOString(), end: new Date(Date.now() + 30 * 86_400_000 + 3_600_000).toISOString(), allDay: false, location: "", description: "Consulta | Consultório", etag: '"1"', recurring: false, guests: 0, colorId: "", shared: false, email: "ana@exemplo.com.br" };
       const google = {
         usable: () => true,
         connected: () => true,
@@ -1253,6 +1253,8 @@ describe("flows (step 22a)", () => {
         locale: () => "pt-BR",
         clinic: () => ({ name: "Consultório Exemplo", whatsapp: "", address: "", city: "" }),
         message: () => "",
+        mailTemplate: () => ({ subject: "", body: "", button: "" }),
+        sendMail: async () => ({ ok: true as const }),
         publicUrl: () => new URL("https://zuri.exemplo.com.br"),
         credentialKey: testEnv.MCP_CREDENTIAL_KEY,
         secret: () => "segredo-de-teste",
@@ -1284,6 +1286,11 @@ describe("flows (step 22a)", () => {
       // The link's row, the conflict check and the last send for the status: measured 3.
       expect(sent.read).toBeLessThanOrEqual(3);
       expect((await measure(() => links.sent("agenda", "e1", "whatsapp"))).written).toBe(0);
+      // E7c2: the e-mail (its count of the day is MailService's, measured in the E6c test) records its one row.
+      const mailed = await measure(() => links.mail("agenda", "e1"));
+      expect(mailed.written).toBe(1);
+      // The link's row, its token's row and the sends for the status: measured below 5.
+      expect(mailed.read).toBeLessThanOrEqual(5);
       const token = url.split("/c/")[1] ?? "";
       expect(await measure(() => links.view(token, "198.51.100.1"))).toEqual({ read: 1, written: 0 });
       expect(await measure(() => links.view("Z".repeat(22), "198.51.100.2"), true)).toEqual({ read: 0, written: 0 });
