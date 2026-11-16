@@ -103,7 +103,7 @@ describe("/api/contacts/:id/family", () => {
     expect(await rows()).toContainEqual({ a: "people/c10", b: "people/c12", role_a: "sister", role_b: "brother", responsible: 0 });
     expect(await family("people/c11")).toMatchObject({ links: [{ role: "mother" }], group: ["Diego Prado"], groupMore: 0 });
     // Google is only ever read: no call changes a contact there.
-    expect(google.seen.filter((seen) => seen.url.includes("people.googleapis.com") && seen.method !== "GET")).toEqual([]);
+    expect(google.seen.filter((seen) => new URL(seen.url).hostname === "people.googleapis.com" && seen.method !== "GET")).toEqual([]);
   });
 
   it("refuses what is no link: oneself, roles that don't pair, a pair already linked, a contact not in the copy, a hostile body", async () => {
