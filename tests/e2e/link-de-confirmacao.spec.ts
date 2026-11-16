@@ -408,6 +408,16 @@ test("a linked appointment says the messages go to the responsible and sends the
   await expect(none.getByRole("button", { name: "Copiar mensagem" })).toBeVisible();
   await expect(none.getByRole("button", { name: "Enviar pelo WhatsApp" })).toHaveCount(0);
   await expect(none.getByRole("button", { name: "Enviar por e-mail" })).toHaveCount(0);
+  await details.getByRole("button", { name: "Fechar" }).click();
+
+  // A responsible with no mobile nor e-mail at Google: the details say why nothing goes.
+  await page.route(`**/api/contacts/${LUCAS}`, (route) =>
+    route.fulfill({ json: { contact: contact(LUCAS, "Lucas Prado"), reach: { phone: "", email: "", via: { name: "Helena Prado", role: "mother" }, gone: false } } }),
+  );
+  await page.reload();
+  details = await openDetails(page, "Lucas Prado");
+  await expect(details.getByText("Helena Prado não tem celular nem e-mail no Google Contatos, então nenhuma mensagem sai.", { exact: true })).toBeVisible();
+  await expect(details.getByRole("region", { name: "Confirmação do paciente" }).getByRole("button", { name: "Enviar pelo WhatsApp" })).toHaveCount(0);
 });
 
 // E7c3a: the automatic confirmation by Chatwoot, while it is on: when it goes, in the queue, sent, or not sent.

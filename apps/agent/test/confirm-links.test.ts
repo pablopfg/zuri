@@ -460,6 +460,7 @@ describe("E7c3a: the automatic confirmation on the working eve", () => {
   it("E11c: a linked appointment goes to the contact's mobile and e-mail, or the responsible's, never to what the event or the request carries", async () => {
     // 2099-11-10 is a Tuesday: its eve covers Wednesday the 11th. A linked event keeps no phone nor e-mail (SEC-E5f-04).
     at("2099-11-11", "09:00", { summary: "Lucas Prado", extendedProperties: { private: { zuriContact: "people/c11" } } });
+    at("2099-11-11", "14:00", { summary: "Lucas Prado", extendedProperties: { private: { zuriContact: "people/c11" } } });
     at("2099-11-11", "10:00", { summary: "Bruna Reis", extendedProperties: { private: { zuriContact: "people/c20" } } });
     at("2099-11-11", "11:00", { summary: "Caio Melo", extendedProperties: { private: { zuriContact: "people/c30" } } });
     // Even with the old fields left behind at Google, the link wins: the contact's data, never the event's.
@@ -485,13 +486,21 @@ describe("E7c3a: the automatic confirmation on the working eve", () => {
       const sent = await Promise.all(live.map(async (item) => [item.label, item.phone, await item.mail?.()]));
       return { phoneOnly, sent };
     });
-    expect(result.phoneOnly).toEqual([["Lucas", "+5511988880010", false]]);
+    // SEC-A12-01: the number is Helena's, so Chatwoot and the queue know it by her name, never the child's.
+    expect(result.phoneOnly).toEqual([
+      ["Helena", "+5511988880010", false],
+      ["Helena", "+5511988880010", false],
+    ]);
     expect(result.sent.sort()).toEqual([
       ["Bruna", "", "sent"],
-      ["Lucas", "+5511988880010", "sent"],
+      ["Helena", "+5511988880010", "sent"],
+      ["Helena", "+5511988880010", "sent"],
     ]);
-    expect(mails.sort()).toEqual(["bruna@exemplo.com.br", "helena@exemplo.com.br"]);
-    expect(new Set(asked)).toEqual(new Set(["people/c11", "people/c20", "people/c30", "people/c40"]));
+    expect(mails.sort()).toEqual(["bruna@exemplo.com.br", "helena@exemplo.com.br", "helena@exemplo.com.br"]);
+    // SEC-A12-03: each contact is resolved once a run (two runs here), Lucas's two appointments too; each
+    // e-mail resolves the address again when it goes, so a change in between is followed.
+    const times = (resource: string) => asked.filter((item) => item === resource).length;
+    expect([times("people/c11"), times("people/c20"), times("people/c30"), times("people/c40")]).toEqual([2 + 2, 2 + 1, 2, 2]);
   });
 
   it("E11c: the owner's e-mail button goes to the responsible's e-mail, and says there is none without one", async () => {

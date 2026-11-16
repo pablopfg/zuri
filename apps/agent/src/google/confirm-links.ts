@@ -182,13 +182,13 @@ export class ConfirmLinks {
    * own (SEC-E5f-04), so it goes to the contact's mobile and e-mail, or to the responsible's; one without a
    * link, to what the appointment keeps. Never a number or address the request names.
    */
-  private to(event: CalendarEvent): { phone: string; email: string } {
+  private to(event: CalendarEvent): { phone: string; email: string; via: string } {
     if (event.contact) {
       const reach = this.deps.reach(event.contact);
-      return { phone: reach.phone, email: reach.email };
+      return { phone: reach.phone, email: reach.email, via: reach.via?.name ?? "" };
     }
     const email = (event.email ?? "").trim().toLowerCase();
-    return { phone: e164(event) ?? "", email: isMailAddress(email) ? email : "" };
+    return { phone: e164(event) ?? "", email: isMailAddress(email) ? email : "", via: "" };
   }
 
   /**
@@ -284,21 +284,31 @@ export class ConfirmLinks {
     const { events } = await google.events(open, from, to, new GoogleMeter(GOOGLE_LIMITS.listCalendars * 2), { timeZone: zone, perCalendar: 250, max: 1_000 });
     const now = this.now();
     const out: EveItem[] = [];
+    const reached = new Map<string, { phone: string; email: string; via: string }>();
     for (const event of events) {
       const status = eventStatus(event.colorId);
       if (!isAppointment(event) || (status !== "scheduled" && status !== "rescheduled") || this.expiresAt(event) <= now) continue;
-      const to = this.to(event);
+      // E11c (SEC-A12-03): a linked one is resolved in Contacts only after the cheap checks, once per contact a run.
+      const reachable = (to: { phone: string; email: string }) => !!to.phone || (mail && !!to.email);
+      let to = event.contact ? null : this.to(event);
+      if ((to && !reachable(to)) || !this.canWrite(event.calendarId)) continue;
+      const row = this.row(`calendar_id = ? AND event_id = ?`, event.calendarId, event.id);
+      if (row && (row.revoked_at || this.answeredFor(row, event.start) || this.sentFor(row.id, event.start))) continue;
+      if (!to) {
+        const contact = event.contact ?? "";
+        to = reached.get(contact) ?? this.to(event);
+        reached.set(contact, to);
+        if (!reachable(to)) continue;
+      }
       let phone = to.phone;
       // E7c3b: with "Também por e-mail" on, an appointment with only the patient's e-mail goes too.
       const email = mail && !!to.email;
-      if ((!phone && !email) || !this.canWrite(event.calendarId)) continue;
-      const row = this.row(`calendar_id = ? AND event_id = ?`, event.calendarId, event.id);
-      if (row && (row.revoked_at || this.answeredFor(row, event.start) || this.sentFor(row.id, event.start))) continue;
       if (out.length >= max) break;
       const notAfter = new Date(this.expiresAt(event)).toISOString();
       // SEC-E7c3a-03: the contact's name at Chatwoot and in the history is the first name only, as in the
       // message: the title may carry a treatment or a note. Without a usable one, the number stands in.
-      const name = firstName(event.title);
+      // SEC-A12-01: with a responsible, the number is theirs, so Chatwoot knows it by their name, never the child's.
+      const name = firstName(to.via || event.title);
       const label = name && confirmValueOk(name) ? name : phone;
       if (!make) {
         const print = (await sha256Hex(`${event.calendarId}\n${event.id}`)).slice(0, 24);

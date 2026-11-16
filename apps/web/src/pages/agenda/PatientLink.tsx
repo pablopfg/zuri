@@ -286,6 +286,7 @@ export function PatientLine({ event, onLink }: { event: AgendaEvent; onLink: (()
         {person.phone && <span className="block text-fg-muted tabular-nums">{person.phone}</span>}
         {person.email && <span className="block break-all text-fg-muted">{person.email}</span>}
         {reach?.via && <span className="block text-sm text-fg-muted">{t("web.agenda.event.via", { name: reach.via.name, role: t(VIA[reach.via.role] ?? "web.agenda.event.role.guardian") })}</span>}
+        {reach?.via && !reach.phone && !reach.email && <span className="block text-sm text-fg-muted">{t("web.agenda.event.viaNone", { name: reach.via.name })}</span>}
         {reach?.gone && <span className="block text-sm text-fg-muted">{t("web.agenda.event.viaGone")}</span>}
         <Link to={`/contatos/${encodeURIComponent(linked.id)}`} className="mt-1 inline-flex min-h-11 items-center text-accent-text underline-offset-2 hover:underline">
           {t("web.agenda.event.openContact")}

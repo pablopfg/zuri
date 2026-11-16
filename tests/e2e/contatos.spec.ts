@@ -680,7 +680,7 @@ test("E11b: the family on the card: link a relative picked among homonyms, see t
   await clear();
 });
 
-test("E11c: a grown-up relative can receive the office's messages: the box only for those roles, the hint on the row and the line on the card", async ({ page }) => {
+test("E11c: a grown-up relative can receive the office's messages: the box only for those roles, the hint on the row and the line on the card @mobile", async ({ page }) => {
   await copy(page, ["pacientes"]);
   // Links outlive the copy (they are the owner's): a run before this one may have left some.
   const all = (await (await page.request.get("/api/contacts", { headers: CSRF })).json()) as { contacts: { id: string; name: string }[] };
@@ -702,6 +702,7 @@ test("E11c: a grown-up relative can receive the office's messages: the box only 
   await dialog.getByRole("combobox", { name: "Essa pessoa é" }).selectOption({ label: "Filha" });
   await expect(box).toBeDisabled();
   await expect(box).not.toBeChecked();
+  await expect(box).toHaveAccessibleDescription("Só mãe, pai, avós, tios, irmãos ou o responsável legal recebem as mensagens.");
   await dialog.getByRole("combobox", { name: "Essa pessoa é" }).selectOption({ label: "Pai" });
   await expect(box).toBeEnabled();
   await box.check();
@@ -709,7 +710,7 @@ test("E11c: a grown-up relative can receive the office's messages: the box only 
   expect(await tooSmallControls(page), "every control of the dialog is a 44 px target").toEqual([]);
   await dialog.getByRole("button", { name: "Ligar", exact: true }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("status").filter({ hasText: "As mensagens do consultório para Beatriz vão para essa pessoa" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Ligação feita: Marcos Vieira Lopes é pai de Beatriz Novaes Conceição. As mensagens do consultório para Beatriz vão para Marcos Vieira Lopes." })).toBeVisible();
   await expect(family.getByRole("listitem")).toContainText("Pai · nasc. 11 de fevereiro de 1979 · recebe as mensagens");
   await expect(family.getByText("As mensagens do consultório para Beatriz vão para Marcos Vieira Lopes.", { exact: true })).toBeVisible();
   await expectAccessible(page, "família com responsável");

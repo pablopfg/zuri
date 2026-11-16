@@ -137,7 +137,7 @@ export function FamilyCard({ id, name }: { id: string; name: string }) {
               void qc.invalidateQueries({ queryKey: ["contact"] });
               setOpen(false);
               const added = t("web.contacts.family.added", { nome: relative, papel: t(roleKey(role)).toLowerCase(), contato: name });
-              toast(responsible ? `${added}. ${t("web.contacts.family.addedReceives", { nome: first })}` : added);
+              toast(responsible ? `${added}. ${t("web.contacts.family.messagesTo", { nome: first, responsavel: relative })}` : added);
               document.getElementById(addButton)?.focus();
             }}
             onCancel={() => setOpen(false)}
@@ -160,6 +160,7 @@ function LinkForm({ id, first, linked, onDone, onCancel }: { id: string; first: 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const list = useId();
+  const why = useId();
   // E11c: only a grown-up role receives the office's messages (protótipo FAM_RESP).
   const canReceive = FAMILY_RESPONSIBLE_ROLES.includes(role);
   // A pause after the last key before asking the server (rule P11).
@@ -247,8 +248,22 @@ function LinkForm({ id, first, linked, onDone, onCancel }: { id: string; first: 
         </SelectField>
       </div>
       <label className={cn("flex min-h-11 items-start gap-3 text-sm", !canReceive && "text-fg-muted")}>
-        <input type="checkbox" checked={responsible && canReceive} disabled={!canReceive} onChange={(event) => setResponsible(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-accent)]" />
-        <span>{t("web.contacts.family.responsible", { nome: first })}</span>
+        <input
+          type="checkbox"
+          checked={responsible && canReceive}
+          disabled={!canReceive}
+          aria-describedby={canReceive ? undefined : why}
+          onChange={(event) => setResponsible(event.target.checked)}
+          className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-accent)]"
+        />
+        <span>
+          {t("web.contacts.family.responsible", { nome: first })}
+          {!canReceive && (
+            <span id={why} className="mt-1 block text-fg-muted">
+              {t("web.contacts.family.responsible.hint")}
+            </span>
+          )}
+        </span>
       </label>
       <p role="status" className="text-sm text-danger empty:hidden">
         {error}

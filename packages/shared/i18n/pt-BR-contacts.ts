@@ -149,5 +149,5 @@ export const ptBRContacts = {
   "web.contacts.family.receives": "recebe as mensagens",
   "web.contacts.family.messagesTo": "As mensagens do consultório para {nome} vão para {responsavel}.",
   "web.contacts.family.responsible": "As mensagens do consultório para {nome} vão para essa pessoa (criança ou quem não usa o celular)",
-  "web.contacts.family.addedReceives": "As mensagens do consultório para {nome} vão para essa pessoa",
+  "web.contacts.family.responsible.hint": "Só mãe, pai, avós, tios, irmãos ou o responsável legal recebem as mensagens.",
 } as const;

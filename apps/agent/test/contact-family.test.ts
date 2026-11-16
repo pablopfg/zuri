@@ -320,5 +320,8 @@ describe("E11c: the responsible receives the office's messages", () => {
     google.people.update("people/c15", { phoneNumbers: [{ value: "(11) 3333-4444" }], emailAddresses: [] });
     await sync();
     expect(await reach("people/c15")).toEqual({ phone: "", email: "", via: null, gone: false });
+    // A responsible with only a landline: named, and nothing goes (the details say so).
+    expect((await linkFor("people/c11", "people/c15", "uncle", "nephew", true)).status).toBe(201);
+    expect(await reach("people/c11")).toEqual({ phone: "", email: "", via: { name: "Rui Costa", role: "uncle" }, gone: false });
   });
 });

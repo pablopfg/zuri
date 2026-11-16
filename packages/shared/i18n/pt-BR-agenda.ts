@@ -134,6 +134,7 @@ export const ptBRAgenda = {
   "web.agenda.event.homonym": "Homônimo",
   "web.agenda.event.via": "As mensagens vão para {name} ({role}).",
   "web.agenda.event.viaGone": "O responsável está fora das etiquetas escolhidas, então nenhuma mensagem sai para este paciente.",
+  "web.agenda.event.viaNone": "{name} não tem celular nem e-mail no Google Contatos, então nenhuma mensagem sai.",
   "web.agenda.event.role.mother": "mãe",
   "web.agenda.event.role.father": "pai",
   "web.agenda.event.role.grandmother": "avó",
