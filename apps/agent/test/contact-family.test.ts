@@ -1,4 +1,4 @@
-import { AGENT_INSTANCE_NAME, type ContactFamily, type ContactPage, FAMILY_LIMITS } from "@zuri/shared";
+import { AGENT_INSTANCE_NAME, type ContactFamily, type ContactPage, type ContactReach, FAMILY_LIMITS } from "@zuri/shared";
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ZuriAgent } from "../src/agent/zuri-agent.ts";
@@ -94,7 +94,7 @@ describe("/api/contacts/:id/family", () => {
     const made = await link("people/c11", "people/c10", "mother", "son");
     expect(made.status).toBe(201);
     const lucas = (await made.json()) as ContactFamily;
-    expect(lucas.links).toEqual([{ id: expect.any(String), role: "mother", contact: { id: ids["people/c10"], name: "Helena Prado", birthday: "", sameName: false } }]);
+    expect(lucas.links).toEqual([{ id: expect.any(String), role: "mother", contact: { id: ids["people/c10"], name: "Helena Prado", birthday: "", sameName: false }, receives: false }]);
     // One row, a < b, each role on its side; nothing at Google.
     expect(await rows()).toEqual([{ a: "people/c10", b: "people/c11", role_a: "mother", role_b: "son", responsible: 0 }]);
     expect((await family("people/c10")).links.map((item) => [item.contact?.name, item.role])).toEqual([["Lucas Prado", "son"]]);
@@ -124,7 +124,7 @@ describe("/api/contacts/:id/family", () => {
     expect((await api("POST", `/contacts/${ids["people/c11"]}/family`, { relative: "00000000-0000-4000-8000-000000000000", role: "mother", otherRole: "son" })).status).toBe(404);
     expect((await api("POST", `/contacts/00000000-0000-4000-8000-000000000000/family`, { relative: ids["people/c10"], role: "mother", otherRole: "son" })).status).toBe(404);
     expect((await api("GET", "/contacts/people%2Fc10/family")).status).toBe(404);
-    for (const body of [{ relative: ids["people/c12"], role: "brother", otherRole: "brother", responsible: true }, { relative: "people/c12", role: "brother", otherRole: "brother" }, "[]", "{", `{"relative":"${"a".repeat(1100)}"}`]) {
+    for (const body of [{ relative: ids["people/c12"], role: "brother", otherRole: "brother", responsible: 1 }, { relative: "people/c12", role: "brother", otherRole: "brother" }, "[]", "{", `{"relative":"${"a".repeat(1100)}"}`]) {
       const res = await api("POST", `/contacts/${ids["people/c11"]}/family`, body);
       expect(res.status, JSON.stringify(body).slice(0, 60)).toBe(400);
     }
@@ -153,7 +153,7 @@ describe("/api/contacts/:id/family", () => {
     expect((await family("people/c15")).links[0]?.contact).toEqual({ id: ids["people/c14"], name: "Marta Lima", birthday: "1991-07-02", sameName: true });
     expect((await family("people/c15")).links[0]?.contact?.id).not.toBe(ids["people/c13"]);
     await inOwner((agent) => agent.store.db.run(`DELETE FROM zur_contacts WHERE resource_name = 'people/c14'`));
-    expect((await family("people/c15")).links).toEqual([{ id: expect.any(String), role: "spouse", contact: null }]);
+    expect((await family("people/c15")).links).toEqual([{ id: expect.any(String), role: "spouse", contact: null, receives: false }]);
     expect(await rows()).toHaveLength(1);
   });
 
@@ -201,7 +201,7 @@ describe("/api/contacts/:id/family", () => {
     };
     google.people.update("people/c12", { memberships: [] });
     await sync();
-    expect((await family("people/c15")).links).toEqual([{ id: expect.any(String), role: "brother", contact: null }]);
+    expect((await family("people/c15")).links).toEqual([{ id: expect.any(String), role: "brother", contact: null, receives: false }]);
     google.people.update("people/c12", { memberships: [{ contactGroupMembership: { contactGroupResourceName: LABEL } }] });
     await sync();
     const back = (await family("people/c15")).links[0]?.contact;
@@ -234,5 +234,94 @@ describe("/api/contacts/:id/family", () => {
     await inOwner((agent) => agent.store.contacts.disable());
     expect((await api("GET", `/contacts/${ids["people/c11"]}/family`)).status).toBe(404);
     expect(await rows()).toHaveLength(1);
+  });
+});
+
+describe("E11c: the responsible receives the office's messages", () => {
+  const reach = async (resource: string): Promise<ContactReach> => {
+    const res = await api("GET", `/contacts/${ids[resource]}`);
+    expect(res.status).toBe(200);
+    return ((await res.json()) as { reach: ContactReach }).reach;
+  };
+  const linkFor = (resource: string, relative: string, role: string, otherRole: string, responsible: unknown) =>
+    api("POST", `/contacts/${ids[resource]}/family`, { relative: ids[relative], role, otherRole, responsible });
+  const sync = async () => {
+    await inOwner((agent) => agent.store.db.run(`UPDATE zur_contact_sync SET synced_now_at = synced_now_at - 60000`));
+    expect((await api("POST", "/google/contacts/sync")).status).toBe(200);
+  };
+
+  it("without a responsible, the contact's own mobile; with one, the responsible's, on both cards' terms", async () => {
+    expect(await reach("people/c11")).toEqual({ phone: "+5511988880011", email: "", via: null, gone: false });
+    // From Lucas's card: Helena is his mother and receives his messages. 1: a (Helena) receives for b (Lucas).
+    expect((await linkFor("people/c11", "people/c10", "mother", "son", true)).status).toBe(201);
+    expect(await rows()).toEqual([{ a: "people/c10", b: "people/c11", role_a: "mother", role_b: "son", responsible: 1 }]);
+    expect((await family("people/c11")).links.map((item) => item.receives)).toEqual([true]);
+    // Lucas doesn't receive Helena's: her card shows him without the hint, and her messages stay hers.
+    expect((await family("people/c10")).links.map((item) => item.receives)).toEqual([false]);
+    expect(await reach("people/c11")).toEqual({ phone: "+5511988880010", email: "", via: { name: "Helena Prado", role: "mother" }, gone: false });
+    expect(await reach("people/c10")).toEqual({ phone: "+5511988880010", email: "", via: null, gone: false });
+  });
+
+  it("from the other side too: the relative who is b receives for a", async () => {
+    // From Rui's card (c15): Diego (c12) is his uncle and receives. a = c12 < c15, so 1 again.
+    expect((await linkFor("people/c15", "people/c12", "uncle", "nephew", true)).status).toBe(201);
+    // From Diego's card: Helena (c10, a) has Diego (b) as the one who receives: 2.
+    expect((await linkFor("people/c10", "people/c12", "brother", "sister", true)).status).toBe(201);
+    expect(await rows()).toEqual([
+      { a: "people/c10", b: "people/c12", role_a: "sister", role_b: "brother", responsible: 2 },
+      { a: "people/c12", b: "people/c15", role_a: "uncle", role_b: "nephew", responsible: 1 },
+    ]);
+    expect((await reach("people/c10")).via).toEqual({ name: "Diego Prado", role: "brother" });
+    expect((await reach("people/c15")).via).toEqual({ name: "Diego Prado", role: "uncle" });
+  });
+
+  it("refuses the box with a role that can't receive (400), or a value that isn't true or false", async () => {
+    for (const [role, otherRole] of [["daughter", "mother"], ["son", "father"], ["spouse", "spouse"], ["dependent", "guardian"], ["cousinF", "cousinM"], ["niece", "aunt"], ["granddaughter", "grandmother"]]) {
+      const res = await linkFor("people/c11", "people/c10", role as string, otherRole as string, true);
+      expect(res.status, role).toBe(400);
+    }
+    for (const value of ["yes", 1, null]) expect((await linkFor("people/c11", "people/c10", "mother", "son", value)).status, String(value)).toBe(400);
+    expect(await rows()).toEqual([]);
+    // false is a plain link.
+    expect((await linkFor("people/c11", "people/c10", "guardian", "dependent", false)).status).toBe(201);
+    expect((await rows())[0]?.responsible).toBe(0);
+  });
+
+  it("one responsible a contact: a new one takes the place, and taking the link off takes the responsible off", async () => {
+    expect((await linkFor("people/c11", "people/c10", "mother", "son", true)).status).toBe(201);
+    expect((await linkFor("people/c11", "people/c12", "uncle", "nephew", true)).status).toBe(201);
+    expect((await family("people/c11")).links.map((item) => [item.contact?.name, item.receives])).toEqual([
+      ["Helena Prado", false],
+      ["Diego Prado", true],
+    ]);
+    expect((await reach("people/c11")).via?.name).toBe("Diego Prado");
+    // A pair already linked is refused before anything changes: Diego stays the responsible.
+    expect((await linkFor("people/c11", "people/c10", "mother", "son", true)).status).toBe(409);
+    expect((await reach("people/c11")).via?.name).toBe("Diego Prado");
+    const diego = (await family("people/c11")).links.find((item) => item.receives)?.id ?? "";
+    expect((await api("DELETE", `/contacts/${ids["people/c11"]}/family/${diego}`)).status).toBe(200);
+    expect(await reach("people/c11")).toEqual({ phone: "+5511988880011", email: "", via: null, gone: false });
+  });
+
+  it("a responsible who left the labels sends nothing to anyone, and a patient out of the copy has no reach", async () => {
+    expect((await linkFor("people/c11", "people/c10", "mother", "son", true)).status).toBe(201);
+    google.people.update("people/c10", { memberships: [] });
+    await sync();
+    expect(await reach("people/c11")).toEqual({ phone: "", email: "", via: null, gone: true });
+    expect(await inOwner((agent) => agent.store.family.reach("people/c11"))).toMatchObject({ phone: "", gone: true });
+    // The patient's own resource, out of the copy: nothing, not even to a responsible still there.
+    expect(await inOwner((agent) => agent.store.family.reach("people/c10"))).toEqual({ phone: "", email: "", via: null, gone: false });
+  });
+
+  it("the first Brazilian mobile and the first sound e-mail; a landline or a number abroad is no one's WhatsApp", async () => {
+    google.people.update("people/c15", { phoneNumbers: [{ value: "(11) 3333-4444" }, { value: "+1 415 555 0100" }, { value: "+55 21 99876-5432" }], emailAddresses: [{ value: "nao é e-mail" }, { value: " Rui@Exemplo.com.br " }] });
+    await sync();
+    expect(await reach("people/c15")).toEqual({ phone: "+5521998765432", email: "rui@exemplo.com.br", via: null, gone: false });
+    google.people.update("people/c15", { phoneNumbers: [{ value: "(11) 3333-4444" }], emailAddresses: [] });
+    await sync();
+    expect(await reach("people/c15")).toEqual({ phone: "", email: "", via: null, gone: false });
+    // A responsible with only a landline: named, and nothing goes (the details say so).
+    expect((await linkFor("people/c11", "people/c15", "uncle", "nephew", true)).status).toBe(201);
+    expect(await reach("people/c11")).toEqual({ phone: "", email: "", via: { name: "Rui Costa", role: "uncle" }, gone: false });
   });
 });
