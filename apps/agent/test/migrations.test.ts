@@ -130,6 +130,7 @@ describe("the migration list", () => {
       46: "5d5b7cfbb33ef8b10652f26f8427a917f6a4cb13fcb615e003517dbda0077192",
       47: "725d027aa45482cf6d4df28e9d3723b1271342765eaccd7da537f950e0079498",
       48: "66756cfab5fcbe41ddaf7e0e746d1628aabd3e95b5b54d39dd609f3e43df28dc",
+      49: "806cf3cd96eb14bd6c0e83fedaae03471ed39a27e3e229602e8a2c48672e4827",
     };
     for (const m of MIGRATIONS) {
       const digest = createHash("sha256").update(statementText(m).replace(/\r\n/g, "\n")).digest("hex");
@@ -145,7 +146,7 @@ describe("migrate", () => {
       expect(zurObjects(db)).toEqual([]);
 
       expect(migrate(db)).toBe(LATEST_SCHEMA_VERSION);
-      expect(schemaVersion(db)).toBe(48);
+      expect(schemaVersion(db)).toBe(49);
       // FTS5 keeps shadow tables of its own (zur_notes_fts_data and others): only ours are listed.
       expect(zurObjects(db).filter((name) => !/^table:zur_(notes|memories)_fts_/.test(name))).toEqual([
         "table:zur_activity",
@@ -261,6 +262,7 @@ describe("migrate", () => {
         "trigger:zur_area_trash_trash_update",
         "table:zur_area_versions",
         "table:zur_auth_events",
+        "index:zur_auth_events_abroad",
         "index:zur_auth_events_alert",
         "index:zur_auth_events_at",
         "table:zur_auth_events_daily",
@@ -1386,7 +1388,7 @@ describe("migrate", () => {
     await withEmptyDatabase("from-40", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 40))).toBe(40);
       db.run(`INSERT INTO zur_review_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING`);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.one(`SELECT request_message, request_days, request_hour, request_reminder, requests_day, requests_built_at, requests_told_day FROM zur_review_settings WHERE id = 1`)).toEqual({
         request_message: null,
         request_days: 8,
@@ -1410,7 +1412,7 @@ describe("migrate", () => {
       expect(db.one(`SELECT reviews FROM zur_area_versions WHERE id = 1`)).toEqual(reviews);
       db.run(`UPDATE zur_review_requests SET sent_at = 3, attempts = 1`);
       expect(db.one(`SELECT reviews FROM zur_area_versions WHERE id = 1`)).not.toEqual(reviews);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.one(`SELECT count(*) AS n FROM zur_review_requests`)).toEqual({ n: 1 });
     });
   });
@@ -1419,7 +1421,7 @@ describe("migrate", () => {
     await withEmptyDatabase("from-41", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 41))).toBe(41);
       db.run(`INSERT INTO zur_crm_automations (id, updated_at) VALUES ('example', 't')`);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.all(`SELECT * FROM zur_agenda_record`)).toEqual([]);
       expect(db.all(`SELECT * FROM zur_agenda_closed_days`)).toEqual([]);
       expect(db.one(`SELECT id FROM zur_crm_automations`)).toEqual({ id: "example" });
@@ -1431,7 +1433,7 @@ describe("migrate", () => {
       // The same event on another day (a copy of each day it was read on) is a row of its own.
       db.run(`INSERT INTO zur_agenda_record (day, calendar_id, event_id, etag, data) VALUES ('2026-11-13', 'c', 'e', '"1"', '{}')`);
       // Running it again changes nothing.
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.one(`SELECT count(*) AS n FROM zur_agenda_record`)).toEqual({ n: 2 });
     });
   });
@@ -1440,7 +1442,7 @@ describe("migrate", () => {
     await withEmptyDatabase("from-39", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 39))).toBe(39);
       db.run(`INSERT INTO zur_crm_automations (id, updated_at) VALUES ('example', 't')`);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.all(`SELECT * FROM zur_outbox`)).toEqual([]);
       expect(db.one(`SELECT paused_at FROM zur_outbox_state`)).toEqual({ paused_at: null });
       expect(db.one(`SELECT id FROM zur_crm_automations`)).toEqual({ id: "example" });
@@ -1456,7 +1458,7 @@ describe("migrate", () => {
       expect(db.one(`SELECT crm FROM zur_area_versions WHERE id = 1`)).not.toEqual(crm);
       expect(() => db.run(`INSERT INTO zur_outbox_state (id) VALUES (2)`)).toThrow();
       // Running it again changes nothing.
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.one(`SELECT paused_at FROM zur_outbox_state`)).toEqual({ paused_at: null });
     });
   });
@@ -1467,7 +1469,7 @@ describe("migrate", () => {
       db.run(
         `INSERT INTO zur_flow_connections (id, name, origin, methods, paths, auth, header_name, credential, created_at, updated_at, kind) VALUES ('c1', 'Chatwoot', 'https://chat.exemplo.com.br', '["GET"]', '["/api"]', 'header', 'api_access_token', 'v1.a.b', 't1', 't2', 'chatwoot')`,
       );
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       // Nothing comes on by itself: no row until the owner sets one up.
       expect(db.all(`SELECT * FROM zur_crm_automations`)).toEqual([]);
       expect(db.all(`SELECT * FROM zur_crm_automation_runs`)).toEqual([]);
@@ -1488,7 +1490,7 @@ describe("migrate", () => {
       db.run(`INSERT INTO zur_crm_automation_days (automation_id, day, verdict, decided_at) VALUES ('example', '2026-11-13', 'match', 't')`);
       expect(() => db.run(`INSERT INTO zur_crm_automation_days (automation_id, day, verdict, decided_at) VALUES ('example', '2026-11-13', 'differs', 't')`)).toThrow();
       // Running it again changes nothing.
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_crm_automation_effects`)?.n).toBe(1);
     });
   });
@@ -1500,7 +1502,7 @@ describe("migrate", () => {
         `INSERT INTO zur_flow_connections (id, name, origin, methods, paths, auth, header_name, credential, created_at, updated_at) VALUES ('c1', 'CRM', 'https://api.exemplo.com.br', '["GET"]', '["/v1"]', 'bearer', NULL, 'v1.a.b', 't1', 't2')`,
       );
       const versions = db.one(`SELECT flows FROM zur_area_versions WHERE id = 1`);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.one(`SELECT * FROM zur_flow_connections`)).toEqual({
         id: "c1",
         name: "CRM",
@@ -1520,7 +1522,7 @@ describe("migrate", () => {
       expect(db.one(`SELECT flows FROM zur_area_versions WHERE id = 1`)).toEqual(versions);
       // A kind the code adds later needs no new table: the column takes any text, the code checks it.
       db.run(`UPDATE zur_flow_connections SET kind = 'fzap'`);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
     });
   });
 
@@ -1529,7 +1531,7 @@ describe("migrate", () => {
       expect(migrate(db, MIGRATIONS.slice(0, 36))).toBe(36);
       db.run(`INSERT INTO zur_usage_daily (day, ai_requests, neurons) VALUES ('2026-11-10', 7, 70.5)`);
       db.run(`INSERT INTO zur_model_usage_daily (day, model, kind, billable, calls) VALUES ('2026-11-10', 'm', 'chat', 1, 7)`);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.one(`SELECT day, ai_requests, neurons FROM zur_usage_daily`)).toEqual({ day: "2026-11-10", ai_requests: 7, neurons: 70.5 });
       expect(db.one(`SELECT calls FROM zur_model_usage_daily`)).toEqual({ calls: 7 });
       expect(db.all(`SELECT * FROM zur_usage_hourly`)).toEqual([]);
@@ -1542,7 +1544,7 @@ describe("migrate", () => {
       expect(() => db.run(`INSERT INTO zur_usage_hourly (hour, day) VALUES (23, '2026-11-13')`)).toThrow();
       expect(() => db.run(`INSERT INTO zur_usage_monthly (month, last_day) VALUES ('2026-11', '2026-11-11')`)).toThrow();
       // Running it again changes nothing.
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.one<{ n: number }>(`SELECT count(*) AS n FROM zur_usage_hourly`)?.n).toBe(1);
     });
   });
@@ -1551,7 +1553,7 @@ describe("migrate", () => {
     await withEmptyDatabase("from-35", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 35))).toBe(35);
       db.run(`INSERT INTO zur_sessions (id, created_at, last_seen_at, last_presence_at, expires_at, confirmed_at, user_agent, network) VALUES ('s1', 1, 2, 3, 4, 5, 'ua', '203.0.113.7')`);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.one(`SELECT * FROM zur_sessions`)).toEqual({
         id: "s1",
         created_at: 1,
@@ -1571,7 +1573,7 @@ describe("migrate", () => {
       );
       expect(db.one(`SELECT device, country, networks, confirmed_network FROM zur_sessions WHERE id = 's2'`)).toEqual({ device: "d", country: "BR", networks: "n", confirmed_network: "n" });
       // Running it again changes nothing.
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
     });
   });
 
@@ -1694,7 +1696,7 @@ describe("migrate", () => {
     await withEmptyDatabase("from-43", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 43))).toBe(43);
       const settings = db.all(`SELECT * FROM zur_settings ORDER BY key`);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.all(`SELECT * FROM zur_mail`)).toEqual([]);
       expect(db.all(`SELECT * FROM zur_settings ORDER BY key`)).toEqual(settings);
       db.run(`INSERT INTO zur_mail (id, updated_at) VALUES (1, 'x')`);
@@ -1734,14 +1736,14 @@ describe("migrate", () => {
       expect(migrate(db, MIGRATIONS.slice(0, 46))).toBe(46);
       db.run(`INSERT INTO zur_appointment_links (id, calendar_id, event_id, token_hash, token_sealed, created_at) VALUES ('l1', 'agenda', 'e1', 'h1', 's', 1)`);
       const links = db.all(`SELECT * FROM zur_appointment_links`);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.all(`SELECT * FROM zur_confirm_sends`)).toEqual([]);
       expect(db.all(`SELECT * FROM zur_appointment_links`)).toEqual(links);
       const add = (start: string, channel: string) => db.run(`INSERT INTO zur_confirm_sends (link_id, start, channel, sent_at) VALUES ('l1', ?, ?, 1)`, start, channel);
       add("2026-11-20T12:00:00.000Z", "whatsapp");
       add("2026-11-21T12:00:00.000Z", "whatsapp");
       expect(() => add("2026-11-20T12:00:00.000Z", "whatsapp")).toThrow(/UNIQUE|PRIMARY/);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
     });
   });
 
@@ -1749,7 +1751,7 @@ describe("migrate", () => {
     await withEmptyDatabase("from-47", (db) => {
       expect(migrate(db, MIGRATIONS.slice(0, 47))).toBe(47);
       const contacts = db.all(`SELECT * FROM zur_contacts`);
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
       expect(db.all(`SELECT * FROM zur_contact_family`)).toEqual([]);
       expect(db.all(`SELECT * FROM zur_contacts`)).toEqual(contacts);
       expect(db.one(`SELECT n FROM zur_counts WHERE kind = 'contact_family'`)).toEqual({ n: 0 });
@@ -1763,7 +1765,26 @@ describe("migrate", () => {
       expect(db.one<{ contacts: number }>(`SELECT contacts FROM zur_area_versions WHERE id = 1`)?.contacts).toBe(before + 1);
       db.run(`DELETE FROM zur_contact_family`);
       expect(db.one(`SELECT n FROM zur_counts WHERE kind = 'contact_family'`)).toEqual({ n: 0 });
-      expect(migrate(db)).toBe(48);
+      expect(migrate(db)).toBe(49);
+    });
+  });
+
+  it("upgrades a database at version 48 to 49: the accesses from abroad get their own partial index, nothing else moves", async () => {
+    await withEmptyDatabase("from-48", (db) => {
+      expect(migrate(db, MIGRATIONS.slice(0, 48))).toBe(48);
+      for (const [at, country] of [[1, "BR"], [2, "PT"], [3, ""], [4, "T1"]] as const) {
+        db.run(`INSERT INTO zur_auth_events (at, last_at, kind, country) VALUES (?, ?, 'login_failure', ?)`, at, at, country);
+      }
+      const rows = db.all(`SELECT * FROM zur_auth_events ORDER BY id`);
+      expect(migrate(db)).toBe(49);
+      expect(db.all(`SELECT * FROM zur_auth_events ORDER BY id`)).toEqual(rows);
+      // The filter's own WHERE reads through the index, and only the two rows from abroad are in it.
+      const plan = db.all<{ detail: string }>(
+        `EXPLAIN QUERY PLAN SELECT id FROM zur_auth_events WHERE at >= 0 AND country <> '' AND country <> 'BR' ORDER BY at DESC, id DESC LIMIT 51`,
+      );
+      expect(plan.map((row) => row.detail).join(" | ")).toMatch(/zur_auth_events_abroad/);
+      expect(db.all(`SELECT at FROM zur_auth_events INDEXED BY zur_auth_events_abroad WHERE country <> '' AND country <> 'BR' ORDER BY at`)).toEqual([{ at: 2 }, { at: 4 }]);
+      expect(migrate(db)).toBe(49);
     });
   });
 });
